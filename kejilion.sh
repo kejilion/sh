@@ -8,7 +8,7 @@ echo "_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.0.3 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.0.4 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
 echo "3. 系统清理"
@@ -159,10 +159,10 @@ case $choice in
               ;;        
           32)
               clear
-              apt remove wget htop iftop unzip tmux ffmpeg
+              apt remove htop iftop unzip tmux ffmpeg
               ;;     
           0)
-              ./kejilion.sh
+              /root/kejilion.sh
               exit
               ;;
           *)
@@ -224,10 +224,14 @@ case $choice in
               echo ""              
               echo "Dcoker容器列表"
               docker ps -a  
-              echo ""              
+              echo "" 
+              echo "Dcoker卷列表"
+              docker volume ls
+              echo ""                                      
               echo "Dcoker网络列表"
               docker network ls                
               echo "" 
+            
               ;;
              
           3)
@@ -255,7 +259,7 @@ case $choice in
               rm -rf /var/lib/docker
               ;;                                    
           0)
-              ./kejilion.sh
+              /root/kejilion.sh
               exit
               ;;
           *)
@@ -331,7 +335,7 @@ case $choice in
               wget -qO- bench.sh | bash
               ;;        
           0)
-              ./kejilion.sh
+              /root/kejilion.sh
               exit
               ;;
           *)
@@ -457,7 +461,7 @@ case $choice in
           esac              
               ;;                                  
           0)
-              ./kejilion.sh
+              /root/kejilion.sh
               exit
               ;;
           *)
@@ -738,7 +742,7 @@ case $choice in
 
 
       clear      
-      echo "您的可道云桌面搭建好了！"
+      echo "您的苹果CMS搭建好了！"
       echo "https://$yuming"
       echo ""  
       echo "安装信息如下："  
@@ -756,7 +760,55 @@ case $choice in
            
       6)
       clear
-      echo "该功能处于开发阶段，敬请期待！"  
+      # 独脚数卡
+      read -p "请输入你解析的域名：" yuming
+      read -p "设置新数据库名称：" dbname
+      
+      docker stop nginx
+      
+      curl https://get.acme.sh | sh
+      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+      
+      docker start nginx
+      
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
+
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+      
+      cd /home/web/html
+      mkdir $yuming
+      cd $yuming
+      wget https://github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
+            
+      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
+            
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')      
+      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
+
+      docker restart php && docker restart php74 && docker restart nginx
+
+
+      clear      
+      echo "您的独角数卡网站搭建好了！"
+      echo "https://$yuming"
+      echo ""  
+      echo "安装信息如下："  
+      echo "数据库主机：mysql"  
+      echo "数据库端口：3306"        
+      echo "数据库名：$dbname"      
+      echo "用户名：$dbuse"
+      echo "密码：$dbusepasswd"
+      echo "数据库前缀：mac"    
+      echo ""        
+      echo "redis地址：redis"  
+      echo "redis密码：默认不填写"
+      echo "redis端口：6379"        
+      echo ""
+      echo "网站url：https://$yuming"      
+      echo "后台登录路径：/admin" 
+      echo ""           
         ;;      
 
       21)
@@ -921,13 +973,12 @@ case $choice in
         ;;
 
     0)
-    ./kejilion.sh
+    /root/kejilion.sh
     exit
       ;;
 
     *)
         echo "无效的输入!"
-        exit 1
     esac
   
     echo -e "\033[0;32m操作完成\033[0m"
@@ -940,10 +991,16 @@ case $choice in
 
   00)
     clear
-    echo ""
+    echo "脚本更新日志" 
+    echo  "------------------------"    
+    echo "2023-8-13   v1.0.4" 
+    echo "1.LDNMP建站，开放了独角数卡网站的搭建功能."
+    echo "2.LDNMP建站，优化了备份全站到远端服务器的稳定性."
+    echo "3.Docker管理，全局状态信息，添加了所有docker卷的显示."    
+    echo  "------------------------"
     echo "2023-8-13   v1.0.3" 
     echo "1.甲骨文云的DD脚本，添加了Ubuntu 20.04的重装选项。"
-    echo "2.LDNMP建站，开放了苹果CMS网站的搭建功能."
+    echo "2.LDNMP建站，开放了苹果CMS网站的搭建功能."    
     echo "3.系统信息查询，增加了内核版本显示，美化了界面。"
     echo "4.甲骨文脚本中，添加了开启ROOT登录的选项。"
     echo ""
