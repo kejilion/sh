@@ -2,12 +2,11 @@
 while true; do
 clear
 
-
 echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.3 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.3.2 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -21,6 +20,7 @@ echo "9. 甲骨文云脚本合集 ▶ "
 echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
 echo "11. 常用面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
+echo "13. 系统设置 ▶ "
 echo "------------------------"
 echo "00. 脚本更新日志"   
 echo "------------------------"
@@ -1540,7 +1540,7 @@ case $choice in
               ;;
           5)
               clear
-              SESSION_NAME="work4"
+              SESSION_NAME="work5"
 
               # Check if the session already exists
               tmux has-session -t $SESSION_NAME 2>/dev/null
@@ -1575,11 +1575,83 @@ case $choice in
     done
     ;;
 
+  13)
+    while true; do
+
+      echo " ▼ "
+      echo "系统设置"  
+      echo "------------------------"      
+      echo "1. 脚本快捷键"
+      echo "------------------------"            
+      echo "2. 修改ROOT密码"
+      echo "3. ROOT登录模式"
+      echo "------------------------"
+      echo "0. 返回主菜单"      
+      echo "------------------------"
+      read -p "请输入你的选择: " sub_choice
+    
+      case $sub_choice in
+          1)
+              clear
+              read -p "请输入你的快捷按键: " kuaijiejian
+              echo "alias $kuaijiejian='curl -sS -O https://kejilion.pro/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh'" >> ~/.bashrc
+              echo "快捷键已添加。请重新启动终端，或运行 'source ~/.bashrc' 以使修改生效。"
+              ;;
+
+          2)
+              clear
+              echo "设置你的ROOT密码"                   
+              passwd
+              ;;
+          3)
+              clear        
+              echo "设置你的ROOT密码"
+              passwd
+              sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
+              sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
+              sudo service sshd restart 
+              echo "ROOT登录设置完毕！"
+              read -p "需要重启服务器吗？(Y/N): " choice
+          case "$choice" in
+            [Yy])
+              reboot
+              ;;
+            [Nn])
+              echo "已取消"
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              ;;
+          esac              
+              ;;                                  
+
+          0)
+              /root/kejilion.sh
+              exit
+              ;;
+          *)
+              echo "无效的输入!"
+              ;;
+      esac
+      echo -e "\033[0;32m操作完成\033[0m"
+      echo "按任意键继续..."
+      read -n 1 -s -r -p ""
+      echo ""
+      clear
+    done
+    ;;
 
 
   00)
     clear
     echo "脚本更新日志" 
+    echo  "------------------------"       
+    echo "2023-8-14   v1.3.2" 
+    echo "新增了13选项，系统设置功能"
+    echo "科技lion一键脚本可以通过设置快捷键唤醒打开了，我设置的k作为脚本打开的快捷键！无需复制长命令了"    
+    echo "加入了ROOT密码修改，切换成ROOT登录模式"   
+    echo "系统设置中还有很多功能没开发，敬请期待！"       
+    echo  "------------------------"       
     echo "2023-8-14   v1.3" 
     echo "新增了12选项，我的工作区功能"
     echo "-将为你提供5个后台运行的工作区，用来执行后台任务。即使你断开SSH也不会中断，"    
