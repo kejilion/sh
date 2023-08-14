@@ -59,6 +59,10 @@ case $choice in
 
   kernel_version=$(uname -r)
 
+  congestion_algorithm=$(sysctl -n net.ipv4.tcp_congestion_control)
+  queue_algorithm=$(sysctl -n net.core.default_qdisc)
+
+
   echo ""
   echo "系统信息查询" 
   echo "------------------------"      
@@ -75,7 +79,9 @@ case $choice in
   echo "CPU占用: $cpu_usage_percent"
   echo "内存占用: $mem_info"
   echo "硬盘占用: $disk_info"
-  echo "------------------------"    
+  echo "------------------------"   
+  echo "网络拥堵算法: $congestion_algorithm $queue_algorithm"   
+  echo "------------------------"   
   echo "公网IPv4地址: $ipv4_address"
   echo "公网IPv6地址: $ipv6_address"
   echo
