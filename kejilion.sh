@@ -3,12 +3,12 @@ while true; do
 clear
 
 
-echo -e "\033[96m"
-echo "_  _ ____  _ _ _    _ ____ _  _ "
+echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.0.4 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.1 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
+echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
 echo "3. 系统清理"
@@ -187,19 +187,20 @@ case $choice in
 
   6)
     while true; do
-
       echo " ▼ "
       echo "Docker管理器"  
       echo "1. 安装更新Docker环境"
       echo "------------------------"
       echo "2. 查看Dcoker全局状态"
       echo "------------------------"     
-      echo "3. 启动所有Dcoker容器"
-      echo "4. 暂停所有Dcoker容器"
-      echo "5. 删除所有Dcoker容器"
-      echo "6. 清理无用的docker容器和镜像网络数据卷"
+      echo "3. Dcoker容器管理 ▶" 
+      echo "4. Dcoker镜像管理 ▶"   
+      echo "5. Dcoker网络管理 ▶" 
+      echo "6. Dcoker卷管理 ▶"       
+      echo "------------------------"                  
+      echo "7. 清理无用的docker容器和镜像网络数据卷"
       echo "------------------------"
-      echo "7. 卸载Dcoker环境"
+      echo "8. 卸载Dcoker环境"
       echo "------------------------"
       echo "0. 返回主菜单"      
       echo "------------------------"
@@ -210,8 +211,7 @@ case $choice in
               clear
               apt update -y
               curl -fsSL https://get.docker.com | sh
-              curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
-           
+              curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose         
               ;;
           2)
               clear
@@ -233,30 +233,219 @@ case $choice in
               echo "" 
             
               ;;
-             
           3)
-              clear
-              docker start $(docker ps -a -q)
+              while true; do
+                  clear
+                  echo "Docker容器列表"
+                  docker ps -a
+                  echo ""
+                  echo "容器操作"
+                  echo "1. 创建新的容器"
+                  echo "------------------------"                  
+                  echo "2. 启动指定容器             6. 启动所有容器"
+                  echo "3. 停止指定容器             7. 暂停所有容器"
+                  echo "4. 删除指定容器             8. 删除所有容器"
+                  echo "5. 重启指定容器             9. 重启所有容器"
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                          read -p "请输入创建命令：" dockername
+                          $dockername
+                          ;;  
+                      # 11)
+                      #     read -p "请输入项目名：" dockecomposername
+                      #     mkdir -p /home/docker/$dockecomposername
+
+                      #     read -p "输入创建目录命令：" chuangjianmulu
+                      #     cd /home/docker/$dockecomposername && $chuangjianmulu
+
+                      #     echo "任意键继续，编辑docker-compose.yml"
+                      #     read -n 1 -s -r -p ""
+                      #     cd /home/docker/$dockecomposername && nano docker-compose.yml
+
+                      #     echo "任意键继续，运行docker-compose.yml"
+                      #     cd /home/docker/$dockecomposername && docker-compose up -d
+                      #     ;;
+
+                      2)
+                          read -p "请输入容器名：" dockername
+                          docker start $dockername
+                          ;;
+                      3)
+                          read -p "请输入容器名：" dockername
+                          docker stop $dockername
+                          ;;    
+                      4)
+                          read -p "请输入容器名：" dockername
+                          docker rm $dockername
+                          ;;   
+                      5)
+                          read -p "请输入容器名：" dockername
+                          docker restart $dockername
+                          ;;   
+                      6)
+                          docker start $(docker ps -a -q)
+                          ;;                                                                                                       
+                      7)
+                          docker stop $(docker ps -q)
+                          ;;     
+                      8)
+                          read -p "确定删除所有容器吗？(Y/N): " choice
+                          case "$choice" in
+                            [Yy])
+                              docker rm -f $(docker ps -a -q)
+                              ;;
+                            [Nn])
+                              ;;
+                            *)
+                              echo "无效的选择，请输入 Y 或 N。"
+                              ;;
+                          esac                            
+                          ;;     
+                      9)
+                          docker restart $(docker ps -q)
+                          ;;     
+                      0)
+                          break  # 跳出循环，退出菜单     
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单                              
+                          ;;
+                  esac
+              done
               ;;        
           4)
-              clear
-              docker stop $(docker ps -q)
+              while true; do
+                  clear
+                  echo "Docker镜像列表"
+                  docker image ls  
+                  echo ""
+                  echo "镜像操作"
+                  echo "1. 获取指定镜像             3. 删除指定镜像"
+                  echo "2. 更新指定镜像             4. 删除所有镜像"
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                          read -p "请输入镜像名：" dockername
+                          docker pull $dockername
+                          ;;
+                      2)
+                          read -p "请输入镜像名：" dockername
+                          docker pull $dockername
+                          ;;    
+                      3)
+                          read -p "请输入镜像名：" dockername
+                          docker rmi -f $dockername
+                          ;;   
+                      4)
+                          read -p "确定删除所有镜像吗？(Y/N): " choice
+                          case "$choice" in
+                            [Yy])
+                              docker rmi -f $(docker images -q)
+                              ;;
+                            [Nn])
+
+                              ;;
+                            *)
+                              echo "无效的选择，请输入 Y 或 N。"
+                              ;;
+                          esac                            
+                          ;;     
+                      0)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单                          
+                          ;;
+                  esac
+              done
               ;;        
+             
           5)
-              clear
-              docker rm $(docker ps -a -q)
-              ;;
+              while true; do
+                  clear
+                  echo "Docker网络列表"
+                  docker network ls      
+                  echo ""
+                  echo "网络操作"
+                  echo "1. 创建网络"
+                  echo "2. 加入网络"                         
+                  echo "3. 删除网络"           
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                          read -p "设置新网络名：" dockernetwork
+                          docker network create $dockernetwork
+                          ;;
+                      2)
+                          read -p "加入网络名：" dockernetwork
+                          read -p "那些容器加入该网络：" dockername                          
+                          docker network connect $dockernetwork $dockername
+                          ;;    
+                      3)
+                          read -p "请输入要删除的网络名：" dockernetwork
+                          docker network rm $dockernetwork
+                          ;;   
+                      0)
+                          break  # 跳出循环，退出菜单     
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单                             
+                          ;;
+                  esac
+              done
+              ;;        
+
           6)
               clear
-              docker system prune -af --volumes
-              ;;        
+              echo "该功能处于开发阶段，敬请期待！"            
+              ;;              
           7)
               clear
-              docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune            
-              apt-get remove docker -y
-              apt-get remove docker-ce -y
-              apt-get purge docker-ce -y
-              rm -rf /var/lib/docker
+              read -p "确定清理无用的镜像容器网络吗？(Y/N): " choice
+              case "$choice" in
+                [Yy])
+                  docker system prune -af --volumes       
+                  ;;
+                [Nn])                
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac                       
+              ;;        
+          8)
+              clear
+              read -p "确定卸载docker环境吗？(Y/N): " choice
+              case "$choice" in
+                [Yy])
+                  docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune            
+                  apt-get remove docker -y
+                  apt-get remove docker-ce -y
+                  apt-get purge docker-ce -y
+                  rm -rf /var/lib/docker   
+                  ;;
+                [Nn])                
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac   
               ;;                                    
           0)
               /root/kejilion.sh
@@ -992,6 +1181,13 @@ case $choice in
   00)
     clear
     echo "脚本更新日志" 
+    echo  "------------------------"    
+    echo "2023-8-14   v1.1" 
+    echo "1.docker管理器全面升级，体验前所未有！"
+    echo "-加入了镜像管理面板"
+    echo "-加入了容器管理面板"    
+    echo "-加入了网络管理面板"      
+    echo "-删除docker时追加确认信息，拒绝误操作"           
     echo  "------------------------"    
     echo "2023-8-13   v1.0.4" 
     echo "1.LDNMP建站，开放了独角数卡网站的搭建功能."
