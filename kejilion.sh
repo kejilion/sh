@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.1 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.2 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -19,6 +19,7 @@ echo "7. WARP管理 ▶ 解锁ChatGPT Netflix"
 echo "8. 测试脚本合集 ▶ "
 echo "9. 甲骨文云脚本合集 ▶ "
 echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
+echo "11. 常用面板工具 ▶ "
 echo "------------------------"
 echo "00. 脚本更新日志"   
 echo "------------------------"
@@ -93,6 +94,7 @@ case $choice in
      while true; do
       echo " ▼ "
       echo "安装常用工具"  
+      echo "------------------------"      
       echo "1. curl 下载工具"
       echo "2. wget 下载工具"
       echo "3. sudo 超级管理权限工具"
@@ -188,7 +190,8 @@ case $choice in
   6)
     while true; do
       echo " ▼ "
-      echo "Docker管理器"  
+      echo "Docker管理器" 
+      echo "------------------------"       
       echo "1. 安装更新Docker环境"
       echo "------------------------"
       echo "2. 查看Dcoker全局状态"
@@ -240,7 +243,8 @@ case $choice in
                   docker ps -a
                   echo ""
                   echo "容器操作"
-                  echo "1. 创建新的容器"
+                  echo "------------------------"                    
+                  echo "1. 创建新的容器             11. 进入指定容器"
                   echo "------------------------"                  
                   echo "2. 启动指定容器             6. 启动所有容器"
                   echo "3. 停止指定容器             7. 暂停所有容器"
@@ -256,6 +260,11 @@ case $choice in
                           read -p "请输入创建命令：" dockername
                           $dockername
                           ;;  
+                      11)
+                          read -p "请输入容器名：" dockername
+                          docker exec -it $dockername /bin/bash
+                          ;;
+
                       # 11)
                       #     read -p "请输入项目名：" dockecomposername
                       #     mkdir -p /home/docker/$dockecomposername
@@ -281,7 +290,7 @@ case $choice in
                           ;;    
                       4)
                           read -p "请输入容器名：" dockername
-                          docker rm $dockername
+                          docker rm -f $dockername
                           ;;   
                       5)
                           read -p "请输入容器名：" dockername
@@ -326,6 +335,7 @@ case $choice in
                   docker image ls  
                   echo ""
                   echo "镜像操作"
+                  echo "------------------------"                        
                   echo "1. 获取指定镜像             3. 删除指定镜像"
                   echo "2. 更新指定镜像             4. 删除所有镜像"
                   echo "------------------------"
@@ -378,6 +388,7 @@ case $choice in
                   docker network ls      
                   echo ""
                   echo "网络操作"
+                  echo "------------------------"                   
                   echo "1. 创建网络"
                   echo "2. 加入网络"                         
                   echo "3. 删除网络"           
@@ -412,8 +423,40 @@ case $choice in
               ;;        
 
           6)
-              clear
-              echo "该功能处于开发阶段，敬请期待！"            
+              while true; do
+                  clear
+                  echo "Docker卷列表"
+                  docker volume ls  
+                  echo ""
+                  echo "卷操作"
+                  echo "------------------------"                      
+                  echo "1. 创建新卷"                      
+                  echo "2. 删除卷"           
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                          read -p "设置新卷名：" dockerjuan
+                          docker volume create $dockerjuan
+
+                          ;;
+                      2)
+                          read -p "输入删除卷名：" dockerjuan
+                          docker volume rm $dockerjuan
+
+                          ;;    
+                      0)
+                          break  # 跳出循环，退出菜单     
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单                             
+                          ;;
+                  esac
+              done
               ;;              
           7)
               clear
@@ -477,6 +520,7 @@ case $choice in
 
       echo " ▼ "
       echo "测试脚本合集"  
+      echo "------------------------"      
       echo "1. ChatGPT解锁状态检测"
       echo "2. 流媒体解锁测试"
       echo "3. TikTok状态检测"
@@ -543,6 +587,7 @@ case $choice in
      while true; do
       echo " ▼ "
       echo "甲骨文云脚本合集"  
+      echo "------------------------"        
       echo "1. 安装闲置机器活跃脚本"
       echo "2. 卸载闲置机器活跃脚本"      
       echo "------------------------"      
@@ -671,6 +716,7 @@ case $choice in
   while true; do  
     echo -e "\033[33m ▼ \033[0m"
     echo -e "\033[33mLDNMP建站\033[0m"
+    echo  "------------------------"  
     echo  "1. 安装LDNMP环境"
     echo  "------------------------"
     echo  "2. 安装WordPress"
@@ -1141,7 +1187,7 @@ case $choice in
 
     34)
         clear
-        read -p "确定删除所有网站数据吗？(Y/N): " choice
+        read -p "强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): " choice
         case "$choice" in
           [Yy])
             docker rm -f nginx
@@ -1178,15 +1224,245 @@ case $choice in
   done      
       ;;
 
+  11)
+    while true; do
+
+      echo " ▼ "
+      echo "常用面板工具"
+      echo "------------------------"      
+      echo "1. 宝塔面板官方版"
+      echo "2. aaPanel宝塔国际版"
+      echo "3. 1Panel新一代管理面板"
+      echo "4. Nginx Proxy Manager NGINX可视化面板"
+      echo "5. 哪吒探针VPS监控面板"
+      echo "------------------------"
+      echo "0. 返回主菜单"      
+      echo "------------------------"
+      read -p "请输入你的选择: " sub_choice
+    
+      case $sub_choice in
+          1)
+            clear
+            echo "安装提示"             
+            echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装宝塔面板！"
+            echo "会根据系统自动安装，支持Debian，Ubuntu，Centos" 
+            echo "官网介绍：https://www.bt.cn/new/index.html" 
+            echo ""                 
+            # 获取当前系统类型
+            get_system_type() {
+              if [ -f /etc/os-release ]; then
+                . /etc/os-release
+                if [ "$ID" == "centos" ]; then
+                  echo "centos"
+                elif [ "$ID" == "ubuntu" ]; then
+                  echo "ubuntu"
+                elif [ "$ID" == "debian" ]; then
+                  echo "debian"
+                else
+                  echo "unknown"
+                fi
+              else
+                echo "unknown"
+              fi
+            }
+
+            system_type=$(get_system_type)
+
+            if [ "$system_type" == "unknown" ]; then
+              echo "不支持的操作系统类型"
+            else
+              read -p "确定安装宝塔吗？(Y/N): " choice
+              case "$choice" in
+                [Yy])
+                  if [ "$system_type" == "centos" ]; then
+                    yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
+                  elif [ "$system_type" == "ubuntu" ]; then
+                    wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && sudo bash install.sh ed8484bec
+                  elif [ "$system_type" == "debian" ]; then
+                    wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
+                  fi
+                  ;;
+                [Nn])
+                  ;;
+                *)
+                  ;;
+              esac
+            fi 
+              ;;
+          2)
+            clear
+            echo "安装提示"             
+            echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装aaPanel！"
+            echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"   
+            echo "官网介绍：https://www.aapanel.com/new/index.html"   
+            echo ""                        
+            # 获取当前系统类型
+            get_system_type() {
+              if [ -f /etc/os-release ]; then
+                . /etc/os-release
+                if [ "$ID" == "centos" ]; then
+                  echo "centos"
+                elif [ "$ID" == "ubuntu" ]; then
+                  echo "ubuntu"
+                elif [ "$ID" == "debian" ]; then
+                  echo "debian"
+                else
+                  echo "unknown"
+                fi
+              else
+                echo "unknown"
+              fi
+            }
+
+            system_type=$(get_system_type)
+
+            if [ "$system_type" == "unknown" ]; then
+              echo "不支持的操作系统类型"
+            else
+              read -p "确定安装aaPanel吗？(Y/N): " choice
+              case "$choice" in
+                [Yy])
+                  if [ "$system_type" == "centos" ]; then
+                    yum install -y wget && wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && bash install.sh aapanel
+                  elif [ "$system_type" == "ubuntu" ]; then
+                    wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && sudo bash install.sh aapanel
+                  elif [ "$system_type" == "debian" ]; then
+                    wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh aapanel
+                  fi
+                  ;;
+                [Nn])
+                  ;;
+                *)
+                  ;;
+              esac
+            fi 
+              ;;
+          3)
+            clear
+            echo "安装提示"             
+            echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装1Panel！"
+            echo "会根据系统自动安装，支持Debian，Ubuntu，Centos" 
+            echo "官网介绍：https://1panel.cn/"   
+            echo ""                                 
+            # 获取当前系统类型
+            get_system_type() {
+              if [ -f /etc/os-release ]; then
+                . /etc/os-release
+                if [ "$ID" == "centos" ]; then
+                  echo "centos"
+                elif [ "$ID" == "ubuntu" ]; then
+                  echo "ubuntu"
+                elif [ "$ID" == "debian" ]; then
+                  echo "debian"
+                else
+                  echo "unknown"
+                fi
+              else
+                echo "unknown"
+              fi
+            }
+
+            system_type=$(get_system_type)
+
+            if [ "$system_type" == "unknown" ]; then
+              echo "不支持的操作系统类型"
+            else
+              read -p "确定安装1Panel吗？(Y/N): " choice
+              case "$choice" in
+                [Yy])
+                  if [ "$system_type" == "centos" ]; then
+                    curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sh quick_start.sh
+                  elif [ "$system_type" == "ubuntu" ]; then
+                    curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sudo bash quick_start.sh
+                  elif [ "$system_type" == "debian" ]; then
+                    curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
+                  fi
+                  ;;
+                [Nn])
+                  ;;
+                *)
+                  ;;
+              esac
+            fi 
+              ;;
+          4)            
+            # Function to get external IP address
+            get_external_ip() {
+              curl -s ifconfig.me
+            }
+            clear            
+            echo "安装提示" 
+            echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装npm！"
+            echo "官网介绍：https://nginxproxymanager.com/" 
+            echo ""
+            
+            # Prompt user for installation confirmation
+            read -p "确定安装npm吗？(Y/N): " choice
+            case "$choice" in
+              [Yy])
+                clear
+                apt update -y && apt install -y curl
+                curl -fsSL https://get.docker.com | sh
+                docker run -d \
+                  --name=npm \
+                  -p 80:80 \
+                  -p 81:81 \
+                  -p 443:443 \
+                  -v /home/npm/data:/data \
+                  -v /home/npm/letsencrypt:/etc/letsencrypt \
+                  --restart=always \
+                  jc21/nginx-proxy-manager:latest
+                clear
+                echo "npm已经安装完成"
+                
+                # Get external IP address
+                external_ip=$(get_external_ip)
+                
+                echo "您可以使用以下地址访问Nginx Proxy Manager:"
+                echo "$external_ip:81"                            
+                echo "初始用户名：admin@example.com"  
+                echo "初始密码：changeme" 
+                ;;
+              [Nn])
+                ;;
+              *)
+                ;;
+            esac            
+              ;;
+
+          0)
+              /root/kejilion.sh
+              exit
+              ;;
+          *)
+              echo "无效的输入!"
+              ;;
+      esac
+      echo -e "\033[0;32m操作完成\033[0m"
+      echo "按任意键继续..."
+      read -n 1 -s -r -p ""
+      echo ""
+      clear
+    done
+    ;;
+
+
+
   00)
     clear
     echo "脚本更新日志" 
     echo  "------------------------"    
+    echo "2023-8-14   v1.2" 
+    echo "1.新增了11选项，加入了常用面板工具合集！"
+    echo "-支持安装各种面板，包括：宝塔，宝塔国际版，1panel，Nginx Proxy Manager等等，满足更多人群的使用需求！"    
+    echo "2.优化了菜单效果"          
+    echo  "------------------------"    
     echo "2023-8-14   v1.1" 
-    echo "1.docker管理器全面升级，体验前所未有！"
-    echo "-加入了镜像管理面板"
-    echo "-加入了容器管理面板"    
-    echo "-加入了网络管理面板"      
+    echo "Docker管理器全面升级，体验前所未有！"
+    echo "-加入了docker容器管理面板" 
+    echo "-加入了docker镜像管理面板"   
+    echo "-加入了docker网络管理面板"  
+    echo "-加入了docker卷管理面板"           
     echo "-删除docker时追加确认信息，拒绝误操作"           
     echo  "------------------------"    
     echo "2023-8-13   v1.0.4" 
