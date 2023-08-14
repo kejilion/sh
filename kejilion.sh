@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.2 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.3 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -20,6 +20,7 @@ echo "8. 测试脚本合集 ▶ "
 echo "9. 甲骨文云脚本合集 ▶ "
 echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
 echo "11. 常用面板工具 ▶ "
+echo "12. 我的工作区 ▶ "
 echo "------------------------"
 echo "00. 脚本更新日志"   
 echo "------------------------"
@@ -1446,12 +1447,144 @@ case $choice in
     done
     ;;
 
+  12)
+    while true; do
+      echo " ▼ "
+      echo "我的工作区" 
+      echo "系统将为你提供5个后台运行的工作区，你可以用来执行长时间的任务"  
+      echo "即使你断开SSH，工作区中的任务也不会中断，非常方便！来试试吧！"               
+      echo -e "\033[33m注意：进入工作区后使用Ctrl+b再单独按d，退出工作区！\033[0m"             
+      echo "------------------------"      
+      echo "a. 安装工作区环境"
+      echo "------------------------"       
+      echo "1. 1号工作区"
+      echo "2. 2号工作区"
+      echo "3. 3号工作区"
+      echo "4. 4号工作区"
+      echo "5. 5号工作区"
+      echo "------------------------"      
+      echo "8. 工作区状态"   
+      echo "------------------------"
+      echo "0. 返回主菜单"      
+      echo "------------------------"
+      read -p "请输入你的选择: " sub_choice
+    
+      case $sub_choice in
+          a)
+              clear
+              apt update -y && apt install -y tmux
+              ;;
+          1)
+              clear
+              SESSION_NAME="work1"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi 
+              ;;
+          2)
+              clear
+              SESSION_NAME="work2"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi 
+              ;;
+          3)
+              clear
+              SESSION_NAME="work3"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi 
+              ;;
+          4)
+              clear
+              SESSION_NAME="work4"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi 
+              ;;
+          5)
+              clear
+              SESSION_NAME="work4"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi 
+              ;;
+
+          8)
+              clear
+              tmux list-sessions
+              ;;
+          0)
+              /root/kejilion.sh
+              exit
+              ;;
+          *)
+              echo "无效的输入!"
+              ;;
+      esac
+      echo -e "\033[0;32m操作完成\033[0m"
+      echo "按任意键继续..."
+      read -n 1 -s -r -p ""
+      echo ""
+      clear
+    done
+    ;;
+
 
 
   00)
     clear
     echo "脚本更新日志" 
-    echo  "------------------------"    
+    echo "2023-8-14   v1.3" 
+    echo "新增了12选项，我的工作区功能"
+    echo "-将为你提供5个后台运行的工作区，用来执行后台任务。即使你断开SSH也不会中断，"    
+    echo "-非常有意思的功能，快去试试吧！"   
+    echo  "------------------------"         
     echo "2023-8-14   v1.2" 
     echo "1.新增了11选项，加入了常用面板工具合集！"
     echo "-支持安装各种面板，包括：宝塔，宝塔国际版，1panel，Nginx Proxy Manager等等，满足更多人群的使用需求！"    
@@ -1477,6 +1610,7 @@ case $choice in
     echo "4.甲骨文脚本中，添加了开启ROOT登录的选项。"
     echo ""
     ;;
+
 
   0)
     clear
