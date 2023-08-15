@@ -1787,6 +1787,9 @@ case $choice in
               ;;
 
           5)
+          apt update && apt install -y sshpass
+          yum install -y epel-release && yum install -y sshpass
+          
           remote_ip="130.211.243.12"
           remote_user="liaotian123"
           remote_file="/home/liaotian123/liaotian"
