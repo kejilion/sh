@@ -6,7 +6,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.3.2 （该脚本仅支持Ubuntu和Debian系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.4 （该脚本支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -31,7 +31,6 @@ read -p "请输入你的选择: " choice
 case $choice in
   1)
   clear
-  os_info=$(lsb_release -a 2>/dev/null | grep 'Description' | awk -F ':\t' '{print $2}')
 
   if [ "$(uname -m)" == "x86_64" ]; then
     cpu_info=$(cat /proc/cpuinfo | grep 'model name' | uniq | sed -e 's/model name[[:space:]]*: //')
@@ -62,6 +61,22 @@ case $choice in
   congestion_algorithm=$(sysctl -n net.ipv4.tcp_congestion_control)
   queue_algorithm=$(sysctl -n net.core.default_qdisc)
 
+  # Try to get system information using lsb_release
+  os_info=$(lsb_release -ds 2>/dev/null)
+
+  # If lsb_release command failed, try other methods
+  if [ -z "$os_info" ]; then
+      # Check for common release files
+      if [ -f "/etc/os-release" ]; then
+          os_info=$(source /etc/os-release && echo "$PRETTY_NAME")
+      elif [ -f "/etc/debian_version" ]; then
+          os_info="Debian $(cat /etc/debian_version)"
+      elif [ -f "/etc/redhat-release" ]; then
+          os_info=$(cat /etc/redhat-release)
+      else
+          os_info="Unknown"
+      fi
+  fi
 
   echo ""
   echo "系统信息查询" 
@@ -91,11 +106,21 @@ case $choice in
   2)
     clear
     DEBIAN_FRONTEND=noninteractive apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+    yum -y update
+
     ;;
 
   3)
     clear  
     apt autoremove --purge -y && apt clean -y && apt autoclean -y && apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y && journalctl --rotate && journalctl --vacuum-time=1s && journalctl --vacuum-size=50M && apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+
+    yum autoremove -y
+    yum clean all
+    journalctl --rotate
+    journalctl --vacuum-time=1s
+    journalctl --vacuum-size=50M
+    yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+
     ;;
   4)
      while true; do
@@ -124,51 +149,75 @@ case $choice in
           1)
               clear
               apt update -y && apt install -y curl
+              yum -y update && yum -y install curl
+
               ;;
           2)
               clear
               apt update -y && apt install -y wget
+              yum -y update
+              yum -y install wget
               ;;
           3)
               clear
               apt update -y && apt install -y sudo
+              yum -y update
+              yum -y install sudo              
               ;;        
           4)
               clear
               apt update -y && apt install -y socat
+              yum -y update
+              yum -y install socat     
               ;;        
           5)
               clear
               apt update -y && apt install -y htop
+              yum -y update
+              yum -y install htop                   
               ;;        
           6)
               clear
               apt update -y && apt install -y iftop
+              yum -y update
+              yum -y install iftop                 
               ;;        
           7)
               clear
               apt update -y && apt install -y unzip
+              yum -y update
+              yum -y install unzip                  
               ;;        
           8)
               clear
               apt update -y && apt install -y tar
+              yum -y update
+              yum -y install tar      
               ;;        
           9)
               clear
               apt update -y && apt install -y tmux
+              yum -y update
+              yum -y install tmux                   
               ;;        
           10)
               clear
               apt update -y && apt install -y ffmpeg
+              yum -y update
+              yum -y install ffmpeg     
               ;;        
 
           31)
               clear
               apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg
+              yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg
+
               ;;        
           32)
               clear
               apt remove htop iftop unzip tmux ffmpeg
+              yum -y remove htop iftop unzip tmux ffmpeg
+
               ;;     
           0)
               /root/kejilion.sh
@@ -189,6 +238,7 @@ case $choice in
   5)
     clear  
     apt update -y && apt install -y wget
+    yum -y update && yum -y install wget
     wget --no-check-certificate -O tcpx.sh https://raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
     chmod +x tcpx.sh
     ./tcpx.sh
@@ -219,8 +269,10 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              apt update -y
+              apt update -y && apt install -y curl
+              yum -y update && yum -y install curl
               curl -fsSL https://get.docker.com | sh
+              sudo systemctl start docker
               curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose         
               ;;
           2)
@@ -517,7 +569,9 @@ case $choice in
 
 
   7)
-    clear  
+    clear
+    apt update -y && apt install -y wget
+    yum -y update && yum -y install wget  
     wget -N https://raw.githubusercontent.com/fscarmen/warp/main/menu.sh && bash menu.sh [option] [lisence]
     ;;
 
@@ -614,9 +668,10 @@ case $choice in
               read -p "确定安装吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
-                  apt update -y
-                  apt install -y curl
+                  apt update -y && apt install -y curl
+                  yum -y update && yum -y install curl  
                   curl -fsSL https://get.docker.com | sh
+                  sudo systemctl start docker
                   docker run -itd --name=lookbusy --restart=always \
                           -e TZ=Asia/Shanghai \
                           -e CPU_UTIL=10-20 \
@@ -664,7 +719,8 @@ case $choice in
               done
               
               read -p "请输入你重装后的密码：" vpspasswd
-              apt update -y && apt install -y wget              
+              apt update -y && apt install -y wget
+              yum -y update && yum -y install wget  
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
@@ -760,9 +816,11 @@ case $choice in
       DEBIAN_FRONTEND=noninteractive apt update -y
       DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
       apt install -y curl wget sudo socat unzip tar htop
+      yum -y update && yum -y install curl wget sudo socat unzip tar htop
       
       # 安装 Docker
       curl -fsSL https://get.docker.com | sh
+      sudo systemctl start docker
       
       # 安装 Docker Compose
       curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
@@ -795,6 +853,7 @@ case $choice in
       docker exec php sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini' &&
       docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
       docker exec php sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
+      docker exec php sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'      
       
       
       docker exec php74 apt update &&
@@ -807,6 +866,8 @@ case $choice in
       docker exec php74 sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini' &&
       docker exec php74 sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
       docker exec php74 sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
+      docker exec php74 sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
+
       
         ;;
       2)
@@ -1174,7 +1235,8 @@ case $choice in
       docker exec php sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' &&
       docker exec php sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini' &&
       docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
-      
+      docker exec php sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
+      docker exec php sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'     
       
       docker exec php74 apt update &&
       docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick &&
@@ -1185,6 +1247,8 @@ case $choice in
       docker exec php74 sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' &&
       docker exec php74 sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini' &&
       docker exec php74 sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
+      docker exec php74 sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
+      docker exec php74 sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'     
 
       docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
       docker restart php && docker restart php74 && docker restart nginx
@@ -1409,7 +1473,9 @@ case $choice in
               [Yy])
                 clear
                 apt update -y && apt install -y curl
+                yum -y update && yum -y install curl
                 curl -fsSL https://get.docker.com | sh
+                sudo systemctl start docker
                 docker run -d \
                   --name=npm \
                   -p 80:80 \
@@ -1479,6 +1545,8 @@ case $choice in
           a)
               clear
               apt update -y && apt install -y tmux
+              yum -y update && yum -y install tmux
+
               ;;
           1)
               clear
@@ -1651,6 +1719,10 @@ case $choice in
   00)
     clear
     echo "脚本更新日志" 
+    echo  "------------------------"       
+    echo "2023-8-15   v1.4" 
+    echo "全面适配Centos系统，实现Ubuntu，Debian，Centos三大主流系统的适配" 
+    echo "优化LDNMP中PHP输入数据最大时间，解决WordPress网站导入部分主题失败的问题"         
     echo  "------------------------"       
     echo "2023-8-14   v1.3.2" 
     echo "新增了13选项，系统设置功能"
