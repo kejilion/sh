@@ -1,3 +1,4 @@
+
 #!/bin/bash
 while true; do
 clear
@@ -303,12 +304,14 @@ case $choice in
                   echo ""
                   echo "容器操作"
                   echo "------------------------"                    
-                  echo "1. 创建新的容器             11. 进入指定容器"
+                  echo "1. 创建新的容器"
                   echo "------------------------"                  
                   echo "2. 启动指定容器             6. 启动所有容器"
                   echo "3. 停止指定容器             7. 暂停所有容器"
                   echo "4. 删除指定容器             8. 删除所有容器"
                   echo "5. 重启指定容器             9. 重启所有容器"
+                  echo "------------------------"
+                  echo "11. 进入指定容器           12.查看容器日志"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
@@ -319,10 +322,6 @@ case $choice in
                           read -p "请输入创建命令：" dockername
                           $dockername
                           ;;  
-                      11)
-                          read -p "请输入容器名：" dockername
-                          docker exec -it $dockername /bin/bash
-                          ;;
 
                       # 11)
                       #     read -p "请输入项目名：" dockecomposername
@@ -376,7 +375,16 @@ case $choice in
                           ;;     
                       9)
                           docker restart $(docker ps -q)
-                          ;;     
+                          ;;
+                      11)
+                          read -p "请输入容器名：" dockername
+                          docker exec -it $dockername /bin/bash
+                          ;;
+                      12)
+                          read -p "请输入容器名：" dockername
+                          docker logs $dockername
+                          ;;                          
+
                       0)
                           break  # 跳出循环，退出菜单     
                           ;;
@@ -1787,8 +1795,9 @@ case $choice in
               ;;
 
           5)
-          apt update && apt install -y sshpass
-          yum install -y epel-release && yum install -y sshpass
+          # clear
+          # apt update && apt install -y sshpass
+          # yum install -y epel-release && yum install -y sshpass
           
           remote_ip="130.211.243.12"
           remote_user="liaotian123"
@@ -1846,7 +1855,8 @@ case $choice in
     clear
     echo "脚本更新日志" 
     echo  "------------------------"       
-    echo "2023-8-15   v1.4.2" 
+    echo "2023-8-15   v1.4.2"
+    echo "docker管理中增加容器日志查看"      
     echo "选项13，系统工具中，加入了留言板的选项，可以留下你的宝贵意见也可以在这里聊天，贼好玩！" 
     echo  "------------------------"       
     echo "2023-8-15   v1.4.1" 
