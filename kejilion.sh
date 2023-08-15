@@ -6,7 +6,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.4.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.4.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -30,199 +30,281 @@ read -p "请输入你的选择: " choice
 
 case $choice in
   1)
-  clear
+    clear  
+    # 函数：获取IPv4和IPv6地址
+    fetch_ip_addresses() {
+      ipv4_address=$(curl -s4 ifconfig.co)
+      ipv6_address=$(curl -s6 ifconfig.co)
+    }
 
-  if [ "$(uname -m)" == "x86_64" ]; then
-    cpu_info=$(cat /proc/cpuinfo | grep 'model name' | uniq | sed -e 's/model name[[:space:]]*: //')
-  else
-    cpu_info=$(lscpu | grep 'Model name' | sed -e 's/Model name[[:space:]]*: //')
-  fi
+    # 获取IP地址
+    fetch_ip_addresses
 
-  cpu_usage=$(top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}')
-  cpu_usage_percent=$(printf "%.2f" $cpu_usage)%
+    if [ "$(uname -m)" == "x86_64" ]; then
+      cpu_info=$(cat /proc/cpuinfo | grep 'model name' | uniq | sed -e 's/model name[[:space:]]*: //')
+    else
+      cpu_info=$(lscpu | grep 'Model name' | sed -e 's/Model name[[:space:]]*: //')
+    fi
 
-  cpu_cores=$(nproc)
+    cpu_usage=$(top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}')
+    cpu_usage_percent=$(printf "%.2f" "$cpu_usage")%
 
-  mem_info=$(free -b | awk 'NR==2{printf "%.2f/%.2f MB (%.2f%%)", $3/1024/1024, $2/1024/1024, $3*100/$2}')
+    cpu_cores=$(nproc)
 
-  disk_info=$(df -h | awk '$NF=="/"{printf "%d/%dGB (%s)", $3,$2,$5}')
+    mem_info=$(free -b | awk 'NR==2{printf "%.2f/%.2f MB (%.2f%%)", $3/1024/1024, $2/1024/1024, $3*100/$2}')
 
-  ipv4_address=$(curl -s4 ifconfig.co)
-  ipv6_address=$(curl -s6 ifconfig.co)
+    disk_info=$(df -h | awk '$NF=="/"{printf "%d/%dGB (%s)", $3,$2,$5}')
 
-  isp_info=$(curl -s ipinfo.io/org | sed -e 's/^[ \t]*//' | sed -e 's/\"//g')
+    ipv4_info=$(curl -s "http://ipinfo.io/$ipv4_address/json")
+    country=$(echo "$ipv4_info" | grep -o '"country": "[^"]*' | cut -d'"' -f4)
+    city=$(echo "$ipv4_info" | grep -o '"city": "[^"]*' | cut -d'"' -f4)
 
-  cpu_arch=$(uname -m)
+    isp_info=$(curl -s ipinfo.io/org | sed -e 's/^[ \t]*//' | sed -e 's/\"//g')
 
-  hostname=$(hostname)
+    cpu_arch=$(uname -m)
 
-  kernel_version=$(uname -r)
+    hostname=$(hostname)
 
-  congestion_algorithm=$(sysctl -n net.ipv4.tcp_congestion_control)
-  queue_algorithm=$(sysctl -n net.core.default_qdisc)
+    kernel_version=$(uname -r)
 
-  # Try to get system information using lsb_release
-  os_info=$(lsb_release -ds 2>/dev/null)
+    congestion_algorithm=$(sysctl -n net.ipv4.tcp_congestion_control)
+    queue_algorithm=$(sysctl -n net.core.default_qdisc)
 
-  # If lsb_release command failed, try other methods
-  if [ -z "$os_info" ]; then
-      # Check for common release files
+    # 尝试使用 lsb_release 获取系统信息
+    os_info=$(lsb_release -ds 2>/dev/null)
+
+    # 如果 lsb_release 命令失败，则尝试其他方法
+    if [ -z "$os_info" ]; then
+      # 检查常见的发行文件
       if [ -f "/etc/os-release" ]; then
-          os_info=$(source /etc/os-release && echo "$PRETTY_NAME")
+        os_info=$(source /etc/os-release && echo "$PRETTY_NAME")
       elif [ -f "/etc/debian_version" ]; then
-          os_info="Debian $(cat /etc/debian_version)"
+        os_info="Debian $(cat /etc/debian_version)"
       elif [ -f "/etc/redhat-release" ]; then
-          os_info=$(cat /etc/redhat-release)
+        os_info=$(cat /etc/redhat-release)
       else
-          os_info="Unknown"
+        os_info="Unknown"
       fi
-  fi
+    fi
 
-  echo ""
-  echo "系统信息查询" 
-  echo "------------------------"      
-  echo "主机名: $hostname"
-  echo "运营商: $isp_info"
-  echo "------------------------"    
-  echo "系统版本: $os_info"
-  echo "Linux版本: $kernel_version"  
-  echo "------------------------"    
-  echo "CPU架构: $cpu_arch"
-  echo "CPU型号: $cpu_info"
-  echo "CPU核心数: $cpu_cores"
-  echo "------------------------"  
-  echo "CPU占用: $cpu_usage_percent"
-  echo "内存占用: $mem_info"
-  echo "硬盘占用: $disk_info"
-  echo "------------------------"   
-  echo "网络拥堵算法: $congestion_algorithm $queue_algorithm"   
-  echo "------------------------"   
-  echo "公网IPv4地址: $ipv4_address"
-  echo "公网IPv6地址: $ipv6_address"
-  echo
+    echo ""
+    echo "系统信息查询"
+    echo "------------------------"
+    echo "主机名: $hostname"
+    echo "运营商: $isp_info"
+    echo "------------------------"
+    echo "系统版本: $os_info"
+    echo "Linux版本: $kernel_version"
+    echo "------------------------"
+    echo "CPU架构: $cpu_arch"
+    echo "CPU型号: $cpu_info"
+    echo "CPU核心数: $cpu_cores"
+    echo "------------------------"
+    echo "CPU占用: $cpu_usage_percent"
+    echo "内存占用: $mem_info"
+    echo "硬盘占用: $disk_info"
+    echo "------------------------"
+    echo "网络拥堵算法: $congestion_algorithm $queue_algorithm"
+    echo "------------------------"
+    echo "公网IPv4地址: $ipv4_address"
+    echo "公网IPv6地址: $ipv6_address"
+    echo "地理位置: $country $city"
+    echo
 
     ;;
 
   2)
     clear
-    DEBIAN_FRONTEND=noninteractive apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
-    yum -y update
+
+    # Update system on Debian-based systems
+    if [ -f "/etc/debian_version" ]; then
+        DEBIAN_FRONTEND=noninteractive apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+    fi
+
+    # Update system on Red Hat-based systems
+    if [ -f "/etc/redhat-release" ]; then
+        yum -y update
+    fi
 
     ;;
 
   3)
-    clear  
-    apt autoremove --purge -y && apt clean -y && apt autoclean -y && apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y && journalctl --rotate && journalctl --vacuum-time=1s && journalctl --vacuum-size=50M && apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+  clear
 
-    yum autoremove -y
-    yum clean all
-    journalctl --rotate
-    journalctl --vacuum-time=1s
-    journalctl --vacuum-size=50M
-    yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
-
+  if [ -f "/etc/debian_version" ]; then
+      # Debian-based systems
+      apt autoremove --purge -y
+      apt clean -y
+      apt autoclean -y
+      apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
+      journalctl --rotate
+      journalctl --vacuum-time=1s
+      journalctl --vacuum-size=50M
+      apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+  elif [ -f "/etc/redhat-release" ]; then
+      # Red Hat-based systems
+      yum autoremove -y
+      yum clean all
+      journalctl --rotate
+      journalctl --vacuum-time=1s
+      journalctl --vacuum-size=50M
+      yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+  fi
     ;;
+
   4)
-     while true; do
+  while true; do
       echo " ▼ "
-      echo "安装常用工具"  
-      echo "------------------------"      
+      echo "安装常用工具"
+      echo "------------------------"
       echo "1. curl 下载工具"
       echo "2. wget 下载工具"
       echo "3. sudo 超级管理权限工具"
       echo "4. socat 通信连接工具 （申请域名证书必备）"
       echo "5. htop 系统监控工具"
-      echo "6. iftop 网络流量监控工具"      
+      echo "6. iftop 网络流量监控工具"
       echo "7. unzip ZIP压缩解压工具z"
       echo "8. tar GZ压缩解压工具"
       echo "9. tmux 多路后台运行工具"
       echo "10. ffmpeg 视频编码直播推流工具"
       echo "------------------------"
-      echo "31. 全部安装"    
-      echo "32. 全部卸载"            
+      echo "31. 全部安装"
+      echo "32. 全部卸载"
       echo "------------------------"
-      echo "0. 返回主菜单"      
+      echo "0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
-    
+
       case $sub_choice in
           1)
               clear
-              apt update -y && apt install -y curl
-              yum -y update && yum -y install curl
-
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y curl
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install curl
+              else
+                  echo "未知的包管理器!"
+              fi
               ;;
           2)
               clear
-              apt update -y && apt install -y wget
-              yum -y update
-              yum -y install wget
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y wget
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install wget
+              else
+                  echo "未知的包管理器!"
+              fi
               ;;
-          3)
+            3)
               clear
-              apt update -y && apt install -y sudo
-              yum -y update
-              yum -y install sudo              
-              ;;        
-          4)
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y sudo
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install sudo
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
+            4)
               clear
-              apt update -y && apt install -y socat
-              yum -y update
-              yum -y install socat     
-              ;;        
-          5)
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y socat
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install socat
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
+            5)
               clear
-              apt update -y && apt install -y htop
-              yum -y update
-              yum -y install htop                   
-              ;;        
-          6)
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y htop
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install htop
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
+            6)
               clear
-              apt update -y && apt install -y iftop
-              yum -y update
-              yum -y install iftop                 
-              ;;        
-          7)
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y iftop
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install iftop
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
+            7)
               clear
-              apt update -y && apt install -y unzip
-              yum -y update
-              yum -y install unzip                  
-              ;;        
-          8)
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y unzip
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install unzip
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
+            8)
               clear
-              apt update -y && apt install -y tar
-              yum -y update
-              yum -y install tar      
-              ;;        
-          9)
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y tar
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install tar
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
+            9)
               clear
-              apt update -y && apt install -y tmux
-              yum -y update
-              yum -y install tmux                   
-              ;;        
-          10)
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y tmux
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install tmux
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
+            10)
               clear
-              apt update -y && apt install -y ffmpeg
-              yum -y update
-              yum -y install ffmpeg     
-              ;;        
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y ffmpeg
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install ffmpeg
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
+                
 
           31)
               clear
-              apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg
-              yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
 
-              ;;        
           32)
               clear
-              apt remove htop iftop unzip tmux ffmpeg
-              yum -y remove htop iftop unzip tmux ffmpeg
+              if command -v apt &>/dev/null; then
+                  apt remove -y htop iftop unzip tmux ffmpeg
+              elif command -v yum &>/dev/null; then
+                  yum -y remove htop iftop unzip tmux ffmpeg
+              else
+                  echo "未知的包管理器!"
+              fi
+              ;;
 
-              ;;     
           0)
               /root/kejilion.sh
               exit
               ;;
+
           *)
               echo "无效的输入!"
               ;;
@@ -232,7 +314,8 @@ case $choice in
       read -n 1 -s -r -p ""
       echo ""
       clear
-    done
+  done
+
     ;;
 
   5)
@@ -1826,7 +1909,6 @@ case $choice in
 
               # 添加新留言到远程文件
               sshpass -p "${password}" ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_ip}" "echo -e '${nicheng}: ${neirong}' >> '${remote_file}'"
-
               echo "已添加留言："
               echo "${nicheng}: ${neirong}"
               echo ""
@@ -1858,6 +1940,11 @@ case $choice in
   00)
     clear
     echo "脚本更新日志" 
+    echo  "------------------------"       
+    echo "2023-8-15   v1.4.5"
+    echo "优化了信息查询运行效率"     
+    echo "信息查询新增了地理位置显示" 
+    echo "优化了更新，清理系统，安装常用工具的系统判断机制！"            
     echo  "------------------------"       
     echo "2023-8-15   v1.4.2"
     echo "docker管理中增加容器日志查看"      
