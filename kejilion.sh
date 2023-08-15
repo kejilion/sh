@@ -1,4 +1,3 @@
-
 #!/bin/bash
 while true; do
 clear
@@ -311,7 +310,7 @@ case $choice in
                   echo "4. 删除指定容器             8. 删除所有容器"
                   echo "5. 重启指定容器             9. 重启所有容器"
                   echo "------------------------"
-                  echo "11. 进入指定容器           12.查看容器日志"
+                  echo "11. 进入指定容器           12. 查看容器日志"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
@@ -383,6 +382,11 @@ case $choice in
                       12)
                           read -p "请输入容器名：" dockername
                           docker logs $dockername
+                          echo -e "\033[0;32m操作完成\033[0m"
+                          echo "按任意键继续..."
+                          read -n 1 -s -r -p ""
+                          echo ""
+                          clear
                           ;;                          
 
                       0)
@@ -1795,13 +1799,13 @@ case $choice in
               ;;
 
           5)
-          # clear
-          # apt update && apt install -y sshpass
-          # yum install -y epel-release && yum install -y sshpass
+          clear
+          apt update && apt install -y sshpass
+          yum install -y epel-release && yum install -y sshpass
           
           remote_ip="130.211.243.12"
           remote_user="liaotian123"
-          remote_file="/home/liaotian123/liaotian"
+          remote_file="/home/liaotian123/liaotian.txt"
           password="kejilionYYDS"  # 替换为您的密码
 
           clear
