@@ -6,7 +6,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.4.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.4.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1661,6 +1661,8 @@ case $choice in
       echo "3. 开启ROOT密码登录模式"
       echo "4. 安装Python最新版"      
       echo "------------------------"
+      echo "5. 留言板"    
+      echo "------------------------"      
       echo "0. 返回主菜单"      
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
@@ -1784,7 +1786,42 @@ case $choice in
             cd /root/ && rm -rf Python-${PY_VERSION}.tgz && rm -rf Python-${PY_VERSION}
               ;;
 
-     
+          5)
+          remote_ip="130.211.243.12"
+          remote_user="liaotian123"
+          remote_file="/home/liaotian123/liaotian"
+          password="kejilionYYDS"  # 替换为您的密码
+
+          clear
+          echo "科技lion留言板"
+          echo "------------------------"
+          # 显示已有的留言内容
+          sshpass -p "${password}" ssh "${remote_user}@${remote_ip}" "cat '${remote_file}'"
+          echo ""
+          echo "------------------------"
+
+          # 判断是否要留言
+          read -p "是否要留言？(y/n): " leave_message
+
+          if [ "$leave_message" == "y" ] || [ "$leave_message" == "Y" ]; then
+              # 输入新的留言内容
+              read -p "输入你的昵称：" nicheng
+              read -p "输入你的聊天内容：" neirong
+
+              # 添加新留言到远程文件
+              sshpass -p "${password}" ssh "${remote_user}@${remote_ip}" "echo -e '${nicheng}: ${neirong}\n\n' >> '${remote_file}'"
+
+              echo "已添加留言："
+              echo "${nicheng}: ${neirong}"
+              echo ""
+          else
+              echo "您选择了不留言。"
+          fi
+
+          echo "留言板操作完成。"
+
+              ;;
+
           0)
               /root/kejilion.sh
               exit
@@ -1805,6 +1842,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志" 
+    echo  "------------------------"       
+    echo "2023-8-15   v1.4.2" 
+    echo "选项13，系统工具中，加入了留言板的选项，可以留下你的宝贵意见也可以在这里聊天，贼好玩！" 
     echo  "------------------------"       
     echo "2023-8-15   v1.4.1" 
     echo "选项13，系统工具中，加入了安装Python最新版的选项，感谢群友春风得意马蹄疾的投稿！很好用！" 
