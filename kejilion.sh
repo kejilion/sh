@@ -1812,7 +1812,7 @@ case $choice in
           echo "科技lion留言板"
           echo "------------------------"
           # 显示已有的留言内容
-          sshpass -p "${password}" ssh "${remote_user}@${remote_ip}" "cat '${remote_file}'"
+          sshpass -p "${password}" ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_ip}" "cat '${remote_file}'"
           echo ""
           echo "------------------------"
 
@@ -1825,7 +1825,7 @@ case $choice in
               read -p "输入你的聊天内容：" neirong
 
               # 添加新留言到远程文件
-              sshpass -p "${password}" ssh "${remote_user}@${remote_ip}" "echo -e '${nicheng}: ${neirong}\n\n' >> '${remote_file}'"
+              sshpass -p "${password}" ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_ip}" "echo -e '${nicheng}: ${neirong}' >> '${remote_file}'"
 
               echo "已添加留言："
               echo "${nicheng}: ${neirong}"
