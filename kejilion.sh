@@ -1658,7 +1658,7 @@ case $choice in
       echo "1. 脚本快捷键"
       echo "------------------------"            
       echo "2. 修改ROOT密码"
-      echo "3. ROOT登录模式"
+      echo "3. 开启ROOT密码登录模式"
       echo "4. 安装Python最新版"      
       echo "------------------------"
       echo "0. 返回主菜单"      
