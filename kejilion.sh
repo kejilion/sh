@@ -6,7 +6,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.4 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.4.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -20,7 +20,7 @@ echo "9. 甲骨文云脚本合集 ▶ "
 echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
 echo "11. 常用面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
-echo "13. 系统设置 ▶ "
+echo "13. 系统工具 ▶ "
 echo "------------------------"
 echo "00. 脚本更新日志"   
 echo "------------------------"
@@ -1653,12 +1653,13 @@ case $choice in
     while true; do
 
       echo " ▼ "
-      echo "系统设置"  
+      echo "系统工具"  
       echo "------------------------"      
       echo "1. 脚本快捷键"
       echo "------------------------"            
       echo "2. 修改ROOT密码"
       echo "3. ROOT登录模式"
+      echo "4. 安装Python最新版"      
       echo "------------------------"
       echo "0. 返回主菜单"      
       echo "------------------------"
@@ -1699,6 +1700,91 @@ case $choice in
           esac              
               ;;                                  
 
+          4)
+            clear
+
+            RED="\033[31m"
+            GREEN="\033[32m"
+            YELLOW="\033[33m"
+            NC="\033[0m"
+
+            # 系统检测
+            OS=$(cat /etc/os-release | grep -o -E "Debian|Ubuntu|CentOS" | head -n 1)
+
+            if [[ $OS == "Debian" || $OS == "Ubuntu" || $OS == "CentOS" ]]; then
+                echo -e "检测到你的系统是 ${YELLOW}${OS}${NC}"
+            else
+                echo -e "${RED}很抱歉，你的系统不受支持！${NC}"
+                exit 1
+            fi
+
+            # 检测安装Python3的版本
+            VERSION=$(python3 -V 2>&1 | awk '{print $2}')
+
+            # 获取最新Python3版本
+            PY_VERSION=$(curl -s https://www.python.org/ | grep "downloads/release" | grep -o 'Python [0-9.]*' | grep -o '[0-9.]*')
+
+            # 卸载Python3旧版本
+            if [[ $VERSION == "3"* ]]; then
+                echo -e "${YELLOW}你的Python3版本是${NC}${RED}${VERSION}${NC}，${YELLOW}最新版本是${NC}${RED}${PY_VERSION}${NC}"
+                read -p "是否确认升级最新版Python3？默认不升级 [y/N]: " CONFIRM
+                if [[ $CONFIRM == "y" ]]; then
+                    if [[ $OS == "CentOS" ]]; then
+                        echo ""
+                        rm-rf /usr/local/python3* >/dev/null 2>&1
+                    else
+                        apt --purge remove python3 python3-pip -y
+                        rm-rf /usr/local/python3*
+                    fi
+                else
+                    echo -e "${YELLOW}已取消升级Python3${NC}"
+                    exit 1
+                fi
+            else
+                echo -e "${RED}检测到没有安装Python3。${NC}"
+                read -p "是否确认安装最新版Python3？默认安装 [Y/n]: " CONFIRM
+                if [[ $CONFIRM != "n" ]]; then
+                    echo -e "${GREEN}开始安装最新版Python3...${NC}"
+                else
+                    echo -e "${YELLOW}已取消安装Python3${NC}"
+                    exit 1
+                fi
+            fi
+
+            # 安装相关依赖
+            if [[ $OS == "CentOS" ]]; then
+                yum update
+                yum groupinstall -y "development tools"
+                yum install wget openssl-devel bzip2-devel libffi-devel zlib-devel -y
+            else
+                apt update
+                apt install wget build-essential libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev -y
+            fi
+
+            # 安装python3
+            cd /root/
+            wget https://www.python.org/ftp/python/${PY_VERSION}/Python-"$PY_VERSION".tgz
+            tar -zxf Python-${PY_VERSION}.tgz
+            cd Python-${PY_VERSION}
+            ./configure --prefix=/usr/local/python3
+            make -j $(nproc)
+            make install
+            if [ $? -eq 0 ];then
+                rm -f /usr/local/bin/python3*
+                rm -f /usr/local/bin/pip3*
+                ln -sf /usr/local/python3/bin/python3 /usr/bin/python3
+                ln -sf /usr/local/python3/bin/pip3 /usr/bin/pip3
+                clear
+                echo -e "${YELLOW}Python3安装${GREEN}成功，${NC}版本为：${NC}${GREEN}${PY_VERSION}${NC}"
+            else
+                clear
+                echo -e "${RED}Python3安装失败！${NC}"
+                exit 1
+            fi
+            cd /root/ && rm -rf Python-${PY_VERSION}.tgz && rm -rf Python-${PY_VERSION}
+              ;;
+
+     
           0)
               /root/kejilion.sh
               exit
@@ -1720,12 +1806,15 @@ case $choice in
     clear
     echo "脚本更新日志" 
     echo  "------------------------"       
+    echo "2023-8-15   v1.4.1" 
+    echo "选项13，系统工具中，加入了安装Python最新版的选项，感谢群友春风得意马蹄疾的投稿！很好用！" 
+    echo  "------------------------"       
     echo "2023-8-15   v1.4" 
     echo "全面适配Centos系统，实现Ubuntu，Debian，Centos三大主流系统的适配" 
     echo "优化LDNMP中PHP输入数据最大时间，解决WordPress网站导入部分主题失败的问题"         
     echo  "------------------------"       
     echo "2023-8-14   v1.3.2" 
-    echo "新增了13选项，系统设置功能"
+    echo "新增了13选项，系统工具"
     echo "科技lion一键脚本可以通过设置快捷键唤醒打开了，我设置的k作为脚本打开的快捷键！无需复制长命令了"    
     echo "加入了ROOT密码修改，切换成ROOT登录模式"   
     echo "系统设置中还有很多功能没开发，敬请期待！"       
