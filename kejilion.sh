@@ -1326,7 +1326,7 @@ case $choice in
     clear
     echo "站点信息"
     echo "------------------------"    
-    ls /home/web/conf.d
+    ls /home/web/conf.d | sed 's/.[^.]*$//'
     echo "------------------------"  
     echo ""
     echo "数据库信息"
@@ -1431,7 +1431,7 @@ case $choice in
         clear
         echo "站点信息"
         echo "------------------------"    
-        ls /home/web/conf.d
+        ls /home/web/conf.d | sed 's/.[^.]*$//'
         echo "------------------------"  
         echo ""
         echo "数据库信息"
