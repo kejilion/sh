@@ -1561,6 +1561,10 @@ case $choice in
               read -p "确定安装宝塔吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
+                  iptables -P INPUT ACCEPT
+                  iptables -P FORWARD ACCEPT
+                  iptables -P OUTPUT ACCEPT
+                  iptables -F
                   if [ "$system_type" == "centos" ]; then
                     yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
                   elif [ "$system_type" == "ubuntu" ]; then
@@ -1609,6 +1613,10 @@ case $choice in
               read -p "确定安装aaPanel吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
+                  iptables -P INPUT ACCEPT
+                  iptables -P FORWARD ACCEPT
+                  iptables -P OUTPUT ACCEPT
+                  iptables -F
                   if [ "$system_type" == "centos" ]; then
                     yum install -y wget && wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && bash install.sh aapanel
                   elif [ "$system_type" == "ubuntu" ]; then
@@ -1657,6 +1665,10 @@ case $choice in
               read -p "确定安装1Panel吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
+                  iptables -P INPUT ACCEPT
+                  iptables -P FORWARD ACCEPT
+                  iptables -P OUTPUT ACCEPT
+                  iptables -F
                   if [ "$system_type" == "centos" ]; then
                     curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sh quick_start.sh
                   elif [ "$system_type" == "ubuntu" ]; then
@@ -1688,6 +1700,10 @@ case $choice in
             case "$choice" in
               [Yy])
                 clear
+                iptables -P INPUT ACCEPT
+                iptables -P FORWARD ACCEPT
+                iptables -P OUTPUT ACCEPT
+                iptables -F
                 if command -v apt &>/dev/null; then
                     apt update -y && apt install -y curl
                 elif command -v yum &>/dev/null; then
