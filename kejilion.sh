@@ -108,6 +108,7 @@ case $choice in
     echo "------------------------"
     echo "公网IPv4地址: $ipv4_address"
     echo "公网IPv6地址: $ipv6_address"
+    echo "------------------------"    
     echo "地理位置: $country $city"
     echo
 
@@ -185,6 +186,22 @@ case $choice in
               else
                   echo "未知的包管理器!"
               fi
+
+              # 检查是否已安装 curl
+              if ! command -v curl &>/dev/null; then
+                  if command -v apt &>/dev/null; then
+                      apt update -y && apt install -y curl
+                  elif command -v yum &>/dev/null; then
+                      yum -y update && yum -y install curl
+                  else
+                      echo "未知的包管理器!"
+                  fi
+              else
+                  echo "sshpass 已经安装，跳过安装步骤。"
+              fi
+
+
+
               ;;
           2)
               clear
@@ -320,8 +337,13 @@ case $choice in
 
   5)
     clear  
-    apt update -y && apt install -y wget
-    yum -y update && yum -y install wget
+    if command -v apt &>/dev/null; then
+        apt update -y && apt install -y wget
+    elif command -v yum &>/dev/null; then
+        yum -y update && yum -y install wget
+    else
+        echo "未知的包管理器!"
+    fi
     wget --no-check-certificate -O tcpx.sh https://raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
     chmod +x tcpx.sh
     ./tcpx.sh
@@ -352,8 +374,13 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              apt update -y && apt install -y curl
-              yum -y update && yum -y install curl
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y curl
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install curl
+              else
+                  echo "未知的包管理器!"
+              fi
               curl -fsSL https://get.docker.com | sh
               sudo systemctl start docker
               curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose         
@@ -665,8 +692,13 @@ case $choice in
 
   7)
     clear
-    apt update -y && apt install -y wget
-    yum -y update && yum -y install wget  
+    if command -v apt &>/dev/null; then
+        apt update -y && apt install -y wget
+    elif command -v yum &>/dev/null; then
+        yum -y update && yum -y install wget
+    else
+        echo "未知的包管理器!"
+    fi
     wget -N https://raw.githubusercontent.com/fscarmen/warp/main/menu.sh && bash menu.sh [option] [lisence]
     ;;
 
@@ -763,8 +795,13 @@ case $choice in
               read -p "确定安装吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
-                  apt update -y && apt install -y curl
-                  yum -y update && yum -y install curl  
+                  if command -v apt &>/dev/null; then
+                      apt update -y && apt install -y curl
+                  elif command -v yum &>/dev/null; then
+                      yum -y update && yum -y install curl
+                  else
+                      echo "未知的包管理器!"
+                  fi
                   curl -fsSL https://get.docker.com | sh
                   sudo systemctl start docker
                   docker run -itd --name=lookbusy --restart=always \
@@ -814,8 +851,13 @@ case $choice in
               done
               
               read -p "请输入你重装后的密码：" vpspasswd
-              apt update -y && apt install -y wget
-              yum -y update && yum -y install wget  
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y wget
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install wget
+              else
+                  echo "未知的包管理器!"
+              fi 
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
@@ -908,11 +950,16 @@ case $choice in
       
       
       # 更新并安装必要的软件包
-      DEBIAN_FRONTEND=noninteractive apt update -y
-      DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
-      apt install -y curl wget sudo socat unzip tar htop
-      yum -y update && yum -y install curl wget sudo socat unzip tar htop
-      
+      if command -v apt &>/dev/null; then
+          DEBIAN_FRONTEND=noninteractive apt update -y
+          DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+          apt install -y curl wget sudo socat unzip tar htop
+      elif command -v yum &>/dev/null; then
+          yum -y update && yum -y install curl wget sudo socat unzip tar htop
+      else
+          echo "未知的包管理器!"
+      fi 
+
       # 安装 Docker
       curl -fsSL https://get.docker.com | sh
       sudo systemctl start docker
@@ -1319,6 +1366,24 @@ case $choice in
       clear
       cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}   
       
+      # 更新并安装必要的软件包
+      if command -v apt &>/dev/null; then
+          DEBIAN_FRONTEND=noninteractive apt update -y
+          DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+          apt install -y curl wget sudo socat unzip tar htop
+      elif command -v yum &>/dev/null; then
+          yum -y update && yum -y install curl wget sudo socat unzip tar htop
+      else
+          echo "未知的包管理器!"
+      fi 
+
+      # 安装 Docker
+      curl -fsSL https://get.docker.com | sh
+      sudo systemctl start docker
+      
+      # 安装 Docker Compose
+      curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+
       cd /home/web && docker-compose up -d      
       
       docker exec php apt update &&
@@ -1567,8 +1632,13 @@ case $choice in
             case "$choice" in
               [Yy])
                 clear
-                apt update -y && apt install -y curl
-                yum -y update && yum -y install curl
+                if command -v apt &>/dev/null; then
+                    apt update -y && apt install -y curl
+                elif command -v yum &>/dev/null; then
+                    yum -y update && yum -y install curl
+                else
+                    echo "未知的包管理器!"
+                fi 
                 curl -fsSL https://get.docker.com | sh
                 sudo systemctl start docker
                 docker run -d \
@@ -1639,8 +1709,13 @@ case $choice in
       case $sub_choice in
           a)
               clear
-              apt update -y && apt install -y tmux
-              yum -y update && yum -y install tmux
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y tmux
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install tmux
+              else
+                  echo "未知的包管理器!"
+              fi 
 
               ;;
           1)
@@ -1883,9 +1958,19 @@ case $choice in
 
           5)
           clear
-          apt update && apt install -y sshpass
-          yum install -y epel-release && yum install -y sshpass
-          
+          # 检查是否已安装 sshpass
+          if ! command -v sshpass &>/dev/null; then
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y sshpass
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install sshpass
+              else
+                  echo "未知的包管理器!"
+              fi
+          else
+              echo "sshpass 已经安装，跳过安装步骤。"
+          fi          
+
           remote_ip="130.211.243.12"
           remote_user="liaotian123"
           remote_file="/home/liaotian123/liaotian.txt"
@@ -1944,7 +2029,7 @@ case $choice in
     echo "2023-8-15   v1.4.5"
     echo "优化了信息查询运行效率"     
     echo "信息查询新增了地理位置显示" 
-    echo "优化了更新，清理系统，安装常用工具的系统判断机制！"            
+    echo "优化了脚本内系统判断机制！"            
     echo  "------------------------"       
     echo "2023-8-15   v1.4.2"
     echo "docker管理中增加容器日志查看"      
