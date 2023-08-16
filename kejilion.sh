@@ -6,7 +6,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.4.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.4.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -933,7 +933,8 @@ case $choice in
     echo  "31. 查看当前站点信息"
     echo  "32. 备份全站数据"
     echo  "33. 还原全站数据"
-    echo  "34. 卸载LDNMP环境"
+    echo  "34. 删除站点数据"    
+    echo  "35. 卸载LDNMP环境"
     echo  "------------------------"
     echo  "0. 返回主菜单"          
     echo  "------------------------"    
@@ -1323,7 +1324,17 @@ case $choice in
 
     31)
     clear
+    echo "站点信息"
+    echo "------------------------"    
     ls /home/web/conf.d
+    echo "------------------------"  
+    echo ""
+    echo "数据库信息"
+    echo "------------------------" 
+    dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')   
+    docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys"
+
+    echo "------------------------"  
       ;;
 
 
@@ -1415,8 +1426,53 @@ case $choice in
      
       ;;
 
-
     34)
+    while true; do
+        clear
+        echo "站点信息"
+        echo "------------------------"    
+        ls /home/web/conf.d
+        echo "------------------------"  
+        echo ""
+        echo "数据库信息"
+        echo "------------------------" 
+        dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')   
+        docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys"
+
+        echo "------------------------"  
+        echo ""
+        echo "操作"
+        echo "------------------------"                        
+        echo "1. 删除指定站点                 2. 删除指定数据库"
+        echo "------------------------"
+        echo "0. 返回上一级选单"
+        echo "------------------------"
+        read -p "请输入你的选择: " sub_choice
+        case $sub_choice in
+            1)
+                read -p "请输入你的域名：" yuming
+                rm -r /home/web/html/$yuming
+                rm /home/web/conf.d/$yuming.conf
+                rm /home/web/certs/${yuming}_key.pem
+                rm /home/web/certs/${yuming}_cert.pem           
+                ;;
+            2)
+                read -p "请输入数据库名：" shujuku
+                dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')   
+                docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $shujuku;" 2> /dev/null
+                ;;    
+            0)
+                break  # 跳出循环，退出菜单
+                ;;
+            *)
+                break  # 跳出循环，退出菜单                          
+                ;;
+        esac
+    done
+      ;;
+
+
+    35)
         clear
         read -p "强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): " choice
         case "$choice" in
@@ -2025,6 +2081,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志" 
+    echo  "------------------------"       
+    echo "2023-8-16   v1.4.6"
+    echo "LDNMP建站中加入了删除站点删除数据库功能"      
     echo  "------------------------"       
     echo "2023-8-15   v1.4.5"
     echo "优化了信息查询运行效率"     
