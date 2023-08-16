@@ -1992,9 +1992,10 @@ case $choice in
       echo "------------------------"            
       echo "2. 修改ROOT密码"
       echo "3. 开启ROOT密码登录模式"
-      echo "4. 安装Python最新版"      
+      echo "4. 安装Python最新版"     
+      echo "5. 开放所有端口"            
       echo "------------------------"
-      echo "5. 留言板"    
+      echo "21. 留言板"
       echo "------------------------"      
       echo "0. 返回主菜单"      
       echo "------------------------"
@@ -2120,6 +2121,16 @@ case $choice in
               ;;
 
           5)
+              clear
+              iptables -P INPUT ACCEPT
+              iptables -P FORWARD ACCEPT
+              iptables -P OUTPUT ACCEPT
+              iptables -F              
+              echo "端口已全部开放"                   
+              ;;
+
+
+          21)
           clear
           # 检查是否已安装 sshpass
           if ! command -v sshpass &>/dev/null; then
@@ -2190,7 +2201,8 @@ case $choice in
     echo "脚本更新日志" 
     echo  "------------------------"       
     echo "2023-8-16   v1.4.7"
-    echo "选项11中，增加了alist多存储文件列表工具的搭建"      
+    echo "选项11中，增加了alist多存储文件列表工具的搭建"    
+    echo "选项13中，增加了开放所有端口功能"         
     echo  "------------------------"       
     echo "2023-8-16   v1.4.6"
     echo "LDNMP建站中加入了删除站点删除数据库功能"      
