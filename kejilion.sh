@@ -812,7 +812,7 @@ case $choice in
                       curl -fsSL https://get.docker.com | sh
                       sudo systemctl start docker
                   else
-                      echo "Docker 已经安装."
+                      echo "Docker 已经安装，正在部署容器……"
                   fi
                   
                   docker run -itd --name=lookbusy --restart=always \
@@ -1733,7 +1733,7 @@ case $choice in
                     curl -fsSL https://get.docker.com | sh
                     sudo systemctl start docker
                 else
-                    echo "Docker 已经安装."
+                    echo "Docker 已经安装，正在部署容器……"
                 fi
 
                 docker run -d \
@@ -1774,7 +1774,7 @@ case $choice in
             echo ""
             
             # Prompt user for installation confirmation
-            read -p "确定安装npm吗？(Y/N): " choice
+            read -p "确定安装Alist吗？(Y/N): " choice
             case "$choice" in
               [Yy])
                 clear
@@ -1799,7 +1799,7 @@ case $choice in
                     curl -fsSL https://get.docker.com | sh
                     sudo systemctl start docker
                 else
-                    echo "Docker 已经安装."
+                    echo "Docker 已经安装，正在部署容器……"
                 fi
 
                 docker run -d \
