@@ -6,7 +6,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.4.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.4.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -795,15 +795,26 @@ case $choice in
               read -p "确定安装吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
-                  if command -v apt &>/dev/null; then
-                      apt update -y && apt install -y curl
-                  elif command -v yum &>/dev/null; then
-                      yum -y update && yum -y install curl
-                  else
-                      echo "未知的包管理器!"
+                  # 检查并安装 curl（如果需要）
+                  if ! command -v curl &>/dev/null; then
+                      if command -v apt &>/dev/null; then
+                          apt update -y && apt install -y curl
+                      elif command -v yum &>/dev/null; then
+                          yum -y update && yum -y install curl
+                      else
+                          echo "未知的包管理器!"
+                          exit 1
+                      fi
                   fi
-                  curl -fsSL https://get.docker.com | sh
-                  sudo systemctl start docker
+                  
+                  # 检查并安装 Docker（如果需要）
+                  if ! command -v docker &>/dev/null; then
+                      curl -fsSL https://get.docker.com | sh
+                      sudo systemctl start docker
+                  else
+                      echo "Docker 已经安装."
+                  fi
+                  
                   docker run -itd --name=lookbusy --restart=always \
                           -e TZ=Asia/Shanghai \
                           -e CPU_UTIL=10-20 \
@@ -1521,7 +1532,8 @@ case $choice in
       echo "2. aaPanel宝塔国际版"
       echo "3. 1Panel新一代管理面板"
       echo "4. Nginx Proxy Manager NGINX可视化面板"
-      echo "5. 哪吒探针VPS监控面板"
+      echo "5. AList多存储文件列表程序"
+      echo "6. 哪吒探针VPS监控面板"
       echo "------------------------"
       echo "0. 返回主菜单"      
       echo "------------------------"
@@ -1704,22 +1716,33 @@ case $choice in
                 iptables -P FORWARD ACCEPT
                 iptables -P OUTPUT ACCEPT
                 iptables -F
-                if command -v apt &>/dev/null; then
-                    apt update -y && apt install -y curl
-                elif command -v yum &>/dev/null; then
-                    yum -y update && yum -y install curl
+                # 检查并安装 curl（如果需要）
+                if ! command -v curl &>/dev/null; then
+                    if command -v apt &>/dev/null; then
+                        apt update -y && apt install -y curl
+                    elif command -v yum &>/dev/null; then
+                        yum -y update && yum -y install curl
+                    else
+                        echo "未知的包管理器!"
+                        exit 1
+                    fi
+                fi
+
+                # 检查并安装 Docker（如果需要）
+                if ! command -v docker &>/dev/null; then
+                    curl -fsSL https://get.docker.com | sh
+                    sudo systemctl start docker
                 else
-                    echo "未知的包管理器!"
-                fi 
-                curl -fsSL https://get.docker.com | sh
-                sudo systemctl start docker
+                    echo "Docker 已经安装."
+                fi
+
                 docker run -d \
                   --name=npm \
                   -p 80:80 \
                   -p 81:81 \
                   -p 443:443 \
-                  -v /home/npm/data:/data \
-                  -v /home/npm/letsencrypt:/etc/letsencrypt \
+                  -v /home/docker/npm/data:/data \
+                  -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
                   --restart=always \
                   jc21/nginx-proxy-manager:latest
                 clear
@@ -1739,6 +1762,74 @@ case $choice in
                 ;;
             esac            
               ;;
+          5)            
+            # Function to get external IP address
+            get_external_ip() {
+              curl -s ifconfig.me
+            }
+            clear            
+            echo "安装提示" 
+            echo "一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"            
+            echo "官网介绍：https://alist.nn.ci/zh/" 
+            echo ""
+            
+            # Prompt user for installation confirmation
+            read -p "确定安装npm吗？(Y/N): " choice
+            case "$choice" in
+              [Yy])
+                clear
+                iptables -P INPUT ACCEPT
+                iptables -P FORWARD ACCEPT
+                iptables -P OUTPUT ACCEPT
+                iptables -F
+                # 检查并安装 curl（如果需要）
+                if ! command -v curl &>/dev/null; then
+                    if command -v apt &>/dev/null; then
+                        apt update -y && apt install -y curl
+                    elif command -v yum &>/dev/null; then
+                        yum -y update && yum -y install curl
+                    else
+                        echo "未知的包管理器!"
+                        exit 1
+                    fi
+                fi
+
+                # 检查并安装 Docker（如果需要）
+                if ! command -v docker &>/dev/null; then
+                    curl -fsSL https://get.docker.com | sh
+                    sudo systemctl start docker
+                else
+                    echo "Docker 已经安装."
+                fi
+
+                docker run -d \
+                    --restart=always \
+                    -v /home/docker/alist:/opt/alist/data \
+                    -p 5244:5244 \
+                    -e PUID=0 \
+                    -e PGID=0 \
+                    -e UMASK=022 \
+                    --name="alist" \
+                    xhofe/alist:latest
+
+                clear
+                echo "alist已经安装完成"
+                
+                # Get external IP address
+                external_ip=$(get_external_ip)
+                
+                echo "您可以使用以下地址访问alist:"
+                echo "$external_ip:5244"                            
+                docker exec -it alist ./alist admin random
+                echo ""
+                ;;
+              [Nn])
+                ;;
+              *)
+                ;;
+            esac            
+              ;;
+
 
           0)
               /root/kejilion.sh
@@ -2097,6 +2188,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志" 
+    echo  "------------------------"       
+    echo "2023-8-16   v1.4.7"
+    echo "选项11中，增加了alist多存储文件列表工具的搭建"      
     echo  "------------------------"       
     echo "2023-8-16   v1.4.6"
     echo "LDNMP建站中加入了删除站点删除数据库功能"      
