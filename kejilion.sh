@@ -1533,7 +1533,8 @@ case $choice in
       echo "3. 1Panel新一代管理面板"
       echo "4. Nginx Proxy Manager NGINX可视化面板"
       echo "5. AList多存储文件列表程序"
-      echo "6. 哪吒探针VPS监控面板"
+      echo "6. Ubuntu远程桌面网页版"
+      echo "7. 哪吒探针VPS监控面板"
       echo "------------------------"
       echo "0. 返回主菜单"      
       echo "------------------------"
@@ -1821,6 +1822,75 @@ case $choice in
                 echo "您可以使用以下地址访问alist:"
                 echo "$external_ip:5244"                            
                 docker exec -it alist ./alist admin random
+                echo ""
+                ;;
+              [Nn])
+                ;;
+              *)
+                ;;
+            esac            
+              ;;
+
+          6)            
+            # Function to get external IP address
+            get_external_ip() {
+              curl -s ifconfig.me
+            }
+            clear            
+            echo "安装提示" 
+            echo "一个网页版Ubuntu远程桌面，挺好用的！"            
+            echo "官网介绍：https://hub.docker.com/r/fredblgr/ubuntu-novnc" 
+            echo ""
+            
+            # Prompt user for installation confirmation
+            read -p "确定安装Ubuntu远程桌面吗？(Y/N): " choice
+            case "$choice" in
+              [Yy])
+                clear
+                read -p "请设置一个登录密码：" rootpasswd            
+                iptables -P INPUT ACCEPT
+                iptables -P FORWARD ACCEPT
+                iptables -P OUTPUT ACCEPT
+                iptables -F
+                # 检查并安装 curl（如果需要）
+                if ! command -v curl &>/dev/null; then
+                    if command -v apt &>/dev/null; then
+                        apt update -y && apt install -y curl
+                    elif command -v yum &>/dev/null; then
+                        yum -y update && yum -y install curl
+                    else
+                        echo "未知的包管理器!"
+                        exit 1
+                    fi
+                fi
+
+                # 检查并安装 Docker（如果需要）
+                if ! command -v docker &>/dev/null; then
+                    curl -fsSL https://get.docker.com | sh
+                    sudo systemctl start docker
+                else
+                    echo "Docker 已经安装，正在部署容器……"
+                fi
+
+                docker run -d \
+                  --name ubuntu-novnc \
+                  -p 6080:80 \
+                  -v $PWD:/workspace:rw \
+                  -e HTTP_PASSWORD=$rootpasswd \
+                  -e RESOLUTION=1280x720 \
+                  --restart=always \
+                  fredblgr/ubuntu-novnc:20.04
+
+                clear
+                echo "alist已经安装完成"
+                
+                # Get external IP address
+                external_ip=$(get_external_ip)
+                
+                echo "您可以使用以下地址访问alist:"
+                echo "$external_ip:6080"                            
+                echo "用户名：root"
+                echo "密码：$rootpasswd"                     
                 echo ""
                 ;;
               [Nn])
@@ -2201,7 +2271,8 @@ case $choice in
     echo "脚本更新日志" 
     echo  "------------------------"       
     echo "2023-8-16   v1.4.7"
-    echo "选项11中，增加了alist多存储文件列表工具的搭建"    
+    echo "选项11中，增加了一键搭建alist多存储文件列表工具的" 
+    echo "选项11中，增加了一键搭建网页版乌班图远程桌面"       
     echo "选项13中，增加了开放所有端口功能"         
     echo  "------------------------"       
     echo "2023-8-16   v1.4.6"
