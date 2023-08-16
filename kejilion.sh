@@ -6,7 +6,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.4.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.4.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -87,6 +87,26 @@ case $choice in
       fi
     fi
 
+
+    output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 } 
+        NR > 2 { rx_total += $2; tx_total += $10 } 
+        END {
+            rx_units = "Bytes";
+            tx_units = "Bytes";
+            if (rx_total > 1024) { rx_total /= 1024; rx_units = "KB"; }
+            if (rx_total > 1024) { rx_total /= 1024; rx_units = "MB"; }
+            if (rx_total > 1024) { rx_total /= 1024; rx_units = "GB"; }
+            
+            if (tx_total > 1024) { tx_total /= 1024; tx_units = "KB"; }
+            if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
+            if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
+            
+            printf("总接收: %.2f %s\n总发送: %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
+        }' /proc/net/dev)
+    
+
+
+
     echo ""
     echo "系统信息查询"
     echo "------------------------"
@@ -103,6 +123,8 @@ case $choice in
     echo "CPU占用: $cpu_usage_percent"
     echo "内存占用: $mem_info"
     echo "硬盘占用: $disk_info"
+    echo "------------------------"
+    echo "$output"
     echo "------------------------"
     echo "网络拥堵算法: $congestion_algorithm $queue_algorithm"
     echo "------------------------"
@@ -2269,6 +2291,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志" 
+    echo  "------------------------"       
+    echo "2023-8-16   v1.4.8"
+    echo "系统信息查询中，终于可以显示总流量消耗了！总接收和总发送两个信息" 
     echo  "------------------------"       
     echo "2023-8-16   v1.4.7"
     echo "选项11中，增加了一键搭建alist多存储文件列表工具的" 
