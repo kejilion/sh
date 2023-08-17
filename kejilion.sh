@@ -861,6 +861,7 @@ case $choice in
               docker rm -f lookbusy 
               docker rmi fogforest/lookbusy
               ;;
+
           3)
           clear
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
@@ -885,19 +886,15 @@ case $choice in
                     ;;
                 esac
               done
-
-              read -p "请输入你重装后的密码：" vpspasswd              
-              # 检查并安装 wget（如果需要）
-              if ! command -v wget &>/dev/null; then
-                  if command -v apt &>/dev/null; then
-                      apt update -y && apt install -y wget
-                  elif command -v yum &>/dev/null; then
-                      yum -y update && yum -y install wget
-                  else
-                      echo "未知的包管理器!"
-                      exit 1
-                  fi
-              fi
+              
+              read -p "请输入你重装后的密码：" vpspasswd
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y wget
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install wget
+              else
+                  echo "未知的包管理器!"
+              fi 
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
@@ -2334,19 +2331,13 @@ case $choice in
               done
               
               read -p "请输入你重装后的密码：" vpspasswd
-
-              # 检查并安装 wget（如果需要）
-              if ! command -v wget &>/dev/null; then
-                  if command -v apt &>/dev/null; then
-                      apt update -y && apt install -y wget
-                  elif command -v yum &>/dev/null; then
-                      yum -y update && yum -y install wget
-                  else
-                      echo "未知的包管理器!"
-                      exit 1
-                  fi
-              fi
-
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y wget
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install wget
+              else
+                  echo "未知的包管理器!"
+              fi 
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
@@ -2355,7 +2346,7 @@ case $choice in
             *)
               echo "无效的选择，请输入 Y 或 N。"
               ;;
-          esac
+          esac          
               ;;      
 
 
