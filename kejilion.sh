@@ -364,12 +364,16 @@ case $choice in
 
   5)
     clear  
-    if command -v apt &>/dev/null; then
-        apt update -y && apt install -y wget
-    elif command -v yum &>/dev/null; then
-        yum -y update && yum -y install wget
-    else
-        echo "未知的包管理器!"
+    # 检查并安装 wget（如果需要）
+    if ! command -v wget &>/dev/null; then
+        if command -v apt &>/dev/null; then
+            apt update -y && apt install -y wget
+        elif command -v yum &>/dev/null; then
+            yum -y update && yum -y install wget
+        else
+            echo "未知的包管理器!"
+            exit 1
+        fi
     fi
     wget --no-check-certificate -O tcpx.sh https://raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
     chmod +x tcpx.sh
@@ -401,13 +405,18 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y curl
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install curl
-              else
-                  echo "未知的包管理器!"
+              # 检查并安装 wget（如果需要）
+              if ! command -v curl &>/dev/null; then
+                  if command -v apt &>/dev/null; then
+                      apt update -y && apt install -y curl
+                  elif command -v yum &>/dev/null; then
+                      yum -y update && yum -y install curl
+                  else
+                      echo "未知的包管理器!"
+                      exit 1
+                  fi
               fi
+
               curl -fsSL https://get.docker.com | sh
               sudo systemctl start docker
               curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose         
@@ -719,13 +728,17 @@ case $choice in
 
   7)
     clear
-    if command -v apt &>/dev/null; then
-        apt update -y && apt install -y wget
-    elif command -v yum &>/dev/null; then
-        yum -y update && yum -y install wget
-    else
-        echo "未知的包管理器!"
-    fi
+    # 检查并安装 wget（如果需要）
+    if ! command -v wget &>/dev/null; then
+        if command -v apt &>/dev/null; then
+            apt update -y && apt install -y wget
+        elif command -v yum &>/dev/null; then
+            yum -y update && yum -y install wget
+        else
+            echo "未知的包管理器!"
+            exit 1
+        fi
+    fi    
     wget -N https://raw.githubusercontent.com/fscarmen/warp/main/menu.sh && bash menu.sh [option] [lisence]
     ;;
 
@@ -888,14 +901,17 @@ case $choice in
                 esac
               done
               
-              read -p "请输入你重装后的密码：" vpspasswd
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y wget
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install wget
-              else
-                  echo "未知的包管理器!"
-              fi 
+              # 检查并安装 wget（如果需要）
+              if ! command -v wget &>/dev/null; then
+                  if command -v apt &>/dev/null; then
+                      apt update -y && apt install -y wget
+                  elif command -v yum &>/dev/null; then
+                      yum -y update && yum -y install wget
+                  else
+                      echo "未知的包管理器!"
+                      exit 1
+                  fi
+              fi
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
