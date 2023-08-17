@@ -1776,7 +1776,7 @@ case $choice in
                 echo "npm已经安装完成"
                 
                 # Get external IP address
-                external_ip=$(get_external_ip)
+                external_ip=$(curl -s4 ifconfig.co)
                 
                 echo "您可以使用以下地址访问Nginx Proxy Manager:"
                 echo "$external_ip:81"                            
@@ -1843,7 +1843,7 @@ case $choice in
                 echo "alist已经安装完成"
                 
                 # Get external IP address
-                external_ip=$(get_external_ip)
+                external_ip=$(curl -s4 ifconfig.co)
                 
                 echo "您可以使用以下地址访问alist:"
                 echo "$external_ip:5244"                            
@@ -1911,7 +1911,7 @@ case $choice in
                 echo "alist已经安装完成"
                 
                 # Get external IP address
-                external_ip=$(get_external_ip)
+                external_ip=$(curl -s4 ifconfig.co)
                 
                 echo "您可以使用以下地址访问alist:"
                 echo "$external_ip:6080"                            
