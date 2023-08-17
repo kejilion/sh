@@ -34,7 +34,7 @@ case $choice in
     # 函数：获取IPv4和IPv6地址
     fetch_ip_addresses() {
       ipv4_address=$(curl -s4 ifconfig.co)
-      ipv6_address=$(curl -s6 ifconfig.co)
+      ipv6_address=$(curl -s6 --max-time 1 ifconfig.co)
     }
 
     # 获取IP地址
