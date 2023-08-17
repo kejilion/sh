@@ -2225,29 +2225,32 @@ case $choice in
           6)
               clear
               #!/bin/bash
-
+              
+              # 去掉 #Port 的注释
+              sudo sed -i 's/#Port/Port/' /etc/ssh/sshd_config
+              
               # 读取当前的 SSH 端口号
               current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
-
+              
               # 打印当前的 SSH 端口号
               echo "当前的 SSH 端口号是: $current_port"
-
+              
               echo "------------------------"      
-
+              
               # 提示用户输入新的 SSH 端口号
               read -p "请输入新的 SSH 端口号: " new_port
-
+              
               # 备份 SSH 配置文件
               sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-
+              
               # 替换 SSH 配置文件中的端口号
               sudo sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
-
+              
               # 重启 SSH 服务
               sudo service sshd restart
-
+              
               echo "SSH 端口已修改为: $new_port"
-                          
+                                        
               ;;
 
 
