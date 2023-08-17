@@ -2087,7 +2087,8 @@ case $choice in
       echo "4. 安装Python最新版"     
       echo "5. 开放所有端口"  
       echo "6. 修改SSH连接端口"
-      echo "7. 优化DNS地址"                      
+      echo "7. 优化DNS地址"   
+      echo "8. 一键重装系统"                          
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"      
@@ -2299,6 +2300,50 @@ case $choice in
             fi
 
               ;;
+
+          8)
+          clear
+          echo "请备份数据，将为你重装系统，预计花费15分钟。"
+          read -p "确定继续吗？(Y/N): " choice
+
+          case "$choice" in
+            [Yy])
+              while true; do
+                read -p "请选择要重装的系统： 1. Debian12 | 2. Ubuntu20.04 : " sys_choice
+
+                case "$sys_choice" in
+                  1)
+                    xitong="-d 12"
+                    break  # 结束循环
+                    ;;
+                  2)
+                    xitong="-u 20.04"
+                    break  # 结束循环
+                    ;;
+                  *)
+                    echo "无效的选择，请重新输入。"
+                    ;;
+                esac
+              done
+              
+              read -p "请输入你重装后的密码：" vpspasswd
+              if command -v apt &>/dev/null; then
+                  apt update -y && apt install -y wget
+              elif command -v yum &>/dev/null; then
+                  yum -y update && yum -y install wget
+              else
+                  echo "未知的包管理器!"
+              fi 
+              bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
+              ;;
+            [Nn])
+              echo "已取消"
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              ;;
+          esac
+              ;;      
 
 
           21)
