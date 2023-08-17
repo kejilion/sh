@@ -1389,7 +1389,7 @@ case $choice in
             if [ -n "$latest_tar" ]; then
               ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
               sleep 2  # 添加等待时间
-              scp "$latest_tar" "root@$remote_ip:/home/"
+              scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
               echo "文件已传送至远程服务器home目录。"
             else
               echo "未找到要传送的文件。"
