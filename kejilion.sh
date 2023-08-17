@@ -103,7 +103,11 @@ case $choice in
             
             printf("总接收: %.2f %s\n总发送: %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
         }' /proc/net/dev)
-    
+
+
+      current_time=$(date "+%Y-%m-%d %I:%M %p")
+
+
 
 
 
@@ -132,6 +136,7 @@ case $choice in
     echo "公网IPv6地址: $ipv6_address"
     echo "------------------------"    
     echo "地理位置: $country $city"
+    echo "系统时间：$current_time"    
     echo
 
     ;;
