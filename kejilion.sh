@@ -6,7 +6,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.4.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.4.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -2085,7 +2085,9 @@ case $choice in
       echo "2. 修改ROOT密码"
       echo "3. 开启ROOT密码登录模式"
       echo "4. 安装Python最新版"     
-      echo "5. 开放所有端口"            
+      echo "5. 开放所有端口"  
+      echo "6. 修改SSH连接端口"
+      echo "7. 优化DNS地址"                      
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"      
@@ -2220,6 +2222,80 @@ case $choice in
               iptables -F              
               echo "端口已全部开放"                   
               ;;
+          6)
+              clear
+              #!/bin/bash
+
+              # 读取当前的 SSH 端口号
+              current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
+
+              # 打印当前的 SSH 端口号
+              echo "当前的 SSH 端口号是: $current_port"
+
+              echo "------------------------"      
+
+              # 提示用户输入新的 SSH 端口号
+              read -p "请输入新的 SSH 端口号: " new_port
+
+              # 备份 SSH 配置文件
+              sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+
+              # 替换 SSH 配置文件中的端口号
+              sudo sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
+
+              # 重启 SSH 服务
+              sudo service sshd restart
+
+              echo "SSH 端口已修改为: $new_port"
+                          
+              ;;
+
+
+          7)
+            clear
+            echo "当前DNS地址"
+            echo "------------------------"      
+            cat /etc/resolv.conf
+            echo "------------------------"   
+            echo ""              
+            # 询问用户是否要优化DNS设置
+            read -p "是否要设置为Cloudflare和Google的DNS地址？(y/n): " choice
+
+            if [ "$choice" == "y" ]; then
+                # 定义DNS地址
+                cloudflare_ipv4="1.1.1.1"
+                google_ipv4="8.8.8.8"
+                cloudflare_ipv6="2606:4700:4700::1111"
+                google_ipv6="2001:4860:4860::8888"
+
+                # 检查机器是否有IPv6地址
+                ipv6_available=0
+                if [[ $(ip -6 addr | grep -c "inet6") -gt 0 ]]; then
+                    ipv6_available=1
+                fi
+
+                # 设置DNS地址为Cloudflare和Google（IPv4和IPv6）
+                echo "设置DNS为Cloudflare和Google"
+
+                # 设置IPv4地址
+                echo "nameserver $cloudflare_ipv4" > /etc/resolv.conf
+                echo "nameserver $google_ipv4" >> /etc/resolv.conf
+
+                # 如果有IPv6地址，则设置IPv6地址
+                if [[ $ipv6_available -eq 1 ]]; then
+                    echo "nameserver $cloudflare_ipv6" >> /etc/resolv.conf
+                    echo "nameserver $google_ipv6" >> /etc/resolv.conf
+                fi
+
+                echo "DNS地址已更新"
+                echo "------------------------"     
+                cat /etc/resolv.conf
+                echo "------------------------"                
+            else
+                echo "DNS设置未更改"
+            fi
+
+              ;;
 
 
           21)
@@ -2291,6 +2367,10 @@ case $choice in
   00)
     clear
     echo "脚本更新日志" 
+    echo  "------------------------"       
+    echo "2023-8-17   v1.4.9"
+    echo "系统工具中新增SSH端口修改功能" 
+    echo "系统工具中新增优化DNS地址功能"     
     echo  "------------------------"       
     echo "2023-8-16   v1.4.8"
     echo "系统信息查询中，终于可以显示总流量消耗了！总接收和总发送两个信息" 
