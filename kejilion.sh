@@ -214,21 +214,6 @@ case $choice in
                   echo "未知的包管理器!"
               fi
 
-              # 检查是否已安装 curl
-              if ! command -v curl &>/dev/null; then
-                  if command -v apt &>/dev/null; then
-                      apt update -y && apt install -y curl
-                  elif command -v yum &>/dev/null; then
-                      yum -y update && yum -y install curl
-                  else
-                      echo "未知的包管理器!"
-                  fi
-              else
-                  echo "sshpass 已经安装，跳过安装步骤。"
-              fi
-
-
-
               ;;
           2)
               clear
@@ -405,7 +390,7 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              # 检查并安装 wget（如果需要）
+              # 检查并安装 curl（如果需要）
               if ! command -v curl &>/dev/null; then
                   if command -v apt &>/dev/null; then
                       apt update -y && apt install -y curl
@@ -900,7 +885,8 @@ case $choice in
                     ;;
                 esac
               done
-              
+
+              read -p "请输入你重装后的密码：" vpspasswd              
               # 检查并安装 wget（如果需要）
               if ! command -v wget &>/dev/null; then
                   if command -v apt &>/dev/null; then
@@ -2348,13 +2334,19 @@ case $choice in
               done
               
               read -p "请输入你重装后的密码：" vpspasswd
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y wget
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install wget
-              else
-                  echo "未知的包管理器!"
-              fi 
+
+              # 检查并安装 wget（如果需要）
+              if ! command -v wget &>/dev/null; then
+                  if command -v apt &>/dev/null; then
+                      apt update -y && apt install -y wget
+                  elif command -v yum &>/dev/null; then
+                      yum -y update && yum -y install wget
+                  else
+                      echo "未知的包管理器!"
+                      exit 1
+                  fi
+              fi
+
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
