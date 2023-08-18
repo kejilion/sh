@@ -1052,6 +1052,26 @@ case $choice in
       docker exec php74 sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
       docker exec php74 sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
 
+      clear
+      echo "LDNMP环境安装完毕"
+      echo "------------------------"
+
+      # 获取nginx版本
+      nginx_version=$(docker exec nginx nginx -v 2>&1)
+      nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n "nginx : v$nginx_version"
+
+      # 获取php版本
+      php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n "            php : v$php_version"
+
+      # 获取mysql版本
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+      echo "          mysql : v$mysql_version"
+
+      echo "------------------------"
+      echo ""
 
         ;;
       2)
@@ -1396,6 +1416,28 @@ case $choice in
 
     31)
     clear
+
+    echo "LDNMP环境版本"
+    echo "------------------------"
+
+    # 获取nginx版本
+    nginx_version=$(docker exec nginx nginx -v 2>&1)
+    nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+    echo -n "nginx : v$nginx_version"
+
+    # 获取php版本
+    php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+    echo -n "            php : v$php_version"
+
+    # 获取mysql版本
+    dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+    mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+    echo "          mysql : v$mysql_version"
+
+    echo "------------------------"
+    echo ""
+
+
     echo "站点信息"
     echo "------------------------"
     ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
@@ -1496,11 +1538,53 @@ case $choice in
       docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
       docker restart php && docker restart php74 && docker restart nginx
 
+      clear
+      echo "LDNMP环境安装完毕"
+      echo "------------------------"
+
+      # 获取nginx版本
+      nginx_version=$(docker exec nginx nginx -v 2>&1)
+      nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n "nginx : v$nginx_version"
+
+      # 获取php版本
+      php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n "            php : v$php_version"
+
+      # 获取mysql版本
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+      echo "          mysql : v$mysql_version"
+
+      echo "------------------------"
+      echo ""
+
+
       ;;
 
     34)
     while true; do
         clear
+        echo "LDNMP环境版本"
+        echo "------------------------"
+
+        # 获取nginx版本
+        nginx_version=$(docker exec nginx nginx -v 2>&1)
+        nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+        echo -n "nginx : v$nginx_version"
+
+        # 获取php版本
+        php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+        echo -n "            php : v$php_version"
+
+        # 获取mysql版本
+        dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+        mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+        echo "          mysql : v$mysql_version"
+
+        echo "------------------------"
+        echo ""
+
         echo "站点信息"
         echo "------------------------"
         ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
@@ -1598,6 +1682,27 @@ case $choice in
 
       docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
       docker restart php && docker restart php74 && docker restart nginx
+
+      clear
+      echo "LDNMP环境安装完毕"
+      echo "------------------------"
+
+      # 获取nginx版本
+      nginx_version=$(docker exec nginx nginx -v 2>&1)
+      nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n "nginx : v$nginx_version"
+
+      # 获取php版本
+      php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n "            php : v$php_version"
+
+      # 获取mysql版本
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+      echo "          mysql : v$mysql_version"
+
+      echo "------------------------"
+      echo ""
 
       ;;
 
