@@ -1947,6 +1947,21 @@ case $choice in
                 ;;
             esac
               ;;
+          7)
+            if ! command -v curl &>/dev/null; then
+                if command -v apt &>/dev/null; then
+                    apt update -y && apt install -y curl
+                elif command -v yum &>/dev/null; then
+                    yum -y update && yum -y install curl
+                else
+                    echo "未知的包管理器!"
+                    exit 1
+                fi
+            fi
+            clear
+            curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
+            ./nezha.sh
+              ;;
 
 
           0)
@@ -2473,6 +2488,7 @@ case $choice in
     echo  "------------------------"
     echo "2023-8-18   v1.5.1"
     echo "LDNMP加入了安装bingchatAI聊天网站"
+    echo "面板工具中添加了哪吒探针脚本整合"
     echo  "------------------------"
     echo "2023-8-18   v1.5"
     echo "系统性优化了代码，去除了无效的代码与空格"
