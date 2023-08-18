@@ -8,7 +8,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.4.10 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -2095,6 +2095,7 @@ case $choice in
       echo "6. 修改SSH连接端口"
       echo "7. 优化DNS地址"
       echo "8. 一键重装系统"
+      echo "9. 禁用ROOT账户创建新账户"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -2352,6 +2353,34 @@ case $choice in
               ;;
 
 
+          9)
+            clear
+            if ! command -v sudo &>/dev/null; then
+                if command -v apt &>/dev/null; then
+                    apt update -y && apt install -y sudo
+                elif command -v yum &>/dev/null; then
+                    yum -y update && yum -y install sudo
+                else
+                    exit 1
+                fi
+            fi
+
+            # 提示用户输入新用户名
+            read -p "请输入新用户名: " new_username
+
+            # 创建新用户并设置密码
+            sudo useradd -m -s /bin/bash "$new_username"
+            sudo passwd "$new_username"
+
+            # 赋予新用户sudo权限
+            echo "$new_username ALL=(ALL:ALL) ALL" | sudo tee -a /etc/sudoers
+
+            # 禁用ROOT用户登录
+            sudo passwd -l root
+
+            echo "操作已完成。"
+            ;;
+
           21)
           clear
           # 检查是否已安装 sshpass
@@ -2422,9 +2451,10 @@ case $choice in
     clear
     echo "脚本更新日志"
     echo  "------------------------"
-    echo "2023-8-18   v1.4.10"
+    echo "2023-8-18   v1.5"
     echo "系统性优化了代码，去除了无效的代码与空格"
     echo "系统信息查询添加了系统时间"
+    echo "禁用ROOT账户，创建新的账户，更安全！"
     echo  "------------------------"
     echo "2023-8-17   v1.4.9"
     echo "系统工具中新增SSH端口修改功能"
