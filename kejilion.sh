@@ -1644,7 +1644,7 @@ case $choice in
     35)
       clear
       docker rm -f nginx php php74 mysql redis
-      docker rmi nginx php mysql redis
+      docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
 
       # 更新并安装必要的软件包
       if command -v apt &>/dev/null; then
@@ -1724,7 +1724,7 @@ case $choice in
         case "$choice" in
           [Yy])
             docker rm -f nginx php php74 mysql redis
-            docker rmi nginx php mysql redis
+            docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
             rm -r /home/web
             ;;
           [Nn])
