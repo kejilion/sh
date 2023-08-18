@@ -1061,14 +1061,18 @@ case $choice in
       nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
       echo -n "nginx : v$nginx_version"
 
+      # 获取mysql版本
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+      echo -n "            mysql : v$mysql_version"
+
       # 获取php版本
       php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
       echo -n "            php : v$php_version"
 
-      # 获取mysql版本
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-      echo "          mysql : v$mysql_version"
+      # 获取redis版本
+      redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
+      echo "            redis : v$redis_version"
 
       echo "------------------------"
       echo ""
@@ -1307,7 +1311,6 @@ case $choice in
       echo "数据库名：$dbname"
       echo "用户名：$dbuse"
       echo "密码：$dbusepasswd"
-      echo "数据库前缀：mac"
       echo ""
       echo "redis地址：redis"
       echo "redis密码：默认不填写"
@@ -1315,7 +1318,10 @@ case $choice in
       echo ""
       echo "网站url：https://$yuming"
       echo "后台登录路径：/admin"
-      echo ""
+      echo "------------------------"
+      echo "用户名：admin"
+      echo "密码：admin"
+
         ;;
 
       7)
@@ -1415,27 +1421,31 @@ case $choice in
 
 
     31)
-    clear
 
-    echo "LDNMP环境版本"
-    echo "------------------------"
+      clear
+      echo "LDNMP环境"
+      echo "------------------------"
 
-    # 获取nginx版本
-    nginx_version=$(docker exec nginx nginx -v 2>&1)
-    nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
-    echo -n "nginx : v$nginx_version"
+      # 获取nginx版本
+      nginx_version=$(docker exec nginx nginx -v 2>&1)
+      nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n "nginx : v$nginx_version"
 
-    # 获取php版本
-    php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
-    echo -n "            php : v$php_version"
+      # 获取mysql版本
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+      echo -n "            mysql : v$mysql_version"
 
-    # 获取mysql版本
-    dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-    mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-    echo "          mysql : v$mysql_version"
+      # 获取php版本
+      php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n "            php : v$php_version"
 
-    echo "------------------------"
-    echo ""
+      # 获取redis版本
+      redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
+      echo "            redis : v$redis_version"
+
+      echo "------------------------"
+      echo ""
 
 
     echo "站点信息"
@@ -1538,6 +1548,7 @@ case $choice in
       docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
       docker restart php && docker restart php74 && docker restart nginx
 
+
       clear
       echo "LDNMP环境安装完毕"
       echo "------------------------"
@@ -1547,14 +1558,18 @@ case $choice in
       nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
       echo -n "nginx : v$nginx_version"
 
+      # 获取mysql版本
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+      echo -n "            mysql : v$mysql_version"
+
       # 获取php版本
       php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
       echo -n "            php : v$php_version"
 
-      # 获取mysql版本
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-      echo "          mysql : v$mysql_version"
+      # 获取redis版本
+      redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
+      echo "            redis : v$redis_version"
 
       echo "------------------------"
       echo ""
@@ -1565,23 +1580,22 @@ case $choice in
     34)
     while true; do
         clear
-        echo "LDNMP环境版本"
+        echo "LDNMP环境"
         echo "------------------------"
-
         # 获取nginx版本
         nginx_version=$(docker exec nginx nginx -v 2>&1)
         nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
         echo -n "nginx : v$nginx_version"
-
-        # 获取php版本
-        php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
-        echo -n "            php : v$php_version"
-
         # 获取mysql版本
         dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
         mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-        echo "          mysql : v$mysql_version"
-
+        echo -n "            mysql : v$mysql_version"
+        # 获取php版本
+        php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+        echo -n "            php : v$php_version"
+        # 获取redis版本
+        redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
+        echo "            redis : v$redis_version"
         echo "------------------------"
         echo ""
 
@@ -1629,12 +1643,8 @@ case $choice in
 
     35)
       clear
-      docker rm -f nginx
-      docker rm -f php
-      docker rm -f php74
-      docker rm -f mysql
-      docker rm -f redis
-      docker system prune -af --volumes
+      docker rm -f nginx php php74 mysql redis
+      docker rmi nginx php mysql redis
 
       # 更新并安装必要的软件包
       if command -v apt &>/dev/null; then
@@ -1684,23 +1694,23 @@ case $choice in
       docker restart php && docker restart php74 && docker restart nginx
 
       clear
+      clear
       echo "LDNMP环境安装完毕"
       echo "------------------------"
-
       # 获取nginx版本
       nginx_version=$(docker exec nginx nginx -v 2>&1)
       nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
       echo -n "nginx : v$nginx_version"
-
-      # 获取php版本
-      php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
-      echo -n "            php : v$php_version"
-
       # 获取mysql版本
       dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-      echo "          mysql : v$mysql_version"
-
+      echo -n "            mysql : v$mysql_version"
+      # 获取php版本
+      php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n "            php : v$php_version"
+      # 获取redis版本
+      redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
+      echo "            redis : v$redis_version"
       echo "------------------------"
       echo ""
 
@@ -1713,12 +1723,8 @@ case $choice in
         read -p "强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): " choice
         case "$choice" in
           [Yy])
-            docker rm -f nginx
-            docker rm -f php
-            docker rm -f php74
-            docker rm -f mysql
-            docker rm -f redis
-            docker system prune -af --volumes
+            docker rm -f nginx php php74 mysql redis
+            docker rmi nginx php mysql redis
             rm -r /home/web
             ;;
           [Nn])
