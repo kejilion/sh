@@ -8,7 +8,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -963,6 +963,7 @@ case $choice in
     echo  "4. 安装可道云桌面"
     echo  "5. 安装苹果CMS网站"
     echo  "6. 安装独角数发卡网"
+    echo  "7. 安装BingChatAI聊天网站"
     echo  "------------------------"
     echo  "21. 站点重定向"
     echo  "22. 站点反向代理"
@@ -1295,6 +1296,37 @@ case $choice in
       echo "后台登录路径：/admin"
       echo ""
         ;;
+
+      7)
+      clear
+      # BingChat
+      read -p "请输入你解析的域名：" yuming
+
+      docker stop nginx
+
+      curl https://get.acme.sh | sh
+      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+
+      docker start nginx
+
+      docker run -d -p 3099:8080 --name go-proxy-bingai --restart=unless-stopped adams549659584/go-proxy-bingai
+
+      # Get external IP address
+      external_ip=$(curl -s4 ifconfig.co)
+
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/0.0.0.0/$external_ip/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/0000/3099/g" /home/web/conf.d/$yuming.conf
+
+      docker restart nginx
+
+      clear
+      echo "您的BingChat网站搭建好了！"
+      echo "https://$yuming"
+      echo ""
+        ;;
+
 
       21)
       clear
@@ -1726,10 +1758,6 @@ case $choice in
             fi
               ;;
           4)
-            # Function to get external IP address
-            get_external_ip() {
-              curl -s ifconfig.me
-            }
             clear
             echo "安装提示"
             echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装npm！"
@@ -1792,10 +1820,6 @@ case $choice in
             esac
               ;;
           5)
-            # Function to get external IP address
-            get_external_ip() {
-              curl -s ifconfig.me
-            }
             clear
             echo "安装提示"
             echo "一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"
@@ -1860,10 +1884,6 @@ case $choice in
               ;;
 
           6)
-            # Function to get external IP address
-            get_external_ip() {
-              curl -s ifconfig.me
-            }
             clear
             echo "安装提示"
             echo "一个网页版Ubuntu远程桌面，挺好用的！"
@@ -2450,6 +2470,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-18   v1.5.1"
+    echo "LDNMP加入了安装bingchatAI聊天网站"
     echo  "------------------------"
     echo "2023-8-18   v1.5"
     echo "系统性优化了代码，去除了无效的代码与空格"
