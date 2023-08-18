@@ -8,7 +8,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -974,7 +974,8 @@ case $choice in
     echo  "32. 备份全站数据"
     echo  "33. 还原全站数据"
     echo  "34. 删除站点数据"
-    echo  "35. 卸载LDNMP环境"
+    echo  "35. 更新LDNMP环境"
+    echo  "36. 卸载LDNMP环境"
     echo  "------------------------"
     echo  "0. 返回主菜单"
     echo  "------------------------"
@@ -1542,8 +1543,67 @@ case $choice in
     done
       ;;
 
-
     35)
+      clear
+      docker rm -f nginx
+      docker rm -f php
+      docker rm -f php74
+      docker rm -f mysql
+      docker rm -f redis
+      docker system prune -af --volumes
+
+      # 更新并安装必要的软件包
+      if command -v apt &>/dev/null; then
+          DEBIAN_FRONTEND=noninteractive apt update -y
+          DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+          apt install -y curl wget sudo socat unzip tar htop
+      elif command -v yum &>/dev/null; then
+          yum -y update && yum -y install curl wget sudo socat unzip tar htop
+      else
+          echo "未知的包管理器!"
+      fi
+
+      # 安装 Docker
+      curl -fsSL https://get.docker.com | sh
+      sudo systemctl start docker
+
+      # 安装 Docker Compose
+      curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+
+      cd /home/web && docker-compose up -d
+
+      docker exec php apt update &&
+      docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick &&
+      docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache &&
+      docker exec php pecl install imagick &&
+      docker exec php sh -c 'echo "extension=imagick.so" > /usr/local/etc/php/conf.d/imagick.ini' &&
+      docker exec php pecl install redis &&
+      docker exec php sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' &&
+      docker exec php sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini' &&
+      docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
+      docker exec php sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
+      docker exec php sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
+
+      docker exec php74 apt update &&
+      docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick &&
+      docker exec php74 docker-php-ext-install mysqli pdo_mysql zip gd intl bcmath opcache &&
+      docker exec php74 pecl install imagick &&
+      docker exec php74 sh -c 'echo "extension=imagick.so" > /usr/local/etc/php/conf.d/imagick.ini' &&
+      docker exec php74 pecl install redis &&
+      docker exec php74 sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' &&
+      docker exec php74 sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini' &&
+      docker exec php74 sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
+      docker exec php74 sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
+      docker exec php74 sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
+
+      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
+      docker restart php && docker restart php74 && docker restart nginx
+
+      ;;
+
+
+
+    36)
         clear
         read -p "强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): " choice
         case "$choice" in
@@ -2485,6 +2545,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-18   v1.5.2"
+    echo "LDNMP加入了更新LDNMP选项"
     echo  "------------------------"
     echo "2023-8-18   v1.5.1"
     echo "LDNMP加入了安装bingchatAI聊天网站"
