@@ -8,7 +8,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5.3 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -35,8 +35,8 @@ case $choice in
     clear
     # 函数：获取IPv4和IPv6地址
     fetch_ip_addresses() {
-      ipv4_address=$(curl -s4 ifconfig.co)
-      ipv6_address=$(curl -s6 --max-time 1 ifconfig.co)
+      ipv4_address=$(curl -s ipv4.ip.sb)
+      ipv6_address=$(curl -s ipv6.ip.sb)
     }
 
     # 获取IP地址
@@ -89,7 +89,7 @@ case $choice in
       fi
     fi
 
-
+    clear
     output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
         NR > 2 { rx_total += $2; tx_total += $10 }
         END {
@@ -1339,7 +1339,7 @@ case $choice in
       docker run -d -p 3099:8080 --name go-proxy-bingai --restart=unless-stopped adams549659584/go-proxy-bingai
 
       # Get external IP address
-      external_ip=$(curl -s4 ifconfig.co)
+      external_ip=$(curl -s ipv4.ip.sb)
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -1766,6 +1766,7 @@ case $choice in
       echo "5. AList多存储文件列表程序"
       echo "6. Ubuntu远程桌面网页版"
       echo "7. 哪吒探针VPS监控面板"
+      echo "8. QB离线BT磁力下载面板"      
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -1977,7 +1978,7 @@ case $choice in
                 echo "npm已经安装完成"
 
                 # Get external IP address
-                external_ip=$(curl -s4 ifconfig.co)
+                external_ip=$(curl -s ipv4.ip.sb)
 
                 echo "您可以使用以下地址访问Nginx Proxy Manager:"
                 echo "$external_ip:81"
@@ -2040,7 +2041,7 @@ case $choice in
                 echo "alist已经安装完成"
 
                 # Get external IP address
-                external_ip=$(curl -s4 ifconfig.co)
+                external_ip=$(curl -s ipv4.ip.sb)
 
                 echo "您可以使用以下地址访问alist:"
                 echo "$external_ip:5244"
@@ -2104,7 +2105,7 @@ case $choice in
                 echo "alist已经安装完成"
 
                 # Get external IP address
-                external_ip=$(curl -s4 ifconfig.co)
+                external_ip=$(curl -s ipv4.ip.sb)
 
                 echo "您可以使用以下地址访问alist:"
                 echo "$external_ip:6080"
@@ -2132,6 +2133,74 @@ case $choice in
             clear
             curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
             ./nezha.sh
+              ;;
+          8)
+            clear
+            echo "安装提示"
+            echo "qbittorrent离线BT磁力下载服务"
+            echo "官网介绍：https://hub.docker.com/r/linuxserver/qbittorrent"
+            echo ""
+
+            # Prompt user for installation confirmation
+            read -p "确定安装QB吗？(Y/N): " choice
+            case "$choice" in
+              [Yy])
+                clear
+                read -p "请设置一个登录密码：" rootpasswd
+                iptables -P INPUT ACCEPT
+                iptables -P FORWARD ACCEPT
+                iptables -P OUTPUT ACCEPT
+                iptables -F
+                # 检查并安装 curl（如果需要）
+                if ! command -v curl &>/dev/null; then
+                    if command -v apt &>/dev/null; then
+                        apt update -y && apt install -y curl
+                    elif command -v yum &>/dev/null; then
+                        yum -y update && yum -y install curl
+                    else
+                        echo "未知的包管理器!"
+                        exit 1
+                    fi
+                fi
+
+                # 检查并安装 Docker（如果需要）
+                if ! command -v docker &>/dev/null; then
+                    curl -fsSL https://get.docker.com | sh
+                    sudo systemctl start docker
+                else
+                    echo "Docker 已经安装，正在部署容器……"
+                fi
+
+                docker run -d \
+                      --name=qbittorrent \
+                      -e PUID=1000 \
+                      -e PGID=1000 \
+                      -e TZ=Etc/UTC \
+                      -e WEBUI_PORT=8081 \
+                      -p 8081:8081 \
+                      -p 6881:6881 \
+                      -p 6881:6881/udp \
+                      -v /home/docker/qbittorrent/config:/config \
+                      -v /home/docker/qbittorrent/downloads:/downloads \
+                      --restart unless-stopped \
+                      lscr.io/linuxserver/qbittorrent:latest
+                clear
+                echo "QB已经安装完成"
+
+                # Get external IP address
+                external_ip=$(curl -s ipv4.ip.sb)
+
+                echo "您可以使用以下地址访问QB:"
+                echo "$external_ip:8081"
+                echo "账号：admin"
+                echo "密码：adminadmin"
+                echo ""
+                ;;
+              [Nn])
+                ;;
+              *)
+                ;;
+            esac
               ;;
 
 
@@ -2656,6 +2725,10 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-19   v1.5.3"
+    echo "面板工具添加安装QB离线BT磁力下载面板"
+    echo "优化IP获取源"    
     echo  "------------------------"
     echo "2023-8-18   v1.5.2"
     echo "LDNMP加入了更新LDNMP选项"
