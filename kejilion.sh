@@ -1859,7 +1859,7 @@ case $choice in
 
               ;;
           2)
-            if [ -f "/www/aaa_panel/install.sh" ] && [ -f "/www/aaa_panel/panel" ]; then
+            if [ -f "/etc/init.d/bt" ] && [ -d "/www/server/panel" ]; then
                 clear
                 echo "aaPanel已安装，应用操作"
                 echo ""
