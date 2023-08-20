@@ -8,7 +8,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5.3 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5.4 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1774,107 +1774,174 @@ case $choice in
 
       case $sub_choice in
           1)
-            clear
-            echo "安装提示"
-            echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装宝塔面板！"
-            echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-            echo "官网介绍：https://www.bt.cn/new/index.html"
-            echo ""
-            # 获取当前系统类型
-            get_system_type() {
-              if [ -f /etc/os-release ]; then
-                . /etc/os-release
-                if [ "$ID" == "centos" ]; then
-                  echo "centos"
-                elif [ "$ID" == "ubuntu" ]; then
-                  echo "ubuntu"
-                elif [ "$ID" == "debian" ]; then
-                  echo "debian"
-                else
-                  echo "unknown"
-                fi
-              else
-                echo "unknown"
-              fi
-            }
+            if [ -f "/etc/init.d/bt" ] && [ -d "/www/server/panel" ]; then
+                clear
+                echo "宝塔面板已安装，应用操作"
+                echo ""
+                echo "------------------------"
+                echo "1. 管理宝塔面板           2. 卸载宝塔面板"
+                echo "------------------------"
+                echo "0. 返回上一级选单"
+                echo "------------------------"
+                read -p "请输入你的选择: " sub_choice
 
-            system_type=$(get_system_type)
-
-            if [ "$system_type" == "unknown" ]; then
-              echo "不支持的操作系统类型"
+                case $sub_choice in
+                    1)
+                        clear
+                        # 更新宝塔面板操作
+                        bt
+                        ;;
+                    2)
+                        clear
+                        curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1
+                        chmod +x bt-uninstall.sh
+                        ./bt-uninstall.sh
+                        ;;
+                    0)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                    *)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                esac
             else
-              read -p "确定安装宝塔吗？(Y/N): " choice
-              case "$choice" in
-                [Yy])
-                  iptables -P INPUT ACCEPT
-                  iptables -P FORWARD ACCEPT
-                  iptables -P OUTPUT ACCEPT
-                  iptables -F
-                  if [ "$system_type" == "centos" ]; then
-                    yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
-                  elif [ "$system_type" == "ubuntu" ]; then
-                    wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && sudo bash install.sh ed8484bec
-                  elif [ "$system_type" == "debian" ]; then
-                    wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
-                  fi
-                  ;;
-                [Nn])
-                  ;;
-                *)
-                  ;;
-              esac
+                clear
+                echo "安装提示"
+                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装宝塔面板！"
+                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
+                echo "官网介绍：https://www.bt.cn/new/index.html"
+                echo ""
+
+                # 获取当前系统类型
+                get_system_type() {
+                    if [ -f /etc/os-release ]; then
+                        . /etc/os-release
+                        if [ "$ID" == "centos" ]; then
+                            echo "centos"
+                        elif [ "$ID" == "ubuntu" ]; then
+                            echo "ubuntu"
+                        elif [ "$ID" == "debian" ]; then
+                            echo "debian"
+                        else
+                            echo "unknown"
+                        fi
+                    else
+                        echo "unknown"
+                    fi
+                }
+
+                system_type=$(get_system_type)
+
+                if [ "$system_type" == "unknown" ]; then
+                    echo "不支持的操作系统类型"
+                else
+                    read -p "确定安装宝塔吗？(Y/N): " choice
+                    case "$choice" in
+                        [Yy])
+                            iptables -P INPUT ACCEPT
+                            iptables -P FORWARD ACCEPT
+                            iptables -P OUTPUT ACCEPT
+                            iptables -F
+                            if [ "$system_type" == "centos" ]; then
+                                yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
+                            elif [ "$system_type" == "ubuntu" ]; then
+                                wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && sudo bash install.sh ed8484bec
+                            elif [ "$system_type" == "debian" ]; then
+                                wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
+                            fi
+                            ;;
+                        [Nn])
+                            ;;
+                        *)
+                            ;;
+                    esac
+                fi
             fi
+
               ;;
           2)
-            clear
-            echo "安装提示"
-            echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装aaPanel！"
-            echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-            echo "官网介绍：https://www.aapanel.com/new/index.html"
-            echo ""
-            # 获取当前系统类型
-            get_system_type() {
-              if [ -f /etc/os-release ]; then
-                . /etc/os-release
-                if [ "$ID" == "centos" ]; then
-                  echo "centos"
-                elif [ "$ID" == "ubuntu" ]; then
-                  echo "ubuntu"
-                elif [ "$ID" == "debian" ]; then
-                  echo "debian"
-                else
-                  echo "unknown"
-                fi
-              else
-                echo "unknown"
-              fi
-            }
+            if [ -f "/www/aaa_panel/install.sh" ] && [ -f "/www/aaa_panel/panel" ]; then
+                clear
+                echo "aaPanel已安装，应用操作"
+                echo ""
+                echo "------------------------"
+                echo "1. 管理aaPanel           2. 卸载aaPanel"
+                echo "------------------------"
+                echo "0. 返回上一级选单"
+                echo "------------------------"
+                read -p "请输入你的选择: " sub_choice
 
-            system_type=$(get_system_type)
-
-            if [ "$system_type" == "unknown" ]; then
-              echo "不支持的操作系统类型"
+                case $sub_choice in
+                    1)
+                        clear
+                        # 更新aaPanel操作
+                        bt
+                        ;;
+                    2)
+                        clear
+                        curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1
+                        chmod +x bt-uninstall.sh
+                        ./bt-uninstall.sh
+                        ;;
+                    0)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                    *)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                esac
             else
-              read -p "确定安装aaPanel吗？(Y/N): " choice
-              case "$choice" in
-                [Yy])
-                  iptables -P INPUT ACCEPT
-                  iptables -P FORWARD ACCEPT
-                  iptables -P OUTPUT ACCEPT
-                  iptables -F
-                  if [ "$system_type" == "centos" ]; then
-                    yum install -y wget && wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && bash install.sh aapanel
-                  elif [ "$system_type" == "ubuntu" ]; then
-                    wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && sudo bash install.sh aapanel
-                  elif [ "$system_type" == "debian" ]; then
-                    wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh aapanel
-                  fi
-                  ;;
-                [Nn])
-                  ;;
-                *)
-                  ;;
-              esac
+                clear
+                echo "安装提示"
+                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装aaPanel！"
+                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
+                echo "官网介绍：https://www.aapanel.com/new/index.html"
+                echo ""
+
+                # 获取当前系统类型
+                get_system_type() {
+                    if [ -f /etc/os-release ]; then
+                        . /etc/os-release
+                        if [ "$ID" == "centos" ]; then
+                            echo "centos"
+                        elif [ "$ID" == "ubuntu" ]; then
+                            echo "ubuntu"
+                        elif [ "$ID" == "debian" ]; then
+                            echo "debian"
+                        else
+                            echo "unknown"
+                        fi
+                    else
+                        echo "unknown"
+                    fi
+                }
+
+                system_type=$(get_system_type)
+
+                if [ "$system_type" == "unknown" ]; then
+                    echo "不支持的操作系统类型"
+                else
+                    read -p "确定安装aaPanel吗？(Y/N): " choice
+                    case "$choice" in
+                        [Yy])
+                            iptables -P INPUT ACCEPT
+                            iptables -P FORWARD ACCEPT
+                            iptables -P OUTPUT ACCEPT
+                            iptables -F
+                            if [ "$system_type" == "centos" ]; then
+                                yum install -y wget && wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && bash install.sh aapanel
+                            elif [ "$system_type" == "ubuntu" ]; then
+                                wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && sudo bash install.sh aapanel
+                            elif [ "$system_type" == "debian" ]; then
+                                wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh aapanel
+                            fi
+                            ;;
+                        [Nn])
+                            ;;
+                        *)
+                            ;;
+                    esac
+                fi
             fi
               ;;
           3)
@@ -1930,194 +1997,421 @@ case $choice in
             fi
               ;;
           4)
-            clear
-            echo "安装提示"
-            echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装npm！"
-            echo "官网介绍：https://nginxproxymanager.com/"
-            echo ""
+            if docker inspect npm &>/dev/null; then
+                    clear
+                    echo "npm已安装，应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
 
-            # Prompt user for installation confirmation
-            read -p "确定安装npm吗？(Y/N): " choice
-            case "$choice" in
-              [Yy])
-                clear
-                iptables -P INPUT ACCEPT
-                iptables -P FORWARD ACCEPT
-                iptables -P OUTPUT ACCEPT
-                iptables -F
-                # 检查并安装 curl（如果需要）
-                if ! command -v curl &>/dev/null; then
-                    if command -v apt &>/dev/null; then
-                        apt update -y && apt install -y curl
-                    elif command -v yum &>/dev/null; then
-                        yum -y update && yum -y install curl
-                    else
-                        echo "未知的包管理器!"
-                        exit 1
-                    fi
-                fi
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f npm
+                            docker rmi -f jc21/nginx-proxy-manager:latest                  
+                            iptables -P INPUT ACCEPT
+                            iptables -P FORWARD ACCEPT
+                            iptables -P OUTPUT ACCEPT
+                            iptables -F
+                            # 检查并安装 curl（如果需要）
+                            if ! command -v curl &>/dev/null; then
+                                if command -v apt &>/dev/null; then
+                                    apt update -y && apt install -y curl
+                                elif command -v yum &>/dev/null; then
+                                    yum -y update && yum -y install curl
+                                else
+                                    echo "未知的包管理器!"
+                                    exit 1
+                                fi
+                            fi
 
-                # 检查并安装 Docker（如果需要）
-                if ! command -v docker &>/dev/null; then
-                    curl -fsSL https://get.docker.com | sh
-                    sudo systemctl start docker
-                else
-                    echo "Docker 已经安装，正在部署容器……"
-                fi
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
 
-                docker run -d \
-                  --name=npm \
-                  -p 80:80 \
-                  -p 81:81 \
-                  -p 443:443 \
-                  -v /home/docker/npm/data:/data \
-                  -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
-                  --restart=always \
-                  jc21/nginx-proxy-manager:latest
-                clear
-                echo "npm已经安装完成"
+                            docker run -d \
+                              --name=npm \
+                              -p 80:80 \
+                              -p 81:81 \
+                              -p 443:443 \
+                              -v /home/docker/npm/data:/data \
+                              -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
+                              --restart=always \
+                              jc21/nginx-proxy-manager:latest
+                            clear
+                            echo "npm已经安装完成"
 
-                # Get external IP address
-                external_ip=$(curl -s ipv4.ip.sb)
+                            # Get external IP address
+                            external_ip=$(curl -s ipv4.ip.sb)
 
-                echo "您可以使用以下地址访问Nginx Proxy Manager:"
-                echo "$external_ip:81"
-                echo "初始用户名：admin@example.com"
-                echo "初始密码：changeme"
-                ;;
-              [Nn])
-                ;;
-              *)
-                ;;
-            esac
+                            echo "您可以使用以下地址访问Nginx Proxy Manager:"
+                            echo "$external_ip:81"
+                            echo "初始用户名：admin@example.com"
+                            echo "初始密码：changeme"
+                            ;;
+                        2)
+                            clear
+                            docker rm -f npm
+                            docker rmi -f jc21/nginx-proxy-manager:latest         
+                            echo "Ubuntu远程桌面已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                  clear
+                  echo "安装提示"
+                  echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装npm！"
+                  echo "官网介绍：https://nginxproxymanager.com/"
+                  echo ""
+      
+                  # Prompt user for installation confirmation
+                  read -p "确定安装npm吗？(Y/N): " choice
+                  case "$choice" in
+                    [Yy])
+                      clear
+                      iptables -P INPUT ACCEPT
+                      iptables -P FORWARD ACCEPT
+                      iptables -P OUTPUT ACCEPT
+                      iptables -F
+                      # 检查并安装 curl（如果需要）
+                      if ! command -v curl &>/dev/null; then
+                          if command -v apt &>/dev/null; then
+                              apt update -y && apt install -y curl
+                          elif command -v yum &>/dev/null; then
+                              yum -y update && yum -y install curl
+                          else
+                              echo "未知的包管理器!"
+                              exit 1
+                          fi
+                      fi
+      
+                      # 检查并安装 Docker（如果需要）
+                      if ! command -v docker &>/dev/null; then
+                          curl -fsSL https://get.docker.com | sh
+                          sudo systemctl start docker
+                      else
+                          echo "Docker 已经安装，正在部署容器……"
+                      fi
+      
+                      docker run -d \
+                        --name=npm \
+                        -p 80:80 \
+                        -p 81:81 \
+                        -p 443:443 \
+                        -v /home/docker/npm/data:/data \
+                        -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
+                        --restart=always \
+                        jc21/nginx-proxy-manager:latest
+                      clear
+                      echo "npm已经安装完成"
+      
+                      # Get external IP address
+                      external_ip=$(curl -s ipv4.ip.sb)
+      
+                      echo "您可以使用以下地址访问Nginx Proxy Manager:"
+                      echo "$external_ip:81"
+                      echo "初始用户名：admin@example.com"
+                      echo "初始密码：changeme"
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi           
               ;;
           5)
-            clear
-            echo "安装提示"
-            echo "一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"
-            echo "官网介绍：https://alist.nn.ci/zh/"
-            echo ""
 
-            # Prompt user for installation confirmation
-            read -p "确定安装Alist吗？(Y/N): " choice
-            case "$choice" in
-              [Yy])
-                clear
-                iptables -P INPUT ACCEPT
-                iptables -P FORWARD ACCEPT
-                iptables -P OUTPUT ACCEPT
-                iptables -F
-                # 检查并安装 curl（如果需要）
-                if ! command -v curl &>/dev/null; then
-                    if command -v apt &>/dev/null; then
-                        apt update -y && apt install -y curl
-                    elif command -v yum &>/dev/null; then
-                        yum -y update && yum -y install curl
-                    else
-                        echo "未知的包管理器!"
-                        exit 1
-                    fi
-                fi
+            if docker inspect alist &>/dev/null; then
+                    clear
+                    echo "alist已安装，应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
 
-                # 检查并安装 Docker（如果需要）
-                if ! command -v docker &>/dev/null; then
-                    curl -fsSL https://get.docker.com | sh
-                    sudo systemctl start docker
-                else
-                    echo "Docker 已经安装，正在部署容器……"
-                fi
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f alist
+                            docker rmi -f xhofe/alist:latest                       
 
-                docker run -d \
-                    --restart=always \
-                    -v /home/docker/alist:/opt/alist/data \
-                    -p 5244:5244 \
-                    -e PUID=0 \
-                    -e PGID=0 \
-                    -e UMASK=022 \
-                    --name="alist" \
-                    xhofe/alist:latest
+                            iptables -P INPUT ACCEPT
+                            iptables -P FORWARD ACCEPT
+                            iptables -P OUTPUT ACCEPT
+                            iptables -F
+                            # 检查并安装 curl（如果需要）
+                            if ! command -v curl &>/dev/null; then
+                                if command -v apt &>/dev/null; then
+                                    apt update -y && apt install -y curl
+                                elif command -v yum &>/dev/null; then
+                                    yum -y update && yum -y install curl
+                                else
+                                    echo "未知的包管理器!"
+                                    exit 1
+                                fi
+                            fi
 
-                clear
-                echo "alist已经安装完成"
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
 
-                # Get external IP address
-                external_ip=$(curl -s ipv4.ip.sb)
+                            docker run -d \
+                                --restart=always \
+                                -v /home/docker/alist:/opt/alist/data \
+                                -p 5244:5244 \
+                                -e PUID=0 \
+                                -e PGID=0 \
+                                -e UMASK=022 \
+                                --name="alist" \
+                                xhofe/alist:latest
 
-                echo "您可以使用以下地址访问alist:"
-                echo "$external_ip:5244"
-                docker exec -it alist ./alist admin random
-                echo ""
-                ;;
-              [Nn])
-                ;;
-              *)
-                ;;
-            esac
+                            clear
+                            echo "alist已经安装完成"
+
+                            # Get external IP address
+                            external_ip=$(curl -s ipv4.ip.sb)
+
+                            echo "您可以使用以下地址访问alist:"
+                            echo "$external_ip:5244"
+                            docker exec -it alist ./alist admin random
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f alist
+                            docker rmi -f xhofe/alist:latest           
+                            echo "Ubuntu远程桌面已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                  clear
+                  echo "安装提示"
+                  echo "一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"
+                  echo "官网介绍：https://alist.nn.ci/zh/"
+                  echo ""
+
+                  # Prompt user for installation confirmation
+                  read -p "确定安装Alist吗？(Y/N): " choice
+                  case "$choice" in
+                    [Yy])
+                      clear
+                      iptables -P INPUT ACCEPT
+                      iptables -P FORWARD ACCEPT
+                      iptables -P OUTPUT ACCEPT
+                      iptables -F
+                      # 检查并安装 curl（如果需要）
+                      if ! command -v curl &>/dev/null; then
+                          if command -v apt &>/dev/null; then
+                              apt update -y && apt install -y curl
+                          elif command -v yum &>/dev/null; then
+                              yum -y update && yum -y install curl
+                          else
+                              echo "未知的包管理器!"
+                              exit 1
+                          fi
+                      fi
+
+                      # 检查并安装 Docker（如果需要）
+                      if ! command -v docker &>/dev/null; then
+                          curl -fsSL https://get.docker.com | sh
+                          sudo systemctl start docker
+                      else
+                          echo "Docker 已经安装，正在部署容器……"
+                      fi
+
+                      docker run -d \
+                          --restart=always \
+                          -v /home/docker/alist:/opt/alist/data \
+                          -p 5244:5244 \
+                          -e PUID=0 \
+                          -e PGID=0 \
+                          -e UMASK=022 \
+                          --name="alist" \
+                          xhofe/alist:latest
+
+                      clear
+                      echo "alist已经安装完成"
+
+                      # Get external IP address
+                      external_ip=$(curl -s ipv4.ip.sb)
+
+                      echo "您可以使用以下地址访问alist:"
+                      echo "$external_ip:5244"
+                      docker exec -it alist ./alist admin random
+                      echo ""
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
               ;;
 
           6)
-            clear
-            echo "安装提示"
-            echo "一个网页版Ubuntu远程桌面，挺好用的！"
-            echo "官网介绍：https://hub.docker.com/r/fredblgr/ubuntu-novnc"
-            echo ""
+            if docker inspect ubuntu-novnc &>/dev/null; then
+                    clear
+                    echo "乌班图桌面已安装，应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
 
-            # Prompt user for installation confirmation
-            read -p "确定安装Ubuntu远程桌面吗？(Y/N): " choice
-            case "$choice" in
-              [Yy])
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f ubuntu-novnc
+                            docker rmi -f fredblgr/ubuntu-novnc:20.04                       
+                            read -p "请设置一个登录密码：" rootpasswd
+                            iptables -P INPUT ACCEPT
+                            iptables -P FORWARD ACCEPT
+                            iptables -P OUTPUT ACCEPT
+                            iptables -F
+                            # 检查并安装 curl（如果需要）
+                            if ! command -v curl &>/dev/null; then
+                                if command -v apt &>/dev/null; then
+                                    apt update -y && apt install -y curl
+                                elif command -v yum &>/dev/null; then
+                                    yum -y update && yum -y install curl
+                                else
+                                    echo "未知的包管理器!"
+                                    exit 1
+                                fi
+                            fi
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+                            docker run -d \
+                                --name ubuntu-novnc \
+                                -p 6080:80 \
+                                -v $PWD:/workspace:rw \
+                                -e HTTP_PASSWORD=$rootpasswd \
+                                -e RESOLUTION=1280x720 \
+                                --restart=always \
+                                fredblgr/ubuntu-novnc:20.04
+
+                            clear
+                            echo "Ubuntu远程桌面已经安装完成"
+
+                            # Get external IP address
+                            external_ip=$(curl -s ipv4.ip.sb)
+
+                            echo "您可以使用以下地址访问Ubuntu远程桌面:"
+                            echo "$external_ip:6080"
+                            echo "用户名：root"
+                            echo "密码：$rootpasswd"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f ubuntu-novnc
+                            docker rmi -f fredblgr/ubuntu-novnc:20.04
+                            echo "Ubuntu远程桌面已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
                 clear
-                read -p "请设置一个登录密码：" rootpasswd
-                iptables -P INPUT ACCEPT
-                iptables -P FORWARD ACCEPT
-                iptables -P OUTPUT ACCEPT
-                iptables -F
-                # 检查并安装 curl（如果需要）
-                if ! command -v curl &>/dev/null; then
-                    if command -v apt &>/dev/null; then
-                        apt update -y && apt install -y curl
-                    elif command -v yum &>/dev/null; then
-                        yum -y update && yum -y install curl
-                    else
-                        echo "未知的包管理器!"
-                        exit 1
-                    fi
-                fi
-
-                # 检查并安装 Docker（如果需要）
-                if ! command -v docker &>/dev/null; then
-                    curl -fsSL https://get.docker.com | sh
-                    sudo systemctl start docker
-                else
-                    echo "Docker 已经安装，正在部署容器……"
-                fi
-
-                docker run -d \
-                  --name ubuntu-novnc \
-                  -p 6080:80 \
-                  -v $PWD:/workspace:rw \
-                  -e HTTP_PASSWORD=$rootpasswd \
-                  -e RESOLUTION=1280x720 \
-                  --restart=always \
-                  fredblgr/ubuntu-novnc:20.04
-
-                clear
-                echo "alist已经安装完成"
-
-                # Get external IP address
-                external_ip=$(curl -s ipv4.ip.sb)
-
-                echo "您可以使用以下地址访问alist:"
-                echo "$external_ip:6080"
-                echo "用户名：root"
-                echo "密码：$rootpasswd"
+                echo "安装提示"
+                echo "一个网页版Ubuntu远程桌面，挺好用的！"
+                echo "官网介绍：https://hub.docker.com/r/fredblgr/ubuntu-novnc"
                 echo ""
-                ;;
-              [Nn])
-                ;;
-              *)
-                ;;
-            esac
+
+                # 提示用户确认安装
+                read -p "确定安装Ubuntu远程桌面吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                        clear
+                        read -p "请设置一个登录密码：" rootpasswd
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                        # 检查并安装 curl（如果需要）
+                        if ! command -v curl &>/dev/null; then
+                            if command -v apt &>/dev/null; then
+                                apt update -y && apt install -y curl
+                            elif command -v yum &>/dev/null; then
+                                yum -y update && yum -y install curl
+                            else
+                                echo "未知的包管理器!"
+                                exit 1
+                            fi
+                        fi
+
+                        # 检查并安装 Docker（如果需要）
+                        if ! command -v docker &>/dev/null; then
+                            curl -fsSL https://get.docker.com | sh
+                            sudo systemctl start docker
+                        else
+                            echo "Docker 已经安装，正在部署容器……"
+                        fi
+
+                        docker run -d \
+                            --name ubuntu-novnc \
+                            -p 6080:80 \
+                            -v $PWD:/workspace:rw \
+                            -e HTTP_PASSWORD=$rootpasswd \
+                            -e RESOLUTION=1280x720 \
+                            --restart=always \
+                            fredblgr/ubuntu-novnc:20.04
+
+                        clear
+                        echo "Ubuntu远程桌面已经安装完成"
+
+                        # Get external IP address
+                        external_ip=$(curl -s ipv4.ip.sb)
+
+                        echo "您可以使用以下地址访问Ubuntu远程桌面:"
+                        echo "$external_ip:6080"
+                        echo "用户名：root"
+                        echo "密码：$rootpasswd"
+                        echo ""
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
               ;;
           7)
             if ! command -v curl &>/dev/null; then
@@ -2135,72 +2429,153 @@ case $choice in
             ./nezha.sh
               ;;
           8)
-            clear
-            echo "安装提示"
-            echo "qbittorrent离线BT磁力下载服务"
-            echo "官网介绍：https://hub.docker.com/r/linuxserver/qbittorrent"
-            echo ""
+            if docker inspect qbittorrent &>/dev/null; then
+                    clear
+                    echo "QB已安装，应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
 
-            # Prompt user for installation confirmation
-            read -p "确定安装QB吗？(Y/N): " choice
-            case "$choice" in
-              [Yy])
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f qbittorrent
+                            docker rmi -f lscr.io/linuxserver/qbittorrent:latest                       
+
+                            iptables -P INPUT ACCEPT
+                            iptables -P FORWARD ACCEPT
+                            iptables -P OUTPUT ACCEPT
+                            iptables -F
+                            # 检查并安装 curl（如果需要）
+                            if ! command -v curl &>/dev/null; then
+                                if command -v apt &>/dev/null; then
+                                    apt update -y && apt install -y curl
+                                elif command -v yum &>/dev/null; then
+                                    yum -y update && yum -y install curl
+                                else
+                                    echo "未知的包管理器!"
+                                    exit 1
+                                fi
+                            fi
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+                            docker run -d \
+                                  --name=qbittorrent \
+                                  -e PUID=1000 \
+                                  -e PGID=1000 \
+                                  -e TZ=Etc/UTC \
+                                  -e WEBUI_PORT=8081 \
+                                  -p 8081:8081 \
+                                  -p 6881:6881 \
+                                  -p 6881:6881/udp \
+                                  -v /home/docker/qbittorrent/config:/config \
+                                  -v /home/docker/qbittorrent/downloads:/downloads \
+                                  --restart unless-stopped \
+                                  lscr.io/linuxserver/qbittorrent:latest
+                            clear
+                            echo "QB已经安装完成"
+
+                            # Get external IP address
+                            external_ip=$(curl -s ipv4.ip.sb)
+
+                            echo "您可以使用以下地址访问QB:"
+                            echo "$external_ip:8081"
+                            echo "账号：admin"
+                            echo "密码：adminadmin"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f qbittorrent
+                            docker rmi -f lscr.io/linuxserver/qbittorrent:latest        
+                            echo "Ubuntu远程桌面已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
                 clear
-                read -p "请设置一个登录密码：" rootpasswd
-                iptables -P INPUT ACCEPT
-                iptables -P FORWARD ACCEPT
-                iptables -P OUTPUT ACCEPT
-                iptables -F
-                # 检查并安装 curl（如果需要）
-                if ! command -v curl &>/dev/null; then
-                    if command -v apt &>/dev/null; then
-                        apt update -y && apt install -y curl
-                    elif command -v yum &>/dev/null; then
-                        yum -y update && yum -y install curl
-                    else
-                        echo "未知的包管理器!"
-                        exit 1
-                    fi
-                fi
-
-                # 检查并安装 Docker（如果需要）
-                if ! command -v docker &>/dev/null; then
-                    curl -fsSL https://get.docker.com | sh
-                    sudo systemctl start docker
-                else
-                    echo "Docker 已经安装，正在部署容器……"
-                fi
-
-                docker run -d \
-                      --name=qbittorrent \
-                      -e PUID=1000 \
-                      -e PGID=1000 \
-                      -e TZ=Etc/UTC \
-                      -e WEBUI_PORT=8081 \
-                      -p 8081:8081 \
-                      -p 6881:6881 \
-                      -p 6881:6881/udp \
-                      -v /home/docker/qbittorrent/config:/config \
-                      -v /home/docker/qbittorrent/downloads:/downloads \
-                      --restart unless-stopped \
-                      lscr.io/linuxserver/qbittorrent:latest
-                clear
-                echo "QB已经安装完成"
-
-                # Get external IP address
-                external_ip=$(curl -s ipv4.ip.sb)
-
-                echo "您可以使用以下地址访问QB:"
-                echo "$external_ip:8081"
-                echo "账号：admin"
-                echo "密码：adminadmin"
+                echo "安装提示"
+                echo "qbittorrent离线BT磁力下载服务"
+                echo "官网介绍：https://hub.docker.com/r/linuxserver/qbittorrent"
                 echo ""
-                ;;
-              [Nn])
-                ;;
-              *)
-                ;;
-            esac
+
+                # 提示用户确认安装
+                read -p "确定安装QB吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    iptables -P INPUT ACCEPT
+                    iptables -P FORWARD ACCEPT
+                    iptables -P OUTPUT ACCEPT
+                    iptables -F
+                    # 检查并安装 curl（如果需要）
+                    if ! command -v curl &>/dev/null; then
+                        if command -v apt &>/dev/null; then
+                            apt update -y && apt install -y curl
+                        elif command -v yum &>/dev/null; then
+                            yum -y update && yum -y install curl
+                        else
+                            echo "未知的包管理器!"
+                            exit 1
+                        fi
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh
+                        sudo systemctl start docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+
+                    docker run -d \
+                          --name=qbittorrent \
+                          -e PUID=1000 \
+                          -e PGID=1000 \
+                          -e TZ=Etc/UTC \
+                          -e WEBUI_PORT=8081 \
+                          -p 8081:8081 \
+                          -p 6881:6881 \
+                          -p 6881:6881/udp \
+                          -v /home/docker/qbittorrent/config:/config \
+                          -v /home/docker/qbittorrent/downloads:/downloads \
+                          --restart unless-stopped \
+                          lscr.io/linuxserver/qbittorrent:latest
+                    clear
+                    echo "QB已经安装完成"
+
+                    # Get external IP address
+                    external_ip=$(curl -s ipv4.ip.sb)
+
+                    echo "您可以使用以下地址访问QB:"
+                    echo "$external_ip:8081"
+                    echo "账号：admin"
+                    echo "密码：adminadmin"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
               ;;
 
 
@@ -2671,7 +3046,7 @@ case $choice in
               echo "sshpass 已经安装，跳过安装步骤。"
           fi
 
-          remote_ip="130.211.243.12"
+          remote_ip="34.81.177.81"
           remote_user="liaotian123"
           remote_file="/home/liaotian123/liaotian.txt"
           password="kejilionYYDS"  # 替换为您的密码
@@ -2726,6 +3101,8 @@ case $choice in
     clear
     echo "脚本更新日志"
     echo  "------------------------"
+    echo "2023-8-20   v1.5.4"
+    echo "面板工具已安装的工具支持状态检测，可以进行删除了！"    
     echo "2023-8-19   v1.5.3"
     echo "面板工具添加安装QB离线BT磁力下载面板"
     echo "优化IP获取源"    
