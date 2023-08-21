@@ -391,18 +391,6 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              # 检查并安装 curl（如果需要）
-              if ! command -v curl &>/dev/null; then
-                  if command -v apt &>/dev/null; then
-                      apt update -y && apt install -y curl
-                  elif command -v yum &>/dev/null; then
-                      yum -y update && yum -y install curl
-                  else
-                      echo "未知的包管理器!"
-                      exit 1
-                  fi
-              fi
-
               curl -fsSL https://get.docker.com | sh
               sudo systemctl start docker
               curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
@@ -821,17 +809,6 @@ case $choice in
               read -p "确定安装吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
-                  # 检查并安装 curl（如果需要）
-                  if ! command -v curl &>/dev/null; then
-                      if command -v apt &>/dev/null; then
-                          apt update -y && apt install -y curl
-                      elif command -v yum &>/dev/null; then
-                          yum -y update && yum -y install curl
-                      else
-                          echo "未知的包管理器!"
-                          exit 1
-                      fi
-                  fi
 
                   # 检查并安装 Docker（如果需要）
                   if ! command -v docker &>/dev/null; then
@@ -1019,10 +996,15 @@ case $choice in
       sed -i "s/kejilionYYDS/$dbusepasswd/g" /home/web/docker-compose.yml
       sed -i "s/kejilion/$dbuse/g" /home/web/docker-compose.yml
 
-      iptables -P INPUT ACCEPT
-      iptables -P FORWARD ACCEPT
-      iptables -P OUTPUT ACCEPT
-      iptables -F
+      if ! command -v iptables &> /dev/null; then
+      echo ""
+      else
+          # iptables命令
+          iptables -P INPUT ACCEPT
+          iptables -P FORWARD ACCEPT
+          iptables -P OUTPUT ACCEPT
+          iptables -F
+      fi
 
       cd /home/web && docker-compose up -d
 
@@ -1837,10 +1819,16 @@ case $choice in
                     read -p "确定安装宝塔吗？(Y/N): " choice
                     case "$choice" in
                         [Yy])
-                            iptables -P INPUT ACCEPT
-                            iptables -P FORWARD ACCEPT
-                            iptables -P OUTPUT ACCEPT
-                            iptables -F
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
                             if ! command -v wget &>/dev/null; then
                                 if command -v apt &>/dev/null; then
                                     apt update -y && apt install -y wget
@@ -1933,10 +1921,16 @@ case $choice in
                     read -p "确定安装aaPanel吗？(Y/N): " choice
                     case "$choice" in
                         [Yy])
-                            iptables -P INPUT ACCEPT
-                            iptables -P FORWARD ACCEPT
-                            iptables -P OUTPUT ACCEPT
-                            iptables -F
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
                             if ! command -v wget &>/dev/null; then
                                 if command -v apt &>/dev/null; then
                                     apt update -y && apt install -y wget
@@ -1996,10 +1990,16 @@ case $choice in
               read -p "确定安装1Panel吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
-                  iptables -P INPUT ACCEPT
-                  iptables -P FORWARD ACCEPT
-                  iptables -P OUTPUT ACCEPT
-                  iptables -F
+                  if ! command -v iptables &> /dev/null; then
+                  echo ""
+                  else
+                      # iptables命令
+                      iptables -P INPUT ACCEPT
+                      iptables -P FORWARD ACCEPT
+                      iptables -P OUTPUT ACCEPT
+                      iptables -F
+                  fi
+
                   if [ "$system_type" == "centos" ]; then
                     curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sh quick_start.sh
                   elif [ "$system_type" == "ubuntu" ]; then
@@ -2031,21 +2031,16 @@ case $choice in
                             clear
                             docker rm -f npm
                             docker rmi -f jc21/nginx-proxy-manager:latest
-                            iptables -P INPUT ACCEPT
-                            iptables -P FORWARD ACCEPT
-                            iptables -P OUTPUT ACCEPT
-                            iptables -F
-                            # 检查并安装 curl（如果需要）
-                            if ! command -v curl &>/dev/null; then
-                                if command -v apt &>/dev/null; then
-                                    apt update -y && apt install -y curl
-                                elif command -v yum &>/dev/null; then
-                                    yum -y update && yum -y install curl
-                                else
-                                    echo "未知的包管理器!"
-                                    exit 1
-                                fi
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
                             fi
+
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
@@ -2100,21 +2095,16 @@ case $choice in
                   case "$choice" in
                     [Yy])
                       clear
-                      iptables -P INPUT ACCEPT
-                      iptables -P FORWARD ACCEPT
-                      iptables -P OUTPUT ACCEPT
-                      iptables -F
-                      # 检查并安装 curl（如果需要）
-                      if ! command -v curl &>/dev/null; then
-                          if command -v apt &>/dev/null; then
-                              apt update -y && apt install -y curl
-                          elif command -v yum &>/dev/null; then
-                              yum -y update && yum -y install curl
-                          else
-                              echo "未知的包管理器!"
-                              exit 1
-                          fi
+                      if ! command -v iptables &> /dev/null; then
+                      echo ""
+                      else
+                          # iptables命令
+                          iptables -P INPUT ACCEPT
+                          iptables -P FORWARD ACCEPT
+                          iptables -P OUTPUT ACCEPT
+                          iptables -F
                       fi
+
 
                       # 检查并安装 Docker（如果需要）
                       if ! command -v docker &>/dev/null; then
@@ -2169,21 +2159,16 @@ case $choice in
                             docker rm -f alist
                             docker rmi -f xhofe/alist:latest
 
-                            iptables -P INPUT ACCEPT
-                            iptables -P FORWARD ACCEPT
-                            iptables -P OUTPUT ACCEPT
-                            iptables -F
-                            # 检查并安装 curl（如果需要）
-                            if ! command -v curl &>/dev/null; then
-                                if command -v apt &>/dev/null; then
-                                    apt update -y && apt install -y curl
-                                elif command -v yum &>/dev/null; then
-                                    yum -y update && yum -y install curl
-                                else
-                                    echo "未知的包管理器!"
-                                    exit 1
-                                fi
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
                             fi
+
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
@@ -2239,21 +2224,16 @@ case $choice in
                   case "$choice" in
                     [Yy])
                       clear
-                      iptables -P INPUT ACCEPT
-                      iptables -P FORWARD ACCEPT
-                      iptables -P OUTPUT ACCEPT
-                      iptables -F
-                      # 检查并安装 curl（如果需要）
-                      if ! command -v curl &>/dev/null; then
-                          if command -v apt &>/dev/null; then
-                              apt update -y && apt install -y curl
-                          elif command -v yum &>/dev/null; then
-                              yum -y update && yum -y install curl
-                          else
-                              echo "未知的包管理器!"
-                              exit 1
-                          fi
+                      if ! command -v iptables &> /dev/null; then
+                      echo ""
+                      else
+                          # iptables命令
+                          iptables -P INPUT ACCEPT
+                          iptables -P FORWARD ACCEPT
+                          iptables -P OUTPUT ACCEPT
+                          iptables -F
                       fi
+
 
                       # 检查并安装 Docker（如果需要）
                       if ! command -v docker &>/dev/null; then
@@ -2309,21 +2289,17 @@ case $choice in
                             docker rm -f ubuntu-novnc
                             docker rmi -f fredblgr/ubuntu-novnc:20.04
                             read -p "请设置一个登录密码：" rootpasswd
-                            iptables -P INPUT ACCEPT
-                            iptables -P FORWARD ACCEPT
-                            iptables -P OUTPUT ACCEPT
-                            iptables -F
-                            # 检查并安装 curl（如果需要）
-                            if ! command -v curl &>/dev/null; then
-                                if command -v apt &>/dev/null; then
-                                    apt update -y && apt install -y curl
-                                elif command -v yum &>/dev/null; then
-                                    yum -y update && yum -y install curl
-                                else
-                                    echo "未知的包管理器!"
-                                    exit 1
-                                fi
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
                             fi
+
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
@@ -2380,21 +2356,17 @@ case $choice in
                     [Yy])
                         clear
                         read -p "请设置一个登录密码：" rootpasswd
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                        # 检查并安装 curl（如果需要）
-                        if ! command -v curl &>/dev/null; then
-                            if command -v apt &>/dev/null; then
-                                apt update -y && apt install -y curl
-                            elif command -v yum &>/dev/null; then
-                                yum -y update && yum -y install curl
-                            else
-                                echo "未知的包管理器!"
-                                exit 1
-                            fi
+
+                        if ! command -v iptables &> /dev/null; then
+                        echo ""
+                        else
+                            # iptables命令
+                            iptables -P INPUT ACCEPT
+                            iptables -P FORWARD ACCEPT
+                            iptables -P OUTPUT ACCEPT
+                            iptables -F
                         fi
+
 
                         # 检查并安装 Docker（如果需要）
                         if ! command -v docker &>/dev/null; then
@@ -2433,16 +2405,6 @@ case $choice in
             fi
               ;;
           7)
-            if ! command -v curl &>/dev/null; then
-                if command -v apt &>/dev/null; then
-                    apt update -y && apt install -y curl
-                elif command -v yum &>/dev/null; then
-                    yum -y update && yum -y install curl
-                else
-                    echo "未知的包管理器!"
-                    exit 1
-                fi
-            fi
             clear
             curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
             ./nezha.sh
@@ -2464,21 +2426,16 @@ case $choice in
                             docker rm -f qbittorrent
                             docker rmi -f lscr.io/linuxserver/qbittorrent:latest
 
-                            iptables -P INPUT ACCEPT
-                            iptables -P FORWARD ACCEPT
-                            iptables -P OUTPUT ACCEPT
-                            iptables -F
-                            # 检查并安装 curl（如果需要）
-                            if ! command -v curl &>/dev/null; then
-                                if command -v apt &>/dev/null; then
-                                    apt update -y && apt install -y curl
-                                elif command -v yum &>/dev/null; then
-                                    yum -y update && yum -y install curl
-                                else
-                                    echo "未知的包管理器!"
-                                    exit 1
-                                fi
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
                             fi
+
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
@@ -2538,21 +2495,16 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    iptables -P INPUT ACCEPT
-                    iptables -P FORWARD ACCEPT
-                    iptables -P OUTPUT ACCEPT
-                    iptables -F
-                    # 检查并安装 curl（如果需要）
-                    if ! command -v curl &>/dev/null; then
-                        if command -v apt &>/dev/null; then
-                            apt update -y && apt install -y curl
-                        elif command -v yum &>/dev/null; then
-                            yum -y update && yum -y install curl
-                        else
-                            echo "未知的包管理器!"
-                            exit 1
-                        fi
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
                     fi
+
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -2766,6 +2718,7 @@ case $choice in
       echo "8. 一键重装系统"
       echo "9. 禁用ROOT账户创建新账户"
       echo "10. 切换优先ipv4/ipv6"
+      echo "11. 查看端口占用状态"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -2894,10 +2847,15 @@ case $choice in
 
           5)
               clear
-              iptables -P INPUT ACCEPT
-              iptables -P FORWARD ACCEPT
-              iptables -P OUTPUT ACCEPT
-              iptables -F
+                if ! command -v iptables &> /dev/null; then
+                echo ""
+                else
+                    # iptables命令
+                    iptables -P INPUT ACCEPT
+                    iptables -P FORWARD ACCEPT
+                    iptables -P OUTPUT ACCEPT
+                    iptables -F
+                fi
               echo "端口已全部开放"
               ;;
           6)
@@ -3051,6 +3009,7 @@ case $choice in
             echo "操作已完成。"
             ;;
 
+
           10)
             clear
             ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
@@ -3086,7 +3045,10 @@ case $choice in
             esac
             ;;
 
-
+          11)
+            clear
+            ss -tulnape
+            ;;
 
 
           21)
@@ -3161,6 +3123,7 @@ case $choice in
     echo  "------------------------"
     echo "2023-8-21   v1.5.4"
     echo "系统工具中添加优先ipv4/ipv6选项"
+    echo "系统工具中添加查看端口占用状态选项"
     echo  "------------------------"
     echo "2023-8-20   v1.5.4"
     echo "面板工具已安装的工具支持状态检测，可以进行删除了！"
