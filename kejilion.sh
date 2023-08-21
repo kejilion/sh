@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5.4 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1765,7 +1765,7 @@ case $choice in
       echo "5. AList多存储文件列表程序"
       echo "6. Ubuntu远程桌面网页版"
       echo "7. 哪吒探针VPS监控面板"
-      echo "8. QB离线BT磁力下载面板"      
+      echo "8. QB离线BT磁力下载面板"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -2030,7 +2030,7 @@ case $choice in
                         1)
                             clear
                             docker rm -f npm
-                            docker rmi -f jc21/nginx-proxy-manager:latest                  
+                            docker rmi -f jc21/nginx-proxy-manager:latest
                             iptables -P INPUT ACCEPT
                             iptables -P FORWARD ACCEPT
                             iptables -P OUTPUT ACCEPT
@@ -2078,7 +2078,7 @@ case $choice in
                         2)
                             clear
                             docker rm -f npm
-                            docker rmi -f jc21/nginx-proxy-manager:latest         
+                            docker rmi -f jc21/nginx-proxy-manager:latest
                             echo "Ubuntu远程桌面已卸载"
                             ;;
                         0)
@@ -2094,7 +2094,7 @@ case $choice in
                   echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装npm！"
                   echo "官网介绍：https://nginxproxymanager.com/"
                   echo ""
-      
+
                   # Prompt user for installation confirmation
                   read -p "确定安装npm吗？(Y/N): " choice
                   case "$choice" in
@@ -2115,7 +2115,7 @@ case $choice in
                               exit 1
                           fi
                       fi
-      
+
                       # 检查并安装 Docker（如果需要）
                       if ! command -v docker &>/dev/null; then
                           curl -fsSL https://get.docker.com | sh
@@ -2123,7 +2123,7 @@ case $choice in
                       else
                           echo "Docker 已经安装，正在部署容器……"
                       fi
-      
+
                       docker run -d \
                         --name=npm \
                         -p 80:80 \
@@ -2135,10 +2135,10 @@ case $choice in
                         jc21/nginx-proxy-manager:latest
                       clear
                       echo "npm已经安装完成"
-      
+
                       # Get external IP address
                       external_ip=$(curl -s ipv4.ip.sb)
-      
+
                       echo "您可以使用以下地址访问Nginx Proxy Manager:"
                       echo "$external_ip:81"
                       echo "初始用户名：admin@example.com"
@@ -2149,7 +2149,7 @@ case $choice in
                     *)
                         ;;
                 esac
-            fi           
+            fi
               ;;
           5)
 
@@ -2167,7 +2167,7 @@ case $choice in
                         1)
                             clear
                             docker rm -f alist
-                            docker rmi -f xhofe/alist:latest                       
+                            docker rmi -f xhofe/alist:latest
 
                             iptables -P INPUT ACCEPT
                             iptables -P FORWARD ACCEPT
@@ -2217,7 +2217,7 @@ case $choice in
                         2)
                             clear
                             docker rm -f alist
-                            docker rmi -f xhofe/alist:latest           
+                            docker rmi -f xhofe/alist:latest
                             echo "Ubuntu远程桌面已卸载"
                             ;;
                         0)
@@ -2307,7 +2307,7 @@ case $choice in
                         1)
                             clear
                             docker rm -f ubuntu-novnc
-                            docker rmi -f fredblgr/ubuntu-novnc:20.04                       
+                            docker rmi -f fredblgr/ubuntu-novnc:20.04
                             read -p "请设置一个登录密码：" rootpasswd
                             iptables -P INPUT ACCEPT
                             iptables -P FORWARD ACCEPT
@@ -2462,7 +2462,7 @@ case $choice in
                         1)
                             clear
                             docker rm -f qbittorrent
-                            docker rmi -f lscr.io/linuxserver/qbittorrent:latest                       
+                            docker rmi -f lscr.io/linuxserver/qbittorrent:latest
 
                             iptables -P INPUT ACCEPT
                             iptables -P FORWARD ACCEPT
@@ -2516,7 +2516,7 @@ case $choice in
                         2)
                             clear
                             docker rm -f qbittorrent
-                            docker rmi -f lscr.io/linuxserver/qbittorrent:latest        
+                            docker rmi -f lscr.io/linuxserver/qbittorrent:latest
                             echo "Ubuntu远程桌面已卸载"
                             ;;
                         0)
@@ -2765,6 +2765,7 @@ case $choice in
       echo "7. 优化DNS地址"
       echo "8. 一键重装系统"
       echo "9. 禁用ROOT账户创建新账户"
+      echo "10. 切换优先ipv4/ipv6"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -3050,6 +3051,44 @@ case $choice in
             echo "操作已完成。"
             ;;
 
+          10)
+            clear
+            ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
+
+            echo ""
+            if [ "$ipv6_disabled" -eq 1 ]; then
+                echo "当前网络优先级设置：IPv4 优先"
+            else
+                echo "当前网络优先级设置：IPv6 优先"
+            fi
+            echo "------------------------"
+
+            echo ""
+            echo "切换的网络优先级"
+            echo "------------------------"
+            echo "1. IPv4 优先          2. IPv6 优先"
+            echo "------------------------"
+            read -p "选择优先的网络: " choice
+
+            case $choice in
+                1)
+                    sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null 2>&1
+                    echo "已切换为 IPv4 优先"
+                    ;;
+                2)
+                    sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
+                    echo "已切换为 IPv6 优先"
+                    ;;
+                *)
+                    echo "无效的选择"
+                    ;;
+
+            esac
+            ;;
+
+
+
+
           21)
           clear
           # 检查是否已安装 sshpass
@@ -3120,12 +3159,15 @@ case $choice in
     clear
     echo "脚本更新日志"
     echo  "------------------------"
+    echo "2023-8-21   v1.5.4"
+    echo "系统工具中添加优先ipv4/ipv6选项"
+    echo  "------------------------"
     echo "2023-8-20   v1.5.4"
-    echo "面板工具已安装的工具支持状态检测，可以进行删除了！"    
+    echo "面板工具已安装的工具支持状态检测，可以进行删除了！"
     echo  "------------------------"
     echo "2023-8-19   v1.5.3"
     echo "面板工具添加安装QB离线BT磁力下载面板"
-    echo "优化IP获取源"    
+    echo "优化IP获取源"
     echo  "------------------------"
     echo "2023-8-18   v1.5.2"
     echo "LDNMP加入了更新LDNMP选项"
