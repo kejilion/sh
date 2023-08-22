@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -948,10 +948,11 @@ case $choice in
     echo  "------------------------"
     echo  "31. 查看当前站点信息"
     echo  "32. 备份全站数据"
-    echo  "33. 还原全站数据"
-    echo  "34. 删除站点数据"
-    echo  "35. 更新LDNMP环境"
-    echo  "36. 卸载LDNMP环境"
+    echo  "33. 定时远程备份"
+    echo  "34. 还原全站数据"
+    echo  "35. 删除站点数据"
+    echo  "36. 更新LDNMP环境"
+    echo  "37. 卸载LDNMP环境"
     echo  "------------------------"
     echo  "0. 返回主菜单"
     echo  "------------------------"
@@ -1480,6 +1481,37 @@ case $choice in
 
     33)
       clear
+      read -p "输入远程服务器IP：" useip
+      read -p "输入远程服务器密码：" usepasswd
+
+      wget -O ${useip}_beifen.sh https://raw.githubusercontent.com/kejilion/sh/main/beifen.sh > /dev/null 2>&1
+      chmod +x ${useip}_beifen.sh
+
+      sed -i "s/0.0.0.0/$useip/g" ${useip}_beifen.sh
+      sed -i "s/123456/$usepasswd/g" ${useip}_beifen.sh
+
+      echo "------------------------"
+      echo "1. 每周备份                 2. 每天备份"
+      read -p "请输入你的选择: " dingshi
+
+      case $dingshi in
+          1)
+              read -p "选择每周备份的星期几 (0-6，0代表星期日): " weekday
+              (crontab -l ; echo "0 0 * * $weekday ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
+              ;;
+          2)
+              read -p "选择每天备份的时间（小时，0-23）: " hour
+              (crontab -l ; echo "0 $hour * * * ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
+              ;;
+          *)
+              break  # 跳出
+              ;;
+      esac
+
+      ;;
+
+    34)
+      clear
       cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
 
       # 更新并安装必要的软件包
@@ -1558,7 +1590,7 @@ case $choice in
 
       ;;
 
-    34)
+    35)
     while true; do
         clear
         echo "LDNMP环境"
@@ -1622,7 +1654,7 @@ case $choice in
     done
       ;;
 
-    35)
+    36)
       clear
       docker rm -f nginx php php74 mysql redis
       docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
@@ -1699,7 +1731,7 @@ case $choice in
 
 
 
-    36)
+    37)
         clear
         read -p "强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): " choice
         case "$choice" in
@@ -3121,7 +3153,10 @@ case $choice in
     clear
     echo "脚本更新日志"
     echo  "------------------------"
-    echo "2023-8-21   v1.5.4"
+    echo "2023-8-21   v1.5.6"
+    echo "LDNMP建站添加了定时自动远程备份功能"
+    echo  "------------------------"
+    echo "2023-8-21   v1.5.5"
     echo "系统工具中添加优先ipv4/ipv6选项"
     echo "系统工具中添加查看端口占用状态选项"
     echo  "------------------------"
