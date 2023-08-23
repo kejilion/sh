@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1508,6 +1508,18 @@ case $choice in
               ;;
       esac
 
+      if ! command -v sshpass &>/dev/null; then
+          if command -v apt &>/dev/null; then
+              apt update -y && apt install -y sshpass
+          elif command -v yum &>/dev/null; then
+              yum -y update && yum -y install sshpass
+          else
+              echo "未知的包管理器!"
+          fi
+      else
+          echo "sshpass 已经安装，跳过安装步骤。"
+      fi
+
       ;;
 
     34)
@@ -1780,6 +1792,7 @@ case $choice in
       echo "6. Ubuntu远程桌面网页版"
       echo "7. 哪吒探针VPS监控面板"
       echo "8. QB离线BT磁力下载面板"
+      echo "9. poste.io邮件服务器程序"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -2106,7 +2119,7 @@ case $choice in
                             clear
                             docker rm -f npm
                             docker rmi -f jc21/nginx-proxy-manager:latest
-                            echo "Ubuntu远程桌面已卸载"
+                            echo "应用已卸载"
                             ;;
                         0)
                             break  # 跳出循环，退出菜单
@@ -2235,7 +2248,7 @@ case $choice in
                             clear
                             docker rm -f alist
                             docker rmi -f xhofe/alist:latest
-                            echo "Ubuntu远程桌面已卸载"
+                            echo "应用已卸载"
                             ;;
                         0)
                             break  # 跳出循环，退出菜单
@@ -2366,7 +2379,7 @@ case $choice in
                             clear
                             docker rm -f ubuntu-novnc
                             docker rmi -f fredblgr/ubuntu-novnc:20.04
-                            echo "Ubuntu远程桌面已卸载"
+                            echo "应用已卸载"
                             ;;
                         0)
                             break  # 跳出循环，退出菜单
@@ -2439,7 +2452,6 @@ case $choice in
           7)
             clear
             curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
-            ./nezha.sh
               ;;
           8)
             if docker inspect qbittorrent &>/dev/null; then
@@ -2506,7 +2518,7 @@ case $choice in
                             clear
                             docker rm -f qbittorrent
                             docker rmi -f lscr.io/linuxserver/qbittorrent:latest
-                            echo "Ubuntu远程桌面已卸载"
+                            echo "应用已卸载"
                             ;;
                         0)
                             break  # 跳出循环，退出菜单
@@ -2581,6 +2593,131 @@ case $choice in
 
               ;;
 
+          9)
+            clear
+            if docker inspect mailserver &>/dev/null; then
+                    clear
+                    echo "poste.io已安装，应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f mailserver
+                            docker rmi -f analogic/poste.io
+
+                            read -p "请设置之前的邮箱域名：" yuming
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+                            docker run \
+                                --net=host \
+                                -e TZ=Europe/Prague \
+                                -v /home/docker/mail:/data \
+                                --name "mailserver" \
+                                -h "$yuming" \
+                                --restart=always \
+                                -d analogic/poste.io
+
+                            clear
+                            echo "poste.io已经安装完成"
+
+                            echo "您可以使用以下地址访问poste.io:"
+                            echo "$yuming"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f mailserver
+                            docker rmi -f analogic/poste.io
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "poste.io一个邮件服务器，确保80和443端口没被占用，确保25端口开放"
+                echo "官网介绍：https://hub.docker.com/r/analogic/poste.io"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装poste.io吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+
+                    read -p "请设置邮箱域名 例如 mail.yuming.com ：" yuming
+
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh
+                        sudo systemctl start docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+
+                    docker run \
+                        --net=host \
+                        -e TZ=Europe/Prague \
+                        -v /home/docker/mail:/data \
+                        --name "mailserver" \
+                        -h "$yuming" \
+                        --restart=always \
+                        -d analogic/poste.io
+
+                    clear
+                    echo "poste.io已经安装完成"
+
+                    echo "您可以使用以下地址访问poste.io:"
+                    echo "$yuming"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+              ;;
 
           0)
               /root/kejilion.sh
@@ -3152,6 +3289,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-22   v1.5.7"
+    echo "面板工具增加了邮件服务器搭建，请确保服务器的25.80.443开放"
     echo  "------------------------"
     echo "2023-8-21   v1.5.6"
     echo "LDNMP建站添加了定时自动远程备份功能"
