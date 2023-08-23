@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1793,6 +1793,7 @@ case $choice in
       echo "7. 哪吒探针VPS监控面板"
       echo "8. QB离线BT磁力下载面板"
       echo "9. poste.io邮件服务器程序"
+      echo "10. RocketChat多人在线聊天系统"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -2720,6 +2721,143 @@ case $choice in
             fi
               ;;
 
+          10)
+            if docker inspect rocketchat &>/dev/null; then
+                    clear
+                    echo "rocket.chat已安装，应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f rocketchat
+                            docker rmi -f rocket.chat
+                            docker rm -f db
+                            docker rmi -f mongo:latest
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+
+                            docker run --name db -d --restart=always \
+                                -v /home/docker/mongo/dump:/dump \
+                                mongo:latest --replSet rs5 --oplogSize 256
+
+                            sleep 5
+
+                            docker exec -it db mongosh --eval "printjson(rs.initiate())"
+
+                            sleep 5
+
+                            docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+
+                            clear
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "rocket.chat已经安装完成"
+
+                            echo "多等一会，您可以使用以下地址访问rocket.chat:"
+                            echo "$external_ip:3897"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f rocketchat
+                            docker rmi -f rocket.chat
+                            docker rm -f db
+                            docker rmi -f mongo:latest
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "rocket.chat国外知名开源多人聊天系统"
+                echo "官网介绍：https://www.rocket.chat"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装rocket.chat吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh
+                        sudo systemctl start docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+
+                    docker run --name db -d --restart=always \
+                        -v /home/docker/mongo/dump:/dump \
+                        mongo:latest --replSet rs5 --oplogSize 256
+
+                    sleep 5
+
+                    docker exec -it db mongosh --eval "printjson(rs.initiate())"
+
+                    sleep 5
+
+                    docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+
+
+                    clear
+
+
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "rocket.chat已经安装完成"
+
+                    echo "多等一会，您可以使用以下地址访问rocket.chat:"
+                    echo "$external_ip:3897"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+              ;;
+
           0)
               /root/kejilion.sh
               exit
@@ -3290,6 +3428,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-22   v1.5.8"
+    echo "面板工具增加了聊天系统搭建"
     echo  "------------------------"
     echo "2023-8-22   v1.5.7"
     echo "面板工具增加了邮件服务器搭建，请确保服务器的25.80.443开放"
