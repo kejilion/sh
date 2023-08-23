@@ -2452,6 +2452,7 @@ case $choice in
           7)
             clear
             curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
+            ./nezha.sh
               ;;
           8)
             if docker inspect qbittorrent &>/dev/null; then
