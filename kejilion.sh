@@ -2062,7 +2062,7 @@ case $choice in
                     clear
                     echo "npm已安装，访问地址："
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http://$external_ip:81"
+                    echo "http:$external_ip:81"
                     echo ""
                     echo "应用操作"
                     echo "------------------------"
@@ -2112,7 +2112,7 @@ case $choice in
                             external_ip=$(curl -s ipv4.ip.sb)
 
                             echo "您可以使用以下地址访问Nginx Proxy Manager:"
-                            echo "http://$external_ip:81"
+                            echo "http:$external_ip:81"
                             echo "初始用户名：admin@example.com"
                             echo "初始密码：changeme"
                             ;;
@@ -2176,7 +2176,7 @@ case $choice in
                       external_ip=$(curl -s ipv4.ip.sb)
 
                       echo "您可以使用以下地址访问Nginx Proxy Manager:"
-                      echo "http://$external_ip:81"
+                      echo "http:$external_ip:81"
                       echo "初始用户名：admin@example.com"
                       echo "初始密码：changeme"
                         ;;
@@ -2193,7 +2193,7 @@ case $choice in
                     clear
                     echo "alist已安装，访问地址："
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http://$external_ip:5244"
+                    echo "http:$external_ip:5244"
                     echo ""
                     echo "应用操作"
                     echo "------------------------"
@@ -2245,7 +2245,7 @@ case $choice in
                             external_ip=$(curl -s ipv4.ip.sb)
 
                             echo "您可以使用以下地址访问alist:"
-                            echo "http://$external_ip:5244"
+                            echo "http:$external_ip:5244"
                             docker exec -it alist ./alist admin random
                             echo ""
                             ;;
@@ -2310,7 +2310,7 @@ case $choice in
                       external_ip=$(curl -s ipv4.ip.sb)
 
                       echo "您可以使用以下地址访问alist:"
-                      echo "http://$external_ip:5244"
+                      echo "http:$external_ip:5244"
                       docker exec -it alist ./alist admin random
                       echo ""
                         ;;
@@ -2327,7 +2327,7 @@ case $choice in
                     clear
                     echo "乌班图桌面已安装，访问地址："
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http://$external_ip:6080"
+                    echo "http:$external_ip:6080"
                     echo ""
 
                     echo "应用操作"
@@ -2380,7 +2380,7 @@ case $choice in
                             external_ip=$(curl -s ipv4.ip.sb)
 
                             echo "您可以使用以下地址访问Ubuntu远程桌面:"
-                            echo "http://$external_ip:6080"
+                            echo "http:$external_ip:6080"
                             echo "用户名：root"
                             echo "密码：$rootpasswd"
                             echo ""
@@ -2447,7 +2447,7 @@ case $choice in
                         external_ip=$(curl -s ipv4.ip.sb)
 
                         echo "您可以使用以下地址访问Ubuntu远程桌面:"
-                        echo "http://$external_ip:6080"
+                        echo "http:$external_ip:6080"
                         echo "用户名：root"
                         echo "密码：$rootpasswd"
                         echo ""
@@ -2470,7 +2470,7 @@ case $choice in
 
                     echo "QB已安装，访问地址："
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http://$external_ip:8081"
+                    echo "http:$external_ip:8081"
                     echo ""
 
                     echo "应用操作"
@@ -2526,7 +2526,7 @@ case $choice in
                             external_ip=$(curl -s ipv4.ip.sb)
 
                             echo "您可以使用以下地址访问QB:"
-                            echo "http://$external_ip:8081"
+                            echo "http:$external_ip:8081"
                             echo "账号：admin"
                             echo "密码：adminadmin"
                             echo ""
@@ -2595,7 +2595,7 @@ case $choice in
                     external_ip=$(curl -s ipv4.ip.sb)
 
                     echo "您可以使用以下地址访问QB:"
-                    echo "http://$external_ip:8081"
+                    echo "http:$external_ip:8081"
                     echo "账号：admin"
                     echo "密码：adminadmin"
                     echo ""
@@ -2613,6 +2613,7 @@ case $choice in
           9)
             if docker inspect mailserver &>/dev/null; then
 
+                    clear
                     echo "poste.io已安装，访问地址："
                     echo "https://$yuming"
                     echo ""
@@ -2767,12 +2768,13 @@ case $choice in
           10)
             if docker inspect rocketchat &>/dev/null; then
 
-                    echo "rocket.chat已安装，访问地址："
-                    external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http://$external_ip:3897"
-                    echo ""
 
                     clear
+                    echo "rocket.chat已安装，访问地址："
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:3897"
+                    echo ""
+
                     echo "应用操作"
                     echo "------------------------"
                     echo "1. 更新应用             2. 卸载应用"
@@ -2826,7 +2828,7 @@ case $choice in
                             echo "rocket.chat已经安装完成"
                             echo "------------------------"
                             echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                            echo "http://$external_ip:3897"
+                            echo "http:$external_ip:3897"
                             echo ""
                             ;;
                         2)
@@ -2895,7 +2897,7 @@ case $choice in
                     echo "rocket.chat已经安装完成"
                     echo "------------------------"
                     echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                    echo "http://$external_ip:3897"
+                    echo "http:$external_ip:3897"
                     echo ""
 
                         ;;
@@ -2912,12 +2914,12 @@ case $choice in
           11)
             if docker inspect zentao-server &>/dev/null; then
 
+                    clear
                     echo "禅道已安装，访问地址："
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http://$external_ip:82"
+                    echo "http:$external_ip:82"
                     echo ""
 
-                    clear
                     echo "应用操作"
                     echo "------------------------"
                     echo "1. 更新应用             2. 卸载应用"
@@ -2967,7 +2969,7 @@ case $choice in
                             echo "您可以使用以下地址访问禅道:"
 
                             external_ip=$(curl -s ipv4.ip.sb)
-                            echo "http://$external_ip:82"
+                            echo "http:$external_ip:82"
                             echo "账号和密码没变"
                             echo ""
                             ;;
@@ -3027,7 +3029,7 @@ case $choice in
                     echo "------------------------"
                     echo "您可以使用以下地址访问禅道:"
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http://$external_ip:82"
+                    echo "http:$external_ip:82"
                     echo "账号：admin"
                     echo "密码：123456"
                     echo ""
@@ -3047,7 +3049,7 @@ case $choice in
                     clear
                     echo "青龙面板已安装，访问地址："
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http://$external_ip:5700"
+                    echo "http:$external_ip:5700"
                     echo ""
 
                     echo "应用操作"
@@ -3098,7 +3100,7 @@ case $choice in
                             echo "您可以使用以下地址访问青龙面板:"
 
                             external_ip=$(curl -s ipv4.ip.sb)
-                            echo "http://$external_ip:5700"
+                            echo "http:$external_ip:5700"
                             echo ""
                             ;;
                         2)
@@ -3157,7 +3159,7 @@ case $choice in
                     echo "------------------------"
                     echo "您可以使用以下地址访问青龙面板:"
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http://$external_ip:5700"
+                    echo "http:$external_ip:5700"
                     echo ""
 
                         ;;
