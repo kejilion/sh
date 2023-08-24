@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1784,17 +1784,12 @@ case $choice in
       echo " ▼ "
       echo "常用面板工具"
       echo "------------------------"
-      echo "1. 宝塔面板官方版"
-      echo "2. aaPanel宝塔国际版"
-      echo "3. 1Panel新一代管理面板"
-      echo "4. Nginx Proxy Manager NGINX可视化面板"
-      echo "5. AList多存储文件列表程序"
-      echo "6. Ubuntu远程桌面网页版"
-      echo "7. 哪吒探针VPS监控面板"
-      echo "8. QB离线BT磁力下载面板"
-      echo "9. poste.io邮件服务器程序"
-      echo "10. RocketChat多人在线聊天系统"
-      echo "11. 禅道项目管理软件"
+      echo "1. 宝塔面板官方版                       2. aaPanel宝塔国际版"
+      echo "3. 1Panel新一代管理面板                 4. NginxProxyManager可视化面板"
+      echo "5. AList多存储文件列表程序              6. Ubuntu远程桌面网页版"
+      echo "7. 哪吒探针VPS监控面板                  8. QB离线BT磁力下载面板"
+      echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
+      echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -2359,7 +2354,7 @@ case $choice in
                             docker run -d \
                                 --name ubuntu-novnc \
                                 -p 6080:80 \
-                                -v $PWD:/workspace:rw \
+                                -v /home/docker/ubuntu:/workspace:rw \
                                 -e HTTP_PASSWORD=$rootpasswd \
                                 -e RESOLUTION=1280x720 \
                                 --restart=always \
@@ -2426,7 +2421,7 @@ case $choice in
                         docker run -d \
                             --name ubuntu-novnc \
                             -p 6080:80 \
-                            -v $PWD:/workspace:rw \
+                            -v /home/docker/ubuntu:/workspace:rw \
                             -e HTTP_PASSWORD=$rootpasswd \
                             -e RESOLUTION=1280x720 \
                             --restart=always \
@@ -2937,8 +2932,7 @@ case $choice in
 
                             external_ip=$(curl -s ipv4.ip.sb)
                             echo "$external_ip:82"
-                            echo "账号：admin"
-                            echo "密码：123456"
+                            echo "账号和密码没变"
                             echo ""
                             ;;
                         2)
@@ -3009,6 +3003,131 @@ case $choice in
                         ;;
                 esac
             fi
+
+              ;;
+
+          12)
+            if docker inspect qinglong &>/dev/null; then
+                    clear
+                    echo "青龙面板已安装，应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f qinglong
+                            docker rmi -f whyour/qinglong:latest
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+                            docker run -d \
+                              -v /home/docker/ql/data:/ql/data \
+                              -p 5700:5700 \
+                              --name qinglong \
+                              --hostname qinglong \
+                              --restart unless-stopped \
+                              whyour/qinglong:latest
+
+
+                            clear
+                            echo "青龙面板已经安装完成"
+                            echo "------------------------"
+                            echo "您可以使用以下地址访问青龙面板:"
+
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "$external_ip:5700"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f qinglong
+                            docker rmi -f whyour/qinglong:latest
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "青龙面板是一个定时任务管理平台"
+                echo "官网介绍：https://github.com/whyour/qinglong"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装青龙面板吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh
+                        sudo systemctl start docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+
+                    docker run -d \
+                      -v /home/docker/ql/data:/ql/data \
+                      -p 5700:5700 \
+                      --name qinglong \
+                      --hostname qinglong \
+                      --restart unless-stopped \
+                      whyour/qinglong:latest
+
+                    clear
+                    echo "青龙面板已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问青龙面板:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "$external_ip:5700"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
+
 
               ;;
 
@@ -3584,6 +3703,10 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-24   v1.6"
+    echo "面板工具增加了青龙面板搭建"
+    echo "调整了面板工具列表的排版显示效果"
     echo  "------------------------"
     echo "2023-8-24   v1.5.9"
     echo "面板工具增加了禅道项目管理软件搭建"
