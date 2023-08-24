@@ -2596,9 +2596,7 @@ case $choice in
               ;;
 
           9)
-            clear
             if docker inspect mailserver &>/dev/null; then
-                    clear
                     echo "poste.io已安装，应用操作"
                     echo "------------------------"
                     echo "1. 更新应用             2. 卸载应用"
@@ -2665,6 +2663,31 @@ case $choice in
                     esac
             else
                 clear
+                if ! command -v telnet &>/dev/null; then
+                    if command -v apt &>/dev/null; then
+                        apt update -y && apt install -y telnet
+                    elif command -v yum &>/dev/null; then
+                        yum -y update && yum -y install telnet
+                    else
+                        echo "未知的包管理器!"
+                        exit 1
+                    fi
+                fi
+
+                clear
+                echo ""
+                echo "端口检测"
+                port=25
+                timeout=3
+
+                if echo "quit" | timeout $timeout telnet smtp.qq.com $port | grep 'Connected'; then
+                  echo -e "\e[32m端口$port当前可用\e[0m"
+                else
+                  echo -e "\e[31m端口$port当前不可用\e[0m"
+                fi
+                echo "------------------------"
+                echo ""
+
                 echo "安装提示"
                 echo "poste.io一个邮件服务器，确保80和443端口没被占用，确保25端口开放"
                 echo "官网介绍：https://hub.docker.com/r/analogic/poste.io"
@@ -3374,7 +3397,7 @@ case $choice in
               echo "sshpass 已经安装，跳过安装步骤。"
           fi
 
-          remote_ip="34.81.177.81"
+          remote_ip="34.92.162.132"
           remote_user="liaotian123"
           remote_file="/home/liaotian123/liaotian.txt"
           password="kejilionYYDS"  # 替换为您的密码
