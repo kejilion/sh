@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.5.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.5.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1794,6 +1794,7 @@ case $choice in
       echo "8. QB离线BT磁力下载面板"
       echo "9. poste.io邮件服务器程序"
       echo "10. RocketChat多人在线聊天系统"
+      echo "11. 禅道项目管理软件"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -2881,6 +2882,138 @@ case $choice in
             fi
               ;;
 
+
+
+          11)
+            if docker inspect zentao-server &>/dev/null; then
+                    clear
+                    echo "禅道已安装，应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f zentao-server
+                            docker rmi -f idoop/zentao:latest
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+                            docker run -d -p 82:80 -p 3308:3306 \
+                                    -e ADMINER_USER="root" -e ADMINER_PASSWD="password" \
+                                    -e BIND_ADDRESS="false" \
+                                    -v /home/docker/zbox/:/opt/zbox/ \
+                                    --add-host smtp.exmail.qq.com:163.177.90.125 \
+                                    --name zentao-server \
+                                    --restart=always \
+                                    idoop/zentao:latest
+
+
+                            clear
+                            echo "禅道已经安装完成"
+                            echo "------------------------"
+                            echo "您可以使用以下地址访问禅道:"
+
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "$external_ip:82"
+                            echo "账号：admin"
+                            echo "密码：123456"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f zentao-server
+                            docker rmi -f idoop/zentao:latest
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "禅道是通用的项目管理软件"
+                echo "官网介绍：https://www.zentao.net/"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装禅道吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh
+                        sudo systemctl start docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+
+                    docker run -d -p 82:80 -p 3308:3306 \
+                            -e ADMINER_USER="root" -e ADMINER_PASSWD="password" \
+                            -e BIND_ADDRESS="false" \
+                            -v /home/docker/zbox/:/opt/zbox/ \
+                            --add-host smtp.exmail.qq.com:163.177.90.125 \
+                            --name zentao-server \
+                            --restart=always \
+                            idoop/zentao:latest
+                    clear
+                    echo "禅道已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问禅道:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "$external_ip:82"
+                    echo "账号：admin"
+                    echo "密码：123456"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
+              ;;
+
+
+
           0)
               /root/kejilion.sh
               exit
@@ -3452,7 +3585,10 @@ case $choice in
     clear
     echo "脚本更新日志"
     echo  "------------------------"
-    echo "2023-8-22   v1.5.8"
+    echo "2023-8-24   v1.5.9"
+    echo "面板工具增加了禅道项目管理软件搭建"
+    echo  "------------------------"
+    echo "2023-8-23   v1.5.8"
     echo "面板工具增加了聊天系统搭建"
     echo  "------------------------"
     echo "2023-8-22   v1.5.7"
