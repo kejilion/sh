@@ -2710,6 +2710,7 @@ case $choice in
                 echo "------------------------"
                 echo ""
 
+
                 echo "安装提示"
                 echo "poste.io一个邮件服务器，确保80和443端口没被占用，确保25端口开放"
                 echo "官网介绍：https://hub.docker.com/r/analogic/poste.io"
@@ -2722,6 +2723,20 @@ case $choice in
                     clear
 
                     read -p "请设置邮箱域名 例如 mail.yuming.com ：" yuming
+                    echo "------------------------"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "先解析这些DNS记录"
+                    echo "A           mail            $external_ip"
+                    echo "CNAME       imap            $yuming"
+                    echo "CNAME       pop             $yuming"
+                    echo "CNAME       smtp            $yuming"
+                    echo "MX          @               $yuming"
+                    echo "TXT         @               v=spf1 mx ~all"
+                    echo "TXT         ?               ?"
+                    echo ""
+                    echo "------------------------"
+                    echo "按任意键继续..."
+                    read -n 1 -s -r -p ""
 
                     if ! command -v iptables &> /dev/null; then
                     echo ""
