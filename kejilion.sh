@@ -2616,7 +2616,8 @@ case $choice in
 
                     clear
                     echo "poste.io已安装，访问地址："
-                    echo "https://$yuming"
+                    yuming=$(cat /home/docker/mail.txt)
+                    echo "https://$yuming"                    
                     echo ""
 
                     echo "应用操作"
@@ -2632,8 +2633,6 @@ case $choice in
                             clear
                             docker rm -f mailserver
                             docker rmi -f analogic/poste.io
-
-                            read -p "请设置之前的邮箱域名：" yuming
 
                             if ! command -v iptables &> /dev/null; then
                             echo ""
@@ -2654,6 +2653,7 @@ case $choice in
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
 
+                            yuming=$(cat /home/docker/mail.txt)
                             docker run \
                                 --net=host \
                                 -e TZ=Europe/Prague \
@@ -2674,6 +2674,7 @@ case $choice in
                             clear
                             docker rm -f mailserver
                             docker rmi -f analogic/poste.io
+                            rm /home/docker/mail.txt
                             echo "应用已卸载"
                             ;;
                         0)
@@ -2723,6 +2724,7 @@ case $choice in
                     clear
 
                     read -p "请设置邮箱域名 例如 mail.yuming.com ：" yuming
+                    echo "$yuming" > /home/docker/mail.txt
                     echo "------------------------"
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "先解析这些DNS记录"
