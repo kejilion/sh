@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.6.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1009,30 +1009,62 @@ case $choice in
 
       cd /home/web && docker-compose up -d
 
-      docker exec php apt update
-      docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick
-      docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache
-      docker exec php pecl install imagick
-      docker exec php sh -c 'echo "extension=imagick.so" > /usr/local/etc/php/conf.d/imagick.ini'
-      docker exec php pecl install redis
-      docker exec php sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini'
-      docker exec php sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini'
-      docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
-      docker exec php sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
-      docker exec php sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
 
-      docker exec php74 apt update
-      docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick
-      docker exec php74 docker-php-ext-install mysqli pdo_mysql zip gd intl bcmath opcache
-      docker exec php74 pecl install imagick
-      docker exec php74 sh -c 'echo "extension=imagick.so" > /usr/local/etc/php/conf.d/imagick.ini'
-      docker exec php74 pecl install redis
-      docker exec php74 sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini'
-      docker exec php74 sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini'
-      docker exec php74 sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
-      docker exec php74 sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
-      docker exec php74 sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
+      clear
+      echo "正在配置LDNMP环境，请耐心稍等……"
+      
+      # 定义要执行的命令
+      commands=(
+          "docker exec php apt update > /dev/null 2>&1"
+          "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
+          "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
+          "docker exec php pecl install imagick > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"extension=imagick.so\" > /usr/local/etc/php/conf.d/imagick.ini' > /dev/null 2>&1"
+          "docker exec php pecl install redis > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
+          "docker exec php74 apt update > /dev/null 2>&1"
+          "docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
+          "docker exec php74 docker-php-ext-install mysqli pdo_mysql zip gd intl bcmath opcache > /dev/null 2>&1"
+          "docker exec php74 pecl install imagick > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"extension=imagick.so\" > /usr/local/etc/php/conf.d/imagick.ini' > /dev/null 2>&1"
+          "docker exec php74 pecl install redis > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+
+      )
+      
+      total_commands=${#commands[@]}  # 计算总命令数
+      
+      for ((i = 0; i < total_commands; i++)); do
+          command="${commands[i]}"
+          eval $command  # 执行命令
+      
+          # 打印百分比和进度条
+          percentage=$(( (i + 1) * 100 / total_commands ))
+          completed=$(( percentage / 2 ))
+          remaining=$(( 50 - completed ))
+          progressBar="["
+          for ((j = 0; j < completed; j++)); do
+              progressBar+="#"
+          done
+          for ((j = 0; j < remaining; j++)); do
+              progressBar+="."
+          done
+          progressBar+="]"
+          echo -ne "\r[$percentage%] $progressBar"
+      done
+      
+      echo  # 打印换行，以便输出不被覆盖
+            
+      
       clear
       echo "LDNMP环境安装完毕"
       echo "------------------------"
@@ -1546,32 +1578,60 @@ case $choice in
       cd /home/web && docker-compose up -d
 
 
-      docker exec php apt update
-      docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick
-      docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache
-      docker exec php pecl install imagick
-      docker exec php sh -c 'echo "extension=imagick.so" > /usr/local/etc/php/conf.d/imagick.ini'
-      docker exec php pecl install redis
-      docker exec php sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini'
-      docker exec php sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini'
-      docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
-      docker exec php sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
-      docker exec php sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
+      clear
+      echo "正在配置LDNMP环境，请耐心稍等……"
+      
+      # 定义要执行的命令
+      commands=(
+          "docker exec php apt update > /dev/null 2>&1"
+          "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
+          "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
+          "docker exec php pecl install imagick > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"extension=imagick.so\" > /usr/local/etc/php/conf.d/imagick.ini' > /dev/null 2>&1"
+          "docker exec php pecl install redis > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
-      docker exec php74 apt update
-      docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick
-      docker exec php74 docker-php-ext-install mysqli pdo_mysql zip gd intl bcmath opcache
-      docker exec php74 pecl install imagick
-      docker exec php74 sh -c 'echo "extension=imagick.so" > /usr/local/etc/php/conf.d/imagick.ini'
-      docker exec php74 pecl install redis
-      docker exec php74 sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini'
-      docker exec php74 sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini'
-      docker exec php74 sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
-      docker exec php74 sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
-      docker exec php74 sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
+          "docker exec php74 apt update > /dev/null 2>&1"
+          "docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
+          "docker exec php74 docker-php-ext-install mysqli pdo_mysql zip gd intl bcmath opcache > /dev/null 2>&1"
+          "docker exec php74 pecl install imagick > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"extension=imagick.so\" > /usr/local/etc/php/conf.d/imagick.ini' > /dev/null 2>&1"
+          "docker exec php74 pecl install redis > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
-      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
-      docker restart php && docker restart php74 && docker restart nginx
+      )
+      
+      total_commands=${#commands[@]}  # 计算总命令数
+      
+      for ((i = 0; i < total_commands; i++)); do
+          command="${commands[i]}"
+          eval $command  # 执行命令
+      
+          # 打印百分比和进度条
+          percentage=$(( (i + 1) * 100 / total_commands ))
+          completed=$(( percentage / 2 ))
+          remaining=$(( 50 - completed ))
+          progressBar="["
+          for ((j = 0; j < completed; j++)); do
+              progressBar+="#"
+          done
+          for ((j = 0; j < remaining; j++)); do
+              progressBar+="."
+          done
+          progressBar+="]"
+          echo -ne "\r[$percentage%] $progressBar"
+      done
+      
+      echo  # 打印换行，以便输出不被覆盖
+
 
 
       clear
@@ -1692,29 +1752,59 @@ case $choice in
       cd /home/web && docker-compose up -d
 
 
-      docker exec php apt update
-      docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick
-      docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache
-      docker exec php pecl install imagick
-      docker exec php sh -c 'echo "extension=imagick.so" > /usr/local/etc/php/conf.d/imagick.ini'
-      docker exec php pecl install redis
-      docker exec php sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini'
-      docker exec php sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini'
-      docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
-      docker exec php sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
-      docker exec php sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
+      clear
+      echo "正在配置LDNMP环境，请耐心稍等……"
+      
+      # 定义要执行的命令
+      commands=(
+          "docker exec php apt update > /dev/null 2>&1"
+          "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
+          "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
+          "docker exec php pecl install imagick > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"extension=imagick.so\" > /usr/local/etc/php/conf.d/imagick.ini' > /dev/null 2>&1"
+          "docker exec php pecl install redis > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
-      docker exec php74 apt update
-      docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick
-      docker exec php74 docker-php-ext-install mysqli pdo_mysql zip gd intl bcmath opcache
-      docker exec php74 pecl install imagick
-      docker exec php74 sh -c 'echo "extension=imagick.so" > /usr/local/etc/php/conf.d/imagick.ini'
-      docker exec php74 pecl install redis
-      docker exec php74 sh -c 'echo "extension=redis.so" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini'
-      docker exec php74 sh -c 'echo "upload_max_filesize=50M \n post_max_size=50M" > /usr/local/etc/php/conf.d/uploads.ini'
-      docker exec php74 sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini'
-      docker exec php74 sh -c 'echo "max_execution_time=120" > /usr/local/etc/php/conf.d/max_execution_time.ini'
-      docker exec php74 sh -c 'echo "max_input_time=70" > /usr/local/etc/php/conf.d/max_input_time.ini'
+          "docker exec php74 apt update > /dev/null 2>&1"
+          "docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
+          "docker exec php74 docker-php-ext-install mysqli pdo_mysql zip gd intl bcmath opcache > /dev/null 2>&1"
+          "docker exec php74 pecl install imagick > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"extension=imagick.so\" > /usr/local/etc/php/conf.d/imagick.ini' > /dev/null 2>&1"
+          "docker exec php74 pecl install redis > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+
+      )
+      
+      total_commands=${#commands[@]}  # 计算总命令数
+      
+      for ((i = 0; i < total_commands; i++)); do
+          command="${commands[i]}"
+          eval $command  # 执行命令
+      
+          # 打印百分比和进度条
+          percentage=$(( (i + 1) * 100 / total_commands ))
+          completed=$(( percentage / 2 ))
+          remaining=$(( 50 - completed ))
+          progressBar="["
+          for ((j = 0; j < completed; j++)); do
+              progressBar+="#"
+          done
+          for ((j = 0; j < remaining; j++)); do
+              progressBar+="."
+          done
+          progressBar+="]"
+          echo -ne "\r[$percentage%] $progressBar"
+      done
+      
+      echo  # 打印换行，以便输出不被覆盖
 
       docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
       docker restart php && docker restart php74 && docker restart nginx
@@ -3748,6 +3838,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-27   v1.6.1"
+    echo "LDNMP大幅优化安装体验，添加安装进度条和百分比显示，太刁了！"
     echo  "------------------------"
     echo "2023-8-24   v1.6"
     echo "面板工具增加了青龙面板搭建"
