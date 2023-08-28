@@ -106,9 +106,19 @@ case $choice in
         }' /proc/net/dev)
 
 
-      current_time=$(date "+%Y-%m-%d %I:%M %p")
+    current_time=$(date "+%Y-%m-%d %I:%M %p")
 
 
+    swap_used=$(free -m | awk 'NR==3{print $3}')
+    swap_total=$(free -m | awk 'NR==3{print $2}')
+
+    if [ "$swap_total" -eq 0 ]; then
+        swap_percentage=0
+    else
+        swap_percentage=$((swap_used * 100 / swap_total))
+    fi
+
+    swap_info="${swap_used}MB/${swap_total}MB (${swap_percentage}%)"
 
 
 
@@ -126,7 +136,8 @@ case $choice in
     echo "CPU核心数: $cpu_cores"
     echo "------------------------"
     echo "CPU占用: $cpu_usage_percent"
-    echo "内存占用: $mem_info"
+    echo "物理内存: $mem_info"
+    echo "虚拟内存: $swap_info"
     echo "硬盘占用: $disk_info"
     echo "------------------------"
     echo "$output"
@@ -3494,6 +3505,7 @@ case $choice in
       echo "9. 禁用ROOT账户创建新账户"
       echo "10. 切换优先ipv4/ipv6"
       echo "11. 查看端口占用状态"
+      echo "12. 修改虚拟内存大小"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -3825,6 +3837,56 @@ case $choice in
             ss -tulnape
             ;;
 
+          12)
+            clear
+            # 获取当前交换空间信息
+            swap_used=$(free -m | awk 'NR==3{print $3}')
+            swap_total=$(free -m | awk 'NR==3{print $2}')
+
+            if [ "$swap_total" -eq 0 ]; then
+                swap_percentage=0
+            else
+                swap_percentage=$((swap_used * 100 / swap_total))
+            fi
+
+            swap_info="${swap_used}MB/${swap_total}MB (${swap_percentage}%)"
+
+            echo "当前虚拟内存：$swap_info"
+
+            # 询问是否调整大小
+            read -p "是否调整大小 (y/n): " choice
+
+            if [ "$choice" != "y" ]; then
+                echo "取消操作"
+                exit 0
+            fi
+
+            # 输入新的虚拟内存大小
+            read -p "请输入虚拟内存大小MB: " new_swap
+
+            # 修改虚拟内存大小
+            if [ ! -f "/swapfile" ]; then
+                echo "创建新的交换空间文件"
+                fallocate -l ${new_swap}M /swapfile
+                chmod 600 /swapfile
+                mkswap /swapfile
+                swapon /swapfile
+                echo "/swapfile none swap sw 0 0" | tee -a /etc/fstab
+            else
+                if [ "$new_swap" -lt "$swap_used" ]; then
+                    echo "新的虚拟内存大小小于当前使用量，无法调整"
+                else
+                    echo "请稍等正在修改虚拟内存大小……"
+                    swapoff /swapfile > /dev/null 2>&1
+                    dd if=/dev/zero of=/swapfile bs=1M count=$new_swap > /dev/null 2>&1
+                    chmod 600 /swapfile > /dev/null 2>&1
+                    mkswap /swapfile > /dev/null 2>&1
+                    swapon /swapfile > /dev/null 2>&1
+                    echo "虚拟内存修改成功"
+                fi
+            fi
+            ;;
+
 
           21)
           clear
@@ -3895,6 +3957,10 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-28   v1.6.3"
+    echo "系统工具中增加修改虚拟内存大小的选项"
+    echo "系统信息查询中显示虚拟内存占用"
     echo  "------------------------"
     echo "2023-8-28   v1.6.2"
     echo "docker管理可以显示容器所属网络，并且可以加入网络和退出网络了"
