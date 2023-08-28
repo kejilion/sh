@@ -3853,38 +3853,44 @@ case $choice in
 
             echo "当前虚拟内存：$swap_info"
 
-            # 询问是否调整大小
-            read -p "是否调整大小 (y/n): " choice
 
-            if [ "$choice" != "y" ]; then
-                echo "取消操作"
-                exit 0
-            fi
+            read -p "是否调整大小?(Y/N): " choice
 
-            # 输入新的虚拟内存大小
-            read -p "请输入虚拟内存大小MB: " new_swap
+            case "$choice" in
+              [Yy])
+              # 输入新的虚拟内存大小
+              read -p "请输入虚拟内存大小MB: " new_swap
 
-            # 修改虚拟内存大小
-            if [ ! -f "/swapfile" ]; then
-                echo "创建新的交换空间文件"
-                fallocate -l ${new_swap}M /swapfile
-                chmod 600 /swapfile
-                mkswap /swapfile
-                swapon /swapfile
-                echo "/swapfile none swap sw 0 0" | tee -a /etc/fstab
-            else
-                if [ "$new_swap" -lt "$swap_used" ]; then
-                    echo "新的虚拟内存大小小于当前使用量，无法调整"
-                else
-                    echo "请稍等正在修改虚拟内存大小……"
-                    swapoff /swapfile > /dev/null 2>&1
-                    dd if=/dev/zero of=/swapfile bs=1M count=$new_swap > /dev/null 2>&1
-                    chmod 600 /swapfile > /dev/null 2>&1
-                    mkswap /swapfile > /dev/null 2>&1
-                    swapon /swapfile > /dev/null 2>&1
-                    echo "虚拟内存修改成功"
-                fi
-            fi
+              # 修改虚拟内存大小
+              if [ ! -f "/swapfile" ]; then
+                  echo "创建新的交换空间文件"
+                  fallocate -l ${new_swap}M /swapfile
+                  chmod 600 /swapfile
+                  mkswap /swapfile
+                  swapon /swapfile
+                  echo "/swapfile none swap sw 0 0" | tee -a /etc/fstab
+              else
+                  if [ "$new_swap" -lt "$swap_used" ]; then
+                      echo "新的虚拟内存大小小于当前使用量，无法调整"
+                  else
+                      echo "请稍等正在修改虚拟内存大小……"
+                      swapoff /swapfile > /dev/null 2>&1
+                      dd if=/dev/zero of=/swapfile bs=1M count=$new_swap > /dev/null 2>&1
+                      chmod 600 /swapfile > /dev/null 2>&1
+                      mkswap /swapfile > /dev/null 2>&1
+                      swapon /swapfile > /dev/null 2>&1
+                      echo "虚拟内存修改成功"
+                  fi
+              fi
+                ;;
+              [Nn])
+                echo "已取消"
+                ;;
+              *)
+                echo "无效的选择，请输入 Y 或 N。"
+                ;;
+            esac
+
             ;;
 
 
