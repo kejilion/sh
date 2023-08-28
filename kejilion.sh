@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.6.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.6.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -430,7 +430,7 @@ case $choice in
                   echo "4. 删除指定容器             8. 删除所有容器"
                   echo "5. 重启指定容器             9. 重启所有容器"
                   echo "------------------------"
-                  echo "11. 进入指定容器           12. 查看容器日志"
+                  echo "11. 进入指定容器           12. 查看容器日志           13. 查看容器网络"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
@@ -508,6 +508,33 @@ case $choice in
                           echo ""
                           clear
                           ;;
+                      13)
+                          echo ""
+                          container_ids=$(docker ps -q)
+
+                          echo "------------------------------------------------------------"
+                          printf "%-25s %-25s %-25s\n" "容器名称" "网络名称" "IP地址"
+
+                          for container_id in $container_ids; do
+                              container_info=$(docker inspect --format '{{ .Name }}{{ range $network, $config := .NetworkSettings.Networks }} {{ $network }} {{ $config.IPAddress }}{{ end }}' "$container_id")
+
+                              container_name=$(echo "$container_info" | awk '{print $1}')
+                              network_info=$(echo "$container_info" | cut -d' ' -f2-)
+
+                              while IFS= read -r line; do
+                                  network_name=$(echo "$line" | awk '{print $1}')
+                                  ip_address=$(echo "$line" | awk '{print $2}')
+
+                                  printf "%-20s %-20s %-15s\n" "$container_name" "$network_name" "$ip_address"
+                              done <<< "$network_info"
+                          done
+
+                          echo -e "\033[0;32m操作完成\033[0m"
+                          echo "按任意键继续..."
+                          read -n 1 -s -r -p ""
+                          echo ""
+                          clear
+                          ;;
 
                       0)
                           break  # 跳出循环，退出菜单
@@ -576,12 +603,34 @@ case $choice in
               while true; do
                   clear
                   echo "Docker网络列表"
+                  echo "------------------------------------------------------------"
                   docker network ls
+                  echo ""
+
+                  echo "------------------------------------------------------------"
+                  container_ids=$(docker ps -q)
+                  printf "%-25s %-25s %-25s\n" "容器名称" "网络名称" "IP地址"
+
+                  for container_id in $container_ids; do
+                      container_info=$(docker inspect --format '{{ .Name }}{{ range $network, $config := .NetworkSettings.Networks }} {{ $network }} {{ $config.IPAddress }}{{ end }}' "$container_id")
+
+                      container_name=$(echo "$container_info" | awk '{print $1}')
+                      network_info=$(echo "$container_info" | cut -d' ' -f2-)
+
+                      while IFS= read -r line; do
+                          network_name=$(echo "$line" | awk '{print $1}')
+                          ip_address=$(echo "$line" | awk '{print $2}')
+
+                          printf "%-20s %-20s %-15s\n" "$container_name" "$network_name" "$ip_address"
+                      done <<< "$network_info"
+                  done
+
                   echo ""
                   echo "网络操作"
                   echo "------------------------"
                   echo "1. 创建网络"
                   echo "2. 加入网络"
+                  echo "2. 退出网络"
                   echo "3. 删除网络"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
@@ -597,8 +646,16 @@ case $choice in
                           read -p "加入网络名：" dockernetwork
                           read -p "那些容器加入该网络：" dockername
                           docker network connect $dockernetwork $dockername
+                          echo ""
                           ;;
                       3)
+                          read -p "退出网络名：" dockernetwork
+                          read -p "那些容器退出该网络：" dockername
+                          docker network disconnect $dockernetwork $dockername
+                          echo ""
+                          ;;
+
+                      4)
                           read -p "请输入要删除的网络名：" dockernetwork
                           docker network rm $dockernetwork
                           ;;
@@ -1012,7 +1069,7 @@ case $choice in
 
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
-      
+
       # 定义要执行的命令
       commands=(
           "docker exec php apt update > /dev/null 2>&1"
@@ -1040,13 +1097,13 @@ case $choice in
           "docker exec php74 sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
       )
-      
+
       total_commands=${#commands[@]}  # 计算总命令数
-      
+
       for ((i = 0; i < total_commands; i++)); do
           command="${commands[i]}"
           eval $command  # 执行命令
-      
+
           # 打印百分比和进度条
           percentage=$(( (i + 1) * 100 / total_commands ))
           completed=$(( percentage / 2 ))
@@ -1061,10 +1118,10 @@ case $choice in
           progressBar+="]"
           echo -ne "\r[$percentage%] $progressBar"
       done
-      
+
       echo  # 打印换行，以便输出不被覆盖
-            
-      
+
+
       clear
       echo "LDNMP环境安装完毕"
       echo "------------------------"
@@ -1580,7 +1637,7 @@ case $choice in
 
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
-      
+
       # 定义要执行的命令
       commands=(
           "docker exec php apt update > /dev/null 2>&1"
@@ -1608,13 +1665,13 @@ case $choice in
           "docker exec php74 sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
       )
-      
+
       total_commands=${#commands[@]}  # 计算总命令数
-      
+
       for ((i = 0; i < total_commands; i++)); do
           command="${commands[i]}"
           eval $command  # 执行命令
-      
+
           # 打印百分比和进度条
           percentage=$(( (i + 1) * 100 / total_commands ))
           completed=$(( percentage / 2 ))
@@ -1629,7 +1686,7 @@ case $choice in
           progressBar+="]"
           echo -ne "\r[$percentage%] $progressBar"
       done
-      
+
       echo  # 打印换行，以便输出不被覆盖
 
 
@@ -1754,7 +1811,7 @@ case $choice in
 
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
-      
+
       # 定义要执行的命令
       commands=(
           "docker exec php apt update > /dev/null 2>&1"
@@ -1782,13 +1839,13 @@ case $choice in
           "docker exec php74 sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
       )
-      
+
       total_commands=${#commands[@]}  # 计算总命令数
-      
+
       for ((i = 0; i < total_commands; i++)); do
           command="${commands[i]}"
           eval $command  # 执行命令
-      
+
           # 打印百分比和进度条
           percentage=$(( (i + 1) * 100 / total_commands ))
           completed=$(( percentage / 2 ))
@@ -1803,7 +1860,7 @@ case $choice in
           progressBar+="]"
           echo -ne "\r[$percentage%] $progressBar"
       done
-      
+
       echo  # 打印换行，以便输出不被覆盖
 
       docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
@@ -2707,7 +2764,7 @@ case $choice in
                     clear
                     echo "poste.io已安装，访问地址："
                     yuming=$(cat /home/docker/mail.txt)
-                    echo "https://$yuming"                    
+                    echo "https://$yuming"
                     echo ""
 
                     echo "应用操作"
@@ -3838,6 +3895,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-28   v1.6.2"
+    echo "docker管理可以显示容器所属网络，并且可以加入网络和退出网络了"
     echo  "------------------------"
     echo "2023-8-27   v1.6.1"
     echo "LDNMP大幅优化安装体验，添加安装进度条和百分比显示，太刁了！"
