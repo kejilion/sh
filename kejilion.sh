@@ -3838,50 +3838,58 @@ case $choice in
             ;;
 
           12)
+
+            if [ "$EUID" -ne 0 ]; then
+              echo "请以 root 权限运行此脚本。"
+              exit 1
+            fi
+
             clear
             # 获取当前交换空间信息
             swap_used=$(free -m | awk 'NR==3{print $3}')
             swap_total=$(free -m | awk 'NR==3{print $2}')
 
             if [ "$swap_total" -eq 0 ]; then
-                swap_percentage=0
+              swap_percentage=0
             else
-                swap_percentage=$((swap_used * 100 / swap_total))
+              swap_percentage=$((swap_used * 100 / swap_total))
             fi
 
             swap_info="${swap_used}MB/${swap_total}MB (${swap_percentage}%)"
 
             echo "当前虚拟内存：$swap_info"
 
-
             read -p "是否调整大小?(Y/N): " choice
 
             case "$choice" in
               [Yy])
-              # 输入新的虚拟内存大小
-              read -p "请输入虚拟内存大小MB: " new_swap
+                # 输入新的虚拟内存大小
+                read -p "请输入虚拟内存大小MB: " new_swap
 
-              # 修改虚拟内存大小
-              if [ ! -f "/swapfile" ]; then
-                  echo "创建新的交换空间文件"
-                  fallocate -l ${new_swap}M /swapfile
-                  chmod 600 /swapfile
-                  mkswap /swapfile
-                  swapon /swapfile
-                  echo "/swapfile none swap sw 0 0" | tee -a /etc/fstab
-              else
-                  if [ "$new_swap" -lt "$swap_used" ]; then
-                      echo "新的虚拟内存大小小于当前使用量，无法调整"
-                  else
-                      echo "请稍等正在修改虚拟内存大小……"
-                      swapoff /swapfile > /dev/null 2>&1
-                      dd if=/dev/zero of=/swapfile bs=1M count=$new_swap > /dev/null 2>&1
-                      chmod 600 /swapfile > /dev/null 2>&1
-                      mkswap /swapfile > /dev/null 2>&1
-                      swapon /swapfile > /dev/null 2>&1
-                      echo "虚拟内存修改成功"
-                  fi
-              fi
+                # 获取当前系统中所有的 swap 分区
+                swap_partitions=$(grep -E '^/dev/' /proc/swaps | awk '{print $1}')
+
+                # 遍历并删除所有的 swap 分区
+                for partition in $swap_partitions; do
+                  swapoff "$partition"
+                  wipefs -a "$partition"  # 清除文件系统标识符
+                  mkswap -f "$partition"
+                  echo "已删除并重新创建 swap 分区：$partition"
+                done
+
+                # 确保 /swapfile 不再被使用
+                swapoff /swapfile
+
+                # 删除旧的 /swapfile
+                rm -f /swapfile
+
+                # 创建新的 swap 分区
+                dd if=/dev/zero of=/swapfile bs=1M count=$new_swap
+                chmod 600 /swapfile
+                mkswap /swapfile
+                swapon /swapfile
+
+                echo "虚拟内存大小已调整为${new_swap}MB"
                 ;;
               [Nn])
                 echo "已取消"
@@ -3890,7 +3898,6 @@ case $choice in
                 echo "无效的选择，请输入 Y 或 N。"
                 ;;
             esac
-
             ;;
 
 
