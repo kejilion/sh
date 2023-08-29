@@ -1949,7 +1949,7 @@ case $choice in
       echo "7. 哪吒探针VPS监控面板                  8. QB离线BT磁力下载面板"
       echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
-      echo "13. Cloudreve网盘系统"
+      echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3466,6 +3466,140 @@ case $choice in
 
               ;;
 
+          14)
+            if docker inspect easyimage &>/dev/null; then
+
+                    clear
+                    echo "简单图床已安装，访问地址："
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:85"
+                    echo ""
+
+                    echo "应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f easyimage
+                            docker rmi -f ddsderek/easyimage:latest
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+
+                            docker run -d \
+                              --name easyimage \
+                              -p 85:80 \
+                              -e TZ=Asia/Shanghai \
+                              -e PUID=1000 \
+                              -e PGID=1000 \
+                              -v /home/docker/easyimage/config:/app/web/config \
+                              -v /home/docker/easyimage/i:/app/web/i \
+                              --restart unless-stopped \
+                              ddsderek/easyimage:latest
+
+                            clear
+                            echo "简单图床已经安装完成"
+                            echo "------------------------"
+                            echo "您可以使用以下地址访问简单图床:"
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "http:$external_ip:85"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f easyimage
+                            docker rmi -f ddsderek/easyimage:latest
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "简单图床是一个简单的图床程序"
+                echo "官网介绍：https://github.com/icret/EasyImages2.0"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装简单图床吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh
+                        sudo systemctl start docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+
+
+                    docker run -d \
+                      --name easyimage \
+                      -p 85:80 \
+                      -e TZ=Asia/Shanghai \
+                      -e PUID=1000 \
+                      -e PGID=1000 \
+                      -v /home/docker/easyimage/config:/app/web/config \
+                      -v /home/docker/easyimage/i:/app/web/i \
+                      --restart unless-stopped \
+                      ddsderek/easyimage:latest
+
+
+                    clear
+                    echo "简单图床已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问简单图床:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:85"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+              ;;
 
 
           0)
@@ -4105,6 +4239,7 @@ case $choice in
     echo  "------------------------"
     echo "2023-8-29   v1.6.4"
     echo "面板工具加入cloudreve网盘的搭建"
+    echo "面板工具加入简单图床程序搭建"
     echo  "------------------------"
     echo "2023-8-28   v1.6.3"
     echo "系统工具中增加修改虚拟内存大小的选项"
