@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.6.3 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.6.4 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1949,6 +1949,7 @@ case $choice in
       echo "7. 哪吒探针VPS监控面板                  8. QB离线BT磁力下载面板"
       echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
+      echo "13. Cloudreve网盘系统"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3333,6 +3334,137 @@ case $choice in
             fi
 
               ;;
+          13)
+            if docker inspect cloudreve &>/dev/null; then
+
+                    clear
+                    echo "cloudreve已安装，访问地址："
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:5212"
+                    echo ""
+
+                    echo "应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f cloudreve
+                            docker rmi -f cloudreve/cloudreve:latest
+                            docker rm -f aria2
+                            docker rmi -f p3terx/aria2-pro
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                sudo systemctl start docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+
+                            curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+                            cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
+                            curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
+                            cd /home/docker/cloud/ && docker-compose up -d
+
+
+                            clear
+                            echo "cloudreve已经安装完成"
+                            echo "------------------------"
+                            echo "您可以使用以下地址访问cloudreve:"
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "http:$external_ip:5212"
+                            sleep 3
+                            docker logs cloudreve
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f cloudreve
+                            docker rmi -f cloudreve/cloudreve:latest
+                            docker rm -f aria2
+                            docker rmi -f p3terx/aria2-pro
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "cloudreve是一个支持多家云存储的网盘系统"
+                echo "官网介绍：https://cloudreve.org/"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装cloudreve吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh
+                        sudo systemctl start docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+
+                    curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+                    cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
+                    curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
+                    cd /home/docker/cloud/ && docker-compose up -d
+
+
+                    clear
+                    echo "cloudreve已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问cloudreve:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:5212"
+                    sleep 3
+                    docker logs cloudreve
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
+              ;;
 
 
 
@@ -3970,6 +4102,9 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-29   v1.6.4"
+    echo "面板工具加入cloudreve网盘的搭建"
     echo  "------------------------"
     echo "2023-8-28   v1.6.3"
     echo "系统工具中增加修改虚拟内存大小的选项"
