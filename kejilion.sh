@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.6.4 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.6.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1008,6 +1008,7 @@ case $choice in
     echo  "5. 安装苹果CMS网站"
     echo  "6. 安装独角数发卡网"
     echo  "7. 安装BingChatAI聊天网站"
+    echo  "8. 安装flarum论坛网站"    
     echo  "------------------------"
     echo  "21. 站点重定向"
     echo  "22. 站点反向代理"
@@ -1202,7 +1203,7 @@ case $choice in
       echo "用户名：$dbuse"
       echo "密码：$dbusepasswd"
       echo "数据库主机：mysql"
-      echo "表前缀：$dbname"
+      echo "表前缀：${dbname}_"
 
         ;;
       3)
@@ -1248,7 +1249,8 @@ case $choice in
       echo "数据库名：$dbname"
       echo "用户名：$dbuse"
       echo "密码：$dbusepasswd"
-      echo "表前缀：$dbname"
+      echo "表前缀：${dbname}_"
+      
 
         ;;
 
@@ -1343,7 +1345,7 @@ case $choice in
       echo "数据库名：$dbname"
       echo "用户名：$dbuse"
       echo "密码：$dbusepasswd"
-      echo "数据库前缀：mac"
+      echo "数据库前缀：mac_"
       echo ""
       echo "安装成功后登录后台地址"
       echo "https://$yuming/vip.php"
@@ -1432,6 +1434,59 @@ case $choice in
       clear
       echo "您的BingChat网站搭建好了！"
       echo "https://$yuming"
+      echo ""
+        ;;
+
+      8)
+      clear
+      # flarum论坛
+      read -p "请输入你解析的域名：" yuming
+      read -p "设置新数据库名称：" dbname
+
+      docker stop nginx
+
+      curl https://get.acme.sh | sh
+      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+
+      docker start nginx
+
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
+
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+      cd /home/web/html
+      mkdir $yuming
+      cd $yuming
+      
+      docker exec php sh -c "php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\""
+      docker exec php sh -c "php composer-setup.php"
+      docker exec php sh -c "php -r \"unlink('composer-setup.php');\""
+      docker exec php sh -c "mv composer.phar /usr/local/bin/composer"
+      docker exec php composer --version
+
+      docker exec php composer create-project flarum/flarum /var/www/html/$yuming
+
+      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
+
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
+
+      docker restart php && docker restart php74 && docker restart nginx
+
+
+      clear
+      echo "您的flarum论坛网站搭建好了！"
+      echo "https://$yuming"
+      echo "------------------------"
+      echo "安装信息如下："
+      echo "数据库主机：mysql"
+      echo "数据库名：$dbname"
+      echo "用户名：$dbuse"
+      echo "密码：$dbusepasswd"
+      echo "表前缀：${dbname}_"      
+      echo "管理员信息自行设置"
       echo ""
         ;;
 
@@ -4236,6 +4291,10 @@ case $choice in
   00)
     clear
     echo "脚本更新日志"
+    echo  "------------------------"
+    echo "2023-8-29   v1.6.5"
+    echo "LDNMP加入了高逼格的flarum论坛搭建"
+    echo "面板工具加入简单图床程序搭建"
     echo  "------------------------"
     echo "2023-8-29   v1.6.4"
     echo "面板工具加入cloudreve网盘的搭建"
