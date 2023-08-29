@@ -1462,10 +1462,11 @@ case $choice in
       docker exec php sh -c "php composer-setup.php"
       docker exec php sh -c "php -r \"unlink('composer-setup.php');\""
       docker exec php sh -c "mv composer.phar /usr/local/bin/composer"
-      docker exec php composer --version
 
       docker exec php composer create-project flarum/flarum /var/www/html/$yuming
-
+      docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum-lang/chinese-simplified"
+      docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/polls"      
+      
       docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
 
       dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
