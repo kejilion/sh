@@ -1160,8 +1160,9 @@ case $choice in
       clear
       # wordpress
       read -p "请输入你解析的域名：" yuming
-      read -p "设置新数据库名称：" dbname
-
+      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+      dbname="${dbname}"
+      
       docker stop nginx
 
       curl https://get.acme.sh | sh
@@ -1199,14 +1200,15 @@ case $choice in
       echo "用户名：$dbuse"
       echo "密码：$dbusepasswd"
       echo "数据库主机：mysql"
-      echo "表前缀：${dbname}_"
+      echo "表前缀：wp_"
 
         ;;
       3)
       clear
       # Discuz论坛
       read -p "请输入你解析的域名：" yuming
-      read -p "设置新数据库名称：" dbname
+      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+      dbname="${dbname}"
 
       docker stop nginx
 
@@ -1245,7 +1247,7 @@ case $choice in
       echo "数据库名：$dbname"
       echo "用户名：$dbuse"
       echo "密码：$dbusepasswd"
-      echo "表前缀：${dbname}_"
+      echo "表前缀：discuz_"
 
 
         ;;
@@ -1254,7 +1256,8 @@ case $choice in
       clear
       # 可道云桌面
       read -p "请输入你解析的域名：" yuming
-      read -p "设置新数据库名称：" dbname
+      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+      dbname="${dbname}"
 
       docker stop nginx
 
@@ -1293,13 +1296,14 @@ case $choice in
       echo "用户名：$dbuse"
       echo "密码：$dbusepasswd"
       echo "数据库名：$dbname"
-
+      echo "redis主机：redis"
         ;;
       5)
       clear
       # 苹果CMS
       read -p "请输入你解析的域名：" yuming
-      read -p "设置新数据库名称：" dbname
+      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+      dbname="${dbname}"
 
       docker stop nginx
 
@@ -1352,7 +1356,8 @@ case $choice in
       clear
       # 独脚数卡
       read -p "请输入你解析的域名：" yuming
-      read -p "设置新数据库名称：" dbname
+      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+      dbname="${dbname}"
 
       docker stop nginx
 
@@ -1437,7 +1442,8 @@ case $choice in
       clear
       # flarum论坛
       read -p "请输入你解析的域名：" yuming
-      read -p "设置新数据库名称：" dbname
+      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+      dbname="${dbname}"
 
       docker stop nginx
 
@@ -1482,7 +1488,7 @@ case $choice in
       echo "数据库名：$dbname"
       echo "用户名：$dbuse"
       echo "密码：$dbusepasswd"
-      echo "表前缀：${dbname}_"
+      echo "表前缀：flarum_"
       echo "管理员信息自行设置"
       echo ""
         ;;
