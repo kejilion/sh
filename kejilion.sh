@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.6.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.6.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -452,21 +452,6 @@ case $choice in
                           read -p "请输入创建命令：" dockername
                           $dockername
                           ;;
-
-                      # 11)
-                      #     read -p "请输入项目名：" dockecomposername
-                      #     mkdir -p /home/docker/$dockecomposername
-
-                      #     read -p "输入创建目录命令：" chuangjianmulu
-                      #     cd /home/docker/$dockecomposername && $chuangjianmulu
-
-                      #     echo "任意键继续，编辑docker-compose.yml"
-                      #     read -n 1 -s -r -p ""
-                      #     cd /home/docker/$dockecomposername && nano docker-compose.yml
-
-                      #     echo "任意键继续，运行docker-compose.yml"
-                      #     cd /home/docker/$dockecomposername && docker-compose up -d
-                      #     ;;
 
                       2)
                           read -p "请输入容器名：" dockername
@@ -1031,11 +1016,6 @@ case $choice in
     case $sub_choice in
       1)
       clear
-      # 获取用户输入，用于替换 docker-compose.yml 文件中的占位符
-      read -p "设置数据库ROOT密码：" dbrootpasswd
-      read -p "设置数据库用户名：" dbuse
-      read -p "设置数据库用户密码：" dbusepasswd
-
 
       # 更新并安装必要的软件包
       if command -v apt &>/dev/null; then
@@ -1048,18 +1028,32 @@ case $choice in
           echo "未知的包管理器!"
       fi
 
-      # 安装 Docker
-      curl -fsSL https://get.docker.com | sh
-      sudo systemctl start docker
+      # 检查并安装 Docker（如果需要）
+      if ! command -v docker &>/dev/null; then
+          curl -fsSL https://get.docker.com | sh
+          sudo systemctl start docker
+      else
+          echo "Docker 已经安装"
+      fi
 
-      # 安装 Docker Compose
-      curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+      # 检查是否已安装 Docker Compose
+      if ! command -v docker-compose &>/dev/null; then
+          # 未安装，进行安装
+          echo "安装 Docker Compose..."
+          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+          echo "Docker Compose 已安装"
+      else
+          # 已安装，跳过
+          echo "Docker Compose 已经安装"
+      fi
 
       # 创建必要的目录和文件
       cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis && touch web/docker-compose.yml
 
       # 下载 docker-compose.yml 文件并进行替换
       wget -O /home/web/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-4.yml
+
+      dbrootpasswd=$(openssl rand -base64 16) && dbuse=$(openssl rand -hex 4) && dbusepasswd=$(openssl rand -base64 8)
 
       # 在 docker-compose.yml 文件中进行替换
       sed -i "s/webroot/$dbrootpasswd/g" /home/web/docker-compose.yml
@@ -1179,9 +1173,9 @@ case $choice in
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://cn.wordpress.org/wordpress-6.3-zh_CN.zip
-      unzip wordpress-6.3-zh_CN.zip
-      rm wordpress-6.3-zh_CN.zip
+      wget https://cn.wordpress.org/wordpress-6.3.1-zh_CN.zip
+      unzip wordpress-6.3.1-zh_CN.zip
+      rm wordpress-6.3.1-zh_CN.zip
 
       echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
 
@@ -1692,15 +1686,27 @@ case $choice in
           echo "未知的包管理器!"
       fi
 
-      # 安装 Docker
-      curl -fsSL https://get.docker.com | sh
-      sudo systemctl start docker
+      # 检查并安装 Docker（如果需要）
+      if ! command -v docker &>/dev/null; then
+          curl -fsSL https://get.docker.com | sh
+          sudo systemctl start docker
+      else
+          echo "Docker 已经安装"
+      fi
 
-      # 安装 Docker Compose
-      curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+
+      # 检查是否已安装 Docker Compose
+      if ! command -v docker-compose &>/dev/null; then
+          # 未安装，进行安装
+          echo "安装 Docker Compose..."
+          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+          echo "Docker Compose 已安装"
+      else
+          # 已安装，跳过
+          echo "Docker Compose 已经安装"
+      fi
 
       cd /home/web && docker-compose up -d
-
 
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
@@ -1866,15 +1872,27 @@ case $choice in
           echo "未知的包管理器!"
       fi
 
-      # 安装 Docker
-      curl -fsSL https://get.docker.com | sh
-      sudo systemctl start docker
+      # 检查并安装 Docker（如果需要）
+      if ! command -v docker &>/dev/null; then
+          curl -fsSL https://get.docker.com | sh
+          sudo systemctl start docker
+      else
+          echo "Docker 已经安装"
+      fi
 
-      # 安装 Docker Compose
-      curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+
+      # 检查是否已安装 Docker Compose
+      if ! command -v docker-compose &>/dev/null; then
+          # 未安装，进行安装
+          echo "安装 Docker Compose..."
+          curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
+          echo "Docker Compose 已安装"
+      else
+          # 已安装，跳过
+          echo "Docker Compose 已经安装"
+      fi
 
       cd /home/web && docker-compose up -d
-
 
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
@@ -4404,7 +4422,7 @@ case $choice in
     echo "2023-8-28   v1.6.2"
     echo "docker管理可以显示容器所属网络，并且可以加入网络和退出网络了"
     echo "------------------------"
-    echo "2023-8-28   v1.6.3"
+    echo "2023-8-28   v1.6.3.1"
     echo "系统工具中增加修改虚拟内存大小的选项"
     echo "系统信息查询中显示虚拟内存占用"
     echo "------------------------"
@@ -4415,6 +4433,11 @@ case $choice in
     echo "2023-8-29   v1.6.5"
     echo "LDNMP加入了高逼格的flarum论坛搭建"
     echo "面板工具加入简单图床程序搭建"
+    echo "------------------------"
+    echo "2023-9-1   v1.6.6"
+    echo "LDNMP环境安装时用户密码将随机生成，提升安全性，安装环境更简单！"
+    echo "LDNMP环境安装时如果安装过docker将自动跳过，节省安装时间"
+    echo "LDNMP环境更新WordPress到6.3.1版本"
     echo "------------------------"
 
     ;;
