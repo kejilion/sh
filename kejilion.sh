@@ -1191,7 +1191,7 @@ case $choice in
       clear
       echo "您的WordPress搭建好了！"
       echo "https://$yuming"
-      echo ""
+      echo "------------------------"
       echo "WP安装信息如下："
       echo "数据库名：$dbname"
       echo "用户名：$dbuse"
@@ -1237,7 +1237,7 @@ case $choice in
       clear
       echo "您的Discuz论坛搭建好了！"
       echo "https://$yuming"
-      echo ""
+      echo "------------------------"
       echo "安装信息如下："
       echo "数据库主机：mysql"
       echo "数据库名：$dbname"
@@ -1285,7 +1285,7 @@ case $choice in
       clear
       echo "您的可道云桌面搭建好了！"
       echo "https://$yuming"
-      echo ""
+      echo "------------------------"
       echo "安装信息如下："
       echo "数据库主机：mysql"
       echo "用户名：$dbuse"
@@ -1332,7 +1332,7 @@ case $choice in
       clear
       echo "您的苹果CMS搭建好了！"
       echo "https://$yuming"
-      echo ""
+      echo "------------------------"
       echo "安装信息如下："
       echo "数据库主机：mysql"
       echo "数据库端口：3306"
@@ -1340,7 +1340,7 @@ case $choice in
       echo "用户名：$dbuse"
       echo "密码：$dbusepasswd"
       echo "数据库前缀：mac_"
-      echo ""
+      echo "------------------------"
       echo "安装成功后登录后台地址"
       echo "https://$yuming/vip.php"
       echo ""
@@ -1381,7 +1381,7 @@ case $choice in
       clear
       echo "您的独角数卡网站搭建好了！"
       echo "https://$yuming"
-      echo ""
+      echo "------------------------"
       echo "安装信息如下："
       echo "数据库主机：mysql"
       echo "数据库端口：3306"
