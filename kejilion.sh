@@ -1173,9 +1173,9 @@ case $choice in
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://cn.wordpress.org/wordpress-6.3.1-zh_CN.zip
-      unzip wordpress-6.3.1-zh_CN.zip
-      rm wordpress-6.3.1-zh_CN.zip
+      wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
+      unzip latest.zip
+      rm latest.zip
 
       echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
 
@@ -1295,7 +1295,7 @@ case $choice in
         ;;
       5)
       clear
-      # 可道云桌面
+      # 苹果CMS
       read -p "请输入你解析的域名：" yuming
       read -p "设置新数据库名称：" dbname
 
@@ -4552,7 +4552,7 @@ case $choice in
     echo "2023-8-28   v1.6.2"
     echo "docker管理可以显示容器所属网络，并且可以加入网络和退出网络了"
     echo "------------------------"
-    echo "2023-8-28   v1.6.3.1"
+    echo "2023-8-28   v1.6.3"
     echo "系统工具中增加修改虚拟内存大小的选项"
     echo "系统信息查询中显示虚拟内存占用"
     echo "------------------------"
