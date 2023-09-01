@@ -403,7 +403,8 @@ case $choice in
           1)
               clear
               curl -fsSL https://get.docker.com | sh
-              sudo systemctl start docker
+              systemctl start docker
+              systemctl enable docker
               curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose
               ;;
           2)
@@ -866,7 +867,8 @@ case $choice in
                   # 检查并安装 Docker（如果需要）
                   if ! command -v docker &>/dev/null; then
                       curl -fsSL https://get.docker.com | sh
-                      sudo systemctl start docker
+                      systemctl start docker
+                      systemctl enable docker
                   else
                       echo "Docker 已经安装，正在部署容器……"
                   fi
@@ -2325,7 +2327,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -2389,7 +2392,8 @@ case $choice in
                       # 检查并安装 Docker（如果需要）
                       if ! command -v docker &>/dev/null; then
                           curl -fsSL https://get.docker.com | sh
-                          sudo systemctl start docker
+                          systemctl start docker
+                          systemctl enable docker
                       else
                           echo "Docker 已经安装，正在部署容器……"
                       fi
@@ -2457,7 +2461,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -2522,7 +2527,8 @@ case $choice in
                       # 检查并安装 Docker（如果需要）
                       if ! command -v docker &>/dev/null; then
                           curl -fsSL https://get.docker.com | sh
-                          sudo systemctl start docker
+                          systemctl start docker
+                          systemctl enable docker
                       else
                           echo "Docker 已经安装，正在部署容器……"
                       fi
@@ -2593,7 +2599,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -2660,7 +2667,9 @@ case $choice in
                         # 检查并安装 Docker（如果需要）
                         if ! command -v docker &>/dev/null; then
                             curl -fsSL https://get.docker.com | sh
-                            sudo systemctl start docker
+                            systemctl start docker
+                            systemctl enable docker
+
                         else
                             echo "Docker 已经安装，正在部署容器……"
                         fi
@@ -2735,7 +2744,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -2804,7 +2814,8 @@ case $choice in
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
                         curl -fsSL https://get.docker.com | sh
-                        sudo systemctl start docker
+                        systemctl start docker
+                        systemctl enable docker
                     else
                         echo "Docker 已经安装，正在部署容器……"
                     fi
@@ -2881,7 +2892,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -2957,7 +2969,8 @@ case $choice in
                     clear
 
                     read -p "请设置邮箱域名 例如 mail.yuming.com ：" yuming
-                    echo "$yuming" > /home/docker/mail.txt
+                    mkdir -p /home/docker      # 递归创建目录
+                    echo "$yuming" > /home/docker/mail.txt  # 写入文件
                     echo "------------------------"
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "先解析这些DNS记录"
@@ -2986,7 +2999,8 @@ case $choice in
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
                         curl -fsSL https://get.docker.com | sh
-                        sudo systemctl start docker
+                        systemctl start docker
+                        systemctl enable docker
                     else
                         echo "Docker 已经安装，正在部署容器……"
                     fi
@@ -3056,7 +3070,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -3117,7 +3132,8 @@ case $choice in
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
                         curl -fsSL https://get.docker.com | sh
-                        sudo systemctl start docker
+                        systemctl start docker
+                        systemctl enable docker
                     else
                         echo "Docker 已经安装，正在部署容器……"
                     fi
@@ -3185,7 +3201,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -3248,7 +3265,8 @@ case $choice in
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
                         curl -fsSL https://get.docker.com | sh
-                        sudo systemctl start docker
+                        systemctl start docker
+                        systemctl enable docker
                     else
                         echo "Docker 已经安装，正在部署容器……"
                     fi
@@ -3317,7 +3335,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -3378,7 +3397,8 @@ case $choice in
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
                         curl -fsSL https://get.docker.com | sh
-                        sudo systemctl start docker
+                        systemctl start docker
+                        systemctl enable docker
                     else
                         echo "Docker 已经安装，正在部署容器……"
                     fi
@@ -3447,7 +3467,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -3509,7 +3530,8 @@ case $choice in
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
                         curl -fsSL https://get.docker.com | sh
-                        sudo systemctl start docker
+                        systemctl start docker
+                        systemctl enable docker
                     else
                         echo "Docker 已经安装，正在部署容器……"
                     fi
@@ -3577,7 +3599,8 @@ case $choice in
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh
-                                sudo systemctl start docker
+                                systemctl start docker
+                                systemctl enable docker
                             else
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
@@ -3640,7 +3663,8 @@ case $choice in
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
                         curl -fsSL https://get.docker.com | sh
-                        sudo systemctl start docker
+                        systemctl start docker
+                        systemctl enable docker
                     else
                         echo "Docker 已经安装，正在部署容器……"
                     fi
