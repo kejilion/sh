@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.6.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.6.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -3846,6 +3846,7 @@ case $choice in
       echo "10. 切换优先ipv4/ipv6"
       echo "11. 查看端口占用状态"
       echo "12. 修改虚拟内存大小"
+      echo "13. 用户管理"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -4240,6 +4241,135 @@ case $choice in
             esac
             ;;
 
+          13)
+              while true; do
+                clear
+                # 显示所有用户、用户权限、用户组和是否在sudoers中
+                echo "用户列表"
+                echo "----------------------------------------------------------------------------"
+                printf "%-24s %-34s %-20s %-10s\n" "用户名" "用户权限" "用户组" "sudo权限"
+                while IFS=: read -r username _ userid groupid _ _ homedir shell; do
+                    groups=$(groups "$username" | cut -d : -f 2)
+                    sudo_status=$(sudo -n -lU "$username" 2>/dev/null | grep -q '(ALL : ALL)' && echo "Yes" || echo "No")
+                    printf "%-20s %-30s %-20s %-10s\n" "$username" "$homedir" "$groups" "$sudo_status"
+                done < /etc/passwd
+
+
+                  echo ""
+                  echo "账户操作"
+                  echo "------------------------"
+                  echo "1. 创建普通账户             2. 创建高级账户"
+                  echo "------------------------"
+                  echo "3. 赋予最高权限             4. 取消最高权限"
+                  echo "------------------------"
+                  echo "5. 删除账号"
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                       if ! command -v sudo &>/dev/null; then
+                           if command -v apt &>/dev/null; then
+                               apt update -y && apt install -y sudo
+                           elif command -v yum &>/dev/null; then
+                               yum -y update && yum -y install sudo
+                           else
+                               echo ""
+                           fi
+                       fi
+
+                       # 提示用户输入新用户名
+                       read -p "请输入新用户名: " new_username
+
+                       # 创建新用户并设置密码
+                       sudo useradd -m -s /bin/bash "$new_username"
+                       sudo passwd "$new_username"
+
+                       echo "操作已完成。"
+                          ;;
+
+                      2)
+                       if ! command -v sudo &>/dev/null; then
+                           if command -v apt &>/dev/null; then
+                               apt update -y && apt install -y sudo
+                           elif command -v yum &>/dev/null; then
+                               yum -y update && yum -y install sudo
+                           else
+                               echo ""
+                           fi
+                       fi
+
+                       # 提示用户输入新用户名
+                       read -p "请输入新用户名: " new_username
+
+                       # 创建新用户并设置密码
+                       sudo useradd -m -s /bin/bash "$new_username"
+                       sudo passwd "$new_username"
+
+                       # 赋予新用户sudo权限
+                       echo "$new_username ALL=(ALL:ALL) ALL" | sudo tee -a /etc/sudoers
+
+                       echo "操作已完成。"
+
+                          ;;
+                      3)
+                       if ! command -v sudo &>/dev/null; then
+                           if command -v apt &>/dev/null; then
+                               apt update -y && apt install -y sudo
+                           elif command -v yum &>/dev/null; then
+                               yum -y update && yum -y install sudo
+                           else
+                               echo ""
+                           fi
+                       fi
+
+                       read -p "请输入用户名: " username
+                       # 赋予新用户sudo权限
+                       echo "$username ALL=(ALL:ALL) ALL" | sudo tee -a /etc/sudoers
+                          ;;
+                      4)
+                       if ! command -v sudo &>/dev/null; then
+                           if command -v apt &>/dev/null; then
+                               apt update -y && apt install -y sudo
+                           elif command -v yum &>/dev/null; then
+                               yum -y update && yum -y install sudo
+                           else
+                               echo ""
+                           fi
+                       fi
+                       read -p "请输入用户名: " username
+                       # 从sudoers文件中移除用户的sudo权限
+                       sudo sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
+
+                          ;;
+                      5)
+                       if ! command -v sudo &>/dev/null; then
+                           if command -v apt &>/dev/null; then
+                               apt update -y && apt install -y sudo
+                           elif command -v yum &>/dev/null; then
+                               yum -y update && yum -y install sudo
+                           else
+                               echo ""
+                           fi
+                       fi
+                       read -p "请输入要删除的用户名: " username
+                       # 删除用户及其主目录
+                       sudo userdel -r "$username"
+
+                          ;;
+
+                      0)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单
+                          ;;
+                  esac
+              done
+              ;;
 
           21)
           clear
@@ -4438,6 +4568,9 @@ case $choice in
     echo "LDNMP环境安装时用户密码将随机生成，提升安全性，安装环境更简单！"
     echo "LDNMP环境安装时如果安装过docker将自动跳过，节省安装时间"
     echo "LDNMP环境更新WordPress到6.3.1版本"
+    echo "------------------------"
+    echo "2023-9-1   v1.6.7"
+    echo "添加了账户管理功能，查看当前账户列表，添加删除账户，账号权限管理等"
     echo "------------------------"
 
     ;;
