@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.6.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.6.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -342,7 +342,7 @@ case $choice in
               ;;
 
           0)
-              /root/kejilion.sh
+              ./kejilion.sh
               exit
               ;;
 
@@ -736,7 +736,7 @@ case $choice in
               esac
               ;;
           0)
-              /root/kejilion.sh
+              ./kejilion.sh
               exit
               ;;
           *)
@@ -824,7 +824,7 @@ case $choice in
               wget -qO- bench.sh | bash
               ;;
           0)
-              /root/kejilion.sh
+              ./kejilion.sh
               exit
               ;;
           *)
@@ -965,7 +965,7 @@ case $choice in
           esac
               ;;
           0)
-              /root/kejilion.sh
+              ./kejilion.sh
               exit
               ;;
           *)
@@ -1162,7 +1162,7 @@ case $choice in
       read -p "请输入你解析的域名：" yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
-      
+
       docker stop nginx
 
       curl https://get.acme.sh | sh
@@ -1405,6 +1405,9 @@ case $choice in
       echo "------------------------"
       echo "用户名：admin"
       echo "密码：admin"
+      echo "登录时右上角如果出现红色error0请使用如下命令："
+      echo "我也很气愤独角数卡为啥这么麻烦，会有这样的问题！"
+      echo "sed -i 's/ADMIN_HTTPS=false/ADMIN_HTTPS=true/g' /home/web/html/$yuming/dujiaoka/.env"
 
         ;;
 
@@ -2003,7 +2006,7 @@ case $choice in
         ;;
 
     0)
-    /root/kejilion.sh
+    ./kejilion.sh
     exit
       ;;
 
@@ -3707,7 +3710,7 @@ case $choice in
 
 
           0)
-              /root/kejilion.sh
+              ./kejilion.sh
               exit
               ;;
           *)
@@ -3842,7 +3845,7 @@ case $choice in
               tmux list-sessions
               ;;
           0)
-              /root/kejilion.sh
+              ./kejilion.sh
               exit
               ;;
           *)
@@ -4451,7 +4454,7 @@ case $choice in
               ;;
 
           0)
-              /root/kejilion.sh
+              ./kejilion.sh
               exit
               ;;
           *)
@@ -4602,7 +4605,9 @@ case $choice in
     echo "2023-9-1   v1.6.7"
     echo "添加了账户管理功能，查看当前账户列表，添加删除账户，账号权限管理等"
     echo "------------------------"
-
+    echo "2023-9-4   v1.6.8"
+    echo "独角数卡登录时报错，显示解决办法"
+    echo "------------------------"
     ;;
 
 
