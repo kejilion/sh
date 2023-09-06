@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.6.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.6.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -3880,6 +3880,7 @@ case $choice in
       echo "11. 查看端口占用状态"
       echo "12. 修改虚拟内存大小"
       echo "13. 用户管理"
+      echo "14. 用户/密码生成器"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -4404,6 +4405,57 @@ case $choice in
               done
               ;;
 
+
+          14)
+            clear
+
+            echo "随机用户名"
+            echo "------------------------"
+            for i in {1..5}; do
+                username="user$(< /dev/urandom tr -dc _a-z0-9 | head -c6)"
+                echo "随机用户名 $i: $username"
+            done
+
+            echo ""
+            echo "随机姓名"
+            echo "------------------------"
+            first_names=("John" "Jane" "Michael" "Emily" "David" "Sophia" "William" "Olivia" "James" "Emma" "Ava" "Liam" "Mia" "Noah" "Isabella")
+            last_names=("Smith" "Johnson" "Brown" "Davis" "Wilson" "Miller" "Jones" "Garcia" "Martinez" "Williams" "Lee" "Gonzalez" "Rodriguez" "Hernandez")
+
+            # 生成5个随机用户姓名
+            for i in {1..5}; do
+                first_name_index=$((RANDOM % ${#first_names[@]}))
+                last_name_index=$((RANDOM % ${#last_names[@]}))
+                user_name="${first_names[$first_name_index]} ${last_names[$last_name_index]}"
+                echo "随机用户姓名 $i: $user_name"
+            done
+
+            echo ""
+            echo "随机UUID"
+            echo "------------------------"
+            for i in {1..5}; do
+                uuid=$(uuidgen)
+                echo "随机UUID $i: $uuid"
+            done
+
+            echo ""
+            echo "16位随机密码"
+            echo "------------------------"
+            for i in {1..5}; do
+                password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16)
+                echo "随机密码 $i: $password"
+            done
+
+            echo ""
+            echo "32位随机密码"
+            echo "------------------------"
+            for i in {1..5}; do
+                password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
+                echo "随机密码 $i: $password"
+            done
+
+              ;;
+
           21)
           clear
           # 检查是否已安装 sshpass
@@ -4607,6 +4659,9 @@ case $choice in
     echo "------------------------"
     echo "2023-9-4   v1.6.8"
     echo "独角数卡登录时报错，显示解决办法"
+    echo "------------------------"
+    echo "2023-9-6   v1.6.9"
+    echo "系统工具中添加随机用户密码生成器，方便懒得想用户名和密码的小伙伴"
     echo "------------------------"
     ;;
 
