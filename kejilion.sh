@@ -2006,8 +2006,8 @@ case $choice in
         ;;
 
     0)
-    ./kejilion.sh
-    exit
+        ./kejilion.sh
+        exit
       ;;
 
     *)
