@@ -32,7 +32,7 @@ read -p "请输入你的选择: " choice
 case $choice in
   1)
     clear
-    # 函数：获取IPv4和IPv6地址
+    # 函数: 获取IPv4和IPv6地址
     fetch_ip_addresses() {
       ipv4_address=$(curl -s ipv4.ip.sb)
       ipv6_address=$(curl -s ipv6.ip.sb)
@@ -148,7 +148,7 @@ case $choice in
     echo "公网IPv6地址: $ipv6_address"
     echo "------------------------"
     echo "地理位置: $country $city"
-    echo "系统时间：$current_time"
+    echo "系统时间: $current_time"
     echo
 
     ;;
@@ -450,24 +450,24 @@ case $choice in
 
                   case $sub_choice in
                       1)
-                          read -p "请输入创建命令：" dockername
+                          read -p "请输入创建命令: " dockername
                           $dockername
                           ;;
 
                       2)
-                          read -p "请输入容器名：" dockername
+                          read -p "请输入容器名: " dockername
                           docker start $dockername
                           ;;
                       3)
-                          read -p "请输入容器名：" dockername
+                          read -p "请输入容器名: " dockername
                           docker stop $dockername
                           ;;
                       4)
-                          read -p "请输入容器名：" dockername
+                          read -p "请输入容器名: " dockername
                           docker rm -f $dockername
                           ;;
                       5)
-                          read -p "请输入容器名：" dockername
+                          read -p "请输入容器名: " dockername
                           docker restart $dockername
                           ;;
                       6)
@@ -493,11 +493,11 @@ case $choice in
                           docker restart $(docker ps -q)
                           ;;
                       11)
-                          read -p "请输入容器名：" dockername
+                          read -p "请输入容器名: " dockername
                           docker exec -it $dockername /bin/bash
                           ;;
                       12)
-                          read -p "请输入容器名：" dockername
+                          read -p "请输入容器名: " dockername
                           docker logs $dockername
                           echo -e "\033[0;32m操作完成\033[0m"
                           echo "按任意键继续..."
@@ -560,15 +560,15 @@ case $choice in
 
                   case $sub_choice in
                       1)
-                          read -p "请输入镜像名：" dockername
+                          read -p "请输入镜像名: " dockername
                           docker pull $dockername
                           ;;
                       2)
-                          read -p "请输入镜像名：" dockername
+                          read -p "请输入镜像名: " dockername
                           docker pull $dockername
                           ;;
                       3)
-                          read -p "请输入镜像名：" dockername
+                          read -p "请输入镜像名: " dockername
                           docker rmi -f $dockername
                           ;;
                       4)
@@ -636,24 +636,24 @@ case $choice in
 
                   case $sub_choice in
                       1)
-                          read -p "设置新网络名：" dockernetwork
+                          read -p "设置新网络名: " dockernetwork
                           docker network create $dockernetwork
                           ;;
                       2)
-                          read -p "加入网络名：" dockernetwork
-                          read -p "那些容器加入该网络：" dockername
+                          read -p "加入网络名: " dockernetwork
+                          read -p "那些容器加入该网络: " dockername
                           docker network connect $dockernetwork $dockername
                           echo ""
                           ;;
                       3)
-                          read -p "退出网络名：" dockernetwork
-                          read -p "那些容器退出该网络：" dockername
+                          read -p "退出网络名: " dockernetwork
+                          read -p "那些容器退出该网络: " dockername
                           docker network disconnect $dockernetwork $dockername
                           echo ""
                           ;;
 
                       4)
-                          read -p "请输入要删除的网络名：" dockernetwork
+                          read -p "请输入要删除的网络名: " dockernetwork
                           docker network rm $dockernetwork
                           ;;
                       0)
@@ -684,12 +684,12 @@ case $choice in
 
                   case $sub_choice in
                       1)
-                          read -p "设置新卷名：" dockerjuan
+                          read -p "设置新卷名: " dockerjuan
                           docker volume create $dockerjuan
 
                           ;;
                       2)
-                          read -p "输入删除卷名：" dockerjuan
+                          read -p "输入删除卷名: " dockerjuan
                           docker volume rm $dockerjuan
 
                           ;;
@@ -859,7 +859,7 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              echo "活跃脚本：CPU占用10-20% 内存占用15% "
+              echo "活跃脚本: CPU占用10-20% 内存占用15% "
               read -p "确定安装吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
@@ -903,7 +903,7 @@ case $choice in
           case "$choice" in
             [Yy])
               while true; do
-                read -p "请选择要重装的系统： 1. Debian12 | 2. Ubuntu20.04 : " sys_choice
+                read -p "请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : " sys_choice
 
                 case "$sys_choice" in
                   1)
@@ -920,7 +920,7 @@ case $choice in
                 esac
               done
 
-              read -p "请输入你重装后的密码：" vpspasswd
+              read -p "请输入你重装后的密码: " vpspasswd
               if command -v apt &>/dev/null; then
                   apt update -y && apt install -y wget
               elif command -v yum &>/dev/null; then
@@ -1159,7 +1159,7 @@ case $choice in
       2)
       clear
       # wordpress
-      read -p "请输入你解析的域名：" yuming
+      read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
@@ -1195,18 +1195,18 @@ case $choice in
       echo "您的WordPress搭建好了！"
       echo "https://$yuming"
       echo "------------------------"
-      echo "WP安装信息如下："
-      echo "数据库名：$dbname"
-      echo "用户名：$dbuse"
-      echo "密码：$dbusepasswd"
-      echo "数据库主机：mysql"
-      echo "表前缀：wp_"
+      echo "WP安装信息如下: "
+      echo "数据库名: $dbname"
+      echo "用户名: $dbuse"
+      echo "密码: $dbusepasswd"
+      echo "数据库主机: mysql"
+      echo "表前缀: wp_"
 
         ;;
       3)
       clear
       # Discuz论坛
-      read -p "请输入你解析的域名：" yuming
+      read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
@@ -1242,12 +1242,12 @@ case $choice in
       echo "您的Discuz论坛搭建好了！"
       echo "https://$yuming"
       echo "------------------------"
-      echo "安装信息如下："
-      echo "数据库主机：mysql"
-      echo "数据库名：$dbname"
-      echo "用户名：$dbuse"
-      echo "密码：$dbusepasswd"
-      echo "表前缀：discuz_"
+      echo "安装信息如下: "
+      echo "数据库主机: mysql"
+      echo "数据库名: $dbname"
+      echo "用户名: $dbuse"
+      echo "密码: $dbusepasswd"
+      echo "表前缀: discuz_"
 
 
         ;;
@@ -1255,7 +1255,7 @@ case $choice in
       4)
       clear
       # 可道云桌面
-      read -p "请输入你解析的域名：" yuming
+      read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
@@ -1291,17 +1291,17 @@ case $choice in
       echo "您的可道云桌面搭建好了！"
       echo "https://$yuming"
       echo "------------------------"
-      echo "安装信息如下："
-      echo "数据库主机：mysql"
-      echo "用户名：$dbuse"
-      echo "密码：$dbusepasswd"
-      echo "数据库名：$dbname"
-      echo "redis主机：redis"
+      echo "安装信息如下: "
+      echo "数据库主机: mysql"
+      echo "用户名: $dbuse"
+      echo "密码: $dbusepasswd"
+      echo "数据库名: $dbname"
+      echo "redis主机: redis"
         ;;
       5)
       clear
       # 苹果CMS
-      read -p "请输入你解析的域名：" yuming
+      read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
@@ -1339,13 +1339,13 @@ case $choice in
       echo "您的苹果CMS搭建好了！"
       echo "https://$yuming"
       echo "------------------------"
-      echo "安装信息如下："
-      echo "数据库主机：mysql"
-      echo "数据库端口：3306"
-      echo "数据库名：$dbname"
-      echo "用户名：$dbuse"
-      echo "密码：$dbusepasswd"
-      echo "数据库前缀：mac_"
+      echo "安装信息如下: "
+      echo "数据库主机: mysql"
+      echo "数据库端口: 3306"
+      echo "数据库名: $dbname"
+      echo "用户名: $dbuse"
+      echo "密码: $dbusepasswd"
+      echo "数据库前缀: mac_"
       echo "------------------------"
       echo "安装成功后登录后台地址"
       echo "https://$yuming/vip.php"
@@ -1355,7 +1355,7 @@ case $choice in
       6)
       clear
       # 独脚数卡
-      read -p "请输入你解析的域名：" yuming
+      read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
@@ -1389,23 +1389,23 @@ case $choice in
       echo "您的独角数卡网站搭建好了！"
       echo "https://$yuming"
       echo "------------------------"
-      echo "安装信息如下："
-      echo "数据库主机：mysql"
-      echo "数据库端口：3306"
-      echo "数据库名：$dbname"
-      echo "用户名：$dbuse"
-      echo "密码：$dbusepasswd"
+      echo "安装信息如下: "
+      echo "数据库主机: mysql"
+      echo "数据库端口: 3306"
+      echo "数据库名: $dbname"
+      echo "用户名: $dbuse"
+      echo "密码: $dbusepasswd"
       echo ""
-      echo "redis地址：redis"
-      echo "redis密码：默认不填写"
-      echo "redis端口：6379"
+      echo "redis地址: redis"
+      echo "redis密码: 默认不填写"
+      echo "redis端口: 6379"
       echo ""
-      echo "网站url：https://$yuming"
-      echo "后台登录路径：/admin"
+      echo "网站url: https://$yuming"
+      echo "后台登录路径: /admin"
       echo "------------------------"
-      echo "用户名：admin"
-      echo "密码：admin"
-      echo "登录时右上角如果出现红色error0请使用如下命令："
+      echo "用户名: admin"
+      echo "密码: admin"
+      echo "登录时右上角如果出现红色error0请使用如下命令: "
       echo "我也很气愤独角数卡为啥这么麻烦，会有这样的问题！"
       echo "sed -i 's/ADMIN_HTTPS=false/ADMIN_HTTPS=true/g' /home/web/html/$yuming/dujiaoka/.env"
 
@@ -1414,7 +1414,7 @@ case $choice in
       7)
       clear
       # BingChat
-      read -p "请输入你解析的域名：" yuming
+      read -p "请输入你解析的域名: " yuming
 
       docker stop nginx
 
@@ -1444,7 +1444,7 @@ case $choice in
       8)
       clear
       # flarum论坛
-      read -p "请输入你解析的域名：" yuming
+      read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
@@ -1486,12 +1486,12 @@ case $choice in
       echo "您的flarum论坛网站搭建好了！"
       echo "https://$yuming"
       echo "------------------------"
-      echo "安装信息如下："
-      echo "数据库主机：mysql"
-      echo "数据库名：$dbname"
-      echo "用户名：$dbuse"
-      echo "密码：$dbusepasswd"
-      echo "表前缀：flarum_"
+      echo "安装信息如下: "
+      echo "数据库主机: mysql"
+      echo "数据库名: $dbname"
+      echo "用户名: $dbuse"
+      echo "密码: $dbusepasswd"
+      echo "表前缀: flarum_"
       echo "管理员信息自行设置"
       echo ""
         ;;
@@ -1499,8 +1499,8 @@ case $choice in
 
       21)
       clear
-      read -p "请输入你的域名：" yuming
-      read -p "请输入跳转域名：" reverseproxy
+      read -p "请输入你的域名: " yuming
+      read -p "请输入跳转域名: " reverseproxy
 
       docker stop nginx
 
@@ -1523,9 +1523,9 @@ case $choice in
 
       22)
       clear
-      read -p "请输入你的域名：" yuming
-      read -p "请输入你的反代IP：" reverseproxy
-      read -p "请输入你的反代端口：" port
+      read -p "请输入你的域名: " yuming
+      read -p "请输入你的反代IP: " reverseproxy
+      read -p "请输入你的反代端口: " port
 
       docker stop nginx
 
@@ -1550,7 +1550,7 @@ case $choice in
 
     30)
       clear
-      read -p "请输入你解析的域名：" yuming
+      read -p "请输入你解析的域名: " yuming
 
       docker stop nginx
 
@@ -1613,9 +1613,9 @@ case $choice in
         read -p "要传送文件到远程服务器吗？(Y/N): " choice
         case "$choice" in
           [Yy])
-            read -p "请输入远端服务器IP： " remote_ip
+            read -p "请输入远端服务器IP:  " remote_ip
             if [ -z "$remote_ip" ]; then
-              echo "错误：请输入远端服务器IP。"
+              echo "错误: 请输入远端服务器IP。"
               continue
             fi
             latest_tar=$(ls -t /home/*.tar.gz | head -1)
@@ -1641,8 +1641,8 @@ case $choice in
 
     33)
       clear
-      read -p "输入远程服务器IP：" useip
-      read -p "输入远程服务器密码：" usepasswd
+      read -p "输入远程服务器IP: " useip
+      read -p "输入远程服务器密码: " usepasswd
 
       wget -O ${useip}_beifen.sh https://raw.githubusercontent.com/kejilion/sh/main/beifen.sh > /dev/null 2>&1
       chmod +x ${useip}_beifen.sh
@@ -1846,14 +1846,14 @@ case $choice in
         read -p "请输入你的选择: " sub_choice
         case $sub_choice in
             1)
-                read -p "请输入你的域名：" yuming
+                read -p "请输入你的域名: " yuming
                 rm -r /home/web/html/$yuming
                 rm /home/web/conf.d/$yuming.conf
                 rm /home/web/certs/${yuming}_key.pem
                 rm /home/web/certs/${yuming}_cert.pem
                 ;;
             2)
-                read -p "请输入数据库名：" shujuku
+                read -p "请输入数据库名: " shujuku
                 dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
                 docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $shujuku;" 2> /dev/null
                 ;;
@@ -2077,7 +2077,7 @@ case $choice in
                 echo "安装提示"
                 echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装宝塔面板！"
                 echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍：https://www.bt.cn/new/index.html"
+                echo "官网介绍: https://www.bt.cn/new/index.html"
                 echo ""
 
                 # 获取当前系统类型
@@ -2179,7 +2179,7 @@ case $choice in
                 echo "安装提示"
                 echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装aaPanel！"
                 echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍：https://www.aapanel.com/new/index.html"
+                echo "官网介绍: https://www.aapanel.com/new/index.html"
                 echo ""
 
                 # 获取当前系统类型
@@ -2249,7 +2249,7 @@ case $choice in
             echo "安装提示"
             echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装1Panel！"
             echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-            echo "官网介绍：https://1panel.cn/"
+            echo "官网介绍: https://1panel.cn/"
             echo ""
             # 获取当前系统类型
             get_system_type() {
@@ -2305,7 +2305,7 @@ case $choice in
           4)
             if docker inspect npm &>/dev/null; then
                     clear
-                    echo "npm已安装，访问地址："
+                    echo "npm已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:81"
                     echo ""
@@ -2359,8 +2359,8 @@ case $choice in
 
                             echo "您可以使用以下地址访问Nginx Proxy Manager:"
                             echo "http:$external_ip:81"
-                            echo "初始用户名：admin@example.com"
-                            echo "初始密码：changeme"
+                            echo "初始用户名: admin@example.com"
+                            echo "初始密码: changeme"
                             ;;
                         2)
                             clear
@@ -2379,7 +2379,7 @@ case $choice in
                   clear
                   echo "安装提示"
                   echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装npm！"
-                  echo "官网介绍：https://nginxproxymanager.com/"
+                  echo "官网介绍: https://nginxproxymanager.com/"
                   echo ""
 
                   # Prompt user for installation confirmation
@@ -2424,8 +2424,8 @@ case $choice in
 
                       echo "您可以使用以下地址访问Nginx Proxy Manager:"
                       echo "http:$external_ip:81"
-                      echo "初始用户名：admin@example.com"
-                      echo "初始密码：changeme"
+                      echo "初始用户名: admin@example.com"
+                      echo "初始密码: changeme"
                         ;;
                     [Nn])
                         ;;
@@ -2438,7 +2438,7 @@ case $choice in
 
             if docker inspect alist &>/dev/null; then
                     clear
-                    echo "alist已安装，访问地址："
+                    echo "alist已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:5244"
                     echo ""
@@ -2514,7 +2514,7 @@ case $choice in
                   clear
                   echo "安装提示"
                   echo "一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"
-                  echo "官网介绍：https://alist.nn.ci/zh/"
+                  echo "官网介绍: https://alist.nn.ci/zh/"
                   echo ""
 
                   # Prompt user for installation confirmation
@@ -2574,7 +2574,7 @@ case $choice in
           6)
             if docker inspect ubuntu-novnc &>/dev/null; then
                     clear
-                    echo "乌班图桌面已安装，访问地址："
+                    echo "乌班图桌面已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:6080"
                     echo ""
@@ -2592,7 +2592,7 @@ case $choice in
                             clear
                             docker rm -f ubuntu-novnc
                             docker rmi -f fredblgr/ubuntu-novnc:20.04
-                            read -p "请设置一个登录密码：" rootpasswd
+                            read -p "请设置一个登录密码: " rootpasswd
 
                             if ! command -v iptables &> /dev/null; then
                             echo ""
@@ -2631,8 +2631,8 @@ case $choice in
 
                             echo "您可以使用以下地址访问Ubuntu远程桌面:"
                             echo "http:$external_ip:6080"
-                            echo "用户名：root"
-                            echo "密码：$rootpasswd"
+                            echo "用户名: root"
+                            echo "密码: $rootpasswd"
                             echo ""
                             ;;
                         2)
@@ -2652,7 +2652,7 @@ case $choice in
                 clear
                 echo "安装提示"
                 echo "一个网页版Ubuntu远程桌面，挺好用的！"
-                echo "官网介绍：https://hub.docker.com/r/fredblgr/ubuntu-novnc"
+                echo "官网介绍: https://hub.docker.com/r/fredblgr/ubuntu-novnc"
                 echo ""
 
                 # 提示用户确认安装
@@ -2660,7 +2660,7 @@ case $choice in
                 case "$choice" in
                     [Yy])
                         clear
-                        read -p "请设置一个登录密码：" rootpasswd
+                        read -p "请设置一个登录密码: " rootpasswd
 
                         if ! command -v iptables &> /dev/null; then
                         echo ""
@@ -2700,8 +2700,8 @@ case $choice in
 
                         echo "您可以使用以下地址访问Ubuntu远程桌面:"
                         echo "http:$external_ip:6080"
-                        echo "用户名：root"
-                        echo "密码：$rootpasswd"
+                        echo "用户名: root"
+                        echo "密码: $rootpasswd"
                         echo ""
                         ;;
                     [Nn])
@@ -2720,7 +2720,7 @@ case $choice in
             if docker inspect qbittorrent &>/dev/null; then
                     clear
 
-                    echo "QB已安装，访问地址："
+                    echo "QB已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:8081"
                     echo ""
@@ -2780,8 +2780,8 @@ case $choice in
 
                             echo "您可以使用以下地址访问QB:"
                             echo "http:$external_ip:8081"
-                            echo "账号：admin"
-                            echo "密码：adminadmin"
+                            echo "账号: admin"
+                            echo "密码: adminadmin"
                             echo ""
                             ;;
                         2)
@@ -2801,7 +2801,7 @@ case $choice in
                 clear
                 echo "安装提示"
                 echo "qbittorrent离线BT磁力下载服务"
-                echo "官网介绍：https://hub.docker.com/r/linuxserver/qbittorrent"
+                echo "官网介绍: https://hub.docker.com/r/linuxserver/qbittorrent"
                 echo ""
 
                 # 提示用户确认安装
@@ -2850,8 +2850,8 @@ case $choice in
 
                     echo "您可以使用以下地址访问QB:"
                     echo "http:$external_ip:8081"
-                    echo "账号：admin"
-                    echo "密码：adminadmin"
+                    echo "账号: admin"
+                    echo "密码: adminadmin"
                     echo ""
 
                         ;;
@@ -2868,7 +2868,7 @@ case $choice in
             if docker inspect mailserver &>/dev/null; then
 
                     clear
-                    echo "poste.io已安装，访问地址："
+                    echo "poste.io已安装，访问地址: "
                     yuming=$(cat /home/docker/mail.txt)
                     echo "https://$yuming"
                     echo ""
@@ -2968,7 +2968,7 @@ case $choice in
 
                 echo "安装提示"
                 echo "poste.io一个邮件服务器，确保80和443端口没被占用，确保25端口开放"
-                echo "官网介绍：https://hub.docker.com/r/analogic/poste.io"
+                echo "官网介绍: https://hub.docker.com/r/analogic/poste.io"
                 echo ""
 
                 # 提示用户确认安装
@@ -2977,7 +2977,7 @@ case $choice in
                     [Yy])
                     clear
 
-                    read -p "请设置邮箱域名 例如 mail.yuming.com ：" yuming
+                    read -p "请设置邮箱域名 例如 mail.yuming.com : " yuming
                     mkdir -p /home/docker      # 递归创建目录
                     echo "$yuming" > /home/docker/mail.txt  # 写入文件
                     echo "------------------------"
@@ -3044,7 +3044,7 @@ case $choice in
 
 
                     clear
-                    echo "rocket.chat已安装，访问地址："
+                    echo "rocket.chat已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:3897"
                     echo ""
@@ -3119,7 +3119,7 @@ case $choice in
                 clear
                 echo "安装提示"
                 echo "rocket.chat国外知名开源多人聊天系统"
-                echo "官网介绍：https://www.rocket.chat"
+                echo "官网介绍: https://www.rocket.chat"
                 echo ""
 
                 # 提示用户确认安装
@@ -3177,7 +3177,7 @@ case $choice in
             if docker inspect zentao-server &>/dev/null; then
 
                     clear
-                    echo "禅道已安装，访问地址："
+                    echo "禅道已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:82"
                     echo ""
@@ -3253,7 +3253,7 @@ case $choice in
                 clear
                 echo "安装提示"
                 echo "禅道是通用的项目管理软件"
-                echo "官网介绍：https://www.zentao.net/"
+                echo "官网介绍: https://www.zentao.net/"
                 echo ""
 
                 # 提示用户确认安装
@@ -3294,8 +3294,8 @@ case $choice in
                     echo "您可以使用以下地址访问禅道:"
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:82"
-                    echo "账号：admin"
-                    echo "密码：123456"
+                    echo "账号: admin"
+                    echo "密码: 123456"
                     echo ""
 
                         ;;
@@ -3311,7 +3311,7 @@ case $choice in
           12)
             if docker inspect qinglong &>/dev/null; then
                     clear
-                    echo "青龙面板已安装，访问地址："
+                    echo "青龙面板已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:5700"
                     echo ""
@@ -3385,7 +3385,7 @@ case $choice in
                 clear
                 echo "安装提示"
                 echo "青龙面板是一个定时任务管理平台"
-                echo "官网介绍：https://github.com/whyour/qinglong"
+                echo "官网介绍: https://github.com/whyour/qinglong"
                 echo ""
 
                 # 提示用户确认安装
@@ -3441,7 +3441,7 @@ case $choice in
             if docker inspect cloudreve &>/dev/null; then
 
                     clear
-                    echo "cloudreve已安装，访问地址："
+                    echo "cloudreve已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:5212"
                     echo ""
@@ -3518,7 +3518,7 @@ case $choice in
                 clear
                 echo "安装提示"
                 echo "cloudreve是一个支持多家云存储的网盘系统"
-                echo "官网介绍：https://cloudreve.org/"
+                echo "官网介绍: https://cloudreve.org/"
                 echo ""
 
                 # 提示用户确认安装
@@ -3575,7 +3575,7 @@ case $choice in
             if docker inspect easyimage &>/dev/null; then
 
                     clear
-                    echo "简单图床已安装，访问地址："
+                    echo "简单图床已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
                     echo "http:$external_ip:85"
                     echo ""
@@ -3651,7 +3651,7 @@ case $choice in
                 clear
                 echo "安装提示"
                 echo "简单图床是一个简单的图床程序"
-                echo "官网介绍：https://github.com/icret/EasyImages2.0"
+                echo "官网介绍: https://github.com/icret/EasyImages2.0"
                 echo ""
 
                 # 提示用户确认安装
@@ -3731,7 +3731,7 @@ case $choice in
       echo "我的工作区"
       echo "系统将为你提供5个后台运行的工作区，你可以用来执行长时间的任务"
       echo "即使你断开SSH，工作区中的任务也不会中断，非常方便！来试试吧！"
-      echo -e "\033[33m注意：进入工作区后使用Ctrl+b再单独按d，退出工作区！\033[0m"
+      echo -e "\033[33m注意: 进入工作区后使用Ctrl+b再单独按d，退出工作区！\033[0m"
       echo "------------------------"
       echo "a. 安装工作区环境"
       echo "------------------------"
@@ -3998,7 +3998,7 @@ case $choice in
                 ln -sf /usr/local/python3/bin/python3 /usr/bin/python3
                 ln -sf /usr/local/python3/bin/pip3 /usr/bin/pip3
                 clear
-                echo -e "${YELLOW}Python3安装${GREEN}成功，${NC}版本为：${NC}${GREEN}${PY_VERSION}${NC}"
+                echo -e "${YELLOW}Python3安装${GREEN}成功，${NC}版本为: ${NC}${GREEN}${PY_VERSION}${NC}"
             else
                 clear
                 echo -e "${RED}Python3安装失败！${NC}"
@@ -4106,7 +4106,7 @@ case $choice in
           case "$choice" in
             [Yy])
               while true; do
-                read -p "请选择要重装的系统： 1. Debian12 | 2. Ubuntu20.04 : " sys_choice
+                read -p "请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : " sys_choice
 
                 case "$sys_choice" in
                   1)
@@ -4123,7 +4123,7 @@ case $choice in
                 esac
               done
 
-              read -p "请输入你重装后的密码：" vpspasswd
+              read -p "请输入你重装后的密码: " vpspasswd
               if command -v apt &>/dev/null; then
                   apt update -y && apt install -y wget
               elif command -v yum &>/dev/null; then
@@ -4178,9 +4178,9 @@ case $choice in
 
             echo ""
             if [ "$ipv6_disabled" -eq 1 ]; then
-                echo "当前网络优先级设置：IPv4 优先"
+                echo "当前网络优先级设置: IPv4 优先"
             else
-                echo "当前网络优先级设置：IPv6 优先"
+                echo "当前网络优先级设置: IPv6 优先"
             fi
             echo "------------------------"
 
@@ -4232,7 +4232,7 @@ case $choice in
 
             swap_info="${swap_used}MB/${swap_total}MB (${swap_percentage}%)"
 
-            echo "当前虚拟内存：$swap_info"
+            echo "当前虚拟内存: $swap_info"
 
             read -p "是否调整大小?(Y/N): " choice
 
@@ -4249,7 +4249,7 @@ case $choice in
                   swapoff "$partition"
                   wipefs -a "$partition"  # 清除文件系统标识符
                   mkswap -f "$partition"
-                  echo "已删除并重新创建 swap 分区：$partition"
+                  echo "已删除并重新创建 swap 分区: $partition"
                 done
 
                 # 确保 /swapfile 不再被使用
@@ -4490,12 +4490,12 @@ case $choice in
 
           if [ "$leave_message" == "y" ] || [ "$leave_message" == "Y" ]; then
               # 输入新的留言内容
-              read -p "输入你的昵称：" nicheng
-              read -p "输入你的聊天内容：" neirong
+              read -p "输入你的昵称: " nicheng
+              read -p "输入你的聊天内容: " neirong
 
               # 添加新留言到远程文件
               sshpass -p "${password}" ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_ip}" "echo -e '${nicheng}: ${neirong}' >> '${remote_file}'"
-              echo "已添加留言："
+              echo "已添加留言: "
               echo "${nicheng}: ${neirong}"
               echo ""
           else
@@ -4548,7 +4548,7 @@ case $choice in
     echo "------------------------"
     echo "2023-8-14   v1.2"
     echo "1.新增了11选项，加入了常用面板工具合集！"
-    echo "-支持安装各种面板，包括：宝塔，宝塔国际版，1panel，Nginx Proxy Manager等等，满足更多人群的使用需求！"
+    echo "-支持安装各种面板，包括: 宝塔，宝塔国际版，1panel，Nginx Proxy Manager等等，满足更多人群的使用需求！"
     echo "2.优化了菜单效果"
     echo "------------------------"
     echo "2023-8-14   v1.3"
@@ -4663,6 +4663,7 @@ case $choice in
     echo "------------------------"
     echo "2023-9-6   v1.6.9"
     echo "系统工具中添加随机用户密码生成器，方便懒得想用户名和密码的小伙伴"
+    echo "优化了所有搭建网站与面板后的信息复制体验"
     echo "------------------------"
     ;;
 
