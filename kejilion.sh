@@ -4434,7 +4434,7 @@ case $choice in
             echo "随机UUID"
             echo "------------------------"
             for i in {1..5}; do
-                uuid=$(uuidgen)
+                uuid=$(cat /proc/sys/kernel/random/uuid)
                 echo "随机UUID $i: $uuid"
             done
 
