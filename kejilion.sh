@@ -4453,6 +4453,7 @@ case $choice in
                 password=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c32)
                 echo "随机密码 $i: $password"
             done
+            echo ""
 
               ;;
 
