@@ -342,6 +342,7 @@ case $choice in
               ;;
 
           0)
+              cd ~
               ./kejilion.sh
               exit
               ;;
@@ -736,6 +737,7 @@ case $choice in
               esac
               ;;
           0)
+              cd ~
               ./kejilion.sh
               exit
               ;;
@@ -824,6 +826,7 @@ case $choice in
               wget -qO- bench.sh | bash
               ;;
           0)
+              cd ~
               ./kejilion.sh
               exit
               ;;
@@ -965,6 +968,7 @@ case $choice in
           esac
               ;;
           0)
+              cd ~
               ./kejilion.sh
               exit
               ;;
@@ -2006,6 +2010,7 @@ case $choice in
         ;;
 
     0)
+        cd ~
         ./kejilion.sh
         exit
       ;;
@@ -3710,6 +3715,7 @@ case $choice in
 
 
           0)
+              cd ~
               ./kejilion.sh
               exit
               ;;
@@ -3845,6 +3851,7 @@ case $choice in
               tmux list-sessions
               ;;
           0)
+              cd ~
               ./kejilion.sh
               exit
               ;;
@@ -4507,6 +4514,7 @@ case $choice in
               ;;
 
           0)
+              cd ~
               ./kejilion.sh
               exit
               ;;
