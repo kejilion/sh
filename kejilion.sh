@@ -950,9 +950,9 @@ case $choice in
               clear
               echo "设置你的ROOT密码"
               passwd
-              sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
-              sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-              sudo service sshd restart
+              sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
+              sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
+              service sshd restart
               echo "ROOT登录设置完毕！"
               read -p "需要重启服务器吗？(Y/N): " choice
           case "$choice" in
@@ -1037,7 +1037,8 @@ case $choice in
       # 检查并安装 Docker（如果需要）
       if ! command -v docker &>/dev/null; then
           curl -fsSL https://get.docker.com | sh
-          sudo systemctl start docker
+          systemctl start docker
+          systemctl enable docker
       else
           echo "Docker 已经安装"
       fi
@@ -1704,7 +1705,8 @@ case $choice in
       # 检查并安装 Docker（如果需要）
       if ! command -v docker &>/dev/null; then
           curl -fsSL https://get.docker.com | sh
-          sudo systemctl start docker
+          systemctl start docker
+          systemctl enable docker
       else
           echo "Docker 已经安装"
       fi
@@ -1890,7 +1892,8 @@ case $choice in
       # 检查并安装 Docker（如果需要）
       if ! command -v docker &>/dev/null; then
           curl -fsSL https://get.docker.com | sh
-          sudo systemctl start docker
+          systemctl start docker
+          systemctl enable docker
       else
           echo "Docker 已经安装"
       fi
@@ -2134,7 +2137,7 @@ case $choice in
                             if [ "$system_type" == "centos" ]; then
                                 yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
                             elif [ "$system_type" == "ubuntu" ]; then
-                                wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && sudo bash install.sh ed8484bec
+                                wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
                             elif [ "$system_type" == "debian" ]; then
                                 wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
                             fi
@@ -2236,7 +2239,7 @@ case $choice in
                             if [ "$system_type" == "centos" ]; then
                                 yum install -y wget && wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && bash install.sh aapanel
                             elif [ "$system_type" == "ubuntu" ]; then
-                                wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && sudo bash install.sh aapanel
+                                wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh aapanel
                             elif [ "$system_type" == "debian" ]; then
                                 wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh aapanel
                             fi
@@ -2295,7 +2298,7 @@ case $choice in
                   if [ "$system_type" == "centos" ]; then
                     curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sh quick_start.sh
                   elif [ "$system_type" == "ubuntu" ]; then
-                    curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sudo bash quick_start.sh
+                    curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
                   elif [ "$system_type" == "debian" ]; then
                     curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
                   fi
@@ -3912,9 +3915,9 @@ case $choice in
               clear
               echo "设置你的ROOT密码"
               passwd
-              sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
-              sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-              sudo service sshd restart
+              sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
+              sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
+              service sshd restart
               echo "ROOT登录设置完毕！"
               read -p "需要重启服务器吗？(Y/N): " choice
           case "$choice" in
@@ -4032,7 +4035,7 @@ case $choice in
               #!/bin/bash
 
               # 去掉 #Port 的注释
-              sudo sed -i 's/#Port/Port/' /etc/ssh/sshd_config
+              sed -i 's/#Port/Port/' /etc/ssh/sshd_config
 
               # 读取当前的 SSH 端口号
               current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
@@ -4046,13 +4049,13 @@ case $choice in
               read -p "请输入新的 SSH 端口号: " new_port
 
               # 备份 SSH 配置文件
-              sudo cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+              cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 
               # 替换 SSH 配置文件中的端口号
-              sudo sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
+              sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
 
               # 重启 SSH 服务
-              sudo service sshd restart
+              service sshd restart
 
               echo "SSH 端口已修改为: $new_port"
 
