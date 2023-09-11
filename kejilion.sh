@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.6.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1410,10 +1410,11 @@ case $choice in
       echo "------------------------"
       echo "用户名: admin"
       echo "密码: admin"
+      echo "------------------------"
       echo "登录时右上角如果出现红色error0请使用如下命令: "
       echo "我也很气愤独角数卡为啥这么麻烦，会有这样的问题！"
       echo "sed -i 's/ADMIN_HTTPS=false/ADMIN_HTTPS=true/g' /home/web/html/$yuming/dujiaoka/.env"
-
+      echo ""
         ;;
 
       7)
@@ -2043,6 +2044,8 @@ case $choice in
       echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
       echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
+      echo "15. emby多媒体管理系统"
+
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3716,6 +3719,138 @@ case $choice in
             fi
               ;;
 
+          15)
+            if docker inspect emby &>/dev/null; then
+
+                    clear
+                    echo "emby已安装，访问地址: "
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:8096"
+                    echo ""
+
+                    echo "应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f emby
+                            docker rmi -f linuxserver/emby:latest
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                systemctl start docker
+                                systemctl enable docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+                            docker run -d --name=emby --restart=always \
+                                -v /homeo/docker/emby/config:/config \
+                                -v /homeo/docker/emby/share1:/mnt/share1 \
+                                -v /homeo/docker/emby/share2:/mnt/share2 \
+                                -v /mnt/notify:/mnt/notify \
+                                -p 8096:8096 -p 8920:8920 \
+                                -e UID=1000 -e GID=100 -e GIDLIST=100 \
+                                linuxserver/emby:latest
+
+
+                            clear
+                            echo "emby已经安装完成"
+                            echo "------------------------"
+                            echo "您可以使用以下地址访问emby:"
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "http:$external_ip:8096"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f emby
+                            docker rmi -f linuxserver/emby:latest
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "emby是一个主从式架构的媒体服务器软件，可以用来整理服务器上的视频和音频，并将音频和视频流式传输到客户端设备"
+                echo "官网介绍: https://emby.media/"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装emby吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh
+                        systemctl start docker
+                        systemctl enable docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+
+                    docker run -d --name=emby --restart=always \
+                        -v /homeo/docker/emby/config:/config \
+                        -v /homeo/docker/emby/share1:/mnt/share1 \
+                        -v /homeo/docker/emby/share2:/mnt/share2 \
+                        -v /mnt/notify:/mnt/notify \
+                        -p 8096:8096 -p 8920:8920 \
+                        -e UID=1000 -e GID=100 -e GIDLIST=100 \
+                        linuxserver/emby:latest
+
+                    clear
+                    echo "emby已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问emby:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:8096"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
+              ;;
+
 
           0)
               cd ~
@@ -4675,6 +4810,9 @@ case $choice in
     echo "2023-9-6   v1.6.9"
     echo "系统工具中添加随机用户密码生成器，方便懒得想用户名和密码的小伙伴"
     echo "优化了所有搭建网站与面板后的信息复制体验"
+    echo "------------------------"
+    echo "2023-9-11   v1.7"
+    echo "面板工具中添加emby多媒体管理系统的搭建"
     echo "------------------------"
     ;;
 
