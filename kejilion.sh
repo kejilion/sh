@@ -3099,8 +3099,10 @@ case $choice in
 
                             docker run --name db -d --restart=always \
                                 -v /home/docker/mongo/dump:/dump \
-                                mongo:latest --replSet rs5 --oplogSize 256 && \
-                            docker exec -it db mongosh --eval "printjson(rs.initiate())" && \
+                                mongo:latest --replSet rs5 --oplogSize 256
+                            sleep 1    
+                            docker exec -it db mongosh --eval "printjson(rs.initiate())"
+                            sleep 5
                             docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
                             clear
@@ -3160,8 +3162,10 @@ case $choice in
 
                     docker run --name db -d --restart=always \
                         -v /home/docker/mongo/dump:/dump \
-                        mongo:latest --replSet rs5 --oplogSize 256 && \
-                    docker exec -it db mongosh --eval "printjson(rs.initiate())" && \
+                        mongo:latest --replSet rs5 --oplogSize 256
+                    sleep 1    
+                    docker exec -it db mongosh --eval "printjson(rs.initiate())"
+                    sleep 5
                     docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
                     clear
