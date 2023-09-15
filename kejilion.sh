@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.7.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1000,6 +1000,7 @@ case $choice in
     echo  "6. 安装独角数发卡网"
     echo  "7. 安装BingChatAI聊天网站"
     echo  "8. 安装flarum论坛网站"
+    echo  "9. 安装Bitwarden密码管理平台"
     echo  "------------------------"
     echo  "21. 站点重定向"
     echo  "22. 站点反向代理"
@@ -1499,6 +1500,41 @@ case $choice in
       echo "密码: $dbusepasswd"
       echo "表前缀: flarum_"
       echo "管理员信息自行设置"
+      echo ""
+        ;;
+
+      9)
+      clear
+      # Bitwarden
+      read -p "请输入你解析的域名: " yuming
+
+      docker stop nginx
+
+      curl https://get.acme.sh | sh
+      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+
+      docker start nginx
+
+      docker run -d \
+        --name bitwarden \
+        --restart always \
+        -p 3280:80 \
+        -v /home/web/html/$yuming/bitwarden/data:/data \
+        vaultwarden/server
+
+      # Get external IP address
+      external_ip=$(curl -s ipv4.ip.sb)
+
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/0.0.0.0/$external_ip/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/0000/3280/g" /home/web/conf.d/$yuming.conf
+
+      docker restart nginx
+
+      clear
+      echo "您的Bitwarden网站搭建好了！"
+      echo "https://$yuming"
       echo ""
         ;;
 
@@ -3100,7 +3136,7 @@ case $choice in
                             docker run --name db -d --restart=always \
                                 -v /home/docker/mongo/dump:/dump \
                                 mongo:latest --replSet rs5 --oplogSize 256
-                            sleep 1    
+                            sleep 1
                             docker exec -it db mongosh --eval "printjson(rs.initiate())"
                             sleep 5
                             docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
@@ -3163,7 +3199,7 @@ case $choice in
                     docker run --name db -d --restart=always \
                         -v /home/docker/mongo/dump:/dump \
                         mongo:latest --replSet rs5 --oplogSize 256
-                    sleep 1    
+                    sleep 1
                     docker exec -it db mongosh --eval "printjson(rs.initiate())"
                     sleep 5
                     docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
@@ -4818,8 +4854,10 @@ case $choice in
     echo "2023-9-11   v1.7"
     echo "面板工具中添加emby多媒体管理系统的搭建"
     echo "------------------------"
+    echo "2023-9-15   v1.7.1"
+    echo "LDNMP建站中可以搭建Bitwarden密码管理平台了"
+    echo "------------------------"
     ;;
-
 
   0)
     clear
