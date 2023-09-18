@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.7.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.7.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1005,13 +1005,11 @@ case $choice in
     echo  "21. 站点重定向"
     echo  "22. 站点反向代理"
     echo  "------------------------"
-    echo  "30. 仅申请证书"
-    echo  "------------------------"
-    echo  "31. 查看当前站点信息"
+    echo  "31. 站点数据管理"
     echo  "32. 备份全站数据"
     echo  "33. 定时远程备份"
     echo  "34. 还原全站数据"
-    echo  "35. 删除站点数据"
+    echo  "------------------------"
     echo  "36. 更新LDNMP环境"
     echo  "37. 卸载LDNMP环境"
     echo  "------------------------"
@@ -1590,59 +1588,100 @@ case $choice in
         ;;
 
 
-    30)
-      clear
-      read -p "请输入你解析的域名: " yuming
-
-      docker stop nginx
-
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
-
-      ;;
 
 
     31)
+    while true; do
+        clear
+        echo "LDNMP环境"
+        echo "------------------------"
+        # 获取nginx版本
+        nginx_version=$(docker exec nginx nginx -v 2>&1)
+        nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+        echo -n "nginx : v$nginx_version"
+        # 获取mysql版本
+        dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+        mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+        echo -n "            mysql : v$mysql_version"
+        # 获取php版本
+        php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+        echo -n "            php : v$php_version"
+        # 获取redis版本
+        redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
+        echo "            redis : v$redis_version"
+        echo "------------------------"
+        echo ""
 
-      clear
-      echo "LDNMP环境"
-      echo "------------------------"
+        echo "站点信息"
+        echo "------------------------"
+        ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
+        echo "------------------------"
+        echo ""
+        echo "数据库信息"
+        echo "------------------------"
+        dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+        docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys"
 
-      # 获取nginx版本
-      nginx_version=$(docker exec nginx nginx -v 2>&1)
-      nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
-      echo -n "nginx : v$nginx_version"
+        echo "------------------------"
+        echo ""
+        echo "操作"
+        echo "------------------------"
+        echo "1. 更新域名证书                 2. 更换站点域名"
+        echo "------------------------"
+        echo "3. 删除指定站点                 4. 删除指定数据库"
+        echo "------------------------"
+        echo "0. 返回上一级选单"
+        echo "------------------------"
+        read -p "请输入你的选择: " sub_choice
+        case $sub_choice in
+            1)
+                read -p "请输入你的域名: " yuming
 
-      # 获取mysql版本
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-      echo -n "            mysql : v$mysql_version"
+                docker stop nginx
+                curl https://get.acme.sh | sh
+                ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+                docker start nginx
 
-      # 获取php版本
-      php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
-      echo -n "            php : v$php_version"
+                ;;
 
-      # 获取redis版本
-      redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
-      echo "            redis : v$redis_version"
+            2)
+                read -p "请输入旧域名: " oddyuming
+                read -p "请输入新域名: " newyuming
+                mv /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$newyuming.conf
+                sed -i "s/$oddyuming/$newyuming/g" /home/web/conf.d/$newyuming.conf
+                mv /home/web/html/$oddyuming /home/web/html/$newyuming
 
-      echo "------------------------"
-      echo ""
+                rm /home/web/certs/${oddyuming}_key.pem
+                rm /home/web/certs/${oddyuming}_cert.pem
 
+                docker stop nginx
+                curl https://get.acme.sh | sh
+                ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $newyuming --standalone --key-file /home/web/certs/${newyuming}_key.pem --cert-file /home/web/certs/${newyuming}_cert.pem --force
+                docker start nginx
 
-    echo "站点信息"
-    echo "------------------------"
-    ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
-    echo "------------------------"
-    echo ""
-    echo "数据库信息"
-    echo "------------------------"
-    dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-    docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys"
+                ;;
 
-    echo "------------------------"
+            3)
+                read -p "请输入你的域名: " yuming
+                rm -r /home/web/html/$yuming
+                rm /home/web/conf.d/$yuming.conf
+                rm /home/web/certs/${yuming}_key.pem
+                rm /home/web/certs/${yuming}_cert.pem
+                ;;
+            4)
+                read -p "请输入数据库名: " shujuku
+                dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+                docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $shujuku;" 2> /dev/null
+                ;;
+            0)
+                break  # 跳出循环，退出菜单
+                ;;
+            *)
+                break  # 跳出循环，退出菜单
+                ;;
+        esac
+    done
+
       ;;
 
 
@@ -1846,69 +1885,6 @@ case $choice in
 
       ;;
 
-    35)
-    while true; do
-        clear
-        echo "LDNMP环境"
-        echo "------------------------"
-        # 获取nginx版本
-        nginx_version=$(docker exec nginx nginx -v 2>&1)
-        nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
-        echo -n "nginx : v$nginx_version"
-        # 获取mysql版本
-        dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-        mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-        echo -n "            mysql : v$mysql_version"
-        # 获取php版本
-        php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
-        echo -n "            php : v$php_version"
-        # 获取redis版本
-        redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
-        echo "            redis : v$redis_version"
-        echo "------------------------"
-        echo ""
-
-        echo "站点信息"
-        echo "------------------------"
-        ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
-        echo "------------------------"
-        echo ""
-        echo "数据库信息"
-        echo "------------------------"
-        dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-        docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys"
-
-        echo "------------------------"
-        echo ""
-        echo "操作"
-        echo "------------------------"
-        echo "1. 删除指定站点                 2. 删除指定数据库"
-        echo "------------------------"
-        echo "0. 返回上一级选单"
-        echo "------------------------"
-        read -p "请输入你的选择: " sub_choice
-        case $sub_choice in
-            1)
-                read -p "请输入你的域名: " yuming
-                rm -r /home/web/html/$yuming
-                rm /home/web/conf.d/$yuming.conf
-                rm /home/web/certs/${yuming}_key.pem
-                rm /home/web/certs/${yuming}_cert.pem
-                ;;
-            2)
-                read -p "请输入数据库名: " shujuku
-                dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-                docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $shujuku;" 2> /dev/null
-                ;;
-            0)
-                break  # 跳出循环，退出菜单
-                ;;
-            *)
-                break  # 跳出循环，退出菜单
-                ;;
-        esac
-    done
-      ;;
 
     36)
       clear
@@ -4856,6 +4832,10 @@ case $choice in
     echo "------------------------"
     echo "2023-9-15   v1.7.1"
     echo "LDNMP建站中可以搭建Bitwarden密码管理平台了"
+    echo "------------------------"
+    echo "2023-9-18   v1.7.2"
+    echo "LDNMP建站将站点信息查询和站点管理合并"
+    echo "LDNMP站点管理中添加证书重新申请和站点更换域名的功能"
     echo "------------------------"
     ;;
 
