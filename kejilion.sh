@@ -1588,8 +1588,6 @@ case $choice in
         ;;
 
 
-
-
     31)
     while true; do
         clear
@@ -1612,9 +1610,19 @@ case $choice in
         echo "------------------------"
         echo ""
 
-        echo "站点信息"
+
+        # ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
+        echo "站点信息                      证书到期时间"
         echo "------------------------"
-        ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
+        for cert_file in /home/web/certs/*_cert.pem; do
+          domain=$(basename "$cert_file" | sed 's/_cert.pem//')
+          if [ -n "$domain" ]; then
+            expire_date=$(openssl x509 -noout -enddate -in "$cert_file" | awk -F'=' '{print $2}')
+            formatted_date=$(date -d "$expire_date" '+%Y-%m-%d')
+            printf "%-30s%s\n" "$domain" "$formatted_date"
+          fi
+        done
+
         echo "------------------------"
         echo ""
         echo "数据库信息"
