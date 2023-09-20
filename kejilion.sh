@@ -35,7 +35,9 @@ case $choice in
     # 函数: 获取IPv4和IPv6地址
     fetch_ip_addresses() {
       ipv4_address=$(curl -s ipv4.ip.sb)
-      ipv6_address=$(curl -s ipv6.ip.sb)
+      # ipv6_address=$(curl -s ipv6.ip.sb)
+      ipv6_address=$(curl -s --max-time 2 ipv6.ip.sb)
+
     }
 
     # 获取IP地址
@@ -769,9 +771,9 @@ case $choice in
             exit 1
         fi
     fi
-    wget -N https://raw.githubusercontent.com/fscarmen/warp/main/menu.sh && bash menu.sh [option] [lisence]
+    # wget -N https://raw.githubusercontent.com/fscarmen/warp/main/menu.sh && bash menu.sh [option] [lisence]
+    wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh [option] [lisence/url/token]
     ;;
-
 
   8)
     while true; do
