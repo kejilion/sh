@@ -58,11 +58,10 @@ case $choice in
 
     disk_info=$(df -h | awk '$NF=="/"{printf "%d/%dGB (%s)", $3,$2,$5}')
 
-    ipv4_info=$(curl -s "http://ipinfo.io/$ipv4_address/json")
-    country=$(echo "$ipv4_info" | grep -o '"country": "[^"]*' | cut -d'"' -f4)
-    city=$(echo "$ipv4_info" | grep -o '"city": "[^"]*' | cut -d'"' -f4)
+    country=$(curl -s ipinfo.io/country)
+    city=$(curl -s ipinfo.io/city)
 
-    isp_info=$(curl -s ipinfo.io/org | sed -e 's/^[ \t]*//' | sed -e 's/\"//g')
+    isp_info=$(curl -s ipinfo.io/org)
 
     cpu_arch=$(uname -m)
 
