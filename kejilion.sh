@@ -497,6 +497,11 @@ case $choice in
                       11)
                           read -p "请输入容器名: " dockername
                           docker exec -it $dockername /bin/bash
+                          echo -e "\033[0;32m操作完成\033[0m"
+                          echo "按任意键继续..."
+                          read -n 1 -s -r -p ""
+                          echo ""
+                          clear                          
                           ;;
                       12)
                           read -p "请输入容器名: " dockername
@@ -1055,7 +1060,7 @@ case $choice in
       fi
 
       # 创建必要的目录和文件
-      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis && touch web/docker-compose.yml
+      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis && touch web/docker-compose.yml && touch web/log/nginx/access.log
 
       # 下载 docker-compose.yml 文件并进行替换
       wget -O /home/web/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-4.yml
