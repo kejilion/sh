@@ -1,0 +1,38 @@
+[nginx-http-auth]
+
+enabled = true
+mode = fallback
+port = http,https
+logpath = /home/web/log/nginx/access.log
+
+
+
+[nginx-limit-req]
+
+enabled = true
+port    = http,https
+logpath = /home/web/log/nginx/access.log
+
+
+
+[nginx-botsearch]
+
+enabled = true
+port     = http,https
+logpath = /home/web/log/nginx/access.log
+
+
+
+[nginx-bad-request]
+
+enabled = true
+port    = http,https
+logpath = /home/web/log/nginx/access.log
+
+
+
+[php-url-fopen]
+
+enabled = true
+port    = http,https
+logpath = /home/web/log/nginx/access.log
