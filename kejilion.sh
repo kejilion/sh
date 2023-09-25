@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.7.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -501,7 +501,7 @@ case $choice in
                           echo "按任意键继续..."
                           read -n 1 -s -r -p ""
                           echo ""
-                          clear                          
+                          clear
                           ;;
                       12)
                           read -p "请输入容器名: " dockername
@@ -1016,6 +1016,8 @@ case $choice in
     echo  "33. 定时远程备份"
     echo  "34. 还原全站数据"
     echo  "------------------------"
+    echo  "35. 站点防御程序"
+    echo  "------------------------"
     echo  "36. 更新LDNMP环境"
     echo  "37. 卸载LDNMP环境"
     echo  "------------------------"
@@ -1060,7 +1062,7 @@ case $choice in
       fi
 
       # 创建必要的目录和文件
-      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis && touch web/docker-compose.yml && touch web/log/nginx/access.log
+      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
 
       # 下载 docker-compose.yml 文件并进行替换
       wget -O /home/web/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-4.yml
@@ -1899,6 +1901,137 @@ case $choice in
 
       ;;
 
+    35)
+      if [ -x "$(command -v fail2ban-client)" ] && [ -d "/etc/fail2ban" ]; then
+          while true; do
+              clear
+              echo "服务器防御程序已启动"
+              echo "------------------------"
+              echo "1. 开启SSH防暴力破解              2. 关闭SSH防暴力破解"
+              echo "3. 开启网站保护                   4. 关闭网站保护"
+              echo "------------------------"
+              echo "5. 查看SSH拦截记录                6. 查看网站拦截记录"
+              echo "7. 查看防御规则列表               8. 查看日志实时监控"
+              echo "------------------------"
+              echo "9. 卸载防御程序"
+              echo "------------------------"
+              echo "0. 退出"
+              echo "------------------------"
+              read -p "请输入你的选择: " sub_choice
+              case $sub_choice in
+                  1)
+                      sed -i 's/false/true/g' /etc/fail2ban/jail.d/sshd.local
+                      systemctl restart fail2ban
+                      sleep 1
+                      fail2ban-client status
+                      ;;
+                  2)
+                      sed -i 's/true/false/g' /etc/fail2ban/jail.d/sshd.local
+                      systemctl restart fail2ban
+                      sleep 1
+                      fail2ban-client status
+                      ;;
+                  3)
+                      sed -i 's/false/true/g' /etc/fail2ban/jail.d/nginx.local
+                      systemctl restart fail2ban
+                      sleep 1
+                      fail2ban-client status
+                      ;;
+                  4)
+                      sed -i 's/true/false/g' /etc/fail2ban/jail.d/nginx.local
+                      systemctl restart fail2ban
+                      sleep 1
+                      fail2ban-client status
+                      ;;
+                  5)
+                      echo "------------------------"
+                      fail2ban-client status sshd
+                      echo "------------------------"
+                      ;;
+                  6)
+                      echo "------------------------"
+                      fail2ban-client status nginx-bad-request
+                      echo "------------------------"
+                      fail2ban-client status nginx-botsearch
+                      echo "------------------------"
+                      fail2ban-client status nginx-http-auth
+                      echo "------------------------"
+                      fail2ban-client status nginx-limit-req
+                      echo "------------------------"
+                      fail2ban-client status php-url-fopen
+                      echo "------------------------"
+                      ;;
+
+                  7)
+                      fail2ban-client status
+                      ;;
+                  8)
+                      tail -f /var/log/fail2ban.log
+
+                      ;;
+                  9)
+                      systemctl disable fail2ban
+                      systemctl stop fail2ban
+                      apt remove -y --purge fail2ban
+                      if [ $? -eq 0 ]; then
+                          echo "Fail2ban已卸载"
+                      else
+                          echo "卸载失败"
+                      fi
+                      rm -rf /etc/fail2ban
+                      break
+                      ;;
+                  0)
+                      break
+                      ;;
+                  *)
+                      echo "无效的选择，请重新输入。"
+                      ;;
+              esac
+              echo -e "\033[0;32m操作完成\033[0m"
+              echo "按任意键继续..."
+              read -n 1 -s -r -p ""
+              echo ""
+          done
+      else
+          clear
+          # 安装Fail2ban
+          if [ -f /etc/debian_version ]; then
+              # Debian/Ubuntu系统
+              apt update -y
+              apt install -y fail2ban
+          elif [ -f /etc/redhat-release ]; then
+              # CentOS系统
+              yum update -y
+              yum install -y epel-release
+              yum install -y fail2ban
+          else
+              echo "不支持的操作系统类型"
+              exit 1
+          fi
+
+          # 启动Fail2ban
+          systemctl start fail2ban
+
+          # 设置Fail2ban开机自启
+          systemctl enable fail2ban
+
+          # 配置Fail2ban
+          rm -rf /etc/fail2ban/jail.d/*
+          cd /etc/fail2ban/jail.d/
+          curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/sshd.local
+          systemctl restart fail2ban
+          docker rm -f nginx
+          docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
+          docker exec -it nginx chmod -R 777 /var/www/html
+          curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/nginx.local
+          systemctl restart fail2ban
+          sleep 1
+          fail2ban-client status
+          echo "防御程序已开启"
+      fi
+
+        ;;
 
     36)
       clear
@@ -4850,6 +4983,9 @@ case $choice in
     echo "2023-9-18   v1.7.2"
     echo "LDNMP建站将站点信息查询和站点管理合并"
     echo "LDNMP站点管理中添加证书重新申请和站点更换域名的功能"
+    echo "------------------------"
+    echo "2023-9-25   v1.8"
+    echo "LDNMP建站增加了服务器与网站防护功能，防御暴力破解，防御网站被攻击"
     echo "------------------------"
     ;;
 
