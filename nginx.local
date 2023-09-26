@@ -3,7 +3,7 @@
 enabled = true
 mode = fallback
 port = http,https
-logpath = /home/web/log/nginx/access.log
+logpath = /home/web/log/nginx/error.log
 
 
 
@@ -11,7 +11,7 @@ logpath = /home/web/log/nginx/access.log
 
 enabled = true
 port    = http,https
-logpath = /home/web/log/nginx/access.log
+logpath = /home/web/log/nginx/error.log
 
 
 
@@ -19,7 +19,7 @@ logpath = /home/web/log/nginx/access.log
 
 enabled = true
 port     = http,https
-logpath = /home/web/log/nginx/access.log
+logpath = /home/web/log/nginx/error.log
 
 
 
@@ -27,7 +27,7 @@ logpath = /home/web/log/nginx/access.log
 
 enabled = true
 port    = http,https
-logpath = /home/web/log/nginx/access.log
+logpath = /home/web/log/nginx/error.log
 
 
 
