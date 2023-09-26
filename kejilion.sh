@@ -2024,6 +2024,8 @@ case $choice in
           docker rm -f nginx
           docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
           docker exec -it nginx chmod -R 777 /var/www/html
+          docker exec -it nginx sh -c "sed -i '/http {/a \    limit_req_zone \$binary_remote_addr zone=example_zone:10m rate=1r/s;' /etc/nginx/nginx.conf"
+          docker restart nginx
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/nginx.local
           systemctl restart fail2ban
           sleep 1
