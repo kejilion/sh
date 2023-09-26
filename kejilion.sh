@@ -1092,6 +1092,8 @@ case $choice in
 
       # 定义要执行的命令
       commands=(
+          "docker exec -it nginx sh -c 'sed -i \"/http {/a \    limit_req_zone \$binary_remote_addr zone=example_zone:10m rate=1r/s;\" /etc/nginx/nginx.conf' > /dev/null 2>&1"
+
           "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
           "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
@@ -1822,6 +1824,8 @@ case $choice in
 
       # 定义要执行的命令
       commands=(
+          "docker exec -it nginx sh -c 'sed -i \"/http {/a \    limit_req_zone \$binary_remote_addr zone=example_zone:10m rate=1r/s;\" /etc/nginx/nginx.conf' > /dev/null 2>&1"
+
           "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
           "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
@@ -2079,6 +2083,8 @@ case $choice in
 
       # 定义要执行的命令
       commands=(
+          "docker exec -it nginx sh -c 'sed -i \"/http {/a \    limit_req_zone \$binary_remote_addr zone=example_zone:10m rate=1r/s;\" /etc/nginx/nginx.conf' > /dev/null 2>&1"
+
           "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
           "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
