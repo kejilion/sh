@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.8.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1064,8 +1064,13 @@ case $choice in
       # 创建必要的目录和文件
       cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
 
+      wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
+      wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
+      localhostIP=$(curl -s ipv4.ip.sb)
+      sed -i "s/localhost/$localhostIP/g" /home/web/conf.d/default.conf
+
       # 下载 docker-compose.yml 文件并进行替换
-      wget -O /home/web/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-4.yml
+      wget -O /home/web/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
 
       dbrootpasswd=$(openssl rand -base64 16) && dbuse=$(openssl rand -hex 4) && dbusepasswd=$(openssl rand -base64 8)
 
@@ -1092,8 +1097,6 @@ case $choice in
 
       # 定义要执行的命令
       commands=(
-          "docker exec -it nginx sh -c 'sed -i \"/http {/a \    limit_req_zone \$binary_remote_addr zone=example_zone:10m rate=1r/s;\" /etc/nginx/nginx.conf' > /dev/null 2>&1"
-
           "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
           "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
@@ -1824,8 +1827,6 @@ case $choice in
 
       # 定义要执行的命令
       commands=(
-          "docker exec -it nginx sh -c 'sed -i \"/http {/a \    limit_req_zone \$binary_remote_addr zone=example_zone:10m rate=1r/s;\" /etc/nginx/nginx.conf' > /dev/null 2>&1"
-
           "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
           "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
@@ -2026,10 +2027,15 @@ case $choice in
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/sshd.local
           systemctl restart fail2ban
           docker rm -f nginx
-          docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
+
+          wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
+          wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
+          localhostIP=$(curl -s ipv4.ip.sb)
+          sed -i "s/localhost/$localhostIP/g" /home/web/conf.d/default.conf
+
+          docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
           docker exec -it nginx chmod -R 777 /var/www/html
-          docker exec -it nginx sh -c "sed -i '/http {/a \    limit_req_zone \$binary_remote_addr zone=example_zone:10m rate=1r/s;' /etc/nginx/nginx.conf"
-          docker restart nginx
+
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/nginx.local
           systemctl restart fail2ban
           sleep 1
@@ -2083,8 +2089,6 @@ case $choice in
 
       # 定义要执行的命令
       commands=(
-          "docker exec -it nginx sh -c 'sed -i \"/http {/a \    limit_req_zone \$binary_remote_addr zone=example_zone:10m rate=1r/s;\" /etc/nginx/nginx.conf' > /dev/null 2>&1"
-
           "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
           "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
@@ -4994,6 +4998,10 @@ case $choice in
     echo "------------------------"
     echo "2023-9-25   v1.8"
     echo "LDNMP建站增加了服务器与网站防护功能，防御暴力破解，防御网站被攻击"
+    echo "------------------------"
+    echo "2023-9-28   v1.8.2"
+    echo "LDNMP建站优化了运行速度和安全性，增加了频率限制"
+    echo "LDNMP建站优化了防御程序的高可用性"
     echo "------------------------"
     ;;
 
