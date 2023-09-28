@@ -1182,6 +1182,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1229,6 +1230,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1278,6 +1280,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1324,6 +1327,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1378,6 +1382,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1436,6 +1441,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1468,6 +1474,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1521,6 +1528,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1557,6 +1565,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1582,6 +1591,7 @@ case $choice in
 
       docker stop nginx
 
+      cd ~
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
@@ -1659,6 +1669,8 @@ case $choice in
                 read -p "请输入你的域名: " yuming
 
                 docker stop nginx
+
+                cd ~
                 curl https://get.acme.sh | sh
                 ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
                 docker start nginx
@@ -1676,6 +1688,8 @@ case $choice in
                 rm /home/web/certs/${oddyuming}_cert.pem
 
                 docker stop nginx
+
+                cd ~
                 curl https://get.acme.sh | sh
                 ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $newyuming --standalone --key-file /home/web/certs/${newyuming}_key.pem --cert-file /home/web/certs/${newyuming}_cert.pem --force
                 docker start nginx
