@@ -2049,6 +2049,16 @@ case $choice in
 
           docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
           docker exec -it nginx chmod -R 777 /var/www/html
+          
+          # 获取宿主机当前时区
+          HOST_TIMEZONE=$(timedatectl show --property=Timezone --value)
+          
+          # 调整多个容器的时区
+          docker exec -it nginx ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
+          docker exec -it php ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
+          docker exec -it php74 ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
+          docker exec -it mysql ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
+          docker exec -it redis ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime          
 
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/nginx.local
           systemctl restart fail2ban
