@@ -2041,6 +2041,7 @@ case $choice in
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/sshd.local
           systemctl restart fail2ban
           docker rm -f nginx
+          rm -rf /home/web/log/nginx/*
 
           wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
           wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
