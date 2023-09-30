@@ -2041,7 +2041,6 @@ case $choice in
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/sshd.local
           systemctl restart fail2ban
           docker rm -f nginx
-          rm -rf /home/web/log/nginx/*
 
           wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
           wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
@@ -2060,6 +2059,8 @@ case $choice in
           docker exec -it php74 ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
           docker exec -it mysql ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
           docker exec -it redis ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime          
+          rm -rf /home/web/log/nginx/*
+          docker restart nginx
 
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/nginx.local
           systemctl restart fail2ban
