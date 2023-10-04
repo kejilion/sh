@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.8.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.8.3 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -4227,6 +4227,7 @@ case $choice in
       echo "12. 修改虚拟内存大小"
       echo "13. 用户管理"
       echo "14. 用户/密码生成器"
+      echo "15. 系统时区调整"      
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -4803,6 +4804,116 @@ case $choice in
 
               ;;
 
+          15)
+              while true; do
+                  clear
+                  echo "系统时间信息"
+
+                  # 获取当前系统时区
+                  current_timezone=$(timedatectl show --property=Timezone --value)
+                  
+                  # 获取当前系统时间
+                  current_time=$(date +"%Y-%m-%d %H:%M:%S")
+                  
+                  # 显示时区和时间
+                  echo "当前系统时区：$current_timezone"
+                  echo "当前系统时间：$current_time"
+                  
+                  echo ""
+                  echo "时区切换"
+                  echo "亚洲------------------------"
+                  echo "1. 中国上海时间              2. 中国香港时间"
+                  echo "3. 日本东京时间              4. 韩国首尔时间"
+                  echo "5. 新加坡时间                6. 印度加尔各答时间"
+                  echo "7. 阿联酋迪拜时间            8. 澳大利亚悉尼时间"
+                  echo "欧洲------------------------"
+                  echo "11. 英国伦敦时间             12. 法国巴黎时间"
+                  echo "13. 德国柏林时间             14. 俄罗斯莫斯科时间"                  
+                  echo "15. 荷兰尤特赖赫特时间       16. 西班牙马德里时间"
+                  echo "美洲------------------------"
+                  echo "21. 美国西部时间             22. 美国东部时间"          
+                  echo "23. 加拿大时间               24. 墨西哥时间"  
+                  echo "25. 巴西时间                 26. 阿根廷时间"                                                     
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                        timedatectl set-timezone Asia/Shanghai
+                          ;;
+
+                      2)
+                        timedatectl set-timezone Asia/Hong_Kong
+                          ;;
+                      3)
+                        timedatectl set-timezone Asia/Tokyo
+                          ;;
+                      4)
+                        timedatectl set-timezone Asia/Seoul
+                          ;;
+                      5)
+                        timedatectl set-timezone Asia/Singapore
+                          ;;
+                      6)
+                        timedatectl set-timezone Asia/Kolkata
+                          ;;
+                      7)
+                        timedatectl set-timezone Asia/Dubai
+                          ;;
+                      8)
+                        timedatectl set-timezone Australia/Sydney
+                          ;;
+                      11)
+                        timedatectl set-timezone Europe/London
+                          ;;
+                      12)
+                        timedatectl set-timezone Europe/Paris
+                          ;;
+                      13)
+                        timedatectl set-timezone Europe/Berlin
+                          ;;      
+                      14)
+                        timedatectl set-timezone Europe/Moscow
+                          ;;     
+                      15)
+                        timedatectl set-timezone Europe/Amsterdam
+                          ;;     
+                      16)
+                        timedatectl set-timezone Europe/Madrid
+                          ;;   
+                      21)
+                        timedatectl set-timezone America/Los_Angeles
+                          ;;  
+                      22)
+                        timedatectl set-timezone America/New_York
+                          ;;   
+                      23)
+                        timedatectl set-timezone America/Vancouver
+                          ;;   
+                      24)
+                        timedatectl set-timezone America/Mexico_City
+                          ;;     
+                      25)
+                        timedatectl set-timezone America/Sao_Paulo
+                          ;;     
+                      26)
+                        timedatectl set-timezone America/Argentina/Buenos_Aires
+                          ;;                                                                                                                                                                                                                                                                        
+                      0)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单
+                          ;;
+                  esac
+              done
+
+              ;;
+
+
           21)
           clear
           # 检查是否已安装 sshpass
@@ -5029,6 +5140,9 @@ case $choice in
     echo "LDNMP建站优化了运行速度和安全性，增加了频率限制"
     echo "LDNMP建站优化了防御程序的高可用性"
     echo "------------------------"
+    echo "2023-9-28   v1.8.3"
+    echo "系统工具增加系统时区切换功能"
+    echo "------------------------"    
     ;;
 
   0)
