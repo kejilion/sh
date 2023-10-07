@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.8.3 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.8.4 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1007,6 +1007,7 @@ case $choice in
     echo  "7. 安装BingChatAI聊天网站"
     echo  "8. 安装flarum论坛网站"
     echo  "9. 安装Bitwarden密码管理平台"
+    echo  "10. 安装Halo博客网站"
     echo  "------------------------"
     echo  "21. 站点重定向"
     echo  "22. 站点反向代理"
@@ -1557,6 +1558,38 @@ case $choice in
       echo ""
         ;;
 
+      10)
+      clear
+      # Bitwarden
+      read -p "请输入你解析的域名: " yuming
+
+      docker stop nginx
+
+      cd ~
+      curl https://get.acme.sh | sh
+      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+
+      docker start nginx
+
+      docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2.9
+
+      # Get external IP address
+      external_ip=$(curl -s ipv4.ip.sb)
+
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/0.0.0.0/$external_ip/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/0000/8010/g" /home/web/conf.d/$yuming.conf
+
+      docker restart nginx
+
+      clear
+      echo "您的Halo网站搭建好了！"
+      echo "https://$yuming"
+      echo ""
+        ;;
+
+
 
       21)
       clear
@@ -2049,16 +2082,16 @@ case $choice in
 
           docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
           docker exec -it nginx chmod -R 777 /var/www/html
-          
+
           # 获取宿主机当前时区
           HOST_TIMEZONE=$(timedatectl show --property=Timezone --value)
-          
+
           # 调整多个容器的时区
           docker exec -it nginx ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
           docker exec -it php ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
           docker exec -it php74 ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
           docker exec -it mysql ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
-          docker exec -it redis ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime          
+          docker exec -it redis ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
           rm -rf /home/web/log/nginx/*
           docker restart nginx
 
@@ -4227,7 +4260,7 @@ case $choice in
       echo "12. 修改虚拟内存大小"
       echo "13. 用户管理"
       echo "14. 用户/密码生成器"
-      echo "15. 系统时区调整"      
+      echo "15. 系统时区调整"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -4811,14 +4844,14 @@ case $choice in
 
                   # 获取当前系统时区
                   current_timezone=$(timedatectl show --property=Timezone --value)
-                  
+
                   # 获取当前系统时间
                   current_time=$(date +"%Y-%m-%d %H:%M:%S")
-                  
+
                   # 显示时区和时间
                   echo "当前系统时区：$current_timezone"
                   echo "当前系统时间：$current_time"
-                  
+
                   echo ""
                   echo "时区切换"
                   echo "亚洲------------------------"
@@ -4828,12 +4861,12 @@ case $choice in
                   echo "7. 阿联酋迪拜时间            8. 澳大利亚悉尼时间"
                   echo "欧洲------------------------"
                   echo "11. 英国伦敦时间             12. 法国巴黎时间"
-                  echo "13. 德国柏林时间             14. 俄罗斯莫斯科时间"                  
+                  echo "13. 德国柏林时间             14. 俄罗斯莫斯科时间"
                   echo "15. 荷兰尤特赖赫特时间       16. 西班牙马德里时间"
                   echo "美洲------------------------"
-                  echo "21. 美国西部时间             22. 美国东部时间"          
-                  echo "23. 加拿大时间               24. 墨西哥时间"  
-                  echo "25. 巴西时间                 26. 阿根廷时间"                                                     
+                  echo "21. 美国西部时间             22. 美国东部时间"
+                  echo "23. 加拿大时间               24. 墨西哥时间"
+                  echo "25. 巴西时间                 26. 阿根廷时间"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
@@ -4873,34 +4906,34 @@ case $choice in
                           ;;
                       13)
                         timedatectl set-timezone Europe/Berlin
-                          ;;      
+                          ;;
                       14)
                         timedatectl set-timezone Europe/Moscow
-                          ;;     
+                          ;;
                       15)
                         timedatectl set-timezone Europe/Amsterdam
-                          ;;     
+                          ;;
                       16)
                         timedatectl set-timezone Europe/Madrid
-                          ;;   
+                          ;;
                       21)
                         timedatectl set-timezone America/Los_Angeles
-                          ;;  
+                          ;;
                       22)
                         timedatectl set-timezone America/New_York
-                          ;;   
+                          ;;
                       23)
                         timedatectl set-timezone America/Vancouver
-                          ;;   
+                          ;;
                       24)
                         timedatectl set-timezone America/Mexico_City
-                          ;;     
+                          ;;
                       25)
                         timedatectl set-timezone America/Sao_Paulo
-                          ;;     
+                          ;;
                       26)
                         timedatectl set-timezone America/Argentina/Buenos_Aires
-                          ;;                                                                                                                                                                                                                                                                        
+                          ;;
                       0)
                           break  # 跳出循环，退出菜单
                           ;;
@@ -5140,9 +5173,12 @@ case $choice in
     echo "LDNMP建站优化了运行速度和安全性，增加了频率限制"
     echo "LDNMP建站优化了防御程序的高可用性"
     echo "------------------------"
-    echo "2023-9-28   v1.8.3"
+    echo "2023-10-3   v1.8.3"
     echo "系统工具增加系统时区切换功能"
-    echo "------------------------"    
+    echo "------------------------"
+    echo "2023-10-7   v1.8.4"
+    echo "LDNMP建站添加halo博客网站搭建"
+    echo "------------------------"
     ;;
 
   0)
