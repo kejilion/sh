@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.8.4 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.8.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1017,10 +1017,11 @@ case $choice in
     echo  "33. 定时远程备份"
     echo  "34. 还原全站数据"
     echo  "------------------------"
-    echo -e "35. 站点防御程序 \033[33mNEW\033[0m"
+    echo  "35. 站点防御程序"
     echo  "------------------------"
-    echo  "36. 更新LDNMP环境"
-    echo  "37. 卸载LDNMP环境"
+    echo -e "36. 优化LDNMP环境 \033[33mNEW\033[0m"
+    echo  "37. 更新LDNMP环境"
+    echo  "38. 卸载LDNMP环境"
     echo  "------------------------"
     echo  "0. 返回主菜单"
     echo  "------------------------"
@@ -2105,6 +2106,79 @@ case $choice in
         ;;
 
     36)
+          while true; do
+              clear
+              echo "优化LDNMP环境"
+              echo "------------------------"
+              echo "1. 标准模式              2. 高性能模式 (推荐2H2G以上)"
+              echo "------------------------"
+              echo "0. 退出"
+              echo "------------------------"
+              read -p "请输入你的选择: " sub_choice
+              case $sub_choice in
+                  1)
+                  # nginx调优
+                  sed -i 's/worker_connections.*/worker_connections 1024;/' /home/web/nginx.conf
+
+                  # php调优
+                  wget -O /home/www.conf https://raw.githubusercontent.com/kejilion/sh/main/www-1.conf
+                  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
+                  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
+                  rm -rf /home/www.conf
+
+                  # mysql调优
+                  wget -O /home/custom_mysql_config.cnf https://raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
+                  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
+                  rm -rf /home/custom_mysql_config.cnf
+
+                  docker restart nginx
+                  docker restart php
+                  docker restart php74
+                  docker restart mysql
+
+                  echo "LDNMP环境已设置成 标准模式"
+
+                      ;;
+                  2)
+
+                  # nginx调优
+                  sed -i 's/worker_connections.*/worker_connections 4096;/' /home/web/nginx.conf
+
+                  # php调优
+                  wget -O /home/www.conf https://raw.githubusercontent.com/kejilion/sh/main/www.conf
+                  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
+                  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
+                  rm -rf /home/www.conf
+
+                  # mysql调优
+                  wget -O /home/custom_mysql_config.cnf https://raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
+                  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
+                  rm -rf /home/custom_mysql_config.cnf
+
+                  docker restart nginx
+                  docker restart php
+                  docker restart php74
+                  docker restart mysql
+
+                  echo "LDNMP环境已设置成 高性能模式"
+
+                      ;;
+                  0)
+                      break
+                      ;;
+                  *)
+                      echo "无效的选择，请重新输入。"
+                      ;;
+              esac
+              echo -e "\033[0;32m操作完成\033[0m"
+              echo "按任意键继续..."
+              read -n 1 -s -r -p ""
+              echo ""
+          done
+        ;;
+
+
+    37)
       clear
       docker rm -f nginx php php74 mysql redis
       docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
@@ -2225,7 +2299,7 @@ case $choice in
 
 
 
-    37)
+    38)
         clear
         read -p "强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): " choice
         case "$choice" in
@@ -5178,6 +5252,9 @@ case $choice in
     echo "------------------------"
     echo "2023-10-7   v1.8.4"
     echo "LDNMP建站添加halo博客网站搭建"
+    echo "------------------------"
+    echo "2023-10-12   v1.8.5"
+    echo "LDNMP建站添加优化LDNMP环境选项，可以开启高性能模式，大幅提升网站性能，应对高并发！"
     echo "------------------------"
     ;;
 
