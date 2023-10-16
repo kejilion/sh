@@ -1603,13 +1603,11 @@ case $choice in
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
-      docker start nginx
-
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf
 
-      docker restart php && docker restart php74 && docker restart nginx
+      docker start nginx
 
       clear
       echo "您的重定向网站做好了！"
@@ -1629,14 +1627,12 @@ case $choice in
       curl https://get.acme.sh | sh
       ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
 
-      docker start nginx
-
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0000/$port/g" /home/web/conf.d/$yuming.conf
 
-      docker restart php && docker restart php74 && docker restart nginx
+      docker start nginx
 
       clear
       echo "您的反向代理网站做好了！"
