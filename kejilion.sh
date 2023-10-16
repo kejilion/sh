@@ -1202,14 +1202,18 @@ case $choice in
 
       echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
 
-      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
 
       dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
 
-      docker restart php && docker restart php74 && docker restart nginx
+      docker restart php
+      docker restart php74
+      docker restart nginx
 
       clear
       echo "您的WordPress搭建好了！"
@@ -1249,14 +1253,18 @@ case $choice in
       unzip -o Discuz_X3.5_SC_UTF8_20230520.zip
       rm Discuz_X3.5_SC_UTF8_20230520.zip
 
-      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
 
       dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
 
-      docker restart php && docker restart php74 && docker restart nginx
+      docker restart php
+      docker restart php74
+      docker restart nginx
 
 
       clear
@@ -1299,14 +1307,18 @@ case $choice in
       unzip -o 1.42.04.zip
       rm 1.42.04.zip
 
-      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
 
       dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
 
-      docker restart php && docker restart php74 && docker restart nginx
+      docker restart php
+      docker restart php74
+      docker restart nginx
 
 
       clear
@@ -1320,6 +1332,7 @@ case $choice in
       echo "数据库名: $dbname"
       echo "redis主机: redis"
         ;;
+
       5)
       clear
       # 苹果CMS
@@ -1348,14 +1361,18 @@ case $choice in
       cp /home/web/html/$yuming/maccms10-master/template/DYXS2/asset/admin/dycms.html /home/web/html/$yuming/maccms10-master/application/admin/view/system
       mv /home/web/html/$yuming/maccms10-master/admin.php /home/web/html/$yuming/maccms10-master/vip.php && wget -O /home/web/html/$yuming/maccms10-master/application/extra/maccms.php https://raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php
 
-      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
 
       dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
 
-      docker restart php && docker restart php74 && docker restart nginx
+      docker restart php
+      docker restart php74
+      docker restart nginx
 
 
       clear
@@ -1399,14 +1416,18 @@ case $choice in
       cd $yuming
       wget https://github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
-      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
 
       dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
 
-      docker restart php && docker restart php74 && docker restart nginx
+      docker restart php
+      docker restart php74
+      docker restart nginx
 
 
       clear
@@ -1499,14 +1520,18 @@ case $choice in
       docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum-lang/chinese-simplified"
       docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/polls"
 
-      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
 
       dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
 
-      docker restart php && docker restart php74 && docker restart nginx
+      docker restart php
+      docker restart php74
+      docker restart nginx
 
 
       clear
@@ -2267,8 +2292,12 @@ case $choice in
 
       echo  # 打印换行，以便输出不被覆盖
 
-      docker exec nginx chmod -R 777 /var/www/html && docker exec php chmod -R 777 /var/www/html && docker exec php74 chmod -R 777 /var/www/html
-      docker restart php && docker restart php74 && docker restart nginx
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
+      docker restart php
+      docker restart php74
+      docker restart nginx
 
       clear
       clear
