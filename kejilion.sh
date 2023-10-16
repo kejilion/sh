@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.8.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.8.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -4454,6 +4454,7 @@ case $choice in
       echo "13. 用户管理"
       echo "14. 用户/密码生成器"
       echo "15. 系统时区调整"
+      echo "16. 开启BBR3加速"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -5139,6 +5140,65 @@ case $choice in
 
               ;;
 
+          16)
+          clear
+          echo "请备份数据，将为你升级Linux内核开启BBR3，仅支持Debian/Ubuntu 仅支持x86_64架构"
+          echo "官网介绍: https://xanmod.org/"
+          read -p "确定继续吗？(Y/N): " choice
+
+          case "$choice" in
+            [Yy])
+            if [ -r /etc/os-release ]; then
+                . /etc/os-release
+                if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
+                    echo "当前环境不支持，仅支持Debian和Ubuntu系统"
+                    break
+                fi
+            else
+                echo "无法确定操作系统类型"
+                break
+            fi
+
+            # 检查系统架构
+            arch=$(dpkg --print-architecture)
+            if [ "$arch" != "amd64" ]; then
+              echo "当前环境不支持，仅支持x86_64架构"
+              break
+            fi
+
+            # 步骤1：安装系统组件
+            apt update -y
+            apt install -y wget gnupg
+
+            # 步骤2：注册PGP密钥
+            wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
+
+            # 步骤3：添加存储库
+            echo 'deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] http://deb.xanmod.org releases main' | tee /etc/apt/sources.list.d/xanmod-release.list
+
+            # 步骤4：更新并安装
+            apt update -y
+            apt install -y linux-xanmod-x64v3
+
+            # 步骤5：启用BBR3
+            cat > /etc/sysctl.conf << EOF
+net.core.default_qdisc=fq_pie
+net.ipv4.tcp_congestion_control=bbr
+EOF
+            sysctl -p
+            echo "XanMod内核安装并BBR3启用成功。重启后生效"
+            reboot
+
+              ;;
+            [Nn])
+              echo "已取消"
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              ;;
+          esac
+              ;;
+
 
           21)
           clear
@@ -5377,6 +5437,9 @@ case $choice in
     echo "------------------------"
     echo "2023-10-14   v1.8.6"
     echo "面板工具增加了测速流量监控面板的安装"
+    echo "------------------------"
+    echo "2023-10-16   v1.8.7"
+    echo "系统工具中添加开启BBR3加速功能"
     echo "------------------------"
     ;;
 
