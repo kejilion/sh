@@ -5203,7 +5203,7 @@ case $choice in
 
             # 步骤4：更新并安装
             apt update -y
-            apt install -y linux-xanmod-x64v3
+            apt install -y linux-xanmod-x64v4
 
             # 步骤5：启用BBR3
             cat > /etc/sysctl.conf << EOF
