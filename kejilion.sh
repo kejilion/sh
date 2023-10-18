@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.8.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.8.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -5201,9 +5201,10 @@ case $choice in
             # 步骤3：添加存储库
             echo 'deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] http://deb.xanmod.org releases main' | tee /etc/apt/sources.list.d/xanmod-release.list
 
-            # 步骤4：更新并安装
+            version=$(wget -q https://dl.xanmod.org/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
+
             apt update -y
-            apt install -y linux-xanmod-x64v4
+            apt install -y linux-xanmod-x64v$version
 
             # 步骤5：启用BBR3
             cat > /etc/sysctl.conf << EOF
@@ -5465,6 +5466,9 @@ EOF
     echo "------------------------"
     echo "2023-10-16   v1.8.7"
     echo "系统工具中添加开启BBR3加速功能"
+    echo "------------------------"
+    echo "2023-10-18   v1.8.8"
+    echo "系统工具中优化BBR3加速安装流程，可根据CPU型号自行安装适合的内核版本"
     echo "------------------------"
     ;;
 
