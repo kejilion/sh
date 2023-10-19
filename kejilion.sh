@@ -5248,9 +5248,6 @@ case $choice in
               break
             fi
 
-            apt purge -y 'linux-*xanmod1*'
-            update-grub
-
             apt update -y
             apt install -y wget gnupg
 
