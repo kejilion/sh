@@ -5204,6 +5204,8 @@ case $choice in
 
                         echo "XanMod内核已更新。重启后生效"
                         rm -f /etc/apt/sources.list.d/xanmod-release.list
+                        rm -f check_x86-64_psabi.sh*
+
                         reboot
 
                           ;;
@@ -5273,6 +5275,7 @@ EOF
             sysctl -p
             echo "XanMod内核安装并BBR3启用成功。重启后生效"
             rm -f /etc/apt/sources.list.d/xanmod-release.list
+            rm -f check_x86-64_psabi.sh*
             reboot
 
               ;;
