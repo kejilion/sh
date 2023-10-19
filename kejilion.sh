@@ -4463,7 +4463,7 @@ case $choice in
       echo " ▼ "
       echo "系统工具"
       echo "------------------------"
-      echo "1. 设置脚本快捷键"
+      echo "1. 设置脚本启动快捷键"
       echo "------------------------"
       echo "2. 修改ROOT密码"
       echo "3. 开启ROOT密码登录模式"
@@ -5167,6 +5167,7 @@ case $choice in
 
           16)
           if dpkg -l | grep -q 'linux-xanmod'; then
+            while true; do
                   clear
                   kernel_version=$(uname -r)
                   echo "您已安装xanmod的BBRv3内核"
@@ -5219,8 +5220,9 @@ case $choice in
                       *)
                           break  # 跳出循环，退出菜单
                           ;;
-                  esac
 
+                  esac
+            done
         else
 
           clear
