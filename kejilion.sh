@@ -5196,7 +5196,8 @@ case $choice in
             apt install -y wget gnupg
 
             # 步骤2：注册PGP密钥
-            wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
+            # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
+            wget -qO - https://raw.githubusercontent.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
 
             # 步骤3：添加存储库
             echo 'deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] http://deb.xanmod.org releases main' | tee /etc/apt/sources.list.d/xanmod-release.list
@@ -5214,6 +5215,7 @@ net.ipv4.tcp_congestion_control=bbr
 EOF
             sysctl -p
             echo "XanMod内核安装并BBR3启用成功。重启后生效"
+            rm -f /etc/apt/sources.list.d/xanmod-release.list
             reboot
 
               ;;
