@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.8.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -4608,16 +4608,12 @@ case $choice in
 
           5)
               clear
-                if ! command -v iptables &> /dev/null; then
-                echo ""
-                else
-                    # iptables命令
-                    iptables -P INPUT ACCEPT
-                    iptables -P FORWARD ACCEPT
-                    iptables -P OUTPUT ACCEPT
-                    iptables -F
-                fi
+              systemctl stop ufw > /dev/null 2>&1
+              systemctl disable ufw > /dev/null 2>&1
+              systemctl stop firewalld > /dev/null 2>&1
+              systemctl disable firewalld > /dev/null 2>&1              
               echo "端口已全部开放"
+
               ;;
           6)
               clear
@@ -4647,6 +4643,11 @@ case $choice in
               service sshd restart
 
               echo "SSH 端口已修改为: $new_port"
+
+              systemctl stop ufw > /dev/null 2>&1
+              systemctl disable ufw > /dev/null 2>&1
+              systemctl stop firewalld > /dev/null 2>&1
+              systemctl disable firewalld > /dev/null 2>&1      
 
               ;;
 
@@ -5537,6 +5538,10 @@ EOF
     echo "2023-10-19   v1.8.9"
     echo "系统工具中BBRv3功能增加了更新内核和卸载内核功能"
     echo "------------------------"
+    echo "2023-10-21   v1.9"
+    echo "开放端口相关优化"
+    echo "解决部分系统SSH端口切换后重启失联的问题"    
+    echo "------------------------"    
     ;;
 
   0)
