@@ -5229,8 +5229,12 @@ case $choice in
         else
 
           clear
-          echo "请备份数据，将为你升级Linux内核开启BBR3，仅支持Debian/Ubuntu 仅支持x86_64架构"
+          echo "请备份数据，将为你升级Linux内核开启BBR3"
           echo "官网介绍: https://xanmod.org/"
+          echo "------------------------------------------------"
+          echo "仅支持Debian/Ubuntu 仅支持x86_64架构"
+          echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"
+          echo "------------------------------------------------"          
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
