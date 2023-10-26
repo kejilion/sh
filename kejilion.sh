@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1712,9 +1712,9 @@ case $choice in
         echo ""
         echo "操作"
         echo "------------------------"
-        echo "1. 申请/更新域名证书               2. 更换站点域名"
+        echo "1. 申请/更新域名证书               2. 更换站点域名               3. 清理站点缓存"
         echo "------------------------"
-        echo "3. 删除指定站点                    4. 删除指定数据库"
+        echo "7. 删除指定站点                    8. 删除指定数据库"
         echo "------------------------"
         echo "0. 返回上一级选单"
         echo "------------------------"
@@ -1751,14 +1751,19 @@ case $choice in
 
                 ;;
 
+
             3)
+                docker exec -it nginx rm -rf /var/cache/nginx/*
+                ;;
+
+            7)
                 read -p "请输入你的域名: " yuming
                 rm -r /home/web/html/$yuming
                 rm /home/web/conf.d/$yuming.conf
                 rm /home/web/certs/${yuming}_key.pem
                 rm /home/web/certs/${yuming}_cert.pem
                 ;;
-            4)
+            8)
                 read -p "请输入数据库名: " shujuku
                 dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
                 docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $shujuku;" 2> /dev/null
@@ -2706,6 +2711,7 @@ case $choice in
                             clear
                             docker rm -f npm
                             docker rmi -f jc21/nginx-proxy-manager:latest
+                            rm -rf /home/docker/npm
                             echo "应用已卸载"
                             ;;
                         0)
@@ -2841,6 +2847,7 @@ case $choice in
                             clear
                             docker rm -f alist
                             docker rmi -f xhofe/alist:latest
+                            rm -rf /home/docker/alist
                             echo "应用已卸载"
                             ;;
                         0)
@@ -2979,6 +2986,7 @@ case $choice in
                             clear
                             docker rm -f ubuntu-novnc
                             docker rmi -f fredblgr/ubuntu-novnc:20.04
+                            rm -rf /home/docker/ubuntu
                             echo "应用已卸载"
                             ;;
                         0)
@@ -3128,6 +3136,7 @@ case $choice in
                             clear
                             docker rm -f qbittorrent
                             docker rmi -f lscr.io/linuxserver/qbittorrent:latest
+                            rm -rf /home/docker/qbittorrent
                             echo "应用已卸载"
                             ;;
                         0)
@@ -3269,6 +3278,7 @@ case $choice in
                             docker rm -f mailserver
                             docker rmi -f analogic/poste.io
                             rm /home/docker/mail.txt
+                            rm -rf /home/docker/mail
                             echo "应用已卸载"
                             ;;
                         0)
@@ -3448,6 +3458,7 @@ case $choice in
                             docker rmi -f rocket.chat
                             docker rm -f db
                             docker rmi -f mongo:latest
+                            rm -rf /home/docker/mongo
                             echo "应用已卸载"
                             ;;
                         0)
@@ -3584,6 +3595,7 @@ case $choice in
                             clear
                             docker rm -f zentao-server
                             docker rmi -f idoop/zentao:latest
+                            rm -rf /home/docker/zbox
                             echo "应用已卸载"
                             ;;
                         0)
@@ -3716,6 +3728,7 @@ case $choice in
                             clear
                             docker rm -f qinglong
                             docker rmi -f whyour/qinglong:latest
+                            rm -rf /home/docker/ql
                             echo "应用已卸载"
                             ;;
                         0)
@@ -3849,6 +3862,7 @@ case $choice in
                             docker rmi -f cloudreve/cloudreve:latest
                             docker rm -f aria2
                             docker rmi -f p3terx/aria2-pro
+                            rm -rf /home/docker/cloud
                             echo "应用已卸载"
                             ;;
                         0)
@@ -3982,6 +3996,7 @@ case $choice in
                             clear
                             docker rm -f easyimage
                             docker rmi -f ddsderek/easyimage:latest
+                            rm -rf /home/docker/easyimage
                             echo "应用已卸载"
                             ;;
                         0)
@@ -4611,7 +4626,7 @@ case $choice in
               systemctl stop ufw > /dev/null 2>&1
               systemctl disable ufw > /dev/null 2>&1
               systemctl stop firewalld > /dev/null 2>&1
-              systemctl disable firewalld > /dev/null 2>&1              
+              systemctl disable firewalld > /dev/null 2>&1
               echo "端口已全部开放"
 
               ;;
@@ -4647,7 +4662,7 @@ case $choice in
               systemctl stop ufw > /dev/null 2>&1
               systemctl disable ufw > /dev/null 2>&1
               systemctl stop firewalld > /dev/null 2>&1
-              systemctl disable firewalld > /dev/null 2>&1      
+              systemctl disable firewalld > /dev/null 2>&1
 
               ;;
 
@@ -5234,7 +5249,7 @@ case $choice in
           echo "------------------------------------------------"
           echo "仅支持Debian/Ubuntu 仅支持x86_64架构"
           echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"
-          echo "------------------------------------------------"          
+          echo "------------------------------------------------"
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
@@ -5544,8 +5559,12 @@ EOF
     echo "------------------------"
     echo "2023-10-21   v1.9"
     echo "开放端口相关优化"
-    echo "解决部分系统SSH端口切换后重启失联的问题"    
-    echo "------------------------"    
+    echo "解决部分系统SSH端口切换后重启失联的问题"
+    echo "------------------------"
+    echo "2023-10-26   v1.9.1"
+    echo "LNMP建站管理中添加了站点缓存清理功能"
+    echo "面板工具中卸载对应应用时添加了应用目录一并删除，删除更彻底！"
+    echo "------------------------"
     ;;
 
   0)
