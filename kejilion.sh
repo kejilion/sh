@@ -3412,8 +3412,6 @@ case $choice in
                             clear
                             docker rm -f rocketchat
                             docker rmi -f rocket.chat
-                            docker rm -f db
-                            docker rmi -f mongo:latest
 
                             if ! command -v iptables &> /dev/null; then
                             echo ""
@@ -3435,13 +3433,6 @@ case $choice in
                                 echo "Docker 已经安装，正在部署容器……"
                             fi
 
-
-                            docker run --name db -d --restart=always \
-                                -v /home/docker/mongo/dump:/dump \
-                                mongo:latest --replSet rs5 --oplogSize 256
-                            sleep 1
-                            docker exec -it db mongosh --eval "printjson(rs.initiate())"
-                            sleep 5
                             docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
                             clear
