@@ -1753,7 +1753,8 @@ case $choice in
 
 
             3)
-                docker exec -it nginx rm -rf /var/cache/nginx/*
+                docker exec -it nginx rm -rf /var/cache/nginx
+                docker restart nginx
                 ;;
 
             7)
