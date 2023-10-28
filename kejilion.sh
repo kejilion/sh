@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -4870,6 +4870,7 @@ case $choice in
                 chmod 600 /swapfile
                 mkswap /swapfile
                 swapon /swapfile
+                echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
 
                 echo "虚拟内存大小已调整为${new_swap}MB"
                 ;;
@@ -5556,6 +5557,9 @@ EOF
     echo "2023-10-26   v1.9.1"
     echo "LNMP建站管理中添加了站点缓存清理功能"
     echo "面板工具中卸载对应应用时添加了应用目录一并删除，删除更彻底！"
+    echo "------------------------"
+    echo "2023-10-28   v1.9.2"
+    echo "系统工具中修复了虚拟内存大小重启后还原的问题"
     echo "------------------------"
     ;;
 
