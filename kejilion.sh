@@ -4615,10 +4615,16 @@ case $choice in
 
           5)
               clear
-              systemctl stop ufw > /dev/null 2>&1
-              systemctl disable ufw > /dev/null 2>&1
-              systemctl stop firewalld > /dev/null 2>&1
-              systemctl disable firewalld > /dev/null 2>&1
+              iptables -P INPUT ACCEPT
+              iptables -P FORWARD ACCEPT
+              iptables -P OUTPUT ACCEPT
+              iptables -F
+
+              apt remove -y iptables-persistent > /dev/null 2>&1
+              apt remove -y ufw > /dev/null 2>&1
+              yum remove -y firewalld > /dev/null 2>&1
+              yum remove -y iptables-services > /dev/null 2>&1
+
               echo "端口已全部开放"
 
               ;;
@@ -4651,10 +4657,16 @@ case $choice in
 
               echo "SSH 端口已修改为: $new_port"
 
-              systemctl stop ufw > /dev/null 2>&1
-              systemctl disable ufw > /dev/null 2>&1
-              systemctl stop firewalld > /dev/null 2>&1
-              systemctl disable firewalld > /dev/null 2>&1
+              clear
+              iptables -P INPUT ACCEPT
+              iptables -P FORWARD ACCEPT
+              iptables -P OUTPUT ACCEPT
+              iptables -F
+
+              apt remove -y iptables-persistent > /dev/null 2>&1
+              apt remove -y ufw > /dev/null 2>&1
+              yum remove -y firewalld > /dev/null 2>&1
+              yum remove -y iptables-services > /dev/null 2>&1
 
               ;;
 
@@ -5318,7 +5330,7 @@ EOF
               echo "sshpass 已经安装，跳过安装步骤。"
           fi
 
-          remote_ip="34.92.162.132"
+          remote_ip="154.223.16.146"
           remote_user="liaotian123"
           remote_file="/home/liaotian123/liaotian.txt"
           password="kejilionYYDS"  # 替换为您的密码
