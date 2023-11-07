@@ -4310,7 +4310,7 @@ case $choice in
 
               ;;
           17)
-            if docker inspect looking-glass &>/dev/null; then
+            if docker inspect adguardhome &>/dev/null; then
 
                     clear
                     echo "AdGuardHome已安装，访问地址: "
