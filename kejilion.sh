@@ -4354,8 +4354,8 @@ case $choice in
 
                             docker run -d \
                                 --name adguardhome \
-                                -v home/docker/adguardhome/work:/opt/adguardhome/work \
-                                -v home/docker/adguardhome/conf:/opt/adguardhome/conf \
+                                -v /home/docker/adguardhome/work:/opt/adguardhome/work \
+                                -v /home/docker/adguardhome/conf:/opt/adguardhome/conf \
                                 -p 53:53/tcp \
                                 -p 53:53/udp \
                                 -p 3000:3000/tcp \
@@ -4416,8 +4416,8 @@ case $choice in
                     fi
                         docker run -d \
                             --name adguardhome \
-                            -v home/docker/adguardhome/work:/opt/adguardhome/work \
-                            -v home/docker/adguardhome/conf:/opt/adguardhome/conf \
+                            -v /home/docker/adguardhome/work:/opt/adguardhome/work \
+                            -v /home/docker/adguardhome/conf:/opt/adguardhome/conf \
                             -p 53:53/tcp \
                             -p 53:53/udp \
                             -p 3000:3000/tcp \
