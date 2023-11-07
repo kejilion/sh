@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9.3 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -2380,7 +2380,7 @@ case $choice in
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
       echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
-
+      echo "17. Ad­GuardHome去广告软件                  "
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4309,6 +4309,138 @@ case $choice in
             fi
 
               ;;
+          17)
+            if docker inspect looking-glass &>/dev/null; then
+
+                    clear
+                    echo "AdGuardHome已安装，访问地址: "
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:3002"
+                    echo ""
+
+                    echo "应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f adguardhome
+                            docker rmi -f adguard/adguardhome
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh
+                                systemctl start docker
+                                systemctl enable docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+                            docker run -d \
+                                --name adguardhome \
+                                -v home/docker/adguardhome/work:/opt/adguardhome/work \
+                                -v home/docker/adguardhome/conf:/opt/adguardhome/conf \
+                                -p 53:53/tcp \
+                                -p 53:53/udp \
+                                -p 3002:3000/tcp \
+                                --restart always \
+                                adguard/adguardhome
+
+                            clear
+                            echo "AdGuardHome已经安装完成"
+                            echo "------------------------"
+                            echo "您可以使用以下地址访问AdGuardHome面板:"
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "http:$external_ip:3002"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f adguardhome
+                            docker rmi -f adguard/adguardhome
+                            rm -rf /home/docker/adguardhome
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "Ad­GuardHome是一款全网广告拦截与反跟踪软件，未来将不止是一个DNS服务器。"
+                echo "官网介绍: https://hub.docker.com/r/adguard/adguardhome"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装d­GuardHome吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh
+                        systemctl start docker
+                        systemctl enable docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+                        docker run -d \
+                            --name adguardhome \
+                            -v home/docker/adguardhome/work:/opt/adguardhome/work \
+                            -v home/docker/adguardhome/conf:/opt/adguardhome/conf \
+                            -p 53:53/tcp \
+                            -p 53:53/udp \
+                            -p 3002:3000/tcp \
+                            --restart always \
+                            adguard/adguardhome
+
+                    clear
+                    echo "AdGuardHome已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问AdGuardHome:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:3002"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
+              ;;
 
 
           0)
@@ -5572,6 +5704,9 @@ EOF
     echo "------------------------"
     echo "2023-10-28   v1.9.2"
     echo "系统工具中修复了虚拟内存大小重启后还原的问题"
+    echo "------------------------"
+    echo "2023-11-07   v1.9.3"
+    echo "面板工具中增加AdGuardHome去广告软件安装和管理"
     echo "------------------------"
     ;;
 
