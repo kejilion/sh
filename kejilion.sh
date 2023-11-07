@@ -2380,7 +2380,7 @@ case $choice in
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
       echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
-      echo "17. Ad­GuardHome去广告软件                  "
+      echo "17. AdGuardHome去广告软件                  "
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4387,12 +4387,12 @@ case $choice in
             else
                 clear
                 echo "安装提示"
-                echo "Ad­GuardHome是一款全网广告拦截与反跟踪软件，未来将不止是一个DNS服务器。"
+                echo "AdGuardHome是一款全网广告拦截与反跟踪软件，未来将不止是一个DNS服务器。"
                 echo "官网介绍: https://hub.docker.com/r/adguard/adguardhome"
                 echo ""
 
                 # 提示用户确认安装
-                read -p "确定安装d­GuardHome吗？(Y/N): " choice
+                read -p "确定安装AdGuardHome吗？(Y/N): " choice
                 case "$choice" in
                     [Yy])
                     clear
