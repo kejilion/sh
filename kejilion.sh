@@ -4315,7 +4315,7 @@ case $choice in
                     clear
                     echo "AdGuardHome已安装，访问地址: "
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http:$external_ip:3002"
+                    echo "http:$external_ip:3000"
                     echo ""
 
                     echo "应用操作"
@@ -4358,7 +4358,7 @@ case $choice in
                                 -v home/docker/adguardhome/conf:/opt/adguardhome/conf \
                                 -p 53:53/tcp \
                                 -p 53:53/udp \
-                                -p 3002:3000/tcp \
+                                -p 3000:3000/tcp \
                                 --restart always \
                                 adguard/adguardhome
 
@@ -4367,7 +4367,7 @@ case $choice in
                             echo "------------------------"
                             echo "您可以使用以下地址访问AdGuardHome面板:"
                             external_ip=$(curl -s ipv4.ip.sb)
-                            echo "http:$external_ip:3002"
+                            echo "http:$external_ip:3000"
                             echo ""
                             ;;
                         2)
@@ -4420,7 +4420,7 @@ case $choice in
                             -v home/docker/adguardhome/conf:/opt/adguardhome/conf \
                             -p 53:53/tcp \
                             -p 53:53/udp \
-                            -p 3002:3000/tcp \
+                            -p 3000:3000/tcp \
                             --restart always \
                             adguard/adguardhome
 
@@ -4429,7 +4429,7 @@ case $choice in
                     echo "------------------------"
                     echo "您可以使用以下地址访问AdGuardHome:"
                     external_ip=$(curl -s ipv4.ip.sb)
-                    echo "http:$external_ip:3002"
+                    echo "http:$external_ip:3000"
                     echo ""
 
                         ;;
