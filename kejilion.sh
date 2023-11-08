@@ -5543,6 +5543,7 @@ EOF
                       apt remove -y iptables-persistent
                       apt purge -y iptables-persistent
                       rm /etc/iptables/rules.v4
+                      break
                       # echo "防火墙已卸载，重启生效"
                       # reboot
                           ;;
