@@ -4753,8 +4753,8 @@ case $choice in
               iptables -P OUTPUT ACCEPT
               iptables -F
 
-              apt remove -y iptables-persistent > /dev/null 2>&1
-              apt remove -y ufw > /dev/null 2>&1
+              apt purge -y iptables-persistent > /dev/null 2>&1
+              apt purge -y ufw > /dev/null 2>&1
               yum remove -y firewalld > /dev/null 2>&1
               yum remove -y iptables-services > /dev/null 2>&1
 
@@ -4796,8 +4796,8 @@ case $choice in
               iptables -P OUTPUT ACCEPT
               iptables -F
 
-              apt remove -y iptables-persistent > /dev/null 2>&1
-              apt remove -y ufw > /dev/null 2>&1
+              apt purge -y iptables-persistent > /dev/null 2>&1
+              apt purge -y ufw > /dev/null 2>&1
               yum remove -y firewalld > /dev/null 2>&1
               yum remove -y iptables-services > /dev/null 2>&1
 
