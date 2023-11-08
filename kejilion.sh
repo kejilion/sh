@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9.3 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9.4 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -4619,6 +4619,7 @@ case $choice in
       echo "14. 用户/密码生成器"
       echo "15. 系统时区调整"
       echo "16. 开启BBR3加速"
+      echo "17. 防火墙高级管理器 \033[33mNEW\033[0m"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -5446,6 +5447,181 @@ EOF
         fi
               ;;
 
+          17)
+          if dpkg -l | grep -q iptables-persistent; then
+            while true; do
+                  clear
+                  echo "防火墙已安装"
+                  echo "------------------------"
+                  iptables -L INPUT
+
+                  echo ""
+                  echo "防火墙管理"
+                  echo "------------------------"
+                  echo "1. 开放指定端口              2. 关闭指定端口"
+                  echo "3. 开放所有端口              4. 关闭所有端口"
+                  echo "------------------------"
+                  echo "5. IP白名单                  6. IP黑名单"
+                  echo "7. 清除指定IP"
+                  echo "------------------------"
+                  echo "9. 卸载防火墙"
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                      read -p "请输入开放的端口号: " o_port
+                      sed -i "/COMMIT/i -A INPUT -p tcp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
+                      iptables-restore < /etc/iptables/rules.v4
+
+                          ;;
+                      2)
+                      read -p "请输入关闭的端口号: " c_port
+                      sed -i "/-p tcp --dport $c_port/d" /etc/iptables/rules.v4
+                      iptables-restore < /etc/iptables/rules.v4
+                        ;;
+
+                      3)
+                      current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
+
+                      cat > /etc/iptables/rules.v4 << EOF
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A FORWARD -i lo -j ACCEPT
+-A INPUT -p tcp --dport $current_port -j ACCEPT
+COMMIT
+EOF
+                      iptables-restore < /etc/iptables/rules.v4
+
+                          ;;
+                      4)
+                      current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
+
+                      cat > /etc/iptables/rules.v4 << EOF
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A FORWARD -i lo -j ACCEPT
+-A INPUT -p tcp --dport $current_port -j ACCEPT
+COMMIT
+EOF
+                      iptables-restore < /etc/iptables/rules.v4
+
+                          ;;
+
+                      5)
+                      read -p "请输入放行的IP: " o_ip
+                      sed -i "/COMMIT/i -A INPUT -s $o_ip -j ACCEPT" /etc/iptables/rules.v4
+                      iptables-restore < /etc/iptables/rules.v4
+
+                          ;;
+
+                      6)
+                      read -p "请输入封锁的IP: " c_ip
+                      sed -i "/COMMIT/i -A INPUT -s $c_ip -j DROP" /etc/iptables/rules.v4
+                      iptables-restore < /etc/iptables/rules.v4
+                          ;;
+
+                      7)
+                     read -p "请输入清除的IP: " d_ip
+                     sed -i "/-A INPUT -s $d_ip/d" /etc/iptables/rules.v4
+                     iptables-restore < /etc/iptables/rules.v4
+                          ;;
+
+                      9)
+                      apt remove -y iptables-persistent
+                      apt purge -y iptables-persistent
+                      rm /etc/iptables/rules.v4
+                      # echo "防火墙已卸载，重启生效"
+                      # reboot
+                          ;;
+
+                      0)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                  esac
+            done
+        else
+
+          clear
+          echo "将为你安装防火墙，该防火墙仅支持Debian/Ubuntu"
+          echo "------------------------------------------------"
+          read -p "确定继续吗？(Y/N): " choice
+
+          case "$choice" in
+            [Yy])
+            if [ -r /etc/os-release ]; then
+                . /etc/os-release
+                if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
+                    echo "当前环境不支持，仅支持Debian和Ubuntu系统"
+                    break
+                fi
+            else
+                echo "无法确定操作系统类型"
+                break
+            fi
+
+          clear
+          iptables -P INPUT ACCEPT
+          iptables -P FORWARD ACCEPT
+          iptables -P OUTPUT ACCEPT
+          iptables -F
+
+          apt remove -y iptables-persistent
+          apt purge -y iptables-persistent
+          apt remove -y ufw
+          apt purge -y ufw
+          rm /etc/iptables/rules.v4
+
+          apt update -y && apt install -y iptables-persistent
+
+          current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
+
+          cat > /etc/iptables/rules.v4 << EOF
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A FORWARD -i lo -j ACCEPT
+-A INPUT -p tcp --dport $current_port -j ACCEPT
+COMMIT
+EOF
+
+          iptables-restore < /etc/iptables/rules.v4
+          systemctl enable netfilter-persistent
+          echo "防火墙安装完成"
+
+
+              ;;
+            [Nn])
+              echo "已取消"
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              ;;
+          esac
+        fi
+              ;;
+
 
           21)
           clear
@@ -5707,6 +5883,10 @@ EOF
     echo "------------------------"
     echo "2023-11-07   v1.9.3"
     echo "面板工具中增加AdGuardHome去广告软件安装和管理"
+    echo "------------------------"
+    echo "2023-11-08   v1.9.4"
+    echo "系统工具添加了防火墙高级管理功能，可以开关端口，可以IP黑白名单"
+    echo "未来会上线地域黑白名单等高级功能"
     echo "------------------------"
     ;;
 
