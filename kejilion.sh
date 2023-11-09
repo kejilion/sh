@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9.4 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -5474,12 +5474,13 @@ EOF
                       1)
                       read -p "请输入开放的端口号: " o_port
                       sed -i "/COMMIT/i -A INPUT -p tcp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
+                      sed -i "/COMMIT/i -A INPUT -p udp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4                      
                       iptables-restore < /etc/iptables/rules.v4
 
                           ;;
                       2)
                       read -p "请输入关闭的端口号: " c_port
-                      sed -i "/-p tcp --dport $c_port/d" /etc/iptables/rules.v4
+                      sed -i "/--dport $c_port/d" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
                         ;;
 
@@ -5888,6 +5889,9 @@ EOF
     echo "2023-11-08   v1.9.4"
     echo "系统工具添加了防火墙高级管理功能，可以开关端口，可以IP黑白名单"
     echo "未来会上线地域黑白名单等高级功能"
+    echo "------------------------"
+    echo "2023-11-09   v1.9.5"
+    echo "系统工具中防火墙添加udp控制"
     echo "------------------------"
     ;;
 
