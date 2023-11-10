@@ -12,7 +12,7 @@ echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
 echo "3. 系统清理"
-echo "4. 常用工具安装 ▶"
+echo "4. 常用工具 ▶"
 echo "5. BBR管理 ▶"
 echo "6. Docker管理 ▶ "
 echo "7. WARP管理 ▶ 解锁ChatGPT Netflix"
@@ -121,6 +121,10 @@ case $choice in
 
     swap_info="${swap_used}MB/${swap_total}MB (${swap_percentage}%)"
 
+    runtime=$(cat /proc/uptime | awk -F. '{run_days=int($1 / 86400);run_hours=int(($1 % 86400) / 3600);run_minutes=int(($1 % 3600) / 60); if (run_days > 0) printf("%d天", run_days); if (run_hours > 0) printf("%d小时", run_hours); printf("%d分钟\n", run_minutes)}')
+    runtime=$(echo "$runtime" | sed 's/d/天/g;s/h/小时/g;s/m/分钟/g')
+    echo "$runtime"
+
 
 
     echo ""
@@ -150,6 +154,8 @@ case $choice in
     echo "------------------------"
     echo "地理位置: $country $city"
     echo "系统时间: $current_time"
+    echo "------------------------"
+    echo "系统运行时长: $runtime"
     echo
 
     ;;
@@ -5901,6 +5907,7 @@ EOF
     echo "------------------------"
     echo "2023-11-10   v1.9.6"
     echo "测试脚本合集增加了缝合怪一条龙测试"
+    echo "系统信息查询中添加了系统运行时长显示"
     echo "------------------------"
     ;;
 
