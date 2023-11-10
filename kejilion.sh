@@ -1117,8 +1117,8 @@ case $choice in
           "docker exec php sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
           "docker exec php sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
           "docker exec php sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
-          "docker exec php sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
-          "docker exec php sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_execution_time=300\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_input_time=300\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
           "docker exec php74 apt update > /dev/null 2>&1"
           "docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
@@ -1129,8 +1129,8 @@ case $choice in
           "docker exec php74 sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
-          "docker exec php74 sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
-          "docker exec php74 sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_execution_time=300\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_input_time=300\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
       )
 
@@ -1920,8 +1920,8 @@ case $choice in
           "docker exec php sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
           "docker exec php sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
           "docker exec php sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
-          "docker exec php sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
-          "docker exec php sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_execution_time=300\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_input_time=300\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
           "docker exec php74 apt update > /dev/null 2>&1"
           "docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
@@ -1932,8 +1932,16 @@ case $choice in
           "docker exec php74 sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
-          "docker exec php74 sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
-          "docker exec php74 sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_execution_time=300\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_input_time=300\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+
+          "docker exec nginx chmod -R 777 /var/www/html > /dev/null 2>&1"
+          "docker exec php chmod -R 777 /var/www/html > /dev/null 2>&1"
+          "docker exec php74 chmod -R 777 /var/www/html > /dev/null 2>&1"
+
+          "docker restart php > /dev/null 2>&1"
+          "docker restart php74 > /dev/null 2>&1"
+          "docker restart nginx > /dev/null 2>&1"
 
       )
 
@@ -2267,8 +2275,8 @@ case $choice in
           "docker exec php sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
           "docker exec php sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
           "docker exec php sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
-          "docker exec php sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
-          "docker exec php sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_execution_time=300\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php sh -c 'echo \"max_input_time=300\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
           "docker exec php74 apt update > /dev/null 2>&1"
           "docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
@@ -2279,8 +2287,16 @@ case $choice in
           "docker exec php74 sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
-          "docker exec php74 sh -c 'echo \"max_execution_time=120\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
-          "docker exec php74 sh -c 'echo \"max_input_time=70\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_execution_time=300\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
+          "docker exec php74 sh -c 'echo \"max_input_time=300\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
+
+          "docker exec nginx chmod -R 777 /var/www/html > /dev/null 2>&1"
+          "docker exec php chmod -R 777 /var/www/html > /dev/null 2>&1"
+          "docker exec php74 chmod -R 777 /var/www/html > /dev/null 2>&1"
+
+          "docker restart php > /dev/null 2>&1"
+          "docker restart php74 > /dev/null 2>&1"
+          "docker restart nginx > /dev/null 2>&1"
 
       )
 
