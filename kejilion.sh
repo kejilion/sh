@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1017,6 +1017,7 @@ case $choice in
     echo  "8. 安装flarum论坛网站"
     echo  "9. 安装Bitwarden密码管理平台"
     echo  "10. 安装Halo博客网站"
+    echo  "11. 安装typecho轻量博客网站"
     echo  "------------------------"
     echo  "21. 站点重定向"
     echo  "22. 站点反向代理"
@@ -1622,6 +1623,58 @@ case $choice in
       echo "您的Halo网站搭建好了！"
       echo "https://$yuming"
       echo ""
+        ;;
+
+      11)
+      clear
+      # typecho
+      read -p "请输入你解析的域名: " yuming
+      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+      dbname="${dbname}"
+
+      docker stop nginx
+
+      cd ~
+      curl https://get.acme.sh | sh
+      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+
+      docker start nginx
+
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+      cd /home/web/html
+      mkdir $yuming
+      cd $yuming
+      wget -O latest.zip https://github.com/typecho/typecho/releases/latest/download/typecho.zip
+      unzip latest.zip
+      rm latest.zip
+
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
+
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
+
+      docker restart php
+      docker restart php74
+      docker restart nginx
+
+
+      clear
+      echo "您的typecho搭建好了！"
+      echo "https://$yuming"
+      echo "------------------------"
+      echo "安装信息如下: "
+      echo "数据库前缀: typecho_"
+      echo "数据库地址: mysql"
+      echo "用户名: $dbuse"
+      echo "密码: $dbusepasswd"
+      echo "数据库名: $dbname"
+
         ;;
 
 
@@ -5921,6 +5974,9 @@ EOF
     echo "2023-11-10   v1.9.6"
     echo "测试脚本合集增加了缝合怪一条龙测试"
     echo "系统信息查询中添加了系统运行时长显示"
+    echo "------------------------"
+    echo "2023-11-10   v1.9.7"
+    echo "LDNMP建站增加typecho轻量博客的搭建"
     echo "------------------------"
     ;;
 
