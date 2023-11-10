@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9.5 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9.6 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -786,13 +786,15 @@ case $choice in
       echo "测试脚本合集"
       echo "------------------------"
       echo "1. ChatGPT解锁状态检测"
-      echo "2. 流媒体解锁测试"
-      echo "3. TikTok状态检测"
-      echo "4. 三网回程延迟路由测试"
-      echo "5. 三网回程线路测试"
-      echo "6. 三网专项测速"
-      echo "7. VPS性能专项测试"
-      echo "8. VPS性能全局测试"
+      echo "2. Region流媒体解锁测试"
+      echo "3. yeahwu流媒体解锁检测"
+      echo "4. besttrace三网回程延迟路由测试"
+      echo "5. mtr_trace三网回程线路测试"
+      echo "6. Superspeed三网测速"
+      echo "7. yabs性能带宽测试"
+      echo "8. bench性能测试"
+      echo "------------------------"
+      echo -e "9. spiritysdx融合怪测评 \033[33mNEW\033[0m"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -825,11 +827,15 @@ case $choice in
               ;;
           7)
               clear
-              curl -sL yabs.sh | bash -s -- -i -5
+              curl -sL yabs.sh | bash
               ;;
           8)
               clear
-              wget -qO- bench.sh | bash
+              curl -Lso- bench.sh | bash
+              ;;
+          9)
+              clear
+              curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
               ;;
           0)
               cd ~
@@ -5474,7 +5480,7 @@ EOF
                       1)
                       read -p "请输入开放的端口号: " o_port
                       sed -i "/COMMIT/i -A INPUT -p tcp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
-                      sed -i "/COMMIT/i -A INPUT -p udp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4                      
+                      sed -i "/COMMIT/i -A INPUT -p udp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
 
                           ;;
@@ -5892,6 +5898,9 @@ EOF
     echo "------------------------"
     echo "2023-11-09   v1.9.5"
     echo "系统工具中防火墙添加udp控制"
+    echo "------------------------"
+    echo "2023-11-10   v1.9.6"
+    echo "测试脚本合集增加了缝合怪一条龙测试"
     echo "------------------------"
     ;;
 
