@@ -407,7 +407,7 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+              curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
               systemctl start docker
               systemctl enable docker
               ;;
@@ -885,7 +885,7 @@ case $choice in
 
                   # 检查并安装 Docker（如果需要）
                   if ! command -v docker &>/dev/null; then
-                      curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                      curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                       systemctl start docker
                       systemctl enable docker
                   else
@@ -1056,7 +1056,7 @@ case $choice in
 
       # 检查并安装 Docker（如果需要）
       if ! command -v docker &>/dev/null; then
-          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
           systemctl start docker
           systemctl enable docker
       else
@@ -1928,7 +1928,7 @@ case $choice in
 
       # 检查并安装 Docker（如果需要）
       if ! command -v docker &>/dev/null; then
-          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
           systemctl start docker
           systemctl enable docker
       else
@@ -2271,7 +2271,7 @@ case $choice in
 
       # 检查并安装 Docker（如果需要）
       if ! command -v docker &>/dev/null; then
-          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
           systemctl start docker
           systemctl enable docker
       else
@@ -2725,7 +2725,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -2791,7 +2791,7 @@ case $choice in
 
                       # 检查并安装 Docker（如果需要）
                       if ! command -v docker &>/dev/null; then
-                          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                           systemctl start docker
                           systemctl enable docker
                       else
@@ -2860,7 +2860,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -2927,7 +2927,7 @@ case $choice in
 
                       # 检查并安装 Docker（如果需要）
                       if ! command -v docker &>/dev/null; then
-                          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                           systemctl start docker
                           systemctl enable docker
                       else
@@ -2999,7 +2999,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -3068,7 +3068,7 @@ case $choice in
 
                         # 检查并安装 Docker（如果需要）
                         if ! command -v docker &>/dev/null; then
-                            curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                            curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                             systemctl start docker
                             systemctl enable docker
 
@@ -3145,7 +3145,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -3216,7 +3216,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
@@ -3294,7 +3294,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -3402,7 +3402,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
@@ -3471,7 +3471,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -3529,7 +3529,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
@@ -3600,7 +3600,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -3665,7 +3665,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
@@ -3735,7 +3735,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -3798,7 +3798,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
@@ -3868,7 +3868,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -3930,7 +3930,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
@@ -3998,7 +3998,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -4063,7 +4063,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
@@ -4136,7 +4136,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -4198,7 +4198,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
@@ -4269,7 +4269,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -4324,7 +4324,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
@@ -4386,7 +4386,7 @@ case $choice in
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
-                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                                 systemctl start docker
                                 systemctl enable docker
                             else
@@ -4449,7 +4449,7 @@ case $choice in
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
-                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
                         systemctl start docker
                         systemctl enable docker
                     else
