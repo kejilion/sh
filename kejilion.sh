@@ -5680,7 +5680,7 @@ EOF
               echo "sshpass 已经安装，跳过安装步骤。"
           fi
 
-          remote_ip="154.223.16.146"
+          remote_ip="66.42.61.110"
           remote_user="liaotian123"
           remote_file="/home/liaotian123/liaotian.txt"
           password="kejilionYYDS"  # 替换为您的密码
