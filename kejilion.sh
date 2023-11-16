@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9.7 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -2423,7 +2423,7 @@ case $choice in
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
       echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
-      echo "17. AdGuardHome去广告软件                  "
+      echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4483,6 +4483,135 @@ case $choice in
               ;;
 
 
+          18)
+            if docker inspect onlyoffice &>/dev/null; then
+
+                    clear
+                    echo "onlyoffice 已安装，访问地址: "
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:8082"
+                    echo ""
+
+                    echo "应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f onlyoffice
+                            docker rmi -f onlyoffice/documentserver
+
+                            if ! command -v iptables &> /dev/null; then
+                            echo ""
+                            else
+                                # iptables命令
+                                iptables -P INPUT ACCEPT
+                                iptables -P FORWARD ACCEPT
+                                iptables -P OUTPUT ACCEPT
+                                iptables -F
+                            fi
+
+
+                            # 检查并安装 Docker（如果需要）
+                            if ! command -v docker &>/dev/null; then
+                                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                                systemctl start docker
+                                systemctl enable docker
+                            else
+                                echo "Docker 已经安装，正在部署容器……"
+                            fi
+
+                            docker run -d -p 8082:80 \
+                                --restart=always \
+                                --name onlyoffice \
+                                -v /home/docker/onlyoffice/DocumentServer/logs:/var/log/onlyoffice  \
+                                -v /home/docker/onlyoffice/DocumentServer/data:/var/www/onlyoffice/Data  \
+                                 onlyoffice/documentserver
+
+                            clear
+                            echo "onlyoffice已经安装完成"
+                            echo "------------------------"
+                            echo "您可以使用以下地址访问onlyoffice:"
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "http:$external_ip:8082"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f onlyoffice
+                            docker rmi -f onlyoffice/documentserver
+                            rm -rf /home/docker/onlyoffice
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "onlyoffice是一款开源的在线office工具，太强大了！"
+                echo "官网介绍: https://www.onlyoffice.com/"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装onlyoffice吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        systemctl start docker
+                        systemctl enable docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+                    docker run -d -p 8082:80 \
+                        --restart=always \
+                        --name onlyoffice \
+                        -v /home/docker/onlyoffice/DocumentServer/logs:/var/log/onlyoffice  \
+                        -v /home/docker/onlyoffice/DocumentServer/data:/var/www/onlyoffice/Data  \
+                         onlyoffice/documentserver
+
+                    clear
+                    echo "onlyoffice已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问onlyoffice:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:8082"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
+              ;;
+
+
+
           0)
               cd ~
               ./kejilion.sh
@@ -5939,6 +6068,9 @@ EOF
     echo "------------------------"
     echo "2023-11-10   v1.9.7"
     echo "LDNMP建站增加typecho轻量博客的搭建"
+    echo "------------------------"
+    echo "2023-11-16   v1.9.8"
+    echo "面板工具中增加了在线office办公软件安装"
     echo "------------------------"
     ;;
 
