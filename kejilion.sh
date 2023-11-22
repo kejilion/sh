@@ -2424,7 +2424,7 @@ case $choice in
       echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
-      echo "19. 雷池WAF防火墙"
+      echo "19. 雷池WAF防火墙面板"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4650,7 +4650,7 @@ case $choice in
             else
                 clear
                 echo "安装提示"
-                echo "雷池是长亭科技开发的WAF站点防火墙程序面板，可以反代站点进行防御"
+                echo "雷池是长亭科技开发的WAF站点防火墙程序面板，可以反代站点进行自动化防御"
                 echo "80和443端口不能被占用，无法与宝塔，1panel，npm，ldnmp建站共存"
                 echo "官网介绍: https://github.com/chaitin/safeline"
                 echo ""
