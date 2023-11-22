@@ -2216,7 +2216,7 @@ case $choice in
                   2)
 
                   # nginx调优
-                  sed -i 's/worker_connections.*/worker_connections 2048;/' /home/web/nginx.conf
+                  sed -i 's/worker_connections.*/worker_connections 131072;/' /home/web/nginx.conf
 
                   # php调优
                   wget -O /home/www.conf https://raw.githubusercontent.com/kejilion/sh/main/www.conf
