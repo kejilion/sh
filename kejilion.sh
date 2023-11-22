@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9.8 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v1.9.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -2424,6 +2424,7 @@ case $choice in
       echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
+      echo "19. 雷池WAF防火墙"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4610,6 +4611,93 @@ case $choice in
 
               ;;
 
+          18)
+            if docker inspect safeline-tengine &>/dev/null; then
+
+                    clear
+                    echo "雷池已安装，访问地址: "
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:9443"
+                    echo ""
+
+                    echo "应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            echo "暂不支持"
+                            echo ""
+                            ;;
+                        2)
+
+                            clear
+                            echo "cd命令到安装目录下执行: docker compose down"
+                            echo ""
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "雷池是长亭科技开发的WAF站点防火墙程序面板，可以反代站点进行防御"
+                echo "80和443端口不能被占用，无法与宝塔，1panel，npm，ldnmp建站共存"
+                echo "官网介绍: https://github.com/chaitin/safeline"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    if ! command -v iptables &> /dev/null; then
+                    echo ""
+                    else
+                        # iptables命令
+                        iptables -P INPUT ACCEPT
+                        iptables -P FORWARD ACCEPT
+                        iptables -P OUTPUT ACCEPT
+                        iptables -F
+                    fi
+
+                    # 检查并安装 Docker（如果需要）
+                    if ! command -v docker &>/dev/null; then
+                        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                        systemctl start docker
+                        systemctl enable docker
+                    else
+                        echo "Docker 已经安装，正在部署容器……"
+                    fi
+
+                    bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
+
+                    clear
+                    echo "雷池WAF面板已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:9443"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
+              ;;
 
 
           0)
@@ -6072,6 +6160,11 @@ EOF
     echo "2023-11-16   v1.9.8"
     echo "面板工具中增加了在线office办公软件安装"
     echo "------------------------"
+    echo "2023-11-21   v1.9.9"
+    echo "面板工具中增加了雷池WAF防火墙程序安装"
+    echo "------------------------"
+
+
     ;;
 
   0)
