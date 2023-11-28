@@ -9,7 +9,7 @@ echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
 echo -e "\033[96m科技lion一键脚本工具 v2.0 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
-echo "1. 系统信息查询"
+echo "1. 系统信息"
 echo "2. 系统更新"
 echo "3. 系统清理"
 echo "4. 常用工具 ▶"
@@ -161,7 +161,7 @@ case $choice in
 
     # Update system on Debian-based systems
     if [ -f "/etc/debian_version" ]; then
-        DEBIAN_FRONTEND=noninteractive apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+        apt update -y && apt full-upgrade -y
     fi
 
     # Update system on Red Hat-based systems
@@ -776,7 +776,7 @@ case $choice in
             exit 1
         fi
     fi
-    # wget -N https://raw.githubusercontent.com/fscarmen/warp/main/menu.sh && bash menu.sh [option] [lisence]
+
     wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh [option] [lisence/url/token]
     ;;
 
@@ -1044,11 +1044,17 @@ case $choice in
       clear
       # 更新并安装必要的软件包
       if command -v apt &>/dev/null; then
-          DEBIAN_FRONTEND=noninteractive apt update -y
-          DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+          apt update -y
           apt install -y curl wget sudo socat unzip tar htop
       elif command -v yum &>/dev/null; then
-          yum -y update && yum -y install curl wget sudo socat unzip tar htop
+          yum -y update
+          yum -y install curl
+          yum -y install wget
+          yum -y install sudo
+          yum -y install socat
+          yum -y install unzip
+          yum -y install tar
+          yum -y install htop
       else
           echo "未知的包管理器!"
       fi
@@ -1079,16 +1085,6 @@ case $choice in
       sed -i "s/webroot/$dbrootpasswd/g" /home/web/docker-compose.yml
       sed -i "s/kejilionYYDS/$dbusepasswd/g" /home/web/docker-compose.yml
       sed -i "s/kejilion/$dbuse/g" /home/web/docker-compose.yml
-
-      if ! command -v iptables &> /dev/null; then
-      echo ""
-      else
-          # iptables命令
-          iptables -P INPUT ACCEPT
-          iptables -P FORWARD ACCEPT
-          iptables -P OUTPUT ACCEPT
-          iptables -F
-      fi
 
       cd /home/web && docker-compose up -d
 
@@ -1945,13 +1941,18 @@ case $choice in
       clear
       cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
 
-      # 更新并安装必要的软件包
       if command -v apt &>/dev/null; then
-          DEBIAN_FRONTEND=noninteractive apt update -y
-          DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+          apt update -y
           apt install -y curl wget sudo socat unzip tar htop
       elif command -v yum &>/dev/null; then
-          yum -y update && yum -y install curl wget sudo socat unzip tar htop
+          yum -y update
+          yum -y install curl
+          yum -y install wget
+          yum -y install sudo
+          yum -y install socat
+          yum -y install unzip
+          yum -y install tar
+          yum -y install htop
       else
           echo "未知的包管理器!"
       fi
@@ -2288,13 +2289,18 @@ case $choice in
       docker rm -f nginx php php74 mysql redis
       docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
 
-      # 更新并安装必要的软件包
       if command -v apt &>/dev/null; then
-          DEBIAN_FRONTEND=noninteractive apt update -y
-          DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+          apt update -y
           apt install -y curl wget sudo socat unzip tar htop
       elif command -v yum &>/dev/null; then
-          yum -y update && yum -y install curl wget sudo socat unzip tar htop
+          yum -y update
+          yum -y install curl
+          yum -y install wget
+          yum -y install sudo
+          yum -y install socat
+          yum -y install unzip
+          yum -y install tar
+          yum -y install htop
       else
           echo "未知的包管理器!"
       fi
@@ -2743,16 +2749,6 @@ case $choice in
                             clear
                             docker rm -f npm
                             docker rmi -f jc21/nginx-proxy-manager:latest
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
@@ -2809,17 +2805,6 @@ case $choice in
                   case "$choice" in
                     [Yy])
                       clear
-                      if ! command -v iptables &> /dev/null; then
-                      echo ""
-                      else
-                          # iptables命令
-                          iptables -P INPUT ACCEPT
-                          iptables -P FORWARD ACCEPT
-                          iptables -P OUTPUT ACCEPT
-                          iptables -F
-                      fi
-
-
                       # 检查并安装 Docker（如果需要）
                       if ! command -v docker &>/dev/null; then
                           curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -2878,17 +2863,6 @@ case $choice in
                             docker rm -f alist
                             docker rmi -f xhofe/alist:latest
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -2945,16 +2919,6 @@ case $choice in
                   case "$choice" in
                     [Yy])
                       clear
-                      if ! command -v iptables &> /dev/null; then
-                      echo ""
-                      else
-                          # iptables命令
-                          iptables -P INPUT ACCEPT
-                          iptables -P FORWARD ACCEPT
-                          iptables -P OUTPUT ACCEPT
-                          iptables -F
-                      fi
-
 
                       # 检查并安装 Docker（如果需要）
                       if ! command -v docker &>/dev/null; then
@@ -3017,17 +2981,6 @@ case $choice in
                             docker rmi -f fredblgr/ubuntu-novnc:20.04
                             read -p "请设置一个登录密码: " rootpasswd
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -3085,17 +3038,6 @@ case $choice in
                     [Yy])
                         clear
                         read -p "请设置一个登录密码: " rootpasswd
-
-                        if ! command -v iptables &> /dev/null; then
-                        echo ""
-                        else
-                            # iptables命令
-                            iptables -P INPUT ACCEPT
-                            iptables -P FORWARD ACCEPT
-                            iptables -P OUTPUT ACCEPT
-                            iptables -F
-                        fi
-
 
                         # 检查并安装 Docker（如果需要）
                         if ! command -v docker &>/dev/null; then
@@ -3163,17 +3105,6 @@ case $choice in
                             docker rm -f qbittorrent
                             docker rmi -f lscr.io/linuxserver/qbittorrent:latest
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -3234,16 +3165,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
-
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -3311,17 +3232,6 @@ case $choice in
                             clear
                             docker rm -f mailserver
                             docker rmi -f analogic/poste.io
-
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
@@ -3421,16 +3331,6 @@ case $choice in
                     echo "按任意键继续..."
                     read -n 1 -s -r -p ""
 
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
-
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
                         curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -3489,17 +3389,6 @@ case $choice in
                             docker rm -f rocketchat
                             docker rmi -f rocket.chat
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -3547,16 +3436,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -3618,17 +3497,6 @@ case $choice in
                             docker rm -f zentao-server
                             docker rmi -f idoop/zentao:latest
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -3684,15 +3552,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -3753,17 +3612,6 @@ case $choice in
                             docker rm -f qinglong
                             docker rmi -f whyour/qinglong:latest
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -3817,15 +3665,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -3886,17 +3725,6 @@ case $choice in
                             docker rm -f aria2
                             docker rmi -f p3terx/aria2-pro
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -3949,15 +3777,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -4016,17 +3835,6 @@ case $choice in
                             docker rm -f easyimage
                             docker rmi -f ddsderek/easyimage:latest
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -4082,15 +3890,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -4154,17 +3953,6 @@ case $choice in
                             docker rm -f emby
                             docker rmi -f linuxserver/emby:latest
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -4217,15 +4005,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -4287,17 +4066,6 @@ case $choice in
                             docker rm -f looking-glass
                             docker rmi -f wikihostinc/looking-glass-server
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -4343,15 +4111,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -4403,17 +4162,6 @@ case $choice in
                             clear
                             docker rm -f adguardhome
                             docker rmi -f adguard/adguardhome
-
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
 
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
@@ -4468,15 +4216,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -4538,17 +4277,6 @@ case $choice in
                             docker rm -f onlyoffice
                             docker rmi -f onlyoffice/documentserver
 
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
-
                             # 检查并安装 Docker（如果需要）
                             if ! command -v docker &>/dev/null; then
                                 curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
@@ -4599,15 +4327,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -4691,15 +4410,6 @@ case $choice in
                 case "$choice" in
                     [Yy])
                     clear
-                    if ! command -v iptables &> /dev/null; then
-                    echo ""
-                    else
-                        # iptables命令
-                        iptables -P INPUT ACCEPT
-                        iptables -P FORWARD ACCEPT
-                        iptables -P OUTPUT ACCEPT
-                        iptables -F
-                    fi
 
                     # 检查并安装 Docker（如果需要）
                     if ! command -v docker &>/dev/null; then
@@ -6196,6 +5906,7 @@ EOF
     echo "------------------------"
     echo "2023-11-28   v2.0"
     echo "LDNMP建站中增加仅安装nginx的选项专门服务于站点重定向和站点反向代理"
+    echo "精简无用的代码，优化执行效率"
     echo "------------------------"
 
 
