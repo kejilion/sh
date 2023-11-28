@@ -11,6 +11,12 @@ install_docker() {
     fi
 }
 
+iptables_open() {
+    iptables -P INPUT ACCEPT
+    iptables -P FORWARD ACCEPT
+    iptables -P OUTPUT ACCEPT
+    iptables -F
+}  
 
 install_ldnmp() {
       cd /home/web && docker-compose up -d
@@ -95,6 +101,15 @@ install_ldnmp() {
       echo ""
 }
 
+install_ssltls() {
+      docker stop nginx
+      iptables_open
+      cd ~      
+      curl https://get.acme.sh | sh
+      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+      docker start nginx
+
+}
 
 while true; do
 clear
@@ -1178,13 +1193,7 @@ case $choice in
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
+      install_ssltls
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -1229,14 +1238,7 @@ case $choice in
       read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
-
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
+      install_ssltls
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
 
@@ -1284,16 +1286,8 @@ case $choice in
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
-
+      install_ssltls
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
-
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
       cd /home/web/html
@@ -1336,13 +1330,7 @@ case $choice in
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
+      install_ssltls
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
 
@@ -1395,13 +1383,7 @@ case $choice in
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
+      install_ssltls
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
 
@@ -1458,13 +1440,7 @@ case $choice in
       # BingChat
       read -p "请输入你解析的域名: " yuming
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
+      install_ssltls
 
       docker run -d -p 3099:8080 --name go-proxy-bingai --restart=unless-stopped adams549659584/go-proxy-bingai
 
@@ -1491,13 +1467,7 @@ case $choice in
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
+      install_ssltls
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
 
@@ -1549,13 +1519,7 @@ case $choice in
       # Bitwarden
       read -p "请输入你解析的域名: " yuming
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
+      install_ssltls
 
       docker run -d \
         --name bitwarden \
@@ -1585,13 +1549,7 @@ case $choice in
       # Bitwarden
       read -p "请输入你解析的域名: " yuming
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
+      install_ssltls
 
       docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2.9
 
@@ -1618,13 +1576,7 @@ case $choice in
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
-      docker start nginx
+      install_ssltls
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -1694,17 +1646,12 @@ case $choice in
       read -p "请输入你的域名: " yuming
       read -p "请输入跳转域名: " reverseproxy
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-
+      install_ssltls
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf
 
-      docker start nginx
+      docker restart nginx
 
       clear
       echo "您的重定向网站做好了！"
@@ -1718,18 +1665,14 @@ case $choice in
       read -p "请输入你的反代IP: " reverseproxy
       read -p "请输入你的反代端口: " port
 
-      docker stop nginx
-
-      cd ~
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+      install_ssltls
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0000/$port/g" /home/web/conf.d/$yuming.conf
 
-      docker start nginx
+      docker restart nginx
 
       clear
       echo "您的反向代理网站做好了！"
@@ -1795,12 +1738,7 @@ case $choice in
             1)
                 read -p "请输入你的域名: " yuming
 
-                docker stop nginx
-
-                cd ~
-                curl https://get.acme.sh | sh
-                ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-                docker start nginx
+                install_ssltls
 
                 ;;
 
@@ -1814,12 +1752,7 @@ case $choice in
                 rm /home/web/certs/${oddyuming}_key.pem
                 rm /home/web/certs/${oddyuming}_cert.pem
 
-                docker stop nginx
-
-                cd ~
-                curl https://get.acme.sh | sh
-                ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $newyuming --standalone --key-file /home/web/certs/${newyuming}_key.pem --cert-file /home/web/certs/${newyuming}_cert.pem --force
-                docker start nginx
+                install_ssltls
 
                 ;;
 
@@ -2324,16 +2257,7 @@ case $choice in
                     read -p "确定安装宝塔吗？(Y/N): " choice
                     case "$choice" in
                         [Yy])
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
+                            iptables_open
                             if ! command -v wget &>/dev/null; then
                                 if command -v apt &>/dev/null; then
                                     apt update -y && apt install -y wget
@@ -2426,16 +2350,7 @@ case $choice in
                     read -p "确定安装aaPanel吗？(Y/N): " choice
                     case "$choice" in
                         [Yy])
-                            if ! command -v iptables &> /dev/null; then
-                            echo ""
-                            else
-                                # iptables命令
-                                iptables -P INPUT ACCEPT
-                                iptables -P FORWARD ACCEPT
-                                iptables -P OUTPUT ACCEPT
-                                iptables -F
-                            fi
-
+                            iptables_open
                             if ! command -v wget &>/dev/null; then
                                 if command -v apt &>/dev/null; then
                                     apt update -y && apt install -y wget
@@ -2495,16 +2410,7 @@ case $choice in
               read -p "确定安装1Panel吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
-                  if ! command -v iptables &> /dev/null; then
-                  echo ""
-                  else
-                      # iptables命令
-                      iptables -P INPUT ACCEPT
-                      iptables -P FORWARD ACCEPT
-                      iptables -P OUTPUT ACCEPT
-                      iptables -F
-                  fi
-
+                  iptables_open
                   if [ "$system_type" == "centos" ]; then
                     curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sh quick_start.sh
                   elif [ "$system_type" == "ubuntu" ]; then
@@ -4285,10 +4191,7 @@ case $choice in
 
           5)
               clear
-              iptables -P INPUT ACCEPT
-              iptables -P FORWARD ACCEPT
-              iptables -P OUTPUT ACCEPT
-              iptables -F
+              iptables_open
 
               apt purge -y iptables-persistent > /dev/null 2>&1
               apt purge -y ufw > /dev/null 2>&1
@@ -4328,10 +4231,7 @@ case $choice in
               echo "SSH 端口已修改为: $new_port"
 
               clear
-              iptables -P INPUT ACCEPT
-              iptables -P FORWARD ACCEPT
-              iptables -P OUTPUT ACCEPT
-              iptables -F
+              iptables_open
 
               apt purge -y iptables-persistent > /dev/null 2>&1
               apt purge -y ufw > /dev/null 2>&1
@@ -5117,10 +5017,7 @@ EOF
             fi
 
           clear
-          iptables -P INPUT ACCEPT
-          iptables -P FORWARD ACCEPT
-          iptables -P OUTPUT ACCEPT
-          iptables -F
+          iptables_open
 
           apt remove -y iptables-persistent
           apt purge -y iptables-persistent
