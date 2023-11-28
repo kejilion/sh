@@ -7,7 +7,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v1.9.9 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.0 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1019,8 +1019,9 @@ case $choice in
     echo  "10. 安装Halo博客网站"
     echo  "11. 安装typecho轻量博客网站"
     echo  "------------------------"
-    echo  "21. 站点重定向"
-    echo  "22. 站点反向代理"
+    echo -e "21. 仅安装nginx  \033[33mNEW\033[0m"
+    echo  "22. 站点重定向"
+    echo  "23. 站点反向代理"
     echo  "------------------------"
     echo  "31. 站点数据管理"
     echo  "32. 备份全站数据"
@@ -1029,7 +1030,7 @@ case $choice in
     echo  "------------------------"
     echo  "35. 站点防御程序"
     echo  "------------------------"
-    echo -e "36. 优化LDNMP环境 \033[33mNEW\033[0m"
+    echo  "36. 优化LDNMP环境"
     echo  "37. 更新LDNMP环境"
     echo  "38. 卸载LDNMP环境"
     echo  "------------------------"
@@ -1041,7 +1042,6 @@ case $choice in
     case $sub_choice in
       1)
       clear
-
       # 更新并安装必要的软件包
       if command -v apt &>/dev/null; then
           DEBIAN_FRONTEND=noninteractive apt update -y
@@ -1667,8 +1667,40 @@ case $choice in
         ;;
 
 
-
       21)
+      clear
+
+      if command -v apt &>/dev/null; then
+          DEBIAN_FRONTEND=noninteractive apt update -y
+          DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+          apt install -y curl wget sudo socat unzip tar htop
+      elif command -v yum &>/dev/null; then
+          yum -y update && yum -y install curl wget sudo socat unzip tar htop
+      else
+          echo "未知的包管理器!"
+      fi
+
+      if ! command -v docker &>/dev/null; then
+          curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+          systemctl start docker
+          systemctl enable docker
+      else
+          echo "Docker 已经安装"
+      fi
+
+      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
+
+      wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
+      wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
+      localhostIP=$(curl -s ipv4.ip.sb)
+      sed -i "s/localhost/$localhostIP/g" /home/web/conf.d/default.conf
+
+      docker network create web_default
+      docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
+
+        ;;
+
+      22)
       clear
       read -p "请输入你的域名: " yuming
       read -p "请输入跳转域名: " reverseproxy
@@ -1691,7 +1723,7 @@ case $choice in
 
         ;;
 
-      22)
+      23)
       clear
       read -p "请输入你的域名: " yuming
       read -p "请输入你的反代IP: " reverseproxy
@@ -6162,6 +6194,9 @@ EOF
     echo "------------------------"
     echo "2023-11-21   v1.9.9"
     echo "面板工具中增加了雷池WAF防火墙程序安装"
+    echo "------------------------"
+    echo "2023-11-28   v2.0"
+    echo "LDNMP建站中增加仅安装nginx的选项专门服务于站点重定向和站点反向代理"
     echo "------------------------"
 
 
