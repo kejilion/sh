@@ -1643,6 +1643,8 @@ case $choice in
 
       22)
       clear
+      external_ip=$(curl -s ipv4.ip.sb) 
+      echo -e "先将域名解析到该IP: \033[33m$external_ip\033[0m"
       read -p "请输入你的域名: " yuming
       read -p "请输入跳转域名: " reverseproxy
 
@@ -1661,6 +1663,8 @@ case $choice in
 
       23)
       clear
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到该IP: \033[33m$external_ip\033[0m"
       read -p "请输入你的域名: " yuming
       read -p "请输入你的反代IP: " reverseproxy
       read -p "请输入你的反代端口: " port
