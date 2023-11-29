@@ -16,7 +16,7 @@ iptables_open() {
     iptables -P FORWARD ACCEPT
     iptables -P OUTPUT ACCEPT
     iptables -F
-}  
+}
 
 install_ldnmp() {
       cd /home/web && docker-compose up -d
@@ -101,12 +101,44 @@ install_ldnmp() {
       echo ""
 }
 
+install_certbot() {
+    if ! command -v certbot &>/dev/null; then
+        if command -v apt &>/dev/null; then
+            apt update -y && apt install -y certbot
+        elif command -v yum &>/dev/null; then
+            yum -y update && yum -y install certbot
+        else
+            echo "未知的包管理器!"
+            exit 1
+        fi
+    fi
+
+    # 切换到一个一致的目录（例如，家目录）
+    cd ~ || exit
+
+    # 下载并使脚本可执行
+    curl -O https://raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
+    chmod +x auto_cert_renewal.sh
+
+    # 安排每日午夜运行脚本
+    echo "0 0 * * * cd ~ && ./auto_cert_renewal.sh" | crontab -
+}
+
 install_ssltls() {
+    #   docker stop nginx
+    #   iptables_open
+    #   cd ~
+    #   curl https://get.acme.sh | sh
+    #   ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+    #   docker start nginx
+
       docker stop nginx
       iptables_open
-      cd ~      
-      curl https://get.acme.sh | sh
-      ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
+      install_certbot
+      cd ~
+      certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
+      cp /etc/letsencrypt/live/$yuming/cert.pem /home/web/certs/${yuming}_cert.pem
+      cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
       docker start nginx
 
 }
@@ -118,7 +150,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.0 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.0.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1643,7 +1675,7 @@ case $choice in
 
       22)
       clear
-      external_ip=$(curl -s ipv4.ip.sb) 
+      external_ip=$(curl -s ipv4.ip.sb)
       echo -e "先将域名解析到该IP: \033[33m$external_ip\033[0m"
       read -p "请输入你的域名: " yuming
       read -p "请输入跳转域名: " reverseproxy
@@ -5347,6 +5379,9 @@ EOF
     echo "2023-11-28   v2.0"
     echo "LDNMP建站中增加仅安装nginx的选项专门服务于站点重定向和站点反向代理"
     echo "精简无用的代码，优化执行效率"
+    echo "------------------------"
+    echo "2023-11-29   v2.0.1"
+    echo "LDNMP建站改用cerbot申请证书，更稳定更快速。弃用acme"
     echo "------------------------"
 
 
