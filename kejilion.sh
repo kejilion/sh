@@ -4102,7 +4102,8 @@ case $choice in
       echo "14. 用户/密码生成器"
       echo "15. 系统时区调整"
       echo "16. 开启BBR3加速"
-      echo -e "17. 防火墙高级管理器 \033[33mNEW\033[0m"
+      echo "17. 防火墙高级管理器"
+      echo "18. 修改主机名"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -5100,6 +5101,48 @@ EOF
         fi
               ;;
 
+          18)
+          clear
+          # 获取当前主机名
+          current_hostname=$(hostname)
+
+          echo "当前主机名: $current_hostname"
+
+          # 询问用户是否要更改主机名
+          read -p "是否要更改主机名？(y/n): " answer
+
+          if [ "$answer" == "y" ]; then
+              # 获取新的主机名
+              read -p "请输入新的主机名: " new_hostname
+
+              # 更改主机名
+              if [ -n "$new_hostname" ]; then
+                  # 根据发行版选择相应的命令
+                  if [ -f /etc/debian_version ]; then
+                      # Debian 或 Ubuntu
+                      hostnamectl set-hostname "$new_hostname"
+                      sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
+                  elif [ -f /etc/redhat-release ]; then
+                      # CentOS
+                      hostnamectl set-hostname "$new_hostname"
+                      sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
+                  else
+                      echo "未知的发行版，无法更改主机名。"
+                      exit 1
+                  fi
+
+                  # 重启生效
+                  systemctl restart systemd-hostnamed
+                  echo "主机名已更改为: $new_hostname"
+              else
+                  echo "无效的主机名。未更改主机名。"
+                  exit 1
+              fi
+          else
+              echo "未更改主机名。"
+          fi
+
+              ;;
 
           21)
           clear
@@ -5397,6 +5440,7 @@ EOF
     echo "2023-11-30   v2.0.2"
     echo "面板工具修复QB无法登录问题"
     echo "面板工具修复RocketChat进入后无限加载问题"
+    echo "系统工具中添加修改主机名功能"
     echo "系统工具中添加服务器重启功能"
     echo "------------------------"
 
