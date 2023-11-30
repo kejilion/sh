@@ -150,7 +150,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.0.1 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.0.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -3040,7 +3040,7 @@ case $choice in
                         1)
                             clear
                             docker rm -f rocketchat
-                            docker rmi -f rocket.chat
+                            docker rmi -f rocket.chat:6.3
                             install_docker
 
                             docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
@@ -3057,8 +3057,10 @@ case $choice in
                             clear
                             docker rm -f rocketchat
                             docker rmi -f rocket.chat
+                            docker rmi -f rocket.chat:6.3
                             docker rm -f db
                             docker rmi -f mongo:latest
+                            # docker rmi -f mongo:6
                             rm -rf /home/docker/mongo
                             echo "应用已卸载"
                             ;;
@@ -3088,7 +3090,7 @@ case $choice in
                     sleep 1
                     docker exec -it db mongosh --eval "printjson(rs.initiate())"
                     sleep 5
-                    docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+                    docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat:6.3
 
                     clear
 
@@ -5384,6 +5386,10 @@ EOF
     echo "------------------------"
     echo "2023-11-29   v2.0.1"
     echo "LDNMP建站改用cerbot申请证书，更稳定更快速。弃用acme"
+    echo "------------------------"
+    echo "2023-11-30   v2.0.2"
+    echo "面板工具修复QB无法登录问题"
+    echo "面板工具修复RocketChat进入后无限加载问题"
     echo "------------------------"
 
 
