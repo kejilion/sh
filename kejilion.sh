@@ -5151,7 +5151,8 @@ EOF
               ;;
 
           99)
-          echo "重启中..."
+          clear
+          echo "正在重启服务器，即将断开SSH连接"
           reboot
               ;;
           0)
