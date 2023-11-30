@@ -2789,6 +2789,7 @@ case $choice in
                             clear
                             docker rm -f qbittorrent
                             docker rmi -f lscr.io/linuxserver/qbittorrent:latest
+                            docker rmi -f lscr.io/linuxserver/qbittorrent:4.5.5
                             install_docker
                             docker run -d \
                                   --name=qbittorrent \
@@ -2819,6 +2820,7 @@ case $choice in
                             clear
                             docker rm -f qbittorrent
                             docker rmi -f lscr.io/linuxserver/qbittorrent:latest
+                            docker rmi -f lscr.io/linuxserver/qbittorrent:4.5.5
                             rm -rf /home/docker/qbittorrent
                             echo "应用已卸载"
                             ;;
@@ -2854,7 +2856,7 @@ case $choice in
                           -v /home/docker/qbittorrent/config:/config \
                           -v /home/docker/qbittorrent/downloads:/downloads \
                           --restart unless-stopped \
-                          lscr.io/linuxserver/qbittorrent:latest
+                          lscr.io/linuxserver/qbittorrent:4.5.5
                     clear
                     echo "QB已经安装完成"
                     echo "------------------------"
