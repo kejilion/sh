@@ -1221,6 +1221,8 @@ case $choice in
       2)
       clear
       # wordpress
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
@@ -1267,6 +1269,8 @@ case $choice in
       3)
       clear
       # Discuz论坛
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
@@ -1314,6 +1318,8 @@ case $choice in
       4)
       clear
       # 可道云桌面
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
@@ -1358,6 +1364,8 @@ case $choice in
       5)
       clear
       # 苹果CMS
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
@@ -1411,6 +1419,8 @@ case $choice in
       6)
       clear
       # 独脚数卡
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
@@ -1470,6 +1480,8 @@ case $choice in
       7)
       clear
       # BingChat
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你解析的域名: " yuming
 
       install_ssltls
@@ -1495,6 +1507,8 @@ case $choice in
       8)
       clear
       # flarum论坛
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
@@ -1549,6 +1563,8 @@ case $choice in
       9)
       clear
       # Bitwarden
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你解析的域名: " yuming
 
       install_ssltls
@@ -1604,6 +1620,8 @@ case $choice in
       11)
       clear
       # typecho
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你解析的域名: " yuming
       dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
       dbname="${dbname}"
@@ -1677,7 +1695,7 @@ case $choice in
       22)
       clear
       external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到该IP: \033[33m$external_ip\033[0m"
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你的域名: " yuming
       read -p "请输入跳转域名: " reverseproxy
 
@@ -1698,7 +1716,7 @@ case $choice in
       23)
       clear
       external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到该IP: \033[33m$external_ip\033[0m"
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
       read -p "请输入你的域名: " yuming
       read -p "请输入你的反代IP: " reverseproxy
       read -p "请输入你的反代端口: " port
