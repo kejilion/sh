@@ -134,7 +134,6 @@ install_ssltls() {
 
       docker stop nginx
       iptables_open
-      install_certbot
       cd ~
       certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
       cp /etc/letsencrypt/live/$yuming/cert.pem /home/web/certs/${yuming}_cert.pem
@@ -1196,6 +1195,7 @@ case $choice in
       fi
 
       install_docker
+      install_certbot
 
       # 创建必要的目录和文件
       cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
@@ -1661,6 +1661,7 @@ case $choice in
       fi
 
       install_docker
+      install_certbot
 
       cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
 
@@ -1681,6 +1682,7 @@ case $choice in
       read -p "请输入跳转域名: " reverseproxy
 
       install_ssltls
+
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf
@@ -1921,6 +1923,7 @@ case $choice in
       fi
 
       install_docker
+      install_certbot
       install_ldnmp
 
       ;;
@@ -2164,6 +2167,7 @@ case $choice in
       fi
 
       install_docker
+      install_certbot
       install_ldnmp
 
       ;;
