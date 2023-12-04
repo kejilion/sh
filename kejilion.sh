@@ -168,6 +168,22 @@ nginx_status() {
 }
 
 
+install_lrzsz() {
+    if ! command -v lrzsz &>/dev/null; then
+        if command -v apt &>/dev/null; then
+            apt update -y && apt install -y lrzsz
+        elif command -v yum &>/dev/null; then
+            yum -y update && yum -y install lrzsz
+        else
+            echo "未知的包管理器!"
+            break
+        fi
+    fi
+
+}
+
+
+
 
 
 while true; do
@@ -1185,6 +1201,7 @@ case $choice in
     echo -e "21. 仅安装nginx  \033[33mNEW\033[0m"
     echo  "22. 站点重定向"
     echo  "23. 站点反向代理"
+    echo  "24. 自定义静态站点 Beta"
     echo  "------------------------"
     echo  "31. 站点数据管理"
     echo  "32. 备份全站数据"
@@ -1767,6 +1784,39 @@ case $choice in
       nginx_status
         ;;
 
+      24)
+      clear
+      # wordpress
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
+      read -p "请输入你解析的域名: " yuming
+      install_ssltls
+
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/html.conf
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+      cd /home/web/html
+      mkdir $yuming
+      cd $yuming
+
+      install_lrzsz
+      clear
+      echo -e "目前只允许上传\033[33mindex.html\033[0m文件，请提前准备好，按任意键继续..."
+      read -n 1 -s -r -p ""
+      rz
+
+      # wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
+      # unzip latest.zip
+      # rm latest.zip
+
+      docker exec nginx chmod -R 777 /var/www/html
+      docker restart nginx
+
+      clear
+      echo "您的静态网站搭建好了！"
+      echo "https://$yuming"
+      nginx_status
+        ;;
 
     31)
     while true; do
@@ -5708,7 +5758,8 @@ EOF
     echo "------------------------"
     echo "2023-12-04   v2.0.3"
     echo "LDNMP建站过程中增加了nginx自我检测修复功能"
-    echo "系统工具添加更新源切换功能，请先在测试环境使用。"
+    echo "系统工具添加更新源切换功能，请先在测试环境使用"
+    echo "LDNMP建站增加自定义上传静态html界面功能"
     echo "------------------------"
 
     ;;
