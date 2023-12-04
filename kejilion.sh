@@ -109,7 +109,7 @@ install_certbot() {
             yum -y update && yum -y install certbot
         else
             echo "未知的包管理器!"
-            exit 1
+            break
         fi
     fi
 
@@ -142,6 +142,34 @@ install_ssltls() {
 
 }
 
+
+nginx_status() {
+
+    nginx_container_name="nginx"
+
+    # 获取容器的状态
+    container_status=$(docker inspect -f '{{.State.Status}}' "$nginx_container_name" 2>/dev/null)
+
+    # 获取容器的重启状态
+    container_restart_count=$(docker inspect -f '{{.RestartCount}}' "$nginx_container_name" 2>/dev/null)
+
+    # 检查容器是否在运行，并且没有处于"Restarting"状态
+    if [ "$container_status" == "running" ]; then
+        echo ""
+    else
+        rm -r /home/web/html/$yuming >/dev/null 2>&1
+        rm /home/web/conf.d/$yuming.conf >/dev/null 2>&1
+        rm /home/web/certs/${yuming}_key.pem >/dev/null 2>&1
+        rm /home/web/certs/${yuming}_cert.pem >/dev/null 2>&1
+        docker restart nginx >/dev/null 2>&1
+        echo -e "\e[1;31m检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！\e[0m"
+    fi
+
+}
+
+
+
+
 while true; do
 clear
 
@@ -149,7 +177,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.0.2 （支持Ubuntu，Debian，Centos系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.0.3 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1264,8 +1292,9 @@ case $choice in
       echo "密码: $dbusepasswd"
       echo "数据库主机: mysql"
       echo "表前缀: wp_"
-
+      nginx_status
         ;;
+
       3)
       clear
       # Discuz论坛
@@ -1311,7 +1340,7 @@ case $choice in
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
       echo "表前缀: discuz_"
-
+      nginx_status
 
         ;;
 
@@ -1359,6 +1388,7 @@ case $choice in
       echo "密码: $dbusepasswd"
       echo "数据库名: $dbname"
       echo "redis主机: redis"
+      nginx_status
         ;;
 
       5)
@@ -1413,7 +1443,7 @@ case $choice in
       echo "------------------------"
       echo "安装成功后登录后台地址"
       echo "https://$yuming/vip.php"
-      echo ""
+      nginx_status
         ;;
 
       6)
@@ -1474,7 +1504,7 @@ case $choice in
       echo "登录时右上角如果出现红色error0请使用如下命令: "
       echo "我也很气愤独角数卡为啥这么麻烦，会有这样的问题！"
       echo "sed -i 's/ADMIN_HTTPS=false/ADMIN_HTTPS=true/g' /home/web/html/$yuming/dujiaoka/.env"
-      echo ""
+      nginx_status
         ;;
 
       7)
@@ -1501,7 +1531,7 @@ case $choice in
       clear
       echo "您的BingChat网站搭建好了！"
       echo "https://$yuming"
-      echo ""
+      nginx_status
         ;;
 
       8)
@@ -1557,7 +1587,7 @@ case $choice in
       echo "密码: $dbusepasswd"
       echo "表前缀: flarum_"
       echo "管理员信息自行设置"
-      echo ""
+      nginx_status
         ;;
 
       9)
@@ -1589,7 +1619,7 @@ case $choice in
       clear
       echo "您的Bitwarden网站搭建好了！"
       echo "https://$yuming"
-      echo ""
+      nginx_status
         ;;
 
       10)
@@ -1614,7 +1644,7 @@ case $choice in
       clear
       echo "您的Halo网站搭建好了！"
       echo "https://$yuming"
-      echo ""
+      nginx_status
         ;;
 
       11)
@@ -1662,7 +1692,7 @@ case $choice in
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
       echo "数据库名: $dbname"
-
+      nginx_status
         ;;
 
 
@@ -1710,6 +1740,7 @@ case $choice in
       clear
       echo "您的重定向网站做好了！"
       echo "https://$yuming"
+      nginx_status
 
         ;;
 
@@ -1733,7 +1764,7 @@ case $choice in
       clear
       echo "您的反向代理网站做好了！"
       echo "https://$yuming"
-
+      nginx_status
         ;;
 
 
@@ -1793,7 +1824,6 @@ case $choice in
         case $sub_choice in
             1)
                 read -p "请输入你的域名: " yuming
-
                 install_ssltls
 
                 ;;
@@ -1807,7 +1837,6 @@ case $choice in
 
                 rm /home/web/certs/${oddyuming}_key.pem
                 rm /home/web/certs/${oddyuming}_cert.pem
-
                 install_ssltls
 
                 ;;
@@ -1824,6 +1853,7 @@ case $choice in
                 rm /home/web/conf.d/$yuming.conf
                 rm /home/web/certs/${yuming}_key.pem
                 rm /home/web/certs/${yuming}_cert.pem
+                docker restart nginx
                 ;;
             8)
                 read -p "请输入数据库名: " shujuku
@@ -5465,7 +5495,9 @@ EOF
     echo "系统工具中添加修改主机名功能"
     echo "系统工具中添加服务器重启功能"
     echo "------------------------"
-
+    echo "2023-12-04   v2.0.3"
+    echo "LDNMP建站过程中增加了nginx自我检测修复功能。"
+    echo "------------------------"
 
     ;;
 
