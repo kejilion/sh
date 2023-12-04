@@ -5391,7 +5391,6 @@ EOF
                       restore_initial_source
                       ;;
                   0)
-                      echo "退出脚本"
                       break
                       ;;
                   *)
