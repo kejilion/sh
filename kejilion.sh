@@ -4156,6 +4156,7 @@ case $choice in
       echo "16. 开启BBR3加速"
       echo "17. 防火墙高级管理器"
       echo "18. 修改主机名"
+      echo "19. 切换系统更新源 Beta"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -5196,6 +5197,217 @@ EOF
 
               ;;
 
+          19)
+
+          # 获取系统信息
+          source /etc/os-release
+
+          # 定义 Ubuntu 更新源
+          aliyun_ubuntu_source="http://mirrors.aliyun.com/ubuntu/"
+          official_ubuntu_source="http://archive.ubuntu.com/ubuntu/"
+          initial_ubuntu_source=""
+
+          # 定义 Debian 更新源
+          aliyun_debian_source="http://mirrors.aliyun.com/debian/"
+          official_debian_source="http://deb.debian.org/debian/"
+          initial_debian_source=""
+
+          # 定义 CentOS 更新源
+          aliyun_centos_source="http://mirrors.aliyun.com/centos/"
+          official_centos_source="http://mirror.centos.org/centos/"
+          initial_centos_source=""
+
+          # 获取当前更新源并设置初始源
+          case "$ID" in
+              ubuntu)
+                  initial_ubuntu_source=$(grep -E '^deb ' /etc/apt/sources.list | head -n 1 | awk '{print $2}')
+                  ;;
+              debian)
+                  initial_debian_source=$(grep -E '^deb ' /etc/apt/sources.list | head -n 1 | awk '{print $2}')
+                  ;;
+              centos)
+                  initial_centos_source=$(awk -F= '/^baseurl=/ {print $2}' /etc/yum.repos.d/CentOS-Base.repo | head -n 1 | tr -d ' ')
+                  ;;
+              *)
+                  echo "未知系统，无法执行切换源脚本"
+                  exit 1
+                  ;;
+          esac
+
+          # 备份当前源
+          backup_sources() {
+              case "$ID" in
+                  ubuntu)
+                      sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak
+                      ;;
+                  debian)
+                      sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak
+                      ;;
+                  centos)
+                      if [ ! -f /etc/yum.repos.d/CentOS-Base.repo.bak ]; then
+                          sudo cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
+                      else
+                          echo "备份已存在，无需重复备份"
+                      fi
+                      ;;
+                  *)
+                      echo "未知系统，无法执行备份操作"
+                      exit 1
+                      ;;
+              esac
+              echo "已备份当前更新源为 /etc/apt/sources.list.bak 或 /etc/yum.repos.d/CentOS-Base.repo.bak"
+          }
+
+          # 还原初始更新源
+          restore_initial_source() {
+              case "$ID" in
+                  ubuntu)
+                      sudo cp /etc/apt/sources.list.bak /etc/apt/sources.list
+                      ;;
+                  debian)
+                      sudo cp /etc/apt/sources.list.bak /etc/apt/sources.list
+                      ;;
+                  centos)
+                      sudo cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo
+                      ;;
+                  *)
+                      echo "未知系统，无法执行还原操作"
+                      exit 1
+                      ;;
+              esac
+              echo "已还原初始更新源"
+          }
+
+          # 函数：切换更新源
+          switch_source() {
+              case "$ID" in
+                  ubuntu)
+                      sudo sed -i 's|'"$initial_ubuntu_source"'|'"$1"'|g' /etc/apt/sources.list
+                      ;;
+                  debian)
+                      sudo sed -i 's|'"$initial_debian_source"'|'"$1"'|g' /etc/apt/sources.list
+                      ;;
+                  centos)
+                      sudo sed -i "s|^baseurl=.*$|baseurl=$1|g" /etc/yum.repos.d/CentOS-Base.repo
+                      ;;
+                  *)
+                      echo "未知系统，无法执行切换操作"
+                      exit 1
+                      ;;
+              esac
+          }
+
+          # 主菜单
+          while true; do
+              clear
+              case "$ID" in
+                  ubuntu)
+                      echo "Ubuntu 更新源切换脚本"
+                      echo "------------------------"
+                      ;;
+                  debian)
+                      echo "Debian 更新源切换脚本"
+                      echo "------------------------"
+                      ;;
+                  centos)
+                      echo "CentOS 更新源切换脚本"
+                      echo "------------------------"
+                      ;;
+                  *)
+                      echo "未知系统，无法执行脚本"
+                      exit 1
+                      ;;
+              esac
+
+              echo "1. 切换到阿里云源"
+              echo "2. 切换到官方源"
+              echo "------------------------"
+              echo "3. 备份当前更新源"
+              echo "4. 还原初始更新源"
+              echo "------------------------"
+              echo "0. 返回上一级"
+              echo "------------------------"
+              read -p "请选择操作: " choice
+
+              case $choice in
+                  1)
+                      backup_sources
+                      case "$ID" in
+                          ubuntu)
+                              switch_source $aliyun_ubuntu_source
+                              ;;
+                          debian)
+                              switch_source $aliyun_debian_source
+                              ;;
+                          centos)
+                              switch_source $aliyun_centos_source
+                              ;;
+                          *)
+                              echo "未知系统，无法执行切换操作"
+                              exit 1
+                              ;;
+                      esac
+                      echo "已切换到阿里云源"
+                      ;;
+                  2)
+                      backup_sources
+                      case "$ID" in
+                          ubuntu)
+                              switch_source $official_ubuntu_source
+                              ;;
+                          debian)
+                              switch_source $official_debian_source
+                              ;;
+                          centos)
+                              switch_source $official_centos_source
+                              ;;
+                          *)
+                              echo "未知系统，无法执行切换操作"
+                              exit 1
+                              ;;
+                      esac
+                      echo "已切换到官方源"
+                      ;;
+                  3)
+                      backup_sources
+                      case "$ID" in
+                          ubuntu)
+                              switch_source $initial_ubuntu_source
+                              ;;
+                          debian)
+                              switch_source $initial_debian_source
+                              ;;
+                          centos)
+                              switch_source $initial_centos_source
+                              ;;
+                          *)
+                              echo "未知系统，无法执行切换操作"
+                              exit 1
+                              ;;
+                      esac
+                      echo "已切换到初始更新源"
+                      ;;
+                  4)
+                      restore_initial_source
+                      ;;
+                  0)
+                      echo "退出脚本"
+                      break
+                      ;;
+                  *)
+                      echo "无效的选择，请重新输入"
+                      ;;
+              esac
+              echo -e "\033[0;32m操作完成\033[0m"
+              echo "按任意键继续..."
+              read -n 1 -s -r -p ""
+              echo ""
+              clear
+          done
+
+              ;;
+
+
           21)
           clear
           # 检查是否已安装 sshpass
@@ -5496,7 +5708,8 @@ EOF
     echo "系统工具中添加服务器重启功能"
     echo "------------------------"
     echo "2023-12-04   v2.0.3"
-    echo "LDNMP建站过程中增加了nginx自我检测修复功能。"
+    echo "LDNMP建站过程中增加了nginx自我检测修复功能"
+    echo "系统工具添加更新源切换功能，请先在测试环境使用。"
     echo "------------------------"
 
     ;;
