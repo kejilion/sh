@@ -1200,7 +1200,7 @@ case $choice in
     echo  "10. 安装Halo博客网站"
     echo  "11. 安装typecho轻量博客网站"
     echo  "------------------------"
-    echo -e "21. 仅安装nginx  \033[33mNEW\033[0m"
+    echo -e "21. 仅安装nginx \033[33mNEW\033[0m"
     echo  "22. 站点重定向"
     echo  "23. 站点反向代理"
     echo -e "24. 自定义静态站点 \033[36mBeta\033[0m"
