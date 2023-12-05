@@ -1,5 +1,32 @@
 #!/bin/bash
 
+install_wget() {
+    if ! command -v wget &>/dev/null; then
+        if command -v apt &>/dev/null; then
+            apt update -y && apt install -y wget
+        elif command -v yum &>/dev/null; then
+            yum -y update && yum -y install wget
+        else
+            echo "未知的包管理器!"
+            break
+        fi
+    fi
+}
+
+install_sshpass() {
+    if ! command -v sshpass &>/dev/null; then
+        if command -v apt &>/dev/null; then
+            apt update -y && apt install -y sshpass
+        elif command -v yum &>/dev/null; then
+            yum -y update && yum -y install sshpass
+        else
+            echo "未知的包管理器!"
+            break
+        fi
+    fi
+}
+
+
 # 定义安装 Docker 的函数
 install_docker() {
     if ! command -v docker &>/dev/null; then
@@ -193,7 +220,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.0.3 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.0.4 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -551,17 +578,7 @@ case $choice in
 
   5)
     clear
-    # 检查并安装 wget（如果需要）
-    if ! command -v wget &>/dev/null; then
-        if command -v apt &>/dev/null; then
-            apt update -y && apt install -y wget
-        elif command -v yum &>/dev/null; then
-            yum -y update && yum -y install wget
-        else
-            echo "未知的包管理器!"
-            exit 1
-        fi
-    fi
+    install_wget
     wget --no-check-certificate -O tcpx.sh https://raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
     chmod +x tcpx.sh
     ./tcpx.sh
@@ -951,18 +968,7 @@ case $choice in
 
   7)
     clear
-    # 检查并安装 wget（如果需要）
-    if ! command -v wget &>/dev/null; then
-        if command -v apt &>/dev/null; then
-            apt update -y && apt install -y wget
-        elif command -v yum &>/dev/null; then
-            yum -y update && yum -y install wget
-        else
-            echo "未知的包管理器!"
-            exit 1
-        fi
-    fi
-
+    install_wget
     wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh [option] [lisence/url/token]
     ;;
 
@@ -998,10 +1004,12 @@ case $choice in
               ;;
           3)
               clear
+              install_wget
               wget -qO- https://github.com/yeahwu/check/raw/main/check.sh | bash
               ;;
           4)
               clear
+              install_wget
               wget -qO- git.io/besttrace | bash
               ;;
           5)
@@ -1118,13 +1126,7 @@ case $choice in
               done
 
               read -p "请输入你重装后的密码: " vpspasswd
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y wget
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install wget
-              else
-                  echo "未知的包管理器!"
-              fi
+              install_wget
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
@@ -1201,7 +1203,7 @@ case $choice in
     echo -e "21. 仅安装nginx  \033[33mNEW\033[0m"
     echo  "22. 站点重定向"
     echo  "23. 站点反向代理"
-    echo  "24. 自定义静态站点 Beta"
+    echo -e "24. 自定义静态站点 \033[36mBeta\033[0m"
     echo  "------------------------"
     echo  "31. 站点数据管理"
     echo  "32. 备份全站数据"
@@ -1715,12 +1717,18 @@ case $choice in
 
       21)
       clear
-
       if command -v apt &>/dev/null; then
           apt update -y
           apt install -y curl wget sudo socat unzip tar htop
       elif command -v yum &>/dev/null; then
-          yum -y update && yum -y install curl wget sudo socat unzip tar htop
+          yum -y update
+          yum -y install curl
+          yum -y install wget
+          yum -y install sudo
+          yum -y install socat
+          yum -y install unzip
+          yum -y install tar
+          yum -y install htop
       else
           echo "未知的包管理器!"
       fi
@@ -1735,8 +1743,16 @@ case $choice in
       localhostIP=$(curl -s ipv4.ip.sb)
       sed -i "s/localhost/$localhostIP/g" /home/web/conf.d/default.conf
 
+      docker rm -f nginx >/dev/null 2>&1
+      docker rmi nginx >/dev/null 2>&1
       docker run -d --name nginx --restart always -p 80:80 -p 443:443 -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
 
+      clear
+      nginx_version=$(docker exec nginx nginx -v 2>&1)
+      nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+      echo "nginx已安装完成"
+      echo "当前版本: v$nginx_version"
+      echo ""
         ;;
 
       22)
@@ -1804,10 +1820,6 @@ case $choice in
       echo -e "目前只允许上传\033[33mindex.html\033[0m文件，请提前准备好，按任意键继续..."
       read -n 1 -s -r -p ""
       rz
-
-      # wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
-      # unzip latest.zip
-      # rm latest.zip
 
       docker exec nginx chmod -R 777 /var/www/html
       docker restart nginx
@@ -1986,17 +1998,7 @@ case $choice in
               ;;
       esac
 
-      if ! command -v sshpass &>/dev/null; then
-          if command -v apt &>/dev/null; then
-              apt update -y && apt install -y sshpass
-          elif command -v yum &>/dev/null; then
-              yum -y update && yum -y install sshpass
-          else
-              echo "未知的包管理器!"
-          fi
-      else
-          echo "sshpass 已经安装，跳过安装步骤。"
-      fi
+      install_sshpass
 
       ;;
 
@@ -2396,16 +2398,7 @@ case $choice in
                     case "$choice" in
                         [Yy])
                             iptables_open
-                            if ! command -v wget &>/dev/null; then
-                                if command -v apt &>/dev/null; then
-                                    apt update -y && apt install -y wget
-                                elif command -v yum &>/dev/null; then
-                                    yum -y update && yum -y install wget
-                                else
-                                    echo "未知的包管理器!"
-                                    exit 1
-                                fi
-                            fi
+                            install_wget
                             if [ "$system_type" == "centos" ]; then
                                 yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
                             elif [ "$system_type" == "ubuntu" ]; then
@@ -2489,16 +2482,7 @@ case $choice in
                     case "$choice" in
                         [Yy])
                             iptables_open
-                            if ! command -v wget &>/dev/null; then
-                                if command -v apt &>/dev/null; then
-                                    apt update -y && apt install -y wget
-                                elif command -v yum &>/dev/null; then
-                                    yum -y update && yum -y install wget
-                                else
-                                    echo "未知的包管理器!"
-                                    exit 1
-                                fi
-                            fi
+                            install_wget
                             if [ "$system_type" == "centos" ]; then
                                 yum install -y wget && wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && bash install.sh aapanel
                             elif [ "$system_type" == "ubuntu" ]; then
@@ -4206,7 +4190,7 @@ case $choice in
       echo "16. 开启BBR3加速"
       echo "17. 防火墙高级管理器"
       echo "18. 修改主机名"
-      echo "19. 切换系统更新源 Beta"
+      echo -e "19. 切换系统更新源 \033[36mBeta\033[0m"
       echo "------------------------"
       echo "21. 留言板"
       echo "------------------------"
@@ -4459,13 +4443,7 @@ case $choice in
               done
 
               read -p "请输入你重装后的密码: " vpspasswd
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y wget
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install wget
-              else
-                  echo "未知的包管理器!"
-              fi
+              install_wget
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
@@ -5459,18 +5437,7 @@ EOF
 
           21)
           clear
-          # 检查是否已安装 sshpass
-          if ! command -v sshpass &>/dev/null; then
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y sshpass
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install sshpass
-              else
-                  echo "未知的包管理器!"
-              fi
-          else
-              echo "sshpass 已经安装，跳过安装步骤。"
-          fi
+          install_sshpass
 
           remote_ip="66.42.61.110"
           remote_user="liaotian123"
@@ -5760,6 +5727,11 @@ EOF
     echo "LDNMP建站过程中增加了nginx自我检测修复功能"
     echo "系统工具添加更新源切换功能，请先在测试环境使用"
     echo "LDNMP建站增加自定义上传静态html界面功能"
+    echo "------------------------"
+    echo "2023-12-05   v2.0.4"
+    echo "LDNMP建站中仅安装nginx功能添加安装成功提示，更优雅直观"
+    echo "LDNMP建站中仅安装nginx功能支持自动更新nginx版本"
+    echo "优化代码细节，定义调用函数，脚本执行更简洁，提升效率"
     echo "------------------------"
 
     ;;
