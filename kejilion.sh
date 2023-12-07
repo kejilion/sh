@@ -236,7 +236,8 @@ echo "11. 常用面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
 echo "------------------------"
-echo "00. 脚本更新日志"
+echo "99. 脚本更新"
+echo "00. 更新日志"
 echo "------------------------"
 echo "0. 退出脚本"
 echo "------------------------"
@@ -4219,7 +4220,7 @@ case $choice in
           1)
               clear
               read -p "请输入你的快捷按键: " kuaijiejian
-              echo "alias $kuaijiejian='curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh'" >> ~/.bashrc
+              echo "alias $kuaijiejian='./kejilion.sh'" >> ~/.bashrc
               echo "快捷键已添加。请重新启动终端，或运行 'source ~/.bashrc' 以使修改生效。"
               ;;
 
@@ -5510,6 +5511,18 @@ EOF
     done
     ;;
 
+  99)
+    clear
+    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
+    echo "脚本已更新到最新版本！"
+    echo -e "\033[0;32m操作完成\033[0m"
+    echo "按任意键继续..."
+    read -n 1 -s -r -p ""
+    echo ""
+    clear
+    ./kejilion.sh
+    exit
+    ;;
 
   00)
     clear
@@ -5748,8 +5761,9 @@ EOF
     echo "LDNMP建站中仅安装nginx功能支持自动更新nginx版本"
     echo "优化代码细节，定义调用函数，脚本执行更简洁，提升效率"
     echo "------------------------"
-    echo "2023-12-07   v2.0.5"
+    echo "2023-12-07   v2.0.6"
     echo "LDNMP在站点数据管理中增加查看站点分析报告功能，可以对网站流量进行监控与分析"
+    echo "主菜单添加手动更新脚本功能"
     echo "------------------------"
 
     ;;
