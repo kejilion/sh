@@ -220,7 +220,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.0.4 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.0.5 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -1876,7 +1876,8 @@ case $choice in
         echo ""
         echo "操作"
         echo "------------------------"
-        echo "1. 申请/更新域名证书               2. 更换站点域名               3. 清理站点缓存"
+        echo "1. 申请/更新域名证书               2. 更换站点域名"
+        echo "3. 清理站点缓存                    4. 查看站点分析报告"
         echo "------------------------"
         echo "7. 删除指定站点                    8. 删除指定数据库"
         echo "------------------------"
@@ -1907,6 +1908,20 @@ case $choice in
             3)
                 docker exec -it nginx rm -rf /var/cache/nginx
                 docker restart nginx
+                ;;
+            4)
+                if ! command -v goaccess &>/dev/null; then
+                    if command -v apt &>/dev/null; then
+                        apt update -y && apt install -y goaccess
+                    elif command -v yum &>/dev/null; then
+                        yum -y update && yum -y install goaccess
+                    else
+                        echo "未知的包管理器!"
+                        break
+                    fi
+                fi
+                goaccess --log-format=COMBINED /home/web/log/nginx/access.log
+
                 ;;
 
             7)
@@ -5732,6 +5747,9 @@ EOF
     echo "LDNMP建站中仅安装nginx功能添加安装成功提示，更优雅直观"
     echo "LDNMP建站中仅安装nginx功能支持自动更新nginx版本"
     echo "优化代码细节，定义调用函数，脚本执行更简洁，提升效率"
+    echo "------------------------"
+    echo "2023-12-07   v2.0.5"
+    echo "LDNMP在站点数据管理中增加查看站点分析报告功能，可以对网站流量进行监控与分析"
     echo "------------------------"
 
     ;;
