@@ -2345,7 +2345,7 @@ case $choice in
       echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
-      echo "19. 雷池WAF防火墙面板"
+      echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4030,6 +4030,102 @@ case $choice in
             fi
 
               ;;
+
+          20)
+            if docker inspect portainer &>/dev/null; then
+
+                    clear
+                    echo "portainer已安装，访问地址: "
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:9050"
+                    echo ""
+
+                    echo "应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f portainer
+                            docker rmi -f portainer/portainer
+                            install_docker
+
+                            docker run -d \
+                            --name portainer \
+                            -p 9050:9000 \
+                            -v /var/run/docker.sock:/var/run/docker.sock \
+                            -v /home/docker/portainer:/data \
+                            --restart always \
+                            portainer/portainer
+
+
+                            clear
+                            echo "portainer已经安装完成"
+                            echo "------------------------"
+                            echo "您可以使用以下地址访问:"
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "http:$external_ip:9050"
+                            echo ""
+                            ;;
+                        2)
+                            clear
+                            docker rm -f portainer
+                            docker rmi -f portainer/portainer
+                            rm -rf /home/docker/portainer
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "portainer是一个轻量级的docker容器管理面板"
+                echo "官网介绍: https://www.portainer.io/"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    install_docker
+
+                    docker run -d \
+                    --name portainer \
+                    -p 9050:9000 \
+                    -v /var/run/docker.sock:/var/run/docker.sock \
+                    -v /home/docker/portainer:/data \
+                    --restart always \
+                    portainer/portainer
+
+                    clear
+                    echo "portainer已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:9050"
+                    echo ""
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
+              ;;
+
 
 
           0)
