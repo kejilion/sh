@@ -2346,6 +2346,7 @@ case $choice in
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
+      echo "21. VScode网页版"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4126,6 +4127,91 @@ case $choice in
 
               ;;
 
+          21)
+            if docker inspect vscode-web &>/dev/null; then
+
+                    clear
+                    echo "VScode已安装，访问地址: "
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:8180"
+                    echo ""
+
+                    echo "应用操作"
+                    echo "------------------------"
+                    echo "1. 更新应用             2. 卸载应用"
+                    echo "------------------------"
+                    echo "0. 返回上一级选单"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+
+                    case $sub_choice in
+                        1)
+                            clear
+                            docker rm -f vscode-web
+                            docker rmi -f codercom/code-server
+                            install_docker
+
+                            docker run -d -p 8180:8080 -v /home/docker/code-server:/home/coder/.local/share/code-server --name vscode-web --restart always codercom/code-server
+
+                            clear
+                            echo "VScode已经安装完成"
+                            echo "------------------------"
+                            echo "您可以使用以下地址访问:"
+                            external_ip=$(curl -s ipv4.ip.sb)
+                            echo "http:$external_ip:8180"
+                            echo ""
+                            sleep 3
+                            docker exec vscode-web cat /home/coder/.config/code-server/config.yaml
+
+                            ;;
+                        2)
+                            clear
+                            docker rm -f vscode-web
+                            docker rmi -f codercom/code-server
+                            rm -rf /home/docker/code-server
+                            echo "应用已卸载"
+                            ;;
+                        0)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                        *)
+                            break  # 跳出循环，退出菜单
+                            ;;
+                    esac
+            else
+                clear
+                echo "安装提示"
+                echo "VScode是一款强大的在线代码编写工具"
+                echo "官网介绍: https://github.com/coder/code-server"
+                echo ""
+
+                # 提示用户确认安装
+                read -p "确定安装吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                    clear
+                    install_docker
+                    docker run -d -p 8180:8080 -v /home/docker/code-server:/home/coder/.local/share/code-server --name vscode-web --restart always codercom/code-server
+
+                    clear
+                    echo "portainer已经安装完成"
+                    echo "------------------------"
+                    echo "您可以使用以下地址访问:"
+                    external_ip=$(curl -s ipv4.ip.sb)
+                    echo "http:$external_ip:8180"
+                    echo ""
+                    sleep 3
+                    docker exec vscode-web cat /home/coder/.config/code-server/config.yaml
+
+                        ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+            fi
+
+              ;;
 
 
           0)
