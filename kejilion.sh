@@ -1893,10 +1893,10 @@ case $choice in
 
             2)
                 read -p "请输入旧域名: " oddyuming
-                read -p "请输入新域名: " newyuming
-                mv /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$newyuming.conf
-                sed -i "s/$oddyuming/$newyuming/g" /home/web/conf.d/$newyuming.conf
-                mv /home/web/html/$oddyuming /home/web/html/$newyuming
+                read -p "请输入新域名: " yuming
+                mv /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
+                sed -i "s/$oddyuming/$yuming/g" /home/web/conf.d/$yuming.conf
+                mv /home/web/html/$oddyuming /home/web/html/$yuming
 
                 rm /home/web/certs/${oddyuming}_key.pem
                 rm /home/web/certs/${oddyuming}_cert.pem
