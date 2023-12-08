@@ -5519,9 +5519,7 @@ EOF
     cd ~
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/update_log.sh && chmod +x update_log.sh && ./update_log.sh
     rm update_log.sh
-    echo "脚本更新日志，按任意键继续..."
-    read -n 1 -s -r -p ""
-    clear
+    echo ""
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
     echo "脚本已更新到最新版本！"
     echo -e "\033[0;32m操作完成\033[0m"
