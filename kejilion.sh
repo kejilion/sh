@@ -11043,42 +11043,15 @@ EOF
     cd ~
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/update_log.sh && chmod +x update_log.sh && ./update_log.sh
     rm update_log.sh
-    echo "按任意键继续..."
+    echo "这里是更新日志，按任意键继续..."
     read -n 1 -s -r -p ""
     clear
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-    echo -e "\033[0;32m脚本已更新到最新版本！\033[0m"
-    echo "按任意键继续..."
-    read -n 1 -s -r -p ""
-    echo ""
-    clear
-    ./kejilion.sh
-    exit
-    ;;
-
-  0)
-    clear
-    exit
-    ;;
-
-  *)
-    echo "无效的输入!"
-
-esac
-  echo -e "\033[0;32m操作完成\033[0m"
-  echo "按任意键继续..."
-  read -n 1 -s -r -p ""
-  echo ""
-  clear
-done
-
-    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-    echo "脚本已更新到最新版本！"
+    echo -e "脚本已更新到最新版本！"
     echo -e "\033[0;32m操作完成\033[0m"
     echo "按任意键继续..."
     read -n 1 -s -r -p ""
     echo ""
-    clear
     ./kejilion.sh
     exit
     ;;
