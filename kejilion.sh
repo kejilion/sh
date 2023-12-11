@@ -76,14 +76,6 @@ install_ldnmp() {
           "docker exec php74 sh -c 'echo \"max_execution_time=1200\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"max_input_time=600\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
-          "docker exec nginx chmod -R 777 /var/www/html"
-          "docker exec php chmod -R 777 /var/www/html"
-          "docker exec php74 chmod -R 777 /var/www/html"
-          "docker restart php > /dev/null 2>&1"
-          "docker restart php74 > /dev/null 2>&1"
-          "docker restart nginx > /dev/null 2>&1"
-          "docker restart mysql > /dev/null 2>&1"
-          "docker restart redis > /dev/null 2>&1"
 
       )
 
@@ -110,6 +102,14 @@ install_ldnmp() {
 
       echo  # 打印换行，以便输出不被覆盖
 
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
+      docker restart php > /dev/null 2>&1
+      docker restart php74 > /dev/null 2>&1
+      docker restart nginx > /dev/null 2>&1
+      docker restart mysql > /dev/null 2>&1
+      docker restart redis > /dev/null 2>&1
 
       clear
       echo "LDNMP环境安装完毕"
@@ -135,6 +135,9 @@ install_ldnmp() {
 
       echo "------------------------"
       echo ""
+
+
+
 }
 
 install_certbot() {
