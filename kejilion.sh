@@ -82,6 +82,8 @@ install_ldnmp() {
           "docker restart php > /dev/null 2>&1"
           "docker restart php74 > /dev/null 2>&1"
           "docker restart nginx > /dev/null 2>&1"
+          "docker restart mysql > /dev/null 2>&1"
+          "docker restart redis > /dev/null 2>&1"
 
       )
 
