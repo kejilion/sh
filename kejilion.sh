@@ -243,7 +243,7 @@ echo "7. WARP管理 ▶ 解锁ChatGPT Netflix"
 echo "8. 测试脚本合集 ▶ "
 echo "9. 甲骨文云脚本合集 ▶ "
 echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
-echo "11. 常用面板工具 ▶ "
+echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
 echo "------------------------"
@@ -2339,7 +2339,7 @@ case $choice in
     while true; do
 
       echo " ▼ "
-      echo "常用面板工具"
+      echo "面板工具"
       echo "------------------------"
       echo "1. 宝塔面板官方版                       2. aaPanel宝塔国际版"
       echo "3. 1Panel新一代管理面板                 4. NginxProxyManager可视化面板"
