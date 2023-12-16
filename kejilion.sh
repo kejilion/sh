@@ -1,31 +1,19 @@
 #!/bin/bash
 
-install_wget() {
-    if ! command -v wget &>/dev/null; then
+install() {
+    local package=$1
+    if ! command -v $package &>/dev/null; then
         if command -v apt &>/dev/null; then
-            apt update -y && apt install -y wget
+            apt update -y && apt install -y $package
         elif command -v yum &>/dev/null; then
-            yum -y update && yum -y install wget
+            yum -y update && yum -y install $package
         else
             echo "未知的包管理器!"
-            break
+            return 1
         fi
     fi
+    return 0
 }
-
-install_sshpass() {
-    if ! command -v sshpass &>/dev/null; then
-        if command -v apt &>/dev/null; then
-            apt update -y && apt install -y sshpass
-        elif command -v yum &>/dev/null; then
-            yum -y update && yum -y install sshpass
-        else
-            echo "未知的包管理器!"
-            break
-        fi
-    fi
-}
-
 
 # 定义安装 Docker 的函数
 install_docker() {
@@ -140,16 +128,7 @@ install_ldnmp() {
 }
 
 install_certbot() {
-    if ! command -v certbot &>/dev/null; then
-        if command -v apt &>/dev/null; then
-            apt update -y && apt install -y certbot
-        elif command -v yum &>/dev/null; then
-            yum -y update && yum -y install certbot
-        else
-            echo "未知的包管理器!"
-            break
-        fi
-    fi
+    install certbot
 
     # 切换到一个一致的目录（例如，家目录）
     cd ~ || exit
@@ -206,23 +185,6 @@ nginx_status() {
 }
 
 
-install_lrzsz() {
-    if ! command -v lrzsz &>/dev/null; then
-        if command -v apt &>/dev/null; then
-            apt update -y && apt install -y lrzsz
-        elif command -v yum &>/dev/null; then
-            yum -y update && yum -y install lrzsz
-        else
-            echo "未知的包管理器!"
-            break
-        fi
-    fi
-
-}
-
-
-
-
 
 while true; do
 clear
@@ -231,7 +193,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.0.7 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.0.8 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -430,10 +392,11 @@ case $choice in
       echo "4. socat 通信连接工具 （申请域名证书必备）"
       echo "5. htop 系统监控工具"
       echo "6. iftop 网络流量监控工具"
-      echo "7. unzip ZIP压缩解压工具z"
+      echo "7. unzip ZIP压缩解压工具"
       echo "8. tar GZ压缩解压工具"
       echo "9. tmux 多路后台运行工具"
       echo "10. ffmpeg 视频编码直播推流工具"
+      echo "11. btop 现代化监控工具"      
       echo "------------------------"
       echo "31. 全部安装"
       echo "32. 全部卸载"
@@ -445,113 +408,83 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y curl
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install curl
-              else
-                  echo "未知的包管理器!"
-              fi
-
+              install curl
+              clear
+              echo "工具已安装，使用方法如下："              
+              curl --help
               ;;
           2)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y wget
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install wget
-              else
-                  echo "未知的包管理器!"
-              fi
+              install wget
+              clear
+              echo "工具已安装，使用方法如下："              
+              wget --help
               ;;
             3)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y sudo
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install sudo
-              else
-                  echo "未知的包管理器!"
-              fi
+              install sudo
+              clear
+              echo "工具已安装，使用方法如下："                
+              sudo --help
               ;;
             4)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y socat
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install socat
-              else
-                  echo "未知的包管理器!"
-              fi
+              install socat
+              clear
+              echo "工具已安装，使用方法如下："
+              socat -h
               ;;
             5)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y htop
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install htop
-              else
-                  echo "未知的包管理器!"
-              fi
+              install htop
+              htop
               ;;
             6)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y iftop
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install iftop
-              else
-                  echo "未知的包管理器!"
-              fi
+              install iftop
+              iftop
               ;;
             7)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y unzip
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install unzip
-              else
-                  echo "未知的包管理器!"
-              fi
+              install unzip
+              clear
+              echo "工具已安装，使用方法如下："
+              unzip
               ;;
             8)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y tar
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install tar
-              else
-                  echo "未知的包管理器!"
-              fi
+              install tar
+              clear
+              echo "工具已安装，使用方法如下："              
+              tar --help
               ;;
             9)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y tmux
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install tmux
-              else
-                  echo "未知的包管理器!"
-              fi
+              install tmux
+              clear
+              echo "工具已安装，使用方法如下："     
+              tmux --help                       
               ;;
             10)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y ffmpeg
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install ffmpeg
-              else
-                  echo "未知的包管理器!"
-              fi
+              install ffmpeg
+              clear
+              echo "工具已安装，使用方法如下："     
+              ffmpeg --help                       
               ;;
 
+            11)
+              clear
+              install btop
+              btop
+              ;;
 
           31)
               clear
               if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg
+                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop
               elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg
+                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop
               else
                   echo "未知的包管理器!"
               fi
@@ -560,9 +493,9 @@ case $choice in
           32)
               clear
               if command -v apt &>/dev/null; then
-                  apt remove -y htop iftop unzip tmux ffmpeg
+                  apt purge -y htop iftop unzip tmux ffmpeg btop
               elif command -v yum &>/dev/null; then
-                  yum -y remove htop iftop unzip tmux ffmpeg
+                  yum -y remove htop iftop unzip tmux ffmpeg btop
               else
                   echo "未知的包管理器!"
               fi
@@ -589,7 +522,7 @@ case $choice in
 
   5)
     clear
-    install_wget
+    install wget
     wget --no-check-certificate -O tcpx.sh https://raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
     chmod +x tcpx.sh
     ./tcpx.sh
@@ -979,7 +912,7 @@ case $choice in
 
   7)
     clear
-    install_wget
+    install wget
     wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh [option] [lisence/url/token]
     ;;
 
@@ -1015,12 +948,12 @@ case $choice in
               ;;
           3)
               clear
-              install_wget
+              install wget
               wget -qO- https://github.com/yeahwu/check/raw/main/check.sh | bash
               ;;
           4)
               clear
-              install_wget
+              install wget
               wget -qO- git.io/besttrace | bash
               ;;
           5)
@@ -1137,7 +1070,7 @@ case $choice in
               done
 
               read -p "请输入你重装后的密码: " vpspasswd
-              install_wget
+              install wget
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
@@ -1826,7 +1759,7 @@ case $choice in
       mkdir $yuming
       cd $yuming
 
-      install_lrzsz
+      install lrzsz
       clear
       echo -e "目前只允许上传\033[33mindex.html\033[0m文件，请提前准备好，按任意键继续..."
       read -n 1 -s -r -p ""
@@ -1921,16 +1854,7 @@ case $choice in
                 docker restart nginx
                 ;;
             4)
-                if ! command -v goaccess &>/dev/null; then
-                    if command -v apt &>/dev/null; then
-                        apt update -y && apt install -y goaccess
-                    elif command -v yum &>/dev/null; then
-                        yum -y update && yum -y install goaccess
-                    else
-                        echo "未知的包管理器!"
-                        break
-                    fi
-                fi
+                install goaccess
                 goaccess --log-format=COMBINED /home/web/log/nginx/access.log
 
                 ;;
@@ -2024,7 +1948,7 @@ case $choice in
               ;;
       esac
 
-      install_sshpass
+      install sshpass
 
       ;;
 
@@ -2424,7 +2348,7 @@ case $choice in
                     case "$choice" in
                         [Yy])
                             iptables_open
-                            install_wget
+                            install wget
                             if [ "$system_type" == "centos" ]; then
                                 yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
                             elif [ "$system_type" == "ubuntu" ]; then
@@ -2508,7 +2432,7 @@ case $choice in
                     case "$choice" in
                         [Yy])
                             iptables_open
-                            install_wget
+                            install wget
                             if [ "$system_type" == "centos" ]; then
                                 yum install -y wget && wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && bash install.sh aapanel
                             elif [ "$system_type" == "ubuntu" ]; then
@@ -4261,13 +4185,7 @@ case $choice in
       case $sub_choice in
           a)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y tmux
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install tmux
-              else
-                  echo "未知的包管理器!"
-              fi
+              install tmux
 
               ;;
           1)
@@ -4651,7 +4569,7 @@ case $choice in
               done
 
               read -p "请输入你重装后的密码: " vpspasswd
-              install_wget
+              install wget
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
@@ -4666,15 +4584,7 @@ case $choice in
 
           9)
             clear
-            if ! command -v sudo &>/dev/null; then
-                if command -v apt &>/dev/null; then
-                    apt update -y && apt install -y sudo
-                elif command -v yum &>/dev/null; then
-                    yum -y update && yum -y install sudo
-                else
-                    exit 1
-                fi
-            fi
+            install sudo
 
             # 提示用户输入新用户名
             read -p "请输入新用户名: " new_username
@@ -4800,6 +4710,8 @@ case $choice in
           13)
               while true; do
                 clear
+                install sudo
+                clear
                 # 显示所有用户、用户权限、用户组和是否在sudoers中
                 echo "用户列表"
                 echo "----------------------------------------------------------------------------"
@@ -4826,16 +4738,6 @@ case $choice in
 
                   case $sub_choice in
                       1)
-                       if ! command -v sudo &>/dev/null; then
-                           if command -v apt &>/dev/null; then
-                               apt update -y && apt install -y sudo
-                           elif command -v yum &>/dev/null; then
-                               yum -y update && yum -y install sudo
-                           else
-                               echo ""
-                           fi
-                       fi
-
                        # 提示用户输入新用户名
                        read -p "请输入新用户名: " new_username
 
@@ -4847,16 +4749,6 @@ case $choice in
                           ;;
 
                       2)
-                       if ! command -v sudo &>/dev/null; then
-                           if command -v apt &>/dev/null; then
-                               apt update -y && apt install -y sudo
-                           elif command -v yum &>/dev/null; then
-                               yum -y update && yum -y install sudo
-                           else
-                               echo ""
-                           fi
-                       fi
-
                        # 提示用户输入新用户名
                        read -p "请输入新用户名: " new_username
 
@@ -4871,49 +4763,20 @@ case $choice in
 
                           ;;
                       3)
-                       if ! command -v sudo &>/dev/null; then
-                           if command -v apt &>/dev/null; then
-                               apt update -y && apt install -y sudo
-                           elif command -v yum &>/dev/null; then
-                               yum -y update && yum -y install sudo
-                           else
-                               echo ""
-                           fi
-                       fi
-
                        read -p "请输入用户名: " username
                        # 赋予新用户sudo权限
                        echo "$username ALL=(ALL:ALL) ALL" | sudo tee -a /etc/sudoers
                           ;;
                       4)
-                       if ! command -v sudo &>/dev/null; then
-                           if command -v apt &>/dev/null; then
-                               apt update -y && apt install -y sudo
-                           elif command -v yum &>/dev/null; then
-                               yum -y update && yum -y install sudo
-                           else
-                               echo ""
-                           fi
-                       fi
                        read -p "请输入用户名: " username
                        # 从sudoers文件中移除用户的sudo权限
                        sudo sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
                           ;;
                       5)
-                       if ! command -v sudo &>/dev/null; then
-                           if command -v apt &>/dev/null; then
-                               apt update -y && apt install -y sudo
-                           elif command -v yum &>/dev/null; then
-                               yum -y update && yum -y install sudo
-                           else
-                               echo ""
-                           fi
-                       fi
                        read -p "请输入要删除的用户名: " username
                        # 删除用户及其主目录
                        sudo userdel -r "$username"
-
                           ;;
 
                       0)
@@ -5697,7 +5560,7 @@ EOF
 
           21)
           clear
-          install_sshpass
+          install sshpass
 
           remote_ip="66.42.61.110"
           remote_user="liaotian123"
