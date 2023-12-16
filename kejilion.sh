@@ -503,9 +503,9 @@ case $choice in
           31)
               clear
               if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu
+                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf
               elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu
+                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf
               else
                   echo "未知的包管理器!"
               fi
@@ -514,9 +514,9 @@ case $choice in
           32)
               clear
               if command -v apt &>/dev/null; then
-                  apt purge -y htop iftop unzip tmux ffmpeg btop ranger gdu
+                  apt purge -y htop iftop unzip tmux ffmpeg btop ranger gdu fzf
               elif command -v yum &>/dev/null; then
-                  yum -y remove htop iftop unzip tmux ffmpeg btop ranger gdu
+                  yum -y remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf
               else
                   echo "未知的包管理器!"
               fi
