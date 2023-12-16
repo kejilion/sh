@@ -401,6 +401,8 @@ case $choice in
       echo -e "13. gdu 磁盘占用查看工具 \033[33mNEW\033[0m"
       echo -e "14. fzf 全局搜索工具 \033[33mNEW\033[0m"                   
       echo "------------------------"
+      echo -e "21. cmatrix 黑客帝国屏保 \033[33mNEW\033[0m"
+      echo "------------------------"     
       echo "31. 全部安装"
       echo "32. 全部卸载"
       echo "------------------------"
@@ -498,14 +500,20 @@ case $choice in
               install fzf
               cd /
               fzf
-              ;;              
+              ;;
+
+            21)
+              clear
+              install cmatrix
+              cmatrix
+              ;;                            
 
           31)
               clear
               if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf
+                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix
               elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf
+                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix
               else
                   echo "未知的包管理器!"
               fi
@@ -514,9 +522,9 @@ case $choice in
           32)
               clear
               if command -v apt &>/dev/null; then
-                  apt purge -y htop iftop unzip tmux ffmpeg btop ranger gdu fzf
+                  apt purge -y htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix
               elif command -v yum &>/dev/null; then
-                  yum -y remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf
+                  yum -y remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix
               else
                   echo "未知的包管理器!"
               fi
