@@ -488,18 +488,21 @@ case $choice in
               install ranger
               cd /
               ranger
+              cd ~
               ;;              
             13)
               clear
               install gdu
               cd /
               gdu
+              cd ~
               ;;
             14)
               clear
               install fzf
               cd /
               fzf
+              cd ~
               ;;
 
             21)
