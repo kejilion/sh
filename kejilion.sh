@@ -5661,16 +5661,16 @@ EOF
                       1)
                           read -p "请输入新任务的执行命令: " newquest
                           echo "------------------------"
-                          echo "1. 每周备份                 2. 每天备份"
+                          echo "1. 每周任务                 2. 每天任务"
                           read -p "请输入你的选择: " dingshi
 
                           case $dingshi in
                               1)
-                                  read -p "选择每周备份的星期几 (0-6，0代表星期日): " weekday
+                                  read -p "选择周几执行任务？ (0-6，0代表星期日): " weekday
                                   (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
                                   ;;
                               2)
-                                  read -p "选择每天备份的时间（小时，0-23）: " hour
+                                  read -p "选择每天几点执行任务？（小时，0-23）: " hour
                                   (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
                                   ;;
                               *)
