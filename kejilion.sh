@@ -398,7 +398,8 @@ case $choice in
       echo "10. ffmpeg 视频编码直播推流工具"
       echo -e "11. btop 现代化监控工具 \033[33mNEW\033[0m" 
       echo -e "12. ranger 文件管理工具 \033[33mNEW\033[0m"      
-      echo -e "13. gdu 磁盘占用查看工具 \033[33mNEW\033[0m"                   
+      echo -e "13. gdu 磁盘占用查看工具 \033[33mNEW\033[0m"
+      echo -e "14. fzf 全局搜索工具 \033[33mNEW\033[0m"                   
       echo "------------------------"
       echo "31. 全部安装"
       echo "32. 全部卸载"
@@ -491,7 +492,13 @@ case $choice in
               install gdu
               cd /
               gdu
-              ;;     
+              ;;
+            13)
+              clear
+              install fzf
+              cd /
+              fzf
+              ;;              
 
           31)
               clear
