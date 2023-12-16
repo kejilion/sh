@@ -396,7 +396,9 @@ case $choice in
       echo "8. tar GZ压缩解压工具"
       echo "9. tmux 多路后台运行工具"
       echo "10. ffmpeg 视频编码直播推流工具"
-      echo "11. btop 现代化监控工具"      
+      echo -e "11. btop 现代化监控工具 \033[33mNEW\033[0m" 
+      echo -e "12. ranger 文件管理工具 \033[33mNEW\033[0m"      
+      echo -e "13. gdu 磁盘占用查看工具 \033[33mNEW\033[0m"                   
       echo "------------------------"
       echo "31. 全部安装"
       echo "32. 全部卸载"
@@ -478,13 +480,25 @@ case $choice in
               install btop
               btop
               ;;
+            12)
+              clear
+              install ranger
+              cd /
+              ranger
+              ;;              
+            13)
+              clear
+              install gdu
+              cd /
+              gdu
+              ;;     
 
           31)
               clear
               if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop
+                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu
               elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop
+                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu
               else
                   echo "未知的包管理器!"
               fi
@@ -493,9 +507,9 @@ case $choice in
           32)
               clear
               if command -v apt &>/dev/null; then
-                  apt purge -y htop iftop unzip tmux ffmpeg btop
+                  apt purge -y htop iftop unzip tmux ffmpeg btop ranger gdu
               elif command -v yum &>/dev/null; then
-                  yum -y remove htop iftop unzip tmux ffmpeg btop
+                  yum -y remove htop iftop unzip tmux ffmpeg btop ranger gdu
               else
                   echo "未知的包管理器!"
               fi
