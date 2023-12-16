@@ -493,7 +493,7 @@ case $choice in
               cd /
               gdu
               ;;
-            13)
+            14)
               clear
               install fzf
               cd /
