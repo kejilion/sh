@@ -1,18 +1,30 @@
 #!/bin/bash
 
 install() {
-    local package=$1
-    if ! command -v $package &>/dev/null; then
-        if command -v apt &>/dev/null; then
-            apt update -y && apt install -y $package
-        elif command -v yum &>/dev/null; then
-            yum -y update && yum -y install $package
-        else
-            echo "未知的包管理器!"
-            return 1
-        fi
+    if [ $# -eq 0 ]; then
+        echo "未提供软件包参数!"
+        return 1
     fi
+
+    for package in "$@"; do
+        if ! command -v "$package" &>/dev/null; then
+            if command -v apt &>/dev/null; then
+                apt update -y && apt install -y "$package"
+            elif command -v yum &>/dev/null; then
+                yum -y update && yum -y install "$package"
+            else
+                echo "未知的包管理器!"
+                return 1
+            fi
+        fi
+    done
+
     return 0
+}
+
+install_dependency() {
+      clear
+      install wget sudo socat unzip btop
 }
 
 # 定义安装 Docker 的函数
@@ -67,8 +79,7 @@ install_ldnmp() {
           "docker exec nginx chmod -R 777 /var/www/html"
           "docker exec php chmod -R 777 /var/www/html"
           "docker exec php74 chmod -R 777 /var/www/html"
-        #   "docker restart mysql > /dev/null 2>&1"
-        #   "docker restart redis > /dev/null 2>&1"
+
           "docker restart php > /dev/null 2>&1"
           "docker restart php74 > /dev/null 2>&1"
           "docker restart nginx > /dev/null 2>&1"
@@ -193,7 +204,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.0.8 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.0.9 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -396,13 +407,13 @@ case $choice in
       echo "8. tar GZ压缩解压工具"
       echo "9. tmux 多路后台运行工具"
       echo "10. ffmpeg 视频编码直播推流工具"
-      echo -e "11. btop 现代化监控工具 \033[33mNEW\033[0m" 
-      echo -e "12. ranger 文件管理工具 \033[33mNEW\033[0m"      
+      echo -e "11. btop 现代化监控工具 \033[33mNEW\033[0m"
+      echo -e "12. ranger 文件管理工具 \033[33mNEW\033[0m"
       echo -e "13. gdu 磁盘占用查看工具 \033[33mNEW\033[0m"
-      echo -e "14. fzf 全局搜索工具 \033[33mNEW\033[0m"                   
+      echo -e "14. fzf 全局搜索工具 \033[33mNEW\033[0m"
       echo "------------------------"
       echo -e "21. cmatrix 黑客帝国屏保 \033[33mNEW\033[0m"
-      echo "------------------------"     
+      echo "------------------------"
       echo "31. 全部安装"
       echo "32. 全部卸载"
       echo "------------------------"
@@ -415,21 +426,21 @@ case $choice in
               clear
               install curl
               clear
-              echo "工具已安装，使用方法如下："              
+              echo "工具已安装，使用方法如下："
               curl --help
               ;;
           2)
               clear
               install wget
               clear
-              echo "工具已安装，使用方法如下："              
+              echo "工具已安装，使用方法如下："
               wget --help
               ;;
             3)
               clear
               install sudo
               clear
-              echo "工具已安装，使用方法如下："                
+              echo "工具已安装，使用方法如下："
               sudo --help
               ;;
             4)
@@ -442,11 +453,13 @@ case $choice in
             5)
               clear
               install htop
+              clear
               htop
               ;;
             6)
               clear
               install iftop
+              clear
               iftop
               ;;
             7)
@@ -460,40 +473,43 @@ case $choice in
               clear
               install tar
               clear
-              echo "工具已安装，使用方法如下："              
+              echo "工具已安装，使用方法如下："
               tar --help
               ;;
             9)
               clear
               install tmux
               clear
-              echo "工具已安装，使用方法如下："     
-              tmux --help                       
+              echo "工具已安装，使用方法如下："
+              tmux --help
               ;;
             10)
               clear
               install ffmpeg
               clear
-              echo "工具已安装，使用方法如下："     
-              ffmpeg --help                       
+              echo "工具已安装，使用方法如下："
+              ffmpeg --help
               ;;
 
             11)
               clear
               install btop
+              clear
               btop
               ;;
             12)
               clear
               install ranger
               cd /
+              clear
               ranger
               cd ~
-              ;;              
+              ;;
             13)
               clear
               install gdu
               cd /
+              clear
               gdu
               cd ~
               ;;
@@ -501,6 +517,7 @@ case $choice in
               clear
               install fzf
               cd /
+              clear
               fzf
               cd ~
               ;;
@@ -508,18 +525,13 @@ case $choice in
             21)
               clear
               install cmatrix
+              clear
               cmatrix
-              ;;                            
+              ;;
 
           31)
               clear
-              if command -v apt &>/dev/null; then
-                  apt update -y && apt install -y curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix
-              elif command -v yum &>/dev/null; then
-                  yum -y update && yum -y install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix
-              else
-                  echo "未知的包管理器!"
-              fi
+              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix
               ;;
 
           32)
@@ -910,9 +922,9 @@ case $choice in
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
-                  apt-get remove docker -y
-                  apt-get remove docker-ce -y
-                  apt-get purge docker-ce -y
+                  apt purge docker -y
+                  apt purge docker-ce -y
+                  apt purge docker-ce -y
                   rm -rf /var/lib/docker
                   ;;
                 [Nn])
@@ -1199,24 +1211,8 @@ case $choice in
 
     case $sub_choice in
       1)
-      clear
-      # 更新并安装必要的软件包
-      if command -v apt &>/dev/null; then
-          apt update -y
-          apt install -y curl wget sudo socat unzip tar htop
-      elif command -v yum &>/dev/null; then
-          yum -y update
-          yum -y install curl
-          yum -y install wget
-          yum -y install sudo
-          yum -y install socat
-          yum -y install unzip
-          yum -y install tar
-          yum -y install htop
-      else
-          echo "未知的包管理器!"
-      fi
 
+      install_dependency
       install_docker
       install_certbot
 
@@ -1692,23 +1688,8 @@ case $choice in
 
 
       21)
-      clear
-      if command -v apt &>/dev/null; then
-          apt update -y
-          apt install -y curl wget sudo socat unzip tar htop
-      elif command -v yum &>/dev/null; then
-          yum -y update
-          yum -y install curl
-          yum -y install wget
-          yum -y install sudo
-          yum -y install socat
-          yum -y install unzip
-          yum -y install tar
-          yum -y install htop
-      else
-          echo "未知的包管理器!"
-      fi
 
+      install_dependency
       install_docker
       install_certbot
 
@@ -1985,25 +1966,7 @@ case $choice in
       ;;
 
     34)
-      clear
-      cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
-
-      if command -v apt &>/dev/null; then
-          apt update -y
-          apt install -y curl wget sudo socat unzip tar htop
-      elif command -v yum &>/dev/null; then
-          yum -y update
-          yum -y install curl
-          yum -y install wget
-          yum -y install sudo
-          yum -y install socat
-          yum -y install unzip
-          yum -y install tar
-          yum -y install htop
-      else
-          echo "未知的包管理器!"
-      fi
-
+      install_dependency
       install_docker
       install_certbot
       install_ldnmp
@@ -2081,7 +2044,7 @@ case $choice in
                   9)
                       systemctl disable fail2ban
                       systemctl stop fail2ban
-                      apt remove -y --purge fail2ban
+                      apt purge -y fail2ban
                       if [ $? -eq 0 ]; then
                           echo "Fail2ban已卸载"
                       else
@@ -2239,15 +2202,7 @@ case $choice in
       docker rm -f nginx php php74 mysql redis
       docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
 
-      if command -v apt &>/dev/null; then
-          apt update -y
-          apt upgrade -y
-      elif command -v yum &>/dev/null; then
-          yum -y update
-      else
-          echo "未知的包管理器!"
-      fi
-
+      install_dependency
       install_docker
       install_certbot
       install_ldnmp
@@ -3004,16 +2959,7 @@ case $choice in
                     esac
             else
                 clear
-                if ! command -v telnet &>/dev/null; then
-                    if command -v apt &>/dev/null; then
-                        apt update -y && apt install -y telnet
-                    elif command -v yum &>/dev/null; then
-                        yum -y update && yum -y install telnet
-                    else
-                        echo "未知的包管理器!"
-                        exit 1
-                    fi
-                fi
+                install telnet
 
                 clear
                 echo ""
@@ -4822,7 +4768,6 @@ case $choice in
               done
               ;;
 
-
           14)
             clear
 
@@ -4875,112 +4820,65 @@ case $choice in
               ;;
 
           15)
-              while true; do
-                  clear
-                  echo "系统时间信息"
+            while true; do
+                clear
+                echo "系统时间信息"
 
-                  # 获取当前系统时区
-                  current_timezone=$(timedatectl show --property=Timezone --value)
+                # 获取当前系统时区
+                current_timezone=$(timedatectl show --property=Timezone --value)
 
-                  # 获取当前系统时间
-                  current_time=$(date +"%Y-%m-%d %H:%M:%S")
+                # 获取当前系统时间
+                current_time=$(date +"%Y-%m-%d %H:%M:%S")
 
-                  # 显示时区和时间
-                  echo "当前系统时区：$current_timezone"
-                  echo "当前系统时间：$current_time"
+                # 显示时区和时间
+                echo "当前系统时区：$current_timezone"
+                echo "当前系统时间：$current_time"
 
-                  echo ""
-                  echo "时区切换"
-                  echo "亚洲------------------------"
-                  echo "1. 中国上海时间              2. 中国香港时间"
-                  echo "3. 日本东京时间              4. 韩国首尔时间"
-                  echo "5. 新加坡时间                6. 印度加尔各答时间"
-                  echo "7. 阿联酋迪拜时间            8. 澳大利亚悉尼时间"
-                  echo "欧洲------------------------"
-                  echo "11. 英国伦敦时间             12. 法国巴黎时间"
-                  echo "13. 德国柏林时间             14. 俄罗斯莫斯科时间"
-                  echo "15. 荷兰尤特赖赫特时间       16. 西班牙马德里时间"
-                  echo "美洲------------------------"
-                  echo "21. 美国西部时间             22. 美国东部时间"
-                  echo "23. 加拿大时间               24. 墨西哥时间"
-                  echo "25. 巴西时间                 26. 阿根廷时间"
-                  echo "------------------------"
-                  echo "0. 返回上一级选单"
-                  echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
+                echo ""
+                echo "时区切换"
+                echo "亚洲------------------------"
+                echo "1. 中国上海时间              2. 中国香港时间"
+                echo "3. 日本东京时间              4. 韩国首尔时间"
+                echo "5. 新加坡时间                6. 印度加尔各答时间"
+                echo "7. 阿联酋迪拜时间            8. 澳大利亚悉尼时间"
+                echo "欧洲------------------------"
+                echo "11. 英国伦敦时间             12. 法国巴黎时间"
+                echo "13. 德国柏林时间             14. 俄罗斯莫斯科时间"
+                echo "15. 荷兰尤特赖赫特时间       16. 西班牙马德里时间"
+                echo "美洲------------------------"
+                echo "21. 美国西部时间             22. 美国东部时间"
+                echo "23. 加拿大时间               24. 墨西哥时间"
+                echo "25. 巴西时间                 26. 阿根廷时间"
+                echo "------------------------"
+                echo "0. 返回上一级选单"
+                echo "------------------------"
+                read -p "请输入你的选择: " sub_choice
 
-                  case $sub_choice in
-                      1)
-                        timedatectl set-timezone Asia/Shanghai
-                          ;;
-
-                      2)
-                        timedatectl set-timezone Asia/Hong_Kong
-                          ;;
-                      3)
-                        timedatectl set-timezone Asia/Tokyo
-                          ;;
-                      4)
-                        timedatectl set-timezone Asia/Seoul
-                          ;;
-                      5)
-                        timedatectl set-timezone Asia/Singapore
-                          ;;
-                      6)
-                        timedatectl set-timezone Asia/Kolkata
-                          ;;
-                      7)
-                        timedatectl set-timezone Asia/Dubai
-                          ;;
-                      8)
-                        timedatectl set-timezone Australia/Sydney
-                          ;;
-                      11)
-                        timedatectl set-timezone Europe/London
-                          ;;
-                      12)
-                        timedatectl set-timezone Europe/Paris
-                          ;;
-                      13)
-                        timedatectl set-timezone Europe/Berlin
-                          ;;
-                      14)
-                        timedatectl set-timezone Europe/Moscow
-                          ;;
-                      15)
-                        timedatectl set-timezone Europe/Amsterdam
-                          ;;
-                      16)
-                        timedatectl set-timezone Europe/Madrid
-                          ;;
-                      21)
-                        timedatectl set-timezone America/Los_Angeles
-                          ;;
-                      22)
-                        timedatectl set-timezone America/New_York
-                          ;;
-                      23)
-                        timedatectl set-timezone America/Vancouver
-                          ;;
-                      24)
-                        timedatectl set-timezone America/Mexico_City
-                          ;;
-                      25)
-                        timedatectl set-timezone America/Sao_Paulo
-                          ;;
-                      26)
-                        timedatectl set-timezone America/Argentina/Buenos_Aires
-                          ;;
-                      0)
-                          break  # 跳出循环，退出菜单
-                          ;;
-
-                      *)
-                          break  # 跳出循环，退出菜单
-                          ;;
-                  esac
-              done
-
+                case $sub_choice in
+                    1) timedatectl set-timezone Asia/Shanghai ;;
+                    2) timedatectl set-timezone Asia/Hong_Kong ;;
+                    3) timedatectl set-timezone Asia/Tokyo ;;
+                    4) timedatectl set-timezone Asia/Seoul ;;
+                    5) timedatectl set-timezone Asia/Singapore ;;
+                    6) timedatectl set-timezone Asia/Kolkata ;;
+                    7) timedatectl set-timezone Asia/Dubai ;;
+                    8) timedatectl set-timezone Australia/Sydney ;;
+                    11) timedatectl set-timezone Europe/London ;;
+                    12) timedatectl set-timezone Europe/Paris ;;
+                    13) timedatectl set-timezone Europe/Berlin ;;
+                    14) timedatectl set-timezone Europe/Moscow ;;
+                    15) timedatectl set-timezone Europe/Amsterdam ;;
+                    16) timedatectl set-timezone Europe/Madrid ;;
+                    21) timedatectl set-timezone America/Los_Angeles ;;
+                    22) timedatectl set-timezone America/New_York ;;
+                    23) timedatectl set-timezone America/Vancouver ;;
+                    24) timedatectl set-timezone America/Mexico_City ;;
+                    25) timedatectl set-timezone America/Sao_Paulo ;;
+                    26) timedatectl set-timezone America/Argentina/Buenos_Aires ;;
+                    0) break ;; # 跳出循环，退出菜单
+                    *) break ;; # 跳出循环，退出菜单
+                esac
+            done
               ;;
 
           16)
@@ -5005,8 +4903,7 @@ case $choice in
                         apt purge -y 'linux-*xanmod1*'
                         update-grub
 
-                        apt update -y
-                        apt install -y wget gnupg
+                        install wget gnupg
 
                         # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
                         wget -qO - https://raw.githubusercontent.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
@@ -5074,8 +4971,7 @@ case $choice in
               break
             fi
 
-            apt update -y
-            apt install -y wget gnupg
+            install wget gnupg
 
             # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
             wget -qO - https://raw.githubusercontent.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
@@ -5205,7 +5101,6 @@ EOF
                           ;;
 
                       9)
-                      apt remove -y iptables-persistent
                       apt purge -y iptables-persistent
                       rm /etc/iptables/rules.v4
                       break
@@ -5246,9 +5141,7 @@ EOF
           clear
           iptables_open
 
-          apt remove -y iptables-persistent
           apt purge -y iptables-persistent
-          apt remove -y ufw
           apt purge -y ufw
           rm /etc/iptables/rules.v4
 
@@ -5672,7 +5565,7 @@ EOF
 
   *)
     echo "无效的输入!"
-
+    ;;
 esac
   echo -e "\033[0;32m操作完成\033[0m"
   echo "按任意键继续..."
