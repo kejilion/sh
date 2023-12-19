@@ -175,7 +175,6 @@ install_certbot() {
 }
 
 install_ssltls() {
-
       docker stop nginx > /dev/null 2>&1
       iptables_open
       cd ~
@@ -183,7 +182,6 @@ install_ssltls() {
       cp /etc/letsencrypt/live/$yuming/cert.pem /home/web/certs/${yuming}_cert.pem
       cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
       docker start nginx > /dev/null 2>&1
-
 }
 
 
@@ -210,6 +208,44 @@ nginx_status() {
     fi
 
 }
+
+
+add_yuming() {
+      external_ip=$(curl -s ipv4.ip.sb)
+      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
+      read -p "请输入你解析的域名: " yuming
+}
+
+
+add_db() {
+      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+      dbname="${dbname}"
+
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
+}
+
+reverse_proxy() {
+      external_ip=$(curl -s ipv4.ip.sb)
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/0.0.0.0/$external_ip/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/0000/3099/g" /home/web/conf.d/$yuming.conf
+      docker restart nginx
+}
+
+restart_ldnmp() {
+      docker exec nginx chmod -R 777 /var/www/html
+      docker exec php chmod -R 777 /var/www/html
+      docker exec php74 chmod -R 777 /var/www/html
+
+      docker restart php
+      docker restart php74
+      docker restart nginx
+}
+
 
 
 
@@ -1270,13 +1306,9 @@ case $choice in
       2)
       clear
       # wordpress
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
-      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-      dbname="${dbname}"
-
+      add_yuming
       install_ssltls
+      add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -1290,18 +1322,7 @@ case $choice in
 
       echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
 
-      docker exec nginx chmod -R 777 /var/www/html
-      docker exec php chmod -R 777 /var/www/html
-      docker exec php74 chmod -R 777 /var/www/html
-
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
-
-      docker restart php
-      docker restart php74
-      docker restart nginx
+      restart_ldnmp
 
       clear
       echo "您的WordPress搭建好了！"
@@ -1319,12 +1340,9 @@ case $choice in
       3)
       clear
       # Discuz论坛
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
-      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-      dbname="${dbname}"
+      add_yuming
       install_ssltls
+      add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
 
@@ -1337,18 +1355,7 @@ case $choice in
       unzip -o Discuz_X3.5_SC_UTF8_20230520.zip
       rm Discuz_X3.5_SC_UTF8_20230520.zip
 
-      docker exec nginx chmod -R 777 /var/www/html
-      docker exec php chmod -R 777 /var/www/html
-      docker exec php74 chmod -R 777 /var/www/html
-
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
-
-      docker restart php
-      docker restart php74
-      docker restart nginx
+      restart_ldnmp
 
 
       clear
@@ -1368,13 +1375,10 @@ case $choice in
       4)
       clear
       # 可道云桌面
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
-      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-      dbname="${dbname}"
-
+      add_yuming
       install_ssltls
+      add_db
+
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
@@ -1385,18 +1389,7 @@ case $choice in
       unzip -o 1.42.04.zip
       rm 1.42.04.zip
 
-      docker exec nginx chmod -R 777 /var/www/html
-      docker exec php chmod -R 777 /var/www/html
-      docker exec php74 chmod -R 777 /var/www/html
-
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
-
-      docker restart php
-      docker restart php74
-      docker restart nginx
+      restart_ldnmp
 
 
       clear
@@ -1415,13 +1408,9 @@ case $choice in
       5)
       clear
       # 苹果CMS
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
-      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-      dbname="${dbname}"
-
+      add_yuming
       install_ssltls
+      add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
 
@@ -1436,18 +1425,7 @@ case $choice in
       cp /home/web/html/$yuming/maccms10-master/template/DYXS2/asset/admin/dycms.html /home/web/html/$yuming/maccms10-master/application/admin/view/system
       mv /home/web/html/$yuming/maccms10-master/admin.php /home/web/html/$yuming/maccms10-master/vip.php && wget -O /home/web/html/$yuming/maccms10-master/application/extra/maccms.php https://raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php
 
-      docker exec nginx chmod -R 777 /var/www/html
-      docker exec php chmod -R 777 /var/www/html
-      docker exec php74 chmod -R 777 /var/www/html
-
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
-
-      docker restart php
-      docker restart php74
-      docker restart nginx
+      restart_ldnmp
 
 
       clear
@@ -1470,13 +1448,9 @@ case $choice in
       6)
       clear
       # 独脚数卡
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
-      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-      dbname="${dbname}"
-
+      add_yuming
       install_ssltls
+      add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
 
@@ -1487,18 +1461,7 @@ case $choice in
       cd $yuming
       wget https://github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
-      docker exec nginx chmod -R 777 /var/www/html
-      docker exec php chmod -R 777 /var/www/html
-      docker exec php74 chmod -R 777 /var/www/html
-
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
-
-      docker restart php
-      docker restart php74
-      docker restart nginx
+      restart_ldnmp
 
 
       clear
@@ -1531,23 +1494,12 @@ case $choice in
       7)
       clear
       # BingChat
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
-
+      add_yuming
       install_ssltls
 
       docker run -d -p 3099:8080 --name go-proxy-bingai --restart=unless-stopped adams549659584/go-proxy-bingai
 
-      # Get external IP address
-      external_ip=$(curl -s ipv4.ip.sb)
-
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
-      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-      sed -i "s/0.0.0.0/$external_ip/g" /home/web/conf.d/$yuming.conf
-      sed -i "s/0000/3099/g" /home/web/conf.d/$yuming.conf
-
-      docker restart nginx
+      reverse_proxy
 
       clear
       echo "您的BingChat网站搭建好了！"
@@ -1558,16 +1510,11 @@ case $choice in
       8)
       clear
       # flarum论坛
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
-      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-      dbname="${dbname}"
-
+      add_yuming
       install_ssltls
+      add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
-
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
       cd /home/web/html
@@ -1583,18 +1530,7 @@ case $choice in
       docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum-lang/chinese-simplified"
       docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/polls"
 
-      docker exec nginx chmod -R 777 /var/www/html
-      docker exec php chmod -R 777 /var/www/html
-      docker exec php74 chmod -R 777 /var/www/html
-
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
-
-      docker restart php
-      docker restart php74
-      docker restart nginx
+      restart_ldnmp
 
 
       clear
@@ -1614,10 +1550,7 @@ case $choice in
       9)
       clear
       # Bitwarden
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
-
+      add_yuming
       install_ssltls
 
       docker run -d \
@@ -1627,15 +1560,7 @@ case $choice in
         -v /home/web/html/$yuming/bitwarden/data:/data \
         vaultwarden/server
 
-      # Get external IP address
-      external_ip=$(curl -s ipv4.ip.sb)
-
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
-      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-      sed -i "s/0.0.0.0/$external_ip/g" /home/web/conf.d/$yuming.conf
-      sed -i "s/0000/3280/g" /home/web/conf.d/$yuming.conf
-
-      docker restart nginx
+      reverse_proxy
 
       clear
       echo "您的Bitwarden网站搭建好了！"
@@ -1645,22 +1570,13 @@ case $choice in
 
       10)
       clear
-      # Bitwarden
-      read -p "请输入你解析的域名: " yuming
-
+      # halo
+      add_yuming
       install_ssltls
 
       docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2.9
 
-      # Get external IP address
-      external_ip=$(curl -s ipv4.ip.sb)
-
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
-      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-      sed -i "s/0.0.0.0/$external_ip/g" /home/web/conf.d/$yuming.conf
-      sed -i "s/0000/8010/g" /home/web/conf.d/$yuming.conf
-
-      docker restart nginx
+      reverse_proxy
 
       clear
       echo "您的Halo网站搭建好了！"
@@ -1671,13 +1587,9 @@ case $choice in
       11)
       clear
       # typecho
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
-      dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-      dbname="${dbname}"
-
+      add_yuming
       install_ssltls
+      add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -1689,18 +1601,7 @@ case $choice in
       unzip latest.zip
       rm latest.zip
 
-      docker exec nginx chmod -R 777 /var/www/html
-      docker exec php chmod -R 777 /var/www/html
-      docker exec php74 chmod -R 777 /var/www/html
-
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
-
-      docker restart php
-      docker restart php74
-      docker restart nginx
+      restart_ldnmp
 
 
       clear
@@ -1789,10 +1690,8 @@ case $choice in
 
       24)
       clear
-      # wordpress
-      external_ip=$(curl -s ipv4.ip.sb)
-      echo -e "先将域名解析到本机IP: \033[33m$external_ip\033[0m"
-      read -p "请输入你解析的域名: " yuming
+      # 静态界面
+      add_yuming
       install_ssltls
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/html.conf
