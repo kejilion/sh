@@ -24,8 +24,34 @@ install() {
 
 install_dependency() {
       clear
-      install wget sudo socat unzip btop
+      install wget socat unzip tar
 }
+
+
+remove() {
+    if [ $# -eq 0 ]; then
+        echo "未提供软件包参数!"
+        return 1
+    fi
+
+    for package in "$@"; do
+        if command -v "$package" &>/dev/null; then
+            if command -v apt &>/dev/null; then
+                apt purge -y "$package"
+            elif command -v yum &>/dev/null; then
+                yum remove -y "$package"
+            else
+                echo "未知的包管理器!"
+                return 1
+            fi
+        else
+            echo "$package 未安装，无需卸载"
+        fi
+    done
+
+    return 0
+}
+
 
 # 定义安装 Docker 的函数
 install_docker() {
@@ -153,20 +179,14 @@ install_certbot() {
 }
 
 install_ssltls() {
-    #   docker stop nginx
-    #   iptables_open
-    #   cd ~
-    #   curl https://get.acme.sh | sh
-    #   ~/.acme.sh/acme.sh --register-account -m xxxx@gmail.com --issue -d $yuming --standalone --key-file /home/web/certs/${yuming}_key.pem --cert-file /home/web/certs/${yuming}_cert.pem --force
-    #   docker start nginx
 
-      docker stop nginx
+      docker stop nginx > /dev/null 2>&1
       iptables_open
       cd ~
       certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
       cp /etc/letsencrypt/live/$yuming/cert.pem /home/web/certs/${yuming}_cert.pem
       cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
-      docker start nginx
+      docker start nginx > /dev/null 2>&1
 
 }
 
@@ -369,27 +389,36 @@ case $choice in
     ;;
 
   3)
-  clear
+    clear
+    clean_debian() {
+        apt autoremove --purge -y
+        apt clean -y
+        apt autoclean -y
+        apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+    }
 
-  if [ -f "/etc/debian_version" ]; then
-      # Debian-based systems
-      apt autoremove --purge -y
-      apt clean -y
-      apt autoclean -y
-      apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
-      journalctl --rotate
-      journalctl --vacuum-time=1s
-      journalctl --vacuum-size=50M
-      apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
-  elif [ -f "/etc/redhat-release" ]; then
-      # Red Hat-based systems
-      yum autoremove -y
-      yum clean all
-      journalctl --rotate
-      journalctl --vacuum-time=1s
-      journalctl --vacuum-size=50M
-      yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
-  fi
+    clean_redhat() {
+        yum autoremove -y
+        yum clean all
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+    }
+
+    # Main script
+    if [ -f "/etc/debian_version" ]; then
+        # Debian-based systems
+        clean_debian
+    elif [ -f "/etc/redhat-release" ]; then
+        # Red Hat-based systems
+        clean_redhat
+    fi
+
     ;;
 
   4)
@@ -536,13 +565,7 @@ case $choice in
 
           32)
               clear
-              if command -v apt &>/dev/null; then
-                  apt purge -y htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix
-              elif command -v yum &>/dev/null; then
-                  yum -y remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix
-              else
-                  echo "未知的包管理器!"
-              fi
+              remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix
               ;;
 
           0)
@@ -922,9 +945,7 @@ case $choice in
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
-                  apt purge docker -y
-                  apt purge docker-ce -y
-                  apt purge docker-ce -y
+                  remove docker docker-ce > /dev/null 2>&1
                   rm -rf /var/lib/docker
                   ;;
                 [Nn])
@@ -2044,7 +2065,7 @@ case $choice in
                   9)
                       systemctl disable fail2ban
                       systemctl stop fail2ban
-                      apt purge -y fail2ban
+                      remove fail2ban
                       if [ $? -eq 0 ]; then
                           echo "Fail2ban已卸载"
                       else
@@ -4426,12 +4447,7 @@ case $choice in
           5)
               clear
               iptables_open
-
-              apt purge -y iptables-persistent > /dev/null 2>&1
-              apt purge -y ufw > /dev/null 2>&1
-              yum remove -y firewalld > /dev/null 2>&1
-              yum remove -y iptables-services > /dev/null 2>&1
-
+              remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
               echo "端口已全部开放"
 
               ;;
@@ -4466,11 +4482,7 @@ case $choice in
 
               clear
               iptables_open
-
-              apt purge -y iptables-persistent > /dev/null 2>&1
-              apt purge -y ufw > /dev/null 2>&1
-              yum remove -y firewalld > /dev/null 2>&1
-              yum remove -y iptables-services > /dev/null 2>&1
+              remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 
               ;;
 
@@ -5101,7 +5113,7 @@ EOF
                           ;;
 
                       9)
-                      apt purge -y iptables-persistent
+                      remove iptables-persistent
                       rm /etc/iptables/rules.v4
                       break
                       # echo "防火墙已卸载，重启生效"
@@ -5140,9 +5152,7 @@ EOF
 
           clear
           iptables_open
-
-          apt purge -y iptables-persistent
-          apt purge -y ufw
+          remove iptables-persistent ufw
           rm /etc/iptables/rules.v4
 
           apt update -y && apt install -y iptables-persistent
@@ -5262,14 +5272,14 @@ EOF
           backup_sources() {
               case "$ID" in
                   ubuntu)
-                      sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak
+                      cp /etc/apt/sources.list /etc/apt/sources.list.bak
                       ;;
                   debian)
-                      sudo cp /etc/apt/sources.list /etc/apt/sources.list.bak
+                      cp /etc/apt/sources.list /etc/apt/sources.list.bak
                       ;;
                   centos)
                       if [ ! -f /etc/yum.repos.d/CentOS-Base.repo.bak ]; then
-                          sudo cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
+                          cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
                       else
                           echo "备份已存在，无需重复备份"
                       fi
@@ -5286,13 +5296,13 @@ EOF
           restore_initial_source() {
               case "$ID" in
                   ubuntu)
-                      sudo cp /etc/apt/sources.list.bak /etc/apt/sources.list
+                      cp /etc/apt/sources.list.bak /etc/apt/sources.list
                       ;;
                   debian)
-                      sudo cp /etc/apt/sources.list.bak /etc/apt/sources.list
+                      cp /etc/apt/sources.list.bak /etc/apt/sources.list
                       ;;
                   centos)
-                      sudo cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo
+                      cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo
                       ;;
                   *)
                       echo "未知系统，无法执行还原操作"
@@ -5306,13 +5316,13 @@ EOF
           switch_source() {
               case "$ID" in
                   ubuntu)
-                      sudo sed -i 's|'"$initial_ubuntu_source"'|'"$1"'|g' /etc/apt/sources.list
+                      sed -i 's|'"$initial_ubuntu_source"'|'"$1"'|g' /etc/apt/sources.list
                       ;;
                   debian)
-                      sudo sed -i 's|'"$initial_debian_source"'|'"$1"'|g' /etc/apt/sources.list
+                      sed -i 's|'"$initial_debian_source"'|'"$1"'|g' /etc/apt/sources.list
                       ;;
                   centos)
-                      sudo sed -i "s|^baseurl=.*$|baseurl=$1|g" /etc/yum.repos.d/CentOS-Base.repo
+                      sed -i "s|^baseurl=.*$|baseurl=$1|g" /etc/yum.repos.d/CentOS-Base.repo
                       ;;
                   *)
                       echo "未知系统，无法执行切换操作"
