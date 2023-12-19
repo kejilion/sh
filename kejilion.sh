@@ -35,21 +35,18 @@ remove() {
     fi
 
     for package in "$@"; do
-        if command -v "$package" &>/dev/null; then
-            if command -v apt &>/dev/null; then
-                apt purge -y "$package"
-            elif command -v yum &>/dev/null; then
-                yum remove -y "$package"
-            else
-                echo "未知的包管理器!"
-                return 1
-            fi
+        if command -v apt &>/dev/null; then
+            apt purge -y "$package"
+        elif command -v yum &>/dev/null; then
+            yum remove -y "$package"
+        else
+            echo "未知的包管理器!"
+            return 1
         fi
     done
 
     return 0
 }
-
 
 
 # 定义安装 Docker 的函数
@@ -2079,7 +2076,6 @@ case $choice in
                       systemctl disable fail2ban
                       systemctl stop fail2ban
                       remove fail2ban
-                      rm -rf /etc/fail2ban
                       break
                       ;;
                   0)
