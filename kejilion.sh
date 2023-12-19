@@ -2079,11 +2079,6 @@ case $choice in
                       systemctl disable fail2ban
                       systemctl stop fail2ban
                       remove fail2ban
-                      if [ $? -eq 0 ]; then
-                          echo "Fail2ban已卸载"
-                      else
-                          echo "卸载失败"
-                      fi
                       rm -rf /etc/fail2ban
                       break
                       ;;
@@ -2104,13 +2099,10 @@ case $choice in
           # 安装Fail2ban
           if [ -f /etc/debian_version ]; then
               # Debian/Ubuntu系统
-              apt update -y
-              apt install -y fail2ban
+              install fail2ban
           elif [ -f /etc/redhat-release ]; then
               # CentOS系统
-              yum update -y
-              yum install -y epel-release
-              yum install -y fail2ban
+              install epel-release fail2ban
           else
               echo "不支持的操作系统类型"
               exit 1
