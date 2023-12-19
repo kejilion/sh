@@ -420,8 +420,7 @@ case $choice in
   4)
   while true; do
       clear
-      echo " ▼ "
-      echo "安装常用工具"
+      echo "◀ 安装常用工具"
       echo "------------------------"
       echo "1. curl 下载工具"
       echo "2. wget 下载工具"
@@ -609,8 +608,7 @@ case $choice in
   6)
     while true; do
       clear
-      echo " ▼ "
-      echo "Docker管理器"
+      echo "◀ Docker管理器"
       echo "------------------------"
       echo "1. 安装更新Docker环境"
       echo "------------------------"
@@ -996,8 +994,7 @@ case $choice in
   8)
     while true; do
       clear
-      echo " ▼ "
-      echo "测试脚本合集"
+      echo "◀ 测试脚本合集"
       echo "------------------------"
       echo "1. ChatGPT解锁状态检测"
       echo "2. Region流媒体解锁测试"
@@ -1075,8 +1072,7 @@ case $choice in
   9)
      while true; do
       clear
-      echo " ▼ "
-      echo "甲骨文云脚本合集"
+      echo "◀ 甲骨文云脚本合集"
       echo "------------------------"
       echo "1. 安装闲置机器活跃脚本"
       echo "2. 卸载闲置机器活跃脚本"
@@ -1207,8 +1203,7 @@ case $choice in
 
   while true; do
     clear
-    echo -e "\033[33m ▼ \033[0m"
-    echo -e "\033[33mLDNMP建站\033[0m"
+    echo -e "\033[33m◀ LDNMP建站\033[0m"
     echo  "------------------------"
     echo  "1. 安装LDNMP环境"
     echo  "------------------------"
@@ -2273,8 +2268,7 @@ case $choice in
   11)
     while true; do
       clear
-      echo " ▼ "
-      echo "面板工具"
+      echo "◀ 面板工具"
       echo "------------------------"
       echo "1. 宝塔面板官方版                       2. aaPanel宝塔国际版"
       echo "3. 1Panel新一代管理面板                 4. NginxProxyManager可视化面板"
@@ -4165,8 +4159,7 @@ case $choice in
   12)
     while true; do
       clear
-      echo " ▼ "
-      echo "我的工作区"
+      echo "◀ 我的工作区"
       echo "系统将为你提供5个后台运行的工作区，你可以用来执行长时间的任务"
       echo "即使你断开SSH，工作区中的任务也不会中断，非常方便！来试试吧！"
       echo -e "\033[33m注意: 进入工作区后使用Ctrl+b再单独按d，退出工作区！\033[0m"
@@ -4296,8 +4289,7 @@ case $choice in
   13)
     while true; do
       clear
-      echo " ▼ "
-      echo "系统工具"
+      echo "◀ 系统工具"
       echo "------------------------"
       echo "1. 设置脚本启动快捷键"
       echo "------------------------"
