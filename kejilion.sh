@@ -44,13 +44,12 @@ remove() {
                 echo "未知的包管理器!"
                 return 1
             fi
-        else
-            echo "$package 未安装，无需卸载"
         fi
     done
 
     return 0
 }
+
 
 
 # 定义安装 Docker 的函数
@@ -224,7 +223,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.0.9 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.1 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -436,15 +435,18 @@ case $choice in
       echo "8. tar GZ压缩解压工具"
       echo "9. tmux 多路后台运行工具"
       echo "10. ffmpeg 视频编码直播推流工具"
-      echo -e "11. btop 现代化监控工具 \033[33mNEW\033[0m"
-      echo -e "12. ranger 文件管理工具 \033[33mNEW\033[0m"
-      echo -e "13. gdu 磁盘占用查看工具 \033[33mNEW\033[0m"
-      echo -e "14. fzf 全局搜索工具 \033[33mNEW\033[0m"
+      echo "11. btop 现代化监控工具"
+      echo "12. ranger 文件管理工具"
+      echo "13. gdu 磁盘占用查看工具"
+      echo "14. fzf 全局搜索工具"
       echo "------------------------"
-      echo -e "21. cmatrix 黑客帝国屏保 \033[33mNEW\033[0m"
+      echo "21. cmatrix 黑客帝国屏保"
       echo "------------------------"
       echo "31. 全部安装"
       echo "32. 全部卸载"
+      echo "------------------------"
+      echo -e "41. 安装指定工具 \033[33mNEW\033[0m"
+      echo -e "42. 卸载指定工具 \033[33mNEW\033[0m"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -566,6 +568,17 @@ case $choice in
           32)
               clear
               remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix
+              ;;
+
+          41)
+              clear
+              read -p "请输入安装的工具名（wget curl sudo htop）: " installname
+              install $installname
+              ;;
+          42)
+              clear
+              read -p "请输入卸载的工具名（htop ufw tmux cmatrix）: " removename
+              remove $removename
               ;;
 
           0)
