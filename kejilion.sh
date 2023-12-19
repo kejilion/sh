@@ -419,6 +419,7 @@ case $choice in
 
   4)
   while true; do
+      clear
       echo " ▼ "
       echo "安装常用工具"
       echo "------------------------"
@@ -607,6 +608,7 @@ case $choice in
 
   6)
     while true; do
+      clear
       echo " ▼ "
       echo "Docker管理器"
       echo "------------------------"
@@ -993,7 +995,7 @@ case $choice in
 
   8)
     while true; do
-
+      clear
       echo " ▼ "
       echo "测试脚本合集"
       echo "------------------------"
@@ -1072,6 +1074,7 @@ case $choice in
 
   9)
      while true; do
+      clear
       echo " ▼ "
       echo "甲骨文云脚本合集"
       echo "------------------------"
@@ -1203,6 +1206,7 @@ case $choice in
   10)
 
   while true; do
+    clear
     echo -e "\033[33m ▼ \033[0m"
     echo -e "\033[33mLDNMP建站\033[0m"
     echo  "------------------------"
@@ -2268,7 +2272,7 @@ case $choice in
 
   11)
     while true; do
-
+      clear
       echo " ▼ "
       echo "面板工具"
       echo "------------------------"
@@ -4160,6 +4164,7 @@ case $choice in
 
   12)
     while true; do
+      clear
       echo " ▼ "
       echo "我的工作区"
       echo "系统将为你提供5个后台运行的工作区，你可以用来执行长时间的任务"
@@ -4290,7 +4295,7 @@ case $choice in
 
   13)
     while true; do
-
+      clear
       echo " ▼ "
       echo "系统工具"
       echo "------------------------"
