@@ -2073,8 +2073,6 @@ case $choice in
 
                       ;;
                   9)
-                      systemctl disable fail2ban
-                      systemctl stop fail2ban
                       remove fail2ban
                       break
                       ;;
