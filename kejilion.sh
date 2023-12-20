@@ -2569,7 +2569,7 @@ case $choice in
           8)
 
             docker_name="qbittorrent"
-            docker_img="lscr.io/linuxserver/qbittorrent:4.5.5"
+            docker_img="lscr.io/linuxserver/qbittorrent:latest"
             docker_port=8081
             docker_rum="docker run -d \
                                   --name=qbittorrent \
@@ -2583,11 +2583,11 @@ case $choice in
                                   -v /home/docker/qbittorrent/config:/config \
                                   -v /home/docker/qbittorrent/downloads:/downloads \
                                   --restart unless-stopped \
-                                  lscr.io/linuxserver/qbittorrent:4.5.5"
+                                  lscr.io/linuxserver/qbittorrent:latest"
             docker_describe="qbittorrent离线BT磁力下载服务"
             docker_url="官网介绍: https://hub.docker.com/r/linuxserver/qbittorrent"
-            docker_use="echo \"用户名: admin\""
-            docker_passwd="echo \"密码: adminadmin\""
+            docker_use="docker logs qbittorrent"
+            docker_passwd=""
 
             docker_app
 
