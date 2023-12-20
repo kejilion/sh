@@ -2270,6 +2270,7 @@ case $choice in
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
+      echo "23. Memos网页备忘录"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3159,6 +3160,19 @@ case $choice in
             docker_passwd=""
             docker_app
               ;;
+
+          23)
+            docker_name="memos"
+            docker_img="ghcr.io/usememos/memos:latest"
+            docker_port=5230
+            docker_rum="docker run -d --name memos -p 5230:5230 -v /home/docker/memos:/var/opt/memos --restart always ghcr.io/usememos/memos:latest"
+            docker_describe="Memos是一款轻量级、自托管的备忘录中心"
+            docker_url="官网介绍: https://github.com/usememos/memos"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+
 
           0)
               cd ~
