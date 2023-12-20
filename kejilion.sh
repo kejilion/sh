@@ -48,6 +48,13 @@ remove() {
     return 0
 }
 
+break_end() {
+      echo -e "\033[0;32m操作完成\033[0m"
+      echo "按任意键继续..."
+      read -n 1 -s -r -p ""
+      echo ""
+      clear
+}
 
 check_port() {
     # 定义要检测的端口
@@ -67,9 +74,7 @@ check_port() {
             clear
             echo -e "\e[1;31m端口 $PORT 已被占用，无法安装环境，卸载以下程序后重试！\e[0m"
             echo "$result"
-            echo -e "\033[0;32m操作完成\033[0m"
-            echo "按任意键继续..."
-            read -n 1 -s -r -p ""
+            break_end
             cd ~
             ./kejilion.sh
             exit
@@ -276,7 +281,6 @@ restart_ldnmp() {
       docker restart php74
       docker restart nginx
 }
-
 
 
 
@@ -655,11 +659,7 @@ case $choice in
               echo "无效的输入!"
               ;;
       esac
-      echo -e "\033[0;32m操作完成\033[0m"
-      echo "按任意键继续..."
-      read -n 1 -s -r -p ""
-      echo ""
-      clear
+      break_end
   done
 
     ;;
@@ -789,20 +789,12 @@ case $choice in
                       11)
                           read -p "请输入容器名: " dockername
                           docker exec -it $dockername /bin/bash
-                          echo -e "\033[0;32m操作完成\033[0m"
-                          echo "按任意键继续..."
-                          read -n 1 -s -r -p ""
-                          echo ""
-                          clear
+                          break_end
                           ;;
                       12)
                           read -p "请输入容器名: " dockername
                           docker logs $dockername
-                          echo -e "\033[0;32m操作完成\033[0m"
-                          echo "按任意键继续..."
-                          read -n 1 -s -r -p ""
-                          echo ""
-                          clear
+                          break_end
                           ;;
                       13)
                           echo ""
@@ -825,11 +817,7 @@ case $choice in
                               done <<< "$network_info"
                           done
 
-                          echo -e "\033[0;32m操作完成\033[0m"
-                          echo "按任意键继续..."
-                          read -n 1 -s -r -p ""
-                          echo ""
-                          clear
+                          break_end
                           ;;
 
                       0)
@@ -1041,11 +1029,8 @@ case $choice in
               echo "无效的输入!"
               ;;
       esac
-      echo -e "\033[0;32m操作完成\033[0m"
-      echo "按任意键继续..."
-      read -n 1 -s -r -p ""
-      echo ""
-      clear
+      break_end
+
 
     done
 
@@ -1128,11 +1113,8 @@ case $choice in
               echo "无效的输入!"
               ;;
       esac
-      echo -e "\033[0;32m操作完成\033[0m"
-      echo "按任意键继续..."
-      read -n 1 -s -r -p ""
-      echo ""
-      clear
+      break_end
+
     done
     ;;
 
@@ -1257,11 +1239,8 @@ case $choice in
               echo "无效的输入!"
               ;;
       esac
-      echo -e "\033[0;32m操作完成\033[0m"
-      echo "按任意键继续..."
-      read -n 1 -s -r -p ""
-      echo ""
-      clear
+      break_end
+
     done
     ;;
 
@@ -2013,10 +1992,8 @@ case $choice in
                       echo "无效的选择，请重新输入。"
                       ;;
               esac
-              echo -e "\033[0;32m操作完成\033[0m"
-              echo "按任意键继续..."
-              read -n 1 -s -r -p ""
-              echo ""
+              break_end
+
           done
       else
           clear
@@ -2139,10 +2116,8 @@ case $choice in
                       echo "无效的选择，请重新输入。"
                       ;;
               esac
-              echo -e "\033[0;32m操作完成\033[0m"
-              echo "按任意键继续..."
-              read -n 1 -s -r -p ""
-              echo ""
+              break_end
+
           done
         ;;
 
@@ -2188,12 +2163,8 @@ case $choice in
     *)
         echo "无效的输入!"
     esac
+    break_end
 
-    echo -e "\033[0;32m操作完成\033[0m"
-    echo "按任意键继续..."
-    read -n 1 -s -r -p ""
-    echo ""
-    clear
   done
       ;;
 
@@ -4080,11 +4051,8 @@ case $choice in
               echo "无效的输入!"
               ;;
       esac
-      echo -e "\033[0;32m操作完成\033[0m"
-      echo "按任意键继续..."
-      read -n 1 -s -r -p ""
-      echo ""
-      clear
+      break_end
+
     done
     ;;
 
@@ -4210,11 +4178,8 @@ case $choice in
               echo "无效的输入!"
               ;;
       esac
-      echo -e "\033[0;32m操作完成\033[0m"
-      echo "按任意键继续..."
-      read -n 1 -s -r -p ""
-      echo ""
-      clear
+      break_end
+
     done
     ;;
 
@@ -5359,11 +5324,8 @@ EOF
                       echo "无效的选择，请重新输入"
                       ;;
               esac
-              echo -e "\033[0;32m操作完成\033[0m"
-              echo "按任意键继续..."
-              read -n 1 -s -r -p ""
-              echo ""
-              clear
+              break_end
+
           done
 
               ;;
@@ -5473,11 +5435,8 @@ EOF
               echo "无效的输入!"
               ;;
       esac
-      echo -e "\033[0;32m操作完成\033[0m"
-      echo "按任意键继续..."
-      read -n 1 -s -r -p ""
-      echo ""
-      clear
+      break_end
+
     done
     ;;
 
@@ -5488,10 +5447,7 @@ EOF
     echo ""
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
     echo "脚本已更新到最新版本！"
-    echo -e "\033[0;32m操作完成\033[0m"
-    echo "按任意键继续..."
-    read -n 1 -s -r -p ""
-    echo ""
+    break_end
     ./kejilion.sh
     exit
     ;;
@@ -5505,9 +5461,5 @@ EOF
     echo "无效的输入!"
     ;;
 esac
-  echo -e "\033[0;32m操作完成\033[0m"
-  echo "按任意键继续..."
-  read -n 1 -s -r -p ""
-  echo ""
-  clear
+    break_end
 done
