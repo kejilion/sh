@@ -58,7 +58,7 @@ break_end() {
 
 check_port() {
     # 定义要检测的端口
-    PORT=80
+    PORT=443
 
     # 检查端口占用情况
     result=$(ss -tulpn | grep ":$PORT")
