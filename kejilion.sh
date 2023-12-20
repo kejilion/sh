@@ -49,6 +49,37 @@ remove() {
 }
 
 
+check_port() {
+    # 定义要检测的端口
+    PORT=80
+
+    # 检查端口占用情况
+    result=$(ss -tulpn | grep ":$PORT")
+
+    # 判断结果并输出相应信息
+    if [ -n "$result" ]; then
+        is_nginx_container=$(docker ps --format '{{.Names}}' | grep 'nginx')
+
+        # 判断是否是Nginx容器占用端口
+        if [ -n "$is_nginx_container" ]; then
+            echo ""
+        else
+            clear
+            echo -e "\e[1;31m端口 $PORT 已被占用，无法安装环境，卸载以下程序后重试！\e[0m"
+            echo "$result"
+            echo -e "\033[0;32m操作完成\033[0m"
+            echo "按任意键继续..."
+            read -n 1 -s -r -p ""
+            cd ~
+            ./kejilion.sh
+            exit
+        fi
+    else
+        echo ""
+    fi
+}
+
+
 # 定义安装 Docker 的函数
 install_docker() {
     if ! command -v docker &>/dev/null; then
@@ -1277,7 +1308,7 @@ case $choice in
 
     case $sub_choice in
       1)
-
+      check_port
       install_dependency
       install_docker
       install_certbot
@@ -1619,7 +1650,7 @@ case $choice in
 
 
       21)
-
+      check_port
       install_dependency
       install_docker
       install_certbot
@@ -1895,6 +1926,7 @@ case $choice in
       ;;
 
     34)
+      check_port
       install_dependency
       install_docker
       install_certbot
@@ -2120,6 +2152,7 @@ case $choice in
       docker rm -f nginx php php74 mysql redis
       docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
 
+      check_port
       install_dependency
       install_docker
       install_certbot
