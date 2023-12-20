@@ -2269,7 +2269,7 @@ case $choice in
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
-      echo "21. VScode网页版"
+      echo "21. VScode网页版                        22. UptimeKuma监控工具"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3141,6 +3141,22 @@ case $choice in
             docker_url="官网介绍: https://github.com/coder/code-server"
             docker_use="sleep 3"
             docker_passwd="docker exec vscode-web cat /home/coder/.config/code-server/config.yaml"
+            docker_app
+              ;;
+          22)
+            docker_name="uptime-kuma"
+            docker_img="louislam/uptime-kuma:latest"
+            docker_port=3003
+            docker_rum="docker run -d \
+                            --name=uptime-kuma \
+                            -p 3003:3001 \
+                            -v /home/docker/uptime-kuma/uptime-kuma-data:/app/data \
+                            --restart=always \
+                            louislam/uptime-kuma:latest"
+            docker_describe="Uptime Kuma 易于使用的自托管监控工具"
+            docker_url="官网介绍: https://github.com/louislam/uptime-kuma"
+            docker_use=""
+            docker_passwd=""
             docker_app
               ;;
 
