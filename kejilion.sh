@@ -2586,8 +2586,8 @@ case $choice in
                                   lscr.io/linuxserver/qbittorrent:latest"
             docker_describe="qbittorrent离线BT磁力下载服务"
             docker_url="官网介绍: https://hub.docker.com/r/linuxserver/qbittorrent"
-            docker_use="docker logs qbittorrent"
-            docker_passwd=""
+            docker_use="sleep 3"
+            docker_passwd="docker logs qbittorrent"
 
             docker_app
 
