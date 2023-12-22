@@ -1,0 +1,32 @@
+{
+  "bind": "0.0.0.0:8181",
+  "tls": {
+    "enabled": false,
+    "cert_file": "",
+    "key_file": ""
+  },
+  "timeout": 600,
+  "proxy_url": "",
+  "license_id": "github",
+  "public_share": false,
+  "site_password": "webgptpasswd",
+  "setup_password": "webgptpasswd",
+  "server_tokens": true,
+  "proxy_api_prefix": "",
+  "isolated_conv_title": "*",
+  "disable_signup": false,
+  "auto_conv_arkose": false,
+  "proxy_file_service": false,
+  "custom_doh_host": "",
+  "captcha": {
+    "provider": "",
+    "site_key": "",
+    "site_secret": "",
+    "site_login": false,
+    "setup_login": false,
+    "oai_username": false,
+    "oai_password": false,
+    "oai_signup": false
+  },
+  "whitelist": null
+}
