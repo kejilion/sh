@@ -268,7 +268,7 @@ reverse_proxy() {
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0.0.0.0/$external_ip/g" /home/web/conf.d/$yuming.conf
-      sed -i "s/0000/3099/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/0000/$duankou/g" /home/web/conf.d/$yuming.conf
       docker restart nginx
 }
 
@@ -1594,7 +1594,7 @@ case $choice in
       install_ssltls
 
       docker run -d -p 3099:8080 --name go-proxy-bingai --restart=unless-stopped adams549659584/go-proxy-bingai
-
+      $duankou=3099
       reverse_proxy
 
       clear
@@ -1655,7 +1655,7 @@ case $choice in
         -p 3280:80 \
         -v /home/web/html/$yuming/bitwarden/data:/data \
         vaultwarden/server
-
+      $duankou=3280
       reverse_proxy
 
       clear
@@ -1671,7 +1671,7 @@ case $choice in
       install_ssltls
 
       docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2.9
-
+      $duankou=8010
       reverse_proxy
 
       clear
