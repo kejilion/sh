@@ -12,7 +12,7 @@
   "site_password": "",
   "setup_password": "webgptpasswd",
   "server_tokens": true,
-  "proxy_api_prefix": "gpt123",
+  "proxy_api_prefix": "",
   "isolated_conv_title": "*",
   "disable_signup": false,
   "auto_conv_arkose": false,
