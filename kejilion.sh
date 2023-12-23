@@ -3196,6 +3196,7 @@ case $choice in
                 echo "应用操作"
                 echo "------------------------"
                 echo "1. 更新应用             2. 卸载应用"
+                echo "3. 修改config           4. 修改tokens"                
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
@@ -3225,6 +3226,20 @@ case $choice in
                         rm -rf "/home/docker/$docker_name"
                         echo "应用已卸载"
                         ;;
+                    3)
+                        clear
+                        nano /home/docker/PandoraNext/data/config.json
+                        echo "正在重启$docker_name"
+                        docker restart "$docker_name"
+
+                        ;;
+                    4)
+                        clear
+                        nano /home/docker/PandoraNext/data/tokens.json
+                        echo "正在重启$docker_name"
+                        docker restart "$docker_name"
+
+                        ;;                                                
                     0)
                         # 跳出循环，退出菜单
                         ;;
