@@ -3255,10 +3255,7 @@ case $choice in
                         wget https://raw.githubusercontent.com/kejilion/sh/main/PandoraNext/tokens.json
                         sed -i "s/github/$github1/g" /home/docker/PandoraNext/data/config.json
                         webgptpasswd1=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16)
-                        webgptpasswd2=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16)
                         sed -i "s/webgptpasswd/$webgptpasswd1/g" /home/docker/PandoraNext/data/config.json
-                        sed -i "s/gpt123/$webgptpasswd2/g" /home/docker/PandoraNext/data/config.json
-
 
                         $docker_rum
                         clear
