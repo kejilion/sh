@@ -6,10 +6,9 @@
 ***
 
 ### 科技lion一键脚本工具 的支持列表：
->>系统：
->>>Debian
->>>Ubuntu
->>>Cent OS
+>Debian
+>Ubuntu
+>Cent OS
 
 
 ## 使用方法
@@ -21,6 +20,8 @@ apt update -y  && apt install -y curl
 ```bash
 apt update -y  && apt install -y curl
 ```
+
+
 ### 一键脚本
 ```bash
 curl -sS -O https://kejilion.pro/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
