@@ -5,9 +5,8 @@
 [视频介绍](https://www.youtube.com/watch?v=0o7oH3Dit70&t=211s)
 ***
 
-### 科技lion一键脚本工具 的支援列表：
->科技lion一键脚本工具
->>系统
+### 科技lion一键脚本工具 的支持列表：
+>>系统：
 >>>Debian
 >>>Ubuntu
 >>>Cent OS
@@ -16,13 +15,11 @@
 ## 使用方法
 ### Debian / Ubuntu 安装下载工具
 ```bash
-sudo apt install curl
-sudo apt update -y  && apt install -y curl
+apt update -y  && apt install -y curl
 ```
 ### CentOS 安装下载工具
 ```bash
-sudo apt install curl
-sudo apt update -y  && apt install -y curl
+apt update -y  && apt install -y curl
 ```
 ### 一键脚本
 ```bash
