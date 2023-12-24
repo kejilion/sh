@@ -9,7 +9,7 @@
 >Debian
 >Ubuntu
 >Cent OS
-
+***
 
 ## 使用方法
 ### Debian / Ubuntu 安装下载工具
@@ -20,8 +20,7 @@ apt update -y  && apt install -y curl
 ```bash
 apt update -y  && apt install -y curl
 ```
-
-
+***
 ### 一键脚本
 ```bash
 curl -sS -O https://kejilion.pro/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
