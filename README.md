@@ -9,25 +9,9 @@
 >科技lion一键脚本工具
 >>系统
 >>>Debian
-
 >>>Ubuntu
-
 >>>Cent OS
 
-### 科技lion一键脚本工具 的功能列表：
-#### docker管理器
-![](/docker.png)
-#### LDNMP建站
-![](/ldnmp.png)
-#### 面板工具集合
-![](/con.png)
-#### 系统工具集合
-![](/sys.png)
-#### 测试脚本
-![](/test.png)
-#### 工作区
-![](/work.png)
-***
 
 ## 使用方法
 ### Debian / Ubuntu 安装下载工具
