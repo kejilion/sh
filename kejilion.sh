@@ -377,7 +377,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.1.2 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.1.3 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -595,12 +595,17 @@ case $choice in
       echo "14. fzf 全局搜索工具"
       echo "------------------------"
       echo "21. cmatrix 黑客帝国屏保"
+      echo -e "22. sl 跑火车屏保 \033[33mNEW\033[0m"
+      echo "------------------------"
+      echo -e "26. 俄罗斯方块小游戏 \033[33mNEW\033[0m"
+      echo -e "27. 贪吃蛇小游戏 \033[33mNEW\033[0m"
+      echo -e "28. 太空入侵者小游戏 \033[33mNEW\033[0m"
       echo "------------------------"
       echo "31. 全部安装"
       echo "32. 全部卸载"
       echo "------------------------"
-      echo -e "41. 安装指定工具 \033[33mNEW\033[0m"
-      echo -e "42. 卸载指定工具 \033[33mNEW\033[0m"
+      echo "41. 安装指定工具"
+      echo "42. 卸载指定工具"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -713,15 +718,39 @@ case $choice in
               clear
               cmatrix
               ;;
+            22)
+              clear
+              install sl
+              clear
+              sl
+              ;;
+            26)
+              clear
+              install bastet
+              clear
+              bastet
+              ;;
+            27)
+              clear
+              install nsnake
+              clear
+              nsnake
+              ;;
+            28)
+              clear
+              install ninvaders
+              clear
+              ninvaders
+              ;;
 
           31)
               clear
-              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix
+              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders
               ;;
 
           32)
               clear
-              remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix
+              remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders
               ;;
 
           41)
@@ -3196,7 +3225,7 @@ case $choice in
                 echo "应用操作"
                 echo "------------------------"
                 echo "1. 更新应用             2. 卸载应用"
-                echo "3. 修改config           4. 修改tokens"                
+                echo "3. 修改config           4. 修改tokens"
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
@@ -3239,7 +3268,7 @@ case $choice in
                         echo "正在重启$docker_name"
                         docker restart "$docker_name"
 
-                        ;;                                                
+                        ;;
                     0)
                         # 跳出循环，退出菜单
                         ;;
