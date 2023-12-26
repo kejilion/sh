@@ -722,25 +722,26 @@ case $choice in
               clear
               install sl
               clear
-              sl
+              /usr/games/sl
               ;;
             26)
               clear
               install bastet
               clear
-              bastet
+              /usr/games/bastet
               ;;
             27)
               clear
               install nsnake
               clear
-              nsnake
+              /usr/games/nsnake
               ;;
             28)
               clear
               install ninvaders
               clear
-              ninvaders
+              /usr/games/ninvaders
+
               ;;
 
           31)
