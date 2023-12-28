@@ -1213,8 +1213,6 @@ case $choice in
           8)
               clear
               curl -Lso- bench.sh | bash
-              echo "按任意键继续..."
-              read -n 1 -s -r -p ""
               ;;
           9)
               clear
@@ -3360,6 +3358,8 @@ case $choice in
       echo "------------------------"
       echo "8. 工作区状态"
       echo "------------------------"
+      echo "b. 卸载工作区"
+      echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
@@ -3369,6 +3369,10 @@ case $choice in
               clear
               install tmux
 
+              ;;
+          b)
+              clear
+              remove tmux
               ;;
           1)
               clear
