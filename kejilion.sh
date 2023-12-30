@@ -5,6 +5,7 @@ ipv4_address=$(curl -s ipv4.ip.sb)
 }
 
 
+
 install() {
     if [ $# -eq 0 ]; then
         echo "未提供软件包参数!"
@@ -229,6 +230,13 @@ install_ssltls() {
       cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
       docker start nginx > /dev/null 2>&1
 }
+
+
+default_server_ssl() {
+install openssl
+openssl req -x509 -nodes -newkey rsa:2048 -keyout /home/web/certs/default_server.key -out /home/web/certs/default_server.crt -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
+
+} 
 
 
 nginx_status() {
@@ -1416,8 +1424,7 @@ case $choice in
 
       wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
       wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
-      ipv4_address
-      sed -i "s/localhost/$ipv4_address/g" /home/web/conf.d/default.conf
+      default_server_ssl
 
       # 下载 docker-compose.yml 文件并进行替换
       wget -O /home/web/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
@@ -1757,9 +1764,7 @@ case $choice in
 
       wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
       wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
-      ipv4_address
-      sed -i "s/localhost/$ipv4_address/g" /home/web/conf.d/default.conf
-
+      default_server_ssl
       docker rm -f nginx >/dev/null 2>&1
       docker rmi nginx >/dev/null 2>&1
       docker run -d --name nginx --restart always -p 80:80 -p 443:443 -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
@@ -2145,9 +2150,7 @@ case $choice in
 
           wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
           wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
-          ipv4_address
-          sed -i "s/localhost/$ipv4_address/g" /home/web/conf.d/default.conf
-
+          default_server_ssl
           docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
           docker exec -it nginx chmod -R 777 /var/www/html
 
