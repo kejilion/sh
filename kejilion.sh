@@ -1,4 +1,15 @@
 #!/bin/bash
+
+# 判断是否已经存在 alias
+if ! grep -q "alias k='./kejilion.sh'" ~/.bashrc; then
+    # 如果不存在，则添加 alias
+    echo "alias k='./kejilion.sh'" >> ~/.bashrc
+    source ~/.bashrc
+else
+    clear
+fi
+
+
 ipv4_address() {
 ipv4_address=$(curl -s ipv4.ip.sb)
 
@@ -236,7 +247,7 @@ default_server_ssl() {
 install openssl
 openssl req -x509 -nodes -newkey rsa:2048 -keyout /home/web/certs/default_server.key -out /home/web/certs/default_server.crt -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
 
-} 
+}
 
 
 nginx_status() {
@@ -395,7 +406,8 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.1.4 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.1.5 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -3517,7 +3529,8 @@ case $choice in
               clear
               read -p "请输入你的快捷按键: " kuaijiejian
               echo "alias $kuaijiejian='./kejilion.sh'" >> ~/.bashrc
-              echo "快捷键已添加。请重新启动终端，或运行 'source ~/.bashrc' 以使修改生效。"
+              source ~/.bashrc
+              echo "快捷键已设置"
               ;;
 
           2)
