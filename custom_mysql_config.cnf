@@ -4,4 +4,3 @@ innodb_buffer_pool_size = 2048M
 table_open_cache = 4096
 innodb_log_buffer_size = 32M
 thread_cache_size = 256
-host_cache_size = 0
