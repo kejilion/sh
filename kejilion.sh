@@ -406,7 +406,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.1.5 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.1.6 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2493,53 +2493,88 @@ case $choice in
             fi
               ;;
           3)
-            clear
-            echo "安装提示"
-            echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装1Panel！"
-            echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-            echo "官网介绍: https://1panel.cn/"
-            echo ""
-            # 获取当前系统类型
-            get_system_type() {
-              if [ -f /etc/os-release ]; then
-                . /etc/os-release
-                if [ "$ID" == "centos" ]; then
-                  echo "centos"
-                elif [ "$ID" == "ubuntu" ]; then
-                  echo "ubuntu"
-                elif [ "$ID" == "debian" ]; then
-                  echo "debian"
-                else
-                  echo "unknown"
-                fi
-              else
-                echo "unknown"
-              fi
-            }
+            if command -v 1pctl &> /dev/null; then
+                clear
+                echo "1Panel已安装，应用操作"
+                echo ""
+                echo "------------------------"
+                echo "1. 查看1Panel信息           2. 卸载1Panel"
+                echo "------------------------"
+                echo "0. 返回上一级选单"
+                echo "------------------------"
+                read -p "请输入你的选择: " sub_choice
 
-            system_type=$(get_system_type)
+                case $sub_choice in
+                    1)
+                        clear
+                        1pctl user-info
+                        1pctl update password
+                        ;;
+                    2)
+                        clear
+                        1pctl uninstall
 
-            if [ "$system_type" == "unknown" ]; then
-              echo "不支持的操作系统类型"
+                        ;;
+                    0)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                    *)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                esac
             else
-              read -p "确定安装1Panel吗？(Y/N): " choice
-              case "$choice" in
-                [Yy])
-                  iptables_open
-                  if [ "$system_type" == "centos" ]; then
-                    curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sh quick_start.sh
-                  elif [ "$system_type" == "ubuntu" ]; then
-                    curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
-                  elif [ "$system_type" == "debian" ]; then
-                    curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
+
+                clear
+                echo "安装提示"
+                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装1Panel！"
+                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
+                echo "官网介绍: https://1panel.cn/"
+                echo ""
+                # 获取当前系统类型
+                get_system_type() {
+                  if [ -f /etc/os-release ]; then
+                    . /etc/os-release
+                    if [ "$ID" == "centos" ]; then
+                      echo "centos"
+                    elif [ "$ID" == "ubuntu" ]; then
+                      echo "ubuntu"
+                    elif [ "$ID" == "debian" ]; then
+                      echo "debian"
+                    else
+                      echo "unknown"
+                    fi
+                  else
+                    echo "unknown"
                   fi
-                  ;;
-                [Nn])
-                  ;;
-                *)
-                  ;;
-              esac
+                }
+
+                system_type=$(get_system_type)
+
+                if [ "$system_type" == "unknown" ]; then
+                  echo "不支持的操作系统类型"
+                else
+                  read -p "确定安装1Panel吗？(Y/N): " choice
+                  case "$choice" in
+                    [Yy])
+                      iptables_open
+                      install_docker
+                      if [ "$system_type" == "centos" ]; then
+                        curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sh quick_start.sh
+                      elif [ "$system_type" == "ubuntu" ]; then
+                        curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
+                      elif [ "$system_type" == "debian" ]; then
+                        curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
+                      fi
+                      ;;
+                    [Nn])
+                      ;;
+                    *)
+                      ;;
+                  esac
+                fi
             fi
+
+
               ;;
           4)
 
