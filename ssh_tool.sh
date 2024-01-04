@@ -404,7 +404,7 @@ clear
 
 echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "                                "
-echo -e "\033[96mVPS一键脚本工具 v2.1.6 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96mVPS一键脚本工具 v8.8.8 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
