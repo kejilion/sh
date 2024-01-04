@@ -4,3 +4,11 @@ innodb_buffer_pool_size = 2048M
 table_open_cache = 4096
 innodb_log_buffer_size = 32M
 thread_cache_size = 256
+
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+key_buffer_size = 256M
+query_cache_size = 128M
+max_allowed_packet = 64M
+sort_buffer_size = 8M
+read_rnd_buffer_size = 4M
