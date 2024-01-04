@@ -75,7 +75,7 @@ break_end() {
 
 kejilion() {
             cd ~
-            ./kejilion.sh
+            ./ssh_tool.sh
             exit
 }
 
