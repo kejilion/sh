@@ -406,7 +406,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.1.6 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.1.7 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2313,12 +2313,13 @@ case $choice in
       echo "7. 哪吒探针VPS监控面板                  8. QB离线BT磁力下载面板"
       echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
-      echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
+      echo "13. Cloudreve网盘                       14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
       echo "23. Memos网页备忘录                     24. pandoranext潘多拉GPT镜像站"
+      echo "25. Nextcloud网盘"      
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3374,12 +3375,21 @@ case $choice in
                 esac
             fi
 
-
-
-
-
-
               ;;
+
+          25)
+            docker_name="nextcloud"
+            docker_img="nextcloud:latest"
+            docker_port=8989
+            rootpasswd=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16)
+            docker_rum="docker run -d --name nextcloud --restart=always -p 8989:80 -v /home/docker/nextcloud:/var/www/html -e NEXTCLOUD_ADMIN_USER=nextcloud -e NEXTCLOUD_ADMIN_PASSWORD=$rootpasswd nextcloud"
+            docker_describe="Nextcloud拥有超过 400,000 个部署，是您可以下载的最受欢迎的本地内容协作平台"
+            docker_url="官网介绍: https://nextcloud.com/"
+            docker_use="echo \"账号: nextcloud  密码: $rootpasswd\""
+            docker_passwd=""
+            docker_app
+              ;;
+
 
           0)
               kejilion
