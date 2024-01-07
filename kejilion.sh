@@ -1906,6 +1906,11 @@ case $choice in
 
         echo "------------------------"
         echo ""
+        echo "站点目录"
+        echo "------------------------"        
+        echo -e "数据 \e[37m/home/web/html\e[0m     证书 \e[37m/home/web/certs\e[0m     配置 \e[37m/home/web/conf.d\e[0m"
+        echo "------------------------"  
+        echo ""               
         echo "操作"
         echo "------------------------"
         echo "1. 申请/更新域名证书               2. 更换站点域名"
