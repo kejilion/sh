@@ -4806,7 +4806,7 @@ EOF
 
             # 提示输入订阅端口
             read -p "请输入节点订阅端口: " port
-                ipv4=$(ifconfig | grep -oE "inet ([0-9]{1,3}\.){3}[0-9]{1,3}" | awk '$2 != "127.0.0.1" {print $2}')
+                ipv4=$(hostname -I | awk '{print $1}')
                echo "你的节点订阅链接为：http://$ipv4:$port" 
             # 提示输入节点名称
             read -p "请输入节点名称: " name
