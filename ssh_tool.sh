@@ -4770,14 +4770,18 @@ EOF
       echo "1. F佬ArgoX一键脚本"
       echo "2. F佬sing-box一键脚本"
       echo "3. suoha一键argo脚本"
-      echo "4. 一键Argo+哪吒脚本订阅版"
+      echo "4. 一键nodejs-argo节点+哪吒+订阅"
       echo "5. 小绵羊一键reality+vmess+hy2"
       echo "6. 勇哥sing-box一键脚本"
-      echo "7. F佬一键warp脚本"
+      echo "7. F佬一键warp+脚本"
+      echo "8. 一键安装新版Xray面板"
+      echo "9. 一键安装伊朗版Xray面板"
+      echo "10. 一键安装OpenVPN"
+      echo "11. 一键安装Gost V3"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
-      read -p "请输入你的选择: " sub_choice
+      read -p "请输入你的选择: " sub_choice   
 
       case $sub_choice in
           1)
@@ -4853,6 +4857,34 @@ EOF
             wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh
         
             ;;
+          8)
+            clear
+
+            bash <(curl -Ls https://raw.githubusercontent.com/slobys/x-ui/main/install.sh)
+        
+            ;; 
+
+          9)
+            clear
+
+            bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+        
+            ;;           
+
+          10)
+            clear
+
+            wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
+        
+            ;;  
+
+
+          11)
+            clear
+
+            bash <(curl -fsSL https://github.com/go-gost/gost/raw/master/install.sh) --install
+        
+            ;;             
 
           0)
             break  # 跳出循环，退出菜单
