@@ -4765,7 +4765,7 @@ EOF
   14)
     while true; do
       clear
-      echo "▶ 节点搭建合集"
+      echo "▶ 节点搭建脚本合集"
       echo "------------------------"
       echo "1. F佬ArgoX一键脚本"
       echo "2. F佬sing-box一键脚本"
