@@ -11,7 +11,7 @@ fi
 
 
 ipv4_address() {
-ipv4_address=$(curl -s ipv4.ip.sb)
+ipv4_address=$(curl -s4 ifconfig.co)
 
 }
 
