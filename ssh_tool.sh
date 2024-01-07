@@ -4770,7 +4770,7 @@ EOF
       echo "1. F佬ArgoX一键脚本"
       echo "2. F佬sing-box一键脚本"
       echo "3. suoha一键argo脚本"
-      echo "4. nodejs一键Argo哪吒脚本订阅版"
+      echo "4. 一键Argo+哪吒脚本订阅版"
       echo "5. 小绵羊一键reality+vmess+hy2"
       echo "6. 勇哥sing-box一键脚本"
       echo "7. F佬一键warp脚本"
@@ -4806,7 +4806,7 @@ EOF
 
             # 提示输入订阅端口
             read -p "请输入节点订阅端口: " port
-
+               echo "你的节点订阅链接为：http://$ipv4_address:$port" 
             # 提示输入节点名称
             read -p "请输入节点名称: " name
 
