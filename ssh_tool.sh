@@ -404,7 +404,7 @@ clear
 
 echo "                                "
 echo "                                "
-echo -e "\033[96mVPS一键脚本工具 v8.8.8 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[128mVPS一键脚本工具 v8.8.8 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e ""
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -4710,10 +4710,10 @@ EOF
             clear
             install sshpass
 
-            remote_ip="66.42.61.110"
+            remote_ip="8.8.8.8"
             remote_user="liaotian123"
             remote_file="/home/liaotian123/liaotian.txt"
-            password="kejilionYYDS"  # 替换为您的密码
+            password="wangYYDS"  # 替换为您的密码
 
             clear
             echo "留言板"
