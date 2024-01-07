@@ -4816,7 +4816,7 @@ EOF
             read -p "请输入节点名称: " name
 
             # 判断是否要安装哪吒
-            read -p "是否需要一起安装哪吒？(y/n): " nezha
+            read -p "是否需要一起安装哪吒探针？(y/n): " nezha
 
             if [ "$nezha" == "y" ] || [ "$nezha" == "Y" ]; then
 
