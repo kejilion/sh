@@ -420,6 +420,7 @@ echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
 echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
+echo "14. 节点搭建脚本合集 ▶ "
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
@@ -4760,6 +4761,108 @@ EOF
 
     done
     ;;
+
+  14)
+    while true; do
+      clear
+      echo "▶ 节点搭建合集"
+      echo "------------------------"
+      echo "1. F佬ArgoX一键脚本"
+      echo "2. F佬sing-box一键脚本"
+      echo "3. suoha一键argo脚本"
+      echo "4. nodejs一键Argo哪吒脚本订阅版"
+      echo "5. 小绵羊一键reality+vmess+hy2"
+      echo "6. 勇哥sing-box一键脚本"
+      echo "7. F佬一键warp脚本"
+      echo "------------------------"
+      echo "0. 返回主菜单"
+      echo "------------------------"
+      read -p "请输入你的选择: " sub_choice
+
+      case $sub_choice in
+          1)
+            clear
+
+            bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/argox/main/argox.sh)
+        
+            ;;
+
+          2)
+            clear
+
+            bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh)
+        
+            ;;
+
+          3)
+            clear
+
+            curl https://www.baipiao.eu.org/suoha.sh -o suoha.sh && bash suoha.sh
+        
+            ;;            
+
+          4)
+            clear
+
+            # 提示输入订阅端口
+            read -p "请输入节点订阅端口: " port
+
+            # 提示输入节点名称
+            read -p "请输入节点名称: " name
+
+            # 判断是否要安装哪吒
+            read -p "是否需要一起安装哪吒？(y/n): " nezha
+
+            if [ "$nezha" == "y" ] || [ "$nezha" == "Y" ]; then
+
+                # 提示输入哪吒域名
+                read -p "请输入哪吒客户端的域名: " nezha_server
+
+                # 提示输入哪吒端口
+                read -p "请输入哪吒端口: " nezha_port 
+
+                # 提示输入哪吒密钥
+                read -p "请输入哪吒客户端密钥: " nezha_key
+
+                apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && NAME=$name PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
+            
+            else
+
+                apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && NAME=$name PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
+            fi
+            ;;
+
+          5)
+            clear
+
+            bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh)
+        
+            ;;
+
+          6)
+            clear
+
+            bash <(curl -Ls https://gitlab.com/rwkgyg/sing-box-yg/raw/main/sb.sh)
+        
+            ;;
+
+          7)
+            clear
+
+            wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh
+        
+            ;;
+
+          0)
+            break  # 跳出循环，退出菜单
+            ;;
+
+          *)
+            break  # 跳出循环，退出菜单
+            ;;
+      esac
+    done
+    ;; 
 
   00)
     cd ~
