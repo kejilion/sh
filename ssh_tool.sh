@@ -4811,8 +4811,13 @@ EOF
 
             # 提示输入订阅端口
             read -p "请输入节点订阅端口: " port
-                sudo ufw allow $port/tcp
+                echo "正在开放端口中..."
+                sleep 1
+                apt-get install -y iptables sudo
+                clear
+                sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
                 ipv4=$(curl -s4 ifconfig.co)
+                echo "$port 端口已开放"
                 echo "你的节点订阅链接为：http://$ipv4:$port" 
                 
             # 提示输入节点名称
