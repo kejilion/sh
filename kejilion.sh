@@ -455,7 +455,7 @@ case $choice in
 
     mem_info=$(free -b | awk 'NR==2{printf "%.2f/%.2f MB (%.2f%%)", $3/1024/1024, $2/1024/1024, $3*100/$2}')
 
-    disk_info=$(df -h | awk '$NF=="/"{printf "%d/%dGB (%s)", $3,$2,$5}')
+    disk_info=$(df -h | awk '$NF=="/"{printf "%s/%s (%s)", $3, $2, $5}')
 
     country=$(curl -s ipinfo.io/country)
     city=$(curl -s ipinfo.io/city)
@@ -1907,10 +1907,10 @@ case $choice in
         echo "------------------------"
         echo ""
         echo "站点目录"
-        echo "------------------------"        
+        echo "------------------------"
         echo -e "数据 \e[37m/home/web/html\e[0m     证书 \e[37m/home/web/certs\e[0m     配置 \e[37m/home/web/conf.d\e[0m"
-        echo "------------------------"  
-        echo ""               
+        echo "------------------------"
+        echo ""
         echo "操作"
         echo "------------------------"
         echo "1. 申请/更新域名证书               2. 更换站点域名"
@@ -2324,7 +2324,7 @@ case $choice in
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
       echo "23. Memos网页备忘录                     24. pandoranext潘多拉GPT镜像站"
-      echo "25. Nextcloud网盘"      
+      echo "25. Nextcloud网盘"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
