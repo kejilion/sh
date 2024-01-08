@@ -445,7 +445,7 @@ case $choice in
     if [ "$(uname -m)" == "x86_64" ]; then
       cpu_info=$(cat /proc/cpuinfo | grep 'model name' | uniq | sed -e 's/model name[[:space:]]*: //')
     else
-      cpu_info=$(lscpu | grep 'Model name' | sed -e 's/Model name[[:space:]]*: //')
+      cpu_info=$(lscpu | grep 'BIOS Model name' | awk -F': ' '{print $2}' | sed 's/^[ \t]*//')
     fi
 
     cpu_usage=$(top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}')
@@ -4162,9 +4162,25 @@ case $choice in
 
                   case $sub_choice in
                       1)
+                        apt purge -y 'linux-*xanmod1*'
+                        update-grub
+
+                        # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
+                        wget -qO - https://raw.githubusercontent.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
+
+                        # 步骤3：添加存储库
+                        echo 'deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] http://deb.xanmod.org releases main' | tee /etc/apt/sources.list.d/xanmod-release.list
+
+                        # version=$(wget -q https://dl.xanmod.org/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
+                        version=$(wget -q https://raw.githubusercontent.com/kejilion/sh/main/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
+
                         apt update -y
-                        apt upgrade -y
+                        apt install -y linux-xanmod-x64v$version
+
                         echo "XanMod内核已更新。重启后生效"
+                        rm -f /etc/apt/sources.list.d/xanmod-release.list
+                        rm -f check_x86-64_psabi.sh*
+
                         reboot
 
                           ;;
