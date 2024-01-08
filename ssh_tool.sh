@@ -4766,7 +4766,7 @@ EOF
   14)
     while true; do
       clear
-      echo "▶ 节点搭建脚本合集"
+      echo -e "\033[93m▶ 节点搭建脚本合集 \033[0m"
       echo "------------------------"
       echo "1. F佬ArgoX一键脚本"
       echo "2. F佬sing-box一键脚本"
@@ -4775,10 +4775,11 @@ EOF
       echo "5. 小绵羊一键reality+vmess+hy2"
       echo "6. 勇哥sing-box一键脚本"
       echo "7. F佬一键warp+脚本"
-      echo "8. 一键安装新版Xray面板"
-      echo "9. 一键安装伊朗版Xray面板"
-      echo "10. 一键安装OpenVPN"
-      echo "11. 一键安装M佬Hysteria2"
+      echo "8. 新版Xray面板一键脚本"
+      echo "9. 伊朗版Xray面板一键脚本"
+      echo "10. OpenVPN一键脚本"
+      echo "11. M佬Hysteria2一键脚本"
+      echo "12. M佬Juicity一键脚本"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4883,11 +4884,17 @@ EOF
         
             ;;  
 
-
           11)
             clear
 
             wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
+        
+            ;;     
+
+           12)
+            clear
+
+            wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
         
             ;;             
 
