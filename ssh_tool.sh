@@ -11,7 +11,7 @@ fi
 
 
 ipv4_address() {
-ipv4_address=$(curl -s4 ifconfig.co)
+ipv4=$(curl -s ipv4.ip.sb)
 
 }
 
@@ -4778,7 +4778,7 @@ EOF
       echo "8. 一键安装新版Xray面板"
       echo "9. 一键安装伊朗版Xray面板"
       echo "10. 一键安装OpenVPN"
-      echo "11. 一键安装Gost V3"
+      echo "11. 一键安装M佬Hysteria2"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4816,7 +4816,7 @@ EOF
                 apt-get install -y iptables sudo
                 clear
                 sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
-                ipv4=$(curl -s4 ifconfig.co)
+                ipv4=$(curl -s ipv4.ip.sb)
                 echo "$port 端口已开放"
                 echo "你的节点订阅链接为：http://$ipv4:$port" 
                 
@@ -4837,11 +4837,11 @@ EOF
                 # 提示输入哪吒密钥
                 read -p "请输入哪吒客户端密钥: " nezha_key
 
-                apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && NAME=$name PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
+                apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
             
             else
 
-                apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && NAME=$name PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
+                apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
             fi
             ;;
 
@@ -4890,7 +4890,7 @@ EOF
           11)
             clear
 
-            bash <(curl -fsSL https://github.com/go-gost/gost/raw/master/install.sh) --install
+            wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
         
             ;;             
 
