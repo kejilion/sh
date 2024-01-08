@@ -4819,9 +4819,6 @@ EOF
                 ipv4=$(curl -s ipv4.ip.sb)
                 echo "$port 端口已开放"
                 echo "你的节点订阅链接为：http://$ipv4:$port" 
-                
-            # 提示输入节点名称
-            # read -p "请输入节点名称: " name
 
             # 判断是否要安装哪吒
             read -p "是否需要一起安装哪吒探针？(y/n): " nezha
