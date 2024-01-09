@@ -34,6 +34,7 @@ check_arch(){
         exit 1
     fi
 }
+check_arch
 
 # 安装软件包
 install() {
