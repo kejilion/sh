@@ -65,6 +65,7 @@ install() {
 
     return 0
 }
+
 # 初始安装依赖包
 install_dependency() {
       clear
@@ -4894,23 +4895,15 @@ EOF
       case $sub_choice in
         1)
         clear
-
-        bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/argox/main/argox.sh)
-    
+            bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/argox/main/argox.sh)
         ;;
-
         2)
         clear
-
-        bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh)
-    
+            bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh)
         ;;
-
         3)
         clear
-
-        curl https://www.baipiao.eu.org/suoha.sh -o suoha.sh && bash suoha.sh
-    
+            curl https://www.baipiao.eu.org/suoha.sh -o suoha.sh && bash suoha.sh
         ;;            
 
         4)
@@ -4948,62 +4941,40 @@ EOF
             apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
         fi
         ;;
-
         5)
         clear
-
-        bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh)
-    
+            bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh)
         ;;
-
         6)
         clear
-
-        bash <(curl -Ls https://gitlab.com/rwkgyg/sing-box-yg/raw/main/sb.sh)
-    
+            bash <(curl -Ls https://gitlab.com/rwkgyg/sing-box-yg/raw/main/sb.sh)
         ;;
-
         7)
         clear
-
-        wget -N --no-check-certificate "https://raw.githubusercontent.com/mack-a/v2ray-agent/master/install.sh" && chmod 777 install.sh && bash install.sh
-    
+            wget -N --no-check-certificate "https://raw.githubusercontent.com/mack-a/v2ray-agent/master/install.sh" && chmod 777 install.sh && bash install.sh
         ;;
         8)
         clear
-
-        bash <(curl -Ls https://raw.githubusercontent.com/slobys/x-ui/main/install.sh)
-    
+            bash <(curl -Ls https://raw.githubusercontent.com/slobys/x-ui/main/install.sh)
         ;; 
 
         9)
         clear
-
-        bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
-    
+            bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
         ;;           
 
         10)
         clear
-
-        wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
-    
+            wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
         ;;  
-
         11)
         clear
-
-        wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
-    
+            wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
         ;;     
-
         12)
         clear
-
-        wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
-    
+            wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
         ;;             
-
         0)
         break  # 跳出循环，退出菜单
         ;;
@@ -5014,7 +4985,7 @@ EOF
       esac
     done
     ;; 
-
+# 脚本更新
   00)
     cd ~
     curl -sS -O https://raw.githubusercontent.com/eooce/ssh_tool/main/update_log.sh && chmod +x update_log.sh && ./update_log.sh
