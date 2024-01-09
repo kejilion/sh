@@ -1,5 +1,5 @@
 # vps一键脚本工具
-集成各种vps常用工具，去掉繁琐操作，加入常用节点搭建脚本合集
+集成各种vps常用工具，去掉繁琐操作，加入常用节点搭建脚本合集，一建脚本搞定所有
 
 ### vps一键脚本工具 的支持列表：
 >Debian
@@ -21,3 +21,6 @@ vps流量内存cpu控制一键脚本，配合cron定时任务使用，这是自�
 ```bash
 apt install -y net-tools bc && curl -sS -O https://raw.githubusercontent.com/eooce/ssh_tool/main/check_trafic.sh && chmod +x check_trafic.sh && bash check_trafic.sh
 ```
+
+###鸣谢
+kejilion
