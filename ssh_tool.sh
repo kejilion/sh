@@ -580,21 +580,16 @@ case $choice in
     clear
 
         update_system() {
-            case $PACKAGE_MANAGER in
-                "apt")
-                    $PACKAGE_MANAGER update -y && $PACKAGE_MANAGER full-upgrade -y
-                    ;;
-                "yum")
-                    $PACKAGE_MANAGER -y update
-                    ;;
-                "apk")
-                    $PACKAGE_MANAGER update
-                    ;;
-                *)
-                    echo "未知的包管理器!"
-                    exit 1
-                    ;;
-            esac
+            if [ "$PACKAGE_MANAGER" = "apt" ]; then
+                $PACKAGE_MANAGER update -y && sudo $PACKAGE_MANAGER full-upgrade -y
+            elif [ "$PACKAGE_MANAGER" = "yum" ]; then
+                $PACKAGE_MANAGER update -y
+            elif [ "$PACKAGE_MANAGER" = "apk" ]; then
+                $PACKAGE_MANAGER update
+            else
+                echo "未知的包管理器!"
+                exit 1
+            fi
         }
         update_system
     ;;
