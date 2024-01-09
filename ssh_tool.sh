@@ -4756,15 +4756,15 @@ EOF
                         # 检查是否已安装 nmap
                         if command -v nmap &> /dev/null; then
                             # nmap 已安装
-                            echo "nmap 已存在，无需安装"
+                            echo "nmap已存在，无需安装"
                             read -p "请输入你想要扫描的ipv4: " ip4
                             sleep 1
                             echo "开始扫描$ip4 开放的端口"
                             nmap -sS -p 1-65535 $ip4
                             echo "$ip4 端口已扫描完"
                         else
-                            # nmap 未安装，使用相应的包管理工具进行安装
-                            echo "nmap 不存在. 开始安装nmap..."
+                            # nmap未安装，使用相应的包管理工具进行安装
+                            echo "nmap不存在. 开始安装nmap..."
                             install "nmap"
                             sleep 1
                             clear
@@ -4781,7 +4781,7 @@ EOF
                         # 检查是否已安装 nmap
                         if command -v nmap &> /dev/null; then
                             # nmap 已安装
-                            echo "nmap 已存在，无需安装"
+                            echo "nmap已存在，无需安装"
                             read -p "请输入你想要扫描的ipv6: " ip6
                             sleep 1
                             echo "开始扫描$ip6 开放的端口"
@@ -4789,7 +4789,7 @@ EOF
                             echo "$ip6 端口已扫描完"
                         else
                             # nmap 未安装，使用相应的包管理工具进行安装
-                            echo "nmap 不存在. 开始安装nmap..."
+                            echo "nmap不存在. 开始安装nmap..."
                             install "nmap"
                             sleep 1
                             read -p "请输入你想要扫描的ipv6: " ip6
