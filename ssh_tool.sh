@@ -464,7 +464,7 @@ case $choice in
     # 函数: 获取IPv4和IPv6地址
     fetch_ip_addresses() {
       ipv4_address
-      ipv6_address=$(curl -s --max-time 2 ipv6.ip.sb)
+      ipv6_address
 
     }
 
