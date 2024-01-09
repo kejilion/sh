@@ -30,7 +30,7 @@ check_arch(){
         echo "当前系统为Alpine "
         PACKAGE_MANAGER="apk"
     else
-        echo "未知系统架构，请联系作者"
+        echo "未知的系统架构！"
         exit 1
     fi
 }
