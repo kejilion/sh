@@ -463,9 +463,7 @@ case $choice in
     clear
     # 函数: 获取IPv4和IPv6地址
     fetch_ip_addresses() {
-      ipv4_address
-      ipv6_address
-
+      ip_address
     }
 
     # 获取IP地址
