@@ -9,14 +9,34 @@ else
     clear
 fi
 
-
-ipv4_address() {
-ipv4=$(curl -s ipv4.ip.sb)
-
+# 获取当前服务器ipv4和ipv6
+ip_address() {
+    ipv4_address=$(curl -s ipv4.ip.sb)
+    ipv6_address=$(curl -s --max-time 2 ipv6.ip.sb)
 }
 
+# 判断系统架构，选择对应安装命令
+check_arch(){
+    if [ -f /etc/debian_version ]; then
+        # Debian 或 Ubuntu 系统，使用 apt
+        echo "当前系统为Debian或Ubuntu"
+        PACKAGE_MANAGER="apt"
+    elif [ -f /etc/redhat-release ]; then
+        # CentOS 系统，使用 yum
+        echo "当前系统为centos"
+        PACKAGE_MANAGER="yum"
+    elif [ -f /etc/alpine-release ]; then
+        # Alpine 系统，使用 apk
+        echo "当前系统为Alpine "
+        PACKAGE_MANAGER="apk"
+    else
+        echo "未知系统架构，请联系作者"
+        exit 1
+    fi
+}
+check_arch
 
-
+# 安装软件包
 install() {
     if [ $# -eq 0 ]; then
         echo "未提供软件包参数!"
@@ -25,26 +45,33 @@ install() {
 
     for package in "$@"; do
         if ! command -v "$package" &>/dev/null; then
-            if command -v apt &>/dev/null; then
-                apt update -y && apt install -y "$package"
-            elif command -v yum &>/dev/null; then
-                yum -y update && yum -y install "$package"
-            else
-                echo "未知的包管理器!"
-                return 1
-            fi
+            case $PACKAGE_MANAGER in
+                "apt")
+                    $PACKAGE_MANAGER install -y "$package"
+                    ;;
+                "yum")
+                    $PACKAGE_MANAGER install -y "$package"
+                    ;;
+                "apk")
+                    $PACKAGE_MANAGER add "$package"
+                    ;;
+                *)
+                    echo "未知的包管理器!"
+                    return 1
+                    ;;
+            esac
         fi
     done
 
     return 0
 }
-
+# 初始安装依赖包
 install_dependency() {
       clear
       install wget socat unzip tar
 }
 
-
+# 卸载软件包
 remove() {
     if [ $# -eq 0 ]; then
         echo "未提供软件包参数!"
@@ -56,6 +83,8 @@ remove() {
             apt purge -y "$package"
         elif command -v yum &>/dev/null; then
             yum remove -y "$package"
+        elif command -v apk &>/dev/null; then
+            apk del "$package"
         else
             echo "未知的包管理器!"
             return 1
@@ -98,8 +127,7 @@ check_port() {
             echo -e "\e[1;31m端口 $PORT 已被占用，无法安装环境，卸载以下程序后重试！\e[0m"
             echo "$result"
             break_end
-            kejilion
-
+            ssh_tool
         fi
     else
         echo ""
@@ -276,8 +304,8 @@ nginx_status() {
 
 
 add_yuming() {
-      ipv4_address
-      echo -e "先将域名解析到本机IP: \033[33m$ipv4_address\033[0m"
+      ip_address
+      echo -e "先将域名解析到本机IP: \033[33m$ipv4_address  $ipv6_address\033[0m"
       read -p "请输入你解析的域名: " yuming
 }
 
@@ -396,27 +424,28 @@ fi
 }
 
 
-
-
-
 while true; do
 clear
-
-echo "                                "
-echo "                                "
-printf "\033[93;1m%s\033[0m\n" "VPS一键脚本工具 v8.8.8 (支持Ubuntu/Debian/CentOS系统)"
+echo -e "\033[96m                                             "
+echo " ##..## #####   ####       ######  ####   ####..##.     " 
+echo " ##..## ##..## ##            ##   ##..## ##..##.##.     " 
+echo " ##..## #####   ####.        ##   ##..## ##..##.##.     " 
+echo "  ####  ##         ##        ##   ##..## ##..##.##.     " 
+echo "   ##   ##     ####          ##    ####   ####  ######  "  
+echo "                                                        "   
+printf "\033[93;1m%s\033[0m\n" "VPS一键脚本工具 v8.8.8 (支持Ubuntu/Debian/CentOS/Alpine)"
 echo -e ""
-echo "快捷键已设置成k，下次运行输入k即可"
+echo -e "\033[96m快捷键已设置为\033[93mk\033[96m,下次运行输入\033[93mk\033[96m可快速启动此脚本\033[0m"
 echo "------------------------"
-echo "1. 系统信息查询"
-echo "2. 系统更新"
-echo "3. 系统清理"
-echo "4. 常用工具 ▶"
-echo "5. BBR管理 ▶"
-echo "6. Docker管理 ▶ "
-echo "7. WARP管理 ▶ 解锁ChatGPT Netflix"
-echo "8. 测试脚本合集 ▶ "
-echo "9. 甲骨文脚本合集 ▶ "
+echo " 1. 本机信息"
+echo " 2. 系统更新"
+echo " 3. 系统清理"
+echo " 4. 常用工具 ▶"
+echo " 5. BBR管理 ▶"
+echo " 6. Docker管理 ▶ "
+echo " 7. WARP管理 ▶ 解锁ChatGPT Netflix"
+echo " 8. 测试脚本合集 ▶ "
+echo " 9. 甲骨文脚本合集 ▶ "
 echo -e "\033[93m10. LDNMP建站 ▶ \033[0m"
 echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
@@ -425,7 +454,7 @@ echo -e "\033[93m14. 节点搭建脚本合集 ▶ \033[0m"
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
-echo "0. 退出脚本"
+echo " 0. 退出脚本"
 echo "------------------------"
 read -p "请输入你的选择: " choice
 
@@ -608,15 +637,15 @@ case $choice in
       clear
       echo "▶ 安装常用工具"
       echo "------------------------"
-      echo "1. curl 下载工具"
-      echo "2. wget 下载工具"
-      echo "3. sudo 超级管理权限工具"
-      echo "4. socat 通信连接工具 （申请域名证书必备）"
-      echo "5. htop 系统监控工具"
-      echo "6. iftop 网络流量监控工具"
-      echo "7. unzip ZIP压缩解压工具"
-      echo "8. tar GZ压缩解压工具"
-      echo "9. tmux 多路后台运行工具"
+      echo " 1. curl 下载工具"
+      echo " 2. wget 下载工具"
+      echo " 3. sudo 超级管理权限工具"
+      echo " 4. socat 通信连接工具 （申请域名证书必备）"
+      echo " 5. htop 系统监控工具"
+      echo " 6. iftop 网络流量监控工具"
+      echo " 7. unzip ZIP压缩解压工具"
+      echo " 8. tar GZ压缩解压工具"
+      echo " 9. tmux 多路后台运行工具"
       echo "10. ffmpeg 视频编码直播推流工具"
       echo "11. btop 现代化监控工具"
       echo "12. ranger 文件管理工具"
@@ -636,7 +665,7 @@ case $choice in
       echo "41. 安装指定工具"
       echo "42. 卸载指定工具"
       echo "------------------------"
-      echo "0. 返回主菜单"
+      echo " 0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
 
@@ -873,12 +902,12 @@ case $choice in
                   echo ""
                   echo "容器操作"
                   echo "------------------------"
-                  echo "1. 创建新的容器"
+                  echo " 1. 创建新的容器"
                   echo "------------------------"
-                  echo "2. 启动指定容器             6. 启动所有容器"
-                  echo "3. 停止指定容器             7. 暂停所有容器"
-                  echo "4. 删除指定容器             8. 删除所有容器"
-                  echo "5. 重启指定容器             9. 重启所有容器"
+                  echo " 2. 启动指定容器             6. 启动所有容器"
+                  echo " 3. 停止指定容器             7. 暂停所有容器"
+                  echo " 4. 删除指定容器             8. 删除所有容器"
+                  echo " 5. 重启指定容器             9. 重启所有容器"
                   echo "------------------------"
                   echo "11. 进入指定容器           12. 查看容器日志           13. 查看容器网络"
                   echo "------------------------"
@@ -1390,16 +1419,16 @@ case $choice in
     clear
     echo -e "\033[33m▶ LDNMP建站\033[0m"
     echo  "------------------------"
-    echo  "1. 安装LDNMP环境"
+    echo  " 1. 安装LDNMP环境"
     echo  "------------------------"
-    echo  "2. 安装WordPress"
-    echo  "3. 安装Discuz论坛"
-    echo  "4. 安装可道云桌面"
-    echo  "5. 安装苹果CMS网站"
-    echo  "6. 安装独角数发卡网"
-    echo  "7. 安装BingChatAI聊天网站"
-    echo  "8. 安装flarum论坛网站"
-    echo  "9. 安装Bitwarden密码管理平台"
+    echo  " 2. 安装WordPress"
+    echo  " 3. 安装Discuz论坛"
+    echo  " 4. 安装可道云桌面"
+    echo  " 5. 安装苹果CMS网站"
+    echo  " 6. 安装独角数发卡网"
+    echo  " 7. 安装BingChatAI聊天网站"
+    echo  " 8. 安装flarum论坛网站"
+    echo  " 9. 安装Bitwarden密码管理平台"
     echo  "10. 安装Halo博客网站"
     echo  "11. 安装typecho轻量博客网站"
     echo  "------------------------"
@@ -1419,7 +1448,7 @@ case $choice in
     echo  "37. 更新LDNMP环境"
     echo  "38. 卸载LDNMP环境"
     echo  "------------------------"
-    echo  "0. 返回主菜单"
+    echo  " 0. 返回主菜单"
     echo  "------------------------"
     read -p "请输入你的选择: " sub_choice
 
@@ -2307,20 +2336,20 @@ case $choice in
       clear
       echo "▶ 面板工具"
       echo "------------------------"
-      echo "1. 宝塔面板官方版                       2. aaPanel宝塔国际版"
-      echo "3. 1Panel新一代管理面板                 4. NginxProxyManager可视化面板"
-      echo "5. AList多存储文件列表程序              6. Ubuntu远程桌面网页版"
-      echo "7. 哪吒探针VPS监控面板                  8. QB离线BT磁力下载面板"
-      echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
+      echo " 1. 宝塔面板官方版                       2. aaPanel宝塔国际版"
+      echo " 3. 1Panel新一代管理面板                 4. NginxProxyManager可视化面板"
+      echo " 5. AList多存储文件列表程序              6. Ubuntu远程桌面网页版"
+      echo " 7. 哪吒探针VPS监控面板                  8. QB离线BT磁力下载面板"
+      echo " 9. Poste.io邮件服务器程序              10. RocketChat多人在线聊天系统"
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
-      echo "13. Cloudreve网盘系统                   14. 简单图床图片管理程序"
+      echo "13. Cloudreve网盘系统                  14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
-      echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
-      echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
-      echo "21. VScode网页版                        22. UptimeKuma监控工具"
-      echo "23. Memos网页备忘录                     24. pandoranext潘多拉GPT镜像站"
+      echo "17. AdGuardHome去广告软件              18. onlyoffice在线办公OFFICE"
+      echo "19. 雷池WAF防火墙面板                  20. portainer容器管理面板"
+      echo "21. VScode网页版                       22. UptimeKuma监控工具"
+      echo "23. Memos网页备忘录                    24. pandoranext潘多拉GPT镜像站"
       echo "------------------------"
-      echo "0. 返回主菜单"
+      echo " 0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
 
@@ -3529,16 +3558,16 @@ case $choice in
       clear
       echo "▶ 系统工具"
       echo "------------------------"
-      echo "1. 设置脚本启动快捷键"
+      echo " 1. 设置脚本启动快捷键"
       echo "------------------------"
-      echo "2. 修改ROOT密码"
-      echo "3. 开启ROOT密码登录模式"
-      echo "4. 安装Python最新版"
-      echo "5. 开放所有端口"
-      echo "6. 修改SSH连接端口"
-      echo "7. 优化DNS地址"
-      echo "8. 一键重装系统"
-      echo "9. 禁用ROOT账户创建新账户"
+      echo " 2. 修改ROOT密码"
+      echo " 3. 开启ROOT密码登录模式"
+      echo " 4. 安装Python最新版"
+      echo " 5. 开放所有端口"
+      echo " 6. 修改SSH连接端口"
+      echo " 7. 优化DNS地址"
+      echo " 8. 一键重装系统"
+      echo " 9. 禁用ROOT账户创建新账户"
       echo "10. 切换优先ipv4/ipv6"
       echo "11. 查看端口占用状态"
       echo "12. 修改虚拟内存大小"
@@ -3550,12 +3579,13 @@ case $choice in
       echo "18. 修改主机名"
       echo "19. 切换系统更新源"
       echo -e "20. 定时任务管理 \033[33mNEW\033[0m"
+      echo "21. ip端口扫描"
       echo "------------------------"
-      echo "21. 留言板"
+      echo "22. 留言板"
       echo "------------------------"
       echo "99. 重启服务器"
       echo "------------------------"
-      echo "0. 返回主菜单"
+      echo " 0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
 
@@ -3570,13 +3600,14 @@ case $choice in
 
           2)
               clear
-              echo "设置你的ROOT密码"
-              passwd
+               read -p "请输入你的新密码: " passwd
+               sleep 1
+               echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
               ;;
           3)
               clear
-              echo "设置你的ROOT密码"
-              passwd
+              read -p "请输入设置你的root密码: " passwd
+              echo "root:$passwd" | chpasswd && echo "Root密码设置成功" || echo "Root密码修改失败"
               sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
               sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
               service sshd restart
@@ -3606,7 +3637,7 @@ case $choice in
             # 系统检测
             OS=$(cat /etc/os-release | grep -o -E "Debian|Ubuntu|CentOS" | head -n 1)
 
-            if [[ $OS == "Debian" || $OS == "Ubuntu" || $OS == "CentOS" ]]; then
+            if [[ $OS == "Debian" || $OS == "Ubuntu" || $OS == "CentOS" || $OS == "Alpine" ]]; then
                 echo -e "检测到你的系统是 ${YELLOW}${OS}${NC}"
             else
                 echo -e "${RED}很抱歉，你的系统不受支持！${NC}"
@@ -4084,10 +4115,10 @@ case $choice in
                 echo ""
                 echo "时区切换"
                 echo "亚洲------------------------"
-                echo "1. 中国上海时间              2. 中国香港时间"
-                echo "3. 日本东京时间              4. 韩国首尔时间"
-                echo "5. 新加坡时间                6. 印度加尔各答时间"
-                echo "7. 阿联酋迪拜时间            8. 澳大利亚悉尼时间"
+                echo " 1. 中国上海时间              2. 中国香港时间"
+                echo " 3. 日本东京时间              4. 韩国首尔时间"
+                echo " 5. 新加坡时间                6. 印度加尔各答时间"
+                echo " 7. 阿联酋迪拜时间            8. 澳大利亚悉尼时间"
                 echo "欧洲------------------------"
                 echo "11. 英国伦敦时间             12. 法国巴黎时间"
                 echo "13. 德国柏林时间             14. 俄罗斯莫斯科时间"
@@ -4097,7 +4128,7 @@ case $choice in
                 echo "23. 加拿大时间               24. 墨西哥时间"
                 echo "25. 巴西时间                 26. 阿根廷时间"
                 echo "------------------------"
-                echo "0. 返回上一级选单"
+                echo " 0. 返回上一级选单"
                 echo "------------------------"
                 read -p "请输入你的选择: " sub_choice
 
@@ -4706,8 +4737,79 @@ EOF
 
               ;;
 
-
           21)
+
+            while true; do
+                clear
+                echo "ip端口扫描"
+                echo "------------------------"
+                echo "1. ipv4"
+                echo "2. ipv6"
+                echo "------------------------"
+                echo "0. 返回上一级选单"
+                echo "------------------------"
+                read -p "请输入你的选择: " sub_choice   
+
+                case $sub_choice in
+                    1)
+                        clear
+                        # 检查是否已安装 nmap
+                        if command -v nmap &> /dev/null; then
+                            # nmap 已安装
+                            echo "nmap 已存在，无需安装"
+                            read -p "请输入你想要扫描的ipv4: " ip4
+                            sleep 1
+                            echo "开始扫描$ip4 开放的端口"
+                            nmap -sS -p 1-65535 $ip4
+                            echo "$ip4 端口已扫描完"
+                        else
+                            # nmap 未安装，使用相应的包管理工具进行安装
+                            echo "nmap 不存在. 开始安装nmap..."
+                            install "nmap"
+                            sleep 1
+                            clear
+                            read -p "请输入你想要扫描的ipv4: " ip4
+                            sleep 1
+                            echo "开始扫描$ip4 开放的端口"
+                            nmap -sS -p 1-65535 $ip4
+                            echo "$ip4 端口已扫描完"
+                        fi
+                        ;;
+                    
+                    2)
+                        clear
+                        # 检查是否已安装 nmap
+                        if command -v nmap &> /dev/null; then
+                            # nmap 已安装
+                            echo "nmap 已存在，无需安装"
+                            read -p "请输入你想要扫描的ipv6: " ip6
+                            sleep 1
+                            echo "开始扫描$ip6 开放的端口"
+                            nmap -6 -sS -p 1-65535 $ip6
+                            echo "$ip6 端口已扫描完"
+                        else
+                            # nmap 未安装，使用相应的包管理工具进行安装
+                            echo "nmap 不存在. 开始安装nmap..."
+                            install "nmap"
+                            sleep 1
+                            read -p "请输入你想要扫描的ipv6: " ip6
+                            sleep 1
+                            echo "开始扫描$ip6 开放的端口"
+                            nmap -6 -sS -p 1-65535 $ip6
+                            echo "$ip6 端口已扫描完"
+                        fi
+                        ;;
+                    0)
+                    break  # 跳出循环，退出菜单
+                    ;;
+
+                    *)
+                    break  # 跳出循环，退出菜单
+                    ;; 
+                esac
+            done
+            ;;
+          22)
             clear
             install sshpass
 
@@ -4768,143 +4870,143 @@ EOF
       clear
       echo -e "\033[93m▶ 节点搭建脚本合集 \033[0m"
       echo "------------------------"
-      echo "1. F佬ArgoX一键脚本"
-      echo "2. F佬sing-box一键脚本"
-      echo "3. suoha一键argo脚本"
-      echo "4. 一键nodejs-argo节点+哪吒+订阅"
-      echo "5. 小绵羊一键reality+vmess+hy2"
-      echo "6. 勇哥sing-box一键脚本"
-      echo "7. F佬一键warp+脚本"
-      echo "8. 新版Xray面板一键脚本"
-      echo "9. 伊朗版Xray面板一键脚本"
+      echo " 1. F佬ArgoX一键脚本"
+      echo " 2. F佬sing-box一键脚本"
+      echo " 3. suoha一键argo脚本"
+      echo " 4. 一键老王nodejs-argo节点+哪吒+订阅"
+      echo " 5. 小绵羊一键reality+vmess+hy2"
+      echo " 6. 勇哥sing-box一键脚本"
+      echo " 7. V2ray-agent八合一"
+      echo " 8. 新版Xray面板一键脚本"
+      echo " 9. 伊朗版Xray面板一键脚本"
       echo "10. OpenVPN一键脚本"
       echo "11. M佬Hysteria2一键脚本"
       echo "12. M佬Juicity一键脚本"
-      echo "------------------------"
-      echo "0. 返回主菜单"
+      echo "------------------------"  
+      echo " 0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice   
 
       case $sub_choice in
-          1)
-            clear
+        1)
+        clear
 
-            bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/argox/main/argox.sh)
+        bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/argox/main/argox.sh)
+    
+        ;;
+
+        2)
+        clear
+
+        bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh)
+    
+        ;;
+
+        3)
+        clear
+
+        curl https://www.baipiao.eu.org/suoha.sh -o suoha.sh && bash suoha.sh
+    
+        ;;            
+
+        4)
+        clear
+
+        # 提示输入订阅端口
+        read -p "请输入节点订阅端口: " port
+            echo "正在开放端口中..."
+            sleep 1
+            apt-get install -y iptables sudo
+            clear
+            sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
+            ipv4=$(curl -s ipv4.ip.sb)
+            echo "$port 端口已开放"
+            echo "你的节点订阅链接为：http://$ipv4:$port/sub" 
+
+        # 判断是否要安装哪吒
+        read -p "是否需要一起安装哪吒探针？(y/n): " nezha
+
+        if [ "$nezha" == "y" ] || [ "$nezha" == "Y" ]; then
+
+            # 提示输入哪吒域名
+            read -p "请输入哪吒客户端的域名: " nezha_server
+
+            # 提示输入哪吒端口
+            read -p "请输入哪吒端口: " nezha_port 
+
+            # 提示输入哪吒密钥
+            read -p "请输入哪吒客户端密钥: " nezha_key
+
+            apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
         
-            ;;
+        else
 
-          2)
-            clear
+            apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
+        fi
+        ;;
 
-            bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh)
-        
-            ;;
+        5)
+        clear
 
-          3)
-            clear
+        bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh)
+    
+        ;;
 
-            curl https://www.baipiao.eu.org/suoha.sh -o suoha.sh && bash suoha.sh
-        
-            ;;            
+        6)
+        clear
 
-          4)
-            clear
+        bash <(curl -Ls https://gitlab.com/rwkgyg/sing-box-yg/raw/main/sb.sh)
+    
+        ;;
 
-            # 提示输入订阅端口
-            read -p "请输入节点订阅端口: " port
-                echo "正在开放端口中..."
-                sleep 1
-                apt-get install -y iptables sudo
-                clear
-                sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
-                ipv4=$(curl -s ipv4.ip.sb)
-                echo "$port 端口已开放"
-                echo "你的节点订阅链接为：http://$ipv4:$port/sub" 
+        7)
+        clear
 
-            # 判断是否要安装哪吒
-            read -p "是否需要一起安装哪吒探针？(y/n): " nezha
+        wget -N --no-check-certificate "https://raw.githubusercontent.com/mack-a/v2ray-agent/master/install.sh" && chmod 777 install.sh && bash install.sh
+    
+        ;;
+        8)
+        clear
 
-            if [ "$nezha" == "y" ] || [ "$nezha" == "Y" ]; then
+        bash <(curl -Ls https://raw.githubusercontent.com/slobys/x-ui/main/install.sh)
+    
+        ;; 
 
-                # 提示输入哪吒域名
-                read -p "请输入哪吒客户端的域名: " nezha_server
+        9)
+        clear
 
-                # 提示输入哪吒端口
-                read -p "请输入哪吒端口: " nezha_port 
+        bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+    
+        ;;           
 
-                # 提示输入哪吒密钥
-                read -p "请输入哪吒客户端密钥: " nezha_key
+        10)
+        clear
 
-                apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
-            
-            else
+        wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
+    
+        ;;  
 
-                apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
-            fi
-            ;;
+        11)
+        clear
 
-          5)
-            clear
+        wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
+    
+        ;;     
 
-            bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh)
-        
-            ;;
+        12)
+        clear
 
-          6)
-            clear
+        wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
+    
+        ;;             
 
-            bash <(curl -Ls https://gitlab.com/rwkgyg/sing-box-yg/raw/main/sb.sh)
-        
-            ;;
+        0)
+        break  # 跳出循环，退出菜单
+        ;;
 
-          7)
-            clear
-
-            wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh
-        
-            ;;
-          8)
-            clear
-
-            bash <(curl -Ls https://raw.githubusercontent.com/slobys/x-ui/main/install.sh)
-        
-            ;; 
-
-          9)
-            clear
-
-            bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
-        
-            ;;           
-
-          10)
-            clear
-
-            wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
-        
-            ;;  
-
-          11)
-            clear
-
-            wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
-        
-            ;;     
-
-           12)
-            clear
-
-            wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
-        
-            ;;             
-
-          0)
-            break  # 跳出循环，退出菜单
-            ;;
-
-          *)
-            break  # 跳出循环，退出菜单
-            ;;
+        *)
+        break  # 跳出循环，退出菜单
+        ;;
       esac
     done
     ;; 
