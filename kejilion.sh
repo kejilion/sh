@@ -9,10 +9,9 @@ else
     clear
 fi
 
-
-ipv4_address() {
+ip_address() {
 ipv4_address=$(curl -s ipv4.ip.sb)
-
+ipv6_address=$(curl -s --max-time 0.7 ipv6.ip.sb)
 }
 
 
@@ -276,8 +275,8 @@ nginx_status() {
 
 
 add_yuming() {
-      ipv4_address
-      echo -e "先将域名解析到本机IP: \033[33m$ipv4_address\033[0m"
+      ip_address
+      echo -e "先将域名解析到本机IP: \033[33m$ipv4_address  $ipv6_address\033[0m"
       read -p "请输入你解析的域名: " yuming
 }
 
@@ -293,7 +292,7 @@ add_db() {
 }
 
 reverse_proxy() {
-      ipv4_address
+      ip_address
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0.0.0.0/$ipv4_address/g" /home/web/conf.d/$yuming.conf
@@ -316,7 +315,7 @@ docker_app() {
 if docker inspect "$docker_name" &>/dev/null; then
     clear
     echo "$docker_name 已安装，访问地址: "
-    ipv4_address
+    ip_address
     echo "http:$ipv4_address:$docker_port"
     echo ""
     echo "应用操作"
@@ -339,7 +338,7 @@ if docker inspect "$docker_name" &>/dev/null; then
             echo "$docker_name 已经安装完成"
             echo "------------------------"
             # 获取外部 IP 地址
-            ipv4_address
+            ip_address
             echo "您可以使用以下地址访问:"
             echo "http:$ipv4_address:$docker_port"
             $docker_use
@@ -378,7 +377,7 @@ else
             echo "$docker_name 已经安装完成"
             echo "------------------------"
             # 获取外部 IP 地址
-            ipv4_address
+            ip_address
             echo "您可以使用以下地址访问:"
             echo "http:$ipv4_address:$docker_port"
             $docker_use
@@ -406,7 +405,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.1.7 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.1.8 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -433,14 +432,7 @@ case $choice in
   1)
     clear
     # 函数: 获取IPv4和IPv6地址
-    fetch_ip_addresses() {
-      ipv4_address
-      ipv6_address=$(curl -s --max-time 2 ipv6.ip.sb)
-
-    }
-
-    # 获取IP地址
-    fetch_ip_addresses
+    ip_address
 
     if [ "$(uname -m)" == "x86_64" ]; then
       cpu_info=$(cat /proc/cpuinfo | grep 'model name' | uniq | sed -e 's/model name[[:space:]]*: //')
@@ -1791,9 +1783,8 @@ case $choice in
 
       22)
       clear
-      ipv4_address
-      echo -e "先将域名解析到本机IP: \033[33m$ipv4_address\033[0m"
-      read -p "请输入你的域名: " yuming
+      ip_address
+      add_yuming
       read -p "请输入跳转域名: " reverseproxy
 
       install_ssltls
@@ -1813,9 +1804,8 @@ case $choice in
 
       23)
       clear
-      ipv4_address
-      echo -e "先将域名解析到本机IP: \033[33m$ipv4_address\033[0m"
-      read -p "请输入你的域名: " yuming
+      ip_address
+      add_yuming
       read -p "请输入你的反代IP: " reverseproxy
       read -p "请输入你的反代端口: " port
 
@@ -2229,7 +2219,7 @@ case $choice in
                   2)
 
                   # nginx调优
-                  sed -i 's/worker_connections.*/worker_connections 131072;/' /home/web/nginx.conf
+                  sed -i 's/worker_connections.*/worker_connections 8129;/' /home/web/nginx.conf
 
                   # php调优
                   wget -O /home/www.conf https://raw.githubusercontent.com/kejilion/sh/main/www.conf
@@ -2771,7 +2761,7 @@ case $choice in
                     mkdir -p /home/docker      # 递归创建目录
                     echo "$yuming" > /home/docker/mail.txt  # 写入文件
                     echo "------------------------"
-                    ipv4_address
+                    ip_address
                     echo "先解析这些DNS记录"
                     echo "A           mail            $ipv4_address"
                     echo "CNAME       imap            $yuming"
@@ -2818,7 +2808,7 @@ case $choice in
 
                     clear
                     echo "rocket.chat已安装，访问地址: "
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:3897"
                     echo ""
 
@@ -2840,7 +2830,7 @@ case $choice in
                             docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
                             clear
-                            ipv4_address
+                            ip_address
                             echo "rocket.chat已经安装完成"
                             echo "------------------------"
                             echo "多等一会，您可以使用以下地址访问rocket.chat:"
@@ -2888,7 +2878,7 @@ case $choice in
 
                     clear
 
-                    ipv4_address
+                    ip_address
                     echo "rocket.chat已经安装完成"
                     echo "------------------------"
                     echo "多等一会，您可以使用以下地址访问rocket.chat:"
@@ -2949,7 +2939,7 @@ case $choice in
 
                     clear
                     echo "cloudreve已安装，访问地址: "
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:5212"
                     echo ""
 
@@ -2978,7 +2968,7 @@ case $choice in
                             echo "cloudreve已经安装完成"
                             echo "------------------------"
                             echo "您可以使用以下地址访问cloudreve:"
-                            ipv4_address
+                            ip_address
                             echo "http:$ipv4_address:5212"
                             sleep 3
                             docker logs cloudreve
@@ -3022,7 +3012,7 @@ case $choice in
                     echo "cloudreve已经安装完成"
                     echo "------------------------"
                     echo "您可以使用以下地址访问cloudreve:"
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:5212"
                     sleep 3
                     docker logs cloudreve
@@ -3138,7 +3128,7 @@ case $choice in
 
                     clear
                     echo "雷池已安装，访问地址: "
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:9443"
                     echo ""
 
@@ -3189,7 +3179,7 @@ case $choice in
                     echo "雷池WAF面板已经安装完成"
                     echo "------------------------"
                     echo "您可以使用以下地址访问:"
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:9443"
                     echo ""
 
@@ -3279,7 +3269,7 @@ case $choice in
             if docker inspect "$docker_name" &>/dev/null; then
                 clear
                 echo "$docker_name 已安装，访问地址: "
-                ipv4_address
+                ip_address
                 echo "http:$ipv4_address:$docker_port"
                 echo ""
                 echo "应用操作"
@@ -3303,7 +3293,7 @@ case $choice in
                         echo "$docker_name 已经安装完成"
                         echo "------------------------"
                         # 获取外部 IP 地址
-                        ipv4_address
+                        ip_address
                         echo "您可以使用以下地址访问:"
                         echo "http:$ipv4_address:$docker_port"
 
@@ -3366,7 +3356,7 @@ case $choice in
                         echo "$docker_name 已经安装完成"
                         echo "------------------------"
                         # 获取外部 IP 地址
-                        ipv4_address
+                        ip_address
                         echo "您可以使用以下地址访问:"
                         echo "http:$ipv4_address:$docker_port"
 
