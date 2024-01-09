@@ -597,21 +597,37 @@ case $choice in
     clear
         clean_system() {
             if [ "$PACKAGE_MANAGER" = "apt" ]; then
+                # 清理无用的包和缓存
                 $PACKAGE_MANAGER autoremove --purge -y 
                 $PACKAGE_MANAGER clean -y
                 $PACKAGE_MANAGER autoclean -y
+                # 清理包配置文件
                 $PACKAGE_MANAGER remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
+                # 清理日志
                 journalctl --vacuum-time=1s
                 journalctl --vacuum-size=50M
+                # 移除不再需要的内核
                 $PACKAGE_MANAGER remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
             elif [ "$PACKAGE_MANAGER" = "yum" ]; then
+                # 清理无用的包和缓存
                 $PACKAGE_MANAGER autoremove -y
                 $PACKAGE_MANAGER clean all
+                # 清理日志
                 journalctl --vacuum-time=1s
                 journalctl --vacuum-size=50M
+                # 移除不再需要的内核
                 $PACKAGE_MANAGER remove $(rpm -q kernel | grep -v $(uname -r)) -y
             elif [ "$PACKAGE_MANAGER" = "apk" ]; then
-                $PACKAGE_MANAGER update
+                # 清理无用的包和缓存
+                $PACKAGE_MANAGER autoremove -y
+                $PACKAGE_MANAGER clean
+                # 清理包配置文件
+                $PACKAGE_MANAGER del $(apk info -e | grep '^r' | awk '{print $1}') -y
+                # 清理日志文件
+                journalctl --vacuum-time=1s
+                journalctl --vacuum-size=50M
+                # 移除不再需要的内核
+                $PACKAGE_MANAGER remove $(apk info -vv | grep -E 'linux-[0-9]' | grep -v $(uname -r) | awk '{print $1}') -y
             else
                 echo "未知的包管理器!"
                 exit 1
