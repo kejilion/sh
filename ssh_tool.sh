@@ -460,11 +460,7 @@ read -p "请输入你的选择: " choice
 case $choice in
   1)
     clear
-    # 获取IPv4和IPv6地址
-    fetch_ip_addresses() {
-      ip_address
-    }
-    fetch_ip_addresses
+    ip_address
     
     if [ "$(uname -m)" == "x86_64" ]; then
       cpu_info=$(cat /proc/cpuinfo | grep 'model name' | uniq | sed -e 's/model name[[:space:]]*: //')
