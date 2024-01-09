@@ -34,7 +34,6 @@ check_arch(){
         exit 1
     fi
 }
-check_arch
 
 # 安装软件包
 install() {
@@ -465,7 +464,8 @@ case $choice in
     fetch_ip_addresses() {
       ip_address
     }
-
+    fetch_ip_addresses
+    
     if [ "$(uname -m)" == "x86_64" ]; then
       cpu_info=$(cat /proc/cpuinfo | grep 'model name' | uniq | sed -e 's/model name[[:space:]]*: //')
     else
