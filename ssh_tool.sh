@@ -4805,11 +4805,11 @@ EOF
                         fi
                         ;;
                     0)
-                    break  # 跳出循环，退出菜单
+                        break  # 跳出循环，退出菜单
                     ;;
 
                     *)
-                    break  # 跳出循环，退出菜单
+                        break  # 跳出循环，退出菜单
                     ;; 
                 esac
             done
@@ -4976,7 +4976,7 @@ EOF
             wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
         ;;             
         0)
-        break  # 跳出循环，退出菜单
+            kejilion
         ;;
 
         *)
