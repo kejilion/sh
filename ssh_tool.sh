@@ -18,15 +18,15 @@ ip_address() {
 # 判断系统架构，选择对应安装命令
 check_arch(){
     if [ -f /etc/debian_version ]; then
-        # Debian 或 Ubuntu 系统，使用 apt
+        # Debian 或 Ubuntu 系统，使用 apt命令
         echo "当前系统为Debian或Ubuntu"
         PACKAGE_MANAGER="apt"
     elif [ -f /etc/redhat-release ]; then
-        # CentOS 系统，使用 yum
+        # CentOS 系统，使用 yum命令
         echo "当前系统为centos"
         PACKAGE_MANAGER="yum"
     elif [ -f /etc/alpine-release ]; then
-        # Alpine 系统，使用 apk
+        # Alpine 系统，使用 apk命令
         echo "当前系统为Alpine "
         PACKAGE_MANAGER="apk"
     else
@@ -34,7 +34,6 @@ check_arch(){
         exit 1
     fi
 }
-check_arch
 
 # 安装软件包
 install() {
@@ -461,13 +460,10 @@ read -p "请输入你的选择: " choice
 case $choice in
   1)
     clear
-    # 函数: 获取IPv4和IPv6地址
+    # 获取IPv4和IPv6地址
     fetch_ip_addresses() {
       ip_address
     }
-
-    # 获取IP地址
-    fetch_ip_addresses
 
     if [ "$(uname -m)" == "x86_64" ]; then
       cpu_info=$(cat /proc/cpuinfo | grep 'model name' | uniq | sed -e 's/model name[[:space:]]*: //')
@@ -585,18 +581,25 @@ case $choice in
   2)
     clear
 
-    # Update system on Debian-based systems
-    if [ -f "/etc/debian_version" ]; then
-        apt update -y && apt full-upgrade -y
-    fi
-
-    # Update system on Red Hat-based systems
-    if [ -f "/etc/redhat-release" ]; then
-        yum -y update
-    fi
-
+        update_system() {
+            case $PACKAGE_MANAGER in
+                "apt")
+                    sudo $PACKAGE_MANAGER update -y && sudo $PACKAGE_MANAGER full-upgrade -y
+                    ;;
+                "yum")
+                    sudo $PACKAGE_MANAGER -y update
+                    ;;
+                "apk")
+                    sudo $PACKAGE_MANAGER update
+                    ;;
+                *)
+                    echo "未知的包管理器!"
+                    exit 1
+                    ;;
+            esac
+        }
+        update_system
     ;;
-
   3)
     clear
     clean_debian() {
