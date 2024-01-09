@@ -22,5 +22,5 @@ vps流量内存cpu控制一键脚本，配合cron定时任务使用，这是自�
 apt install -y net-tools bc && curl -sS -O https://raw.githubusercontent.com/eooce/ssh_tool/main/check_trafic.sh && chmod +x check_trafic.sh && bash check_trafic.sh
 ```
 
-###鸣谢
+### 鸣谢
 kejilion
