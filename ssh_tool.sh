@@ -34,6 +34,7 @@ check_arch(){
         exit 1
     fi
 }
+check_arch
 
 # 安装软件包
 install() {
@@ -581,13 +582,13 @@ case $choice in
         update_system() {
             case $PACKAGE_MANAGER in
                 "apt")
-                    sudo $PACKAGE_MANAGER update -y && sudo $PACKAGE_MANAGER full-upgrade -y
+                    $PACKAGE_MANAGER update -y && $PACKAGE_MANAGER full-upgrade -y
                     ;;
                 "yum")
-                    sudo $PACKAGE_MANAGER -y update
+                    $PACKAGE_MANAGER -y update
                     ;;
                 "apk")
-                    sudo $PACKAGE_MANAGER update
+                    $PACKAGE_MANAGER update
                     ;;
                 *)
                     echo "未知的包管理器!"
