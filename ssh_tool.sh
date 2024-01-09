@@ -595,35 +595,29 @@ case $choice in
     ;;
   3)
     clear
-    clean_debian() {
-        apt autoremove --purge -y
-        apt clean -y
-        apt autoclean -y
-        apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
-        journalctl --rotate
-        journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
-    }
-
-    clean_redhat() {
-        yum autoremove -y
-        yum clean all
-        journalctl --rotate
-        journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
-    }
-
-    # Main script
-    if [ -f "/etc/debian_version" ]; then
-        # Debian-based systems
-        clean_debian
-    elif [ -f "/etc/redhat-release" ]; then
-        # Red Hat-based systems
-        clean_redhat
-    fi
-
+        clean_system() {
+            if [ "$PACKAGE_MANAGER" = "apt" ]; then
+                $PACKAGE_MANAGER autoremove --purge -y 
+                $PACKAGE_MANAGER clean -y
+                $PACKAGE_MANAGER autoclean -y
+                $PACKAGE_MANAGER remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
+                journalctl --vacuum-time=1s
+                journalctl --vacuum-size=50M
+                $PACKAGE_MANAGER remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+            elif [ "$PACKAGE_MANAGER" = "yum" ]; then
+                $PACKAGE_MANAGER autoremove -y
+                $PACKAGE_MANAGER clean all
+                journalctl --vacuum-time=1s
+                journalctl --vacuum-size=50M
+                $PACKAGE_MANAGER remove $(rpm -q kernel | grep -v $(uname -r)) -y
+            elif [ "$PACKAGE_MANAGER" = "apk" ]; then
+                $PACKAGE_MANAGER update
+            else
+                echo "未知的包管理器!"
+                exit 1
+            fi
+        }
+        clean_system
     ;;
 
   4)
