@@ -3590,8 +3590,8 @@ case $choice in
       echo "17. 防火墙高级管理器"
       echo "18. 修改主机名"
       echo "19. 切换系统更新源"
-      echo -e "20. 定时任务管理 \033[33mNEW\033[0m"
-      echo "21. ip端口扫描"
+      echo "20. Cron定时任务管理"
+      echo -e "21. IP端口扫描 \033[33mNEW\033[0m"
       echo "------------------------"
       echo "22. 留言板"
       echo "------------------------"
@@ -4847,7 +4847,7 @@ EOF
                         iptables -A INPUT -p tcp --dport $port -j ACCEPT
                         echo -e "${YELLOW}$port 端口已开放${NC}"
                     else
-                        echo "iptables未安装，尝试安装..."
+                        echo -e "${YELLOW}iptables未安装，尝试安装...${NC}"
 
                         # 根据不同的包管理器安装iptables
                         if [ "$PACKAGE_MANAGER" = "apt" ]; then
@@ -5065,7 +5065,7 @@ EOF
                                 sudo apk del nodejs -y
                             fi
 
-                            # 安装最新版本的 Python，
+                            # 安装最新版nodejs
                             if [ "$PACKAGE_MANAGER" == "apt" ]; then
                                 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
                                 
@@ -5076,7 +5076,7 @@ EOF
                             fi
 
                             echo -e "${YELLOW}nodejs最新版安装成功${NC}"
-                            sleep 3
+                            sleep 1
                         else
                             kejilion
                         fi
@@ -5088,7 +5088,7 @@ EOF
                     # 执行系统架构检查
                     check_arch
 
-                    # 安装最新版本的 Python，
+                    # 安装最新版nodejs
                     if [ "$PACKAGE_MANAGER" == "apt" ]; then
                         curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
                     elif [ "$PACKAGE_MANAGER" == "yum" ]; then
@@ -5173,12 +5173,7 @@ EOF
                 kejilion
               fi
               sleep 5  
-            ;;            
-
-            4)
-            clear
-
-            ;;             
+            ;;                      
             0)
                 kejilion
             ;;
