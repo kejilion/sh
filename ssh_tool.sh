@@ -4912,12 +4912,39 @@ EOF
         # 提示输入订阅端口
         read -p "请输入节点订阅端口: " port
             echo "正在开放端口中..."
-            sleep 1
-            apt-get install -y iptables sudo
-            clear
-            sudo iptables -A INPUT -p tcp --dport $port -j ACCEPT
+                open_port() {
+                    if command -v iptables &> /dev/null; then
+                        iptables -A INPUT -p tcp --dport $port -j ACCEPT
+                        echo "$port 端口已开放"
+                    else
+                        echo "iptables未安装，尝试安装..."
+
+                        # 根据不同的包管理器安装iptables
+                        if [ "$PACKAGE_MANAGER" = "apt" ]; then
+                                $PACKAGE_MANAGER install -y iptables 
+                        elif [ "$PACKAGE_MANAGER" = "yum" ]; then
+                                $PACKAGE_MANAGER install -y iptables
+                        elif [ "$PACKAGE_MANAGER" = "apk" ]; then 
+                                $PACKAGE_MANAGER add iptables
+                        else
+                            echo "不支持的包管理器，尝试关闭防火墙"
+                            sudo systemctl stop ufw.service && sudo systemctl disable ufw.service && (sudo ufw status | grep -q 'Status: inactive' && echo "防火墙已关闭成功" || echo "防火墙已关闭失败，请手动关闭")
+                        fi
+
+                        # 检查iptables安装是否成功
+                        if [ $? -eq 0 ]; then
+                            iptables -A INPUT -p tcp --dport $port -j ACCEPT
+                            echo "$port 端口已开放"
+                        else
+                            echo "iptables安装失败，运行结束后请手动开放端口"
+                            sudo systemctl stop ufw.service && sudo systemctl disable ufw.service && (sudo ufw status | grep -q 'Status: inactive' && echo "防火墙已关闭成功" || echo "防火墙已关闭失败，请手动关闭")
+                        fi
+                    fi
+                }
+                open_port
+
             ipv4=$(curl -s ipv4.ip.sb)
-            echo "$port 端口已开放"
+
             echo "你的节点订阅链接为：http://$ipv4:$port/sub" 
 
         # 判断是否要安装哪吒
