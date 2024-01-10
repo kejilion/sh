@@ -4936,7 +4936,7 @@ EOF
                             iptables -A INPUT -p tcp --dport $port -j ACCEPT
                             echo "$port 端口已开放"
                         else
-                            echo "iptables安装失败，运行结束后请手动开放端口"
+                            echo "iptables安装失败，尝试关闭防火墙"
                             sudo systemctl stop ufw.service && sudo systemctl disable ufw.service && (sudo ufw status | grep -q 'Status: inactive' && echo "防火墙已关闭成功" || echo "防火墙已关闭失败，请手动关闭")
                         fi
                     fi
