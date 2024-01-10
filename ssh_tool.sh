@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# 定义颜色
+RED="\033[31m"
+GREEN="\e[1;32m"
+YELLOW="\e[1;33m"
+NC="\033[0m"
+
 # 判断是否已经存在 alias
 if ! grep -q "alias k='./ssh_tool.sh'" ~/.bashrc; then
     # 如果不存在，则添加 alias
@@ -452,6 +458,7 @@ echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
 echo -e "\033[93m14. 节点搭建脚本合集 ▶ \033[0m"
+echo "15. 常用环境安装"
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
@@ -582,7 +589,7 @@ case $choice in
 
         update_system() {
             if [ "$PACKAGE_MANAGER" = "apt" ]; then
-                $PACKAGE_MANAGER update -y && sudo $PACKAGE_MANAGER full-upgrade -y
+                $PACKAGE_MANAGER update -y && $PACKAGE_MANAGER full-upgrade -y
             elif [ "$PACKAGE_MANAGER" = "yum" ]; then
                 $PACKAGE_MANAGER update -y
             elif [ "$PACKAGE_MANAGER" = "apk" ]; then
@@ -3567,7 +3574,7 @@ case $choice in
       echo "------------------------"
       echo " 2. 修改ROOT密码"
       echo " 3. 开启ROOT密码登录模式"
-      echo " 4. 安装Python最新版"
+      echo " 4. 禁用修改ROOT密码"
       echo " 5. 开放所有端口"
       echo " 6. 修改SSH连接端口"
       echo " 7. 优化DNS地址"
@@ -3616,7 +3623,7 @@ case $choice in
               sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
               sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
               service sshd restart
-              echo "ROOT登录设置完毕！"
+              echo -e "${YELLOW}ROOT登录设置完毕！${NC}"
               read -p "需要重启服务器吗？(Y/N): " choice
           case "$choice" in
             [Yy])
@@ -3633,86 +3640,9 @@ case $choice in
 
           4)
             clear
-
-            RED="\033[31m"
-            GREEN="\033[32m"
-            YELLOW="\033[33m"
-            NC="\033[0m"
-
-            # 系统检测
-            OS=$(cat /etc/os-release | grep -o -E "Debian|Ubuntu|CentOS" | head -n 1)
-
-            if [[ $OS == "Debian" || $OS == "Ubuntu" || $OS == "CentOS" || $OS == "Alpine" ]]; then
-                echo -e "检测到你的系统是 ${YELLOW}${OS}${NC}"
-            else
-                echo -e "${RED}很抱歉，你的系统不受支持！${NC}"
-                exit 1
-            fi
-
-            # 检测安装Python3的版本
-            VERSION=$(python3 -V 2>&1 | awk '{print $2}')
-
-            # 获取最新Python3版本
-            PY_VERSION=$(curl -s https://www.python.org/ | grep "downloads/release" | grep -o 'Python [0-9.]*' | grep -o '[0-9.]*')
-
-            # 卸载Python3旧版本
-            if [[ $VERSION == "3"* ]]; then
-                echo -e "${YELLOW}你的Python3版本是${NC}${RED}${VERSION}${NC}，${YELLOW}最新版本是${NC}${RED}${PY_VERSION}${NC}"
-                read -p "是否确认升级最新版Python3？默认不升级 [y/N]: " CONFIRM
-                if [[ $CONFIRM == "y" ]]; then
-                    if [[ $OS == "CentOS" ]]; then
-                        echo ""
-                        rm-rf /usr/local/python3* >/dev/null 2>&1
-                    else
-                        apt --purge remove python3 python3-pip -y
-                        rm-rf /usr/local/python3*
-                    fi
-                else
-                    echo -e "${YELLOW}已取消升级Python3${NC}"
-                    exit 1
-                fi
-            else
-                echo -e "${RED}检测到没有安装Python3。${NC}"
-                read -p "是否确认安装最新版Python3？默认安装 [Y/n]: " CONFIRM
-                if [[ $CONFIRM != "n" ]]; then
-                    echo -e "${GREEN}开始安装最新版Python3...${NC}"
-                else
-                    echo -e "${YELLOW}已取消安装Python3${NC}"
-                    exit 1
-                fi
-            fi
-
-            # 安装相关依赖
-            if [[ $OS == "CentOS" ]]; then
-                yum update
-                yum groupinstall -y "development tools"
-                yum install wget openssl-devel bzip2-devel libffi-devel zlib-devel -y
-            else
-                apt update
-                apt install wget build-essential libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev -y
-            fi
-
-            # 安装python3
-            cd /root/
-            wget https://www.python.org/ftp/python/${PY_VERSION}/Python-"$PY_VERSION".tgz
-            tar -zxf Python-${PY_VERSION}.tgz
-            cd Python-${PY_VERSION}
-            ./configure --prefix=/usr/local/python3
-            make -j $(nproc)
-            make install
-            if [ $? -eq 0 ];then
-                rm -f /usr/local/bin/python3*
-                rm -f /usr/local/bin/pip3*
-                ln -sf /usr/local/python3/bin/python3 /usr/bin/python3
-                ln -sf /usr/local/python3/bin/pip3 /usr/bin/pip3
-                clear
-                echo -e "${YELLOW}Python3安装${GREEN}成功，${NC}版本为: ${NC}${GREEN}${PY_VERSION}${NC}"
-            else
-                clear
-                echo -e "${RED}Python3安装失败！${NC}"
-                exit 1
-            fi
-            cd /root/ && rm -rf Python-${PY_VERSION}.tgz && rm -rf Python-${PY_VERSION}
+                chattr +i /etc/passwd
+                chattr +i /etc/shadow
+                echo -e "${YELLOW}已禁用修改ROOT密码${NC}"
               ;;
 
           5)
@@ -4761,7 +4691,7 @@ EOF
                         # 检查是否已安装 nmap
                         if command -v nmap &> /dev/null; then
                             # nmap 已安装
-                            echo "nmap已存在，无需安装"
+                            echo "${YELLOW}nmap已存在，无需安装${NC}"
                             read -p "请输入你想要扫描的ipv4: " ip4
                             sleep 1
                             echo "开始扫描$ip4 开放的端口"
@@ -4786,7 +4716,7 @@ EOF
                         # 检查是否已安装 nmap
                         if command -v nmap &> /dev/null; then
                             # nmap 已安装
-                            echo "nmap已存在，无需安装"
+                            echo "${YELLOW}nmap已存在，无需安装${NC}"
                             read -p "请输入你想要扫描的ipv6: " ip6
                             sleep 1
                             echo "开始扫描$ip6 开放的端口"
@@ -4911,11 +4841,11 @@ EOF
 
         # 提示输入订阅端口
         read -p "请输入节点订阅端口: " port
-            echo "正在开放端口中..."
+            echo -e "${YELLOW}正在开放端口中...${NC}"
                 open_port() {
                     if command -v iptables &> /dev/null; then
                         iptables -A INPUT -p tcp --dport $port -j ACCEPT
-                        echo "$port 端口已开放"
+                        echo -e "${YELLOW}$port 端口已开放${NC}"
                     else
                         echo "iptables未安装，尝试安装..."
 
@@ -4927,16 +4857,16 @@ EOF
                         elif [ "$PACKAGE_MANAGER" = "apk" ]; then 
                                 $PACKAGE_MANAGER add iptables
                         else
-                            echo "不支持的包管理器，尝试关闭防火墙"
+                            echo -e "${RED}不支持的包管理器，尝试关闭防火墙${NC}"
                             sudo systemctl stop ufw.service && sudo systemctl disable ufw.service && (sudo ufw status | grep -q 'Status: inactive' && echo "防火墙已关闭成功" || echo "防火墙已关闭失败，请手动关闭")
                         fi
 
                         # 检查iptables安装是否成功
                         if [ $? -eq 0 ]; then
                             iptables -A INPUT -p tcp --dport $port -j ACCEPT
-                            echo "$port 端口已开放"
+                            echo -e "${YELLOW}$port 端口已开放${NC}"
                         else
-                            echo "iptables安装失败，尝试关闭防火墙"
+                            echo -e "${RED}iptables安装失败，尝试关闭防火墙${NC}"
                             sudo systemctl stop ufw.service && sudo systemctl disable ufw.service && (sudo ufw status | grep -q 'Status: inactive' && echo "防火墙已关闭成功" || echo "防火墙已关闭失败，请手动关闭")
                         fi
                     fi
@@ -4945,7 +4875,7 @@ EOF
 
             ipv4=$(curl -s ipv4.ip.sb)
 
-            echo "你的节点订阅链接为：http://$ipv4:$port/sub" 
+            echo -e "${GREEN}你的节点订阅链接为：http://$ipv4:$port/sub${NC}" 
 
         # 判断是否要安装哪吒
         read -p "是否需要一起安装哪吒探针？(y/n): " nezha
@@ -4961,11 +4891,11 @@ EOF
             # 提示输入哪吒密钥
             read -p "请输入哪吒客户端密钥: " nezha_key
 
-            apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
         
         else
 
-            apt-get update && apt-get install -y curl nodejs npm screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
         fi
         ;;
         5)
@@ -5010,6 +4940,251 @@ EOF
         break  # 跳出循环，退出菜单
         ;;
       esac
+    done
+    ;; 
+
+  15)
+    while true; do
+        clear
+        echo "▶ 常用环境安装"
+        echo "------------------------"
+        echo "1. 一键安装Python最新版"
+        echo "2. 一键安装Nodejs最新版"
+        echo "3. 一键安装GOlang最新版"
+        echo "------------------------"
+        echo "0. 返回主菜单"
+
+        read -p "请输入你的选择: " sub_choice
+
+        case $sub_choice in
+            1)
+             clear
+                # 系统检测
+                OS=$(cat /etc/os-release | grep -o -E "Debian|Ubuntu|CentOS" | head -n 1)
+
+                if [[ $OS == "Debian" || $OS == "Ubuntu" || $OS == "CentOS" || $OS == "Alpine" ]]; then
+                    echo -e "检测到你的系统是 ${YELLOW}${OS}${NC}"
+                else
+                    echo -e "${RED}很抱歉，你的系统不受支持！${NC}"
+                    exit 1
+                fi
+
+                # 检测安装Python3的版本
+                VERSION=$(python3 -V 2>&1 | awk '{print $2}')
+
+                # 获取最新Python3版本
+                PY_VERSION=$(curl -s https://www.python.org/ | grep "downloads/release" | grep -o 'Python [0-9.]*' | grep -o '[0-9.]*')
+
+                # 卸载Python3旧版本
+                if [[ $VERSION == "3"* ]]; then
+                    echo -e "${YELLOW}你的Python3版本是${NC}${RED}${VERSION}${NC}，${YELLOW}最新版本是${NC}${RED}${PY_VERSION}${NC}"
+                    read -p "是否确认升级最新版Python3？默认不升级 [y/N]: " CONFIRM
+                    if [[ $CONFIRM == "y" ]]; then
+                        if [[ $OS == "CentOS" ]]; then
+                            echo ""
+                            rm-rf /usr/local/python3* >/dev/null 2>&1
+                        else
+                            apt --purge remove python3 python3-pip -y
+                            rm-rf /usr/local/python3*
+                        fi
+                    else
+                        echo -e "${YELLOW}已取消升级Python3${NC}"
+                        exit 1
+                    fi
+                else
+                    echo -e "${RED}检测到没有安装Python3。${NC}"
+                    read -p "是否确认安装最新版Python3？默认安装 [Y/n]: " CONFIRM
+                    if [[ $CONFIRM != "n" ]]; then
+                        echo -e "${GREEN}开始安装最新版Python3...${NC}"
+                    else
+                        echo -e "${YELLOW}已取消安装Python3${NC}"
+                        exit 1
+                    fi
+                fi
+
+                # 安装相关依赖
+                if [[ $OS == "CentOS" ]]; then
+                    yum update
+                    yum groupinstall -y "development tools"
+                    yum install wget openssl-devel bzip2-devel libffi-devel zlib-devel -y
+                else
+                    apt update
+                    apt install wget build-essential libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev -y
+                fi
+
+                # 安装python3
+                cd /root/
+                wget https://www.python.org/ftp/python/${PY_VERSION}/Python-"$PY_VERSION".tgz
+                tar -zxf Python-${PY_VERSION}.tgz
+                cd Python-${PY_VERSION}
+                ./configure --prefix=/usr/local/python3
+                make -j $(nproc)
+                make install
+                if [ $? -eq 0 ];then
+                    rm -f /usr/local/bin/python3*
+                    rm -f /usr/local/bin/pip3*
+                    ln -sf /usr/local/python3/bin/python3 /usr/bin/python3
+                    ln -sf /usr/local/python3/bin/pip3 /usr/bin/pip3
+                    clear
+                    echo -e "${YELLOW}Python3安装${GREEN}成功，${NC}版本为: ${NC}${GREEN}${PY_VERSION}${NC}"
+                else
+                    clear
+                    echo -e "${RED}Python3安装失败！${NC}"
+                    exit 1
+                fi
+                cd /root/ && rm -rf Python-${PY_VERSION}.tgz && rm -rf Python-${PY_VERSION}
+            ;;
+            2)
+             clear
+                # 检查系统中是否存在nodejs
+                if command -v node &>/dev/null; then
+                    # 获取当前nodejs版本
+                    current_version=$(node --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+                    # 获取最新nodejs版本
+                    latest_version=$(echo "https://nodejs.org/dist/v20.10.0/node-v20.10.0-x64.msi" | awk -F'/' '{print $(NF-1)}' | sed 's/v//')
+
+                    if [ "$current_version" = "$latest_version" ]; then
+                        echo -e "${YELLOW}当前版本${RED}$current_version${YELLOW}已经是最新版${RED}$latest_version${YELLOW}，无需更新。${NC}"
+                        sleep 3
+                        kejilion
+                    else
+                        # 如果不是最新版本，继续执行后续操作...
+                        echo -e "${YELLOW}你的nodejs版本是${NC}${RED}${current_version}${NC}，${YELLOW}最新版本是${RED}${latest_version}${NC}"                                 
+                        read -p "是否卸载旧版nodejs并安装最新版？[y/n]: " confirm
+                        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+
+                            # 执行系统架构检查
+                            check_arch
+
+                            # 卸载旧版本
+                            if [ "$PACKAGE_MANAGER" == "apt" ]; then
+                                sudo apt-get purge nodejs -y
+                            elif [ "$PACKAGE_MANAGER" == "yum" ]; then
+                                sudo yum remove nodejs -y
+                            elif [ "$PACKAGE_MANAGER" == "apk" ]; then
+                                sudo apk del nodejs -y
+                            fi
+
+                            # 安装最新版本的 Python，
+                            if [ "$PACKAGE_MANAGER" == "apt" ]; then
+                                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
+                                
+                            elif [ "$PACKAGE_MANAGER" == "yum" ]; then
+                                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo yum install -y nodejs
+                            elif [ "$PACKAGE_MANAGER" == "apk" ]; then
+                                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apk add -y nodejs
+                            fi
+
+                            echo -e "${YELLOW}nodejs最新版安装成功${NC}"
+                        else
+                            kejilion
+                        fi
+                    fi
+
+                else
+                    echo "系统中未安装nodejs，正在安装最新版nodejs..."
+
+                    # 执行系统架构检查
+                    check_arch
+
+                    # 安装最新版本的 Python，
+                    if [ "$PACKAGE_MANAGER" == "apt" ]; then
+                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
+                    elif [ "$PACKAGE_MANAGER" == "yum" ]; then
+                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo yum install -y nodejs
+                    elif [ "$PACKAGE_MANAGER" == "apk" ]; then
+                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apk add -y nodejs
+                    fi
+
+                    echo -e "${YELLOW}nodejs最新版安装成功${NC}"
+                fi           
+                
+            ;;
+            3)
+            clear
+                # 获取当前系统架构
+                architecture=$(uname -m)
+
+                # 根据系统架构选择不同的下载链接
+                case "$architecture" in
+                    x86_64)
+                        latest_version_url="https://golang.org/dl/go1.21.6.linux-amd64.tar.gz"
+                        ;;
+                    x86)
+                        latest_version_url="https://golang.org/dl/go1.21.6.linux-386.tar.gz"
+                        ;;
+                    arm64)
+                        latest_version_url="https://golang.org/dl/go1.21.6.linux-arm64.tar.gz"
+                        ;;
+                    *)
+                        echo -e "${YELLOW}不支持的系统架构：$architecture${NC}"
+                        sleep 3
+                        kejilion
+                        ;;
+                esac
+
+                # 检查是否已安装 Go
+                if command -v go &> /dev/null; then
+                    # 获取当前已安装的 Go 版本
+                    installed_version=$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)
+                    echo -e "${YELLOW}当前已安装的Go版本：${RED}$installed_version${NC}"
+
+                    # 获取最新版 Go 的版本
+                    latest_version=$(echo "$latest_version_url" | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)
+
+                    # 比较已安装版本与最新版本
+                    if [ "$installed_version" = "$latest_version" ]; then
+                        echo -e "${GREEN}已经是最新版本，无需更新。${NC}"
+                        exit 0
+
+                    # 如果已安装版本小于最新版本，先卸载旧版
+                    elif [ "$(printf "$installed_version\n$latest_version" | sort -V | head -n 1)" != "$installed_version" ]; then
+                        echo "卸载旧版Go：$installed_version"
+                        sudo rm -rf /usr/local/go
+
+                    else
+                        echo "发现新版本 $latest_version，升级中..."
+                    fi
+                else
+                    echo -e "${YELLOW}未安装Go${NC}"
+                fi
+
+              # 下载并安装最新版 Go
+              wget -O go_latest.tar.gz "$latest_version_url"
+              sudo tar -C /usr/local -xzf go_latest.tar.gz
+
+              # 设置环境变量
+              echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+              echo 'export GOPATH=$HOME/go' >> ~/.bashrc
+              echo 'export PATH=$PATH:$GOPATH/bin' >> ~/.bashrc
+
+              export PATH=$PATH:/usr/local/go/bin
+              rm go_latest.tar.gz
+              echo -e "${GREEN}GO安装完成，当前Go版本：${RED}$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)${NC}"
+              sleep 2
+              read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
+
+              if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+                sleep 1
+                reboot
+              else
+                kejilion
+              fi
+              sleep 5  
+            ;;            
+
+            4)
+            clear
+
+            ;;             
+            0)
+                kejilion
+            ;;
+
+            *)
+            break  # 跳出循环，退出菜单
+            ;;
+        esac
     done
     ;; 
 # 脚本更新
