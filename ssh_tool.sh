@@ -5076,6 +5076,7 @@ EOF
                             fi
 
                             echo -e "${YELLOW}nodejs最新版安装成功${NC}"
+                            sleep 3
                         else
                             kejilion
                         fi
@@ -5097,6 +5098,7 @@ EOF
                     fi
 
                     echo -e "${YELLOW}nodejs最新版安装成功${NC}"
+                    sleep 3
                 fi           
                 
             ;;
