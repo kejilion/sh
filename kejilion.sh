@@ -331,8 +331,7 @@ if docker inspect "$docker_name" &>/dev/null; then
             clear
             docker rm -f "$docker_name"
             docker rmi -f "$docker_img"
-            # 安装 Docker（请确保有 install_docker 函数）
-            install_docker
+
             $docker_rum
             clear
             echo "$docker_name 已经安装完成"
@@ -405,7 +404,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.1.8 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.1.9 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2313,7 +2312,7 @@ case $choice in
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
       echo "23. Memos网页备忘录                     24. pandoranext潘多拉GPT镜像站"
-      echo "25. Nextcloud网盘"
+      echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -2693,7 +2692,7 @@ case $choice in
                             clear
                             docker rm -f mailserver
                             docker rmi -f analogic/poste.io
-                            install_docker
+
                             yuming=$(cat /home/docker/mail.txt)
                             docker run \
                                 --net=host \
@@ -2824,7 +2823,7 @@ case $choice in
                             clear
                             docker rm -f rocketchat
                             docker rmi -f rocket.chat:6.3
-                            install_docker
+
 
                             docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
@@ -2957,7 +2956,7 @@ case $choice in
                             docker rmi -f cloudreve/cloudreve:latest
                             docker rm -f aria2
                             docker rmi -f p3terx/aria2-pro
-                            install_docker
+
                             cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
                             curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
                             cd /home/docker/cloud/ && docker-compose up -d
@@ -3285,8 +3284,7 @@ case $choice in
                         clear
                         docker rm -f "$docker_name"
                         docker rmi -f "$docker_img"
-                        # 安装 Docker（请确保有 install_docker 函数）
-                        install_docker
+
                         $docker_rum
                         clear
                         echo "$docker_name 已经安装完成"
@@ -3384,6 +3382,17 @@ case $choice in
             docker_app
               ;;
 
+          26)
+            docker_name="qd"
+            docker_img="qdtoday/qd:latest"
+            docker_port=8923
+            docker_rum="docker run -d --name qd -p 8923:80 -v /home/docker/qd/config:/usr/src/app/config qdtoday/qd"
+            docker_describe="QD-Today是一个HTTP请求定时任务自动执行框架"
+            docker_url="官网介绍: https://qd-today.github.io/qd/zh_CN/"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
 
           0)
               kejilion
