@@ -6,7 +6,7 @@ GREEN="\e[1;32m"
 YELLOW="\e[1;33m"
 NC="\033[0m"
 
-# 判断是否已经存在 alias
+# 判断是否存在 alias
 if ! grep -q "alias k='./ssh_tool.sh'" ~/.bashrc; then
     # 如果不存在，则添加 alias
     echo "alias k='./ssh_tool.sh'" >> ~/.bashrc
@@ -25,16 +25,13 @@ ip_address() {
 check_arch(){
     if [ -f /etc/debian_version ]; then
         # Debian 或 Ubuntu 系统，使用 apt命令
-        echo "当前系统为Debian或Ubuntu"
-        PACKAGE_MANAGER="apt"
+        package_manager="apt"
     elif [ -f /etc/redhat-release ]; then
         # CentOS 系统，使用 yum命令
-        echo "当前系统为centos"
-        PACKAGE_MANAGER="yum"
+        package_manager="yum"
     elif [ -f /etc/alpine-release ]; then
         # Alpine 系统，使用 apk命令
-        echo "当前系统为Alpine "
-        PACKAGE_MANAGER="apk"
+        package_manager="apk"
     else
         echo "未知的系统架构！"
         exit 1
@@ -51,15 +48,15 @@ install() {
 
     for package in "$@"; do
         if ! command -v "$package" &>/dev/null; then
-            case $PACKAGE_MANAGER in
+            case $package_manager in
                 "apt")
-                    $PACKAGE_MANAGER install -y "$package"
+                    $package_manager install -y "$package"
                     ;;
                 "yum")
-                    $PACKAGE_MANAGER install -y "$package"
+                    $package_manager install -y "$package"
                     ;;
                 "apk")
-                    $PACKAGE_MANAGER add "$package"
+                    $package_manager add "$package"
                     ;;
                 *)
                     echo "未知的包管理器!"
@@ -109,7 +106,7 @@ break_end() {
       clear
 }
 
-kejilion() {
+main_menu() {
             cd ~
             ./ssh_tool.sh
             exit
@@ -458,7 +455,7 @@ echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
 echo -e "\033[93m14. 节点搭建脚本合集 ▶ \033[0m"
-echo "15. 常用环境安装"
+echo "15. 常用环境管理"
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
@@ -588,12 +585,12 @@ case $choice in
     clear
 
         update_system() {
-            if [ "$PACKAGE_MANAGER" = "apt" ]; then
-                $PACKAGE_MANAGER update -y && $PACKAGE_MANAGER full-upgrade -y
-            elif [ "$PACKAGE_MANAGER" = "yum" ]; then
-                $PACKAGE_MANAGER update -y
-            elif [ "$PACKAGE_MANAGER" = "apk" ]; then
-                $PACKAGE_MANAGER update
+            if [ "$package_manager" = "apt" ]; then
+                $package_manager update -y && $package_manager full-upgrade -y
+            elif [ "$package_manager" = "yum" ]; then
+                $package_manager update -y
+            elif [ "$package_manager" = "apk" ]; then
+                $package_manager update
             else
                 echo "未知的包管理器!"
                 exit 1
@@ -604,38 +601,38 @@ case $choice in
   3)
     clear
         clean_system() {
-            if [ "$PACKAGE_MANAGER" = "apt" ]; then
+            if [ "$package_manager" = "apt" ]; then
                 # 清理无用的包和缓存
-                $PACKAGE_MANAGER autoremove --purge -y 
-                $PACKAGE_MANAGER clean -y
-                $PACKAGE_MANAGER autoclean -y
+                $package_manager autoremove --purge -y 
+                $package_manager clean -y
+                $package_manager autoclean -y
                 # 清理包配置文件
-                $PACKAGE_MANAGER remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
+                $package_manager remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
                 # 清理日志
                 journalctl --vacuum-time=1s
                 journalctl --vacuum-size=50M
                 # 移除不再需要的内核
-                $PACKAGE_MANAGER remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
-            elif [ "$PACKAGE_MANAGER" = "yum" ]; then
+                $package_manager remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+            elif [ "$package_manager" = "yum" ]; then
                 # 清理无用的包和缓存
-                $PACKAGE_MANAGER autoremove -y
-                $PACKAGE_MANAGER clean all
+                $package_manager autoremove -y
+                $package_manager clean all
                 # 清理日志
                 journalctl --vacuum-time=1s
                 journalctl --vacuum-size=50M
                 # 移除不再需要的内核
-                $PACKAGE_MANAGER remove $(rpm -q kernel | grep -v $(uname -r)) -y
-            elif [ "$PACKAGE_MANAGER" = "apk" ]; then
+                $package_manager remove $(rpm -q kernel | grep -v $(uname -r)) -y
+            elif [ "$package_manager" = "apk" ]; then
                 # 清理无用的包和缓存
-                $PACKAGE_MANAGER autoremove -y
-                $PACKAGE_MANAGER clean
+                $package_manager autoremove -y
+                $package_manager clean
                 # 清理包配置文件
-                $PACKAGE_MANAGER del $(apk info -e | grep '^r' | awk '{print $1}') -y
+                $package_manager del $(apk info -e | grep '^r' | awk '{print $1}') -y
                 # 清理日志文件
                 journalctl --vacuum-time=1s
                 journalctl --vacuum-size=50M
                 # 移除不再需要的内核
-                $PACKAGE_MANAGER remove $(apk info -vv | grep -E 'linux-[0-9]' | grep -v $(uname -r) | awk '{print $1}') -y
+                $package_manager remove $(apk info -vv | grep -E 'linux-[0-9]' | grep -v $(uname -r) | awk '{print $1}') -y
             else
                 echo "未知的包管理器!"
                 exit 1
@@ -647,7 +644,7 @@ case $choice in
   4)
   while true; do
       clear
-      echo "▶ 安装常用工具"
+      echo "▶ 常用工具管理"
       echo "------------------------"
       echo " 1. curl 下载工具"
       echo " 2. wget 下载工具"
@@ -836,7 +833,7 @@ case $choice in
               ;;
 
           0)
-              kejilion
+              main_menu
 
               ;;
 
@@ -1206,7 +1203,7 @@ case $choice in
               esac
               ;;
           0)
-              kejilion
+              main_menu
 
               ;;
           *)
@@ -1287,7 +1284,7 @@ case $choice in
               curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
               ;;
           0)
-              kejilion
+              main_menu
 
               ;;
           *)
@@ -1412,7 +1409,7 @@ case $choice in
           esac
               ;;
           0)
-              kejilion
+              main_menu
 
               ;;
           *)
@@ -2332,7 +2329,7 @@ case $choice in
         ;;
 
     0)
-        kejilion
+        main_menu
       ;;
 
     *)
@@ -2348,18 +2345,18 @@ case $choice in
       clear
       echo "▶ 面板工具"
       echo "------------------------"
-      echo " 1. 宝塔面板官方版                       2. aaPanel宝塔国际版"
-      echo " 3. 1Panel新一代管理面板                 4. NginxProxyManager可视化面板"
-      echo " 5. AList多存储文件列表程序              6. Ubuntu远程桌面网页版"
-      echo " 7. 哪吒探针VPS监控面板                  8. QB离线BT磁力下载面板"
-      echo " 9. Poste.io邮件服务器程序              10. RocketChat多人在线聊天系统"
-      echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
-      echo "13. Cloudreve网盘系统                  14. 简单图床图片管理程序"
-      echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
-      echo "17. AdGuardHome去广告软件              18. onlyoffice在线办公OFFICE"
-      echo "19. 雷池WAF防火墙面板                  20. portainer容器管理面板"
-      echo "21. VScode网页版                       22. UptimeKuma监控工具"
-      echo "23. Memos网页备忘录                    24. pandoranext潘多拉GPT镜像站"
+      echo " 1. 宝塔面板官方版                        2. aaPanel宝塔国际版"
+      echo " 3. 1Panel新一代管理面板                  4. NginxProxyManager可视化面板"
+      echo " 5. AList多存储文件列表程序               6. Ubuntu远程桌面网页版"
+      echo " 7. 哪吒探针VPS监控面板                   8. QB离线BT磁力下载面板"
+      echo " 9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
+      echo "11. 禅道项目管理软件                     12. 青龙面板定时任务管理平台"
+      echo "13. Cloudreve网盘系统                    14. 简单图床图片管理程序"
+      echo "15. emby多媒体管理系统                   16. Speedtest测速服务面板"
+      echo "17. AdGuardHome去广告软件                18. onlyoffice在线办公OFFICE"
+      echo "19. 雷池WAF防火墙面板                    20. portainer容器管理面板"
+      echo "21. VScode网页版                         22. UptimeKuma监控工具"
+      echo "23. Memos网页备忘录                      24. pandoranext潘多拉GPT镜像站"
       echo "------------------------"
       echo " 0. 返回主菜单"
       echo "------------------------"
@@ -3423,7 +3420,7 @@ case $choice in
               ;;
 
           0)
-              kejilion
+              main_menu
               ;;
           *)
               echo "无效的输入!"
@@ -3554,7 +3551,7 @@ case $choice in
               tmux list-sessions
               ;;
           0)
-              kejilion
+              main_menu
               ;;
           *)
               echo "无效的输入!"
@@ -3590,8 +3587,8 @@ case $choice in
       echo "17. 防火墙高级管理器"
       echo "18. 修改主机名"
       echo "19. 切换系统更新源"
-      echo "20. Cron定时任务管理"
-      echo -e "21. IP端口扫描 \033[33mNEW\033[0m"
+      echo -e "20. 定时任务管理 \033[33mNEW\033[0m"
+      echo "21. ip端口扫描"
       echo "------------------------"
       echo "22. 留言板"
       echo "------------------------"
@@ -4691,23 +4688,25 @@ EOF
                         # 检查是否已安装 nmap
                         if command -v nmap &> /dev/null; then
                             # nmap 已安装
-                            echo "${YELLOW}nmap已存在，无需安装${NC}"
+                            echo -e "${GREEN}nmap已存在，无需安装${NC}"
                             read -p "请输入你想要扫描的ipv4: " ip4
                             sleep 1
-                            echo "开始扫描$ip4 开放的端口"
+                            echo -e "${YELLOW}开始扫描${ip4}开放的端口${NC}"
                             nmap -sS -p 1-65535 $ip4
-                            echo "$ip4 端口已扫描完"
+                            echo -e "${GREEN}${ip4}端口已扫描完${NC}"
+                            sleep 8
                         else
                             # nmap未安装，使用相应的包管理工具进行安装
-                            echo "nmap不存在. 开始安装nmap..."
+                            echo -e "${YELLOW}nmap不存在. 开始安装nmap...${NC}"
                             install "nmap"
                             sleep 1
                             clear
                             read -p "请输入你想要扫描的ipv4: " ip4
                             sleep 1
-                            echo "开始扫描$ip4 开放的端口"
+                            echo -e "${YELLOW}开始扫描${ip4}开放的端口${NC}"
                             nmap -sS -p 1-65535 $ip4
-                            echo "$ip4 端口已扫描完"
+                            echo -e "${GREEN}${ip4}端口已扫描完${NC}"
+                            sleep 8
                         fi
                         ;;
                     
@@ -4716,22 +4715,24 @@ EOF
                         # 检查是否已安装 nmap
                         if command -v nmap &> /dev/null; then
                             # nmap 已安装
-                            echo "${YELLOW}nmap已存在，无需安装${NC}"
+                            echo -e "${YELLOW}nmap已存在，无需安装${NC}"
                             read -p "请输入你想要扫描的ipv6: " ip6
                             sleep 1
-                            echo "开始扫描$ip6 开放的端口"
+                            echo -e "${YELLOW}开始扫描${ip6}开放的端口${NC}"
                             nmap -6 -sS -p 1-65535 $ip6
-                            echo "$ip6 端口已扫描完"
+                            echo -e "${GREEN}${ip6}端口已扫描完${NC}"
+                            sleep 8
                         else
                             # nmap 未安装，使用相应的包管理工具进行安装
-                            echo "nmap不存在. 开始安装nmap..."
+                            echo -e "${YELLOW}nmap不存在. 开始安装nmap...${NC}"
                             install "nmap"
                             sleep 1
                             read -p "请输入你想要扫描的ipv6: " ip6
                             sleep 1
-                            echo "开始扫描$ip6 开放的端口"
+                            echo -e "${YELLOW}开始扫描${ip6}开放的端口${NC}"
                             nmap -6 -sS -p 1-65535 $ip6
-                            echo "$ip6 端口已扫描完"
+                            echo -e "${GREEN}${ip6}端口已扫描完${NC}"
+                            sleep 8
                         fi
                         ;;
                     0)
@@ -4788,7 +4789,7 @@ EOF
               reboot
               ;;
           0)
-              kejilion
+              main_menu
 
               ;;
           *)
@@ -4838,24 +4839,38 @@ EOF
 
         4)
         clear
+            # 提示输入订阅端口
+            while true; do
+                read -p "请输入节点订阅端口: " port
 
-        # 提示输入订阅端口
-        read -p "请输入节点订阅端口: " port
+                # 检查输入是否为数字
+                if [[ $port =~ ^[0-9]+$ ]]; then
+                    # 检查输入是否为正整数
+                    if [ "$port" -gt 0 ] 2>/dev/null; then
+                        # 输入有效，跳出循环
+                        break
+                    else
+                        echo -e "${YELLOW}输入错误：请输入正整数${NC}"
+                    fi
+                else
+                    echo -e "${YELLOW}输入错误：请重新输入数字${NC}"
+                fi
+            done
             echo -e "${YELLOW}正在开放端口中...${NC}"
                 open_port() {
                     if command -v iptables &> /dev/null; then
                         iptables -A INPUT -p tcp --dport $port -j ACCEPT
                         echo -e "${YELLOW}$port 端口已开放${NC}"
                     else
-                        echo -e "${YELLOW}iptables未安装，尝试安装...${NC}"
+                        echo "iptables未安装，尝试安装..."
 
                         # 根据不同的包管理器安装iptables
-                        if [ "$PACKAGE_MANAGER" = "apt" ]; then
-                                $PACKAGE_MANAGER install -y iptables 
-                        elif [ "$PACKAGE_MANAGER" = "yum" ]; then
-                                $PACKAGE_MANAGER install -y iptables
-                        elif [ "$PACKAGE_MANAGER" = "apk" ]; then 
-                                $PACKAGE_MANAGER add iptables
+                        if [ "$package_manager" = "apt" ]; then
+                                $package_manager install -y iptables 
+                        elif [ "$package_manager" = "yum" ]; then
+                                $package_manager install -y iptables
+                        elif [ "$package_manager" = "apk" ]; then 
+                                $package_manager add iptables
                         else
                             echo -e "${RED}不支持的包管理器，尝试关闭防火墙${NC}"
                             sudo systemctl stop ufw.service && sudo systemctl disable ufw.service && (sudo ufw status | grep -q 'Status: inactive' && echo "防火墙已关闭成功" || echo "防火墙已关闭失败，请手动关闭")
@@ -4933,7 +4948,7 @@ EOF
             wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
         ;;             
         0)
-            kejilion
+            main_menu
         ;;
 
         *)
@@ -4946,14 +4961,20 @@ EOF
   15)
     while true; do
         clear
-        echo "▶ 常用环境安装"
+        echo "▶ 常用环境管理"
         echo "------------------------"
         echo "1. 一键安装Python最新版"
         echo "2. 一键安装Nodejs最新版"
-        echo "3. 一键安装GOlang最新版"
+        echo "3. 一键安装Golang最新版"
+        echo "4. 一键安装Java最新版"
+        echo "------------------------"
+        echo -e "${YELLOW}5. 一键卸载Python${NC}"
+        echo -e "${YELLOW}6. 一键卸载Nodejs${NC}"
+        echo -e "${YELLOW}7. 一键卸载Golang${NC}"
+        echo -e "${YELLOW}8. 一键卸载Java${NC}"
         echo "------------------------"
         echo "0. 返回主菜单"
-
+        echo "------------------------"
         read -p "请输入你的选择: " sub_choice
 
         case $sub_choice in
@@ -5027,6 +5048,7 @@ EOF
                     ln -sf /usr/local/python3/bin/pip3 /usr/bin/pip3
                     clear
                     echo -e "${YELLOW}Python3安装${GREEN}成功，${NC}版本为: ${NC}${GREEN}${PY_VERSION}${NC}"
+                    sleep 5
                 else
                     clear
                     echo -e "${RED}Python3安装失败！${NC}"
@@ -5034,6 +5056,7 @@ EOF
                 fi
                 cd /root/ && rm -rf Python-${PY_VERSION}.tgz && rm -rf Python-${PY_VERSION}
             ;;
+
             2)
              clear
                 # 检查系统中是否存在nodejs
@@ -5044,41 +5067,40 @@ EOF
                     latest_version=$(echo "https://nodejs.org/dist/v20.10.0/node-v20.10.0-x64.msi" | awk -F'/' '{print $(NF-1)}' | sed 's/v//')
 
                     if [ "$current_version" = "$latest_version" ]; then
-                        echo -e "${YELLOW}当前版本${RED}$current_version${YELLOW}已经是最新版${RED}$latest_version${YELLOW}，无需更新。${NC}"
+                        echo -e "${YELLOW}当前版本${RED}$current_version${YELLOW}已经是最新版${RED}$latest_version${YELLOW}，无需更新！${NC}"
                         sleep 3
-                        kejilion
+                        main_menu
                     else
                         # 如果不是最新版本，继续执行后续操作...
                         echo -e "${YELLOW}你的nodejs版本是${NC}${RED}${current_version}${NC}，${YELLOW}最新版本是${RED}${latest_version}${NC}"                                 
                         read -p "是否卸载旧版nodejs并安装最新版？[y/n]: " confirm
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
-
-                            # 执行系统架构检查
+                            # 检查系统类型
                             check_arch
 
                             # 卸载旧版本
-                            if [ "$PACKAGE_MANAGER" == "apt" ]; then
+                            if [ "$package_manager" == "apt" ]; then
                                 sudo apt-get purge nodejs -y
-                            elif [ "$PACKAGE_MANAGER" == "yum" ]; then
+                            elif [ "$package_manager" == "yum" ]; then
                                 sudo yum remove nodejs -y
-                            elif [ "$PACKAGE_MANAGER" == "apk" ]; then
+                            elif [ "$package_manager" == "apk" ]; then
                                 sudo apk del nodejs -y
                             fi
 
-                            # 安装最新版nodejs
-                            if [ "$PACKAGE_MANAGER" == "apt" ]; then
+                            # 安装最新版本的nodjs，
+                            if [ "$package_manager" == "apt" ]; then
                                 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
                                 
-                            elif [ "$PACKAGE_MANAGER" == "yum" ]; then
+                            elif [ "$package_manager" == "yum" ]; then
                                 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo yum install -y nodejs
-                            elif [ "$PACKAGE_MANAGER" == "apk" ]; then
+                            elif [ "$package_manager" == "apk" ]; then
                                 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apk add -y nodejs
                             fi
 
-                            echo -e "${YELLOW}nodejs最新版安装成功${NC}"
-                            sleep 1
+                            echo -e "${GREEN}nodejs安装成功，版本：${YELLOW}20.10.0${NC}"
+                            sleep 5
                         else
-                            kejilion
+                            main_menu
                         fi
                     fi
 
@@ -5088,20 +5110,21 @@ EOF
                     # 执行系统架构检查
                     check_arch
 
-                    # 安装最新版nodejs
-                    if [ "$PACKAGE_MANAGER" == "apt" ]; then
+                    # 安装最新版本的nodejs，
+                    if [ "$package_manager" == "apt" ]; then
                         curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
-                    elif [ "$PACKAGE_MANAGER" == "yum" ]; then
+                    elif [ "$package_manager" == "yum" ]; then
                         curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo yum install -y nodejs
-                    elif [ "$PACKAGE_MANAGER" == "apk" ]; then
+                    elif [ "$package_manager" == "apk" ]; then
                         curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apk add -y nodejs
                     fi
 
-                    echo -e "${YELLOW}nodejs最新版安装成功${NC}"
-                    sleep 3
+                    echo -e "${GREEN}nodejs安装成功，版本：${YELLOW}20.10.0${NC}"
+                    sleep 5
                 fi           
                 
             ;;
+
             3)
             clear
                 # 获取当前系统架构
@@ -5119,9 +5142,9 @@ EOF
                         latest_version_url="https://golang.org/dl/go1.21.6.linux-arm64.tar.gz"
                         ;;
                     *)
-                        echo -e "${YELLOW}不支持的系统架构：$architecture${NC}"
+                        echo -e "${RED}不支持的系统架构：$architecture${NC}"
                         sleep 3
-                        kejilion
+                        main_menu
                         ;;
                 esac
 
@@ -5151,7 +5174,7 @@ EOF
                     echo -e "${YELLOW}未安装Go${NC}"
                 fi
 
-              # 下载并安装最新版 Go
+              # 下载并安装最新版Go
               wget -O go_latest.tar.gz "$latest_version_url"
               sudo tar -C /usr/local -xzf go_latest.tar.gz
 
@@ -5170,12 +5193,251 @@ EOF
                 sleep 1
                 reboot
               else
-                kejilion
+                main_menu
               fi
               sleep 5  
-            ;;                      
+            ;;            
+
+            4)
+              clear
+                check_java_installed() {
+                    if command -v java &>/dev/null; then
+                        installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+                        echo -e "${GREEN}已安装Java版本：${YELLOW}${installed_version}${NC}"
+                        return 0
+                    else
+                        echo -e "${YELLOW}未安装Java${NC}"
+                        return 1
+                    fi
+                }
+
+                check_arch
+                install_java() {
+                    case $package_manager in
+                        "apt")
+                            apt update -y
+                            apt install -y default-jre
+                            apt install -y default-jdk
+                            ;;
+                        "yum")
+                            yum install -y java-1.8.0-openjdk
+                            ;;
+                        "apk")
+                            apk update
+                            apk add -y openjdk8
+                            ;;
+                        *)
+                            echo "未知的包管理工具！"
+                            exit 1
+                            ;;
+                    esac
+                }
+                check_java_installed
+
+                if [ $? -eq 0 ]; then
+                    latest_version="17.0.9"
+                    if [ "$installed_version" == "$latest_version" ]; then
+                        echo -e "${GREEN}已安装Java最新版：${YELLOW}${latest_version}${NC}"
+                        sleep 6
+                    else
+                        install_java
+                        sleep 6
+                    fi
+                else
+                    install_java
+                    sleep 6
+                fi
+            ;; 
+
+            5)
+             clear
+                if command -v python &>/dev/null; then
+                    # 获取当前安装的python版本
+                    current_version=$(node -v 2>&1 | awk '{print $2}')   
+
+                    echo -e "${YELLOW}当前已安装python${RED}$current_version${NC}"
+                            
+                    read -p "确定卸载python？[y/n]: " confirm
+                    if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+                        # 检查系统类型
+                        check_arch
+
+                        # 卸载python3
+                        if [ "$package_manager" == "apt" ]; then
+                            apt-get remove python3 -y && apt-get purge python3 -y
+                        elif [ "$package_manager" == "yum" ]; then
+                            yum remove python3 -y
+                        elif [ "$package_manager" == "apk" ]; then
+                            apk del python3 -y
+                        fi
+                        # 清理缓存配置文件
+                        rm -rf /usr/bin/pip3
+                        rm -rf /usr/bin/python3
+                        rm -rf /usr/share/python3
+                        rm -rf /usr/local/python3
+                        rm -rf /usr/share/man/man1/python3.1.gz
+                        rm -rf /usr/local/bin/python
+                        rm -rf /usr/local/lib/python*
+                        rm -rf /usr/local/bin/python*
+
+                        echo -e "${GREEN}python已卸载${NC}"
+                        sleep 5
+                    else
+                        main_menu
+                    fi
+                else
+                    echo -e "${YELLOW}系统中未安装python，无需卸载${NC}"
+                    sleep 3
+                fi           
+            ;;
+
+            6)
+             clear
+                if command -v node &>/dev/null; then
+                    # 获取当前安装的modjs版本
+                    current_version=$(node --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')    
+
+                    echo -e "${YELLOW}当前已安装nodejs${RED}$current_version${NC}"
+                            
+                    read -p "确定卸载nodejs？[y/n]: " confirm
+                    if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+                        # 检查系统类型
+                        check_arch
+
+                        # 卸载旧版本
+                        if [ "$package_manager" == "apt" ]; then
+                            apt-get remove nodejs npm -y && apt-get purge nodejs npm -y
+                        elif [ "$package_manager" == "yum" ]; then
+                            yum remove nodejs npm -y
+                        elif [ "$package_manager" == "apk" ]; then
+                            apk del nodejs npm -y
+                        fi
+                        # 清理缓存配置文件
+                        npm cache clean --force
+                        rm -rf ~/.npm
+                        rm -rf ~/.nvm
+                        rm -rf /usr/local/bin/node
+                        rm -rf /usr/local/lib/node_modules
+
+                        echo -e "${GREEN}nodejs已卸载${NC}"
+                        sleep 5
+                    else
+                        main_menu
+                    fi
+                else
+                    echo -e "${YELLOW}系统中未安装nodejs，无需卸载${NC}"
+                    sleep 3
+                fi           
+            ;;
+
+            7)
+             clear
+                if command -v go &> /dev/null; then
+                    # 获取当前安装的Go版本
+                    installed_version=$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)   
+
+                    echo -e "${yellow}当前已安装Go：${red}$installed_version${reset}"
+                            
+                    read -p "确定卸载Go吗？[y/n]: " confirm
+                    if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+
+                        rm -rf /usr/local/go
+
+                        # 清理环境变量
+                        export PATH=$PATH:/usr/local/go/bin
+                        export GOPATH=$HOME/go
+                        export PATH=$PATH:$GOPATH/bin
+                        source ~/.bashrc
+
+                        echo -e "${GREEN}Go已卸载${NC}"
+                        sleep 3
+
+                         read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
+
+                        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+                            sleep 1
+                            reboot
+                        else
+                            main_menu
+                        fi
+
+                    else
+                        main_menu
+                    fi
+                else
+                    echo -e "${YELLOW}系统中未安装Go，无需卸载${NC}"
+                    sleep 3
+                fi           
+            ;;
+
+            8)
+             clear
+                if command -v java &> /dev/null; then
+                    # 获取当前安装的Java版本
+                    installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+                    echo -e "${YELLOW}已安装Java：${RED}${installed_version}${NC}"
+
+                    read -p "确定卸载Java吗？[y/n]: " confirm
+                    if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+
+                        check_arch
+                        uninstall_java() {
+                            case $package_manager in
+                                "apt")
+                                    apt remove -y default-jre
+                                    apt remove -y default-jdk
+                                    apt-get purge $(dpkg --get-selections | grep -v deinstall | awk '{print $1}')
+                                    ;;
+                                "yum")
+                                    yum remove -y java-1.8.0-openjdk
+                                    yum autoremove
+                                    ;;
+                                "apk")
+                                    apk del -y openjdk8
+                                    apk del --purge $(apk info -q)
+                                    export JAVA_HOME=/usr/lib/jvm/java-*
+                                    export PATH=$PATH:$JAVA_HOME/bin
+                                    source ~/.ashrc
+                                    ;;
+                                *)
+                                    echo "未知的包管理工具！"
+                                    exit 1
+                                    ;;
+                            esac
+                        }
+                        uninstall_java
+
+                        rm -rf /usr/lib/jvm/java-*
+                        rm -rf /usr/local/java
+                        rm -rf /opt/java
+
+                        # 清理环境变量
+                        export PATH=$PATH:/usr/local/java/bin
+                        source ~/.bashrc
+
+                        echo -e "${GREEN}Java已卸载${NC}"
+                        sleep 3
+
+                         read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
+
+                        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+                            sleep 1
+                            reboot
+                        else
+                            main_menu
+                        fi
+
+                    else
+                        main_menu
+                    fi
+                else
+                    echo -e "${YELLOW}系统中未安装Java，无需卸载${NC}"
+                    sleep 3
+                fi           
+            ;;
+
             0)
-                kejilion
+                main_menu
             ;;
 
             *)
@@ -5193,7 +5455,7 @@ EOF
     curl -sS -O https://raw.githubusercontent.com/eooce/ssh_tool/main/ssh_tool.sh && chmod +x ssh_tool.sh
     echo "脚本已更新到最新版本！"
     break_end
-    kejilion
+    main_menu
     ;;
 
   0)
