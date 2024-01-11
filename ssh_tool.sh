@@ -3587,8 +3587,8 @@ case $choice in
       echo "17. 防火墙高级管理器"
       echo "18. 修改主机名"
       echo "19. 切换系统更新源"
-      echo -e "20. 定时任务管理 \033[33mNEW\033[0m"
-      echo "21. ip端口扫描"
+      echo "20. 定时任务管理 "
+      echo -e "21. ip端口扫描\033[33mNEW\033[0m"
       echo "------------------------"
       echo "22. 留言板"
       echo "------------------------"
@@ -3610,8 +3610,18 @@ case $choice in
           2)
               clear
                read -p "请输入你的新密码: " passwd
-               sleep 1
-               echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
+
+                check_arch
+
+                if [ "$package_manager" == "apt" ]; then
+                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
+                elif [ "$package_manager" == "yum" ]; then
+                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
+                elif [ "$package_manager" == "apk" ]; then
+                    echo "root:$passwd\n$passwd" | passwd root && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
+                else
+                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
+                fi
               ;;
           3)
               clear
