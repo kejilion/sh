@@ -3587,8 +3587,8 @@ case $choice in
       echo "17. 防火墙高级管理器"
       echo "18. 修改主机名"
       echo "19. 切换系统更新源"
-      echo "20. 定时任务管理 "
-      echo -e "21. ip端口扫描\033[33mNEW\033[0m"
+      echo -e "20. 定时任务管理 \033[33mNEW\033[0m"
+      echo "21. ip端口扫描"
       echo "------------------------"
       echo "22. 留言板"
       echo "------------------------"
@@ -4849,6 +4849,45 @@ EOF
 
         4)
         clear
+            # 检查系统中是否安装screen
+            if command -v screen &>/dev/null; then
+                echo -e "${GREEN}Screen已经安装${NC}"
+            else
+                # 如果系统中未安装screen，则根据对应系统安装
+                check_arch
+                
+                if [ "$package_manager" == "apt" ]; then
+                    sudo apt-get install -y screen
+                elif [ "$package_manager" == "yum" ]; then
+                    sudo yum install -y screen
+                elif [ "$package_manager" == "apk" ]; then
+                    sudo apk add -y screen
+                fi
+            fi   
+
+            # 检查系统中是否存在nodejs
+            if command -v node &>/dev/null; then
+                echo -e "${GREEN}Nodejs已经安装${NC}"
+                
+            else
+                echo -e "${YELLOW}系统中未安装nodejs，正在安装nodejs...${NC}"
+
+                check_arch
+
+                # 根据对应系统安装最新版本的nodejs
+                if [ "$package_manager" == "apt" ]; then
+                    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs
+                elif [ "$package_manager" == "yum" ]; then
+                    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo yum install -y nodejs
+                elif [ "$package_manager" == "apk" ]; then
+                    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apk add -y nodejs
+                fi
+
+                clear
+                echo -e "${GREEN}nodejs安装成功!${NC}"
+                sleep 1
+            fi        
+
             # 提示输入订阅端口
             while true; do
                 read -p "请输入节点订阅端口: " port
@@ -4866,6 +4905,7 @@ EOF
                     echo -e "${YELLOW}输入错误：请重新输入数字${NC}"
                 fi
             done
+
             echo -e "${YELLOW}正在开放端口中...${NC}"
                 open_port() {
                     if command -v iptables &> /dev/null; then
@@ -4876,7 +4916,7 @@ EOF
 
                         # 根据不同的包管理器安装iptables
                         if [ "$package_manager" = "apt" ]; then
-                                $package_manager install -y iptables 
+                                $package_manager install -y iptables
                         elif [ "$package_manager" = "yum" ]; then
                                 $package_manager install -y iptables
                         elif [ "$package_manager" = "apk" ]; then 
@@ -4902,26 +4942,26 @@ EOF
 
             echo -e "${GREEN}你的节点订阅链接为：http://$ipv4:$port/sub${NC}" 
 
-        # 判断是否要安装哪吒
-        read -p "是否需要一起安装哪吒探针？(y/n): " nezha
+            # 判断是否要安装哪吒
+            read -p "是否需要一起安装哪吒探针？(y/n): " nezha
 
-        if [ "$nezha" == "y" ] || [ "$nezha" == "Y" ]; then
+            if [ "$nezha" == "y" ] || [ "$nezha" == "Y" ]; then
 
-            # 提示输入哪吒域名
-            read -p "请输入哪吒客户端的域名: " nezha_server
+                # 提示输入哪吒域名
+                read -p "请输入哪吒客户端的域名: " nezha_server
 
-            # 提示输入哪吒端口
-            read -p "请输入哪吒端口: " nezha_port 
+                # 提示输入哪吒端口
+                read -p "请输入哪吒端口: " nezha_port 
 
-            # 提示输入哪吒密钥
-            read -p "请输入哪吒客户端密钥: " nezha_key
+                # 提示输入哪吒密钥
+                read -p "请输入哪吒客户端密钥: " nezha_key
 
-            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
-        
-        else
+                curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
+            
+            else
 
-            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs screen && curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
-        fi
+                curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
+            fi
         ;;
         5)
         clear
@@ -5074,8 +5114,8 @@ EOF
                     # 获取当前nodejs版本
                     current_version=$(node --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
                     # 获取最新nodejs版本
-                    latest_version=$(echo "https://nodejs.org/dist/v20.10.0/node-v20.10.0-x64.msi" | awk -F'/' '{print $(NF-1)}' | sed 's/v//')
-
+                    json_data=$(curl -s https://nodejs.org/dist/index.json)
+                    latest_version=$(echo "$json_data" | jq -r '.[0].version')
                     if [ "$current_version" = "$latest_version" ]; then
                         echo -e "${YELLOW}当前版本${RED}$current_version${YELLOW}已经是最新版${RED}$latest_version${YELLOW}，无需更新！${NC}"
                         sleep 3
@@ -5099,12 +5139,12 @@ EOF
 
                             # 安装最新版本的nodjs，
                             if [ "$package_manager" == "apt" ]; then
-                                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
+                                curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs
                                 
                             elif [ "$package_manager" == "yum" ]; then
-                                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo yum install -y nodejs
+                                curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo yum install -y nodejs
                             elif [ "$package_manager" == "apk" ]; then
-                                curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apk add -y nodejs
+                                curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apk add -y nodejs
                             fi
 
                             echo -e "${GREEN}nodejs安装成功，版本：${YELLOW}20.10.0${NC}"
@@ -5122,11 +5162,11 @@ EOF
 
                     # 安装最新版本的nodejs，
                     if [ "$package_manager" == "apt" ]; then
-                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apt-get install -y nodejs
+                        curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apt-get install -y nodejs
                     elif [ "$package_manager" == "yum" ]; then
-                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo yum install -y nodejs
+                        curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo yum install -y nodejs
                     elif [ "$package_manager" == "apk" ]; then
-                        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - && sudo apk add -y nodejs
+                        curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && sudo apk add -y nodejs
                     fi
 
                     echo -e "${GREEN}nodejs安装成功，版本：${YELLOW}20.10.0${NC}"
