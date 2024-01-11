@@ -11,7 +11,7 @@ fi
 
 ip_address() {
 ipv4_address=$(curl -s ipv4.ip.sb)
-ipv6_address=$(curl -s --max-time 0.7 ipv6.ip.sb)
+ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
 }
 
 
@@ -480,7 +480,6 @@ case $choice in
       fi
     fi
 
-    clear
     output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
         NR > 2 { rx_total += $2; tx_total += $10 }
         END {
