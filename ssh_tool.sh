@@ -4899,10 +4899,10 @@ EOF
                         # 输入有效，跳出循环
                         break
                     else
-                        echo -e "${YELLOW}输入错误：请输入正整数${NC}"
+                        echo -e "${YELLOW}端口输入错误，端口应为数字且为正整数${NC}"
                     fi
                 else
-                    echo -e "${YELLOW}输入错误：请重新输入数字${NC}"
+                    echo -e "${YELLOW}端口输入错误，端口应为数字且为正整数${NC}"
                 fi
             done
 
