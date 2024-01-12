@@ -1,13 +1,9 @@
 #!/bin/bash
 
-# 判断是否已经存在 alias
-if ! grep -q "kejilion.sh" ~/.bashrc; then
-    # 如果不存在，则添加 alias
-    echo "alias k='~/kejilion.sh'" >> ~/.bashrc
-    source ~/.bashrc
-else
-    clear
-fi
+rm -f /usr/local/bin/k >/dev/null 2>&1
+cp ~/kejilion.sh /usr/local/bin/k >/dev/null 2>&1
+
+
 
 ip_address() {
 ipv4_address=$(curl -s ipv4.ip.sb)
