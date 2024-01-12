@@ -1,8 +1,5 @@
 #!/bin/bash
-
-rm -f /usr/local/bin/k >/dev/null 2>&1
-cp ~/kejilion.sh /usr/local/bin/k >/dev/null 2>&1
-
+ln -sf ~/kejilion.sh /usr/local/bin/k
 
 
 ip_address() {
@@ -69,7 +66,7 @@ break_end() {
 }
 
 kejilion() {
-            ~/kejilion.sh
+            k
             exit
 }
 
