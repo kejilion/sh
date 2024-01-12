@@ -20,7 +20,7 @@ echo -e "${yellow}当前内存使用率: ${memory_usage}%${re}"
 # 检查内存使用率是否超过阈值
 if (( $(echo "$memory_usage >= $threshold_memory" | bc -l) )); then
     echo "内存使用率已达到 ${threshold_memory}%, 执行重启操作..."
-    reboot
+    shutdown -h now
 else
     echo -e "${green}内存使用率未达到 ${threshold_memory}%, 继续运行...${re}"
 fi
