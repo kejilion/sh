@@ -3406,7 +3406,7 @@ case $choice in
             docker_app
               ;;
 
-          27)
+          28)
             docker_name="speedtest"
             docker_img="ghcr.io/librespeed/speedtest:latest"
             docker_port=6681
