@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # 判断是否已经存在 alias
-if ! grep -q "alias k='./kejilion.sh'" ~/.bashrc; then
+if ! grep -q "kejilion.sh" ~/.bashrc; then
     # 如果不存在，则添加 alias
-    echo "alias k='./kejilion.sh'" >> ~/.bashrc
+    echo "alias k='~/kejilion.sh'" >> ~/.bashrc
     source ~/.bashrc
 else
     clear
@@ -73,8 +73,7 @@ break_end() {
 }
 
 kejilion() {
-            cd ~
-            ./kejilion.sh
+            ~/kejilion.sh
             exit
 }
 
@@ -228,7 +227,7 @@ install_certbot() {
     chmod +x auto_cert_renewal.sh
 
     # 安排每日午夜运行脚本
-    echo "0 0 * * * cd ~ && ./auto_cert_renewal.sh" | crontab -
+    echo "0 0 * * * ~/auto_cert_renewal.sh" | crontab -
 }
 
 install_ssltls() {
@@ -3606,7 +3605,7 @@ case $choice in
           1)
               clear
               read -p "请输入你的快捷按键: " kuaijiejian
-              echo "alias $kuaijiejian='./kejilion.sh'" >> ~/.bashrc
+              echo "alias $kuaijiejian='~/kejilion.sh'" >> ~/.bashrc
               source ~/.bashrc
               echo "快捷键已设置"
               ;;
