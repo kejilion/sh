@@ -5175,7 +5175,7 @@ EOF
                     ln -sf /usr/local/python3/bin/pip3 /usr/bin/pip3
                     clear
                     echo -e "${yellow}Python3安装${green}成功，${re}版本为: ${re}${green}${PY_VERSION}${re}"
-                    sleep 5
+                    sleep 3
                 else
                     clear
                     echo -e "${red}Python3安装失败！${re}"
@@ -5197,7 +5197,7 @@ EOF
 
                     if [ "$current_version" = "$latest_version" ]; then
                         echo -e "${yellow}当前版本${red}$current_version${yellow}已经是最新版${red}$latest_version${yellow}，无需更新！${re}"
-                        sleep 3
+                        sleep 2
                         main_menu
                     else
                         # 如果不是最新版本，继续执行后续操作...
@@ -5216,12 +5216,12 @@ EOF
                             if [ $? -eq 0 ]; then
 
                                 echo -e "${green}nodejs安装成功，版本：${yellow}20.11.0${re}"
-                                sleep 3
+                                sleep 2
                             else 
                                 echo -e "${red}nodejs安装失败，尝试为你再次安装${re}"
                                 check_arch
                                 curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && install nodejs
-                                sleep 3                              
+                                sleep 2                              
                             fi
                         else
                             main_menu
@@ -5269,7 +5269,7 @@ EOF
                         ;;
                     *)
                         echo -e "${red}不支持的系统架构：$architecture${re}"
-                        sleep 3
+                        sleep 2
                         main_menu
                         ;;
                 esac
@@ -5321,7 +5321,7 @@ EOF
               else
                 main_menu
               fi
-              sleep 5  
+              sleep 3  
             ;;            
 
             4)
@@ -5387,7 +5387,7 @@ EOF
                     fi
                 else
                     echo -e "${yellow}系统中未安装python，无需卸载${re}"
-                    sleep 3
+                    sleep 2
                 fi           
             ;;
 
@@ -5420,7 +5420,7 @@ EOF
                     fi
                 else
                     echo -e "${yellow}系统中未安装nodejs，无需卸载${re}"
-                    sleep 3
+                    sleep 2
                 fi           
             ;;
 
@@ -5444,7 +5444,7 @@ EOF
                         source ~/.bashrc
 
                         echo -e "${green}Go已卸载${re}"
-                        sleep 3
+                        sleep 2
 
                          read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
 
@@ -5460,7 +5460,7 @@ EOF
                     fi
                 else
                     echo -e "${yellow}系统中未安装Go，无需卸载${re}"
-                    sleep 3
+                    sleep 2
                 fi           
             ;;
 
@@ -5510,7 +5510,7 @@ EOF
                         source ~/.bashrc
 
                         echo -e "${green}Java已卸载${re}"
-                        sleep 3
+                        sleep 2
 
                          read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
 
@@ -5526,7 +5526,7 @@ EOF
                     fi
                 else
                     echo -e "${yellow}系统中未安装Java，无需卸载${re}"
-                    sleep 3
+                    sleep 2
                 fi           
             ;;
 
