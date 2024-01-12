@@ -9,13 +9,20 @@ yellow='\e[1;33m'
 purple='\e[1;35m'
 skyblue='\e[1;96m'
 
-# 判断是否存在 alias
-if ! grep -q "alias k='./ssh_tool.sh'" ~/.bashrc; then
-    # 如果不存在，则添加 alias
-    echo "alias k='./ssh_tool.sh'" >> ~/.bashrc
+# 检查alias是否已经存在在PATH中并设置k为快捷键
+script_path="cd ~ && ./ssh_tool.sh"
+if [[ ":$PATH:" != *":$script_path:"* ]]; then
+    echo "export PATH=\$PATH:$script_path" >> ~/.bashrc
     source ~/.bashrc
-else
-    clear
+
+    if ! grep -q "alias k='cd ~ && ./ssh_tool.sh'" ~/.bashrc; then 
+        # 如果不存在，则添加 alias 
+        alias k="$script_path"
+        echo "alias k=\"$script_path\"" >> ~/.bashrc
+        source ~/.bashrc 
+    else 
+        clear 
+    fi
 fi
 
 # 获取当前服务器ipv4和ipv6
