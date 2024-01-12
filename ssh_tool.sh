@@ -14,8 +14,7 @@ script_path="cd ~ && ./ssh_tool.sh"
 if [[ ":$PATH:" != *":$script_path:"* ]]; then
     echo "export PATH=\$PATH:$script_path" >> ~/.bashrc
     source ~/.bashrc
-
-    if ! grep -q "alias k='cd ~ && ./ssh_tool.sh'" ~/.bashrc; then 
+    if ! grep -q "alias k='$script_path'" ~/.bashrc; then 
         # 如果不存在，则添加 alias 
         alias k="$script_path"
         echo "alias k=\"$script_path\"" >> ~/.bashrc
