@@ -2307,13 +2307,13 @@ case $choice in
       echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
       echo "13. Cloudreve网盘                       14. 简单图床图片管理程序"
-      echo "15. emby多媒体管理系统                  16. Speedtest测速服务面板"
+      echo "15. emby多媒体管理系统                  16. Speedtest测速面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
       echo "23. Memos网页备忘录                     24. pandoranext潘多拉GPT镜像站"
       echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
-      echo "27. Dockge容器堆栈管理面板"
+      echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3405,6 +3405,24 @@ case $choice in
             docker_passwd=""
             docker_app
               ;;
+
+          27)
+            docker_name="speedtest"
+            docker_img="ghcr.io/librespeed/speedtest:latest"
+            docker_port=6681
+            docker_rum="docker run -d \
+                            --name speedtest \
+                            --restart always \
+                            -e MODE=standalone \
+                            -p 6681:80 \
+                            ghcr.io/librespeed/speedtest:latest"
+            docker_describe="librespeed是用Javascript实现的轻量级速度测试工具，即开即用"
+            docker_url="官网介绍: https://github.com/librespeed/speedtest"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+
 
           0)
               kejilion
