@@ -404,7 +404,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.1.9 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.2 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2313,6 +2313,7 @@ case $choice in
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
       echo "23. Memos网页备忘录                     24. pandoranext潘多拉GPT镜像站"
       echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
+      echo "27. Dockge容器堆栈管理面板              28. Uptime Kuma节点监控工具"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3389,6 +3390,33 @@ case $choice in
             docker_rum="docker run -d --name qd -p 8923:80 -v /home/docker/qd/config:/usr/src/app/config qdtoday/qd"
             docker_describe="QD-Today是一个HTTP请求定时任务自动执行框架"
             docker_url="官网介绍: https://qd-today.github.io/qd/zh_CN/"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+          27)
+            docker_name="dockge"
+            docker_img="louislam/dockge:latest"
+            docker_port=5003
+            docker_rum="docker run -d --name dockge --restart unless-stopped -p 5003:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/opt/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge"
+            docker_describe="dockge是一个可视化的docker-compose容器管理面板"
+            docker_url="官网介绍: https://github.com/louislam/dockge"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+          28)
+            docker_name="uptime-kuma"
+            docker_img="louislam/uptime-kuma:latest"
+            docker_port=3003
+            docker_rum="docker run -d \
+                              --name=uptime-kuma \
+                              -p 3003:3001 \
+                              -v /home/docker/uptime-kuma/data:/app/data \
+                              --restart=always \
+                              louislam/uptime-kuma:latest"
+            docker_describe="uptime-kuma是一款易于使用的自托管监控工具"
+            docker_url="官网介绍: https://github.com/louislam/uptime-kuma"
             docker_use=""
             docker_passwd=""
             docker_app
