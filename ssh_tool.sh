@@ -9,19 +9,14 @@ yellow='\e[1;33m'
 purple='\e[1;35m'
 skyblue='\e[1;96m'
 
-# 检查alias是否已经存在在PATH中并设置k为快捷键
-script_path="cd ~ && ./ssh_tool.sh"
-if [[ ":$PATH:" != *":$script_path:"* ]]; then
-    echo "export PATH=\$PATH:$script_path" >> ~/.bashrc
-    source ~/.bashrc
-    if ! grep -q "alias k='$script_path'" ~/.bashrc; then 
-        # 如果不存在，则添加 alias 
-        alias k="$script_path"
-        echo "alias k=\"$script_path\"" >> ~/.bashrc
-        source ~/.bashrc 
-    else 
-        clear 
-    fi
+# 检查alias是否已经存在
+if ! grep -q "cd ~ && ./ssh_tool.sh'" ~/.bashrc; then 
+    # 如果不存在，则添加alias 
+    alias k="cd ~ && ./ssh_tool.sh"
+    echo "alias k=\"cd ~ && ./ssh_tool.sh\"" >> ~/.bashrc
+    source ~/.bashrc 
+else 
+    clear 
 fi
 
 # 获取当前服务器ipv4和ipv6
@@ -237,7 +232,6 @@ install_ldnmp() {
 
       echo  # 打印换行，以便输出不被覆盖
 
-
       clear
       echo "LDNMP环境安装完毕"
       echo "------------------------"
@@ -262,7 +256,6 @@ install_ldnmp() {
 
       echo "------------------------"
       echo ""
-
 
 }
 
@@ -1437,7 +1430,6 @@ case $choice in
     done
     ;;
 
-
   10)
 
   while true; do
@@ -2025,7 +2017,6 @@ case $choice in
 
       ;;
 
-
     32)
       clear
       cd /home/ && tar czvf web_$(date +"%Y%m%d%H%M%S").tar.gz web
@@ -2311,7 +2302,6 @@ case $choice in
           done
         ;;
 
-
     37)
       clear
       docker rm -f nginx php php74 mysql redis
@@ -2323,8 +2313,6 @@ case $choice in
       install_certbot
       install_ldnmp
       ;;
-
-
 
     38)
         clear
@@ -2952,8 +2940,6 @@ case $choice in
             fi
               ;;
 
-
-
           11)
             docker_name="zentao-server"
             docker_img="idoop/zentao:latest"
@@ -3428,11 +3414,6 @@ case $choice in
                 esac
             fi
 
-
-
-
-
-
               ;;
 
           0)
@@ -3711,7 +3692,6 @@ case $choice in
 
               ;;
 
-
           7)
             clear
             echo "当前DNS地址"
@@ -3757,7 +3737,6 @@ case $choice in
             fi
 
               ;;
-
           8)
           clear
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
@@ -3795,7 +3774,6 @@ case $choice in
               ;;
           esac
               ;;
-
 
           9)
             clear
