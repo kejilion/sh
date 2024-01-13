@@ -114,6 +114,12 @@ iptables_open() {
     iptables -P FORWARD ACCEPT
     iptables -P OUTPUT ACCEPT
     iptables -F
+    
+    ip6tables -P INPUT ACCEPT
+    ip6tables -P FORWARD ACCEPT
+    ip6tables -P OUTPUT ACCEPT
+    ip6tables -F
+
 }
 
 install_ldnmp() {
@@ -243,6 +249,8 @@ openssl req -x509 -nodes -newkey rsa:2048 -keyout /home/web/certs/default_server
 
 nginx_status() {
 
+    sleep 1
+
     nginx_container_name="nginx"
 
     # 获取容器的状态
@@ -260,6 +268,10 @@ nginx_status() {
         rm /home/web/certs/${yuming}_key.pem >/dev/null 2>&1
         rm /home/web/certs/${yuming}_cert.pem >/dev/null 2>&1
         docker restart nginx >/dev/null 2>&1
+
+        dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+        docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $dbname;" 2> /dev/null
+
         echo -e "\e[1;31m检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！\e[0m"
     fi
 
@@ -297,9 +309,10 @@ restart_ldnmp() {
       docker exec php chmod -R 777 /var/www/html
       docker exec php74 chmod -R 777 /var/www/html
 
+      docker restart nginx
       docker restart php
       docker restart php74
-      docker restart nginx
+
 }
 
 
