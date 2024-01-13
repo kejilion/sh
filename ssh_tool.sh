@@ -54,16 +54,16 @@ install() {
             echo -e "${yellow}正在安装${package}...${re}"
             case $package_manager in
                 "apt")
-                    $package_manager install -y "$package"
+                    sudo $package_manager install -y "$package"
                     ;;
                 "yum")
-                    $package_manager install -y "$package"
+                    sudo $package_manager install -y "$package"
                     ;;
                 "dnf")
-                    $package_manager install -y "$package"
+                    sudo $package_manager install -y "$package"
                     ;;                      
                 "apk")
-                    $package_manager add "$package"
+                    sudo $package_manager add "$package"
                     ;;
                 *)
                     echo -e "${red}未知的包管理器!${re}"
@@ -71,7 +71,7 @@ install() {
                     ;;
             esac
         else
-            echo -e "${GREEN}${package}已安装${re}"
+            echo -e "${green}${package}已安装${re}"
         fi
     done
 
@@ -232,6 +232,7 @@ install_ldnmp() {
 
       echo  # 打印换行，以便输出不被覆盖
 
+
       clear
       echo "LDNMP环境安装完毕"
       echo "------------------------"
@@ -256,6 +257,7 @@ install_ldnmp() {
 
       echo "------------------------"
       echo ""
+
 
 }
 
@@ -1430,6 +1432,7 @@ case $choice in
     done
     ;;
 
+
   10)
 
   while true; do
@@ -2017,6 +2020,7 @@ case $choice in
 
       ;;
 
+
     32)
       clear
       cd /home/ && tar czvf web_$(date +"%Y%m%d%H%M%S").tar.gz web
@@ -2302,6 +2306,7 @@ case $choice in
           done
         ;;
 
+
     37)
       clear
       docker rm -f nginx php php74 mysql redis
@@ -2313,6 +2318,8 @@ case $choice in
       install_certbot
       install_ldnmp
       ;;
+
+
 
     38)
         clear
@@ -2940,6 +2947,8 @@ case $choice in
             fi
               ;;
 
+
+
           11)
             docker_name="zentao-server"
             docker_img="idoop/zentao:latest"
@@ -3414,6 +3423,11 @@ case $choice in
                 esac
             fi
 
+
+
+
+
+
               ;;
 
           0)
@@ -3692,6 +3706,7 @@ case $choice in
 
               ;;
 
+
           7)
             clear
             echo "当前DNS地址"
@@ -3737,6 +3752,7 @@ case $choice in
             fi
 
               ;;
+
           8)
           clear
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
@@ -3774,6 +3790,7 @@ case $choice in
               ;;
           esac
               ;;
+
 
           9)
             clear
@@ -4221,7 +4238,7 @@ EOF
                   echo "5. IP白名单                  6. IP黑名单"
                   echo "7. 清除指定IP"
                   echo "------------------------"
-                  echo "9. 卸载防火墙"
+                  echo "9. 关闭并卸载防火墙"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
@@ -4298,6 +4315,7 @@ EOF
                           ;;
 
                       9)
+                      sudo systemctl stop ufw.service && sudo systemctl disable ufw.service && (sudo ufw status | grep -q 'Status: inactive' && echo "UFW closed successfully" || echo "Failed to close UFW")
                       remove iptables-persistent
                       rm /etc/iptables/rules.v4
                       break
@@ -4961,7 +4979,7 @@ EOF
 
                 # 根据对应系统安装最新版本的nodejs
                 check_arch
-                curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && install nodejs
+                curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
                 
 
                 clear
@@ -4970,7 +4988,7 @@ EOF
                 else
                     echo -e "${red}nodejs安装失败，将为你重新安装${re}"
                     check_arch
-                    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && install nodejs
+                    curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
                 fi
             fi        
 
@@ -5175,7 +5193,7 @@ EOF
                     ln -sf /usr/local/python3/bin/pip3 /usr/bin/pip3
                     clear
                     echo -e "${yellow}Python3安装${green}成功，${re}版本为: ${re}${green}${PY_VERSION}${re}"
-                    sleep 3
+                    sleep 2
                 else
                     clear
                     echo -e "${red}Python3安装失败！${re}"
@@ -5192,16 +5210,17 @@ EOF
                     current_version=$(node --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
 
                     # 获取最新nodejs版本
+                    install jq
                     json_data=$(curl -s https://nodejs.org/dist/index.json)
-                    latest_tls_version=$(echo "$json_data" | jq -r '.[] | select(.lts != null) | .version' | head -n 1)
-
+                    latest_version=$(echo "$json_data" | jq -r '.[] | select(.lts != null) | .version' | head -n 1 | sed 's/^v//')
+                    # echo "$latest_version"
                     if [ "$current_version" = "$latest_version" ]; then
-                        echo -e "${yellow}当前版本${red}$current_version${yellow}已经是最新版${red}$latest_version${yellow}，无需更新！${re}"
+                        echo -e "${yellow}当前版本${green}$current_version${yellow}已经是最新版${green}$latest_version${yellow}，无需更新！${re}"
                         sleep 2
                         main_menu
                     else
-                        # 如果不是最新版本，继续执行后续操作...
-                        echo -e "${yellow}你的nodejs版本是${re}${red}${current_version}${re}，${yellow}最新版本是${red}${latest_version}${re}"                                 
+                        # 如果不是最新版本
+                        echo -e "${yellow}你的nodejs版本是${re}${red}${current_version}${re}，${yellow}最新版本是${purple}${latest_version}${re}"                                 
                         read -p "是否卸载旧版nodejs并安装最新版？[y/n]: " confirm
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                             
@@ -5215,12 +5234,12 @@ EOF
                             
                             if [ $? -eq 0 ]; then
 
-                                echo -e "${green}nodejs安装成功，版本：${yellow}20.11.0${re}"
+                                echo -e "${green}nodejs安装成功，版本：${purple}${latest_version}${re}"
                                 sleep 2
                             else 
                                 echo -e "${red}nodejs安装失败，尝试为你再次安装${re}"
                                 check_arch
-                                curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && install nodejs
+                                curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
                                 sleep 2                              
                             fi
                         else
@@ -5238,12 +5257,12 @@ EOF
 
                     if [ $? -eq 0 ]; then
 
-                        echo -e "${green}nodejs安装成功，版本：${yellow}20.11.0${re}"
+                        echo -e "${green}nodejs安装成功!${re}"
                         break_end
                     else 
                         echo -e "${red}nodejs安装失败，尝试为你再次安装${re}"
                         check_arch
-                        curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && install nodejs
+                        curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
                         break_end                                
                     fi
 
@@ -5258,13 +5277,13 @@ EOF
 
                 # 根据系统架构选择不同的下载链接
                 case "$architecture" in
-                    x86_64)
+                    x86_64|amd64)
                         latest_version_url="https://golang.org/dl/go1.21.6.linux-amd64.tar.gz"
                         ;;
                     x86)
                         latest_version_url="https://golang.org/dl/go1.21.6.linux-386.tar.gz"
                         ;;
-                    arm64)
+                    arm64|aarch64)
                         latest_version_url="https://golang.org/dl/go1.21.6.linux-arm64.tar.gz"
                         ;;
                     *)
@@ -5312,7 +5331,6 @@ EOF
               export PATH=$PATH:/usr/local/go/bin
               rm go_latest.tar.gz
               echo -e "${green}GO安装完成，当前Go版本：${red}$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)${re}"
-              sleep 2
               read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
 
               if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
@@ -5321,39 +5339,97 @@ EOF
               else
                 main_menu
               fi
-              sleep 3  
+              sleep 5  
             ;;            
 
             4)
               clear
-                check_java_installed() {
-                    if command -v java &>/dev/null; then
-                        installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
-                        echo -e "${green}已安装Java版本：${yellow}${installed_version}${re}"
-                        return 0
-                    else
-                        echo -e "${yellow}系统中未安装Java，正在为你安装...${re}"
-                        return 1
-                    fi
-                }
+                latest_version="17.0.9"
+                if command -v java &>/dev/null; then
+                    installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+                    echo -e "${red}当前Java版本是${yellow}${installed_version},最新版本是${green}${latest_version}${re}"
 
-                check_arch
-                install default-jre default-jdk
-
-                if [ $? -eq 0 ]; then
-                    latest_version="17.0.9"
                     if [ "$installed_version" == "$latest_version" ]; then
-                        echo -e "${green}已安装Java最新版：${yellow}${latest_version}${re}"
-                        break_end
+                        echo -e "${green}当前已安装Java最新版：${yellow}${latest_version},无需更新${re}"
+                        sleep 2
+                        main_menu
                     else
-                        install default-jre default-jdk
-                        break_end
+                        
+                        read -p "是否卸载旧版java并安装最新版？[y/n]: " confirm
+                        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+
+                            check_arch
+                            remove java
+                            break_end
+                        else
+                            main_menu 
+
+                        fi   
                     fi
+
                 else
-                    install default-jre default-jdk
-                    break_end
+                    echo -e "${yellow}系统中未安装Java，正在为你安装...${re}"
+
+                    check_arch
+                    install_java() {
+                        case $package_manager in
+                            "apt")
+                                install default-jre default-jdk
+                                break_end
+                                ;;
+                            "yum")
+                                install java
+                                break_end
+                                ;;
+                            "dnf")
+                                install java
+                                break_end
+                                ;;                               
+                            "apk")
+                                install openjdk17
+                                break_end
+                                ;;
+                            *)
+                                echo "暂不支持你的系统！"
+                                exit 1
+                                ;;
+                        esac
+                    }
+                    install_java
                 fi
-            ;; 
+                # 检查是否安装成功，如果没有成功则重新
+                if [ $? -eq 0 ]; then
+                    echo -e "${green}Java安装成功，版本：${purple}${latest_version}${re}"
+                    break_end
+                else
+                    check_arch
+                    install_java() {
+                        case $package_manager in
+                            "apt")
+                                install default-jre default-jdk
+                                break_end
+                                ;;
+                            "yum")
+                                install java
+                                break_end
+                                ;;
+                            "dnf")
+                                install java
+                                break_end
+                                ;;                               
+                            "apk")
+                                install openjdk17
+                                break_end
+                                ;;
+                            *)
+                                echo "暂不支持你的系统！"
+                                exit 1
+                                ;;
+                        esac
+                    }
+                    install_java
+                fi
+            ;;
 
             5)
              clear
@@ -5430,9 +5506,9 @@ EOF
                     # 获取当前安装的Go版本
                     installed_version=$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)   
 
-                    echo -e "${yellow}当前已安装Go：${red}$installed_version${reset}"
+                    echo -e "${yellow}当前已安装Go：${red}$installed_version"
                             
-                    read -p "确定卸载Go吗？[y/n]: " confirm
+                    read -p "确定卸载Go吗？[y/n]: " confirm$re
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
 
                         rm -rf /usr/local/go
@@ -5444,7 +5520,7 @@ EOF
                         source ~/.bashrc
 
                         echo -e "${green}Go已卸载${re}"
-                        sleep 2
+                        sleep 3
 
                          read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
 
@@ -5483,11 +5559,10 @@ EOF
                                     apt-get purge $(dpkg --get-selections | grep -v deinstall | awk '{print $1}')
                                     ;;
                                 "yum")
-                                    yum remove -y java-1.8.0-openjdk
-                                    yum autoremove
+                                    remove java
                                     ;;
                                 "apk")
-                                    apk del -y openjdk8
+                                    apk del -y openjdk
                                     apk del --purge $(apk info -q)
                                     export JAVA_HOME=/usr/lib/jvm/java-*
                                     export PATH=$PATH:$JAVA_HOME/bin
@@ -5512,7 +5587,7 @@ EOF
                         echo -e "${green}Java已卸载${re}"
                         sleep 2
 
-                         read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
+                        read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
 
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                             sleep 1
