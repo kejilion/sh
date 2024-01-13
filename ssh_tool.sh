@@ -3606,16 +3606,14 @@ case $choice in
               clear
                read -p "请输入你的新密码: " passwd
 
-                
-
-                if [ "$package_manager" == "apt" ]; then
-                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
-                elif [ "$package_manager" == "yum" ]; then
-                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
-                elif [ "$package_manager" == "apk" ]; then
-                    echo "root:$passwd\n$passwd" | passwd root && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
+                 if command -v apt &>/dev/null; then
+                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && sleep 1 && reboot || echo "Root密码修改失败"
+                elif command -v yum &>/dev/null; then
+                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && sleep 1 && reboot || echo "Root密码修改失败"
+                elif command -v apk &>/dev/null; then
+                    echo "root:$passwd\n$passwd" | passwd root && echo "Root密码修改成功. 正在重启服务器..." && sleep 1 && reboot || echo "Root密码修改失败"
                 else
-                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
+                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && sleep 1 && reboot || echo "Root密码修改失败"
                 fi
               ;;
           3)
@@ -3625,8 +3623,8 @@ case $choice in
               sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
               sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
               service sshd restart
-              echo -e "${yellow}ROOT登录设置完毕！${re}"
-              read -p "需要重启服务器吗？(Y/N): " choice
+              echo -e "${green}ROOT登录设置完毕，重启服务器生效${re}"
+              read -p "需要立即重启服务器吗？(y/n): " choice
           case "$choice" in
             [Yy])
               reboot
