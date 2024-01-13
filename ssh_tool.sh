@@ -25,53 +25,55 @@ ip_address() {
     ipv6_address=$(curl -s --max-time 2 ipv6.ip.sb)
 }
 
-# 判断系统类型
-check_arch() {
-    if [ -f /etc/debian_version ]; then
-        package_manager="apt"
-    elif [ -f /etc/redhat-release ]; then
-        package_manager="yum"
-    elif [ -f /etc/alpine-release ]; then
-        package_manager="apk"
-    elif [ -f /etc/fedora-release ]; then
-        package_manager="dnf"
-    else
-        echo -e "${red}抱歉，无法识别你的系统${re}"
-        exit 1
-    fi
-}
-check_arch
-
-# 根据系统类型使用对应命令安装软件包
+# 安装依赖包
 install() {
     if [ $# -eq 0 ]; then
-        echo -e "${yellow}未提供软件包参数!${re}"
+        echo -e "${red}未提供软件包参数!${re}"
         return 1
     fi
 
     for package in "$@"; do
-        if ! command -v "$package" &>/dev/null; then
-            echo -e "${yellow}正在安装${package}...${re}"
-            case $package_manager in
-                "apt")
-                    sudo $package_manager install -y "$package"
-                    ;;
-                "yum")
-                    sudo $package_manager install -y "$package"
-                    ;;
-                "dnf")
-                    sudo $package_manager install -y "$package"
-                    ;;                      
-                "apk")
-                    sudo $package_manager add "$package"
-                    ;;
-                *)
-                    echo -e "${red}未知的包管理器!${re}"
-                    return 1
-                    ;;
-            esac
+        if command -v "$package" &>/dev/null; then
+            echo -e "${green}${package}已经安装了！${re}"
+            continue
+        fi
+        echo -e "${yellow}正在安装 ${package}...${re}"
+        if command -v apt &>/dev/null; then
+            sudo apt install -y "$package"
+        elif command -v dnf &>/dev/null; then
+            sudo dnf install -y "$package"
+        elif command -v yum &>/dev/null; then
+            sudo yum install -y "$package"
+        elif command -v apk &>/dev/null; then
+            sudo apk add "$package"
         else
-            echo -e "${green}${package}已安装${re}"
+            echo -e"${red}暂不支持你的系统!${re}"
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+# 卸载依赖包
+remove() {
+    if [ $# -eq 0 ]; then
+        echo -e "${red}未提供软件包参数!${re}"
+        return 1
+    fi
+
+    for package in "$@"; do
+        if command -v apt &>/dev/null; then
+            sudo apt remove -y "$package" && sudo apt autoremove -y
+        elif command -v dnf &>/dev/null; then
+            sudo dnf remove -y "$package" && sudo dnf autoremove -y
+        elif command -v yum &>/dev/null; then
+            sudo yum remove -y "$package" && sudo yum autoremove -y
+        elif command -v apk &>/dev/null; then
+            sudo apk del "$package"
+        else
+            echo -e "${red}暂不支持你的系统!${re}"
+            return 1
         fi
     done
 
@@ -84,30 +86,6 @@ install_dependency() {
       install wget socat unzip tar
 }
 
-# 卸载软件包
-remove() {
-    if [ $# -eq 0 ]; then
-        echo -e "${yellow}未提供软件包参数!${re}"
-        return 1
-    fi
-
-    for package in "$@"; do
-        if command -v apt &>/dev/null; then
-            apt purge -y "$package"
-        elif command -v yum &>/dev/null; then
-            yum remove -y "$package"
-        elif command -v apk &>/dev/null; then
-            apk del "$package"
-        elif command -v dnf &>/dev/null; then
-            dnf remove -y "$package"            
-        else
-            echo -e "${red}未知的包管理器!${re}"
-            return 1
-        fi
-    done
-
-    return 0
-}
 # 等待用户返回
 break_end() {
     echo -e "${green}操作完成${re}"
@@ -594,58 +572,63 @@ case $choice in
 
   2)
     clear
+    update_system() {
+        if command -v apt &>/dev/null; then
+            apt-get update && apt-get upgrade -y
+        elif command -v dnf &>/dev/null; then
+            dnf check-update && dnf upgrade -y
+        elif command -v yum &>/dev/null; then
+            yum check-update && yum upgrade -y
+        elif command -v apk &>/dev/null; then
+            apk update && apk upgrade
+        else
+            echo -e "${red}不支持的Linux发行版${re}"
+            return 1
+        fi
+        return 0
+    }
 
-        update_system() {
-            if [ "$package_manager" = "apt" ]; then
-                $package_manager update -y && $package_manager full-upgrade -y
-            elif [ "$package_manager" = "yum" ]; then
-                $package_manager update -y
-            elif [ "$package_manager" = "apk" ]; then
-                $package_manager update
-            else
-                echo "未知的包管理器!"
-                exit 1
-            fi
-        }
-        update_system
+    update_system
+
     ;;
   3)
     clear
         clean_system() {
-            if [ "$package_manager" = "apt" ]; then
-                # 清理无用的包和缓存
-                $package_manager autoremove --purge -y 
-                $package_manager clean -y
-                $package_manager autoclean -y
+
+            if command -v apt &>/dev/null; then
+                apt autoremove --purge -y && apt clean -y && apt autoclean -y
+                apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
                 # 清理包配置文件
-                $package_manager remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
+                journalctl --vacuum-time=1s
+                journalctl --vacuum-size=50M
+                # 移除不再需要的内核
+                apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+            elif command -v yum &>/dev/null; then
+                yum autoremove -y && yum clean all
                 # 清理日志
                 journalctl --vacuum-time=1s
                 journalctl --vacuum-size=50M
                 # 移除不再需要的内核
-                $package_manager remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
-            elif [ "$package_manager" = "yum" ]; then
-                # 清理无用的包和缓存
-                $package_manager autoremove -y
-                $package_manager clean all
+                yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+            elif command -v dnf &>/dev/null; then
+                dnf autoremove -y && dnf clean all
                 # 清理日志
                 journalctl --vacuum-time=1s
                 journalctl --vacuum-size=50M
                 # 移除不再需要的内核
-                $package_manager remove $(rpm -q kernel | grep -v $(uname -r)) -y
-            elif [ "$package_manager" = "apk" ]; then
-                # 清理无用的包和缓存
-                $package_manager autoremove -y
-                $package_manager clean
+                dnf remove $(rpm -q kernel | grep -v $(uname -r)) -y
+            elif command -v apk &>/dev/null; then
+                apk autoremove -y
+                apk clean
                 # 清理包配置文件
-                $package_manager del $(apk info -e | grep '^r' | awk '{print $1}') -y
+                apk del $(apk info -e | grep '^r' | awk '{print $1}') -y
                 # 清理日志文件
                 journalctl --vacuum-time=1s
                 journalctl --vacuum-size=50M
                 # 移除不再需要的内核
-                $package_manager remove $(apk info -vv | grep -E 'linux-[0-9]' | grep -v $(uname -r) | awk '{print $1}') -y
+                apk del $(apk info -vv | grep -E 'linux-[0-9]' | grep -v $(uname -r) | awk '{print $1}') -y
             else
-                echo "未知的包管理器!"
+                echo -e "${red}暂不支持你的系统！${re}"
                 exit 1
             fi
         }
@@ -3623,7 +3606,7 @@ case $choice in
               clear
                read -p "请输入你的新密码: " passwd
 
-                check_arch
+                
 
                 if [ "$package_manager" == "apt" ]; then
                     echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && reboot || echo "Root密码修改失败"
@@ -4803,7 +4786,6 @@ EOF
           22)
             # 检查依赖包
             check_packages() {
-                check_arch
                 install net-tools bc sysstat
             }
             check_packages
@@ -4966,7 +4948,6 @@ EOF
                 echo -e "${green}Screen已经安装${re}"
             else
                 # 如果系统中未安装screen，则根据对应系统安装
-                check_arch
                 install screen
             fi   
 
@@ -4978,7 +4959,6 @@ EOF
                 echo -e "${yellow}系统中未安装nodejs，正在安装nodejs...${re}"
 
                 # 根据对应系统安装最新版本的nodejs
-                check_arch
                 curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
                 
 
@@ -4987,7 +4967,6 @@ EOF
                     echo -e "${green}nodejs安装成功!${re}"
                 else
                     echo -e "${red}nodejs安装失败，将为你重新安装${re}"
-                    check_arch
                     curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
                 fi
             fi        
@@ -5017,7 +4996,6 @@ EOF
                     else
                         echo "iptables未安装，尝试安装..."
                         
-                        check_arch 
                         install iptables
 
                         if [ $? -eq 0 ]; then
@@ -5224,8 +5202,7 @@ EOF
                         read -p "是否卸载旧版nodejs并安装最新版？[y/n]: " confirm
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                             
-                            # 卸载旧版
-                            check_arch
+                            # 卸载旧版                            
                             remove nodejs
                             sleep 1
                             
@@ -5238,7 +5215,7 @@ EOF
                                 sleep 2
                             else 
                                 echo -e "${red}nodejs安装失败，尝试为你再次安装${re}"
-                                check_arch
+                                
                                 curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
                                 sleep 2                              
                             fi
@@ -5250,7 +5227,7 @@ EOF
                 else
                     echo -e "${yellow}系统中未安装nodejs，正在安装最新版nodejs...${re}"
 
-                    check_arch
+                    
 
                     # 安装最新版本的nodejs
                     curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && install nodejs
@@ -5261,7 +5238,7 @@ EOF
                         break_end
                     else 
                         echo -e "${red}nodejs安装失败，尝试为你再次安装${re}"
-                        check_arch
+                        
                         curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
                         break_end                                
                     fi
@@ -5347,20 +5324,47 @@ EOF
                 latest_version="17.0.9"
                 if command -v java &>/dev/null; then
                     installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
-                    echo -e "${red}当前Java版本是${yellow}${installed_version},最新版本是${green}${latest_version}${re}"
+                    echo -e "${green}当前Java版本是${yellow}${installed_version},最新版本是${green}${latest_version}${re}"
 
                     if [ "$installed_version" == "$latest_version" ]; then
                         echo -e "${green}当前已安装Java最新版：${yellow}${latest_version},无需更新${re}"
                         sleep 2
                         main_menu
                     else
-                        
+                        echo -e "${red}"
                         read -p "是否卸载旧版java并安装最新版？[y/n]: " confirm
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
-
-                            check_arch
+                            # 卸载旧版java
                             remove java
                             break_end
+                            # 安装java
+                            install_java() {
+                                local install_status=0
+
+                                if command -v apt &>/dev/null; then
+                                    sudo apt install -y openjdk-17-jdk
+                                elif command -v yum &>/dev/null; then
+                                    sudo yum install -y java
+                                elif command -v dnf &>/dev/null; then
+                                    sudo dnf install -y java
+                                elif command -v apk &>/dev/null; then
+                                    sudo apk add openjdk17
+                                else
+                                    echo -e "${red}暂不支持你的系统！${re}"
+                                    exit 1
+                                fi
+
+                                # 检查是否安装成功
+                                if [ $install_status -eq 0 ]; then
+                                    echo -e "${green}Java安装成功，版本：${purple}${latest_version}${re}"
+                                    break_end
+                                else                    
+                                    echo -e "${red}Java安装失败，请更新系统后重试！${re}"
+                                    break_end
+                                fi
+                            }
+                            install_java                           
+
                         else
                             main_menu 
 
@@ -5370,64 +5374,37 @@ EOF
                 else
                     echo -e "${yellow}系统中未安装Java，正在为你安装...${re}"
 
-                    check_arch
                     install_java() {
-                        case $package_manager in
-                            "apt")
-                                install default-jre default-jdk
-                                break_end
-                                ;;
-                            "yum")
-                                install java
-                                break_end
-                                ;;
-                            "dnf")
-                                install java
-                                break_end
-                                ;;                               
-                            "apk")
-                                install openjdk17
-                                break_end
-                                ;;
-                            *)
-                                echo "暂不支持你的系统！"
-                                exit 1
-                                ;;
-                        esac
+                        local install_status=0
+
+                        if command -v apt &>/dev/null; then
+                            sudo apt update -y && sudo apt install -y openjdk-17-jdk
+                        elif command -v yum &>/dev/null; then
+                            sudo yum install -y java
+                        elif command -v dnf &>/dev/null; then
+                            sudo dnf install -y java
+                        elif command -v apk &>/dev/null; then
+                            sudo apk add openjdk17
+                        else
+                            echo -e "${red}暂不支持你的系统！${re}"
+                            exit 1
+                        fi
+
+                        install_status=$?
+
+                        if [ $install_status -eq 0 ]; then
+                            echo -e "${green}Java安装成功。${re}"
+                            java -version
+                            sleep 2
+                        else
+                            echo -e "${red}Java安装失败，请检查网络连接或更新系统后重试！${re}"
+                            return 1
+                        fi
+
+                        return 0
                     }
                     install_java
-                fi
-                # 检查是否安装成功，如果没有成功则重新
-                if [ $? -eq 0 ]; then
-                    echo -e "${green}Java安装成功，版本：${purple}${latest_version}${re}"
-                    break_end
-                else
-                    check_arch
-                    install_java() {
-                        case $package_manager in
-                            "apt")
-                                install default-jre default-jdk
-                                break_end
-                                ;;
-                            "yum")
-                                install java
-                                break_end
-                                ;;
-                            "dnf")
-                                install java
-                                break_end
-                                ;;                               
-                            "apk")
-                                install openjdk17
-                                break_end
-                                ;;
-                            *)
-                                echo "暂不支持你的系统！"
-                                exit 1
-                                ;;
-                        esac
-                    }
-                    install_java
+
                 fi
             ;;
 
@@ -5437,12 +5414,12 @@ EOF
                     # 获取当前安装的python版本
                     current_version=$(python3 --version 2>&1 | awk '{print $2}')   
 
-                    echo -e "${yellow}当前已安装python${red}$current_version${re}"
-                            
+                    echo -e "${yellow}当前已安装python${red}${current_version}"
+
                     read -p "确定卸载python？[y/n]: " confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                     
-                        check_arch
+                        
                         # 卸载python3
                         remove python3
 
@@ -5478,12 +5455,11 @@ EOF
                     read -p "确定卸载nodejs？[y/n]: " confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
 
-                        check_arch
+                        
                         # 卸载
-                        remove nodejs npm
+                        remove nodejs npm 
          
                         # 清理缓存配置文件
-                        npm cache clean --force
                         rm -rf ~/.npm
                         rm -rf ~/.nvm
                         rm -rf /usr/local/bin/node
@@ -5520,9 +5496,9 @@ EOF
                         source ~/.bashrc
 
                         echo -e "${green}Go已卸载${re}"
-                        sleep 3
-
-                         read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
+                        sleep 1
+                        echo -e "${red}"
+                        read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
 
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                             sleep 1
@@ -5545,48 +5521,40 @@ EOF
                 if command -v java &> /dev/null; then
                     # 获取当前安装的Java版本
                     installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
-                    echo -e "${yellow}已安装Java：${red}${installed_version}${re}"
+                    echo -e "${yellow}你的Java版本：${red}${installed_version}${re}"
 
                     read -p "确定卸载Java吗？[y/n]: " confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
 
-                        check_arch
-                        uninstall_java() {
-                            case $package_manager in
-                                "apt")
-                                    apt remove -y default-jre
-                                    apt remove -y default-jdk
-                                    apt-get purge $(dpkg --get-selections | grep -v deinstall | awk '{print $1}')
-                                    ;;
-                                "yum")
-                                    remove java
-                                    ;;
-                                "apk")
-                                    apk del -y openjdk
-                                    apk del --purge $(apk info -q)
-                                    export JAVA_HOME=/usr/lib/jvm/java-*
-                                    export PATH=$PATH:$JAVA_HOME/bin
-                                    source ~/.ashrc
-                                    ;;
-                                *)
-                                    echo "未知的包管理工具！"
-                                    exit 1
-                                    ;;
-                            esac
+                        remove_java() {
+                            local remove_status=0
+
+                            if command -v apt &>/dev/null; then
+                                sudo apt remove -y openjdk-17-jdk && sudo apt autoremove -y openjdk-17-jdk
+                            elif command -v yum &>/dev/null; then
+                                sudo yum remove -y java && sudo yum autoremove -y java
+                            elif command -v dnf &>/dev/null; then
+                                sudo dnf remove -y java && sudo dnf autoremove -y java
+                            elif command -v apk &>/dev/null; then
+                                sudo apk del openjdk17
+                            else
+                                echo -e "${red}暂不支持你的系统！${re}"
+                                exit 1
+                            fi
+                            # 检查是否安装成功，如果没有成功则重新
+                            if [ $remove_status -eq 0 ]; then
+                                echo -e "${green}Java卸载成功！${re}"
+                            else                    
+                                echo -e "${red}Java卸载失败，请重试!${re}"
+                                break_end
+                            fi
                         }
-                        uninstall_java
+                        remove_java
 
                         rm -rf /usr/lib/jvm/java-*
                         rm -rf /usr/local/java
                         rm -rf /opt/java
-
-                        # 清理环境变量
-                        export PATH=$PATH:/usr/local/java/bin
-                        source ~/.bashrc
-
-                        echo -e "${green}Java已卸载${re}"
-                        sleep 2
-
+                        echo -e "${red}"
                         read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
 
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
