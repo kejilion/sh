@@ -5480,9 +5480,9 @@ EOF
                     # 获取当前安装的Go版本
                     installed_version=$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)   
 
-                    echo -e "${yellow}当前已安装Go：${red}$installed_version"
+                    echo -e "${yellow}当前已安装Go：${red}$installed_version$re"
                             
-                    read -p "确定卸载Go吗？[y/n]: " confirm$re
+                    read -p "确定卸载Go吗？[y/n]: " confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
 
                         rm -rf /usr/local/go
