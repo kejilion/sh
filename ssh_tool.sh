@@ -5247,53 +5247,57 @@ EOF
 
             3)
             clear
-                # 获取当前系统架构
-                architecture=$(uname -m)
+                # 获取最新版Go的版本
+                html=$(curl -s https://go.dev/dl/)
+                latest_version=$(echo "$html" | grep -oP 'go[0-9]+\.[0-9]+(\.[0-9]+)?' | head -1)    
 
                 # 根据系统架构选择不同的下载链接
+                architecture=$(uname -m)
                 case "$architecture" in
                     x86_64|amd64)
-                        latest_version_url="https://golang.org/dl/go1.21.6.linux-amd64.tar.gz"
+                        latest_version_url="https://golang.org/dl/${latest_version}.linux-amd64.tar.gz"
                         ;;
                     x86)
-                        latest_version_url="https://golang.org/dl/go1.21.6.linux-386.tar.gz"
+                        latest_version_url="https://golang.org/dl/${latest_version}.linux-386.tar.gz"
                         ;;
                     arm64|aarch64)
-                        latest_version_url="https://golang.org/dl/go1.21.6.linux-arm64.tar.gz"
+                        latest_version_url="https://golang.org/dl/${latest_version}.linux-arm64.tar.gz"
                         ;;
                     *)
-                        echo -e "${red}不支持的系统架构：$architecture${re}"
+                        echo -e "${red}暂不支持的系统架构：$architecture${re}"
                         sleep 2
                         main_menu
                         ;;
                 esac
 
-                # 检查是否已安装 Go
+                # 检查是否已安装Go
                 if command -v go &> /dev/null; then
-                    # 获取当前已安装的 Go 版本
+                    # 获取当前已安装的Go版本
                     installed_version=$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)
                     echo -e "${yellow}当前已安装的Go版本：${red}$installed_version${re}"
 
-                    # 获取最新版 Go 的版本
-                    latest_version=$(echo "$latest_version_url" | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)
-
                     # 比较已安装版本与最新版本
                     if [ "$installed_version" = "$latest_version" ]; then
-                        echo -e "${green}已经是最新版本，无需更新。${re}"
+                        echo -e "${green}当前Go已经是最新版本，无需更新。${re}"
                         exit 0
 
-                    # 如果已安装版本小于最新版本，先卸载旧版
                     elif [ "$(printf "$installed_version\n$latest_version" | sort -V | head -n 1)" != "$installed_version" ]; then
-                        echo "卸载旧版Go：$installed_version"
-                        sudo rm -rf /usr/local/go
+                        echo -e "${yellow}发现新版本：$latest_version。${re}"
+                        read -p "需要卸载当前版本 $installed_version 并安装新版本 $latest_version 吗 [y/n]: " confirm
 
-                    else
-                        echo "发现新版本 $latest_version，升级中..."
+                        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+                            echo "卸载旧版Go：$installed_version"
+                            sudo rm -rf /usr/local/go
+
+                        else
+                            echo -e "${yellow}退出更新。${re}"
+                            sleep 2
+                            break_end
+                        fi
                     fi
                 else
                     echo -e "${yellow}系统中未安装Go，正在为你安装最新版Go...${re}"
                 fi
-
               # 下载并安装最新版Go
               wget -O go_latest.tar.gz "$latest_version_url"
               sudo tar -C /usr/local -xzf go_latest.tar.gz
