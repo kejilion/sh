@@ -16,8 +16,6 @@ fi
 if ! grep -q "alias K=" ~/.bashrc; then 
     echo "alias K=\"cd ~ && ./ssh_tool.sh\"" >> ~/.bashrc
 fi
-
-# 重新加载 .bashrc 以使更改生效
 source ~/.bashrc 
 
 # 获取当前服务器ipv4和ipv6
