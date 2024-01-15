@@ -5580,7 +5580,7 @@ EOF
             ;;
 
             *)
-            break  # 跳出循环，退出菜单
+            echo -e "${yellow}无效的输入!${re}"
             ;;
         esac
     done
@@ -5603,7 +5603,7 @@ EOF
     ;;
 
   *)
-    echo "无效的输入!"
+    echo -e "${yellow}无效的输入!${re}"
     ;;
 esac
     break_end
