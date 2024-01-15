@@ -4860,7 +4860,7 @@ EOF
             echo -e "${green}你的节点订阅链接为：http://$ipv4:$port/sub${re}" 
 
             # 判断是否要安装哪吒
-            read -p $'\033[1;35m是否需要一起安装哪吒探针？(y/n): \033[0m' nezha
+            read -p $'\033[1;33m是否需要一起安装哪吒探针？(y/n): \033[0m' nezha
 
             if [ "$nezha" == "y" ] || [ "$nezha" == "Y" ]; then
 
