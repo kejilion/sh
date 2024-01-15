@@ -18,9 +18,9 @@ wget -qO ssh_tool.sh https://raw.githubusercontent.com/eooce/ssh_tool/main/ssh_t
 
 * 若提示没有curl或wget，先安装即可
 * Ubuntu/Debian：apt-get install -y curl wget
-* CentOS/Almalinux/Oracle-linux/Amazon-linux：yum install -y curl wget
-* Fedora：dnf install -y curl wget
 * Alpine：apk add curl wget
+* Fedora：dnf install -y curl wget
+* CentOS/Rocky/Almalinux/Oracle-linux/Amazon-linux：yum install -y curl wget
 
 vps流量内存cpu控制一键脚本，配合cron定时任务使用，这是自用脚本，如要使用需先查询网卡信息，修改check_trafic.sh里的网卡名称，和阈值设置等
 ```bash
