@@ -40,13 +40,13 @@ install() {
         fi
         echo -e "${yellow}正在安装 ${package}...${re}"
         if command -v apt &>/dev/null; then
-            apt install -y "$package"
+            sudo apt install -y "$package"
         elif command -v dnf &>/dev/null; then
-            dnf install -y "$package"
+            sudo dnf install -y "$package"
         elif command -v yum &>/dev/null; then
-            yum install -y "$package"
+            sudo yum install -y "$package"
         elif command -v apk &>/dev/null; then
-            apk add "$package"
+            sudo apk add "$package"
         else
             echo -e"${red}暂不支持你的系统!${re}"
             return 1
@@ -65,13 +65,13 @@ remove() {
 
     for package in "$@"; do
         if command -v apt &>/dev/null; then
-            apt remove -y "$package" && apt autoremove -y
+            sudo apt remove -y "$package" && sudo apt autoremove -y
         elif command -v dnf &>/dev/null; then
-            dnf remove -y "$package" && dnf autoremove -y
+            sudo dnf remove -y "$package" && sudo dnf autoremove -y
         elif command -v yum &>/dev/null; then
-            yum remove -y "$package" && yum autoremove -y
+            sudo yum remove -y "$package" && sudo yum autoremove -y
         elif command -v apk &>/dev/null; then
-            apk del "$package"
+            sudo apk del "$package"
         else
             echo -e "${red}暂不支持你的系统!${re}"
             return 1
