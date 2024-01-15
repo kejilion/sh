@@ -5273,7 +5273,7 @@ EOF
                 # 检查是否已安装Go
                 if command -v go &> /dev/null; then
                     # 获取当前已安装的Go版本
-                    installed_version=$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)
+                    installed_version=$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+')
                     echo -e "${yellow}当前已安装的Go版本：${red}$installed_version${re}"
 
                     # 比较已安装版本与最新版本
