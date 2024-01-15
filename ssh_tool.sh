@@ -346,7 +346,7 @@ if docker inspect "$docker_name" &>/dev/null; then
     echo "------------------------"
     echo "0. 返回上一级选单"
     echo "------------------------"
-    read -p "请输入你的选择: " sub_choice
+    read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
     case $sub_choice in
         1)
@@ -426,31 +426,24 @@ echo -e "${skyblue} ##  ## #####   ####.        ##   ##  ## ##  ## ##      ${re}
 echo -e "${skyblue}  ####  ##         ##        ##   ##  ## ##  ## ##      ${re}" 
 echo -e "${skyblue}   ##   ##     ####          ##    ####   ####  ######  ${re}"  
 echo "                                                                          "   
-echo -e "${yellow}VPS一键脚本工具 v8.8.8 (支持Ubuntu/Debian/CentOS/Alpine/Fedora)${re}"
+echo -e "                 ${yellow}VPS一键脚本工具 v8.8.8${re}"
+echo -e "${yellow}支持Ubuntu/Debian/CentOS/Alpine/Fedora/Rocky/Almalinux/Oracle-linux${re}"
 echo -e ""
 echo -e "${skyblue}快捷键已设置为${yellow}k,${skyblue}下次运行输入${yellow}k${skyblue}可快速启动此脚本${re}"
-echo "------------------------"
-echo -e "${green} 1. 本机信息${re}"
-echo -e "${green} 2. 系统更新${re}"
-echo -e "${green} 3. 系统清理${re}"
-echo -e "${green} 4. 常用工具 ${re}"
-echo -e "${green} 5. BBR管理 ${re}"
-echo -e "${green} 6. Docker管理 ▶ ${re}"
-echo -e "${green} 7. WARP管理 ▶ 解锁ChatGPT/Netflix${re}"
-echo -e "${green} 8. 测试脚本合集 ▶${re}"
-echo -e "${green} 9. 甲骨文脚本合集 ▶ ${re}"
-echo -e "${purple}10. LDNMP建站 ▶ ${re}"
-echo -e "${green}11. 面板工具 ▶ ${re}"
-echo -e "${green}12. 我的工作区 ▶ ${re}"
-echo -e "${green}13. 系统工具 ▶${re}"
-echo -e "${purple}14. 节点搭建脚本合集 ▶ ${re}"
-echo -e "${green}15. 常用环境管理${re}"
-echo "------------------------"
-echo -e "${green}00. 脚本更新${re}"
-echo "------------------------"
-echo -e "${red} 0. 退出脚本${re}"
-echo "------------------------"
-read -p "请输入你的选择: " choice
+echo "-------------------------------------------------------------------"
+echo -e "${green} 1. 本机信息                   5. BBR管理 ${re}"
+echo -e "${green} 2. 系统更新                   6. Docker管理 ▶${re}"
+echo -e "${green} 3. 系统清理                   7. WARP管理 ▶解锁ChatGPT/Netflix${re}"
+echo -e "${green} 4. 组件管理 ▶${purple}                 8. LDNMP建站 ▶${re}"
+echo "-------------------------------------------------------------------"
+echo -e "${green} 9. 面板工具 ▶                13. 测试脚本合集 ▶${re}"
+echo -e "${green}10. 系统工具 ▶                14. 甲骨文云合集 ▶${re}"
+echo -e "${green}11. 我的工作区 ▶              15. 常用环境管理 ▶${re}"
+echo -e "${purple}12. 节点搭建合集 ▶${re}"
+echo "-------------------------------------------------------------------"
+echo -e "${green}00. 脚本更新${red}                  88. 退出脚本${re}"
+echo -e "${yellow}-------------------------------------------------------------------${re}"
+read -p $'\033[1;91m请输入你的选择: \033[0m' choice
 
 case $choice in
   1)
@@ -638,7 +631,7 @@ case $choice in
   4)
   while true; do
       clear
-      echo "▶ 常用工具管理"
+      echo "▶ 组件管理"
       echo "------------------------"
       echo " 1. curl 下载工具"
       echo " 2. wget 下载工具"
@@ -668,9 +661,9 @@ case $choice in
       echo -e "${yellow}41. 安装指定工具${re}"
       echo -e "${red}42. 卸载指定工具${re}"
       echo "------------------------"
-      echo " 0. 返回主菜单"
+      echo -e "${skyblue} 0. 返回主菜单${re}"
       echo "------------------------"
-      read -p "请输入你的选择: " sub_choice
+      read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
       case $sub_choice in
           1)
@@ -866,9 +859,9 @@ case $choice in
       echo "------------------------"
       echo -e "${red}8. 卸载Dcoker环境${re}"
       echo "------------------------"
-      echo "0. 返回主菜单"
+      echo -e "${skyblue} 0. 返回主菜单${re}"
       echo "------------------------"
-      read -p "请输入你的选择: " sub_choice
+      read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
       case $sub_choice in
           1)
@@ -916,7 +909,7 @@ case $choice in
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
+                  read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                   case $sub_choice in
                       1)
@@ -1019,7 +1012,7 @@ case $choice in
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
+                  read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                   case $sub_choice in
                       1)
@@ -1095,7 +1088,7 @@ case $choice in
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
+                  read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                   case $sub_choice in
                       1)
@@ -1143,7 +1136,7 @@ case $choice in
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
+                  read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                   case $sub_choice in
                       1)
@@ -1219,205 +1212,7 @@ case $choice in
     ;;
 
   8)
-    while true; do
-      clear
-      echo "▶ 测试脚本合集"
-      echo "------------------------"
-      echo "1. ChatGPT解锁状态检测"
-      echo "2. Region流媒体解锁测试"
-      echo "3. yeahwu流媒体解锁检测"
-      echo "4. besttrace三网回程延迟路由测试"
-      echo "5. mtr_trace三网回程线路测试"
-      echo "6. Superspeed三网测速"
-      echo "7. yabs性能带宽测试"
-      echo "8. bench性能测试"
-      echo "------------------------"
-      echo -e "9. spiritysdx融合怪测评 \033[33mNEW\033[0m"
-      echo "------------------------"
-      echo "0. 返回主菜单"
-      echo "------------------------"
-      read -p "请输入你的选择: " sub_choice
-
-      case $sub_choice in
-          1)
-              clear
-              bash <(curl -Ls https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh)
-              ;;
-          2)
-              clear
-              bash <(curl -L -s check.unlock.media)
-              ;;
-          3)
-              clear
-              install wget
-              wget -qO- https://github.com/yeahwu/check/raw/main/check.sh | bash
-              ;;
-          4)
-              clear
-              install wget
-              wget -qO- git.io/besttrace | bash
-              ;;
-          5)
-              clear
-              curl https://raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh | bash
-              ;;
-          6)
-              clear
-              bash <(curl -Lso- https://git.io/superspeed_uxh)
-              ;;
-          7)
-              clear
-              curl -sL yabs.sh | bash -s -- -i -5
-              ;;
-          8)
-              clear
-              curl -Lso- bench.sh | bash
-              ;;
-          9)
-              clear
-              curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
-              ;;
-          0)
-              main_menu
-
-              ;;
-          *)
-              echo "无效的输入!"
-              ;;
-      esac
-      break_end
-
-    done
-    ;;
-
-  9)
-     while true; do
-      clear
-      echo "▶ 甲骨文云脚本合集"
-      echo "------------------------"
-      echo "1. 安装闲置机器活跃脚本"
-      echo "2. 卸载闲置机器活跃脚本"
-      echo "------------------------"
-      echo "3. DD重装系统脚本"
-      echo "4. R探长开机脚本"
-      echo "------------------------"
-      echo "5. 开启ROOT密码登录模式"
-      echo "------------------------"
-      echo "0. 返回主菜单"
-      echo "------------------------"
-      read -p "请输入你的选择: " sub_choice
-
-      case $sub_choice in
-          1)
-              clear
-              echo "活跃脚本: CPU占用10-20% 内存占用15% "
-              read -p "确定安装吗？(Y/N): " choice
-              case "$choice" in
-                [Yy])
-
-                  install_docker
-
-                  docker run -itd --name=lookbusy --restart=always \
-                          -e TZ=Asia/Shanghai \
-                          -e CPU_UTIL=10-20 \
-                          -e CPU_CORE=1 \
-                          -e MEM_UTIL=15 \
-                          -e SPEEDTEST_INTERVAL=120 \
-                          fogforest/lookbusy
-                  ;;
-                [Nn])
-
-                  ;;
-                *)
-                  echo "无效的选择，请输入 Y 或 N。"
-                  ;;
-              esac
-              ;;
-          2)
-              clear
-              docker rm -f lookbusy
-              docker rmi fogforest/lookbusy
-              ;;
-
-          3)
-          clear
-          echo "请备份数据，将为你重装系统，预计花费15分钟。"
-          read -p "确定继续吗？(Y/N): " choice
-
-          case "$choice" in
-            [Yy])
-              while true; do
-                read -p "请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : " sys_choice
-
-                case "$sys_choice" in
-                  1)
-                    xitong="-d 12"
-                    break  # 结束循环
-                    ;;
-                  2)
-                    xitong="-u 20.04"
-                    break  # 结束循环
-                    ;;
-                  *)
-                    echo "无效的选择，请重新输入。"
-                    ;;
-                esac
-              done
-
-              read -p "请输入你重装后的密码: " vpspasswd
-              install wget
-              bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
-              ;;
-            [Nn])
-              echo "已取消"
-              ;;
-            *)
-              echo "无效的选择，请输入 Y 或 N。"
-              ;;
-          esac
-              ;;
-
-          4)
-              clear
-              echo "该功能处于开发阶段，敬请期待！"
-              ;;
-          5)
-              clear
-              echo "设置你的ROOT密码"
-              passwd
-              sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
-              sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-              service sshd restart
-              echo "ROOT登录设置完毕！"
-              read -p "需要重启服务器吗？(Y/N): " choice
-          case "$choice" in
-            [Yy])
-              reboot
-              ;;
-            [Nn])
-              echo "已取消"
-              ;;
-            *)
-              echo "无效的选择，请输入 Y 或 N。"
-              ;;
-          esac
-              ;;
-          0)
-              main_menu
-
-              ;;
-          *)
-              echo "无效的输入!"
-              ;;
-      esac
-      break_end
-
-    done
-    ;;
-
-
-  10)
-
+  clear
   while true; do
     clear
     echo -e "${purple}▶ LDNMP建站${re}"
@@ -1434,11 +1229,14 @@ case $choice in
     echo  " 9. 安装Bitwarden密码管理平台"
     echo  "10. 安装Halo博客网站"
     echo  "11. 安装typecho轻量博客网站"
+    echo  "12. 安装Pbootcms企业站"
+    echo  "13. 安装极致CMS企业站"
+    echo  "14. 安装易优CMS企业站"
     echo  "------------------------"
-    echo -e "21. 仅安装nginx \033[33mNEW\033[0m"
+    echo  "21. 仅安装nginx "
     echo  "22. 站点重定向"
     echo  "23. 站点反向代理"
-    echo -e "24. 自定义静态站点 \033[36mBeta\033[0m"
+    echo -e "24. 自定义静态站点"
     echo  "------------------------"
     echo  "31. 站点数据管理"
     echo  "32. 备份全站数据"
@@ -1453,7 +1251,7 @@ case $choice in
     echo  "------------------------"
     echo  -e "${yellow} 0. 返回主菜单${re}"
     echo  "------------------------"
-    read -p "请输入你的选择: " sub_choice
+    read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
 
     case $sub_choice in
@@ -1798,6 +1596,49 @@ case $choice in
         ;;
 
 
+
+      12)
+      clear
+        echo -e "${red}很抱歉，该模块正在开发中${re}"
+        sleep 2
+        main_menu
+      ;;
+
+
+      13)
+      clear
+        echo -e "${red}很抱歉，该模块正在开发中${re}"
+        sleep 2
+        main_menu
+
+      ;;
+
+      13)
+      clear
+        echo -e "${red}很抱歉，该模块正在开发中${re}"
+        sleep 2
+        main_menu
+
+      ;;
+
+      14)
+      clear
+        echo -e "${red}很抱歉，该模块正在开发中${re}"
+        sleep 2
+        main_menu
+
+      ;;
+
+      15)
+      clear
+        echo -e "${red}很抱歉，该模块正在开发中${re}"
+        sleep 2
+        main_menu
+
+      ;;
+
+
+
       21)
       check_port
       install_dependency
@@ -1947,7 +1788,7 @@ case $choice in
         echo "------------------------"
         echo "0. 返回上一级选单"
         echo "------------------------"
-        read -p "请输入你的选择: " sub_choice
+        read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
         case $sub_choice in
             1)
                 read -p "请输入你的域名: " yuming
@@ -2052,7 +1893,7 @@ case $choice in
 
       echo "------------------------"
       echo "1. 每周备份                 2. 每天备份"
-      read -p "请输入你的选择: " dingshi
+      read -p $'\033[1;91m请输入你的选择: \033[0m' dingshi
 
       case $dingshi in
           1)
@@ -2099,7 +1940,7 @@ case $choice in
               echo "------------------------"
               echo "0. 退出"
               echo "------------------------"
-              read -p "请输入你的选择: " sub_choice
+              read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
               case $sub_choice in
                   1)
                       sed -i 's/false/true/g' /etc/fail2ban/jail.d/sshd.local
@@ -2228,7 +2069,7 @@ case $choice in
               echo "------------------------"
               echo "0. 退出"
               echo "------------------------"
-              read -p "请输入你的选择: " sub_choice
+              read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
               case $sub_choice in
                   1)
                   # nginx调优
@@ -2331,10 +2172,11 @@ case $choice in
     esac
     break_end
 
-  done
-      ;;
+    done
+    ;;
 
-  11)
+
+  9)
     while true; do
       clear
       echo "▶ 面板工具"
@@ -2352,9 +2194,9 @@ case $choice in
       echo "21. VScode网页版                         22. UptimeKuma监控工具"
       echo "23. Memos网页备忘录                      24. pandoranext潘多拉GPT镜像站"
       echo "------------------------"
-      echo " 0. 返回主菜单"
+      echo -e "${skyblue} 0. 返回主菜单${re}"
       echo "------------------------"
-      read -p "请输入你的选择: " sub_choice
+      read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
       case $sub_choice in
           1)
@@ -2367,7 +2209,7 @@ case $choice in
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
+                read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                 case $sub_choice in
                     1)
@@ -2451,7 +2293,7 @@ case $choice in
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
+                read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                 case $sub_choice in
                     1)
@@ -2534,7 +2376,7 @@ case $choice in
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
+                read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                 case $sub_choice in
                     1)
@@ -2723,7 +2565,7 @@ case $choice in
                     echo "------------------------"
                     echo "0. 返回上一级选单"
                     echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
+                    read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                     case $sub_choice in
                         1)
@@ -2854,7 +2696,7 @@ case $choice in
                     echo "------------------------"
                     echo "0. 返回上一级选单"
                     echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
+                    read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                     case $sub_choice in
                         1)
@@ -2985,7 +2827,7 @@ case $choice in
                     echo "------------------------"
                     echo "0. 返回上一级选单"
                     echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
+                    read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                     case $sub_choice in
                         1)
@@ -3174,7 +3016,7 @@ case $choice in
                     echo "------------------------"
                     echo "0. 返回上一级选单"
                     echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
+                    read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                     case $sub_choice in
                         1)
@@ -3315,7 +3157,7 @@ case $choice in
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
+                read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                 case $sub_choice in
                     1)
@@ -3425,138 +3267,7 @@ case $choice in
     done
     ;;
 
-  12)
-    while true; do
-      clear
-      echo "▶ 我的工作区"
-      echo "系统将为你提供5个后台运行的工作区，你可以用来执行长时间的任务"
-      echo "即使你断开SSH，工作区中的任务也不会中断，非常方便！来试试吧！"
-      echo -e "\033[33m注意: 进入工作区后使用Ctrl+b再单独按d，退出工作区！\033[0m"
-      echo "------------------------"
-      echo "a. 安装工作区环境"
-      echo "------------------------"
-      echo "1. 1号工作区"
-      echo "2. 2号工作区"
-      echo "3. 3号工作区"
-      echo "4. 4号工作区"
-      echo "5. 5号工作区"
-      echo "------------------------"
-      echo "8. 工作区状态"
-      echo "------------------------"
-      echo "b. 卸载工作区"
-      echo "------------------------"
-      echo "0. 返回主菜单"
-      echo "------------------------"
-      read -p "请输入你的选择: " sub_choice
-
-      case $sub_choice in
-          a)
-              clear
-              install tmux
-
-              ;;
-          b)
-              clear
-              remove tmux
-              ;;
-          1)
-              clear
-              SESSION_NAME="work1"
-
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
-              ;;
-          2)
-              clear
-              SESSION_NAME="work2"
-
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
-              ;;
-          3)
-              clear
-              SESSION_NAME="work3"
-
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
-              ;;
-          4)
-              clear
-              SESSION_NAME="work4"
-
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
-              ;;
-          5)
-              clear
-              SESSION_NAME="work5"
-
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
-              ;;
-
-          8)
-              clear
-              tmux list-sessions
-              ;;
-          0)
-              main_menu
-              ;;
-          *)
-              echo "无效的输入!"
-              ;;
-      esac
-      break_end
-
-    done
-    ;;
-
-  13)
+  10)
     while true; do
       clear
       echo "▶ 系统工具"
@@ -3589,9 +3300,9 @@ case $choice in
       echo "------------------------"
       echo "99. 重启服务器"
       echo "------------------------"
-      echo " 0. 返回主菜单"
+      echo -e "${skyblue} 0. 返回主菜单${re}"
       echo "------------------------"
-      read -p "请输入你的选择: " sub_choice
+      read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
       case $sub_choice in
           1)
@@ -3925,7 +3636,7 @@ case $choice in
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
+                  read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                   case $sub_choice in
                       1)
@@ -4065,7 +3776,7 @@ case $choice in
                 echo "------------------------"
                 echo " 0. 返回上一级选单"
                 echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
+                read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                 case $sub_choice in
                     1) timedatectl set-timezone Asia/Shanghai ;;
@@ -4109,7 +3820,7 @@ case $choice in
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
+                  read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                   case $sub_choice in
                       1)
@@ -4223,7 +3934,7 @@ EOF
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
+                  read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                   case $sub_choice in
                       1)
@@ -4634,14 +4345,14 @@ EOF
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
+                  read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
                   case $sub_choice in
                       1)
                           read -p "请输入新任务的执行命令: " newquest
                           echo "------------------------"
                           echo "1. 每周任务                 2. 每天任务"
-                          read -p "请输入你的选择: " dingshi
+                          read -p $'\033[1;91m请输入你的选择: \033[0m' dingshi
 
                           case $dingshi in
                               1)
@@ -4684,7 +4395,7 @@ EOF
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
-                read -p "请输入你的选择: " sub_choice   
+                read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice   
 
                 case $sub_choice in
                     1)
@@ -4801,7 +4512,7 @@ EOF
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
-                read -p "请输入你的选择: " sub_choice   
+                read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice   
 
                 case $sub_choice in
                     1)
@@ -4903,7 +4614,140 @@ EOF
     done
     ;;
 
-  14)
+
+  11)
+    while true; do
+      clear
+      echo "▶ 我的工作区"
+      echo "系统将为你提供5个后台运行的工作区，你可以用来执行长时间的任务"
+      echo "即使你断开SSH，工作区中的任务也不会中断，非常方便！来试试吧！"
+      echo -e "\033[33m注意: 进入工作区后使用Ctrl+b再单独按d，退出工作区！\033[0m"
+      echo "------------------------"
+      echo "a. 安装工作区环境"
+      echo "------------------------"
+      echo "1. 1号工作区"
+      echo "2. 2号工作区"
+      echo "3. 3号工作区"
+      echo "4. 4号工作区"
+      echo "5. 5号工作区"
+      echo "------------------------"
+      echo "8. 工作区状态"
+      echo "------------------------"
+      echo "b. 卸载工作区"
+      echo "------------------------"
+      echo -e "${skyblue}0. 返回主菜单${re}"
+      echo "------------------------"
+      read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
+
+      case $sub_choice in
+          a)
+              clear
+              install tmux
+
+              ;;
+          b)
+              clear
+              remove tmux
+              ;;
+          1)
+              clear
+              SESSION_NAME="work1"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi
+              ;;
+          2)
+              clear
+              SESSION_NAME="work2"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi
+              ;;
+          3)
+              clear
+              SESSION_NAME="work3"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi
+              ;;
+          4)
+              clear
+              SESSION_NAME="work4"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi
+              ;;
+          5)
+              clear
+              SESSION_NAME="work5"
+
+              # Check if the session already exists
+              tmux has-session -t $SESSION_NAME 2>/dev/null
+
+              # $? is a special variable that holds the exit status of the last executed command
+              if [ $? != 0 ]; then
+                # Session doesn't exist, create a new one
+                tmux new -s $SESSION_NAME
+              else
+                # Session exists, attach to it
+                tmux attach-session -t $SESSION_NAME
+              fi
+              ;;
+
+          8)
+              clear
+              tmux list-sessions
+              ;;
+          0)
+              main_menu
+              ;;
+          *)
+              echo "无效的输入!"
+              ;;
+      esac
+      break_end
+
+    done
+    ;;
+
+
+  12)
     while true; do
       clear
       echo -e "${purple}▶ 节点搭建脚本合集${re}"
@@ -4921,9 +4765,9 @@ EOF
       echo "11. M佬Hysteria2一键脚本"
       echo "12. M佬Juicity一键脚本"
       echo "------------------------"  
-      echo " 0. 返回主菜单"
+      echo -e "${skyblue} 0. 返回主菜单${re}"
       echo "------------------------"
-      read -p "请输入你的选择: " sub_choice   
+      read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice   
 
       case $sub_choice in
         1)
@@ -5078,7 +4922,207 @@ EOF
       esac
     done
     ;; 
-# 常用环境管理
+
+
+  13)
+    while true; do
+      clear
+      echo "▶ 测试脚本合集"
+      echo "------------------------"
+      echo "1. ChatGPT解锁状态检测"
+      echo "2. Region流媒体解锁测试"
+      echo "3. yeahwu流媒体解锁检测"
+      echo "4. besttrace三网回程延迟路由测试"
+      echo "5. mtr_trace三网回程线路测试"
+      echo "6. Superspeed三网测速"
+      echo "7. yabs性能带宽测试"
+      echo "8. bench性能测试"
+      echo "------------------------"
+      echo -e "9. spiritysdx融合怪测评 \033[33mNEW\033[0m"
+      echo "------------------------"
+      echo -e "${skyblue}0. 返回主菜单${re}"
+      echo "------------------------"
+      read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
+
+      case $sub_choice in
+          1)
+              clear
+              bash <(curl -Ls https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh)
+              ;;
+          2)
+              clear
+              bash <(curl -L -s check.unlock.media)
+              ;;
+          3)
+              clear
+              install wget
+              wget -qO- https://github.com/yeahwu/check/raw/main/check.sh | bash
+              ;;
+          4)
+              clear
+              install wget
+              wget -qO- git.io/besttrace | bash
+              ;;
+          5)
+              clear
+              curl https://raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh | bash
+              ;;
+          6)
+              clear
+              bash <(curl -Lso- https://git.io/superspeed_uxh)
+              ;;
+          7)
+              clear
+              curl -sL yabs.sh | bash -s -- -i -5
+              ;;
+          8)
+              clear
+              curl -Lso- bench.sh | bash
+              ;;
+          9)
+              clear
+              curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
+              ;;
+          0)
+              main_menu
+
+              ;;
+          *)
+              echo "无效的输入!"
+              ;;
+      esac
+      break_end
+
+    done
+    ;;
+
+
+  14)
+     while true; do
+      clear
+      echo "▶ 甲骨文云脚本合集"
+      echo "------------------------"
+      echo "1. 安装闲置机器活跃脚本"
+      echo "2. 卸载闲置机器活跃脚本"
+      echo "------------------------"
+      echo "3. DD重装系统脚本"
+      echo "4. R探长开机脚本"
+      echo "------------------------"
+      echo "5. 开启ROOT密码登录模式"
+      echo "------------------------"
+      echo -e "${skyblue}0. 返回主菜单${re}"
+      echo "------------------------"
+      read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
+
+      case $sub_choice in
+          1)
+              clear
+              echo "活跃脚本: CPU占用10-20% 内存占用15% "
+              read -p "确定安装吗？(Y/N): " choice
+              case "$choice" in
+                [Yy])
+
+                  install_docker
+
+                  docker run -itd --name=lookbusy --restart=always \
+                          -e TZ=Asia/Shanghai \
+                          -e CPU_UTIL=10-20 \
+                          -e CPU_CORE=1 \
+                          -e MEM_UTIL=15 \
+                          -e SPEEDTEST_INTERVAL=120 \
+                          fogforest/lookbusy
+                  ;;
+                [Nn])
+
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
+              ;;
+          2)
+              clear
+              docker rm -f lookbusy
+              docker rmi fogforest/lookbusy
+              ;;
+
+          3)
+          clear
+          echo "请备份数据，将为你重装系统，预计花费15分钟。"
+          read -p "确定继续吗？(Y/N): " choice
+
+          case "$choice" in
+            [Yy])
+              while true; do
+                read -p "请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : " sys_choice
+
+                case "$sys_choice" in
+                  1)
+                    xitong="-d 12"
+                    break  # 结束循环
+                    ;;
+                  2)
+                    xitong="-u 20.04"
+                    break  # 结束循环
+                    ;;
+                  *)
+                    echo "无效的选择，请重新输入。"
+                    ;;
+                esac
+              done
+
+              read -p "请输入你重装后的密码: " vpspasswd
+              install wget
+              bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
+              ;;
+            [Nn])
+              echo "已取消"
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              ;;
+          esac
+              ;;
+
+          4)
+              clear
+              echo "该功能处于开发阶段，敬请期待！"
+              ;;
+          5)
+              clear
+              echo "设置你的ROOT密码"
+              passwd
+              sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
+              sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
+              service sshd restart
+              echo "ROOT登录设置完毕！"
+              read -p "需要重启服务器吗？(Y/N): " choice
+          case "$choice" in
+            [Yy])
+              reboot
+              ;;
+            [Nn])
+              echo "已取消"
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              ;;
+          esac
+              ;;
+          0)
+              main_menu
+
+              ;;
+          *)
+              echo "无效的输入!"
+              ;;
+      esac
+      break_end
+
+    done
+    ;;
+
+
   15)
     while true; do
         clear
@@ -5094,9 +5138,9 @@ EOF
         echo -e "${red}7. 一键卸载Golang${re}"
         echo -e "${red}8. 一键卸载Java${re}"
         echo "------------------------"
-        echo "0. 返回主菜单"
+        echo -e "${skyblue}0. 返回主菜单${re}"
         echo "------------------------"
-        read -p "请输入你的选择: " sub_choice
+        read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
         case $sub_choice in
             1)
@@ -5120,8 +5164,8 @@ EOF
                 # 卸载Python3旧版本
                 if [[ $VERSION == "3"* ]]; then
                     echo -e "${yellow}你的Python3版本是${re}${red}${VERSION}${re}，${yellow}最新版本是${re}${red}${PY_VERSION}${re}"
-                    read -p "是否确认升级最新版Python3？默认不升级 [y/N]: " CONFIRM
-                    if [[ $CONFIRM == "y" ]]; then
+                    read -p $'\033[1;91m是否确认升级最新版Python3？默认不升级 [y/N]: \033[0m' confirm
+                    if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                         if [[ $OS == "CentOS" ]]; then
                             echo ""
                             rm-rf /usr/local/python3* >/dev/null 2>&1
@@ -5135,8 +5179,8 @@ EOF
                     fi
                 else
                     echo -e "${red}检测到没有安装Python3。${re}"
-                    read -p "是否确认安装最新版Python3？默认安装 [Y/n]: " CONFIRM
-                    if [[ $CONFIRM != "n" ]]; then
+                    read -p "是否确认安装最新版Python3？默认安装 [Y/n]: "confirm
+                    if [ "$confirm" == "n" ] || [ "$confirm" == "N" ]; then
                         echo -e "${green}开始安装最新版Python3...${re}"
                     else
                         echo -e "${yellow}已取消安装Python3${re}"
@@ -5197,7 +5241,7 @@ EOF
                     else
                         # 如果不是最新版本
                         echo -e "${yellow}你的nodejs版本是${re}${red}${current_version}${re}，${yellow}最新版本是${purple}${latest_version}${re}"                                 
-                        read -p "是否卸载旧版nodejs并安装最新版？[y/n]: " confirm
+                        read -p $'\033[1;91m是否卸载旧版nodejs并安装最新版？[y/n]: \033[0m' confirm
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                             
                             # 卸载旧版                            
@@ -5279,13 +5323,12 @@ EOF
                     # 比较已安装版本与最新版本
                     if [ "$installed_version" = "$latest_version" ]; then
                         echo -e "${green}当前Go已经是最新版本，无需更新。${re}"
-                        sleep 2
                         main_menu
 
                     elif [ "$(printf "$installed_version\n$latest_version" | sort -V | head -n 1)" != "$installed_version" ]; then
                         echo -e "${yellow}发现新版本：$latest_version。${re}"
-                        read -p "需要卸载当前版本 $installed_version 并安装新版本 $latest_version 吗 [y/n]: " confirm
-
+                        read -p $'\033[1;91m需要卸载当前版本 $installed_version 并安装新版本 $latest_version 吗 [y/n]: \033[0m' confirm
+                        
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                             echo "卸载旧版Go：$installed_version"
                             sudo rm -rf /usr/local/go
@@ -5311,7 +5354,7 @@ EOF
               export PATH=$PATH:/usr/local/go/bin
               rm go_latest.tar.gz
               echo -e "${green}GO安装完成，当前Go版本：${red}$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)${re}"
-              read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
+              read -p $'\033[1;91m重启服务器配置才可生效，需要立即重启吗 [y/n]: \033[0m' confirm
 
               if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                 sleep 1
@@ -5419,7 +5462,7 @@ EOF
 
                     echo -e "${yellow}当前已安装python${red}${current_version}"
 
-                    read -p "确定卸载python？[y/n]: " confirm
+                    read -p $'\033[1;91m确定卸载python？[y/n]: \033[0m' confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                     
                         
@@ -5455,7 +5498,7 @@ EOF
 
                     echo -e "${yellow}当前已安装nodejs${red}$current_version${re}"
                             
-                    read -p "确定卸载nodejs？[y/n]: " confirm
+                    read -p $'\033[1;91m确定卸载nodejs？[y/n]: \033[0m' confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
 
                         
@@ -5487,7 +5530,7 @@ EOF
 
                     echo -e "${yellow}当前已安装Go：${red}$installed_version${re}"
                             
-                    read -p "确定卸载Go吗？[y/n]: " confirm
+                    read -p $'\033[1;91m确定卸载Go？[y/n]: \033[0m' confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
 
                         rm -rf /usr/local/go
@@ -5526,7 +5569,7 @@ EOF
                     installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
                     echo -e "${yellow}你的Java版本：${red}${installed_version}${re}"
 
-                    read -p "确定卸载Java吗？[y/n]: " confirm
+                    read -p $'\033[1;91m确定卸载Java？[y/n]: \033[0m' confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
 
                         remove_java() {
@@ -5558,7 +5601,7 @@ EOF
                         rm -rf /usr/local/java
                         rm -rf /opt/java
                         echo -e "${red}"
-                        read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
+                        read -p $'\033[1;91m重启服务器配置才可生效，需要立即重启吗 [y/n]: \033[0m' confirm
 
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                             sleep 1
@@ -5598,13 +5641,13 @@ EOF
     main_menu
     ;;
 
-  0)
+  88)
     clear
     exit
     ;;
 
   *)
-    echo -e "${yellow}无效的输入!${re}"
+    echo -e "${purple}无效的输入!${re}"
     ;;
 esac
     break_end
