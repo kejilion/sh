@@ -9,6 +9,8 @@ yellow='\e[1;33m'
 purple='\e[1;35m'
 skyblue='\e[1;96m'
 
+[[ $EUID -ne 0 ]] && echo -e "${red}注意: 请在root用户下运行脚本${re}" && sleep 2 && exit 1
+
 # 检查alias是否已经存在
 if ! grep -q "alias k=" ~/.bashrc; then 
     echo "alias k=\"cd ~ && ./ssh_tool.sh\"" >> ~/.bashrc
@@ -38,13 +40,13 @@ install() {
         fi
         echo -e "${yellow}正在安装 ${package}...${re}"
         if command -v apt &>/dev/null; then
-            sudo apt install -y "$package"
+            apt install -y "$package"
         elif command -v dnf &>/dev/null; then
-            sudo dnf install -y "$package"
+            dnf install -y "$package"
         elif command -v yum &>/dev/null; then
-            sudo yum install -y "$package"
+            yum install -y "$package"
         elif command -v apk &>/dev/null; then
-            sudo apk add "$package"
+            apk add "$package"
         else
             echo -e"${red}暂不支持你的系统!${re}"
             return 1
@@ -63,13 +65,13 @@ remove() {
 
     for package in "$@"; do
         if command -v apt &>/dev/null; then
-            sudo apt remove -y "$package" && sudo apt autoremove -y
+            apt remove -y "$package" && apt autoremove -y
         elif command -v dnf &>/dev/null; then
-            sudo dnf remove -y "$package" && sudo dnf autoremove -y
+            dnf remove -y "$package" && dnf autoremove -y
         elif command -v yum &>/dev/null; then
-            sudo yum remove -y "$package" && sudo yum autoremove -y
+            yum remove -y "$package" && yum autoremove -y
         elif command -v apk &>/dev/null; then
-            sudo apk del "$package"
+            apk del "$package"
         else
             echo -e "${red}暂不支持你的系统!${re}"
             return 1
@@ -5666,7 +5668,6 @@ EOF
         case $sub_choice in 
             1)
                 clear
-                [[ $EUID -ne 0 ]] && echo -e "${red}注意: 请在root用户下运行脚本${re}" && sleep 2 && exit 1
                 echo -e "${yellow}开始进行环境检测...${re}"
                 install wget
                 output=$(bash <(wget -qO- --no-check-certificate https://raw.githubusercontent.com/spiritLHLS/pve/main/scripts/check_kernal.sh))
@@ -5715,7 +5716,6 @@ EOF
 
             2)
                 clear
-                [[ $EUID -ne 0 ]] && echo -e "${red}注意: 请在root用户下运行脚本${re}" && sleep 2 && exit 1
 
                 read -p $'\033[1;96m确认你已执行完第1步，是否继续 [y/n]: \033[0m' confirm
                 if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
@@ -5811,7 +5811,6 @@ EOF
 
             6)
                 clear
-                [[ $EUID -ne 0 ]] && echo -e "${red}注意: 请在root用户下运行脚本${re}" && sleep 2 && exit 1
                 echo -e "${yellow}开设虚拟内存(Swap),请先输入2移除原来的，会重新执行一次，再输入1添加虚拟内存${re}"
                 curl -L https://raw.githubusercontent.com/spiritLHLS/addswap/main/addswap.sh -o addswap.sh && chmod +x addswap.sh && bash addswap.sh
                 sleep 1
