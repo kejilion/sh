@@ -4817,7 +4817,7 @@ EOF
             # 提示输入订阅端口
             while true; do
                 echo -e "${yellow}注意：NAT小鸡需输入指定的端口范围内的端口，否则无法使用订阅功能${re}"
-                read -p "请输入节点订阅端口: " port
+                read -p $'\033[1;35m请输入节点订阅端口: \033[0m' port
 
                 if [[ $port =~ ^[0-9]+$ ]]; then
                     # 检查输入是否为正整数
@@ -4860,18 +4860,18 @@ EOF
             echo -e "${green}你的节点订阅链接为：http://$ipv4:$port/sub${re}" 
 
             # 判断是否要安装哪吒
-            read -p "是否需要一起安装哪吒探针？(y/n): " nezha
+            read -p $'\033[1;35m是否需要一起安装哪吒探针？(y/n): \033[0m' nezha
 
             if [ "$nezha" == "y" ] || [ "$nezha" == "Y" ]; then
 
                 # 提示输入哪吒域名
-                read -p "请输入哪吒客户端的域名: " nezha_server
+                read -p $'\033[1;35m请输入哪吒客户端的域名: \033[0m' nezha_server
 
                 # 提示输入哪吒端口
-                read -p "请输入哪吒端口: " nezha_port 
+                read -p $'\033[1;35m请输入哪吒端口: \033[0m' nezha_port 
 
                 # 提示输入哪吒密钥
-                read -p "请输入哪吒客户端密钥: " nezha_key
+                read -p $'\033[1;35m请输入哪吒客户端密钥: \033[0m' nezha_key
 
                 curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=www.adfilt.xyz CFPORT=8889 screen node index.js
             
