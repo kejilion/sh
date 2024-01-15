@@ -4804,7 +4804,7 @@ EOF
                 echo -e "${yellow}系统中未安装nodejs，正在安装nodejs...${re}"
 
                 # 根据对应系统安装最新版本的nodejs
-                curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash - && install nodejs
+                curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash - && install nodejs
                 
                 clear
                 if [ $? -eq 0 ]; then
