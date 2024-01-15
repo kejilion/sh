@@ -4816,7 +4816,7 @@ EOF
 
             # 提示输入订阅端口
             while true; do
-                echo -e "${yellow}注意：NAT小鸡需输入指定的端口范围内的端口，否则无法使用订阅功能${re}"
+                echo -e "${yellow}注意：NAT小鸡需输入指定端口范围内的端口，否则无法使用订阅功能${re}"
                 read -p $'\033[1;35m请输入节点订阅端口: \033[0m' port
 
                 if [[ $port =~ ^[0-9]+$ ]]; then
