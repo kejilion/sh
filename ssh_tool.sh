@@ -88,7 +88,7 @@ install_dependency() {
 
 # 等待用户返回
 break_end() {
-    echo -e "${green}操作完成${re}"
+    echo -e "${green}执行完成${re}"
     echo -e "${yellow}按任意键返回...${re}"
     read -n 1 -s -r -p ""
     echo ""
@@ -5279,7 +5279,7 @@ EOF
                     # 比较已安装版本与最新版本
                     if [ "$installed_version" = "$latest_version" ]; then
                         echo -e "${green}当前Go已经是最新版本，无需更新。${re}"
-                        exit 0
+                        break_rend
 
                     elif [ "$(printf "$installed_version\n$latest_version" | sort -V | head -n 1)" != "$installed_version" ]; then
                         echo -e "${yellow}发现新版本：$latest_version。${re}"
