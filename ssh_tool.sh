@@ -5660,11 +5660,11 @@ EOF
         while :; do
             echo
             read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
-            if ! [[ "$sub_choice" =~ ^[0-10]+$ ]]; then
+            if ! [[ "$sub_choice" =~ ^[0-9]+$ ]]; then
                 echo -e "${red}输入错误, 请输入0~10的数字!${re}"
                 continue
             fi
-            if [ $sub_choice -ge 0 -a $sub_choice -le 10 ]; then
+            if [ $sub_choice -ge 0 -a $sub_choice -le 12 ]; then
                 break
             else
                 echo -e "${red}输入错误, 请输入0~10的数字!${re}"   
