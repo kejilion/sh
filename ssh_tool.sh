@@ -5650,7 +5650,7 @@ EOF
         echo -e "${red} 6. 删除所有LXC小鸡${re}"
         echo "------------------------"
         echo -e "${green} 7. 开设Docker小鸡${re}"
-        echo -e "${red} 9. 删除所有Docker容器${re}"
+        echo -e "${red} 8. 删除所有Docker容器${re}"
         echo "------------------------"
         echo -e "${green} 9. 开设incus小鸡(官方版)${re}" 
         echo -e "${skyblue}10. 管理incus小鸡 ▶${re}"
@@ -5660,7 +5660,7 @@ EOF
         while :; do
             echo
             read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
-            if ! [[ "$sub_choice" =~ ^[0-9]+$ ]]; then
+            if ! [[ "$sub_choice" =~ ^[0-10]+$ ]]; then
                 echo -e "${red}输入错误, 请输入0~10的数字!${re}"
                 continue
             fi
@@ -5801,7 +5801,7 @@ EOF
                             check_lxc(){
                                 if command lxc -h &> /dev/null; then
                                     echo -e "${green}LXD主体已安装完成${re}"
-                                    # incus --version 2>/dev/null
+                                    # lxc --version 2>/dev/null
                                     sleep 1
                                     return 0
                                 else
