@@ -6,6 +6,10 @@
 >Ubuntu
 >CentOS
 >Apline
+>Fedora
+>Rocky-linux
+>Amazom-linux
+>Oracle-linux
 ***
 ### 一键脚本
 ```bash
