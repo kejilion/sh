@@ -420,9 +420,9 @@ fi
 
 while true; do
 clear
-echo "                                                                          "
-echo -e "\033[0;97m-----------------By'eooce----------------\033[0m"
+echo -e "\033[0;97m-----------------By'eooce-----------------\033[0m"
 echo -e "\033[0;97m脚本地址: https://github.com/eooce/ssh_tool\033[0m" 
+echo ""
 echo -e "${skyblue} ##  ## #####   ####       ######  ####   ####  ##      ${re}" 
 echo -e "${skyblue} ##  ## ##  ## ##            ##   ##  ## ##  ## ##      ${re}" 
 echo -e "${skyblue} ##  ## #####   ####.        ##   ##  ## ##  ## ##      ${re}" 
