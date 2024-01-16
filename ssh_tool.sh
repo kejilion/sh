@@ -12,13 +12,13 @@ skyblue='\e[1;96m'
 [[ $EUID -ne 0 ]] && echo -e "${red}注意: 请在root用户下运行脚本${re}" && sleep 2 && exit 1
 
 # 检查alias是否已经存在
-if ! grep -q "alias k=" ~/.bashrc; then 
+if ! grep -q "cd ~ && ./ssh_tool.sh'" ~/.bashrc; then 
+    alias k="cd ~ && ./ssh_tool.sh"
     echo "alias k=\"cd ~ && ./ssh_tool.sh\"" >> ~/.bashrc
+    source ~/.bashrc 
+else 
+    clear 
 fi
-if ! grep -q "alias K=" ~/.bashrc; then 
-    echo "alias K=\"cd ~ && ./ssh_tool.sh\"" >> ~/.bashrc
-fi
-source ~/.bashrc 
 
 # 获取当前服务器ipv4和ipv6
 ip_address() {
