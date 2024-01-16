@@ -5639,7 +5639,7 @@ EOF
         clear
         echo -e "${purple}▶ 开设NAT小鸡${re}"
         echo "------------------------"
-        echo -e "${yellow}开设kvm小鸡分两步，请依次执行，如果第一步失败，提示服务器不符合要求，请选择LXC或Docker方式开设小鸡${re}"
+        echo -e "${yellow}开设kvm小鸡分两步，请依次执行，如果第一步失败，提示服务器不符合要求，请选择LXC或Docker方式开设小鸡。\n建议选择4或9，大部分vps都兼容！${re}"
         echo "------------------------"
         echo -e "${skyblue} 1. 开设KVM小鸡(第1步)${re}" 
         echo -e "${skyblue} 2. 开设KVM小鸡(第2步)${re}"
