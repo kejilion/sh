@@ -5834,17 +5834,19 @@ EOF
                                         
                                         read -p $'\033[1;35m请输入你要生成小鸡的数量：\033[0m' number
                                         sleep 1
-                                        echo -e "${green}正在后台自动为你开设小鸡中...${re}"
+                                        echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看信息${re}"
                                         screen bash init.sh lxc $number 
                                         sleep 3
+                                        cat log
                                         break
                                         ;;
                                     2)
                                         echo -e "${green}开始运行自定义批量生成小鸡(自定义配置)${re}"
                                         sleep 1
                                         install screen
-                                        echo -e "${green}输入配置后，自动进入后台生成小鸡(可直接关闭SSH连接)${re}"
+                                        echo -e "${green}输入配置后，自动进入后台生成小鸡(可直接关闭SSH连接，完成后运行cat log查看小鸡信息)${re}"
                                         curl -L https://github.com/oneclickvirt/lxd/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
+                                        cat log
                                         break
                                         ;;
                                     3)
@@ -6000,16 +6002,19 @@ EOF
                                         
                                         read -p $'\033[1;35m请输入你要生成小鸡的数量：\033[0m' number
                                         sleep 1
-                                        echo -e "${green}正在后台自动为你开设小鸡中...${re}"
+                                        echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看信息${re}"
                                         screen bash init.sh nat $number 
                                         sleep 3
+                                        cat log
                                         break
                                         ;;
                                     2)
                                         echo -e "${green}开始运行自定义批量生成小鸡(自定义配置)${re}"
                                         sleep 1
                                         install screen
+                                        echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看信息${re}"
                                         curl -L https://github.com/oneclickvirt/incus/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
+                                        cat log
                                         break
                                         ;;
                                     3)
