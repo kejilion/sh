@@ -114,7 +114,7 @@ iptables_open() {
     iptables -P FORWARD ACCEPT
     iptables -P OUTPUT ACCEPT
     iptables -F
-    
+
     ip6tables -P INPUT ACCEPT
     ip6tables -P FORWARD ACCEPT
     ip6tables -P OUTPUT ACCEPT
@@ -398,8 +398,11 @@ fi
 
 }
 
-
-
+cluster_python3() {
+    cd ~/cluster/
+    curl -sS -O https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
+    python3 ~/cluster/$py_task
+}
 
 
 while true; do
@@ -409,7 +412,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.2 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.2.1 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -425,6 +428,7 @@ echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
 echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
+echo -e "14. VPS集群控制 ▶ \033[36mBeta\033[0m"
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
@@ -4825,6 +4829,163 @@ EOF
       break_end
 
     done
+    ;;
+
+  14)
+    clear
+    while true; do
+      clear
+      echo "▶ VPS集群控制"
+      echo "你可以远程操控多台VPS一起执行任务（仅支持Ubuntu/Debian）"
+      echo "------------------------"
+      echo "1. 安装集群环境"
+      echo "------------------------"
+      echo "2. 集群控制中心"
+      echo "------------------------"
+      echo "7. 备份集群环境"
+      echo "8. 还原集群环境"
+      echo "9. 卸载集群环境"
+      echo "------------------------"
+      echo "0. 返回主菜单"
+      echo "------------------------"
+      read -p "请输入你的选择: " sub_choice
+
+      case $sub_choice in
+          1)
+            clear
+            apt update -y
+            apt install -y python3 python3-paramiko speedtest-cli
+            mkdir cluster && cd cluster
+            touch servers.py
+
+            cat > ./servers.py << EOF
+servers = [
+
+]
+EOF
+
+              ;;
+          2)
+
+              while true; do
+                  clear
+                  echo "集群服务器列表"
+                  cat ~/cluster/servers.py
+
+                  echo ""
+                  echo "操作"
+                  echo "------------------------"
+                  echo "1. 添加服务器                2. 删除服务器             3. 编辑服务器"
+                  echo "------------------------"
+                  echo "11. 安装科技lion脚本         12. 更新系统              13. 清理系统"
+                  echo "14. 安装docker               15. 安装BBR3              16. 设置1G虚拟内存"
+                  echo "17. 设置时区到上海           18. 开放所有端口"
+                  echo "------------------------"
+                  echo "51. 自定义指令"
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                          read -p "服务器名称: " server_name
+                          read -p "服务器IP: " server_ip
+                          read -p "服务器端口（22）: " server_port
+                          server_port=${server_port:-22}
+                          read -p "服务器用户名（root）: " server_username
+                          server_username=${server_username:-root}
+                          read -p "服务器用户密码: " server_password
+
+                          sed -i "/servers = \[/a\    {\"name\": \"$server_name\", \"hostname\": \"$server_ip\", \"port\": $server_port, \"username\": \"$server_username\", \"password\": \"$server_password\", \"remote_path\": \"/home/\"}," ~/cluster/servers.py
+
+                          ;;
+                      2)
+                          read -p "请输入需要删除的关键字: " rmserver
+                          sed -i "/$rmserver/d" ~/cluster/servers.py
+                          ;;
+                      3)
+                          install nano
+                          nano ~/cluster/servers.py
+                          ;;
+                      11)
+                          py_task=install_kejilion.py
+                          cluster_python3
+                          ;;
+                      12)
+                          py_task=update.py
+                          cluster_python3
+                          ;;
+                      13)
+                          py_task=clean.py
+                          cluster_python3
+                          ;;
+                      14)
+                          py_task=install_docker.py
+                          cluster_python3
+                          ;;
+                      15)
+                          py_task=install_bbr3.py
+                          cluster_python3
+                          ;;
+                      16)
+                          py_task=swap1024.py
+                          cluster_python3
+                          ;;
+                      17)
+                          py_task=time_shanghai.py
+                          cluster_python3
+                          ;;
+                      18)
+                          py_task=firewall_close.py
+                          cluster_python3
+                          ;;
+                      51)
+
+                          read -p "请输入批量执行的命令: " mingling
+                          py_task=custom_tasks.py
+                          cd ~/cluster/
+                          curl -sS -O https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
+                          sed -i "s/Customtasks/$mingling/g" ~/cluster/$py_task
+                          python3 ~/cluster/$py_task
+                          ;;
+                      0)
+                          break  # 跳出循环，退出菜单
+                          ;;
+                      0)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单
+                          ;;
+                  esac
+              done
+
+              ;;
+          7)
+            echo "正在开发中，敬请期待！"
+              ;;
+
+          8)
+            echo "正在开发中，敬请期待！"
+              ;;
+
+          9)
+            echo "正在开发中，敬请期待！"
+              ;;
+
+          0)
+              kejilion
+              ;;
+          *)
+              echo "无效的输入!"
+              ;;
+      esac
+      break_end
+
+    done
+
     ;;
 
   00)
