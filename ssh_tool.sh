@@ -421,8 +421,8 @@ fi
 while true; do
 clear
 echo "                                                                          "
-echo -e "---------------------------By'eooce-----------------------------       "
-echo -e "              脚本地址: https://github.com/eooce/ssh_tool" 
+echo -e "------------------By'eooce-----------------------"
+echo -e "       脚本地址: https://github.com/eooce/ssh_tool" 
 echo -e "${skyblue} ##  ## #####   ####       ######  ####   ####  ##      ${re}" 
 echo -e "${skyblue} ##  ## ##  ## ##            ##   ##  ## ##  ## ##      ${re}" 
 echo -e "${skyblue} ##  ## #####   ####.        ##   ##  ## ##  ## ##      ${re}" 
