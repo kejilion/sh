@@ -5649,19 +5649,22 @@ EOF
         echo -e "${white}6. 开设Docker小鸡${re}"
         echo -e "${red}7. 删除所有Docker容器${re}"
         echo "------------------------"
+        echo -e "${green}8. 开设incus小鸡(官方版)${re}" 
+        echo -e "${skyblue}9. 管理incus小鸡 ▶${re}"
+        echo "------------------------"
         echo -e "${skyblue}0. 返回主菜单${re}"
         echo "------------------------"
         while :; do
             echo
             read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
             if ! [[ "$sub_choice" =~ ^[0-9]+$ ]]; then
-                echo -e "${red}输入错误, 请输入0~7的数字!${re}"
+                echo -e "${red}输入错误, 请输入0~9的数字!${re}"
                 continue
             fi
-            if [ $sub_choice -ge 0 -a $sub_choice -le 7 ]; then
+            if [ $sub_choice -ge 0 -a $sub_choice -le 9 ]; then
                 break
             else
-                echo -e "${red}输入错误, 请输入0~7的数字!${re}"   
+                echo -e "${red}输入错误, 请输入0~8的数字!${re}"   
             fi
         done
         case $sub_choice in 
@@ -5670,7 +5673,7 @@ EOF
                 echo -e "${yellow}开始进行环境检测...${re}"
                 install wget
                 output=$(bash <(wget -qO- --no-check-certificate https://raw.githubusercontent.com/spiritLHLS/pve/main/scripts/check_kernal.sh))
-
+                echo "$output"
                 if echo "$output" | grep -q "CPU不支持硬件虚拟化，无法嵌套虚拟化KVM服务器，但可以开LXC服务器(CT)"; then
 
                     echo -e "${red}你的服务器不支持开设KVM小鸡，正在退出...${re}"
@@ -5849,6 +5852,186 @@ EOF
 
                 sleep 2
                 break_end
+            ;;
+
+            8)
+                clear
+                echo -e "${yellow}开始进行环境检测...${re}"
+                install wget 
+
+                output=$(bash <(wget -qO- --no-check-certificate https://raw.githubusercontent.com/oneclickvirt/incus/main/scripts/pre_check.sh))
+                echo "$output"
+                if echo "$output" | grep -q "本机符合作为incus母鸡的要求，可以批量开设incus容器"; then
+
+                    echo -e "${green}你的vps符合开设incus要求，可以开设incus小鸡${re}"
+
+                    read -p $'\033[1;35m确定要开设incus小鸡吗？ [y/n]: \033[0m' confirm
+
+                        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+
+                            echo -e "${yellow}开始进行安装incus主体...${re}"
+                            sleep 1
+                            curl -L https://raw.githubusercontent.com/oneclickvirt/incus/main/scripts/incus_install.sh -o incus_install.sh && chmod +x incus_install.sh && bash incus_install.sh
+                            sleep 2
+                            # 检查incus是否安装成功
+                            if which incus >/dev/null; then
+                                echo -e "${green}Incus主体已安装完成${re}"
+                                # incus --version 2>/dev/null
+
+                                while true; do
+                                    read -p $'\033[1;35要选择哪种方式开设incus小鸡？\033[1;33( 1:普通批量生成(固定配置)  2:自定义配置批量生成  3:取消开小鸡 ) \033[0m' confirm
+
+                                    case $confirm in
+                                        1)
+                                            echo -e "${green}开始运行普通版本批量生成小鸡${yellow}(1核256MB内存1GB硬盘限速300Mbit)${re}"
+                                            sleep 1
+                                            install screen
+                                            curl -L https://raw.githubusercontent.com/oneclickvirt/incus/main/scripts/init.sh -o init.sh && chmod +x init.sh && dos2unix init.sh
+                                            
+                                            read -p $'\033[1;35m请输入你要生成小鸡的数量：\033[0m' number
+                                            sleep 1
+                                            echo -e "${green}正在后台自动为你开设小鸡中...${re}"
+                                            screen bash init.sh nat $number 
+                                            sleep 3
+                                            break
+                                            ;;
+                                        2)
+                                            echo -e "${green}开始运行自定义批量生成小鸡(自定义配置)${re}"
+                                            sleep 1
+                                            install screen
+                                            curl -L https://github.com/oneclickvirt/incus/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
+                                            break
+                                            ;;
+                                        3)
+                                            echo -e "${green}Exiting script.${re}"
+                                            exit 0
+                                            ;;
+                                        *)
+                                            echo -e "${red}输入错误，请输入 1，2 或 3。${re}"
+                                            ;;
+                                    esac
+                                done
+                            else
+                                echo "Incus主体已安装失败，请更新系统后重试，正在清理缓存..."
+
+                                rm -rf /root/incus_install.sh
+                                sleep 2
+                                main_menu
+
+                            fi
+
+                        else
+                            echo -e "${yellow}取消开设incus小鸡，正在退出...${re}"
+                            sleep 2
+                            main_menu
+                            
+                        fi
+                else
+                    echo -e "${red}你的vps不符合开设incus要求，请选择LXD或Docker方式开设小鸡${re}"
+                    sleep 2
+                    main_menu
+                fi
+            ;;
+
+            9)
+              while true; do
+                clear
+                echo -e "${purple}▶ 管理incus小鸡${re}"
+                echo "------------------------"
+                echo -e "${skyblue}1. 查看所有incus小鸡${re}"
+                echo "------------------------"
+                echo -e "${skyblue}2. 暂停所有incus小鸡${re}"
+                echo -e "${skyblue}3. 启动所有incus小鸡${re}"
+                echo "------------------------"
+                echo -e "${skyblue}4. 暂停指定incus小鸡${re}"
+                echo -e "${skyblue}5. 启动指定incus小鸡${re}"
+                echo "------------------------"
+                echo -e "${red}6. 删除指定incus小鸡${re}"
+                echo "------------------------"
+                echo -e "${white}0. 返回上一级菜单${re}"
+                echo "------------------------"
+                read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
+
+                case $sub_choice in
+                    1)
+                        clear
+                        echo -e "${green}所有incus小鸡运行状态：${re}"
+                        incus list
+                        echo -e "${green}所有incus小鸡密码端口信息${re}"
+                        cat log
+                        break_end
+                    ;;
+
+                    2)
+                        clear
+                        incus stop --all
+                        break_end
+                    ;;
+
+                    3)
+                        clear
+                        incus start --all
+                        break_end
+                    ;;
+
+                    4)
+                        clear
+                        read -p $'\033[1;35m请输入要暂停的小鸡的名字（如ex1，nat1等）：\033[0m' nat
+                        incus stop $nat
+                        info_output=$(incus info $nat)
+
+                        # 检查指定暂停的小鸡状态
+                        if echo "$info_output" | grep -q "Status: STOPPED"; then
+                            echo -e "${green}已暂停${nat}小鸡${re}"
+                            sleep 2
+                            break_end
+                        elif echo "$info_output" | grep -q "Status: RUNNING"; then
+                            echo -e "${yellow}${nat}仍在运行，请重试${re}"
+                            sleep 2
+                        else
+                            echo -e "${red}未知${nat}状态${re}"
+                            sleep 2
+                        fi
+                    ;;
+
+                    5)
+                        clear
+                        read -p $'\033[1;35m请输入要启动的小鸡的名字（如ex1，nat1等）: \033[0m' nat
+                        incus start $nat
+                        info_output=$(incus info ${nat})
+
+                        # 检查指定启动的小鸡状态
+                        if echo "$info_output" | grep -q "Status: RUNNING"; then
+                            echo -e "${green}启动成功${nat}小鸡${re}"
+                            sleep 2
+                            break_end
+                        elif echo "$info_output" | grep -q "Status: STOPPED"; then
+                            echo -e "${yellow}${nat}暂停状态，请重新启动${re}"
+                            sleep 2
+                        else
+                            echo -e "${red}未知${nat}状态${re}"
+                            sleep 2
+                        fi
+
+                    ;;
+
+                    6)
+                        clear
+                        read -p $'\033[1;35m请输入要删除的小鸡的名字（如ex1，nat1等）: \033[0m' nat
+                        incus delete -f $nat
+                        sleep 2
+                        echo -e "${red}${nat}小鸡已删除${re}"
+                        sleep 2
+                        break_end
+                    ;;
+                    0)
+                        break
+                    ;;
+                    *)
+                        echo -e "${red}无效选择，请重新输入。${re}"
+                    ;;
+                esac
+              done
             ;;
 
             0)
