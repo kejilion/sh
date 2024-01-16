@@ -5641,18 +5641,19 @@ EOF
         echo "------------------------"
         echo -e "${yellow}开设kvm小鸡分两步，请依次执行，如果第一步失败，提示服务器不符合要求，请选择LXC或Docker方式开设小鸡${re}"
         echo "------------------------"
-        echo -e "${skyblue}1. 开设KVM小鸡(第1步)${re}" 
-        echo -e "${skyblue}2. 开设KVM小鸡(第2步)${re}"
-        echo -e "${red}3. 删除所有KVM小鸡${re}"
+        echo -e "${skyblue} 1. 开设KVM小鸡(第1步)${re}" 
+        echo -e "${skyblue} 2. 开设KVM小鸡(第2步)${re}"
+        echo -e "${red} 3. 删除所有KVM小鸡${re}"
         echo "------------------------"
-        echo -e "${green}4. 开设LXC小鸡${re}" 
-        echo -e "${red}5. 删除所有LXC小鸡${re}"
+        echo -e "${green} 4. 开设LXC小鸡(官方版)${re}" 
+        echo -e "${green} 5. 开设LXC小鸡(魔改版)${re}" 
+        echo -e "${red} 6. 删除所有LXC小鸡${re}"
         echo "------------------------"
-        echo -e "${white}6. 开设Docker小鸡${re}"
-        echo -e "${red}7. 删除所有Docker容器${re}"
+        echo -e "${green} 7. 开设Docker小鸡${re}"
+        echo -e "${red} 9. 删除所有Docker容器${re}"
         echo "------------------------"
-        echo -e "${green}8. 开设incus小鸡(官方版)${re}" 
-        echo -e "${skyblue}9. 管理incus小鸡 ▶${re}"
+        echo -e "${green} 9. 开设incus小鸡(官方版)${re}" 
+        echo -e "${skyblue}10. 管理incus小鸡 ▶${re}"
         echo "------------------------"
         echo -e "${skyblue}0. 返回主菜单${re}"
         echo "------------------------"
@@ -5660,13 +5661,13 @@ EOF
             echo
             read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
             if ! [[ "$sub_choice" =~ ^[0-9]+$ ]]; then
-                echo -e "${red}输入错误, 请输入0~9的数字!${re}"
+                echo -e "${red}输入错误, 请输入0~10的数字!${re}"
                 continue
             fi
-            if [ $sub_choice -ge 0 -a $sub_choice -le 9 ]; then
+            if [ $sub_choice -ge 0 -a $sub_choice -le 10 ]; then
                 break
             else
-                echo -e "${red}输入错误, 请输入0~8的数字!${re}"   
+                echo -e "${red}输入错误, 请输入0~10的数字!${re}"   
             fi
         done
         case $sub_choice in 
@@ -5779,14 +5780,107 @@ EOF
 
             4)
                 clear
+                echo -e "${yellow}开始进行环境检测...${re}"
+                install wget 
+
+                output=$(bash <(wget -qO- --no-check-certificate https://raw.githubusercontent.com/oneclickvirt/lxd/main/scripts/pre_check.sh))
+                echo "$output"
+                if echo "$output" | grep -q "本机符合作为LXC母鸡的要求，可以批量开设LXC容器"; then
+
+                    echo -e "${green}你的vps已通过检测，可以开设LXC小鸡${re}"
+
+                    read -p $'\033[1;35m确定要开设LXC小鸡吗？ [y/n]: \033[0m' confirm
+
+                        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+
+                            echo -e "${yellow}开始进行安装LXD主体...${re}"
+                            sleep 1
+                            curl -L https://raw.githubusercontent.com/oneclickvirt/lxd/main/scripts/lxdinstall.sh -o lxdinstall.sh && chmod +x lxdinstall.sh && bash lxdinstall.sh
+                            sleep 3
+                            # 检查incus是否安装成功
+                            check_lxc(){
+                                if command lxc -h &> /dev/null; then
+                                    echo -e "${green}LXD主体已安装完成${re}"
+                                    # incus --version 2>/dev/null
+                                    sleep 1
+                                    return 0
+                                else
+                                    echo -e "${yellow}LXD主体已安装失败，正在为你重试安装...${re}"
+                                    apt update -y
+                                    ! lxc -h >/dev/null 2>&1 && echo 'alias lxc="/snap/bin/lxc"' >> /root/.bashrc && source /root/.bashrc
+                                    export PATH=$PATH:/snap/bin
+
+                                    if command lxc -h &> /dev/null; then
+                                        sleep 1
+                                        return 0
+                                    else
+                                        echo -e "${yellow}LXD主体已安装失败，请更新系统重启后重试...${re}"
+                                        sleep 2
+                                        main_menu
+                                    fi
+                                fi
+                            }
+                            check_lxc
+                            while true; do
+                                clear
+                                read -p $'\033[1;35m选择哪种方式开设LXC小鸡？\n1:普通批量生成(256RAM+2G+上下行限制300Mb)  \n2:自定义配置批量生成  \n3:取消开小鸡 \n请选择： \033[0m' confirm
+
+                                case $confirm in
+                                    1)
+                                        echo -e "${green}开始运行普通版本批量生成小鸡${yellow}(1核256MB内存1GB硬盘限速300Mbit)${re}"
+                                        sleep 1
+                                        install screen
+                                        curl -L https://raw.githubusercontent.com/oneclickvirt/lxd/main/scripts/init.sh -o init.sh && chmod +x init.sh && dos2unix init.sh
+                                        
+                                        read -p $'\033[1;35m请输入你要生成小鸡的数量：\033[0m' number
+                                        sleep 1
+                                        echo -e "${green}正在后台自动为你开设小鸡中...${re}"
+                                        screen bash init.sh lxc $number 
+                                        sleep 3
+                                        break
+                                        ;;
+                                    2)
+                                        echo -e "${green}开始运行自定义批量生成小鸡(自定义配置)${re}"
+                                        sleep 1
+                                        install screen
+                                        echo -e "${green}输入配置后，自动进入后台生成小鸡(可直接关闭SSH连接)${re}"
+                                        curl -L https://github.com/oneclickvirt/lxd/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
+                                        break
+                                        ;;
+                                    3)
+                                        echo -e "${yellow}你已取消了开设小鸡的操作${re}"
+                                        exit 0
+                                        ;;
+                                    *)
+                                        echo -e "${red}输入错误，请输入 1，2 或 3。${re}"
+                                        ;;
+                                esac
+                            done
+
+                        else
+                            echo -e "${yellow}取消开设LXC小鸡，正在退出...${re}"
+                            sleep 2
+                            main_menu
+                            
+                        fi
+                else
+                    echo -e "${red}你的vps不符合开设LXC母鸡要求，请选择incus或Docker方式开设小鸡${re}"
+                    sleep 2
+                    main_menu
+                fi
+            ;;
+
+
+            5)
+                clear
                 install wget
                 wget -N --no-check-certificate https://raw.githubusercontent.com/eooce/lxdpro/main/lxdpro.sh && chmod +x lxdpro.sh && bash lxdpro.sh
 
                 break_end
             
-            ;;
+            ;;                   
 
-            5)
+            6)
                 clear
                 # 删除所有LXC容器
                 incus list -c n --format csv | xargs -I {} incus delete -f {}
@@ -5813,7 +5907,7 @@ EOF
                 break_end
             ;;
 
-            6)
+            7)
                 clear
                 echo -e "${yellow}开设虚拟内存(Swap),请先输入2移除原来的，会重新执行一次，再输入1添加虚拟内存${re}"
                 curl -L https://raw.githubusercontent.com/spiritLHLS/addswap/main/addswap.sh -o addswap.sh && chmod +x addswap.sh && bash addswap.sh
@@ -5825,17 +5919,18 @@ EOF
                 sleep 2
 
                 while true; do
-                    read -p $'\033[1;96m你需要单独开设Docker小鸡还是批量开设Docker小鸡？(1：单独开设  2：批量开设) \033[0m' choose
+                    read -p $'\033[1;96m你需要单独开设Docker小鸡还是批量开设Docker小鸡？(1：单个开设  2：批量开设) \033[0m' choose
 
                     if [ "$choose" == "1" ]; then
                         sleep 1
-                        curl -L https://raw.githubusercontent.com/spiritLHLS/docker/main/scripts/onedocker.sh -o onedocker.sh && chmod +x onedocker.sh
+                        install screen
+                        curl -L https://raw.githubusercontent.com/spiritLHLS/docker/main/scripts/onedocker.sh -o onedocker.sh && chmod +x onedocker.sh && screen bash onedocker.sh
                         sleep 2
                         break_end
                         break  # 跳出循环
                     elif [ "$choose" == "2" ]; then
                         sleep 1
-                        curl -L https://raw.githubusercontent.com/spiritLHLS/docker/main/scripts/create_docker.sh -o create_docker.sh && chmod +x create_docker.sh && bash create_docker.sh
+                        curl -L https://raw.githubusercontent.com/spiritLHLS/docker/main/scripts/create_docker.sh -o create_docker.sh && chmod +x create_docker.sh && screen bash create_docker.sh
                         sleep 2
                         break_end
                         break  # 跳出循环
@@ -5845,7 +5940,7 @@ EOF
                 done
             ;;
 
-            7)
+            8)
                 clear
                 docker ps -aq --format '{{.Names}}' | grep -E '^ndpresponder' | xargs -r docker rm -f
                 docker images -aq --format '{{.Repository}}:{{.Tag}}' | grep -E '^ndpresponder' | xargs -r docker rmi
@@ -5856,7 +5951,7 @@ EOF
                 break_end
             ;;
 
-            8)
+            9)
                 clear
                 echo -e "${yellow}开始进行环境检测...${re}"
                 install wget 
@@ -5876,51 +5971,56 @@ EOF
                             curl -L https://raw.githubusercontent.com/oneclickvirt/incus/main/scripts/incus_install.sh -o incus_install.sh && chmod +x incus_install.sh && bash incus_install.sh
                             sleep 2
                             # 检查incus是否安装成功
-                            if which incus >/dev/null; then
-                                echo -e "${green}Incus主体已安装完成${re}"
-                                # incus --version 2>/dev/null
+                            check_incus(){
+                                if which incus >/dev/null; then
+                                    echo -e "${green}Incus主体已安装完成${re}"
+                                    # incus --version 2>/dev/null
+                                    sleep 1
+                                    return 0
+                                
+                                else
+                                    echo "Incus主体已安装失败，请更新系统后重试，正在清理缓存..."
+                                    rm -rf /root/incus_install.sh
+                                    sleep 2
+                                    main_menu
 
-                                while true; do
-                                    read -p $'\033[1;35要选择哪种方式开设incus小鸡？\033[1;33( 1:普通批量生成(固定配置)  2:自定义配置批量生成  3:取消开小鸡 ) \033[0m' confirm
+                                fi
+                            }
 
-                                    case $confirm in
-                                        1)
-                                            echo -e "${green}开始运行普通版本批量生成小鸡${yellow}(1核256MB内存1GB硬盘限速300Mbit)${re}"
-                                            sleep 1
-                                            install screen
-                                            curl -L https://raw.githubusercontent.com/oneclickvirt/incus/main/scripts/init.sh -o init.sh && chmod +x init.sh && dos2unix init.sh
-                                            
-                                            read -p $'\033[1;35m请输入你要生成小鸡的数量：\033[0m' number
-                                            sleep 1
-                                            echo -e "${green}正在后台自动为你开设小鸡中...${re}"
-                                            screen bash init.sh nat $number 
-                                            sleep 3
-                                            break
-                                            ;;
-                                        2)
-                                            echo -e "${green}开始运行自定义批量生成小鸡(自定义配置)${re}"
-                                            sleep 1
-                                            install screen
-                                            curl -L https://github.com/oneclickvirt/incus/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
-                                            break
-                                            ;;
-                                        3)
-                                            echo -e "${green}Exiting script.${re}"
-                                            exit 0
-                                            ;;
-                                        *)
-                                            echo -e "${red}输入错误，请输入 1，2 或 3。${re}"
-                                            ;;
-                                    esac
-                                done
-                            else
-                                echo "Incus主体已安装失败，请更新系统后重试，正在清理缓存..."
+                            while true; do
+                                clear
+                                read -p $'\033[1;35m选择哪种方式开设incus小鸡？\n1:普通批量生成(256RAM+2G+上下行300Mb)  \n2:自定义配置批量生成  \n3:取消开小鸡 \n请选择： \033[0m' confirm
 
-                                rm -rf /root/incus_install.sh
-                                sleep 2
-                                main_menu
-
-                            fi
+                                case $confirm in
+                                    1)
+                                        echo -e "${green}开始运行普通版本批量生成小鸡${yellow}(1核256MB内存1GB硬盘限速300Mbit)${re}"
+                                        sleep 1
+                                        install screen
+                                        curl -L https://raw.githubusercontent.com/oneclickvirt/incus/main/scripts/init.sh -o init.sh && chmod +x init.sh && dos2unix init.sh
+                                        
+                                        read -p $'\033[1;35m请输入你要生成小鸡的数量：\033[0m' number
+                                        sleep 1
+                                        echo -e "${green}正在后台自动为你开设小鸡中...${re}"
+                                        screen bash init.sh nat $number 
+                                        sleep 3
+                                        break
+                                        ;;
+                                    2)
+                                        echo -e "${green}开始运行自定义批量生成小鸡(自定义配置)${re}"
+                                        sleep 1
+                                        install screen
+                                        curl -L https://github.com/oneclickvirt/incus/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
+                                        break
+                                        ;;
+                                    3)
+                                        echo -e "${green}你已取消了开设小鸡的操作${re}"
+                                        exit 0
+                                        ;;
+                                    *)
+                                        echo -e "${red}输入错误，请输入 1，2 或 3。${re}"
+                                        ;;
+                                esac
+                            done
 
                         else
                             echo -e "${yellow}取消开设incus小鸡，正在退出...${re}"
@@ -5935,7 +6035,7 @@ EOF
                 fi
             ;;
 
-            9)
+            10)
               while true; do
                 clear
                 echo -e "${purple}▶ 管理incus小鸡${re}"
@@ -5948,7 +6048,7 @@ EOF
                 echo -e "${skyblue}4. 暂停指定incus小鸡${re}"
                 echo -e "${skyblue}5. 启动指定incus小鸡${re}"
                 echo "------------------------"
-                echo -e "${red}6. 删除指定incus小鸡${re}"
+                echo -e "${red}6. 删除指定incus小鸡${re}" 
                 echo "------------------------"
                 echo -e "${white}0. 返回上一级菜单${re}"
                 echo "------------------------"
@@ -6024,6 +6124,14 @@ EOF
                         sleep 2
                         echo -e "${red}${nat}小鸡已删除${re}"
                         sleep 2
+                        break_end
+                    ;;
+
+                    7)
+                        clear
+                        incus delete --all
+                        sleep 2
+                        echo -e "${green}所有incus小鸡已删除${re}"
                         break_end
                     ;;
                     0)
