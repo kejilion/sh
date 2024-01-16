@@ -421,12 +421,14 @@ fi
 while true; do
 clear
 echo "                                                                          "
+echo -e "---------------------------By'eooce-----------------------------       "
+echo -e "              脚本地址: https://github.com/eooce/ssh_tool" 
 echo -e "${skyblue} ##  ## #####   ####       ######  ####   ####  ##      ${re}" 
 echo -e "${skyblue} ##  ## ##  ## ##            ##   ##  ## ##  ## ##      ${re}" 
 echo -e "${skyblue} ##  ## #####   ####.        ##   ##  ## ##  ## ##      ${re}" 
 echo -e "${skyblue}  ####  ##         ##        ##   ##  ## ##  ## ##      ${re}" 
 echo -e "${skyblue}   ##   ##     ####          ##    ####   ####  ######  ${re}"  
-echo "                                                                          "   
+echo -e ""
 echo -e "                 ${yellow}VPS一键脚本工具 v8.8.8${re}"
 echo -e "${yellow}支持Ubuntu/Debian/CentOS/Alpine/Fedora/Rocky/Almalinux/Oracle-linux${re}"
 echo -e ""
