@@ -5990,8 +5990,9 @@ EOF
                     6)
                         clear
                         read -p $'\033[1;35m请输入要重装系统的小鸡的名字（如ex1，nat1等）: \033[0m' nat
-                        lxc rebuild $nat
+                        lxc stop $nat && lxc rebuild images:debian/11 $nat
                         sleep 2
+                        lxc start $nat
                         echo -e "${green}${nat}小鸡已重装系统完成${re}"
                         sleep 2
                         break_end
@@ -6234,8 +6235,9 @@ EOF
                     6)
                         clear
                         read -p $'\033[1;35m请输入要重装系统的小鸡的名字（如ex1，nat1等）: \033[0m' nat
-                        incus rebuild $nat
+                        incus stop $nat && incus rebuild images:debian/11 $nat
                         sleep 2
+                        incus start $nat
                         echo -e "${green}${nat}小鸡已重装系统完成${re}"
                         sleep 2
                         break_end
