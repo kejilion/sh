@@ -4890,7 +4890,7 @@ EOF
         ;;
         5)
         clear
-            bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh
+            bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh)
             sleep 5
             break_end
         ;;
