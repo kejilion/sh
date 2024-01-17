@@ -4778,19 +4778,19 @@ EOF
         1)
         clear
             bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/argox/main/argox.sh)
-            sleep 5
+            sleep 2
             break_end
         ;;
         2)
         clear
             bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh)
-            sleep 5
+            sleep 2
             break_end
         ;;
         3)
         clear
             curl https://www.baipiao.eu.org/suoha.sh -o suoha.sh && bash suoha.sh
-            sleep 5
+            sleep 2
             break_end            
         ;;            
 
@@ -4891,51 +4891,51 @@ EOF
         5)
         clear
             bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh)
-            sleep 5
+            sleep 2
             break_end
         ;;
         6)
         clear
             bash <(curl -Ls https://gitlab.com/rwkgyg/sing-box-yg/raw/main/sb.sh)
-            sleep 5
+            sleep 2
             break_end
         ;;
         7)
         clear
             wget -N --no-check-certificate "https://raw.githubusercontent.com/mack-a/v2ray-agent/master/install.sh" && chmod 777 install.sh && bash install.sh
-            sleep 5
+            sleep 2
             break_end
         ;;
         8)
         clear
             bash <(curl -Ls https://raw.githubusercontent.com/slobys/x-ui/main/install.sh)
-            sleep 5
+            sleep 2
             break_end
         ;; 
 
         9)
         clear
             bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
-            sleep 5
+            sleep 2
             break_end
         ;;           
 
         10)
         clear
             wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
-            sleep 5
+            sleep 2
             break_end
         ;;  
         11)
         clear
             wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
-            sleep 5
+            sleep 2
             break_end
         ;;     
         12)
         clear
             wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
-            sleep 5
+            sleep 2
             break_end
         ;;             
         0)
