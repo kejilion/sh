@@ -412,7 +412,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.2.1 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.2.2 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2323,6 +2323,7 @@ case $choice in
       echo "23. Memos网页备忘录                     24. pandoranext潘多拉GPT镜像站"
       echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
       echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
+      echo "29. searxng聚合搜索站"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3427,6 +3428,25 @@ case $choice in
                             ghcr.io/librespeed/speedtest:latest"
             docker_describe="librespeed是用Javascript实现的轻量级速度测试工具，即开即用"
             docker_url="官网介绍: https://github.com/librespeed/speedtest"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+
+          29)
+            docker_name="searxng"
+            docker_img="alandoyle/searxng:latest"
+            docker_port=8700
+            docker_rum="docker run --name=searxng \
+                            -d --init \
+                            --restart=unless-stopped \
+                            -v /home/docker/searxng/config:/etc/searxng \
+                            -v /home/docker/searxng/templates:/usr/local/searxng/searx/templates/simple \
+                            -v /home/docker/searxng/theme:/usr/local/searxng/searx/static/themes/simple \
+                            -p 8700:8080/tcp \
+                            alandoyle/searxng:latest"
+            docker_describe="searxng是一个私有且隐私的搜索引擎站点"
+            docker_url="官网介绍: https://hub.docker.com/r/alandoyle/searxng"
             docker_use=""
             docker_passwd=""
             docker_app
