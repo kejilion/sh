@@ -5637,7 +5637,7 @@ EOF
   16)
     while true; do
         clear
-        echo -e "${purple}▶ 开设NAT小鸡${re}"
+        echo -e "${purple}▶ 管理NAT小鸡${re}"
         echo "------------------------"
         echo -e "${yellow}开设kvm小鸡分两步，请依次执行。 \n如果第一步失败，请选择其他方式开设小鸡。\n建议选择4或9，大部分vps都兼容！${re}"
         echo "------------------------"
@@ -5647,7 +5647,7 @@ EOF
         echo "------------------------"
         echo -e "${green} 4. 开设LXC小鸡(官方版)${re}" 
         echo -e "${green} 5. 开设LXC小鸡(魔改版)${re}" 
-        echo -e "${red} 6. 删除所有LXC小鸡${re}"
+        echo -e "${skyblue} 6. 管理LXC小鸡 ▶${re}"
         echo "------------------------"
         echo -e "${green} 7. 开设Docker小鸡${re}"
         echo -e "${red} 8. 删除所有Docker容器${re}"
@@ -5797,7 +5797,7 @@ EOF
                             sleep 1
                             curl -L https://raw.githubusercontent.com/oneclickvirt/lxd/main/scripts/lxdinstall.sh -o lxdinstall.sh && chmod +x lxdinstall.sh && bash lxdinstall.sh
                             sleep 3
-                            # 检查incus是否安装成功
+                            # 检查LXD是否安装成功
                             check_lxc(){
                                 if command lxc -h &> /dev/null; then
                                     echo -e "${green}LXD主体已安装完成${re}"
@@ -5805,7 +5805,7 @@ EOF
                                     sleep 1
                                     return 0
                                 else
-                                    echo -e "${yellow}LXD主体已安装失败，正在为你重试安装...${re}"
+                                    echo -e "${yellow}lxc没有软连接上，正在为你修复...${re}"
                                     apt update -y
                                     ! lxc -h >/dev/null 2>&1 && echo 'alias lxc="/snap/bin/lxc"' >> /root/.bashrc && source /root/.bashrc
                                     export PATH=$PATH:/snap/bin
@@ -5814,7 +5814,7 @@ EOF
                                         sleep 1
                                         return 0
                                     else
-                                        echo -e "${yellow}LXD主体已安装失败，请更新系统重启后重试...${re}"
+                                        echo -e "${yellow}lxc没有软连接上，请重启系统后重新运行${re}"
                                         sleep 2
                                         main_menu
                                     fi
@@ -5883,30 +5883,116 @@ EOF
             ;;                   
 
             6)
+              while true; do
                 clear
-                # 删除所有LXC容器
-                incus list -c n --format csv | xargs -I {} incus delete -f {}
-                # 删除无用日志
-                sudo apt-get autoremove
-                sudo apt-get clean
-                sudo find /var/log -type f -delete
-                sudo find /var/tmp -type f -delete
-                sudo find /tmp -type f -delete
-                sudo find /var/cache/apt/archives -type f -delete
-                # 删除原始配置脚本
-                rm -rf /usr/local/bin/ssh_sh.sh
-                rm -rf /usr/local/bin/config.sh
-                rm -rf /usr/local/bin/ssh_bash.sh
-                rm -rf /usr/local/bin/check-dns.sh
-                rm -rf /root/ssh_sh.sh
-                rm -rf /root/config.sh
-                rm -rf /root/ssh_bash.sh
-                rm -rf /root/buildone.sh
-                rm -rf /root/add_more.sh
-                rm -rf /root/build_ipv6_network.sh
+                echo -e "${purple}▶ 管理LXC小鸡${re}"
+                echo "------------------------"
+                echo -e "${skyblue}1. 查看所有LXC小鸡${re}"
+                echo "------------------------"
+                echo -e "${skyblue}2. 暂停所有LXC小鸡${re}"
+                echo -e "${skyblue}3. 启动所有LXC小鸡${re}"
+                echo "------------------------"
+                echo -e "${skyblue}4. 暂停指定LXC小鸡${re}"
+                echo -e "${skyblue}5. 启动指定LXC小鸡${re}"
+                echo -e "${skyblue}6. 给指定小鸡重装系统${re}"
+                echo "------------------------"
+                echo -e "${red}7. 删除指定LXC小鸡${re}" 
+                echo "------------------------"
+                echo -e "${white}0. 返回上一级菜单${re}"
+                echo "------------------------"
+                read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
 
-                sleep 2
-                break_end
+                case $sub_choice in
+                    1)
+                        clear
+                        echo -e "${green}所有LXC小鸡运行状态：${re}"
+                        lxc list
+                        echo -e "${green}所有LXC小鸡密码端口信息${re}"
+                        cat log
+                        break_end
+                    ;;
+
+                    2)
+                        clear
+                        lxc stop --all
+                        break_end
+                    ;;
+
+                    3)
+                        clear
+                        lxc start --all
+                        break_end
+                    ;;
+
+                    4)
+                        clear
+                        read -p $'\033[1;35m请输入要暂停的小鸡的名字（如ex1，nat1等）：\033[0m' nat
+                        lxc stop $nat
+                        info_output=$(lxc info $nat)
+
+                        # 检查指定暂停的小鸡状态
+                        if echo "$info_output" | grep -q "Status: STOPPED"; then
+                            echo -e "${green}已暂停${nat}小鸡${re}"
+                            sleep 2
+                            break_end
+                        elif echo "$info_output" | grep -q "Status: RUNNING"; then
+                            echo -e "${yellow}${nat}仍在运行，请重试${re}"
+                            sleep 2
+                        else
+                            echo -e "${red}未知${nat}状态${re}"
+                            sleep 2
+                        fi
+                    ;;
+
+                    5)
+                        clear
+                        read -p $'\033[1;35m请输入要启动的小鸡的名字（如ex1，nat1等）: \033[0m' nat
+                        lxc start $nat
+                        info_output=$(lxc info ${nat})
+
+                        # 检查指定启动的小鸡状态
+                        if echo "$info_output" | grep -q "Status: RUNNING"; then
+                            echo -e "${green}启动成功${nat}小鸡${re}"
+                            sleep 2
+                            break_end
+                        elif echo "$info_output" | grep -q "Status: STOPPED"; then
+                            echo -e "${yellow}${nat}暂停状态，请重新启动${re}"
+                            sleep 2
+                        else
+                            echo -e "${red}未知${nat}状态${re}"
+                            sleep 2
+                        fi
+
+                    ;;
+
+                    6)
+                        clear
+                        read -p $'\033[1;35m请输入要重装系统的小鸡的名字（如ex1，nat1等）: \033[0m' nat
+                        lxc rebuild $nat
+                        sleep 2
+                        echo -e "${green}${nat}小鸡已重装系统完成${re}"
+                        sleep 2
+                        break_end
+                    ;;
+
+                    7)
+                        clear
+                        read -p $'\033[1;35m请输入要删除的小鸡的名字（如ex1，nat1等）: \033[0m' nat
+                        lxc delete -f $nat
+                        sleep 2
+                        echo -e "${green}${nat}小鸡已删除${re}"
+                        sleep 2
+                        break_end
+                    ;;
+                    
+                    0)
+                        break
+                    ;;
+                    *)
+                        echo -e "${red}无效选择，请重新输入。${re}"
+                    ;;
+                esac
+              done
             ;;
 
             7)
@@ -6052,8 +6138,9 @@ EOF
                 echo "------------------------"
                 echo -e "${skyblue}4. 暂停指定incus小鸡${re}"
                 echo -e "${skyblue}5. 启动指定incus小鸡${re}"
+                echo -e "${skyblue}6. 给指定小鸡重装系统${re}"
                 echo "------------------------"
-                echo -e "${red}6. 删除指定incus小鸡${re}" 
+                echo -e "${red}7. 删除指定incus小鸡${re}" 
                 echo "------------------------"
                 echo -e "${white}0. 返回上一级菜单${re}"
                 echo "------------------------"
@@ -6124,21 +6211,24 @@ EOF
 
                     6)
                         clear
-                        read -p $'\033[1;35m请输入要删除的小鸡的名字（如ex1，nat1等）: \033[0m' nat
-                        incus delete -f $nat
+                        read -p $'\033[1;35m请输入要重装系统的小鸡的名字（如ex1，nat1等）: \033[0m' nat
+                        incus rebuild $nat
                         sleep 2
-                        echo -e "${red}${nat}小鸡已删除${re}"
+                        echo -e "${green}${nat}小鸡已重装系统完成${re}"
                         sleep 2
                         break_end
                     ;;
 
                     7)
                         clear
-                        incus delete --all
+                        read -p $'\033[1;35m请输入要删除的小鸡的名字（如ex1，nat1等）: \033[0m' nat
+                        incus delete -f $nat
                         sleep 2
-                        echo -e "${green}所有incus小鸡已删除${re}"
+                        echo -e "${green}${nat}小鸡已删除${re}"
+                        sleep 2
                         break_end
                     ;;
+
                     0)
                         break
                     ;;
