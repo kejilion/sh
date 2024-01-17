@@ -1848,7 +1848,7 @@ case $choice in
       clear
       echo -e "目前只允许上传\033[33mindex.html\033[0m文件，请提前准备好，按任意键继续..."
       read -n 1 -s -r -p ""
-      rz
+      rz -y
 
       docker exec nginx chmod -R 777 /var/www/html
       docker restart nginx
@@ -2281,7 +2281,7 @@ case $choice in
           [Yy])
             docker rm -f nginx php php74 mysql redis
             docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
-            rm -r /home/web
+            rm -rf /home/web
             ;;
           [Nn])
 
@@ -4853,8 +4853,7 @@ EOF
       case $sub_choice in
           1)
             clear
-            apt update -y
-            apt install -y python3 python3-paramiko speedtest-cli
+            install python3 python3-paramiko speedtest-cli lrzsz
             mkdir cluster && cd cluster
             touch servers.py
 
@@ -4964,15 +4963,38 @@ EOF
 
               ;;
           7)
-            echo "正在开发中，敬请期待！"
+            clear
+            echo "将下载服务器列表数据，按任意键下载！"
+            read -n 1 -s -r -p ""
+            sz -y ~/cluster/servers.py
+
               ;;
 
           8)
-            echo "正在开发中，敬请期待！"
+            clear
+            echo "请上传您的servers.py，按任意键开始上传！"
+            read -n 1 -s -r -p ""
+            cd ~/cluster/
+            rz -y
               ;;
 
           9)
-            echo "正在开发中，敬请期待！"
+
+            clear
+            read -p "请先备份环境，确定要卸载集群控制环境吗？(Y/N): " choice
+            case "$choice" in
+              [Yy])
+                remove python3-paramiko speedtest-cli lrzsz
+                rm -rf ~/cluster/
+                ;;
+              [Nn])
+                echo "已取消"
+                ;;
+              *)
+                echo "无效的选择，请输入 Y 或 N。"
+                ;;
+            esac
+
               ;;
 
           0)
