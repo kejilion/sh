@@ -4945,7 +4945,7 @@ EOF
                           py_task=custom_tasks.py
                           cd ~/cluster/
                           curl -sS -O https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
-                          sed -i "s/Customtasks/$mingling/g" ~/cluster/$py_task
+                          sed -i "s#Customtasks#$mingling#g" ~/cluster/$py_task
                           python3 ~/cluster/$py_task
                           ;;
                       0)
