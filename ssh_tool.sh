@@ -5114,16 +5114,16 @@ EOF
               clear  
               echo -e "${purple}温馨提醒：自动抢机属于官方禁止行为，可能会造成封号现象，如因刷机造成封号，与本人无关！\n开始执行此任务前请确认以下两步是否操作完成。${re}"
               echo ""
-              echo -e "${yellow}1：获取R探长机器人对应的username和password，机器人获取链接https://t.me/radiance_helper_bot${re}"
+              echo -e "${yellow}1：获取R探长机器人对应的${purple}username和password，${yellow}机器人获取链接https://t.me/radiance_helper_bot，使用/raninfo命令随机生成${re}"
               echo ""
-              echo -e "${yellow}2：获取甲骨文云api密钥，获取方式在甲骨文云控制台个人中心里${re}"
+              echo -e "${yellow}2：获取甲骨文云${purple}api密钥${yellow}下载文件并复制内容保存，获取方式在甲骨文云控制台右上角头像--我的概要信息里${re}"
               echo ""
-              read -p $'\033[1;91m确定要执行抢机吗？[y/n]: \033[0m' confirm
+              read -p $'\033[1;91m确定要继续吗？[y/n]: \033[0m' confirm
               echo ""
 
                 if [[ $confirm =~ ^[Yy]$ ]]; then
-
-                    install iptables wget
+                    echo -e "${yellow}开安装依赖...${re}"
+                    install iptables wget nano
                     iptables -A INPUT -p tcp --dport 9527 -j ACCEPT
                     mkdir -p rtbot && cd rtbot
                     # 下载、解压、设置权限并后台运行 sh_client_bot.sh
@@ -5162,24 +5162,43 @@ EOF
                     sleep 3
                     clear
                     echo ""
-                    echo -e "${red}等待完成以下步骤,请完成后确认${re}"
+                    echo -e "${red}等待完成以下步骤,请完成后再确认${re}"
                     echo ""
-                    echo -e "${yellow}1：请下载${purple}/root/rtbot/client_config${yellow}配置文件并修改成自己的配置信息，api和R探长机器人获取到的username及password${re}"
+                    echo -e "${yellow}1：获取R探长机器人对应的${purple}username和password，${yellow}机器人获取链接https://t.me/radiance_helper_bot${re}"
                     echo ""
-                    echo -e "${yellow}2：甲骨文API密钥填写在开头的${purple}oci=begin和oci=end之间，username和password${yellow}填写在10行和12行，其他可选填写${re}"
+                    echo -e "${yellow}2：获取甲骨文云${purple}api密钥下载文件并复制内容保存，${yellow}获取方式在甲骨文云控制台右上角头像--我的概要信息里${re}"
                     echo ""
-                    echo -e "${yellow}3：将修改好的${purple}client_config${yellow}文件上传至原目录${purple}/root/rtbot/client_config${re}"
-                    echo ""
-                    read -p $'\033[1;91m是否已完成上面3步？[y/n]: \033[0m' confirm
+                    echo -e "${yellow}3：将甲骨文云api密钥文件上传至root目录内，并复制文件路径保存，api密钥最后一行的路径改为此路径${re}"
+                    echo ""                    
+                    read -p $'\033[1;91m是否已完成以上步骤？[y/n]: \033[0m' confirm
                         sleep 1
                         if [[ $confirm =~ ^[Yy]$ ]]; then
+                            # 使用 nano 编辑器打开文件
+                            chmod +x /root/rtbot/client_config
+                            echo -e "${purple}即将打开/root/rtbot/client_config配置文件进行编辑。${re}"
+                            echo -e "${purple}键盘上下键定位，将api密钥(注意最后一行的路径)，username，password粘贴到指定位置${re}"
+                            echo -e "${purple}编辑完成后，请按顺序输入命令(Ctrl+O, Enter, Ctrl+X)保存退出${re}"
+                            sleep 2
+                            echo ""
+                            read -p $'\033[1;91m是否清楚以上步骤？[y/n]: \033[0m' confirm
 
-                            echo -e "${green}开始执行抢机...${re}"
-                            bash sh_client_bot.sh
-                            sleep  5
-                            echo -e "${green}正在后台执行抢机中，可关闭SSH，开机成功会在R探长bot上提醒...${re}"
-                            sleep  5
-                            main_menu
+                            if [[ $confirm =~ ^[Yy]$ ]]; then
+                                sleep 1
+                                nano "/root/rtbot/client_config"
+                                echo -e "${green}client_config配置更新成功。${re}"
+                                sleep 1
+                                echo -e "${green}开始执行抢机...${re}"
+                                bash sh_client_bot.sh
+                                sleep  3
+                                echo -e "${green}正在后台执行抢机中，可关闭SSH，开机成功会在R探长bot上提醒...${re}"
+                                sleep  3
+                                main_menu
+                            else 
+                                echo -e "${yellow}请重新执行，正在退出...${re}"
+                                sleep 1
+                                rm -rf /root/rtbot
+                                main_menu
+                            fi
                         else 
                             rm -rf /root/rtbot
                             break_end
@@ -5227,7 +5246,7 @@ EOF
 
               ;;
           *)
-              echo -e "${red}无效的输入!${re}"
+              echo "无效的输入!"
               ;;
       esac
       break_end
