@@ -5022,19 +5022,19 @@ EOF
     done
     ;;
 
-
   14)
      while true; do
       clear
-      echo "▶ 甲骨文云脚本合集"
+      echo -e "${green}▶ 甲骨文云脚本合集${re}"
       echo "------------------------"
-      echo "1. 安装闲置机器活跃脚本"
-      echo "2. 卸载闲置机器活跃脚本"
+      echo -e "${green}1. 安装闲置机器活跃${re}"
+      echo -e "${green}2. 卸载闲置机器活跃${re}"
       echo "------------------------"
-      echo "3. DD重装系统脚本"
-      echo "4. R探长开机脚本"
+      echo -e "${purple}3. 一键DD重装系统${re}"
+      echo -e "${green}4. 一键R探长刷机${re}"
+      echo -e "${red}5. 卸载R探长刷机${re}"
       echo "------------------------"
-      echo "5. 开启ROOT密码登录模式"
+      echo -e "${green}6. 开启ROOT密码登录模式${re}"
       echo "------------------------"
       echo -e "${skyblue}0. 返回主菜单${re}"
       echo "------------------------"
@@ -5109,7 +5109,7 @@ EOF
               ;;
           esac
               ;;
-              
+
           4)
               clear  
               echo -e "${purple}温馨提醒：自动抢机属于官方禁止行为，可能会造成封号现象，如因刷机造成封号，与本人无关！\n开始执行此任务前请确认以下两步是否操作完成。${re}"
@@ -5121,9 +5121,11 @@ EOF
               read -p $'\033[1;91m确定要执行抢机吗？[y/n]: \033[0m' confirm
               echo ""
 
-                if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
-                    mkdir -p rtbot && cd rtbot
+                if [[ $confirm =~ ^[Yy]$ ]]; then
 
+                    install iptables wget
+                    iptables -A INPUT -p tcp --dport 9527 -j ACCEPT
+                    mkdir -p rtbot && cd rtbot
                     # 下载、解压、设置权限并后台运行 sh_client_bot.sh
                     wget -O gz_client_bot.tar.gz https://github.com/semicons/java_oci_manage/releases/latest/download/gz_client_bot.tar.gz
                     tar -zxvf gz_client_bot.tar.gz --exclude=client_config
@@ -5141,13 +5143,13 @@ EOF
 
                         if [ ! -z "$pid_tail" ]; then
                             kill $pid_tail
-                            echo "已结束 PID 为 $pid_tail 的 tail 进程。"
+                            echo -e "${green}已结束PID为${pid_tail}的tail进程。${re}"
                             tail_running=false
                         fi
 
                         if [ ! -z "$pid_java" ]; then
                             kill $pid_java
-                            echo "已结束 PID 为 $pid_java 的 java 进程。"
+                            echo -e "${green}已结束PID为${pid_java}的java进程。${re}"
                             java_running=false
                         fi
 
@@ -5158,8 +5160,9 @@ EOF
                         sleep 5
                     done
                     sleep 3
+                    clear
                     echo ""
-                    echo -e "${red}等待完成以下步骤${re}"
+                    echo -e "${red}等待完成以下步骤,请完成后确认${re}"
                     echo ""
                     echo -e "${yellow}1：请下载${purple}/root/rtbot/client_config${yellow}配置文件并修改成自己的配置信息，api和R探长机器人获取到的username及password${re}"
                     echo ""
@@ -5178,27 +5181,35 @@ EOF
                             sleep  5
                             main_menu
                         else 
-                            rm /root/rtbot/gz_client_bot.tar.gz
+                            rm -rf /root/rtbot
                             break_end
 
                         fi
                 else 
                     echo -e "${yellow}你已取消操作，正在退出...${re}"
-                    rm /root/rtbot/gz_client_bot.tar.gz 
                     sleep 3
                     break_end
 
                 fi
               ;;
+
           5)
               clear
-              echo "设置你的ROOT密码"
-              passwd
+              ps -ef | grep r_client.jar | grep -v grep | awk '{print $2}' | xargs kill -9
+              rm -rf /root/rtbot
+              echo -e "${green}卸载完毕...${re}"
+              break_end
+              ;;
+
+          6)
+              clear
+              read -p $'\033[1;33m请设置ROOT密码: \033[0m' pswd
+              echo "root:$pswd" | chpasswd
               sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
               sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
               service sshd restart
               echo "ROOT登录设置完毕！"
-              read -p "需要重启服务器吗？(Y/N): " choice
+              read -p $'\033[1;33m需要重启服务器吗？(y/n): \033[0m' choice
           case "$choice" in
             [Yy])
               reboot
@@ -5216,14 +5227,13 @@ EOF
 
               ;;
           *)
-              echo "无效的输入!"
+              echo -e "${red}无效的输入!${re}"
               ;;
       esac
       break_end
 
     done
     ;;
-
 
   15)
     while true; do
