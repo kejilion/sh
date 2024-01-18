@@ -5112,7 +5112,7 @@ EOF
               
           4)
               clear  
-              echo -e "${red}注意：自动抢机属于官方禁止行为，可能会造成封号现象，如因刷机造成封号，与本人无关！\n开始执行此任务前请确认以下两步是否操作完成。${re}"
+              echo -e "${purple}温馨提醒：自动抢机属于官方禁止行为，可能会造成封号现象，如因刷机造成封号，与本人无关！\n开始执行此任务前请确认以下两步是否操作完成。${re}"
               echo ""
               echo -e "${yellow}1：获取R探长机器人对应的username和password，机器人获取链接https://t.me/radiance_helper_bot${re}"
               echo ""
