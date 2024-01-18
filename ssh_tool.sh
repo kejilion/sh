@@ -6352,7 +6352,7 @@ EOF
     rm update_log.sh
     echo ""
     curl -sS -O https://raw.githubusercontent.com/eooce/ssh_tool/main/ssh_tool.sh && chmod +x ssh_tool.sh
-    echo "脚本已更新到最新版本！"
+    echo -e "${green}脚本已更新到最新版本！${re}"
     break_end
     main_menu
     ;;
