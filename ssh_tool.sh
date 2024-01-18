@@ -5927,11 +5927,11 @@ EOF
                                     1)
                                         echo -e "${green}开始运行普通版本批量生成小鸡${yellow}(1核256MB内存1GB硬盘限速300Mbit)${re}"
                                         sleep 1
-                                        install screen
                                         curl -L https://raw.githubusercontent.com/oneclickvirt/lxd/main/scripts/init.sh -o init.sh && chmod +x init.sh && dos2unix init.sh
                                         
                                         read -p $'\033[1;35m请输入你要生成小鸡的数量：\033[0m' number
                                         sleep 1
+                                        install screen
                                         echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看信息${re}"
                                         screen bash init.sh lxc $number 
                                         sleep 3
@@ -6182,11 +6182,11 @@ EOF
                                     1)
                                         echo -e "${green}开始运行普通版本批量生成小鸡${yellow}(1核256MB内存1GB硬盘限速300Mbit)${re}"
                                         sleep 1
-                                        install screen
                                         curl -L https://raw.githubusercontent.com/oneclickvirt/incus/main/scripts/init.sh -o init.sh && chmod +x init.sh && dos2unix init.sh
                                         
                                         read -p $'\033[1;35m请输入你要生成小鸡的数量：\033[0m' number
                                         sleep 1
+                                        install screen
                                         echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看信息${re}"
                                         screen bash init.sh nat $number 
                                         sleep 3
