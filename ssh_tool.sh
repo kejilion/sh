@@ -5109,10 +5109,86 @@ EOF
               ;;
           esac
               ;;
-
+              
           4)
-              clear
-              echo "该功能处于开发阶段，敬请期待！"
+              clear  
+              echo -e "${red}注意：自动抢机属于官方禁止行为，可能会造成封号现象，如因刷机造成封号，与本人无关！\n开始执行此任务前请确认以下两步是否操作完成。${re}"
+              echo ""
+              echo -e "${yellow}1：获取R探长机器人对应的username和password，机器人获取链接https://t.me/radiance_helper_bot${re}"
+              echo ""
+              echo -e "${yellow}2：获取甲骨文云api密钥，获取方式在甲骨文云控制台个人中心里${re}"
+              echo ""
+              read -p $'\033[1;91m确定要执行抢机吗？[y/n]: \033[0m' confirm
+              echo ""
+
+                if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+                    mkdir -p rtbot && cd rtbot
+
+                    # 下载、解压、设置权限并后台运行 sh_client_bot.sh
+                    wget -O gz_client_bot.tar.gz https://github.com/semicons/java_oci_manage/releases/latest/download/gz_client_bot.tar.gz
+                    tar -zxvf gz_client_bot.tar.gz --exclude=client_config
+                    tar -zxvf gz_client_bot.tar.gz --skip-old-files client_config
+                    chmod +x sh_client_bot.sh
+                    bash sh_client_bot.sh &
+                    clear 
+
+                    while true; do
+                        pid_tail=$(ps aux | grep '[t]ail' | awk '{print $2}')
+                        pid_java=$(ps aux | grep '[j]ava' | grep -v 'grep' | awk '{print $2}')
+
+                        tail_running=true
+                        java_running=true
+
+                        if [ ! -z "$pid_tail" ]; then
+                            kill $pid_tail
+                            echo "已结束 PID 为 $pid_tail 的 tail 进程。"
+                            tail_running=false
+                        fi
+
+                        if [ ! -z "$pid_java" ]; then
+                            kill $pid_java
+                            echo "已结束 PID 为 $pid_java 的 java 进程。"
+                            java_running=false
+                        fi
+
+                        if [ "$tail_running" = false ] && [ "$java_running" = false ]; then
+                            break
+                        fi
+
+                        sleep 5
+                    done
+                    sleep 3
+                    echo ""
+                    echo -e "${red}等待完成以下步骤${re}"
+                    echo ""
+                    echo -e "${yellow}1：请下载${purple}/root/rtbot/client_config${yellow}配置文件并修改成自己的配置信息，api和R探长机器人获取到的username及password${re}"
+                    echo ""
+                    echo -e "${yellow}2：甲骨文API密钥填写在开头的${purple}oci=begin和oci=end之间，username和password${yellow}填写在10行和12行，其他可选填写${re}"
+                    echo ""
+                    echo -e "${yellow}3：将修改好的${purple}client_config${yellow}文件上传至原目录${purple}/root/rtbot/client_config${re}"
+                    echo ""
+                    read -p $'\033[1;91m是否已完成上面3步？[y/n]: \033[0m' confirm
+                        sleep 1
+                        if [[ $confirm =~ ^[Yy]$ ]]; then
+
+                            echo -e "${green}开始执行抢机...${re}"
+                            bash sh_client_bot.sh
+                            sleep  5
+                            echo -e "${green}正在后台执行抢机中，可关闭SSH，开机成功会在R探长bot上提醒...${re}"
+                            sleep  5
+                            main_menu
+                        else 
+                            rm /root/rtbot/gz_client_bot.tar.gz
+                            break_end
+
+                        fi
+                else 
+                    echo -e "${yellow}你已取消操作，正在退出...${re}"
+                    rm /root/rtbot/gz_client_bot.tar.gz 
+                    sleep 3
+                    break_end
+
+                fi
               ;;
           5)
               clear
