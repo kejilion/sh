@@ -5034,7 +5034,7 @@ EOF
       echo -e "${green}4. 一键R探长刷机${re}"
       echo -e "${red}5. 卸载R探长刷机${re}"
       echo "------------------------"
-      echo -e "${green}6. 开启ROOT密码登录模式${re}"
+      echo -e "${green}6. 开启ROOT密码登录${re}"
       echo "------------------------"
       echo -e "${skyblue}0. 返回主菜单${re}"
       echo "------------------------"
