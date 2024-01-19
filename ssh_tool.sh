@@ -49,13 +49,13 @@ install() {
         fi
         echo -e "${yellow}正在安装 ${package}...${re}"
         if command -v apt &>/dev/null; then
-            sudo apt install -y "$package"
+            apt install -y "$package"
         elif command -v dnf &>/dev/null; then
-            sudo dnf install -y "$package"
+            dnf install -y "$package"
         elif command -v yum &>/dev/null; then
-            sudo yum install -y "$package"
+            yum install -y "$package"
         elif command -v apk &>/dev/null; then
-            sudo apk add "$package"
+            apk add "$package"
         else
             echo -e"${red}暂不支持你的系统!${re}"
             return 1
@@ -63,6 +63,77 @@ install() {
     done
 
     return 0
+}
+
+# 安装nodejs
+install_nodejs(){
+    if command -v node &>/dev/null; then
+        # 获取当前已安装nodejs版本
+        installed_version=$(node --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+        echo -e "${green}系统中已经安装Nodejs,版本:${red}${installed_version}${re}"
+    else
+        echo -e "${yellow}系统中未安装nodejs，正在为你安装...${re}"
+
+        # 根据对应系统安装nodejs
+        if command -v apt &>/dev/null; then
+            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && install nodejs
+        elif command -v dnf &>/dev/null; then
+            dnf install -y nodejs npm
+        elif command -v yum &>/dev/null; then
+            curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
+        elif command -v apk &>/dev/null; then
+            apk add nodejs npm
+        else
+            echo -e "${red}暂不支持你的系统!${re}"
+            return 1
+        fi
+        
+        if [ $? -eq 0 ]; then
+            echo -e "${green}nodejs安装成功!${re}"
+        else
+            echo -e "${red}nodejs安装失败，尝试再次安装...${re}"
+            install nodejs npm
+            sleep 3
+            break_end
+        fi
+    fi 
+}
+
+# 安装java
+install_java() {
+    if command -v java &>/dev/null; then
+        # 检查安装版本
+        installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+        echo -e "${green}系统中已经安装Java${yellow}${installed_version}${re}"     
+    else
+        echo -e "${yellow}系统中未安装Java，正在为你安装...${re}"
+
+        local install_status=0
+
+        if command -v apt &>/dev/null; then
+            apt install -y openjdk-17-jdk
+        elif command -v yum &>/dev/null; then
+            yum install -y java-17-openjdk
+        elif command -v dnf &>/dev/null; then
+            dnf install -y java-17-openjdk
+        elif command -v apk &>/dev/null; then
+            apk add openjdk17
+        else
+            echo -e "${red}暂不支持你的系统！${re}"
+            exit 1
+        fi
+        # 检查是否安装成功
+        if [ $install_status -eq 0 ]; then
+            echo -e "${green}Java安装成功${re}"
+            sleep 2
+            break_end
+        else                    
+            echo -e "${red}Java安装失败，尝试为你再次安装...${re}"
+            install java-17-openjdk
+            sleep 3
+            break_end
+        fi
+    fi   
 }
 
 # 卸载依赖包
@@ -74,13 +145,13 @@ remove() {
 
     for package in "$@"; do
         if command -v apt &>/dev/null; then
-            sudo apt remove -y "$package" && sudo apt autoremove -y
+            apt remove -y "$package" && apt autoremove -y
         elif command -v dnf &>/dev/null; then
-            sudo dnf remove -y "$package" && sudo dnf autoremove -y
+            dnf remove -y "$package" && dnf autoremove -y
         elif command -v yum &>/dev/null; then
-            sudo yum remove -y "$package" && sudo yum autoremove -y
+            yum remove -y "$package" && yum autoremove -y
         elif command -v apk &>/dev/null; then
-            sudo apk del "$package"
+            apk del "$package"
         else
             echo -e "${red}暂不支持你的系统!${re}"
             return 1
@@ -659,13 +730,15 @@ case $choice in
       echo "12. ranger 文件管理工具"
       echo "13. gdu 磁盘占用查看工具"
       echo "14. fzf 全局搜索工具"
+      echo "15. screen后台会话工具"
+      echo "16. masscan端口快速扫描工具"
       echo "------------------------"
       echo "21. cmatrix 黑客帝国屏保"
-      echo -e "22. sl 跑火车屏保 \033[33mNEW\033[0m"
+      echo "22. sl 跑火车屏保"
       echo "------------------------"
-      echo -e "26. 俄罗斯方块小游戏 \033[33mNEW\033[0m"
-      echo -e "27. 贪吃蛇小游戏 \033[33mNEW\033[0m"
-      echo -e "28. 太空入侵者小游戏 \033[33mNEW\033[0m"
+      echo "26. 俄罗斯方块小游戏"
+      echo "27. 贪吃蛇小游戏 "
+      echo "28. 太空入侵者小游戏"
       echo "------------------------"
       echo "31. 全部安装"
       echo -e "${red}32. 全部卸载${re}"
@@ -777,7 +850,32 @@ case $choice in
               fzf
               cd ~
               ;;
-
+            15)
+              clear
+                # 检测 CentOS 系统
+                if [ -f /etc/os-release ]; then
+                    os_name=$(grep '^ID=' /etc/os-release | cut -d= -f2)
+                elif command -v lsb_release > /dev/null 2>&1; then
+                    # 如果 os-release 文件不存在，则使用 lsb_release
+                    os_name=$(lsb_release -i | cut -f2)
+                else
+                    echo "无法确定操作系统类型。"
+                    exit 1
+                fi
+                os_name=$(echo $os_name | tr -d '"')
+                if [ "$os_name" = "centos" ]; then
+                    yum install epel-release -y
+                    yum install screen -y
+                else
+                    install screen
+                fi
+                cd ~
+              ;;
+            16)
+              clear
+              install masscan
+              cd ~
+              ;;
             21)
               clear
               install cmatrix
@@ -3307,8 +3405,9 @@ case $choice in
       echo "20. 定时任务管理"
       echo -e "21. ip端口扫描${yellow}NeW${re}"
       echo -e "22. 服务器资源限制${yellow}NeW${re}"
+      echo -e "23. ${yellow}NAT小鸡一键重装系统${re}"
       echo "------------------------"
-      echo "23. 留言板"
+      echo "80. 留言板"
       echo "------------------------"
       echo "99. 重启服务器"
       echo "------------------------"
@@ -4572,7 +4671,23 @@ EOF
                 esac
             done
             ;;
+
           23)
+            clear
+            echo -e "${green}重装系统将无法恢复数据，请提前做好备份${re}"
+            echo ""
+            read -p $'\033[1;35m确定要重装吗？(y/n): \033[0m' confirm
+
+                if [[ $confirm =~ ^[Yy]$ ]]; then
+                    sleep 1
+                    curl -so OsMutation.sh https://raw.githubusercontent.com/LloydAsp/OsMutation/main/OsMutation.sh && chmod u+x OsMutation.sh && ./OsMutation.sh
+                    break_end
+                else 
+                    main_menu
+                fi
+            ;;
+            
+          80)
             clear
             install sshpass
 
@@ -4814,23 +4929,7 @@ EOF
             fi   
 
             # 检查系统中是否存在nodejs
-            if command -v node &>/dev/null; then
-                echo -e "${green}Nodejs已经安装${re}"
-                
-            else
-                echo -e "${yellow}系统中未安装nodejs，正在安装nodejs...${re}"
-
-                # 根据对应系统安装最新版本的nodejs
-                curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash - && install nodejs
-                
-                clear
-                if [ $? -eq 0 ]; then
-                    echo -e "${green}nodejs安装成功!${re}"
-                else
-                    echo -e "${red}nodejs安装失败，将为你重新安装${re}"
-                    curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
-                fi
-            fi        
+            install_nodejs       
             # 提示输入订阅端口
             echo -e "${yellow}注意：NAT小鸡需输入指定端口范围内的端口，否则无法使用订阅功能${re}"
             while true; do
@@ -4890,11 +4989,11 @@ EOF
                 # 提示输入哪吒密钥
                 read -p $'\033[1;35m请输入哪吒客户端密钥: \033[0m' nezha_key
 
-                curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=government.se CFPORT=443 screen node index.js
+                curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=na.ma CFPORT=8443 screen node index.js
             
             else
 
-                curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=government.se CFPORT=443 screen node index.js
+                curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=na.ma CFPORT=8443 screen node index.js
             fi
         ;;
         5)
@@ -5031,6 +5130,7 @@ EOF
     done
     ;;
 
+
   14)
      while true; do
       clear
@@ -5043,7 +5143,7 @@ EOF
       echo -e "${green}4. 一键R探长刷机${re}"
       echo -e "${red}5. 卸载R探长刷机${re}"
       echo "------------------------"
-      echo -e "${green}6. 开启ROOT密码登录${re}"
+      echo -e "${green}6. 开启ROOT密码登录模式${re}"
       echo "------------------------"
       echo -e "${skyblue}0. 返回主菜单${re}"
       echo "------------------------"
@@ -5133,6 +5233,7 @@ EOF
                 if [[ $confirm =~ ^[Yy]$ ]]; then
                     echo -e "${yellow}开安装依赖...${re}"
                     install iptables wget nano
+                    install_java
                     iptables -A INPUT -p tcp --dport 9527 -j ACCEPT
                     mkdir -p rtbot && cd rtbot
                     # 下载、解压、设置权限并后台运行 sh_client_bot.sh
@@ -5184,8 +5285,11 @@ EOF
                         if [[ $confirm =~ ^[Yy]$ ]]; then
                             # 使用 nano 编辑器打开文件
                             chmod +x /root/rtbot/client_config
+                            echo ""
                             echo -e "${purple}即将打开/root/rtbot/client_config配置文件进行编辑。${re}"
+                            echo ""
                             echo -e "${purple}键盘上下键定位，将api密钥(注意最后一行的路径)，username，password粘贴到指定位置${re}"
+                            echo ""
                             echo -e "${purple}编辑完成后，请按顺序输入命令(Ctrl+O, Enter, Ctrl+X)保存退出${re}"
                             sleep 2
                             echo ""
@@ -5263,15 +5367,16 @@ EOF
     done
     ;;
 
+
   15)
     while true; do
         clear
-        echo "▶ 常用环境管理"
+       echo -e "${skyblue}▶ 常用环境管理${re}"
         echo "------------------------"
-        echo "1. 一键安装Python最新版"
-        echo "2. 一键安装Nodejs最新版"
-        echo "3. 一键安装Golang最新版"
-        echo "4. 一键安装Java最新版"
+        echo -e "${green}1. 一键安装Python最新版${re}"
+        echo -e "${green}2. 一键安装Nodejs最新版${re}"
+        echo -e "${green}3. 一键安装Golang最新版${re}"
+        echo -e "${green}4. 一键安装Java最新版${re}"
         echo "------------------------"
         echo -e "${red}5. 一键卸载Python${re}"
         echo -e "${red}6. 一键卸载Nodejs${re}"
@@ -5375,7 +5480,7 @@ EOF
                     latest_version=$(echo "$json_data" | jq -r '.[] | select(.lts != null) | .version' | head -n 1 | sed 's/^v//')
                     # echo "$latest_version"
                     if [ "$current_version" = "$latest_version" ]; then
-                        echo -e "${yellow}当前版本${green}$current_version${yellow}已经是最新版${green}$latest_version${yellow}，无需更新！${re}"
+                        echo -e "${yellow}当前版本${green}$current_version${yellow}已经是最新版${green}${latest_version}${yellow}，无需更新！${re}"
                         sleep 2
                         main_menu
                     else
@@ -5383,48 +5488,21 @@ EOF
                         echo -e "${yellow}你的nodejs版本是${re}${red}${current_version}${re}，${yellow}最新版本是${purple}${latest_version}${re}"                                 
                         read -p $'\033[1;91m是否卸载旧版nodejs并安装最新版？[y/n]: \033[0m' confirm
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
-                            
-                            # 卸载旧版                            
+                                                       
                             remove nodejs
                             sleep 1
-                            
-                            # 安装最新版本的nodjs
-                            curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && install nodejs
-                            
-                            if [ $? -eq 0 ]; then
 
-                                echo -e "${green}nodejs安装成功，版本：${purple}${latest_version}${re}"
-                                sleep 2
-                            else 
-                                echo -e "${red}nodejs安装失败，尝试为你再次安装${re}"
-                                
-                                curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
-                                sleep 2                              
-                            fi
+                            # 安装新版nodejs
+                            install_nodejs
+                            sleep 3
+                            break_end
                         else
-                            main_menu
+                            main_menu 
                         fi
                     fi
 
                 else
-                    echo -e "${yellow}系统中未安装nodejs，正在安装最新版nodejs...${re}"
-
-                    
-
-                    # 安装最新版本的nodejs
-                    curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash - && install nodejs
-
-                    if [ $? -eq 0 ]; then
-
-                        echo -e "${green}nodejs安装成功!${re}"
-                        break_end
-                    else 
-                        echo -e "${red}nodejs安装失败，尝试为你再次安装${re}"
-                        
-                        curl -fsSL https://rpm.nodesource.com/setup_21.x | sudo bash - && install nodejs
-                        break_end                                
-                    fi
-
+                    install_nodejs
                 fi           
                 
             ;;
@@ -5507,7 +5585,7 @@ EOF
 
             4)
               clear
-                latest_version="17.0.9"
+                latest_version="17.0.10"
                 if command -v java &>/dev/null; then
                     installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
                     echo -e "${green}当前Java版本是${yellow}${installed_version},最新版本是${green}${latest_version}${re}"
@@ -5519,78 +5597,19 @@ EOF
                     else
                         echo -e "${red}"
                         read -p "是否卸载旧版java并安装最新版？[y/n]: " confirm
-                        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
+                        if [[ $confirm =~ ^[Yy]$ ]]; then
                             # 卸载旧版java
                             remove java
-                            break_end
-                            # 安装java
-                            install_java() {
-                                local install_status=0
-
-                                if command -v apt &>/dev/null; then
-                                    sudo apt install -y openjdk-17-jdk
-                                elif command -v yum &>/dev/null; then
-                                    sudo yum install -y java
-                                elif command -v dnf &>/dev/null; then
-                                    sudo dnf install -y java
-                                elif command -v apk &>/dev/null; then
-                                    sudo apk add openjdk17
-                                else
-                                    echo -e "${red}暂不支持你的系统！${re}"
-                                    exit 1
-                                fi
-
-                                # 检查是否安装成功
-                                if [ $install_status -eq 0 ]; then
-                                    echo -e "${green}Java安装成功，版本：${purple}${latest_version}${re}"
-                                    break_end
-                                else                    
-                                    echo -e "${red}Java安装失败，请更新系统后重试！${re}"
-                                    break_end
-                                fi
-                            }
+                            sleep 2
                             install_java                           
 
                         else
                             main_menu 
-
                         fi   
                     fi
 
                 else
-                    echo -e "${yellow}系统中未安装Java，正在为你安装...${re}"
-
-                    install_java() {
-                        local install_status=0
-
-                        if command -v apt &>/dev/null; then
-                            sudo apt update -y && sudo apt install -y openjdk-17-jdk
-                        elif command -v yum &>/dev/null; then
-                            sudo yum install -y java
-                        elif command -v dnf &>/dev/null; then
-                            sudo dnf install -y java
-                        elif command -v apk &>/dev/null; then
-                            sudo apk add openjdk17
-                        else
-                            echo -e "${red}暂不支持你的系统！${re}"
-                            exit 1
-                        fi
-
-                        install_status=$?
-
-                        if [ $install_status -eq 0 ]; then
-                            echo -e "${green}Java安装成功。${re}"
-                            java -version
-                            sleep 2
-                        else
-                            echo -e "${red}Java安装失败，请检查网络连接或更新系统后重试！${re}"
-                            return 1
-                        fi
-
-                        return 0
-                    }
                     install_java
-
                 fi
             ;;
 
@@ -5605,7 +5624,6 @@ EOF
                     read -p $'\033[1;91m确定卸载python？[y/n]: \033[0m' confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                     
-                        
                         # 卸载python3
                         remove python3
 
@@ -5627,6 +5645,7 @@ EOF
                 else
                     echo -e "${yellow}系统中未安装python，无需卸载${re}"
                     sleep 2
+                    main_menu
                 fi           
             ;;
 
@@ -5640,7 +5659,6 @@ EOF
                             
                     read -p $'\033[1;91m确定卸载nodejs？[y/n]: \033[0m' confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
-
                         
                         # 卸载
                         remove nodejs npm 
@@ -5659,6 +5677,7 @@ EOF
                 else
                     echo -e "${yellow}系统中未安装nodejs，无需卸载${re}"
                     sleep 2
+                    main_menu
                 fi           
             ;;
 
@@ -5716,13 +5735,13 @@ EOF
                             local remove_status=0
 
                             if command -v apt &>/dev/null; then
-                                sudo apt remove -y openjdk-17-jdk && sudo apt autoremove -y openjdk-17-jdk
+                                apt remove -y openjdk-17-jdk && apt autoremove -y openjdk-17-jdk
                             elif command -v yum &>/dev/null; then
-                                sudo yum remove -y java && sudo yum autoremove -y java
+                                yum remove -y java && yum autoremove -y java
                             elif command -v dnf &>/dev/null; then
-                                sudo dnf remove -y java && sudo dnf autoremove -y java
+                                dnf remove -y java && dnf autoremove -y java
                             elif command -v apk &>/dev/null; then
-                                sudo apk del openjdk17
+                                apk del openjdk17
                             else
                                 echo -e "${red}暂不支持你的系统！${re}"
                                 exit 1
@@ -5818,7 +5837,7 @@ EOF
                     echo -e "${red}你的服务器不支持开设KVM小鸡，正在退出...${re}"
                     rm -rf /root/check_kernal.sh
                     sleep 2
-                    main_menu
+                    break_end
 
                 elif echo "$output" | grep -q "本机符合要求：可以使用PVE虚拟化KVM服务器，并可以在开出来的KVM服务器选项中开启KVM硬件虚拟化"; then
                     echo -e "${green}本机符合开设kvm小鸡的要求${re}"
@@ -5841,17 +5860,19 @@ EOF
                             sleep 1
                             reboot
                         else 
-                            main_menu
+                            break_end
                         fi
                     else
+                        echo -e "${yellow}已取消操作...${re}"
+                        sleep 2
                         main_menu
                     fi
 
                 else 
                     echo -e "${red}暂不能判定你的服务器状态，无法开设kvm小鸡，可以考虑使用LXC模式开小鸡，正在退出...${re}"
                     rm -rf /root/check_kernal.sh
-                    sleep 2
-                    main_menu
+                    sleep 5
+                    break_end
                 fi
             ;;
 
@@ -5971,6 +5992,7 @@ EOF
                                         sleep 1
                                         install screen
                                         echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看信息${re}"
+                                        sleep 3
                                         screen bash init.sh lxc $number 
                                         sleep 3
                                         cat log
@@ -5981,6 +6003,7 @@ EOF
                                         sleep 1
                                         install screen
                                         echo -e "${green}输入配置后，自动进入后台生成小鸡(可直接关闭SSH连接，完成后运行cat log查看小鸡信息)${re}"
+                                        sleep 3
                                         curl -L https://github.com/oneclickvirt/lxd/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
                                         cat log
                                         break
@@ -6004,7 +6027,7 @@ EOF
                 else
                     echo -e "${red}你的vps不符合开设LXC母鸡要求，请选择incus或Docker方式开设小鸡${re}"
                     sleep 2
-                    main_menu
+                    break_end
                 fi
             ;;
 
@@ -6225,7 +6248,8 @@ EOF
                                         read -p $'\033[1;35m请输入你要生成小鸡的数量：\033[0m' number
                                         sleep 1
                                         install screen
-                                        echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看信息${re}"
+                                        echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看小鸡信息${re}"
+                                        sleep 3
                                         screen bash init.sh nat $number 
                                         sleep 3
                                         cat log
@@ -6235,7 +6259,8 @@ EOF
                                         echo -e "${green}开始运行自定义批量生成小鸡(自定义配置)${re}"
                                         sleep 1
                                         install screen
-                                        echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看信息${re}"
+                                        echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看小鸡信息${re}"
+                                        sleep 3
                                         curl -L https://github.com/oneclickvirt/incus/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
                                         cat log
                                         break
@@ -6259,7 +6284,7 @@ EOF
                 else
                     echo -e "${red}你的vps不符合开设incus要求，请选择LXD或Docker方式开设小鸡${re}"
                     sleep 2
-                    main_menu
+                    break_end
                 fi
             ;;
 
