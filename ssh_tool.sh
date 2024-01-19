@@ -4880,45 +4880,70 @@ EOF
     while true; do
       clear
       echo -e "${purple}▶ 节点搭建脚本合集${re}"
-      echo "------------------------"
-      echo " 1. F佬ArgoX一键脚本"
-      echo " 2. F佬sing-box一键脚本"
-      echo " 3. suoha一键argo脚本"
-      echo " 4. 一键老王nodejs-argo节点+哪吒+订阅"
-      echo " 5. 小绵羊一键reality+vmess+hy2"
-      echo " 6. 勇哥sing-box一键脚本"
-      echo " 7. V2ray-agent八合一"
-      echo " 8. 新版Xray面板一键脚本"
-      echo " 9. 伊朗版Xray面板一键脚本"
-      echo "10. OpenVPN一键脚本"
-      echo "11. M佬Hysteria2一键脚本"
-      echo "12. M佬Juicity一键脚本"
-      echo "------------------------"  
+      echo -e "${green}---------------------------------------------------------${re}"
+      echo -e "${green}       Sing-box多合一             Argo-tunnel${re}"
+      echo -e "${green}---------------------------------------------------------${re}"
+      echo -e "${white} 1. F佬Sing-box一键脚本        5. F佬ArgoX一键脚本${re}"
+      echo -e "${white} 2. 小绵羊Sing-box三合一       6. Suoha一键Argo脚本${re}"
+      echo -e "${white} 3. 勇哥Sing-box四合一         7. Mjj一键Argo脚本${re}"
+      echo -e "${white} 4. V2ray-agent八合一          8. 一键老王Nodejs-Argo节点+哪吒+订阅"
+      echo -e "${yellow}---------------------------------------------------------${re}"
+      echo -e "${yellow}        单协议                    XRAY面板及其他${re}"
+      echo -e "${yellow}---------------------------------------------------------${re}"
+      echo -e "${white} 9. M佬Hysteria2一键脚本      12.新版Xray面板一键脚本${re}"
+      echo -e "${white}10. M佬Juicity一键脚本        13.伊朗版Xray面板一键脚本${re}"
+      echo -e "${white}11. M佬Tuic-v5一键脚本        14.OpenVPN一键安装脚本 ${re}"
+      echo "---------------------------------------------------------" 
       echo -e "${skyblue} 0. 返回主菜单${re}"
-      echo "------------------------"
+      echo "---------------"
       read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice   
 
       case $sub_choice in
+
         1)
-        clear
-            bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/argox/main/argox.sh)
-            sleep 2
-            break_end
-        ;;
-        2)
         clear
             bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/sing-box/main/sing-box.sh)
             sleep 2
             break_end
         ;;
+        2)
+        clear
+            bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh)
+            sleep 2
+            break_end
+        ;;
         3)
+        clear
+            bash <(curl -Ls https://gitlab.com/rwkgyg/sing-box-yg/raw/main/sb.sh)
+            sleep 2
+            break_end
+        ;;
+        4)
+        clear
+            install wget
+            wget -N --no-check-certificate "https://raw.githubusercontent.com/mack-a/v2ray-agent/master/install.sh" && chmod 777 install.sh && bash install.sh
+            sleep 2
+            break_end
+        ;;
+        5)
+        clear
+            bash <(wget -qO- https://raw.githubusercontent.com/fscarmen/argox/main/argox.sh)
+            sleep 2
+            break_end
+        ;;
+        6)
         clear
             curl https://www.baipiao.eu.org/suoha.sh -o suoha.sh && bash suoha.sh
             sleep 2
             break_end            
         ;;            
-
-        4)
+        7)
+        clear
+            curl https://raw.githubusercontent.com/mjjonone/good/main/vps/good.sh -o good.sh && bash good.sh
+            sleep 2
+            break_end            
+        ;; 
+        8)
         clear
             # 检查系统中是否安装screen
             if command -v screen &>/dev/null; then
@@ -4996,56 +5021,43 @@ EOF
                 curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port CFIP=na.ma CFPORT=8443 screen node index.js
             fi
         ;;
-        5)
+        9)
         clear
-            bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/beta.sh)
+            install wget && wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
             sleep 2
             break_end
-        ;;
-        6)
+        ;;     
+        10)
         clear
-            bash <(curl -Ls https://gitlab.com/rwkgyg/sing-box-yg/raw/main/sb.sh)
+            install wget && wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
             sleep 2
             break_end
-        ;;
-        7)
+        ;;   
+        11)
         clear
-            wget -N --no-check-certificate "https://raw.githubusercontent.com/mack-a/v2ray-agent/master/install.sh" && chmod 777 install.sh && bash install.sh
+            install wget && wget -N --no-check-certificate https://gitlab.com/Misaka-blog/tuic-script/-/raw/main/tuic.sh && bash tuic.sh
             sleep 2
             break_end
-        ;;
-        8)
+        ;;      
+        12)
         clear
             bash <(curl -Ls https://raw.githubusercontent.com/slobys/x-ui/main/install.sh)
             sleep 2
             break_end
         ;; 
-
-        9)
+        13)
         clear
             bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
             sleep 2
             break_end
         ;;           
-
-        10)
+        14)
         clear
-            wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
-            sleep 2
-            break_end
-        ;;  
-        11)
-        clear
-            wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
+            install wget && wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
             sleep 2
             break_end
         ;;     
-        12)
-        clear
-            wget -N https://raw.githubusercontent.com/Misaka-blog/juicity-script/main/juicity.sh && bash juicity.sh
-            sleep 2
-            break_end
-        ;;             
+
         0)
             main_menu # 返回主菜单
         ;;
@@ -5056,7 +5068,6 @@ EOF
       esac
     done
     ;; 
-
 
   13)
     while true; do
