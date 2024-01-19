@@ -11,14 +11,23 @@ skyblue='\e[1;96m'
 
 [[ $EUID -ne 0 ]] && echo -e "${red}注意: 请在root用户下运行脚本${re}" && sleep 2 && exit 1
 
-# 检查alias是否已经存在
-if ! grep -q "cd ~ && ./ssh_tool.sh'" ~/.bashrc; then 
-    alias k="cd ~ && ./ssh_tool.sh"
-    echo "alias k=\"cd ~ && ./ssh_tool.sh\"" >> ~/.bashrc
-    source ~/.bashrc 
-else 
-    clear 
-fi
+# 创建快捷指令
+add_alias() {
+    config_file=$1
+    alias_names=("k" "K")
+    [ ! -f "$config_file" ] || touch "$config_file"
+    for alias_name in "${alias_names[@]}"; do
+        if ! grep -q "alias $alias_name=" "$config_file"; then 
+            echo "Adding alias $alias_name to $config_file"
+            echo "alias $alias_name='cd ~ && ./ssh_tool.sh'" >> "$config_file"
+        fi
+    done
+    . "$config_file"
+}
+config_files=("/root/.bashrc" "/root/.profile" "/root/.bash_profile")
+for config_file in "${config_files[@]}"; do
+    add_alias "$config_file"
+done
 
 # 获取当前服务器ipv4和ipv6
 ip_address() {
