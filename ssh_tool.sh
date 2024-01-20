@@ -104,7 +104,8 @@ install_java() {
     if command -v java &>/dev/null; then
         # 检查安装版本
         installed_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
-        echo -e "${green}系统中已经安装Java${yellow}${installed_version}${re}"     
+        echo -e "${green}系统已经安装Java${yellow}${installed_version}${re}"     
+
     else
         echo -e "${yellow}系统中未安装Java，正在为你安装...${re}"
 
@@ -122,7 +123,7 @@ install_java() {
             echo -e "${red}暂不支持你的系统！${re}"
             exit 1
         fi
-        # 检查是否安装成功
+
         if [ $install_status -eq 0 ]; then
             echo -e "${green}Java安装成功${re}"
             sleep 2
@@ -293,7 +294,7 @@ install_ldnmp() {
 
 
       clear
-      echo "LDNMP环境安装完毕"
+      echo -e "${green}LDNMP环境安装完毕${re}"
       echo "------------------------"
 
       # 获取nginx版本
@@ -395,7 +396,7 @@ add_db() {
 }
 
 reverse_proxy() {
-      ipv4_address
+      ip_address
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0.0.0.0/$ipv4_address/g" /home/web/conf.d/$yuming.conf
@@ -418,7 +419,7 @@ docker_app() {
 if docker inspect "$docker_name" &>/dev/null; then
     clear
     echo "$docker_name 已安装，访问地址: "
-    ipv4_address
+    ip_address
     echo "http:$ipv4_address:$docker_port"
     echo ""
     echo "应用操作"
@@ -441,7 +442,7 @@ if docker inspect "$docker_name" &>/dev/null; then
             echo "$docker_name 已经安装完成"
             echo "------------------------"
             # 获取外部 IP 地址
-            ipv4_address
+            ip_address
             echo "您可以使用以下地址访问:"
             echo "http:$ipv4_address:$docker_port"
             $docker_use
@@ -480,7 +481,7 @@ else
             echo "$docker_name 已经安装完成"
             echo "------------------------"
             # 获取外部 IP 地址
-            ipv4_address
+            ip_address
             echo "您可以使用以下地址访问:"
             echo "http:$ipv4_address:$docker_port"
             $docker_use
@@ -863,9 +864,12 @@ case $choice in
                     exit 1
                 fi
                 os_name=$(echo $os_name | tr -d '"')
-                if [ "$os_name" = "centos" ]; then
+                if [ "$os_name" = "centos" ] || [ "$os_name" = "rocky" ]; then
                     yum install epel-release -y
                     yum install screen -y
+                elif [ "$os_name" = "amzn" ]; then
+                    amazon-linux-extras install epel
+                    yum install screen -y                    
                 else
                     install screen
                 fi
@@ -873,8 +877,27 @@ case $choice in
               ;;
             16)
               clear
-              install masscan
-              cd ~
+                # 检测 CentOS 系统
+                if [ -f /etc/os-release ]; then
+                    os_name=$(grep '^ID=' /etc/os-release | cut -d= -f2)
+                elif command -v lsb_release > /dev/null 2>&1; then
+                    # 如果 os-release 文件不存在，则使用 lsb_release
+                    os_name=$(lsb_release -i | cut -f2)
+                else
+                    echo "无法确定操作系统类型。"
+                    exit 1
+                fi
+                os_name=$(echo $os_name | tr -d '"')
+                if [ "$os_name" = "centos" ] || [ "$os_name" = "rocky" ]; then
+                    yum install epel-release -y
+                    yum install masscan -y
+                elif [ "$os_name" = "amzn" ]; then
+                    amazon-linux-extras install epel
+                    yum install masscan -y                    
+                else
+                    install masscan
+                fi
+                cd ~
               ;;
             21)
               clear
@@ -1774,7 +1797,7 @@ case $choice in
 
       22)
       clear
-      ipv4_address
+      ip_address
       echo -e "先将域名解析到本机IP: \033[33m$ipv4_address\033[0m"
       read -p "请输入你的域名: " yuming
       read -p "请输入跳转域名: " reverseproxy
@@ -1796,7 +1819,7 @@ case $choice in
 
       23)
       clear
-      ipv4_address
+      ip_address
       echo -e "先将域名解析到本机IP: \033[33m$ipv4_address\033[0m"
       read -p "请输入你的域名: " yuming
       read -p "请输入你的反代IP: " reverseproxy
@@ -2749,7 +2772,7 @@ case $choice in
                     mkdir -p /home/docker      # 递归创建目录
                     echo "$yuming" > /home/docker/mail.txt  # 写入文件
                     echo "------------------------"
-                    ipv4_address
+                    ip_address
                     echo "先解析这些DNS记录"
                     echo "A           mail            $ipv4_address"
                     echo "CNAME       imap            $yuming"
@@ -2796,7 +2819,7 @@ case $choice in
 
                     clear
                     echo "rocket.chat已安装，访问地址: "
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:3897"
                     echo ""
 
@@ -2818,7 +2841,7 @@ case $choice in
                             docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
                             clear
-                            ipv4_address
+                            ip_address
                             echo "rocket.chat已经安装完成"
                             echo "------------------------"
                             echo "多等一会，您可以使用以下地址访问rocket.chat:"
@@ -2866,7 +2889,7 @@ case $choice in
 
                     clear
 
-                    ipv4_address
+                    ip_address
                     echo "rocket.chat已经安装完成"
                     echo "------------------------"
                     echo "多等一会，您可以使用以下地址访问rocket.chat:"
@@ -2927,7 +2950,7 @@ case $choice in
 
                     clear
                     echo "cloudreve已安装，访问地址: "
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:5212"
                     echo ""
 
@@ -2956,7 +2979,7 @@ case $choice in
                             echo "cloudreve已经安装完成"
                             echo "------------------------"
                             echo "您可以使用以下地址访问cloudreve:"
-                            ipv4_address
+                            ip_address
                             echo "http:$ipv4_address:5212"
                             sleep 3
                             docker logs cloudreve
@@ -3000,7 +3023,7 @@ case $choice in
                     echo "cloudreve已经安装完成"
                     echo "------------------------"
                     echo "您可以使用以下地址访问cloudreve:"
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:5212"
                     sleep 3
                     docker logs cloudreve
@@ -3116,7 +3139,7 @@ case $choice in
 
                     clear
                     echo "雷池已安装，访问地址: "
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:9443"
                     echo ""
 
@@ -3167,7 +3190,7 @@ case $choice in
                     echo "雷池WAF面板已经安装完成"
                     echo "------------------------"
                     echo "您可以使用以下地址访问:"
-                    ipv4_address
+                    ip_address
                     echo "http:$ipv4_address:9443"
                     echo ""
 
@@ -3257,7 +3280,7 @@ case $choice in
             if docker inspect "$docker_name" &>/dev/null; then
                 clear
                 echo "$docker_name 已安装，访问地址: "
-                ipv4_address
+                ip_address
                 echo "http:$ipv4_address:$docker_port"
                 echo ""
                 echo "应用操作"
@@ -3281,7 +3304,7 @@ case $choice in
                         echo "$docker_name 已经安装完成"
                         echo "------------------------"
                         # 获取外部 IP 地址
-                        ipv4_address
+                        ip_address
                         echo "您可以使用以下地址访问:"
                         echo "http:$ipv4_address:$docker_port"
 
@@ -3344,7 +3367,7 @@ case $choice in
                         echo "$docker_name 已经安装完成"
                         echo "------------------------"
                         # 获取外部 IP 地址
-                        ipv4_address
+                        ip_address
                         echo "您可以使用以下地址访问:"
                         echo "http:$ipv4_address:$docker_port"
 
@@ -3418,7 +3441,7 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              read -p "请输入你的快捷按键: " kuaijiejian
+              read -p $'\033[1;91m请输入你的快捷按键: \033[0m' kuaijiejian
               echo "alias $kuaijiejian='./ssh_tool.sh'" >> ~/.bashrc
               source ~/.bashrc
               echo "快捷键已设置"
@@ -3426,7 +3449,7 @@ case $choice in
 
           2)
               clear
-               read -p "请输入你的新密码: " passwd
+               read -p $'\033[1;35m请输入新的ROOT密码: \033[0m' passwd
 
                  if command -v apt &>/dev/null; then
                     echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && sleep 1 && reboot || echo "Root密码修改失败"
@@ -3442,13 +3465,13 @@ case $choice in
               ;;
           3)
               clear
-              read -p "请输入设置你的root密码: " passwd
+              read -p $'\033[1;35m请设置你的root密码: \033[0m' passwd
               echo "root:$passwd" | chpasswd && echo "Root密码设置成功" || echo "Root密码修改失败"
               sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
               sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
               service sshd restart
               echo -e "${green}ROOT登录设置完毕，重启服务器生效${re}"
-              read -p $'\033[1;91m需要立即重启服务器吗？(y/n): \033[0m' choice
+              read -p $'\033[1;35m需要立即重启服务器吗？(y/n): \033[0m' choice
           case "$choice" in
             [Yy])
               reboot
@@ -3492,7 +3515,7 @@ case $choice in
               echo "------------------------"
 
               # 提示用户输入新的 SSH 端口号
-              read -p "请输入新的 SSH 端口号: " new_port
+              read -p $'\033[1;35m请输入新的 SSH 端口号: \033[0m' new_port
 
               # 备份 SSH 配置文件
               cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
@@ -3520,7 +3543,7 @@ case $choice in
             echo "------------------------"
             echo ""
             # 询问用户是否要优化DNS设置
-            read -p "是否要设置为Cloudflare和Google的DNS地址？(y/n): " choice
+            read -p $'\033[1;35m是否要设置为Cloudflare和Google的DNS地址？(y/n): \033[0m' choice
 
             if [ "$choice" == "y" ]; then
                 # 定义DNS地址
@@ -3561,12 +3584,12 @@ case $choice in
           8)
           clear
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
-          read -p "确定继续吗？(Y/N): " choice
+          read -p $'\033[1;35m确定继续吗？(Y/N): \033[0m' choice
 
           case "$choice" in
             [Yy])
               while true; do
-                read -p "请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : " sys_choice
+                read -p $'\033[1;35m请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : \033[0m' sys_choice
 
                 case "$sys_choice" in
                   1)
@@ -5013,7 +5036,7 @@ EOF
 
                 # 提示输入哪吒密钥
                 read -p $'\033[1;35m请输入哪吒客户端密钥: \033[0m' nezha_key
-
+                [ -d "node" ] || mkdir -p "node" && cd "node"
                 curl -O https://raw.githubusercontent.com/eooce/ssh_tool/main/index.js && curl -O https://raw.githubusercontent.com/eooce/nodejs-argo/main/package.json && npm install && chmod +x index.js && PORT=$port NEZHA_SERVER=$nezha_server NEZHA_PORT=$nezha_port NEZHA_KEY=$nezha_key CFIP=na.ma CFPORT=8443 screen node index.js
             
             else
@@ -5068,6 +5091,7 @@ EOF
       esac
     done
     ;; 
+
 
   13)
     while true; do
@@ -5327,12 +5351,14 @@ EOF
                                 main_menu
                             fi
                         else 
+                            echo -e "${yellow}已取消操作，正在退出...${re}"
                             rm -rf /root/rtbot
                             sleep 2
                             main_menu
+
                         fi
                 else 
-                    echo -e "${yellow}你已取消操作，正在退出...${re}"
+                    echo -e "${yellow}已取消操作，正在退出...${re}"
                     sleep 2
                     main_menu
                 fi
@@ -5846,7 +5872,7 @@ EOF
                 output=$(bash <(wget -qO- --no-check-certificate https://raw.githubusercontent.com/spiritLHLS/pve/main/scripts/check_kernal.sh))
                 echo "$output"
                 if echo "$output" | grep -q "CPU不支持硬件虚拟化，无法嵌套虚拟化KVM服务器，但可以开LXC服务器(CT)"; then
-
+                    echo ""
                     echo -e "${red}你的服务器不支持开设KVM小鸡，建议选择4或9开设其他类型，正在退出...${re}"
                     rm -rf /root/check_kernal.sh
                     sleep 2
@@ -5881,11 +5907,16 @@ EOF
                         main_menu
                     fi
 
+                elif echo "$output" | grep -q "宿主机的环境无apt包管理器命令，请检查系统"; then
+                    echo ""
+                    echo -e "${red}你的vps系统暂不支持，请更换Debian12或Ubuntu22.04后重试${re}"
+                    sleep 3
+                    main_menu
                 else 
                     echo -e "${red}暂不能判定你的服务器状态，无法开设kvm小鸡，可以考虑使用LXC模式开小鸡，正在退出...${re}"
                     rm -rf /root/check_kernal.sh
-                    sleep 5
-                    break_end
+                    sleep 3
+                    main_menu
                 fi
             ;;
 
@@ -5922,7 +5953,7 @@ EOF
                             break  # 跳出循环
                         elif [ "$choose" == "2" ]; then
                             sleep 1
-                            echo -e "${red}注意: KVM开设出的NAT小鸡，默认生成的用户名不是root，默认的root密码是${green}password${red},需要sudo -i手动切换为root${re}"
+                            echo -e "${red}注意: KVM开设出的NAT小鸡，默认生成的用户名不是root，默认的root密码部分类型是${green}password${red},需要sudo -i手动切换为root${re}"
                             sleep 2
                             curl -L https://raw.githubusercontent.com/spiritLHLS/pve/main/scripts/create_vm.sh -o create_vm.sh && chmod +x create_vm.sh && bash create_vm.sh
                             sleep 2
@@ -5961,7 +5992,7 @@ EOF
                 output=$(bash <(wget -qO- --no-check-certificate https://raw.githubusercontent.com/oneclickvirt/lxd/main/scripts/pre_check.sh))
                 echo "$output"
                 if echo "$output" | grep -q "本机符合作为LXC母鸡的要求，可以批量开设LXC容器"; then
-
+                    echo ""
                     echo -e "${green}你的vps已通过检测，可以开设LXC小鸡${re}"
 
                     read -p $'\033[1;35m确定要开设LXC小鸡吗？ [y/n]: \033[0m' confirm
@@ -6041,11 +6072,11 @@ EOF
                             sleep 2
                             main_menu
                             
-                        fi
+                        fi                        
                 else
                     echo -e "${red}你的vps不符合开设LXC母鸡要求，请选择incus或Docker方式开设小鸡${re}"
-                    sleep 2
-                    break_end
+                    sleep 3
+                    main_menu
                 fi
             ;;
 
@@ -6300,6 +6331,7 @@ EOF
                             
                         fi
                 else
+                    echo ""
                     echo -e "${red}你的vps不符合开设incus要求，请选择LXD或Docker方式开设小鸡${re}"
                     sleep 2
                     break_end
