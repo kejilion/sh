@@ -5232,11 +5232,13 @@ EOF
 
           4)
               clear  
-              echo -e "${purple}温馨提醒：自动抢机属于官方禁止行为，可能会造成封号现象，如因刷机造成封号，与本人无关！\n开始执行此任务前请确认以下两步是否操作完成。${re}"
+              echo -e "${purple}温馨提醒：自动抢机属于官方禁止行为，可能会造成封号现象，如因刷机造成封号，与本人无关！\n开始执行此任务前请确认以下3步是否操作完成。${re}"
               echo ""
-              echo -e "${yellow}1：获取R探长机器人对应的${purple}username和password，${yellow}机器人获取链接https://t.me/radiance_helper_bot，使用/raninfo命令随机生成${re}"
+              echo -e "${yellow}1：请确保你的服务器${purple}9527端口${yellow}可用，故此一键开机也不适合nat小鸡${re}"
               echo ""
-              echo -e "${yellow}2：获取甲骨文云${purple}api密钥${yellow}下载文件并复制内容保存，获取方式在甲骨文云控制台右上角头像--我的概要信息里${re}"
+              echo -e "${yellow}2：获取R探长机器人对应的${purple}username和password，${yellow}机器人获取链接https://t.me/radiance_helper_bot，使用/raninfo命令随机生成${re}"
+              echo ""
+              echo -e "${yellow}3：获取甲骨文云${purple}api密钥${yellow}下载文件并复制内容保存，获取方式在甲骨文云控制台右上角头像--我的概要信息里${re}"
               echo ""
               read -p $'\033[1;91m确定要继续吗？[y/n]: \033[0m' confirm
               echo ""
@@ -5251,7 +5253,7 @@ EOF
                     wget -O gz_client_bot.tar.gz https://github.com/semicons/java_oci_manage/releases/latest/download/gz_client_bot.tar.gz
                     tar -zxvf gz_client_bot.tar.gz --exclude=client_config
                     tar -zxvf gz_client_bot.tar.gz --skip-old-files client_config
-                    chmod +x sh_client_bot.sh
+                    chmod +x sh_client_bot.sh client_config
                     bash sh_client_bot.sh &
                     clear 
 
@@ -5280,7 +5282,7 @@ EOF
 
                         sleep 5
                     done
-                    sleep 3
+                    sleep 2
                     clear
                     echo ""
                     echo -e "${red}等待完成以下步骤,请完成后再确认${re}"
