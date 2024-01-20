@@ -5328,8 +5328,8 @@ EOF
                             fi
                         else 
                             rm -rf /root/rtbot
-                            break_end
-
+                            sleep 2
+                            main_menu
                         fi
                 else 
                     echo -e "${yellow}你已取消操作，正在退出...${re}"
