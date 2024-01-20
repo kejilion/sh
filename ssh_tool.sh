@@ -5333,9 +5333,8 @@ EOF
                         fi
                 else 
                     echo -e "${yellow}你已取消操作，正在退出...${re}"
-                    sleep 3
-                    break_end
-
+                    sleep 2
+                    main_menu
                 fi
               ;;
 
