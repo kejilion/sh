@@ -5848,7 +5848,7 @@ EOF
                 echo "$output"
                 if echo "$output" | grep -q "CPU不支持硬件虚拟化，无法嵌套虚拟化KVM服务器，但可以开LXC服务器(CT)"; then
 
-                    echo -e "${red}你的服务器不支持开设KVM小鸡，正在退出...${re}"
+                    echo -e "${red}你的服务器不支持开设KVM小鸡，建议选择4或9开设其他类型，正在退出...${re}"
                     rm -rf /root/check_kernal.sh
                     sleep 2
                     break_end
