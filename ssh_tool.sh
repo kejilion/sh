@@ -5855,7 +5855,7 @@ EOF
 
                 elif echo "$output" | grep -q "本机符合要求：可以使用PVE虚拟化KVM服务器，并可以在开出来的KVM服务器选项中开启KVM硬件虚拟化"; then
                     echo -e "${green}本机符合开设kvm小鸡的要求${re}"
-                    read -p $'\033[1;96m确定要开设kvm小鸡吗？ [y/n]: \033[0m' confirm
+                    read -p $'\033[1;35m确定要开设kvm小鸡吗？ [y/n]: \033[0m' confirm
                     sleep 1
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                         echo ""
@@ -5908,12 +5908,17 @@ EOF
                     echo -e "${yellow}KVM虚拟化开设出的虚拟机，默认生成的用户名不是root，请确保你已在root下运行及修改root密码${re}"
 
                     while true; do
-                        read -p $'\033[1;96m你需要单独开设kvm小鸡还是批量开设kvm小鸡？(1：单独开设  2：批量开设) \033[0m' choose
+                        read -p $'\033[1;96m你需要手动开设kvm小鸡还是批量开设kvm小鸡？(1：手动开设  2：自动批量开设) \033[0m' choose
 
                         if [ "$choose" == "1" ]; then
                             sleep 1
                             curl -L https://raw.githubusercontent.com/spiritLHLS/pve/main/scripts/buildvm.sh -o buildvm.sh && chmod +x buildvm.sh
                             sleep 2
+                            echo -e "${purple}手动开设请执行以下命令，参数对照如下可自行修改${re}"
+                            echo ""
+                            echo -e "${purple}./buildvm.sh VMID 用户名 密码 CPU核数 内存 硬盘 SSH端口 80端口 443端口 外网端口起 外网端口止 系统 存储盘 独立IPV6地址(留空默认N)${re}"
+                            echo -e "${purple}./buildvm.sh 102 test1 oneclick123 1 512 10 40001 40002 40003 50000 50025 debian11 local N${re}"
+                            sleep 3
                             break_end
                             break  # 跳出循环
                         elif [ "$choose" == "2" ]; then
