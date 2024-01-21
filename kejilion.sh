@@ -412,7 +412,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.2.3 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.2.4 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2324,6 +2324,7 @@ case $choice in
       echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
       echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
       echo "29. searxng聚合搜索站                   30. PhotoPrism私有相册系统"
+      echo "31. StirlingPDF工具大全"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -3471,6 +3472,27 @@ case $choice in
             docker_describe="photoprism非常强大的私有相册系统"
             docker_url="官网介绍: https://www.photoprism.app/"
             docker_use="echo \"账号: admin  密码: $rootpasswd\""
+            docker_passwd=""
+            docker_app
+              ;;
+
+
+          31)
+            docker_name="s-pdf"
+            docker_img="frooodle/s-pdf:latest"
+            docker_port=8020
+            docker_rum="docker run -d \
+                            --name s-pdf \
+                            --restart=always \
+                             -p 8020:8080 \
+                             -v /home/docker/s-pdf/trainingData:/usr/share/tesseract-ocr/5/tessdata \
+                             -v /home/docker/s-pdf/extraConfigs:/configs \
+                             -v /home/docker/s-pdf/logs:/logs \
+                             -e DOCKER_ENABLE_SECURITY=false \
+                             frooodle/s-pdf:latest"
+            docker_describe="这是一个强大的本地托管基于 Web 的 PDF 操作工具，使用 docker，允许您对 PDF 文件执行各种操作，例如拆分合并、转换、重新组织、添加图像、旋转、压缩等。"
+            docker_url="官网介绍: https://github.com/Stirling-Tools/Stirling-PDF"
+            docker_use=""
             docker_passwd=""
             docker_app
               ;;
