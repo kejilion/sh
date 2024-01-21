@@ -9,6 +9,7 @@ yellow='\e[1;33m'
 purple='\e[1;35m'
 skyblue='\e[1;96m'
 
+# 检查是否为root下运行
 [[ $EUID -ne 0 ]] && echo -e "${red}注意: 请在root用户下运行脚本${re}" && sleep 2 && exit 1
 
 # 创建快捷指令
@@ -6104,7 +6105,8 @@ EOF
                 echo -e "${skyblue}5. 启动指定LXC小鸡${re}"
                 echo -e "${skyblue}6. 给指定小鸡重装系统${re}"
                 echo "------------------------"
-                echo -e "${red}7. 删除指定LXC小鸡${re}" 
+                echo -e "${skyblue}7. 新增开设LXC小鸡${re}"
+                echo -e "${red}8. 删除指定LXC小鸡${re}" 
                 echo "------------------------"
                 echo -e "${white}0. 返回上一级菜单${re}"
                 echo "------------------------"
@@ -6185,6 +6187,19 @@ EOF
                     ;;
 
                     7)
+                        read -p $'\033[1;35m确定要新增LXC小鸡吗？ [y/n]: \033[0m' confirm
+
+                        if [[ "$confirm" =~ ^[Yy]$ ]]; then   
+                            echo -e "${green}输入配置后将进入后台为你新增，可关闭SSH，完成后cat log查看信息${re}"
+                            curl -L https://github.com/oneclickvirt/lxd/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
+
+                        else 
+                            echo -e "${green}已取消${re}"
+                            break_end
+                        fi
+                    ;;
+
+                    8)
                         clear
                         read -p $'\033[1;35m请输入要删除的小鸡的名字（如ex1，nat1等）: \033[0m' nat
                         lxc delete -f $nat
@@ -6352,7 +6367,8 @@ EOF
                 echo -e "${skyblue}5. 启动指定incus小鸡${re}"
                 echo -e "${skyblue}6. 给指定小鸡重装系统${re}"
                 echo "------------------------"
-                echo -e "${red}7. 删除指定incus小鸡${re}" 
+                echo -e "${skyblue}7. 新增开设incus小鸡${re}"
+                echo -e "${red}8. 删除指定incus小鸡${re}" 
                 echo "------------------------"
                 echo -e "${white}0. 返回上一级菜单${re}"
                 echo "------------------------"
@@ -6431,8 +6447,19 @@ EOF
                         sleep 2
                         break_end
                     ;;
-
                     7)
+                        read -p $'\033[1;35m确定要新增incus小鸡吗？ [y/n]: \033[0m' confirm
+
+                        if [[ "$confirm" =~ ^[Yy]$ ]]; then   
+                            echo -e "${green}输入配置后将进入后台为你新增incus小鸡，可关闭SSH，完成后cat log查看信息${re}"
+                            curl -L https://github.com/oneclickvirt/incus/raw/main/scripts/add_more.sh -o add_more.sh && chmod +x add_more.sh && screen bash add_more.sh
+                            cat log
+                        else 
+                            echo -e "${green}已取消${re}"
+                            break_end
+                        fi
+                    ;;
+                    8)
                         clear
                         read -p $'\033[1;35m请输入要删除的小鸡的名字（如ex1，nat1等）: \033[0m' nat
                         incus delete -f $nat
