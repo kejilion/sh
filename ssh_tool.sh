@@ -4254,7 +4254,7 @@ EOF
                 read -p $'\033[1;35m主机名已更改，是否立即重启系统以使更改生效？ (y/n): \033[0m' restart_choice
 
                 if [[ "$restart_choice" =~ ^[Yy]$ ]]; then
-                    echo -e "${green}正在重启系统或服务...${re}"
+                    echo -e "${green}正在重启系统...${re}"
                     sleep 1
                     reboot
                 else
