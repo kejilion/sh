@@ -4221,48 +4221,54 @@ EOF
               ;;
 
           18)
-          clear
-          # 获取当前主机名
-          current_hostname=$(hostname)
+            clear
+            # 获取系统信息
+            source /etc/os-release
+            echo "当前系统: $PRETTY_NAME"
+            current_hostname=$(hostname)
+            read -p "确定要更改主机名？ (y/n): " choice
 
-          echo "当前主机名: $current_hostname"
+            if [[ "$choice" =~ ^[Yy]$ ]]; then
 
-          # 询问用户是否要更改主机名
-          read -p "是否要更改主机名？(y/n): " answer
+                read -p "请输入新的主机名: " new_hostname
 
-          if [ "$answer" == "y" ]; then
-              # 获取新的主机名
-              read -p "请输入新的主机名: " new_hostname
+                case $ID in
+                    "alpine")
+                        echo "$new_hostname" > /etc/hostname
+                        echo "127.0.0.1 localhost $new_hostname" > /etc/hosts
+                        ;;
+                    "debian" | "ubuntu")
+                        hostnamectl set-hostname "$new_hostname"
+                        sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
+                        ;;
+                    "centos" | "fedora" | "rocky" | "amzn" | "almalinux")
+                        hostnamectl set-hostname "$new_hostname"
+                        ;;
+                    *)
+                        echo -e "${red}不支持的系统类型: ${ID}${re}"
+                        sleep 3
+                        main_menu
+                        ;;
+                esac
 
-              # 更改主机名
-              if [ -n "$new_hostname" ]; then
-                  # 根据发行版选择相应的命令
-                  if [ -f /etc/debian_version ]; then
-                      # Debian 或 Ubuntu
-                      hostnamectl set-hostname "$new_hostname"
-                      sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
-                  elif [ -f /etc/redhat-release ]; then
-                      # CentOS
-                      hostnamectl set-hostname "$new_hostname"
-                      sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
-                  else
-                      echo "未知的发行版，无法更改主机名。"
-                      exit 1
-                  fi
+                read -p "主机名已更改，是否重启系统以使更改生效？ (y/n): " restart_choice
 
-                  # 重启生效
-                  systemctl restart systemd-hostnamed
-                  echo "主机名已更改为: $new_hostname"
-              else
-                  echo "无效的主机名。未更改主机名。"
-                  exit 1
-              fi
-          else
-              echo "未更改主机名。"
-          fi
+                if [[ "$restart_choice" =~ ^[Yy]$ ]]; then
+                    echo -e "${green}正在重启系统或服务...${re}"
+                    reboot
+                else
+                    echo -e "${red}请手动重启系统或服务以使配置生效。${re}"
+                    sleep 3
+                    main_menu
+                fi
+            else
+                echo -e "${green}取消更改主机名。${re}"
+                sleep 2
+                main_menu
+            fi
 
-              ;;
-
+            ;;
+            
           19)
 
           # 获取系统信息
