@@ -4224,13 +4224,13 @@ EOF
             clear
             # 获取系统信息
             source /etc/os-release
-            echo "当前系统: $PRETTY_NAME"
+            echo -e "${yellow}当前系统: ${red}${PRETTY_NAME}${re}"
             current_hostname=$(hostname)
-            read -p "确定要更改主机名？ (y/n): " choice
+            read -p $'\033[1;35m确定要更改主机名？ (y/n): \033[0m' choice
 
             if [[ "$choice" =~ ^[Yy]$ ]]; then
 
-                read -p "请输入新的主机名: " new_hostname
+                read -p $'\033[1;35m请输入新的主机名: \033[0m' new_hostname
 
                 case $ID in
                     "alpine")
@@ -4251,14 +4251,15 @@ EOF
                         ;;
                 esac
 
-                read -p "主机名已更改，是否重启系统以使更改生效？ (y/n): " restart_choice
+                read -p $'\033[1;35m主机名已更改，是否立即重启系统以使更改生效？ (y/n): \033[0m' restart_choice
 
                 if [[ "$restart_choice" =~ ^[Yy]$ ]]; then
                     echo -e "${green}正在重启系统或服务...${re}"
+                    sleep 1
                     reboot
                 else
-                    echo -e "${red}请手动重启系统或服务以使配置生效。${re}"
-                    sleep 3
+                    echo -e "${red}请稍后手动重启系统以使配置生效。${re}"
+                    sleep 2
                     main_menu
                 fi
             else
