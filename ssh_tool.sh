@@ -3583,7 +3583,6 @@ case $choice in
               ;;
 
           8)
-          23)
             clear
             echo -e "${green}重装系统将无法恢复数据，请提前做好备份${re}"
             echo ""
