@@ -3766,7 +3766,7 @@ case $choice in
                             main_menu
                             ;;
                         *)
-                            echo -e "${green}输入错误，请重新输入${re}"
+                            echo -e "${red}输入错误，请重新输入${re}"
                             ;;
                     esac
                 done
