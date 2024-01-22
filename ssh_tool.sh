@@ -3596,7 +3596,7 @@ case $choice in
                     sleep 1
                 while true; do
                     echo ""
-                    echo -e "${purple}请保存你的密码，安装后使用该密码登录${re}"
+                    echo -e "${purple}请保存你的root密码，安装后使用该密码登录，登录成功后自行修改${re}"
                     echo -e "${yellow}Linux默认用户名：${purple}root${yellow} 默认密码：${purple}LeitboGi0ro${yellow} 默认ssh端口22${re}"
                     echo -e "${yellow}Windows默认用户名：${purple}Administrator${yellow} 默认密码：${purple}Teddysun.com${yellow} 默认远程连接端口${purple}3389${re}"
                     echo -e "${yellow}详细参数参考Github项目地址：https://github.com/leitbogioro/Tools${re}"
