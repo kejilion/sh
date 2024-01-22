@@ -3427,9 +3427,10 @@ case $choice in
       echo "18. 修改主机名"
       echo "19. 切换系统更新源"
       echo "20. 定时任务管理"
-      echo -e "21. ip端口扫描${yellow}NeW${re}"
-      echo -e "22. 服务器资源限制${yellow}NeW${re}"
-      echo -e "23. ${yellow}NAT小鸡一键重装系统${re}"
+      echo "21. ip开放端口扫描"
+      echo "22. 服务器资源限制"
+      echo -e "23. ${skyblue}NAT小鸡一键重装系统${re}"
+      echo -e "24. iptables一键转发${yellow}NeW${re}"
       echo "------------------------"
       echo "80. 留言板"
       echo "------------------------"
@@ -4871,7 +4872,14 @@ EOF
                     main_menu
                 fi
             ;;
-            
+
+          24)
+            clear
+            wget --no-check-certificate -qO natcfg.sh https://raw.githubusercontent.com/arloor/iptablesUtils/master/natcfg.sh && bash natcfg.sh
+            sleep 2
+            break_end
+            ;;
+
           80)
             clear
             install sshpass
@@ -5078,6 +5086,7 @@ EOF
       echo -e "${white} 9. M佬Hysteria2一键脚本      12.新版Xray面板一键脚本${re}"
       echo -e "${white}10. M佬Juicity一键脚本        13.伊朗版Xray面板一键脚本${re}"
       echo -e "${white}11. M佬Tuic-v5一键脚本        14.OpenVPN一键安装脚本 ${re}"
+      echo -e "${white}15. Brutal-Reality一键脚本    16.一键搭建TG代理 ${re}"
       echo "---------------------------------------------------------" 
       echo -e "${skyblue} 0. 返回主菜单${re}"
       echo "---------------"
@@ -5241,7 +5250,42 @@ EOF
             install wget && wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
             sleep 2
             break_end
-        ;;     
+        ;;   
+
+        15)
+        clear
+            echo ""
+            echo -e "${purple}安装Tcp-Brutal-Reality需要内核高于5.8，不符合请手动升级5.8内核以上再安装${re}" 
+
+            current_kernel_version=$(uname -r | cut -d'-' -f1 | awk -F'.' '{print $1 * 100 + $2}')
+            target_kernel_version=508
+
+            # 比较内核版本
+            if [ "$current_kernel_version" -lt "$target_kernel_version" ]; then
+                echo -e "${red}当前系统内核版本小于 $target_kernel_version，请手动升级内核后重试，正在退出...${re}"
+                sleep 2 
+                main_menu
+            else
+                echo ""
+                echo -e "${green}当前系统内核版本 $current_kernel_version，符合安装要求${re}"
+                sleep 1
+                bash <(curl -fsSL https://github.com/vveg26/sing-box-reality-hysteria2/raw/main/tcp-brutal-reality.sh)
+                sleep 2
+                break_end
+            fi
+
+        ;;
+
+        16)
+        clear
+            
+            echo "自動創建TG代理目錄：/home/mtproxy"
+            mkdir /home/mtproxy && cd /home/mtproxy
+
+            curl -s -o mtproxy.sh https://raw.githubusercontent.com/sunpma/mtp/master/mtproxy.sh && chmod +x mtproxy.sh && bash mtproxy.sh
+            sleep 2
+            break_end
+        ;;
 
         0)
             main_menu # 返回主菜单
