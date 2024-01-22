@@ -5083,10 +5083,10 @@ EOF
       echo -e "${yellow}---------------------------------------------------------${re}"
       echo -e "${yellow}        单协议                    XRAY面板及其他${re}"
       echo -e "${yellow}---------------------------------------------------------${re}"
-      echo -e "${white} 9. M佬Hysteria2一键脚本      12.新版Xray面板一键脚本${re}"
-      echo -e "${white}10. M佬Juicity一键脚本        13.伊朗版Xray面板一键脚本${re}"
-      echo -e "${white}11. M佬Tuic-v5一键脚本        14.OpenVPN一键安装脚本 ${re}"
-      echo -e "${white}15. Brutal-Reality一键脚本    16.一键搭建TG代理 ${re}"
+      echo -e "${white} 9. M佬Hysteria2一键脚本      13.新版Xray面板一键脚本${re}"
+      echo -e "${white}10. M佬Juicity一键脚本        14.伊朗版Xray面板一键脚本${re}"
+      echo -e "${white}11. M佬Tuic-v5一键脚本        15.OpenVPN一键安装脚本 ${re}"
+      echo -e "${white}12. Brutal-Reality一键脚本    16.一键搭建TG代理 ${re}"
       echo "---------------------------------------------------------" 
       echo -e "${skyblue} 0. 返回主菜单${re}"
       echo "---------------"
@@ -5233,26 +5233,8 @@ EOF
             sleep 2
             break_end
         ;;      
-        12)
-        clear
-            bash <(curl -Ls https://raw.githubusercontent.com/slobys/x-ui/main/install.sh)
-            sleep 2
-            break_end
-        ;; 
-        13)
-        clear
-            bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
-            sleep 2
-            break_end
-        ;;           
-        14)
-        clear
-            install wget && wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
-            sleep 2
-            break_end
-        ;;   
 
-        15)
+        12)
         clear
             echo ""
             echo -e "${purple}安装Tcp-Brutal-Reality需要内核高于5.8，不符合请手动升级5.8内核以上再安装${re}" 
@@ -5275,6 +5257,25 @@ EOF
             fi
 
         ;;
+
+        13)
+        clear
+            bash <(curl -Ls https://raw.githubusercontent.com/slobys/x-ui/main/install.sh)
+            sleep 2
+            break_end
+        ;; 
+        14)
+        clear
+            bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+            sleep 2
+            break_end
+        ;;           
+        15)
+        clear
+            install wget && wget https://git.io/vpn -O openvpn-install.sh && bash openvpn-install.sh
+            sleep 2
+            break_end
+        ;;   
 
         16)
         clear
