@@ -3414,7 +3414,7 @@ case $choice in
       echo " 5. 开放所有端口"
       echo " 6. 修改SSH连接端口"
       echo " 7. 优化DNS地址"
-      echo -e "${skynlue} 8. 一键重装系统${re}"
+      echo -e "${skyblue} 8. 一键重装系统${re}"
       echo " 9. 禁用ROOT账户创建新账户"
       echo "10. 切换优先ipv4/ipv6"
       echo "11. 查看端口占用状态"
