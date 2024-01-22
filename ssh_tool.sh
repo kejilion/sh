@@ -3414,7 +3414,7 @@ case $choice in
       echo " 5. 开放所有端口"
       echo " 6. 修改SSH连接端口"
       echo " 7. 优化DNS地址"
-      echo " 8. 一键重装系统"
+      echo -e "${skynlue} 8. 一键重装系统${re}"
       echo " 9. 禁用ROOT账户创建新账户"
       echo "10. 切换优先ipv4/ipv6"
       echo "11. 查看端口占用状态"
@@ -3583,43 +3583,122 @@ case $choice in
               ;;
 
           8)
-          clear
-          echo "请备份数据，将为你重装系统，预计花费15分钟。"
-          read -p $'\033[1;35m确定继续吗？(Y/N): \033[0m' choice
+            clear
+            echo -e "${green}重装系统将无法恢复数据，请提前做好备份${re}"
+            echo ""
+            read -p $'\033[1;35m确定要重装吗？(y/n): \033[0m' confirm
 
-          case "$choice" in
-            [Yy])
-              while true; do
-                read -p $'\033[1;35m请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : \033[0m' sys_choice
+            if [[ $confirm =~ ^[Yy]$ ]]; then
+                    sleep 1
+                    echo -e "${yellow}初始化安装环境...${re}"
+                    install wget
+                    wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
+                    sleep 1
+                while true; do
+                    echo -e "${purple}请保存你的密码，安装后使用该密码登录${re}"
+                    echo -e "${yellow}Linux默认用户名：${purple}root${yellow}，默认密码：${purple}LeitboGi0ro${yellow}，默认ssh端口22${re}"
+                    echo -e "${yellow}Windows默认用户名：${purple}Administrator${yellow}，默认密码：${purple}Teddysun.com${yellow}，默认远程连接端口${purple}3389${re}"
+                    echo -e "${yellow}詳細參數可參考Github項目地址：https://github.com/leitbogioro/Tools${re}"
+                    echo ""
+                    echo -e "${skyblue}1.安装Debian-12${re}"
+                    echo -e "${skyblue}2.安装Ubuntu-22.04${re}"
+                    echo -e "${skyblue}3.安装Alpine-Linux${re}"
+                    echo -e "${skyblue}4.安装CentOS-9${re}"
+                    echo -e "${skyblue}5.安装Fedora-39${re}"
+                    echo -e "${skyblue}6.安装RockyLinux-9${re}"
+                    echo -e "${skyblue}7.安装AlmaLinux-9${re}"
+                    echo -e "${skyblue}8.安装Kali-Rolling${re}"
+                    echo -e "${skyblue}9.安装Windows-11-Pro${re}"
+                    echo "---------------------"
+                    echo -e "${red}0.取消安装{re}"
+                    echo "------------------------"
+                    read -p $'\033[1;35m请输入你的选择: \033[0m' sub_choice
 
-                case "$sys_choice" in
-                  1)
-                    xitong="-d 12"
-                    break  # 结束循环
-                    ;;
-                  2)
-                    xitong="-u 20.04"
-                    break  # 结束循环
-                    ;;
-                  *)
-                    echo "无效的选择，请重新输入。"
-                    ;;
-                esac
-              done
-
-              read -p "请输入你重装后的密码: " vpspasswd
-              install wget
-              bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
-              ;;
-            [Nn])
-              echo "已取消"
-              ;;
-            *)
-              echo "无效的选择，请输入 Y 或 N。"
-              ;;
-          esac
-              ;;
-
+                    if [[ "$sub_choice" =~ ^[0-9]$ ]]; then
+                        break
+                    else
+                        echo -e "${red}请输入有效的数字 (0 到 9)。${re}"
+                    fi                    
+                    case $sub_choice in
+                        1) 
+                            echo -e "${green}开始安装Debian-12...${re}"
+                            sleep 1
+                            bash InstallNET.sh -debian
+                            sleep 2
+                            reboot
+                            ;;
+                        2) 
+                            echo -e "${green}开始安装Ubuntu-22.04...${re}"
+                            sleep 1
+                            bash InstallNET.sh -ubuntu
+                            sleep 2
+                            reboot
+                            ;;
+                        3) 
+                            echo -e "${green}开始安装Alpine-Linux...${re}"
+                            sleep 1
+                            bash InstallNET.sh -alpine
+                            sleep 2
+                            reboot
+                            ;;
+                        4) 
+                            echo -e "${green}开始安装CentOS-9...${re}"
+                            sleep 1
+                            bash InstallNET.sh -centos
+                            sleep 2
+                            reboot
+                            ;;
+                        5) 
+                            echo -e "${green}开始安装Fedora-39...${re}"
+                            sleep 1
+                            bash InstallNET.sh -fedora
+                            sleep 2
+                            reboot
+                            ;;
+                        6) 
+                            echo -e "${green}开始安装RockyLinux-9...${re}"
+                            sleep 1
+                            bash InstallNET.sh -rockylinux
+                            sleep 2
+                            reboot
+                            ;;
+                        7) 
+                            echo -e "${green}开始安装AlmaLinux-9...${re}"
+                            sleep 1
+                            bash InstallNET.sh -rockylinux
+                            sleep 2
+                            reboot
+                            ;;
+                        8) 
+                            echo -e "${green}开始安装Kali-Rolling...${re}"
+                            sleep 1
+                            bash InstallNET.sh -kali
+                            sleep 2
+                            reboot
+                            ;;
+                        9) 
+                            echo -e "${green}开始安装Windows-11-Pro...${re}"
+                            sleep 1
+                            bash InstallNET.sh -windows
+                            sleep 2
+                            reboot
+                            ;;
+                        0) 
+                            echo -e "${red}正在退出安装...${re}"
+                            sleep 2
+                            main_menu
+                            ;;
+                        *)
+                            echo -e "${green}输入错误，请重新输入${re}"
+                            ;;
+                    esac
+                done
+            else 
+                echo -e "${red}正在退出安装...${re}"
+                sleep 2
+                main_menu
+            fi
+            ;;
 
           9)
             clear
