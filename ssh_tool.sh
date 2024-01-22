@@ -616,7 +616,7 @@ case $choice in
     runtime=$(cat /proc/uptime | awk -F. '{run_days=int($1 / 86400);run_hours=int(($1 % 86400) / 3600);run_minutes=int(($1 % 3600) / 60); if (run_days > 0) printf("%d天 ", run_days); if (run_hours > 0) printf("%d时 ", run_hours); printf("%d分\n", run_minutes)}')
 
     echo ""
-    echo -e "${white}系统信息查询${re}"
+    echo -e "${white}系统信息详情${re}"
     echo "------------------------"
     echo -e "${white}主机名: ${purple}${hostname}${re}"
     echo -e "${white}运营商: ${purple}${isp_info}${re}"
