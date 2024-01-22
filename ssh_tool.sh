@@ -3584,7 +3584,7 @@ case $choice in
 
           8)
             clear
-            echo -e "${green}重装系统将无法恢复数据，请提前做好备份${re}"
+            echo -e "${purple}重装系统将无法恢复数据，请提前做好备份${re}"
             echo ""
             read -p $'\033[1;35m确定要重装吗？(y/n): \033[0m' confirm
 
