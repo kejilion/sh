@@ -3589,111 +3589,109 @@ case $choice in
             read -p $'\033[1;35m确定要重装吗？(y/n): \033[0m' confirm
 
             if [[ $confirm =~ ^[Yy]$ ]]; then
-                    sleep 1
-                    echo -e "${yellow}初始化安装环境...${re}"
-                    install wget
-                    wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
-                    sleep 1
-                while true; do
-                    echo ""
-                    echo -e "${purple}请保存你的密码，安装后使用该密码登录${re}"
-                    echo -e "${yellow}Linux默认用户名：${purple}root${yellow} 默认密码：${purple}LeitboGi0ro${yellow} 默认ssh端口22${re}"
-                    echo -e "${yellow}Windows默认用户名：${purple}Administrator${yellow} 默认密码：${purple}Teddysun.com${yellow} 默认远程连接端口${purple}3389${re}"
-                    echo -e "${yellow}詳細參數可參考Github項目地址：https://github.com/leitbogioro/Tools${re}"
-                    echo ""
-                    echo -e "${green}1.安装Debian-12${re}"
-                    echo -e "${green}2.安装Ubuntu-22.04${re}"
-                    echo -e "${green}3.安装Alpine-Linux${re}"
-                    echo -e "${green}4.安装CentOS-9${re}"
-                    echo -e "${green}5.安装Fedora-39${re}"
-                    echo -e "${green}6.安装RockyLinux-9${re}"
-                    echo -e "${green}7.安装AlmaLinux-9${re}"
-                    echo -e "${green}8.安装Kali-Rolling${re}"
-                    echo -e "${green}9.安装Windows-11-Pro${re}"
-                    echo "---------------------"
-                    echo -e "${red}0.取消安装${re}"
-                    echo "------------------------"
-                    read -p $'\033[1;35m请输入你的选择: \033[0m' sub_choice
+                sleep 1
+                echo -e "${yellow}初始化安装环境...${re}"
+                install wget
+                wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
+                sleep 1
+                echo ""
+                echo -e "${purple}请保存你的密码，安装后使用该密码登录${re}"
+                echo -e "${yellow}Linux默认用户名：${purple}root${yellow} 默认密码：${purple}LeitboGi0ro${yellow} 默认ssh端口22${re}"
+                echo -e "${yellow}Windows默认用户名：${purple}Administrator${yellow} 默认密码：${purple}Teddysun.com${yellow} 默认远程连接端口${purple}3389${re}"
+                echo -e "${yellow}詳細參數可參考Github項目地址：https://github.com/leitbogioro/Tools${re}"
+                echo ""
+                echo -e "${green}1.安装Debian-12${re}"
+                echo -e "${green}2.安装Ubuntu-22.04${re}"
+                echo -e "${green}3.安装Alpine-Linux${re}"
+                echo -e "${green}4.安装CentOS-9${re}"
+                echo -e "${green}5.安装Fedora-39${re}"
+                echo -e "${green}6.安装RockyLinux-9${re}"
+                echo -e "${green}7.安装AlmaLinux-9${re}"
+                echo -e "${green}8.安装Kali-Rolling${re}"
+                echo -e "${green}9.安装Windows-11-Pro${re}"
+                echo "---------------------"
+                echo -e "${red}0.取消安装${re}"
+                echo "------------------------"
+                read -p $'\033[1;35m请输入你的选择: \033[0m' sub_choice
 
-                    if [[ "$sub_choice" =~ ^[0-9]$ ]]; then
-                        break
-                    else
-                        echo -e "${red}请输入有效的数字 (0 到 9)。${re}"
-                    fi                    
-                    case $sub_choice in
-                        1) 
-                            echo -e "${green}开始安装Debian-12...${re}"
-                            sleep 1
-                            bash InstallNET.sh -debian
-                            sleep 2
-                            reboot
-                            ;;
-                        2) 
-                            echo -e "${green}开始安装Ubuntu-22.04...${re}"
-                            sleep 1
-                            bash InstallNET.sh -ubuntu
-                            sleep 2
-                            reboot
-                            ;;
-                        3) 
-                            echo -e "${green}开始安装Alpine-Linux...${re}"
-                            sleep 1
-                            bash InstallNET.sh -alpine
-                            sleep 2
-                            reboot
-                            ;;
-                        4) 
-                            echo -e "${green}开始安装CentOS-9...${re}"
-                            sleep 1
-                            bash InstallNET.sh -centos
-                            sleep 2
-                            reboot
-                            ;;
-                        5) 
-                            echo -e "${green}开始安装Fedora-39...${re}"
-                            sleep 1
-                            bash InstallNET.sh -fedora
-                            sleep 2
-                            reboot
-                            ;;
-                        6) 
-                            echo -e "${green}开始安装RockyLinux-9...${re}"
-                            sleep 1
-                            bash InstallNET.sh -rockylinux
-                            sleep 2
-                            reboot
-                            ;;
-                        7) 
-                            echo -e "${green}开始安装AlmaLinux-9...${re}"
-                            sleep 1
-                            bash InstallNET.sh -rockylinux
-                            sleep 2
-                            reboot
-                            ;;
-                        8) 
-                            echo -e "${green}开始安装Kali-Rolling...${re}"
-                            sleep 1
-                            bash InstallNET.sh -kali
-                            sleep 2
-                            reboot
-                            ;;
-                        9) 
-                            echo -e "${green}开始安装Windows-11-Pro...${re}"
-                            sleep 1
-                            bash InstallNET.sh -windows
-                            sleep 2
-                            reboot
-                            ;;
-                        0) 
-                            echo -e "${red}正在退出安装...${re}"
-                            sleep 2
-                            main_menu
-                            ;;
-                        *)
-                            echo -e "${green}输入错误，请重新输入${re}"
-                            ;;
-                    esac
-                done
+                if [[ "$sub_choice" =~ ^[0-9]$ ]]; then
+                    break
+                else
+                    echo -e "${red}请输入有效的数字 (0 到 9)。${re}"
+                fi                    
+                case $sub_choice in
+                    1) 
+                        echo -e "${green}开始安装Debian-12...${re}"
+                        sleep 1
+                        bash InstallNET.sh -debian
+                        sleep 2
+                        reboot
+                        ;;
+                    2) 
+                        echo -e "${green}开始安装Ubuntu-22.04...${re}"
+                        sleep 1
+                        bash InstallNET.sh -ubuntu
+                        sleep 2
+                        reboot
+                        ;;
+                    3) 
+                        echo -e "${green}开始安装Alpine-Linux...${re}"
+                        sleep 1
+                        bash InstallNET.sh -alpine
+                        sleep 2
+                        reboot
+                        ;;
+                    4) 
+                        echo -e "${green}开始安装CentOS-9...${re}"
+                        sleep 1
+                        bash InstallNET.sh -centos
+                        sleep 2
+                        reboot
+                        ;;
+                    5) 
+                        echo -e "${green}开始安装Fedora-39...${re}"
+                        sleep 1
+                        bash InstallNET.sh -fedora
+                        sleep 2
+                        reboot
+                        ;;
+                    6) 
+                        echo -e "${green}开始安装RockyLinux-9...${re}"
+                        sleep 1
+                        bash InstallNET.sh -rockylinux
+                        sleep 2
+                        reboot
+                        ;;
+                    7) 
+                        echo -e "${green}开始安装AlmaLinux-9...${re}"
+                        sleep 1
+                        bash InstallNET.sh -rockylinux
+                        sleep 2
+                        reboot
+                        ;;
+                    8) 
+                        echo -e "${green}开始安装Kali-Rolling...${re}"
+                        sleep 1
+                        bash InstallNET.sh -kali
+                        sleep 2
+                        reboot
+                        ;;
+                    9) 
+                        echo -e "${green}开始安装Windows-11-Pro...${re}"
+                        sleep 1
+                        bash InstallNET.sh -windows
+                        sleep 2
+                        reboot
+                        ;;
+                    0) 
+                        echo -e "${red}正在退出安装...${re}"
+                        sleep 2
+                        main_menu
+                        ;;
+                    *)
+                        echo -e "${green}输入错误，请重新输入${re}"
+                        ;;
+                esac
             else 
                 echo -e "${red}正在退出安装...${re}"
                 sleep 2
