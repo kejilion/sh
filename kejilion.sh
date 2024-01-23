@@ -129,38 +129,58 @@ install_ldnmp() {
 
       # 定义要执行的命令
       commands=(
+          "docker exec nginx chmod -R 777 /var/www/html"
+          "docker restart nginx > /dev/null 2>&1"
+
           "docker exec php apt update > /dev/null 2>&1"
-          "docker exec php apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
-          "docker exec php docker-php-ext-install mysqli pdo_mysql zip exif gd intl bcmath opcache > /dev/null 2>&1"
-          "docker exec php pecl install imagick > /dev/null 2>&1"
-          "docker exec php sh -c 'echo \"extension=imagick.so\" > /usr/local/etc/php/conf.d/imagick.ini' > /dev/null 2>&1"
-          "docker exec php pecl install redis > /dev/null 2>&1"
-          "docker exec php sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
+          "docker exec php74 apt update > /dev/null 2>&1"
+
+          # php安装包管理
+          "curl -sL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions > /dev/null 2>&1"
+          "docker exec php mkdir -p /usr/local/bin/ > /dev/null 2>&1"
+          "docker exec php74 mkdir -p /usr/local/bin/ > /dev/null 2>&1"
+          "docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/ > /dev/null 2>&1"
+          "docker cp /usr/local/bin/install-php-extensions php74:/usr/local/bin/ > /dev/null 2>&1"
+          "docker exec php chmod +x /usr/local/bin/install-php-extensions > /dev/null 2>&1"
+          "docker exec php74 chmod +x /usr/local/bin/install-php-extensions > /dev/null 2>&1"
+
+          # php安装扩展
+          "docker exec php install-php-extensions mysqli > /dev/null 2>&1"
+          "docker exec php install-php-extensions pdo_mysql > /dev/null 2>&1"
+          "docker exec php install-php-extensions gd intl zip > /dev/null 2>&1"
+          "docker exec php install-php-extensions exif > /dev/null 2>&1"
+          "docker exec php install-php-extensions bcmath > /dev/null 2>&1"
+          "docker exec php install-php-extensions opcache > /dev/null 2>&1"
+          "docker exec php install-php-extensions imagick redis > /dev/null 2>&1"
+
+          # php配置参数
           "docker exec php sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
           "docker exec php sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
           "docker exec php sh -c 'echo \"max_execution_time=1200\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
           "docker exec php sh -c 'echo \"max_input_time=600\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
-          "docker exec php74 apt update > /dev/null 2>&1"
-          "docker exec php74 apt install -y libmariadb-dev-compat libmariadb-dev libzip-dev libmagickwand-dev imagemagick > /dev/null 2>&1"
-          "docker exec php74 docker-php-ext-install mysqli pdo_mysql zip gd intl bcmath opcache > /dev/null 2>&1"
-          "docker exec php74 pecl install imagick > /dev/null 2>&1"
-          "docker exec php74 sh -c 'echo \"extension=imagick.so\" > /usr/local/etc/php/conf.d/imagick.ini' > /dev/null 2>&1"
-          "docker exec php74 pecl install redis > /dev/null 2>&1"
-          "docker exec php74 sh -c 'echo \"extension=redis.so\" > /usr/local/etc/php/conf.d/docker-php-ext-redis.ini' > /dev/null 2>&1"
+          # php重启
+          "docker exec php chmod -R 777 /var/www/html"
+          "docker restart php > /dev/null 2>&1"
+
+          # php7.4安装扩展
+          "docker exec php74 install-php-extensions mysqli > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions pdo_mysql > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions gd intl zip > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions exif > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions bcmath > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions opcache > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions imagick redis > /dev/null 2>&1"
+
+          # php7.4配置参数
           "docker exec php74 sh -c 'echo \"upload_max_filesize=50M \\n post_max_size=50M\" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"max_execution_time=1200\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
           "docker exec php74 sh -c 'echo \"max_input_time=600\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
 
-          "docker exec nginx chmod -R 777 /var/www/html"
-          "docker exec php chmod -R 777 /var/www/html"
+          # php7.4重启
           "docker exec php74 chmod -R 777 /var/www/html"
-
-          "docker restart php > /dev/null 2>&1"
           "docker restart php74 > /dev/null 2>&1"
-          "docker restart nginx > /dev/null 2>&1"
-
       )
 
       total_commands=${#commands[@]}  # 计算总命令数
@@ -412,7 +432,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.2.4 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.2.5 （支持Ubuntu/Debian/CentOS系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
