@@ -245,8 +245,19 @@ install_certbot() {
     curl -O https://raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
     chmod +x auto_cert_renewal.sh
 
-    # 安排每日午夜运行脚本
-    echo "0 0 * * * ~/auto_cert_renewal.sh" | crontab -
+    # 设置定时任务字符串
+    cron_job="0 0 * * * ~/auto_cert_renewal.sh"
+
+    # 检查是否存在相同的定时任务
+    existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
+
+    # 如果不存在，则添加定时任务
+    if [ -z "$existing_cron" ]; then
+        (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
+        echo "续签任务已添加"
+    else
+        echo "续签任务已存在，无需添加"
+    fi
 }
 
 install_ssltls() {
@@ -2288,7 +2299,6 @@ case $choice in
       check_port
       install_dependency
       install_docker
-      install_certbot
       install_ldnmp
       ;;
 
