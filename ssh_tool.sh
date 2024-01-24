@@ -91,10 +91,12 @@ install_nodejs(){
         
         if [ $? -eq 0 ]; then
             echo -e "${green}nodejs安装成功!${re}"
+            sleep 2
+            break_end
         else
             echo -e "${red}nodejs安装失败，尝试再次安装...${re}"
             install nodejs npm
-            sleep 3
+            sleep 2
             break_end
         fi
     fi 
@@ -132,7 +134,7 @@ install_java() {
         else                    
             echo -e "${red}Java安装失败，尝试为你再次安装...${re}"
             install java-17-openjdk
-            sleep 3
+            sleep 2
             break_end
         fi
     fi   
