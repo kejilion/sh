@@ -2312,7 +2312,7 @@ case $choice in
         case "$choice" in
           [Yy])
             docker rm -f nginx php php74 mysql redis
-            docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
+            docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine
             rm -rf /home/web
             ;;
           [Nn])
