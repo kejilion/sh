@@ -133,7 +133,9 @@ install_ldnmp() {
           "docker restart nginx > /dev/null 2>&1"
 
           "docker exec php apt update > /dev/null 2>&1"
+          "docker exec php apk update > /dev/null 2>&1"
           "docker exec php74 apt update > /dev/null 2>&1"
+          "docker exec php74 apk update > /dev/null 2>&1"
 
           # php安装包管理
           "curl -sL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions > /dev/null 2>&1"
@@ -1809,7 +1811,7 @@ case $choice in
       default_server_ssl
       docker rm -f nginx >/dev/null 2>&1
       docker rmi nginx >/dev/null 2>&1
-      docker run -d --name nginx --restart always -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
+      docker run -d --name nginx --restart always -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
 
       clear
       nginx_version=$(docker exec nginx nginx -v 2>&1)
@@ -2196,7 +2198,7 @@ case $choice in
           wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
           wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
           default_server_ssl
-          docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx
+          docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
           docker exec -it nginx chmod -R 777 /var/www/html
 
           # 获取宿主机当前时区
@@ -2294,7 +2296,7 @@ case $choice in
     37)
       clear
       docker rm -f nginx php php74 mysql redis
-      docker rmi nginx php:fpm php:7.4.33-fpm mysql redis
+      docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine
 
       check_port
       install_dependency
