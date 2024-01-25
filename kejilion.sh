@@ -21,6 +21,8 @@ install() {
                 apt update -y && apt install -y "$package"
             elif command -v yum &>/dev/null; then
                 yum -y update && yum -y install "$package"
+            elif command -v apk &>/dev/null; then
+                apk update && apk add "$package"
             else
                 echo "未知的包管理器!"
                 return 1
@@ -30,6 +32,7 @@ install() {
 
     return 0
 }
+
 
 install_dependency() {
       clear
@@ -48,6 +51,8 @@ remove() {
             apt purge -y "$package"
         elif command -v yum &>/dev/null; then
             yum remove -y "$package"
+        elif command -v apk &>/dev/null; then
+            apk del "$package"
         else
             echo "未知的包管理器!"
             return 1
@@ -56,6 +61,7 @@ remove() {
 
     return 0
 }
+
 
 break_end() {
       echo -e "\033[0;32m操作完成\033[0m"
@@ -445,7 +451,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.2.5 （支持Ubuntu/Debian/CentOS系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.2.6 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -600,6 +606,12 @@ case $choice in
         yum -y update
     fi
 
+    # Update system on Alpine Linux
+    if [ -f "/etc/alpine-release" ]; then
+        apk update && apk upgrade
+    fi
+
+
     ;;
 
   3)
@@ -624,6 +636,15 @@ case $choice in
         yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
     }
 
+    clean_alpine() {
+        apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
+        apk autoremove
+        apk cache clean
+        rm -rf /var/log/*
+        rm -rf /var/cache/apk/*
+
+    }
+
     # Main script
     if [ -f "/etc/debian_version" ]; then
         # Debian-based systems
@@ -631,6 +652,9 @@ case $choice in
     elif [ -f "/etc/redhat-release" ]; then
         # Red Hat-based systems
         clean_redhat
+    elif [ -f "/etc/alpine-release" ]; then
+        # Alpine Linux
+        clean_alpine
     fi
 
     ;;
@@ -872,10 +896,23 @@ case $choice in
 
       case $sub_choice in
           1)
-              clear
-              curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
-              systemctl start docker
-              systemctl enable docker
+            clear
+
+            if [ -f "/etc/alpine-release" ]; then
+                apk update
+                apk add docker
+                rc-update add docker default
+                service docker start
+                curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+                chmod +x /usr/local/bin/docker-compose
+
+            else
+
+                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+                systemctl start docker
+                systemctl enable docker
+            fi
+
               ;;
           2)
               clear
@@ -3917,33 +3954,76 @@ case $choice in
               ;;
 
           8)
+          dd_xitong_1() {
+            read -p "请输入你重装后的密码: " vpspasswd
+            install wget
+            bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
+          }
+
+          dd_xitong_2() {
+            install wget
+            wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
+          }
+
           clear
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
+          echo -e "\e[37m感谢MollyLau和MoeClub的脚本支持！\e[0m "
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
             [Yy])
               while true; do
-                read -p "请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : " sys_choice
+
+                echo "1. Debian 12"
+                echo "2. Debian 11"
+                echo "3. Debian 10"
+                echo "4. Ubuntu 22.04"
+                echo "5. Ubuntu 20.04"
+                echo "6. CentOS 7.9"
+                echo "7. Alpine 3.19"
+                echo -e "8. Windows 11 \033[36mBeta\033[0m"
+                read -p "请选择要重装的系统: " sys_choice
 
                 case "$sys_choice" in
                   1)
                     xitong="-d 12"
-                    break  # 结束循环
+                    dd_xitong_1
                     ;;
+
                   2)
-                    xitong="-u 20.04"
-                    break  # 结束循环
+                    xitong="-d 11"
+                    dd_xitong_1
                     ;;
+
+                  3)
+                    xitong="-d 10"
+                    dd_xitong_1
+                    ;;
+
+                  4)
+                    dd_xitong_2
+                    bash InstallNET.sh -ubuntu
+                    ;;
+
+                  5)
+                    xitong="-u 20.04"
+                    dd_xitong_1
+                    ;;
+
+                  6)
+                    dd_xitong_2
+                    bash InstallNET.sh -centos 7
+                    ;;
+                  7)
+                    dd_xitong_2
+                    bash InstallNET.sh -alpine
+                    ;;
+
                   *)
                     echo "无效的选择，请重新输入。"
                     ;;
                 esac
               done
-
-              read -p "请输入你重装后的密码: " vpspasswd
-              install wget
-              bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               ;;
             [Nn])
               echo "已取消"
@@ -3953,7 +4033,6 @@ case $choice in
               ;;
           esac
               ;;
-
 
           9)
             clear
