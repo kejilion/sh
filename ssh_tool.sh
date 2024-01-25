@@ -5690,7 +5690,8 @@ EOF
                             fi
                         else
                             echo -e "${yellow}已取消升级Python3${re}"
-                            exit 1
+                            sleep 1
+                            main_menu
                         fi
                     fi   
                 else
