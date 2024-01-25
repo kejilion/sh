@@ -3989,6 +3989,7 @@ case $choice in
                   1)
                     xitong="-d 12"
                     dd_xitong_1
+                    exit
                     reboot
                     ;;
 
@@ -3996,41 +3997,48 @@ case $choice in
                     xitong="-d 11"
                     dd_xitong_1
                     reboot
+                    exit
                     ;;
 
                   3)
                     xitong="-d 10"
                     dd_xitong_1
                     reboot
+                    exit
                     ;;
 
                   4)
                     dd_xitong_2
                     bash InstallNET.sh -ubuntu
                     reboot
+                    exit
                     ;;
 
                   5)
                     xitong="-u 20.04"
                     dd_xitong_1
                     reboot
+                    exit
                     ;;
 
                   6)
                     dd_xitong_2
                     bash InstallNET.sh -centos 7
                     reboot
+                    exit
                     ;;
                   7)
                     dd_xitong_2
                     bash InstallNET.sh -alpine
                     reboot
+                    exit
                     ;;
 
                   8)
                     dd_xitong_2
                     bash InstallNET.sh -windows
                     reboot
+                    exit
                     ;;
 
                   *)
