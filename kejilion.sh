@@ -3982,6 +3982,7 @@ case $choice in
                 echo "6. CentOS 7.9"
                 echo "7. Alpine 3.19"
                 echo -e "8. Windows 11 \033[36mBeta\033[0m"
+                echo "------------------------"
                 read -p "请选择要重装的系统: " sys_choice
 
                 case "$sys_choice" in
