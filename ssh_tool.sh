@@ -5755,8 +5755,6 @@ EOF
 
                             # 安装新版nodejs
                             install_nodejs
-                            sleep 3
-                            break_end
                         else
                             main_menu 
                         fi
