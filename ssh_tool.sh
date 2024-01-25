@@ -5646,7 +5646,8 @@ EOF
                     echo -e "${green}检测到你的系统是${yellow}${OS}${re}"
                 else
                     echo -e "${red}很抱歉，暂不支持的系统！${re}"
-                    exit 1
+                    sleep 2
+                    main_menu
                 fi
 
                 # 检测安装Python3的版本
@@ -5659,7 +5660,7 @@ EOF
                 if [[ $VERSION == "3"* ]]; then
                     if [ "$VERSION" = "$PY_VERSION" ]; then
                         echo -e "${green}检测到你的Python3版本已经是最新版本:${red}${PY_VERSION}${green}，无需安装或升级${re}"
-                        sleep 3
+                        sleep 2
                         main_menu
                     else
                         echo -e "${yellow}检测到你的Python3版本:${red}${VERSION}${yellow},最新版本:${green}${PY_VERSION}${re}"
