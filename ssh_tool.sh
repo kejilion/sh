@@ -5638,13 +5638,14 @@ EOF
         case $sub_choice in
             1)
              clear
-                # 系统检测
-                OS=$(cat /etc/os-release | grep -o -E "Debian|Ubuntu|CentOS" | head -n 1)
+                # 获取系统信息
+                OS=$(grep -o -E "Debian|Ubuntu|CentOS|Alpine|Fedora|Rocky|AlmaLinux|Amazon" /etc/os-release 2>/dev/null | head -n 1)
 
-                if [[ $OS == "Debian" || $OS == "Ubuntu" || $OS == "CentOS" || $OS == "Alpine" ]]; then
-                    echo -e "检测到你的系统是 ${yellow}${OS}${re}"
+                # 检查系统支持性
+                if [[ -n $OS ]]; then
+                    echo -e "${green}检测到你的系统是${yellow}${OS}${re}"
                 else
-                    echo -e "${red}很抱歉，你的系统不受支持！${re}"
+                    echo -e "${red}很抱歉，暂不支持的系统！${re}"
                     exit 1
                 fi
 
@@ -5657,7 +5658,7 @@ EOF
                 # 卸载Python3旧版本
                 if [[ $VERSION == "3"* ]]; then
                     echo -e "${yellow}你的Python3版本是${re}${red}${VERSION}${re}，${yellow}最新版本是${re}${red}${PY_VERSION}${re}"
-                    read -p $'\033[1;91m是否确认升级最新版Python3？默认不升级 [y/N]: \033[0m' confirm
+                    read -p $'\033[1;91m是否确认升级最新版Python3？默认不升级 [y/n]: \033[0m' confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                         if [[ $OS == "CentOS" ]]; then
                             echo ""
@@ -5672,8 +5673,8 @@ EOF
                     fi
                 else
                     echo -e "${red}检测到没有安装Python3。${re}"
-                    read -p "是否确认安装最新版Python3？默认安装 [Y/n]: "confirm
-                    if [ "$confirm" == "n" ] || [ "$confirm" == "N" ]; then
+                    read -p $'\033[1;91m是否确认安装最新版Python3？[y/n]: \033[0m' confirm
+                    if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                         echo -e "${green}开始安装最新版Python3...${re}"
                     else
                         echo -e "${yellow}已取消安装Python3${re}"
@@ -5683,14 +5684,26 @@ EOF
 
                 # 安装相关依赖
                 if [[ $OS == "CentOS" ]]; then
-                    yum update
+                    yum update -y
                     yum groupinstall -y "development tools"
-                    yum install wget openssl-devel bzip2-devel libffi-devel zlib-devel -y
+                    yum install wget tar openssl-devel bzip2-devel libffi-devel zlib-devel -y
+                elif [[ $OS == "Fedora" ]] || [[ $OS == "Rocky" ]] || [[ $OS == "AlmaLinux" ]] || [[ $OS == "Amazon" ]]; then
+                    dnf update -y
+                    dnf groupinstall -y "development tools"
+                    dnf install wget tar openssl-devel bzip2-devel libffi-devel zlib-devel -y
+                elif [[ $OS == "Alpine" ]]; then
+                    apk update
+                    apk add python3
+                    apk add py3-pip
+                    apk add wget tar openssl-dev bzip2-dev libffi-dev zlib-dev
+                    sleep 2
+                    break_end
+                    exit 1
                 else
-                    apt update
-                    apt install wget build-essential libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev -y
+                    apt update -y
+                    apt install wget tar build-essential libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev -y
                 fi
-
+                
                 # 安装python3
                 cd /root/
                 wget https://www.python.org/ftp/python/${PY_VERSION}/Python-"$PY_VERSION".tgz
