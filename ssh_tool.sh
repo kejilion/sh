@@ -5658,11 +5658,26 @@ EOF
                 # 卸载Python3旧版本
                 if [[ $VERSION == "3"* ]]; then
                     echo -e "${yellow}你的Python3版本是${re}${red}${VERSION}${re}，${yellow}最新版本是${re}${red}${PY_VERSION}${re}"
-                    read -p $'\033[1;91m是否确认升级最新版Python3？默认不升级 [y/n]: \033[0m' confirm
+                    read -p $'\033[1;91m是否确认升级最新版Python3？默认不升级 [y/N]: \033[0m' confirm
                     if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                         if [[ $OS == "CentOS" ]]; then
-                            echo ""
+                            yum remove python3 -y
+                            package-cleanup --leaves
+                            package-cleanup --orphans
+                            yum autoremove -y
                             rm-rf /usr/local/python3* >/dev/null 2>&1
+                            
+                        elif [[ $OS == "Alpine" ]]; then
+                            apk del python3
+                            apk info --installed | xargs apk info --installed -R | cut -d: -f1 | sort | uniq -c | sort -n | grep -v ' 1 ' | awk '{print $2}' | xargs apk del
+                            rm -rf /usr/lib/python3.*
+                            rm -rf /etc/python3
+                            rm -rf /var/cache/apk/*
+                                
+                        elif [[ $OS == "Fedora" ]] || [[ $OS == "Rocky" ]] || [[ $OS == "AlmaLinux" ]] || [[ $OS == "Amazon" ]]; then
+                            dnf remove python3 -y
+                            dnf autoremove -y
+                            rm -rf ~/.local/lib/python3.*                  
                         else
                             apt --purge remove python3 python3-pip -y
                             rm-rf /usr/local/python3*
