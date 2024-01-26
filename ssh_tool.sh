@@ -5136,7 +5136,7 @@ EOF
         7)
         clear
             bash <(curl -sL https://raw.githubusercontent.com/dsadsadsss/vps-argo/main/install.sh)
-            sleep 2
+            sleep 1
             break_end            
         ;; 
         8)
