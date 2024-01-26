@@ -5080,7 +5080,7 @@ EOF
       echo -e "${green}---------------------------------------------------------${re}"
       echo -e "${white} 1. F佬Sing-box一键脚本        5. F佬ArgoX一键脚本${re}"
       echo -e "${white} 2. 小绵羊Sing-box三合一       6. Suoha一键Argo脚本${re}"
-      echo -e "${white} 3. 勇哥Sing-box四合一         7. Mjj一键Argo脚本${re}"
+      echo -e "${white} 3. 勇哥Sing-box四合一         7. WL一键Argo哪吒脚本${re}"
       echo -e "${white} 4. V2ray-agent八合一          8. 一键老王Nodejs-Argo节点+哪吒+订阅"
       echo -e "${yellow}---------------------------------------------------------${re}"
       echo -e "${yellow}        单协议                    XRAY面板及其他${re}"
@@ -5135,7 +5135,7 @@ EOF
         ;;            
         7)
         clear
-            curl https://raw.githubusercontent.com/mjjonone/good/main/vps/good.sh -o good.sh && bash good.sh
+            bash <(curl -sL https://raw.githubusercontent.com/dsadsadsss/vps-argo/main/install.sh)
             sleep 2
             break_end            
         ;; 
