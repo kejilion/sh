@@ -5728,6 +5728,7 @@ EOF
                 fi
                 
                 # 安装python3
+                install wget tar
                 cd /root/
                 wget https://www.python.org/ftp/python/${PY_VERSION}/Python-"$PY_VERSION".tgz
                 tar -zxf Python-${PY_VERSION}.tgz
