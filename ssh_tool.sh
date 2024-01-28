@@ -3454,7 +3454,7 @@ case $choice in
           2)
               clear
                read -p $'\033[1;35m请输入新的ROOT密码: \033[0m' passwd
-               echo "root:$passwd" | chpasswd && echo -e "\033[1;35mRoot密码修改成功. 正在重启服务器...\033[0m" && sleep 1 && reboot || echo -e "\033[1;91mRoot密码修改失败\033[0m"
+               echo "root:$passwd" | chpasswd && echo -e "\033[1;32mRoot密码修改成功. 正在重启服务器...\033[0m" && sleep 1 && reboot || echo -e "\033[1;91mRoot密码修改失败\033[0m"
               ;;
           3)
               clear
