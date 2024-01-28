@@ -3454,18 +3454,7 @@ case $choice in
           2)
               clear
                read -p $'\033[1;35m请输入新的ROOT密码: \033[0m' passwd
-
-                 if command -v apt &>/dev/null; then
-                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && sleep 1 && reboot || echo "Root密码修改失败"
-                elif command -v yum &>/dev/null; then
-                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && sleep 1 && reboot || echo "Root密码修改失败"
-                elif command -v apk &>/dev/null; then
-                    echo "root:$passwd\n$passwd" | passwd root && echo "Root密码修改成功. 正在重启服务器..." && sleep 1 && reboot || echo "Root密码修改失败"
-                elif command -v dnf &>/dev/null; then
-                    echo "root:$passwd" | chpasswd && echo "Root密码修改成功. 正在重启服务器..." && sleep 1 && reboot || echo "Root密码修改失败"
-                else
-                    echo -e "${red}无法识别你的系统，请手动修改！${re}"
-                fi
+               echo "root:$passwd" | chpasswd && echo -e "\033[1;35mRoot密码修改成功. 正在重启服务器...\033[0m" && sleep 1 && reboot || echo -e "\033[1;91mRoot密码修改失败\033[0m"
               ;;
           3)
               clear
