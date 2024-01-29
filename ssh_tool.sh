@@ -5840,8 +5840,8 @@ EOF
               echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
               echo 'export GOPATH=$HOME/go' >> ~/.bashrc
               echo 'export PATH=$PATH:$GOPATH/bin' >> ~/.bashrc
-
               export PATH=$PATH:/usr/local/go/bin
+              source ~/.bashrc
               rm go_latest.tar.gz
               echo -e "${green}GO安装完成，当前Go版本：${red}$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)${re}"
               read -p $'\033[1;91m重启服务器配置才可生效，需要立即重启吗 [y/n]: \033[0m' confirm
