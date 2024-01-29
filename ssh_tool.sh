@@ -5813,6 +5813,7 @@ EOF
                     # 比较已安装版本与最新版本
                     if [ "$installed_version" = "$latest_version" ]; then
                         echo -e "${green}当前Go已经是最新版本，无需更新。${re}"
+                        sleep 2
                         main_menu
 
                     elif [ "$(printf "$installed_version\n$latest_version" | sort -V | head -n 1)" != "$installed_version" ]; then
@@ -5821,7 +5822,7 @@ EOF
                         
                         if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
                             echo "卸载旧版Go：$installed_version"
-                            sudo rm -rf /usr/local/go
+                            rm -rf /usr/local/go
 
                         else
                             echo -e "${yellow}退出更新。${re}"
@@ -5833,8 +5834,9 @@ EOF
                     echo -e "${yellow}系统中未安装Go，正在为你安装最新版Go...${re}"
                 fi
               # 下载并安装最新版Go
+              install tar
               wget -O go_latest.tar.gz "$latest_version_url"
-              sudo tar -C /usr/local -xzf go_latest.tar.gz
+              tar -C /usr/local -xzf go_latest.tar.gz
 
               # 设置环境变量
               echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
@@ -5842,18 +5844,12 @@ EOF
               echo 'export PATH=$PATH:$GOPATH/bin' >> ~/.bashrc
               echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.profile
               echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bash_profile
-              source ~/.bashrc && source ~/.profile && echo 'source ~/.bashrc' >> ~/.bash_profile
+              source ~/.bashrc && source ~/.profile && source ~/.bash_profile
+              
               rm go_latest.tar.gz
               echo -e "${green}GO安装完成，当前Go版本：${red}$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)${re}"
-              read -p $'\033[1;91m重启服务器配置才可生效，需要立即重启吗 [y/n]: \033[0m' confirm
-
-              if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
-                sleep 1
-                reboot
-              else
-                main_menu
-              fi
-              sleep 5  
+              sleep 1
+              break_end
             ;;            
 
             4)
@@ -5971,19 +5967,11 @@ EOF
                         export PATH=$PATH:/usr/local/go/bin
                         export GOPATH=$HOME/go
                         export PATH=$PATH:$GOPATH/bin
-                        source ~/.bashrc
+                        source ~/.bashrc && source ~/.profile && source ~/.bash_profile
 
                         echo -e "${green}Go已卸载${re}"
                         sleep 1
-                        echo -e "${red}"
-                        read -p "重启服务器配置才可生效，需要立即重启吗 [y/n]: " confirm
-
-                        if [ "$confirm" == "y" ] || [ "$confirm" == "Y" ]; then
-                            sleep 1
-                            reboot
-                        else
-                            main_menu
-                        fi
+                        break_end
 
                     else
                         main_menu
@@ -5991,6 +5979,7 @@ EOF
                 else
                     echo -e "${yellow}系统中未安装Go，无需卸载${re}"
                     sleep 2
+                    main_menu
                 fi           
             ;;
 
