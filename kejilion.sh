@@ -4170,7 +4170,15 @@ case $choice in
                 chmod 600 /swapfile
                 mkswap /swapfile
                 swapon /swapfile
-                echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+
+                if [ -f /etc/alpine-release ]; then
+                    echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+                    echo "nohup swapon /swapfile" >> /etc/local.d/swap.start
+                    chmod +x /etc/local.d/swap.start
+                    rc-update add local
+                else
+                    echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+                fi
 
                 echo "虚拟内存大小已调整为${new_swap}MB"
                 ;;
