@@ -5839,11 +5839,9 @@ EOF
               tar -C /usr/local -xzf go_latest.tar.gz
 
               # 设置环境变量
-              echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-              echo 'export GOPATH=$HOME/go' >> ~/.bashrc
-              echo 'export PATH=$PATH:$GOPATH/bin' >> ~/.bashrc
-              echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.profile
-              echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bash_profile
+              export GOPATH=$HOME/go
+              export PATH=$PATH:$GOPATH/bin
+              export PATH=$PATH:/usr/local/go/bin
               source ~/.bashrc && source ~/.profile && source ~/.bash_profile
               
               rm go_latest.tar.gz
