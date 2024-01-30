@@ -503,10 +503,10 @@ case $choice in
 
     if [ -f /etc/alpine-release ]; then
         # Alpine Linux 使用以下命令获取 CPU 使用率
-        cpu_usage_percent=$(top -bn1 | grep '^CPU' | awk '{print $4}' | cut -c 1-2)
+        cpu_usage_percent=$(top -bn1 | grep '^CPU' | awk '{print " "$4 "%"}' | cut -c 1-2)
     else
         # 其他系统使用以下命令获取 CPU 使用率
-        cpu_usage_percent=$(top -bn1 | grep "Cpu(s)" | awk '{print ""$2 "%"}')
+        cpu_usage_percent=$(top -bn1 | grep "Cpu(s)" | awk '{print " "$2 "%"}')
     fi
 
 
