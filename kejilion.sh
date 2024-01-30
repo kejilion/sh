@@ -103,17 +103,29 @@ check_port() {
     fi
 }
 
-
-# 定义安装 Docker 的函数
-install_docker() {
-    if ! command -v docker &>/dev/null; then
+install_add_docker() {
+    if [ -f "/etc/alpine-release" ]; then
+        apk update
+        apk add docker
+        rc-update add docker default
+        service docker start
+        curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        chmod +x /usr/local/bin/docker-compose
+    else
         curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
         systemctl start docker
         systemctl enable docker
+    fi
+}
+
+install_docker() {
+    if ! command -v docker &>/dev/null; then
+        install_add_docker
     else
         echo "Docker 已经安装"
     fi
 }
+
 
 iptables_open() {
     iptables -P INPUT ACCEPT
@@ -899,21 +911,7 @@ case $choice in
       case $sub_choice in
           1)
             clear
-
-            if [ -f "/etc/alpine-release" ]; then
-                apk update
-                apk add docker
-                rc-update add docker default
-                service docker start
-                curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-                chmod +x /usr/local/bin/docker-compose
-
-            else
-
-                curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
-                systemctl start docker
-                systemctl enable docker
-            fi
+            install_add_docker
 
               ;;
           2)
