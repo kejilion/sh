@@ -106,10 +106,9 @@ check_port() {
 install_add_docker() {
     if [ -f "/etc/alpine-release" ]; then
         apk update
-        apk add docker
+        apk add docker docker-compose
         rc-update add docker default
         service docker start
-        apk add docker-compose
     else
         curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
         systemctl start docker
