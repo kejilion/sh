@@ -5,7 +5,7 @@
 >Debian
 >Ubuntu
 >CentOS
->Apline
+>Alpine
 >Fedora
 >Rocky-linux
 >Amazom-linux
