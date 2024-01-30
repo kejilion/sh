@@ -320,7 +320,8 @@
     echo "------------------------"  
     echo "2024-01-30   v2.2.7"
     echo "LDNMP建站更新halo2的安装版本到2.11"     
-    echo "解决alpine系统下虚拟内存重启后失效的问题"   
-    echo "优化alpine系统下docker安装体验，安装docker应用时自动识别安装docker环境"       
+    echo "修复alpine系统下虚拟内存重启后失效的问题"   
+    echo "优化alpine系统下docker安装体验，安装docker应用时自动识别安装docker环境"   
+    echo "修复alpine系统下CPU占用显示异常的问题"       
     echo "------------------------"      
     
