@@ -1228,7 +1228,7 @@ case $choice in
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
-                  remove docker docker-ce > /dev/null 2>&1
+                  remove docker docker-ce docker-compose > /dev/null 2>&1
                   rm -rf /var/lib/docker
                   ;;
                 [Nn])
