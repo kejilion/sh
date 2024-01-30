@@ -317,5 +317,9 @@
     echo "精简了LDNMP建站镜像大小，采用官方alpine精简镜像包，更快，更轻，更安全"     
     echo "脚本适配alpine系统"   
     echo "系统工具中重装系统选项升级，增加了Debian11 Debian10 ubuntu22.04 centos7 alpine3.19 windows11的安装选项"    
-    echo "------------------------"     
+    echo "------------------------"  
+    echo "2024-01-30   v2.2.7"
+    echo "LDNMP建站更新halo2的安装版本到2.11"     
+    echo "解决alpine系统下虚拟内存重启后失效的问题"   
+    echo "------------------------"      
     
