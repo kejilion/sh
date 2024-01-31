@@ -30,11 +30,15 @@ for cert_file in $certs_directory*_cert.pem; do
         # 停止 Nginx
         docker stop nginx
 
-        # 打开 iptables
-        iptables_open
-
-        # 安装 Certbot
-        install_certbot
+        iptables -P INPUT ACCEPT
+        iptables -P FORWARD ACCEPT
+        iptables -P OUTPUT ACCEPT
+        iptables -F
+    
+        ip6tables -P INPUT ACCEPT
+        ip6tables -P FORWARD ACCEPT
+        ip6tables -P OUTPUT ACCEPT
+        ip6tables -F
 
         # 续签证书
         certbot certonly --standalone -d $domain --email your@email.com --agree-tos --no-eff-email --force-renewal
