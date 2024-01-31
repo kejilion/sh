@@ -5842,8 +5842,9 @@ EOF
               export GOPATH=$HOME/go
               export PATH=$PATH:$GOPATH/bin
               export PATH=$PATH:/usr/local/go/bin
-              source ~/.bashrc && source ~/.profile && source ~/.bash_profile
-              
+              source ~/.bashrc
+              source ~/.profile
+              source ~/.bash_profile
               rm go_latest.tar.gz
               echo -e "${green}GO安装完成，当前Go版本：${red}$(go version | grep -oE 'go[0-9]+\.[0-9]+\.[0-9]+' | cut -c 3-)${re}"
               sleep 1
