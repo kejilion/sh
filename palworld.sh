@@ -232,6 +232,7 @@ case $choice in
 
   7)
     clear
+    mkdir -p /home/game
     docker cp steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ /home/game/palworld/
     echo -e "\033[0;32m存档已导出存放在: /home/game/palworld/\033[0m"
     ;;
