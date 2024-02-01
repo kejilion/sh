@@ -246,8 +246,8 @@ case $choice in
 
   00)
     cd ~
-    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/update_log.sh && chmod +x update_log.sh && ./update_log.sh
-    rm update_log.sh
+    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/pal_log.sh && chmod +x pal_log.sh && ./pal_log.sh
+    rm pal_log.sh
     echo ""
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh
     echo "脚本已更新到最新版本！"
