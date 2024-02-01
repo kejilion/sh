@@ -234,11 +234,12 @@ case $choice in
     clear
     mkdir -p /home/game
     docker cp steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ /home/game/palworld/
-    echo -e "\033[0;32m存档已导出存放在: /home/game/palworld/\033[0m"
+    echo -e "\033[0;32m游戏存档已导出存放在: /home/game/palworld/\033[0m"
     ;;
   8)
     clear
     docker cp -a /home/game/palworld/ steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/
+    echo -e "\033[0;32m游戏存档已导入\033[0m"
     docker restart steamcmd
     pal_start
     ;;
@@ -247,6 +248,7 @@ case $choice in
     docker restart steamcmd
     docker exec -it steamcmd bash -c "/home/steam/steamcmd/steamcmd.sh +login anonymous +app_update 2394010 validate +quit"
     clear
+    echo -e "\033[0;32m幻兽帕鲁已更新\033[0m"
     pal_start
     ;;
 
