@@ -82,6 +82,14 @@ install_add_docker() {
     fi
 }
 
+install_docker() {
+    if ! command -v docker &>/dev/null; then
+        install_add_docker
+    else
+        echo "Docker 已经安装"
+    fi
+}
+
 pal_start() {
     ip_address
     tmux new -d -s my1 "docker exec -it steamcmd bash -c '/home/steam/Steam/steamapps/common/PalServer/PalServer.sh'"
@@ -121,7 +129,7 @@ read -p "请输入你的选择: " choice
 case $choice in
   1)
     clear
-    install_add_docker
+    install_docker
     install tmux
     docker run -dit --name steamcmd -p 8255:8211/udp --restart=always cm2network/steamcmd
     docker exec -it steamcmd bash -c "/home/steam/steamcmd/steamcmd.sh +login anonymous +app_update 2394010 validate +quit"
