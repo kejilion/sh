@@ -93,7 +93,10 @@ install_docker() {
 pal_start() {
     ip_address
     tmux new -d -s my1 "docker exec -it steamcmd bash -c '/home/steam/Steam/steamapps/common/PalServer/PalServer.sh'"
-    echo -e "\033[0;32m幻兽帕鲁服务启动啦！\n进入游戏连接：$ipv4_address:8255\033[0m"
+    echo -e "\033[0;32m幻兽帕鲁服务启动啦！\033[0m"
+    echo -e "游戏下载地址: https://store.steampowered.com/app/1623730"
+    echo -e "\033[0;32m进入游戏连接:\033[93m $ipv4_address:8255 \033[0;32m开始冒险吧！\033[0m"
+
 }
 
 
