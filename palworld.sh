@@ -241,7 +241,11 @@ case $choice in
   8)
     clear
     tmux kill-session -t my1
-    docker cp -a /home/game/palworld/ steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/
+    docker exec -it steamcmd bash -c "rm -rf /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/*"
+    docker cp /home/game/palworld/Config steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config
+    docker cp /home/game/palworld/ImGui steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ImGui
+    docker cp /home/game/palworld/SaveGames steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/SaveGames
+    docker exec -it -u root steamcmd bash -c "chmod -R 777 /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/"    
     echo -e "\033[0;32m游戏存档已导入\033[0m"
     docker restart steamcmd
     pal_start
