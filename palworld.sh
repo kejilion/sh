@@ -148,12 +148,14 @@ case $choice in
 
   3)
     clear
+    tmux kill-session -t my1
     docker stop steamcmd
     echo -e "\033[0;32m幻兽帕鲁服务已停止\033[0m"
     ;;
 
   4)
     clear
+    tmux kill-session -t my1
     docker restart steamcmd
     pal_start
     ;;
@@ -238,6 +240,7 @@ case $choice in
     ;;
   8)
     clear
+    tmux kill-session -t my1
     docker cp -a /home/game/palworld/ steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/
     echo -e "\033[0;32m游戏存档已导入\033[0m"
     docker restart steamcmd
@@ -245,6 +248,7 @@ case $choice in
     ;;
   9)
     clear
+    tmux kill-session -t my1
     docker restart steamcmd
     docker exec -it steamcmd bash -c "/home/steam/steamcmd/steamcmd.sh +login anonymous +app_update 2394010 validate +quit"
     clear
