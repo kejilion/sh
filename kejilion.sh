@@ -463,7 +463,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.2.7 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.2.8 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -479,7 +479,8 @@ echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
 echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
-echo -e "14. VPS集群控制 ▶ \033[36mBeta\033[0m"
+echo "14. VPS集群控制 ▶ "
+echo -e "\033[92m15. 幻兽帕鲁私服脚本 ▶\033[0m"
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
@@ -5217,6 +5218,12 @@ EOF
     done
 
     ;;
+
+  15)
+    cd ~
+    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
+    ;;
+
 
   00)
     cd ~
