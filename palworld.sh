@@ -236,16 +236,20 @@ case $choice in
     clear
     mkdir -p /home/game
     docker cp steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ /home/game/palworld/
+    cd /home/game && tar czvf palworld_$(date +"%Y%m%d%H%M%S").tar.gz palworld
+    rm -rf /home/game/palworld/  
     echo -e "\033[0;32m游戏存档已导出存放在: /home/game/palworld/\033[0m"
     ;;
   8)
     clear
     tmux kill-session -t my1
     docker exec -it steamcmd bash -c "rm -rf /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/*"
+    cd /home/game/ && ls -t /home/game/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
     docker cp /home/game/palworld/Config steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config
     docker cp /home/game/palworld/ImGui steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ImGui
     docker cp /home/game/palworld/SaveGames steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/SaveGames
-    docker exec -it -u root steamcmd bash -c "chmod -R 777 /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/"    
+    docker exec -it -u root steamcmd bash -c "chmod -R 777 /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/"
+    rm -rf /home/game/palworld/    
     echo -e "\033[0;32m游戏存档已导入\033[0m"
     docker restart steamcmd
     pal_start
