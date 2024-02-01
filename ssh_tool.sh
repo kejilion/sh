@@ -500,10 +500,17 @@ else
 fi
 
 }
-
+# 运行统计
+sum_run_times() {
+  local COUNT=$(wget --no-check-certificate -qO- --tries=2 --timeout=2 "https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fraw.githubusercontent.com%2Feooce%2Fssh_tool%2Fmain%2Fssh_tool.sh" 2>&1 | grep -m1 -oE "[0-9]+[ ]+/[ ]+[0-9]+") &&
+  TODAY=$(cut -d " " -f1 <<< "$COUNT") &&
+  TOTAL=$(cut -d " " -f3 <<< "$COUNT")
+}
+sum_run_times
 
 while true; do
 clear
+echo -e "    ${skyblue}当日运行：${yellow}${TODAY}次   ${skyblue}累计运行：${yellow}${TOTAL}次${re}"
 echo -e "\033[0;97m-----------------By'eooce-----------------\033[0m"
 echo -e "\033[0;97m脚本地址: https://github.com/eooce/ssh_tool\033[0m" 
 echo ""
