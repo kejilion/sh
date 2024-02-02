@@ -109,9 +109,9 @@ pal_install_status() {
 
   # 检查容器是否已安装
   if [ "$(docker ps -a -q -f name=$CONTAINER_NAME)" ]; then
-      container_status="\e[32m幻兽帕鲁已安装\e[0m"  # 绿色
+      container_status="\e[32m幻兽帕鲁服务已安装\e[0m"  # 绿色
   else
-      container_status="\e[90m幻兽帕鲁未安装\e[0m"  # 灰色
+      container_status="\e[90m幻兽帕鲁服务未安装\e[0m"  # 灰色
   fi
 
   SESSION_NAME="my1"
