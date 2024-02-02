@@ -287,7 +287,7 @@ case $choice in
 
             ;;
         *)
-            break  # 跳出
+            echo "已取消"
             ;;
     esac
     ;;
