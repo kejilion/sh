@@ -272,19 +272,19 @@ case $choice in
             pal_backup
             (crontab -l ; echo "0 0 * * 1 ./pal_backup.sh") | crontab - > /dev/null 2>&1
             echo "每周一备份，已设置"
-            break
+
             ;;
         2)
             pal_backup
             (crontab -l ; echo "0 3 * * * ./pal_backup.sh") | crontab - > /dev/null 2>&1
             echo "每天凌晨3点备份，已设置"
-            break
+
             ;;
         3)
             pal_backup
             (crontab -l ; echo "0 * * * * ./pal_backup.sh") | crontab - > /dev/null 2>&1
             echo "每小时整点备份，已设置"
-            break
+
             ;;
         *)
             break  # 跳出
