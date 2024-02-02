@@ -337,6 +337,7 @@ case $choice in
   k)
     cd ~
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
+    exit
     ;;
 
   00)
