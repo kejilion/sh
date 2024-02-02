@@ -105,6 +105,10 @@ pal_backup() {
 }
 
 
+
+while true; do
+clear
+
 CONTAINER_NAME="steamcmd"
 
 # 检查容器是否已安装
@@ -124,9 +128,6 @@ else
     tmux_status="\e[90m未启动\e[0m"  # 灰色
 fi
 
-
-while true; do
-clear
 echo -e "\033[93m      .            .  ."
 echo "._  _.|.    , _ ._.| _|"
 echo "[_)(_]| \/\/ (_)[  |(_]"
