@@ -480,7 +480,7 @@ echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
 echo "14. VPS集群控制 ▶ "
-echo -e "\033[92m15. 幻兽帕鲁私服脚本 ▶\033[0m"
+echo -e "\033[92mp. 幻兽帕鲁私服脚本 ▶\033[0m"
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
@@ -5219,7 +5219,7 @@ EOF
 
     ;;
 
-  15)
+  p)
     cd ~
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
     ;;
