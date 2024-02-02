@@ -104,30 +104,31 @@ pal_backup() {
   curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/pal_backup.sh && chmod +x pal_backup.sh
 }
 
+pal_install_status() {
+  CONTAINER_NAME="steamcmd"
 
+  # 检查容器是否已安装
+  if [ "$(docker ps -a -q -f name=$CONTAINER_NAME)" ]; then
+      container_status="\e[32m幻兽帕鲁已安装\e[0m"  # 绿色
+  else
+      container_status="\e[90m幻兽帕鲁未安装\e[0m"  # 灰色
+  fi
+
+  SESSION_NAME="my1"
+
+  ip_address
+  # 检查 tmux 中是否存在指定的工作区
+  if tmux has-session -t $SESSION_NAME 2>/dev/null; then
+      tmux_status="\e[32m已开服:\033[93m $ipv4_address:8255\e[0m"  # 绿色
+  else
+      tmux_status="\e[90m未开服\e[0m"  # 灰色
+  fi
+
+}
 
 while true; do
 clear
-
-CONTAINER_NAME="steamcmd"
-
-# 检查容器是否已安装
-if [ "$(docker ps -a -q -f name=$CONTAINER_NAME)" ]; then
-    container_status="\e[32m幻兽帕鲁已安装\e[0m"  # 绿色
-else
-    container_status="\e[90m幻兽帕鲁未安装\e[0m"  # 灰色
-fi
-
-SESSION_NAME="my1"
-
-ip_address
-# 检查 tmux 中是否存在指定的工作区
-if tmux has-session -t $SESSION_NAME 2>/dev/null; then
-    tmux_status="\e[32m已开服:\033[93m $ipv4_address:8255\e[0m"  # 绿色
-else
-    tmux_status="\e[90m未启动\e[0m"  # 灰色
-fi
-
+pal_install_status
 echo -e "\033[93m      .            .  ."
 echo "._  _.|.    , _ ._.| _|"
 echo "[_)(_]| \/\/ (_)[  |(_]"
@@ -137,8 +138,8 @@ echo -e "\033[96m-输入\033[93mp\033[96m可快速启动此脚本-\033[0m"
 echo -e "$container_status $tmux_status"
 echo "------------------------"
 echo "1. 安装幻兽帕鲁服务"
-echo "2. 启动幻兽帕鲁服务"
-echo "3. 暂停幻兽帕鲁服务"
+echo "2. 开启幻兽帕鲁服务"
+echo "3. 关闭幻兽帕鲁服务"
 echo "4. 重启幻兽帕鲁服务"
 echo "------------------------"
 echo "5. 查看服务器状态"
@@ -178,7 +179,7 @@ case $choice in
     clear
     tmux kill-session -t my1
     docker stop steamcmd
-    echo -e "\033[0;32m幻兽帕鲁服务已停止\033[0m"
+    echo -e "\033[0;32m幻兽帕鲁服务已关闭\033[0m"
     ;;
 
   4)
