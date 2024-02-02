@@ -99,6 +99,10 @@ pal_start() {
 
 }
 
+pal_backup() {
+  cd ~
+  curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/pal_backup.sh && chmod +x pal_backup.sh
+}
 
 while true; do
 clear
@@ -106,7 +110,7 @@ echo -e "\033[93m      .            .  ."
 echo "._  _.|.    , _ ._.| _|"
 echo "[_)(_]| \/\/ (_)[  |(_]"
 echo "|                      "
-echo -e "\033[96m幻兽帕鲁私服一键脚本工具v1.0  by KEJILION\033[0m"
+echo -e "\033[96m幻兽帕鲁私服一键脚本工具v1.0.1  by KEJILION\033[0m"
 echo -e "\033[96m-输入\033[93mp\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 安装幻兽帕鲁服务"
@@ -119,9 +123,10 @@ echo "6. 设置虚拟内存"
 echo "------------------------"
 echo "7. 导出游戏存档"
 echo "8. 导入游戏存档"
+echo "9. 定时备份游戏存档"
 echo "------------------------"
-echo "9. 更新幻兽帕鲁服务"
-echo "10. 卸载幻兽帕鲁服务"
+echo "10. 更新幻兽帕鲁服务"
+echo "11. 卸载幻兽帕鲁服务"
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
@@ -237,8 +242,8 @@ case $choice in
     mkdir -p /home/game
     docker cp steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ /home/game/palworld/
     cd /home/game && tar czvf palworld_$(date +"%Y%m%d%H%M%S").tar.gz palworld
-    rm -rf /home/game/palworld/  
-    echo -e "\033[0;32m游戏存档已导出存放在: /home/game/palworld/\033[0m"
+    rm -rf /home/game/palworld/
+    echo -e "\033[0;32m游戏存档已导出存放在: /home/game/\033[0m"
     ;;
   8)
     clear
@@ -249,12 +254,45 @@ case $choice in
     docker cp /home/game/palworld/ImGui steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ImGui
     docker cp /home/game/palworld/SaveGames steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/SaveGames
     docker exec -it -u root steamcmd bash -c "chmod -R 777 /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/"
-    rm -rf /home/game/palworld/    
+    rm -rf /home/game/palworld/
     echo -e "\033[0;32m游戏存档已导入\033[0m"
     docker restart steamcmd
     pal_start
     ;;
+
   9)
+    clear
+    echo "幻兽帕鲁游戏存档定时备份"
+    echo "------------------------"
+    echo "1. 每周备份       2. 每天备份       3. 每小时备份"
+    echo "------------------------"
+    read -p "请输入你的选择: " dingshi
+    case $dingshi in
+        1)
+            pal_backup
+            (crontab -l ; echo "0 0 * * 1 ./pal_backup.sh") | crontab - > /dev/null 2>&1
+            echo "每周一备份，已设置"
+            break
+            ;;
+        2)
+            pal_backup
+            (crontab -l ; echo "0 3 * * * ./pal_backup.sh") | crontab - > /dev/null 2>&1
+            echo "每天凌晨3点备份，已设置"
+            break
+            ;;
+        2)
+            pal_backup
+            (crontab -l ; echo "0 * * * * ./pal_backup.sh") | crontab - > /dev/null 2>&1
+            echo "每小时整点备份，已设置"
+            break
+            ;;
+        *)
+            break  # 跳出
+            ;;
+    esac
+    ;;
+
+  10)
     clear
     tmux kill-session -t my1
     docker restart steamcmd
@@ -264,7 +302,7 @@ case $choice in
     pal_start
     ;;
 
-  10)
+  11)
     clear
     docker rm -f steamcmd
     docker rmi -f cm2network/steamcmd
