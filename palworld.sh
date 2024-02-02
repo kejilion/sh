@@ -175,21 +175,21 @@ case $choice in
 
   2)
     clear
-    docker start steamcmd
+    docker start steamcmd > /dev/null 2>&1
     pal_start
     ;;
 
   3)
     clear
     tmux kill-session -t my1
-    docker stop steamcmd
+    docker stop steamcmd > /dev/null 2>&1
     echo -e "\033[0;32m幻兽帕鲁服务已关闭\033[0m"
     ;;
 
   4)
     clear
     tmux kill-session -t my1
-    docker restart steamcmd
+    docker restart steamcmd > /dev/null 2>&1
     pal_start
     ;;
 
@@ -268,8 +268,8 @@ case $choice in
   7)
     clear
     mkdir -p /home/game
-    docker cp steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ /home/game/palworld/
-    cd /home/game && tar czvf palworld_$(date +"%Y%m%d%H%M%S").tar.gz palworld
+    docker cp steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ /home/game/palworld/ > /dev/null 2>&1
+    cd /home/game && tar czvf palworld_$(date +"%Y%m%d%H%M%S").tar.gz palworld > /dev/null 2>&1
     rm -rf /home/game/palworld/
     echo -e "\033[0;32m游戏存档已导出存放在: /home/game/\033[0m"
     ;;
@@ -278,13 +278,13 @@ case $choice in
     tmux kill-session -t my1
     docker exec -it steamcmd bash -c "rm -rf /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/*"
     cd /home/game/ && ls -t /home/game/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
-    docker cp /home/game/palworld/Config steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config
-    docker cp /home/game/palworld/ImGui steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ImGui
-    docker cp /home/game/palworld/SaveGames steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/SaveGames
+    docker cp /home/game/palworld/Config steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config > /dev/null 2>&1
+    docker cp /home/game/palworld/ImGui steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/ImGui > /dev/null 2>&1
+    docker cp /home/game/palworld/SaveGames steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/SaveGames > /dev/null 2>&1
     docker exec -it -u root steamcmd bash -c "chmod -R 777 /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/"
     rm -rf /home/game/palworld/
     echo -e "\033[0;32m游戏存档已导入\033[0m"
-    docker restart steamcmd
+    docker restart steamcmd > /dev/null 2>&1
     pal_start
     ;;
 
@@ -335,11 +335,11 @@ case $choice in
     echo "配置文件已更新"
 
     docker exec -it steamcmd bash -c "rm -f /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
-    docker cp ~/PalWorldSettings.ini steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config/LinuxServer/
+    docker cp ~/PalWorldSettings.ini steamcmd:/home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config/LinuxServer/ > /dev/null 2>&1
     docker exec -it -u root steamcmd bash -c "chmod -R 777 /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/"
     rm -f ~/PalWorldSettings.ini
     echo -e "\033[0;32m游戏配置已导入\033[0m"
-    docker restart steamcmd
+    docker restart steamcmd > /dev/null 2>&1
     pal_start
     ;;
 
@@ -347,7 +347,7 @@ case $choice in
   11)
     clear
     tmux kill-session -t my1
-    docker restart steamcmd
+    docker restart steamcmd > /dev/null 2>&1
     docker exec -it steamcmd bash -c "/home/steam/steamcmd/steamcmd.sh +login anonymous +app_update 2394010 validate +quit"
     clear
     echo -e "\033[0;32m幻兽帕鲁已更新\033[0m"
