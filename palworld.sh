@@ -133,7 +133,7 @@ echo -e "\033[93m      .            .  ."
 echo "._  _.|.    , _ ._.| _|"
 echo "[_)(_]| \/\/ (_)[  |(_]"
 echo "|                      "
-echo -e "\033[96m幻兽帕鲁私服一键脚本工具v1.0.1  by KEJILION\033[0m"
+echo -e "\033[96m幻兽帕鲁开服一键脚本工具v1.0.1  by KEJILION\033[0m"
 echo -e "\033[96m-输入\033[93mp\033[96m可快速启动此脚本-\033[0m"
 echo -e "$container_status $tmux_status"
 echo "------------------------"
@@ -151,6 +151,8 @@ echo "9. 定时备份游戏存档"
 echo "------------------------"
 echo "10. 更新幻兽帕鲁服务"
 echo "11. 卸载幻兽帕鲁服务"
+echo "------------------------"
+echo "k. 科技lion脚本工具箱"
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
@@ -332,6 +334,11 @@ case $choice in
     docker rmi -f cm2network/steamcmd
     ;;
 
+  k)
+    cd ~
+    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
+    ;;
+
   00)
     cd ~
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/pal_log.sh && chmod +x pal_log.sh && ./pal_log.sh
@@ -342,6 +349,7 @@ case $choice in
     break_end
     palworld
     ;;
+
 
   0)
     clear
