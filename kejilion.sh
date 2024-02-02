@@ -5222,6 +5222,7 @@ EOF
   p)
     cd ~
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
+    exit
     ;;
 
 
