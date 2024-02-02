@@ -280,7 +280,7 @@ case $choice in
             echo "每天凌晨3点备份，已设置"
             break
             ;;
-        2)
+        3)
             pal_backup
             (crontab -l ; echo "0 * * * * ./pal_backup.sh") | crontab - > /dev/null 2>&1
             echo "每小时整点备份，已设置"
