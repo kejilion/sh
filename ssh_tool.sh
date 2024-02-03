@@ -3440,7 +3440,7 @@ case $choice in
       echo "22. 服务器资源限制"
       echo -e "23. ${skyblue}NAT小鸡一键重装系统${re}"
       echo "24. iptables一键转发"
-      echo "25. 批量SSH连接测试"
+      echo "25. NAT批量SSH连接测试"
       echo "------------------------"
       echo "80. 留言板"
       echo "------------------------"
@@ -4905,13 +4905,12 @@ EOF
                         port=$(echo "$line" | awk '{print $2}')
                         password=$(echo "$line" | awk '{print $3}')
 
-                        
                         ssh_output=$(sshpass -p "$password" ssh -p "$port" -o ConnectTimeout=5 "root@$common_ip" "echo Connection successful!" 2>&1 || true)
 
                         if [[ "$ssh_output" == *successful* ]]; then
-                            echo -e "${green}$name root@$common_ip on port $port successful${re}"
+                            echo -e "${green}$name $port $password connect successful${re}"
                         else
-                            echo -e "${red}$name root@$common_ip on port $port failed${re}"
+                            echo -e "${red}$name $port $password connect failed${re}"
                         fi
                     done
 
@@ -4921,8 +4920,7 @@ EOF
                 fi
 
                 rm server.txt
-                break_end
-
+                
               ;;
           80)
             clear
