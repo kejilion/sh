@@ -3439,7 +3439,8 @@ case $choice in
       echo "21. ip开放端口扫描"
       echo "22. 服务器资源限制"
       echo -e "23. ${skyblue}NAT小鸡一键重装系统${re}"
-      echo -e "24. iptables一键转发${yellow}NeW${re}"
+      echo "24. iptables一键转发"
+      echo "25. 批量SSH连接测试"
       echo "------------------------"
       echo "80. 留言板"
       echo "------------------------"
@@ -4877,7 +4878,52 @@ EOF
             sleep 2
             break_end
             ;;
+          25)
+            clear
+                echo -e "${yellow}初始化环境...${re}"
+                install sshpass
+                clear
+                read -p $'\033[1;35m请输入要连接的ipv4/ipv6地址: \033[0m' common_ip
+                
+                echo -e "${green}即将进入nano编辑器，请添加nat小鸡配置信息${re}"
+                sleep 1
+                echo -e "# 示例配置: \n# ex1 20001 8a2a7f65c 30001 30025" > server.txt
+                nano -w server.txt
+                echo -e "${green}进入测试中,请稍等...${re}"
 
+                if [ -f "server.txt" ]; then
+                    mapfile -t lines < "server.txt"
+
+                    # 遍历配置文件进行连接测试
+                    for line in "${lines[@]}"; do
+ 
+                        if [[ "$line" == \#* || -z "$line" ]]; then
+                            continue
+                        fi
+
+                        name=$(echo "$line" | awk '{print $1}')
+                        port=$(echo "$line" | awk '{print $2}')
+                        password=$(echo "$line" | awk '{print $3}')
+
+                        
+                        ssh_output=$(sshpass -p "$password" ssh -p "$port" -o ConnectTimeout=5 "root@$common_ip" "echo Connection successful!" 2>&1 || true)
+
+                        if [[ "$ssh_output" == *successful* ]]; then
+                            echo -e "${green}$name root@$common_ip on port $port successful${re}"
+                        else
+                            echo -e "${red}$name root@$common_ip on port $port failed${re}"
+                        fi
+                    done
+
+                else
+                    echo -e "${red}未找到server.txt配置文件${re}"
+                    exit 1
+                fi
+
+                rm server.txt
+                break_end
+
+              ;;
           80)
             clear
             install sshpass
