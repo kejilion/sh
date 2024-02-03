@@ -6540,7 +6540,7 @@ EOF
                                 echo ""
                                 echo -e "${yellow}温馨提醒:如果你开设的小鸡数量较多建议reboot重启一次系统使配置生效，再进入管理incus小鸡菜单${purple}新增即可${re}"
                                 echo ""
-                                read -p $'\033[1;35m选择哪种方式开设incus小鸡？\n1:普通批量生成(256RAM+1G+上下行300Mb)  \n2:自定义配置批量生成  \n3:取消开小鸡 \n请选择： \033[0m' confirm
+                                read -p $'\033[1;35m选择哪种方式开设incus小鸡？\n1:普通批量生成(256RAM+1G+上下行300Mb)  \n2:自定义配置批量生成  \n3:取消开小鸡 \n4:重启系统 \n请选择： \033[0m' confirm
 
                                 case $confirm in
                                     1)
@@ -6559,7 +6559,7 @@ EOF
                                         break
                                         ;;
                                     2)
-                                        echo -e "${green}开始运行自定义批量生成小鸡(自定义配置)${re}"
+                                        echo -e "${green}开始运行自定义批量生成小鸡${re}"
                                         sleep 1
                                         install screen
                                         echo -e "${green}正在后台自动为你开设小鸡中，可关闭SSH，完成后运行cat log查看小鸡信息${re}"
@@ -6572,8 +6572,11 @@ EOF
                                         echo -e "${green}你已取消了开设小鸡的操作${re}"
                                         exit 0
                                         ;;
+                                    4)
+                                        reboot
+                                        ;;
                                     *)
-                                        echo -e "${red}输入错误，请输入 1，2 或 3。${re}"
+                                        echo -e "${red}输入错误，请输入 1至4的数字${re}"
                                         ;;
                                 esac
                             done
