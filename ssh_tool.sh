@@ -6258,7 +6258,10 @@ EOF
                             check_lxc
                             while true; do
                                 clear
-                                read -p $'\033[1;35m选择哪种方式开设LXC小鸡？\n1:普通批量生成(256RAM+2G+上下行限制300Mb)  \n2:自定义配置批量生成  \n3:取消开小鸡 \n请选择： \033[0m' confirm
+                                echo ""
+                                echo -e "${yellow}温馨提醒:如果你开设的小鸡数量较多建议reboot重启一次系统使配置生效，再进入管理LXC小鸡菜单${purple}新增即可${re}"
+                                echo ""
+                                read -p $'\033[1;35m选择哪种方式开设LXC小鸡？\n1:普通批量生成(256RAM+1G+上下行限制300Mb)  \n2:自定义配置批量生成  \n3:取消开小鸡 \n4:重启系统 \n请选择： \033[0m' confirm
 
                                 case $confirm in
                                     1)
@@ -6290,8 +6293,11 @@ EOF
                                         echo -e "${yellow}你已取消了开设小鸡的操作${re}"
                                         exit 0
                                         ;;
+                                    4)
+                                        reboot
+                                        ;;
                                     *)
-                                        echo -e "${red}输入错误，请输入 1，2 或 3。${re}"
+                                        echo -e "${red}输入错误，请输入1~4${re}"
                                         ;;
                                 esac
                             done
@@ -6459,7 +6465,7 @@ EOF
                 sleep 2
 
                 while true; do
-                    read -p $'\033[1;96m你需要单独开设Docker小鸡还是批量开设Docker小鸡？(1：单个开设  2：批量开设) \033[0m' choose
+                    read -p $'\033[1;96m你需要单独开设Docker小鸡还是批量开设Docker小鸡？(1：单个开设  2：批量开设 3：重启系统) \033[0m' choose
 
                     if [ "$choose" == "1" ]; then
                         sleep 1
@@ -6474,6 +6480,8 @@ EOF
                         sleep 2
                         break_end
                         break  # 跳出循环
+                    elif  [ "$choose" == "3" ]; then
+                        reboot
                     else
                         echo -e "${red}输入错误，请输入1或2${re}"
                     fi
@@ -6529,7 +6537,10 @@ EOF
 
                             while true; do
                                 clear
-                                read -p $'\033[1;35m选择哪种方式开设incus小鸡？\n1:普通批量生成(256RAM+2G+上下行300Mb)  \n2:自定义配置批量生成  \n3:取消开小鸡 \n请选择： \033[0m' confirm
+                                echo ""
+                                echo -e "${yellow}温馨提醒:如果你开设的小鸡数量较多建议reboot重启一次系统使配置生效，再进入管理incus小鸡菜单${purple}新增即可${re}"
+                                echo ""
+                                read -p $'\033[1;35m选择哪种方式开设incus小鸡？\n1:普通批量生成(256RAM+1G+上下行300Mb)  \n2:自定义配置批量生成  \n3:取消开小鸡 \n请选择： \033[0m' confirm
 
                                 case $confirm in
                                     1)
