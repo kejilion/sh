@@ -326,6 +326,7 @@ case $choice in
     cd ~ && curl -sS -O https://kejilion.pro/PalWorldSettings.ini
 
     echo "配置游戏参数"
+    echo "------------------------"
     read -p "设置加入的密码（回车默认无密码）: " server_password
     read -p "设置游戏难度: （1. 简单    2. 普通    3. 困难）:" Difficulty
       case $Difficulty in
