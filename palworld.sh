@@ -327,11 +327,26 @@ case $choice in
 
     read -p "设置加入的密码（回车默认无密码）: " server_password
     read -p "经验值倍率: （回车默认1倍）:" exp_rate
+    read -p "死亡后掉落设置: （1. 掉落    2. 不掉落）:" DeathPenalty
+      case $DeathPenalty in
+        1)
+            DeathPenalty=All
+            ;;
+
+        2)
+            DeathPenalty=None
+            ;;
+        *)
+            echo "已取消"
+            ;;
+    esac
+
     ExpRate=${exp_rate:-1}
 
     # 更新配置文件
     sed -i "s/ServerPassword=\"\"/ServerPassword=\"$server_password\"/" ~/PalWorldSettings.ini
     sed -i "s/ExpRate=1.000000/ExpRate=$ExpRate/" ~/PalWorldSettings.ini
+    sed -i "s/DeathPenalty=All/DeathPenalty=$DeathPenalty/" ~/PalWorldSettings.ini
     echo "配置文件已更新"
 
     docker exec -it steamcmd bash -c "rm -f /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
