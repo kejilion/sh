@@ -327,6 +327,7 @@ case $choice in
 
     read -p "设置加入的密码（回车默认无密码）: " server_password
     read -p "经验值倍率: （回车默认1倍）:" exp_rate
+      ExpRate=${exp_rate:-1}
     read -p "死亡后掉落设置: （1. 掉落    2. 不掉落）:" DeathPenalty
       case $DeathPenalty in
         1)
@@ -337,16 +338,33 @@ case $choice in
             DeathPenalty=None
             ;;
         *)
-            echo "已取消"
+            echo "无效输入，默认将设置为掉落"
+            DeathPenalty=All
             ;;
-    esac
+      esac
 
-    ExpRate=${exp_rate:-1}
+    read -p "设置pvp模式: （1. 开启    2. 关闭）:" pal_pvp
+
+      case $pal_pvp in
+        1)
+            pal_pvp=True
+            ;;
+
+        2)
+            pal_pvp=False
+            ;;
+        *)
+            echo "无效输入，默认将设置为关闭"
+            pal_pvp=False
+            ;;
+      esac
 
     # 更新配置文件
     sed -i "s/ServerPassword=\"\"/ServerPassword=\"$server_password\"/" ~/PalWorldSettings.ini
     sed -i "s/ExpRate=1.000000/ExpRate=$ExpRate/" ~/PalWorldSettings.ini
     sed -i "s/DeathPenalty=All/DeathPenalty=$DeathPenalty/" ~/PalWorldSettings.ini
+    sed -i "s/bEnablePlayerToPlayerDamage=False/bEnablePlayerToPlayerDamage=$pal_pvp/" ~/PalWorldSettings.ini
+    sed -i "s/bIsPvP=False/bIsPvP=$DeathPenalty/" ~/PalWorldSettings.ini
     echo "配置文件已更新"
 
     docker exec -it steamcmd bash -c "rm -f /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
