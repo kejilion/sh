@@ -325,7 +325,26 @@ case $choice in
     tmux kill-session -t my1
     cd ~ && curl -sS -O https://kejilion.pro/PalWorldSettings.ini
 
+    echo "配置游戏参数"
     read -p "设置加入的密码（回车默认无密码）: " server_password
+    read -p "设置游戏难度: （1. 简单    2. 普通    3. 困难）:" Difficulty
+      case $Difficulty in
+        1)
+            Difficulty=1
+            ;;
+
+        2)
+            Difficulty=2
+            ;;
+        3)
+            Difficulty=3
+            ;;
+        *)
+            echo "-默认设置为普通难度"
+            Difficulty=2
+            ;;
+      esac
+
     read -p "经验值倍率: （回车默认1倍）:" exp_rate
       ExpRate=${exp_rate:-1}
     read -p "死亡后掉落设置: （1. 掉落    2. 不掉落）:" DeathPenalty
@@ -338,8 +357,8 @@ case $choice in
             DeathPenalty=None
             ;;
         *)
-            echo "无效输入，默认将设置为掉落"
             DeathPenalty=All
+            echo "-默认设置为掉落"
             ;;
       esac
 
@@ -349,18 +368,18 @@ case $choice in
         1)
             pal_pvp=True
             ;;
-
         2)
             pal_pvp=False
             ;;
         *)
-            echo "无效输入，默认将设置为关闭"
             pal_pvp=False
+            echo "-默认关闭pvp模式"
             ;;
       esac
 
     # 更新配置文件
     sed -i "s/ServerPassword=\"\"/ServerPassword=\"$server_password\"/" ~/PalWorldSettings.ini
+    sed -i "s/Difficulty=2/Difficulty=$Difficulty/" ~/PalWorldSettings.ini
     sed -i "s/ExpRate=1.000000/ExpRate=$ExpRate/" ~/PalWorldSettings.ini
     sed -i "s/DeathPenalty=All/DeathPenalty=$DeathPenalty/" ~/PalWorldSettings.ini
     sed -i "s/bEnablePlayerToPlayerDamage=False/bEnablePlayerToPlayerDamage=$pal_pvp/" ~/PalWorldSettings.ini
