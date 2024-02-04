@@ -385,6 +385,7 @@ case $choice in
     sed -i "s/DeathPenalty=All/DeathPenalty=$DeathPenalty/" ~/PalWorldSettings.ini
     sed -i "s/bEnablePlayerToPlayerDamage=False/bEnablePlayerToPlayerDamage=$pal_pvp/" ~/PalWorldSettings.ini
     sed -i "s/bIsPvP=False/bIsPvP=$pal_pvp/" ~/PalWorldSettings.ini
+    echo "------------------------"
     echo "配置文件已更新"
 
     docker exec -it steamcmd bash -c "rm -f /home/steam/Steam/steamapps/common/PalServer/Pal/Saved/Config/LinuxServer/PalWorldSettings.ini"
