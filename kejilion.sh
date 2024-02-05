@@ -463,7 +463,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.2.8 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.2.9 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -480,7 +480,7 @@ echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
 echo "14. VPS集群控制 ▶ "
-echo -e "\033[92mp. 幻兽帕鲁开服脚本 ▶\033[0m"
+echo "p. 幻兽帕鲁开服脚本 ▶"
 echo "------------------------"
 echo "00. 脚本更新"
 echo "------------------------"
@@ -4707,6 +4707,10 @@ EOF
                       # CentOS
                       hostnamectl set-hostname "$new_hostname"
                       sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
+                  elif [ -f /etc/alpine-release ]; then
+                      # alpine
+                      echo "$new_hostname" > /etc/hostname
+                      /etc/init.d/hostname restart
                   else
                       echo "未知的发行版，无法更改主机名。"
                       exit 1
