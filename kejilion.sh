@@ -455,6 +455,23 @@ cluster_python3() {
     python3 ~/cluster/$py_task
 }
 
+tmux_run() {
+    # Check if the session already exists
+    tmux has-session -t $SESSION_NAME 2>/dev/null
+    # $? is a special variable that holds the exit status of the last executed command
+    if [ $? != 0 ]; then
+      # Session doesn't exist, create a new one
+      tmux new -s $SESSION_NAME
+    else
+      # Session exists, attach to it
+      tmux attach-session -t $SESSION_NAME
+    fi
+}
+
+
+
+
+
 
 while true; do
 clear
@@ -463,7 +480,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.3 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.3.1 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -3611,8 +3628,13 @@ case $choice in
       echo "3. 3号工作区"
       echo "4. 4号工作区"
       echo "5. 5号工作区"
+      echo "6. 6号工作区"
+      echo "7. 7号工作区"
+      echo "8. 8号工作区"
+      echo "9. 9号工作区"
+      echo "10. 10号工作区"
       echo "------------------------"
-      echo "8. 工作区状态"
+      echo "99. 工作区状态"
       echo "------------------------"
       echo "b. 卸载工作区"
       echo "------------------------"
@@ -3633,85 +3655,56 @@ case $choice in
           1)
               clear
               SESSION_NAME="work1"
+              tmux_run
 
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
               ;;
           2)
               clear
               SESSION_NAME="work2"
-
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
+              tmux_run
               ;;
           3)
               clear
               SESSION_NAME="work3"
-
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
+              tmux_run
               ;;
           4)
               clear
               SESSION_NAME="work4"
-
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
+              tmux_run
               ;;
           5)
               clear
               SESSION_NAME="work5"
-
-              # Check if the session already exists
-              tmux has-session -t $SESSION_NAME 2>/dev/null
-
-              # $? is a special variable that holds the exit status of the last executed command
-              if [ $? != 0 ]; then
-                # Session doesn't exist, create a new one
-                tmux new -s $SESSION_NAME
-              else
-                # Session exists, attach to it
-                tmux attach-session -t $SESSION_NAME
-              fi
+              tmux_run
+              ;;
+          6)
+              clear
+              SESSION_NAME="work6"
+              tmux_run
+              ;;
+          7)
+              clear
+              SESSION_NAME="work7"
+              tmux_run
+              ;;
+          8)
+              clear
+              SESSION_NAME="work8"
+              tmux_run
+              ;;
+          9)
+              clear
+              SESSION_NAME="work9"
+              tmux_run
+              ;;
+          10)
+              clear
+              SESSION_NAME="work10"
+              tmux_run
               ;;
 
-          8)
+          99)
               clear
               tmux list-sessions
               ;;
