@@ -903,10 +903,54 @@ case $choice in
 
   5)
     clear
-    install wget
-    wget --no-check-certificate -O tcpx.sh https://raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
-    chmod +x tcpx.sh
-    ./tcpx.sh
+    if [ -f "/etc/alpine-release" ]; then
+        while true; do
+              clear
+              congestion_algorithm=$(sysctl -n net.ipv4.tcp_congestion_control)
+              queue_algorithm=$(sysctl -n net.core.default_qdisc)
+              echo "当前TCP阻塞算法: $congestion_algorithm $queue_algorithm"
+
+              echo ""
+              echo "BBR管理"
+              echo "------------------------"
+              echo "1. 开启BBRv3              2. 关闭BBRv3（会重启）"
+              echo "------------------------"
+              echo "0. 返回上一级选单"
+              echo "------------------------"
+              read -p "请输入你的选择: " sub_choice
+
+              case $sub_choice in
+                  1)
+                    cat > /etc/sysctl.conf << EOF
+net.core.default_qdisc=fq_pie
+net.ipv4.tcp_congestion_control=bbr
+EOF
+                    sysctl -p
+
+                      ;;
+                  2)
+                    sed -i '/net.core.default_qdisc=fq_pie/d' /etc/sysctl.conf
+                    sed -i '/net.ipv4.tcp_congestion_control=bbr/d' /etc/sysctl.conf
+                    sysctl -p
+                    reboot
+                      ;;
+                  0)
+                      break  # 跳出循环，退出菜单
+                      ;;
+
+                  *)
+                      break  # 跳出循环，退出菜单
+                      ;;
+
+              esac
+        done
+    else
+        install wget
+        wget --no-check-certificate -O tcpx.sh https://raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
+        chmod +x tcpx.sh
+        ./tcpx.sh
+    fi
+
     ;;
 
   6)
