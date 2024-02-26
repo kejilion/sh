@@ -4004,7 +4004,10 @@ case $choice in
                 echo "5. Ubuntu 20.04"
                 echo "6. CentOS 7.9"
                 echo "7. Alpine 3.19"
-                echo -e "8. Windows 11 \033[36mBeta\033[0m"
+                echo "8. Windows 11"
+                echo "9. Windows 10"
+                echo "10. Windows Server 2022"
+                echo "11. Windows Server 2019"
                 echo "------------------------"
                 read -p "请选择要重装的系统: " sys_choice
 
@@ -4059,10 +4062,33 @@ case $choice in
 
                   8)
                     dd_xitong_3
-                    bash InstallNET.sh -windows
+                    bash InstallNET.sh -windows 11 -lang "cn"
                     reboot
                     exit
                     ;;
+
+                  9)
+                    dd_xitong_3
+                    bash InstallNET.sh -windows 10 -lang "cn"
+                    reboot
+                    exit
+                    ;;
+
+                  10)
+                    dd_xitong_3
+                    bash InstallNET.sh -windows 2022 -lang "cn"
+                    reboot
+                    exit
+                    ;;
+
+                  11)
+                    dd_xitong_3
+                    bash InstallNET.sh -windows 2019 -lang "cn"
+                    reboot
+                    exit
+                    ;;
+
+
 
                   *)
                     echo "无效的选择，请重新输入。"
