@@ -3997,17 +3997,28 @@ case $choice in
             [Yy])
               while true; do
 
+                echo "------------------------"
                 echo "1. Debian 12"
                 echo "2. Debian 11"
                 echo "3. Debian 10"
-                echo "4. Ubuntu 22.04"
-                echo "5. Ubuntu 20.04"
-                echo "6. CentOS 7.9"
-                echo "7. Alpine 3.19"
-                echo "8. Windows 11"
-                echo "9. Windows 10"
-                echo "10. Windows Server 2022"
-                echo "11. Windows Server 2019"
+                echo "4. Debian 9"
+                echo "------------------------"
+                echo "11. Ubuntu 24.04"
+                echo "12. Ubuntu 22.04"
+                echo "13. Ubuntu 20.04"
+                echo "14. Ubuntu 18.04"
+                echo "------------------------"
+                echo "21. CentOS 9"
+                echo "22. CentOS 8"
+                echo "23. CentOS 7"
+                echo "------------------------"
+                echo "31. Alpine 3.19"
+                echo "------------------------"
+                echo "41. Windows 11"
+                echo "42. Windows 10"
+                echo "43. Windows Server 2022"
+                echo "44. Windows Server 2019"
+                echo "44. Windows Server 2016"
                 echo "------------------------"
                 read -p "请选择要重装的系统: " sys_choice
 
@@ -4032,62 +4043,107 @@ case $choice in
                     reboot
                     exit
                     ;;
-
                   4)
-                    dd_xitong_2
-                    bash InstallNET.sh -ubuntu
-                    reboot
-                    exit
-                    ;;
-
-                  5)
-                    xitong="-u 20.04"
+                    xitong="-d 9"
                     dd_xitong_1
                     reboot
                     exit
                     ;;
 
-                  6)
+                  11)
+                    dd_xitong_2
+                    bash InstallNET.sh -ubuntu 24.04
+                    reboot
+                    exit
+                    ;;
+                  12)
+                    dd_xitong_2
+                    bash InstallNET.sh -ubuntu 22.04
+                    reboot
+                    exit
+                    ;;
+
+                  13)
+                    xitong="-u 20.04"
+                    dd_xitong_1
+                    reboot
+                    exit
+                    ;;
+                  14)
+                    xitong="-u 18.04"
+                    dd_xitong_1
+                    reboot
+                    exit
+                    ;;
+
+
+                  21)
+                    dd_xitong_2
+                    bash InstallNET.sh -centos 9
+                    reboot
+                    exit
+                    ;;
+
+
+                  22)
+                    dd_xitong_2
+                    bash InstallNET.sh -centos 8
+                    reboot
+                    exit
+                    ;;
+
+                  23)
                     dd_xitong_2
                     bash InstallNET.sh -centos 7
                     reboot
                     exit
                     ;;
-                  7)
+
+
+
+                  31)
                     dd_xitong_2
                     bash InstallNET.sh -alpine
                     reboot
                     exit
                     ;;
 
-                  8)
+
+
+                  41)
                     dd_xitong_3
                     bash InstallNET.sh -windows 11 -lang "cn"
                     reboot
                     exit
                     ;;
 
-                  9)
+                  42)
                     dd_xitong_3
                     bash InstallNET.sh -windows 10 -lang "cn"
                     reboot
                     exit
                     ;;
 
-                  10)
+                  43)
                     dd_xitong_3
                     bash InstallNET.sh -windows 2022 -lang "cn"
                     reboot
                     exit
                     ;;
 
-                  11)
+                  44)
                     dd_xitong_3
                     bash InstallNET.sh -windows 2019 -lang "cn"
                     reboot
                     exit
                     ;;
 
+                  45)
+                    dd_xitong_3
+                    bash InstallNET.sh -windows 2016 -lang "cn"
+                    reboot
+                    exit
+                    ;;
 
 
                   *)
