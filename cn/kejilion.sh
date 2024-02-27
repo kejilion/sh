@@ -154,7 +154,7 @@ install_ldnmp() {
           "docker exec php74 apk update > /dev/null 2>&1"
 
           # php安装包管理
-          "curl -sL https://mirror.ghproxy.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions > /dev/null 2>&1"
+          "curl -sL https://hub.gitmirror.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions > /dev/null 2>&1"
           "docker exec php mkdir -p /usr/local/bin/ > /dev/null 2>&1"
           "docker exec php74 mkdir -p /usr/local/bin/ > /dev/null 2>&1"
           "docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/ > /dev/null 2>&1"
@@ -489,7 +489,7 @@ echo "3. 系统清理"
 echo "4. 常用工具 ▶"
 echo "5. BBR管理 ▶"
 echo "6. Docker管理 ▶ "
-echo "7. WARP管理 ▶ "
+echo "7. WARP管理 ▶ 解锁ChatGPT Netflix"
 echo "8. 测试脚本合集 ▶ "
 echo "9. 甲骨文云脚本合集 ▶ "
 echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
@@ -1353,7 +1353,7 @@ EOF
           3)
               clear
               install wget
-              wget -qO- https://mirror.ghproxy.com/yeahwu/check/raw/main/check.sh | bash
+              wget -qO- https://hub.gitmirror.com/yeahwu/check/raw/main/check.sh | bash
               ;;
           4)
               clear
@@ -1366,7 +1366,7 @@ EOF
               ;;
           6)
               clear
-              bash <(curl -Lso- https://raw.gitmirror.com/uxh/superspeed/master/superspeed.sh)
+              bash <(curl -Lso- https://git.io/superspeed_uxh)
               ;;
           7)
               clear
@@ -1634,7 +1634,7 @@ EOF
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://mirror.ghproxy.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20230520.zip
+      wget https://hub.gitmirror.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20230520.zip
       unzip -o Discuz_X3.5_SC_UTF8_20230520.zip
       rm Discuz_X3.5_SC_UTF8_20230520.zip
 
@@ -1668,7 +1668,7 @@ EOF
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://mirror.ghproxy.com/kalcaddle/kodbox/archive/refs/tags/1.42.04.zip
+      wget https://hub.gitmirror.com/kalcaddle/kodbox/archive/refs/tags/1.42.04.zip
       unzip -o 1.42.04.zip
       rm 1.42.04.zip
 
@@ -1702,8 +1702,8 @@ EOF
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://mirror.ghproxy.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && rm maccms10.zip
-      cd /home/web/html/$yuming/maccms10-master/template/ && wget https://mirror.ghproxy.com/kejilion/Website_source_code/raw/main/DYXS2.zip && unzip DYXS2.zip && rm /home/web/html/$yuming/maccms10-master/template/DYXS2.zip
+      wget https://hub.gitmirror.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && rm maccms10.zip
+      cd /home/web/html/$yuming/maccms10-master/template/ && wget https://hub.gitmirror.com/kejilion/Website_source_code/raw/main/DYXS2.zip && unzip DYXS2.zip && rm /home/web/html/$yuming/maccms10-master/template/DYXS2.zip
       cp /home/web/html/$yuming/maccms10-master/template/DYXS2/asset/admin/Dyxs2.php /home/web/html/$yuming/maccms10-master/application/admin/controller
       cp /home/web/html/$yuming/maccms10-master/template/DYXS2/asset/admin/dycms.html /home/web/html/$yuming/maccms10-master/application/admin/view/system
       mv /home/web/html/$yuming/maccms10-master/admin.php /home/web/html/$yuming/maccms10-master/vip.php && wget -O /home/web/html/$yuming/maccms10-master/application/extra/maccms.php https://raw.gitmirror.com/kejilion/Website_source_code/main/maccms.php
@@ -1742,7 +1742,7 @@ EOF
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://mirror.ghproxy.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
+      wget https://hub.gitmirror.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
       restart_ldnmp
 
@@ -1880,7 +1880,7 @@ EOF
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget -O latest.zip https://mirror.ghproxy.com/typecho/typecho/releases/latest/download/typecho.zip
+      wget -O latest.zip https://hub.gitmirror.com/typecho/typecho/releases/latest/download/typecho.zip
       unzip latest.zip
       rm latest.zip
 
@@ -3074,7 +3074,7 @@ EOF
                       --restart unless-stopped \
                       whyour/qinglong:latest"
             docker_describe="青龙面板是一个定时任务管理平台"
-            docker_url="官网介绍: https://mirror.ghproxy.com/whyour/qinglong"
+            docker_url="官网介绍: https://hub.gitmirror.com/whyour/qinglong"
             docker_use=""
             docker_passwd=""
             docker_app
@@ -3189,7 +3189,7 @@ EOF
                       --restart unless-stopped \
                       ddsderek/easyimage:latest"
             docker_describe="简单图床是一个简单的图床程序"
-            docker_url="官网介绍: https://mirror.ghproxy.com/icret/EasyImages2.0"
+            docker_url="官网介绍: https://hub.gitmirror.com/icret/EasyImages2.0"
             docker_use=""
             docker_passwd=""
             docker_app
@@ -3220,7 +3220,7 @@ EOF
             docker_port=89
             docker_rum="docker run -d --name looking-glass --restart always -p 89:80 wikihostinc/looking-glass-server"
             docker_describe="Speedtest测速面板是一个VPS网速测试工具，多项测试功能，还可以实时监控VPS进出站流量"
-            docker_url="官网介绍: https://mirror.ghproxy.com/wikihost-opensource/als"
+            docker_url="官网介绍: https://hub.gitmirror.com/wikihost-opensource/als"
             docker_use=""
             docker_passwd=""
             docker_app
@@ -3310,7 +3310,7 @@ EOF
                 echo "安装提示"
                 echo "雷池是长亭科技开发的WAF站点防火墙程序面板，可以反代站点进行自动化防御"
                 echo "80和443端口不能被占用，无法与宝塔，1panel，npm，ldnmp建站共存"
-                echo "官网介绍: https://mirror.ghproxy.com/chaitin/safeline"
+                echo "官网介绍: https://hub.gitmirror.com/chaitin/safeline"
                 echo ""
 
                 # 提示用户确认安装
@@ -3364,7 +3364,7 @@ EOF
             docker_port=8180
             docker_rum="docker run -d -p 8180:8080 -v /home/docker/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart always codercom/code-server"
             docker_describe="VScode是一款强大的在线代码编写工具"
-            docker_url="官网介绍: https://mirror.ghproxy.com/coder/code-server"
+            docker_url="官网介绍: https://hub.gitmirror.com/coder/code-server"
             docker_use="sleep 3"
             docker_passwd="docker exec vscode-web cat /home/coder/.config/code-server/config.yaml"
             docker_app
@@ -3380,7 +3380,7 @@ EOF
                             --restart=always \
                             louislam/uptime-kuma:latest"
             docker_describe="Uptime Kuma 易于使用的自托管监控工具"
-            docker_url="官网介绍: https://mirror.ghproxy.com/louislam/uptime-kuma"
+            docker_url="官网介绍: https://hub.gitmirror.com/louislam/uptime-kuma"
             docker_use=""
             docker_passwd=""
             docker_app
@@ -3392,7 +3392,7 @@ EOF
             docker_port=5230
             docker_rum="docker run -d --name memos -p 5230:5230 -v /home/docker/memos:/var/opt/memos --restart always ghcr.io/usememos/memos:latest"
             docker_describe="Memos是一款轻量级、自托管的备忘录中心"
-            docker_url="官网介绍: https://mirror.ghproxy.com/usememos/memos"
+            docker_url="官网介绍: https://hub.gitmirror.com/usememos/memos"
             docker_use=""
             docker_passwd=""
             docker_app
@@ -3409,7 +3409,7 @@ EOF
                             -v /home/docker/PandoraNext/sessions:/root/.cache/PandoraNext \
                             pengzhile/pandora-next"
             docker_describe="pandora-next一个好用的GPT镜像站服务，国内也可以访问"
-            docker_url="官网介绍: https://mirror.ghproxy.com/pandora-next/deploy"
+            docker_url="官网介绍: https://hub.gitmirror.com/pandora-next/deploy"
 
 
             if docker inspect "$docker_name" &>/dev/null; then
@@ -3547,7 +3547,7 @@ EOF
             docker_port=5003
             docker_rum="docker run -d --name dockge --restart unless-stopped -p 5003:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/opt/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge"
             docker_describe="dockge是一个可视化的docker-compose容器管理面板"
-            docker_url="官网介绍: https://mirror.ghproxy.com/louislam/dockge"
+            docker_url="官网介绍: https://hub.gitmirror.com/louislam/dockge"
             docker_use=""
             docker_passwd=""
             docker_app
@@ -3564,7 +3564,7 @@ EOF
                             -p 6681:80 \
                             ghcr.io/librespeed/speedtest:latest"
             docker_describe="librespeed是用Javascript实现的轻量级速度测试工具，即开即用"
-            docker_url="官网介绍: https://mirror.ghproxy.com/librespeed/speedtest"
+            docker_url="官网介绍: https://hub.gitmirror.com/librespeed/speedtest"
             docker_use=""
             docker_passwd=""
             docker_app
@@ -3627,7 +3627,7 @@ EOF
                              -e DOCKER_ENABLE_SECURITY=false \
                              frooodle/s-pdf:latest"
             docker_describe="这是一个强大的本地托管基于 Web 的 PDF 操作工具，使用 docker，允许您对 PDF 文件执行各种操作，例如拆分合并、转换、重新组织、添加图像、旋转、压缩等。"
-            docker_url="官网介绍: https://mirror.ghproxy.com/Stirling-Tools/Stirling-PDF"
+            docker_url="官网介绍: https://hub.gitmirror.com/Stirling-Tools/Stirling-PDF"
             docker_use=""
             docker_passwd=""
             docker_app
