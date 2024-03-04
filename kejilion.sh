@@ -4830,40 +4830,23 @@ EOF
 
           18)
           clear
-          # 获取当前主机名
           current_hostname=$(hostname)
-
           echo "当前主机名: $current_hostname"
-
-          # 询问用户是否要更改主机名
           read -p "是否要更改主机名？(y/n): " answer
-
           if [ "$answer" == "y" ]; then
               # 获取新的主机名
               read -p "请输入新的主机名: " new_hostname
-
-              # 更改主机名
               if [ -n "$new_hostname" ]; then
-                  # 根据发行版选择相应的命令
-                  if [ -f /etc/debian_version ]; then
-                      # Debian 或 Ubuntu
-                      hostnamectl set-hostname "$new_hostname"
-                      sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
-                  elif [ -f /etc/redhat-release ]; then
-                      # CentOS
-                      hostnamectl set-hostname "$new_hostname"
-                      sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
-                  elif [ -f /etc/alpine-release ]; then
-                      # alpine
+                  if [ -f /etc/alpine-release ]; then
+                      # Alpine
                       echo "$new_hostname" > /etc/hostname
                       hostname "$new_hostname"
                   else
-                      echo "未知的发行版，无法更改主机名。"
-                      exit 1
+                      # 其他系统，如 Debian, Ubuntu, CentOS 等
+                      hostnamectl set-hostname "$new_hostname"
+                      sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
+                      systemctl restart systemd-hostnamed
                   fi
-
-                  # 重启生效
-                  systemctl restart systemd-hostnamed
                   echo "主机名已更改为: $new_hostname"
               else
                   echo "无效的主机名。未更改主机名。"
@@ -4872,7 +4855,6 @@ EOF
           else
               echo "未更改主机名。"
           fi
-
               ;;
 
           19)
