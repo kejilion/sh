@@ -480,7 +480,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.3.2 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.3.3 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -489,7 +489,7 @@ echo "3. 系统清理"
 echo "4. 常用工具 ▶"
 echo "5. BBR管理 ▶"
 echo "6. Docker管理 ▶ "
-echo "7. WARP管理 ▶ 解锁ChatGPT Netflix"
+echo "7. WARP管理 ▶ "
 echo "8. 测试脚本合集 ▶ "
 echo "9. 甲骨文云脚本合集 ▶ "
 echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
@@ -3790,9 +3790,10 @@ EOF
       echo "17. 防火墙高级管理器"
       echo "18. 修改主机名"
       echo "19. 切换系统更新源"
-      echo -e "20. 定时任务管理 \033[33mNEW\033[0m"
+      echo "20. 定时任务管理"
+      echo "21. 本机host解析"
       echo "------------------------"
-      echo "21. 留言板"
+      echo "31. 留言板"
       echo "------------------------"
       echo "99. 重启服务器"
       echo "------------------------"
@@ -4855,7 +4856,7 @@ EOF
                   elif [ -f /etc/alpine-release ]; then
                       # alpine
                       echo "$new_hostname" > /etc/hostname
-                      /etc/init.d/hostname restart
+                      hostname "$new_hostname"
                   else
                       echo "未知的发行版，无法更改主机名。"
                       exit 1
@@ -5132,8 +5133,46 @@ EOF
 
               ;;
 
-
           21)
+
+              while true; do
+                  clear
+                  echo "本机host解析列表"
+                  echo "如果你在这里添加解析匹配，将不再使用动态解析了"
+                  cat /etc/hosts
+                  echo ""
+                  echo "操作"
+                  echo "------------------------"
+                  echo "1. 添加新的解析              2. 删除解析地址"
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " host_dns
+
+                  case $host_dns in
+                      1)
+                          read -p "请输入新的解析记录 格式: 110.25.5.33 kejilion.pro : " addhost
+                          echo "$addhost" >> /etc/hosts
+
+                          ;;
+                      2)
+                          read -p "请输入需要删除的解析内容关键字: " delhost
+                          sed -i "/$delhost/d" /etc/hosts
+                          ;;
+                      0)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单
+                          ;;
+                  esac
+              done
+              ;;
+
+
+
+          31)
             clear
             install sshpass
 
