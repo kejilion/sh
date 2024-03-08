@@ -1,6 +1,6 @@
 [mysqld]
-max_connections = 4096
-innodb_buffer_pool_size = 2048M
+max_connections = 8192
+innodb_buffer_pool_size = 4096M
 innodb_buffer_pool_instances = 4
 table_open_cache = 2048
 innodb_log_buffer_size = 16M
