@@ -8,3 +8,6 @@ thread_cache_size = 256
 
 interactive_timeout=60
 wait_timeout=60
+
+query_cache_size = 512M
+query_cache_type = 1
