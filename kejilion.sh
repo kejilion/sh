@@ -480,7 +480,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.3.3 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.3.4 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -3792,6 +3792,7 @@ EOF
       echo "19. 切换系统更新源"
       echo "20. 定时任务管理"
       echo "21. 本机host解析"
+      echo "22. fail2banSSH防御程序"
       echo "------------------------"
       echo "31. 留言板"
       echo "------------------------"
@@ -5152,6 +5153,88 @@ EOF
               done
               ;;
 
+          22)
+            if [ -x "$(command -v fail2ban-client)" ] && [ -d "/etc/fail2ban" ]; then
+                while true; do
+                    clear
+                    echo "SSH防御程序已启动"
+                    echo "------------------------"
+                    echo "1. 查看SSH拦截记录"
+                    echo "2. 日志实时监控"
+                    echo "------------------------"
+                    echo "9. 卸载防御程序"
+                    echo "------------------------"
+                    echo "0. 退出"
+                    echo "------------------------"
+                    read -p "请输入你的选择: " sub_choice
+                    case $sub_choice in
+
+                        1)
+                            echo "------------------------"
+                            fail2ban-client status sshd
+                            echo "------------------------"
+                            ;;
+                        2)
+                            tail -f /var/log/fail2ban.log
+                            break
+                            ;;
+                        9)
+                            remove fail2ban
+                            break
+                            ;;
+                        0)
+                            break
+                            ;;
+                        *)
+                            echo "无效的选择，请重新输入。"
+                            ;;
+                    esac
+                    break_end
+
+                done
+            else
+
+              clear
+              echo "fail2ban是一个SSH防止暴力破解工具"
+              echo "官网介绍: https://github.com/fail2ban/fail2ban"
+              echo "------------------------------------------------"
+              echo "工作原理：研判非法IP恶意高频访问SSH端口，自动进行IP封锁"
+              echo "------------------------------------------------"
+              read -p "确定继续吗？(Y/N): " choice
+
+              case "$choice" in
+                  [Yy])
+                  clear
+                  install epel-release fail2ban
+
+                  if grep -q 'Alpine' /etc/issue; then
+                      echo "当前系统为Alpine 将采用默认配置"
+                  else
+                      rm -rf /etc/fail2ban/jail.d/*
+                      cd /etc/fail2ban/jail.d/
+                      curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/sshd.local
+                  fi
+
+                  systemctl start fail2ban
+                  service fail2ban start
+                  systemctl enable fail2ban
+                  rc-update add fail2ban
+
+                  sleep 1
+                  fail2ban-client status
+                  echo "Fail2Ban防御程序已开启"
+
+                  ;;
+                [Nn])
+                  echo "已取消"
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
+            fi
+
+              ;;
 
 
           31)
