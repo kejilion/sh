@@ -3762,6 +3762,7 @@ case $choice in
                             ;;
                         0) 
                             echo -e "${red}正在退出安装...${re}"
+                            rm InstallNET.sh
                             sleep 2
                             main_menu
                             ;;
