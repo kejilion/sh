@@ -2064,13 +2064,16 @@ EOF
             2)
                 read -p "请输入旧域名: " oddyuming
                 read -p "请输入新域名: " yuming
+                install_ssltls
                 mv /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
                 sed -i "s/$oddyuming/$yuming/g" /home/web/conf.d/$yuming.conf
                 mv /home/web/html/$oddyuming /home/web/html/$yuming
 
                 rm /home/web/certs/${oddyuming}_key.pem
                 rm /home/web/certs/${oddyuming}_cert.pem
-                install_ssltls
+
+                docker restart nginx
+
 
                 ;;
 
