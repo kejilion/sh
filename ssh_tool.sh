@@ -5421,7 +5421,7 @@ EOF
       clear
       echo -e "${green}▶ 甲骨文云脚本合集${re}"
       echo "------------------------"
-      echo -e "${green}1. 安装闲置机器活跃${re}"
+      echo -e "${green}1. 安装闲置机器活跃[Docker版]${re}"
       echo -e "${green}2. 卸载闲置机器活跃${re}"
       echo "------------------------"
       echo -e "${purple}3. 一键DD重装系统${re}"
@@ -5430,6 +5430,7 @@ EOF
       echo -e "${red}5. 卸载R探长刷机${re}"
       echo "------------------------"
       echo -e "${green}6. 开启ROOT密码登录模式${re}"
+      echo -e "${green}7. 一键锻炼${re}"
       echo "------------------------"
       echo -e "${skyblue}0. 返回主菜单${re}"
       echo "------------------------"
@@ -5643,6 +5644,11 @@ EOF
               ;;
           esac
               ;;
+
+          7)
+              clear
+              curl -L https://gitlab.com/spiritysdx/Oracle-server-keep-alive-script/-/raw/main/oalive.sh -o oalive.sh && chmod +x oalive.sh && bash oalive.sh
+              ;;              
           0)
               main_menu
 
