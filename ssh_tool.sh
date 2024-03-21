@@ -5421,7 +5421,7 @@ EOF
       clear
       echo -e "${green}▶ 甲骨文云脚本合集${re}"
       echo "------------------------"
-      echo -e "${green}1. 安装闲置机器活跃[Docker版]${re}"
+      echo -e "${green}1. 安装闲置机器活跃${yellow}[Docker版]${re}"
       echo -e "${green}2. 卸载闲置机器活跃${re}"
       echo "------------------------"
       echo -e "${purple}3. 一键DD重装系统${re}"
