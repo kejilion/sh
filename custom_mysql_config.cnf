@@ -1,34 +1,34 @@
 [mysqld]
-max_connections = 8192
-innodb_buffer_pool_size = 4096M
-innodb_buffer_pool_instances = 4
-table_open_cache = 2048
+max_connections = 4096
+innodb_buffer_pool_size = 2048M
+innodb_buffer_pool_instances = 2
+table_open_cache = 1024
 
-open_files_limit = 4096
+open_files_limit = 2048
 
-innodb_log_buffer_size = 16M
-innodb_log_file_size = 512M
+innodb_log_buffer_size = 8M
+innodb_log_file_size = 256M
 
-thread_cache_size = 256
+thread_cache_size = 128
 
 innodb_lock_wait_timeout=30
 
 interactive_timeout=60
 wait_timeout=60
 
-sort_buffer_size = 8M
-read_buffer_size = 4M
+sort_buffer_size = 4M
+read_buffer_size = 2M
 
 innodb_file_per_table = 1
 innodb_flush_log_at_trx_commit = 1
 
-innodb_io_capacity = 2000
-innodb_io_capacity_max = 4000
+innodb_io_capacity = 1000
+innodb_io_capacity_max = 2000
 
-tmp_table_size = 32M
-max_heap_table_size = 32M
+tmp_table_size = 16M
+max_heap_table_size = 16M
 
-max_allowed_packet = 64M
+max_allowed_packet = 32M
 join_buffer_size = 2M
 
 
