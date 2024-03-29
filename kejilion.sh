@@ -138,7 +138,50 @@ iptables_open() {
 
 }
 
+
+
+add_swap() {
+    # 获取当前系统中所有的 swap 分区
+    swap_partitions=$(grep -E '^/dev/' /proc/swaps | awk '{print $1}')
+
+    # 遍历并删除所有的 swap 分区
+    for partition in $swap_partitions; do
+      swapoff "$partition"
+      wipefs -a "$partition"  # 清除文件系统标识符
+      mkswap -f "$partition"
+    done
+
+    # 确保 /swapfile 不再被使用
+    swapoff /swapfile
+
+    # 删除旧的 /swapfile
+    rm -f /swapfile
+
+    # 创建新的 swap 分区
+    dd if=/dev/zero of=/swapfile bs=1M count=$new_swap
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+
+    if [ -f /etc/alpine-release ]; then
+        echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+        echo "nohup swapon /swapfile" >> /etc/local.d/swap.start
+        chmod +x /etc/local.d/swap.start
+        rc-update add local
+    else
+        echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+    fi
+
+    echo "虚拟内存大小已调整为${new_swap}MB"
+}
+
+
+
 install_ldnmp() {
+
+      new_swap=1024
+      add_swap
+
       cd /home/web && docker-compose up -d
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
@@ -470,9 +513,6 @@ tmux_run() {
 
 
 
-
-
-
 while true; do
 clear
 
@@ -480,7 +520,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.3.5 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.3.6 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2172,6 +2212,7 @@ EOF
       install_dependency
       install_docker
       install_certbot
+
       install_ldnmp
 
       ;;
@@ -4143,10 +4184,6 @@ EOF
 
           12)
 
-            if [ "$EUID" -ne 0 ]; then
-              echo "请以 root 权限运行此脚本。"
-              exit 1
-            fi
 
             clear
             # 获取当前交换空间信息
@@ -4169,40 +4206,8 @@ EOF
               [Yy])
                 # 输入新的虚拟内存大小
                 read -p "请输入虚拟内存大小MB: " new_swap
+                add_swap
 
-                # 获取当前系统中所有的 swap 分区
-                swap_partitions=$(grep -E '^/dev/' /proc/swaps | awk '{print $1}')
-
-                # 遍历并删除所有的 swap 分区
-                for partition in $swap_partitions; do
-                  swapoff "$partition"
-                  wipefs -a "$partition"  # 清除文件系统标识符
-                  mkswap -f "$partition"
-                  echo "已删除并重新创建 swap 分区: $partition"
-                done
-
-                # 确保 /swapfile 不再被使用
-                swapoff /swapfile
-
-                # 删除旧的 /swapfile
-                rm -f /swapfile
-
-                # 创建新的 swap 分区
-                dd if=/dev/zero of=/swapfile bs=1M count=$new_swap
-                chmod 600 /swapfile
-                mkswap /swapfile
-                swapon /swapfile
-
-                if [ -f /etc/alpine-release ]; then
-                    echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
-                    echo "nohup swapon /swapfile" >> /etc/local.d/swap.start
-                    chmod +x /etc/local.d/swap.start
-                    rc-update add local
-                else
-                    echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
-                fi
-
-                echo "虚拟内存大小已调整为${new_swap}MB"
                 ;;
               [Nn])
                 echo "已取消"
