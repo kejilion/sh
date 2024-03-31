@@ -9,8 +9,8 @@ wait_timeout = 60
 # InnoDB设置
 innodb_buffer_pool_size = 2048M
 innodb_buffer_pool_instances = 2
-innodb_log_buffer_size = 8M
-innodb_log_file_size = 256M
+innodb_log_buffer_size = 32M
+innodb_log_file_size = 64M
 innodb_lock_wait_timeout = 30
 innodb_file_per_table = 1
 innodb_flush_log_at_trx_commit = 1
@@ -18,10 +18,10 @@ innodb_io_capacity = 1000
 innodb_io_capacity_max = 2000
 
 # 缓存和限制
-table_open_cache = 1024
-open_files_limit = 2048
-tmp_table_size = 16M
-max_heap_table_size = 16M
+table_open_cache = 4000
+open_files_limit = 8000
+tmp_table_size = 32M
+max_heap_table_size = 32M
 max_allowed_packet = 32M
 
 # 缓冲区大小
