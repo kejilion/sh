@@ -2,7 +2,7 @@
 
 # 连接和线程管理
 max_connections = 4096
-thread_cache_size = 128
+thread_cache_size = 512
 interactive_timeout = 60
 wait_timeout = 60
 
