@@ -28,3 +28,19 @@ max_allowed_packet = 32M
 sort_buffer_size = 4M
 read_buffer_size = 2M
 join_buffer_size = 2M
+
+# --------------------------
+
+# InnoDB性能优化
+innodb_thread_concurrency = 0
+innodb_log_compressed_pages = OFF
+innodb_checksum_algorithm = crc32
+innodb_change_buffering = all
+innodb_redo_log_capacity = 256M
+
+# 服务器行为
+performance_schema = 0
+sql-mode = "NO_ENGINE_SUBSTITUTION"
+disable_log_bin
+
+
