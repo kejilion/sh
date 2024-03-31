@@ -36,7 +36,7 @@ innodb_thread_concurrency = 0
 innodb_log_compressed_pages = OFF
 innodb_checksum_algorithm = crc32
 innodb_change_buffering = all
-innodb_redo_log_capacity = 256M
+innodb_redo_log_capacity = 128M
 
 # 服务器行为
 performance_schema = 0
