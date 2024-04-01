@@ -5,7 +5,7 @@ filter = nginx-cc
 chain = DOCKER-USER
 #action = iptables-multiport[name=nginx-cc, port="http,https", protocol=tcp]
 port = http,https
-logpath = /var/logs/nginx/access.log
+logpath = /home/web/log/nginx/access.log
 maxretry = 3
 bantime = 60
 findtime = 3600
