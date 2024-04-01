@@ -7,7 +7,7 @@ port = http,https
 action = cloudflare
 #        iptables-allports
 logpath = /home/web/log/nginx/access.log
-maxretry = 4
+maxretry = 3
 bantime = 3600
 findtime = 3600
 ignoreip = 192.168.0.1/24
