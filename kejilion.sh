@@ -520,7 +520,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.3.6 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.3.7 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2301,29 +2301,22 @@ EOF
           done
       else
           clear
-          # 安装Fail2ban
-          if [ -f /etc/debian_version ]; then
-              # Debian/Ubuntu系统
-              install fail2ban
-          elif [ -f /etc/redhat-release ]; then
-              # CentOS系统
-              install epel-release fail2ban
+          install epel-release fail2ban
+
+          if grep -q 'Alpine' /etc/issue; then
+              echo "当前系统为Alpine 将采用默认配置"
           else
-              echo "不支持的操作系统类型"
-              exit 1
+              rm -rf /etc/fail2ban/jail.d/*
+              cd /etc/fail2ban/jail.d/
+              curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/sshd.local
           fi
 
-          # 启动Fail2ban
           systemctl start fail2ban
-
-          # 设置Fail2ban开机自启
+          service fail2ban start
           systemctl enable fail2ban
+          rc-update add fail2ban
 
-          # 配置Fail2ban
-          rm -rf /etc/fail2ban/jail.d/*
-          cd /etc/fail2ban/jail.d/
-          curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/sshd.local
-          systemctl restart fail2ban
+
           docker rm -f nginx
 
           wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
@@ -2344,8 +2337,15 @@ EOF
           rm -rf /home/web/log/nginx/*
           docker restart nginx
 
+          cd /etc/fail2ban/filter.d/
+          curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
+          cd /etc/fail2ban/jail.d/
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/nginx.local
+          cd ~
           systemctl restart fail2ban
+          service fail2ban restart
+
+
           sleep 1
           fail2ban-client status
           echo "防御程序已开启"
@@ -2369,6 +2369,12 @@ EOF
                   sed -i 's/worker_connections.*/worker_connections 1024;/' /home/web/nginx.conf
 
                   # php调优
+                  wget -O /home/optimized_php.ini https://raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
+                  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
+                  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
+                  rm -rf /home/optimized_php.ini
+
+                  # php调优
                   wget -O /home/www.conf https://raw.githubusercontent.com/kejilion/sh/main/www-1.conf
                   docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
                   docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
@@ -2390,7 +2396,7 @@ EOF
                   2)
 
                   # nginx调优
-                  sed -i 's/worker_connections.*/worker_connections 8129;/' /home/web/nginx.conf
+                  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
 
                   # php调优
                   wget -O /home/www.conf https://raw.githubusercontent.com/kejilion/sh/main/www.conf
@@ -3700,7 +3706,7 @@ EOF
       echo "13. 用户管理"
       echo "14. 用户/密码生成器"
       echo "15. 系统时区调整"
-      echo "16. 开启BBR3加速"
+      echo "16. 设置BBR3加速"
       echo "17. 防火墙高级管理器"
       echo "18. 修改主机名"
       echo "19. 切换系统更新源"
