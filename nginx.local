@@ -10,6 +10,7 @@ maxretry = 5
 bantime = 1800
 findtime = 3600
 ignoreip = 192.168.0.1/24
+failregex = ^.*"(GET|POST|HEAD).*HTTP.*" (404|503) .*".*" "(.*)"$
 
 
 
