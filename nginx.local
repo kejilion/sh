@@ -19,7 +19,7 @@ enabled = true
 chain = DOCKER-USER
 mode = fallback
 port = http,https
-logpath = /home/web/log/nginx/error.log
+logpath = /home/web/log/nginx/access.log
 
 
 
@@ -28,7 +28,7 @@ logpath = /home/web/log/nginx/error.log
 enabled = true
 chain = DOCKER-USER
 port    = http,https
-logpath = /home/web/log/nginx/error.log
+logpath = /home/web/log/nginx/access.log
 
 
 
@@ -37,7 +37,7 @@ logpath = /home/web/log/nginx/error.log
 enabled = true
 chain = DOCKER-USER
 port     = http,https
-logpath = /home/web/log/nginx/error.log
+logpath = /home/web/log/nginx/access.log
 
 
 
@@ -46,7 +46,7 @@ logpath = /home/web/log/nginx/error.log
 enabled = true
 chain = DOCKER-USER
 port    = http,https
-logpath = /home/web/log/nginx/error.log
+logpath = /home/web/log/nginx/access.log
 
 
 
