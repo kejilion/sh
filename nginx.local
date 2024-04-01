@@ -3,13 +3,14 @@
 enabled = true
 filter = fail2ban-nginx-cc
 chain = DOCKER-USER
-#action = iptables-multiport[name=nginx-cc, port="http,https", protocol=tcp]
+action = cloudflare
 port = http,https
 logpath = /home/web/log/nginx/access.log
 maxretry = 3
 bantime = 60
 findtime = 3600
 ignoreip = 192.168.0.1/24
+
 
 
 
