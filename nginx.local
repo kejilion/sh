@@ -6,7 +6,7 @@ chain = DOCKER-USER
 port = http,https
 logpath = /home/web/log/nginx/access.log
 maxretry = 3
-bantime = 60
+bantime = 600
 findtime = 3600
 ignoreip = 192.168.0.1/24
 
