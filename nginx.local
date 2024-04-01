@@ -1,6 +1,22 @@
+[nginx-cc]
+
+enabled = true
+filter = nginx-cc
+chain = DOCKER-USER
+#action = iptables-multiport[name=nginx-cc, port="http,https", protocol=tcp]
+port = http,https
+logpath = /var/logs/nginx/access.log
+maxretry = 3
+bantime = 60
+findtime = 3600
+ignoreip = 192.168.0.1/24
+
+
+
 [nginx-http-auth]
 
 enabled = true
+chain = DOCKER-USER
 mode = fallback
 port = http,https
 logpath = /home/web/log/nginx/error.log
@@ -10,6 +26,7 @@ logpath = /home/web/log/nginx/error.log
 [nginx-limit-req]
 
 enabled = true
+chain = DOCKER-USER
 port    = http,https
 logpath = /home/web/log/nginx/error.log
 
@@ -18,6 +35,7 @@ logpath = /home/web/log/nginx/error.log
 [nginx-botsearch]
 
 enabled = true
+chain = DOCKER-USER
 port     = http,https
 logpath = /home/web/log/nginx/error.log
 
@@ -26,6 +44,7 @@ logpath = /home/web/log/nginx/error.log
 [nginx-bad-request]
 
 enabled = true
+chain = DOCKER-USER
 port    = http,https
 logpath = /home/web/log/nginx/error.log
 
@@ -34,5 +53,6 @@ logpath = /home/web/log/nginx/error.log
 [php-url-fopen]
 
 enabled = true
+chain = DOCKER-USER
 port    = http,https
 logpath = /home/web/log/nginx/access.log
