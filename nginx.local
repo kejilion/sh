@@ -1,7 +1,7 @@
-[nginx-cc]
+[fail2ban-nginx-cc]
 
 enabled = true
-filter = nginx-cc
+filter = fail2ban-nginx-cc
 chain = DOCKER-USER
 #action = iptables-multiport[name=nginx-cc, port="http,https", protocol=tcp]
 port = http,https
