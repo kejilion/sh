@@ -5,7 +5,7 @@ filter = fail2ban-nginx-cc
 chain = DOCKER-USER
 port = http,https
 action = cloudflare
-         iptables-allports
+#        iptables-allports
 logpath = /home/web/log/nginx/access.log
 maxretry = 3
 bantime = 600
@@ -29,6 +29,8 @@ logpath = /home/web/log/nginx/access.log
 enabled = true
 chain = DOCKER-USER
 port    = http,https
+action = cloudflare
+#        iptables-allports
 logpath = /home/web/log/nginx/access.log
 
 
@@ -38,6 +40,8 @@ logpath = /home/web/log/nginx/access.log
 enabled = true
 chain = DOCKER-USER
 port     = http,https
+action = cloudflare
+#        iptables-allports
 logpath = /home/web/log/nginx/access.log
 
 
@@ -47,6 +51,8 @@ logpath = /home/web/log/nginx/access.log
 enabled = true
 chain = DOCKER-USER
 port    = http,https
+action = cloudflare
+#        iptables-allports
 logpath = /home/web/log/nginx/access.log
 
 
@@ -56,4 +62,6 @@ logpath = /home/web/log/nginx/access.log
 enabled = true
 chain = DOCKER-USER
 port    = http,https
+action = cloudflare
+#        iptables-allports
 logpath = /home/web/log/nginx/access.log
