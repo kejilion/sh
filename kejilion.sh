@@ -2314,6 +2314,11 @@ EOF
                       read -p "输入CF的账号: " cfuser
                       read -p "输入远程服务器密码: " cftoken
 
+                      wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default11.conf
+
+                      cd /etc/fail2ban/jail.d/
+                      curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/nginx.local
+
                       cd /etc/fail2ban/action.d/
                       curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/cloudflare.conf
 
@@ -2373,8 +2378,13 @@ EOF
 
           cd /etc/fail2ban/filter.d/
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
+
           cd /etc/fail2ban/jail.d/
           curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/nginx.local
+          sed -i "/cloudflare/d" /etc/fail2ban/jail.d/nginx.local
+
+          cd /etc/fail2ban/action.d/
+          curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/cloudflare.conf
 
           cd ~
           systemctl restart fail2ban
