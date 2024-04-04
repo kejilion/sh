@@ -2324,6 +2324,11 @@ EOF
 
                       sed -i "s/kejilion@outlook.com/$cfuser/g" /etc/fail2ban/action.d/cloudflare.conf
                       sed -i "s/APIKEY00000/$cftoken/g" /etc/fail2ban/action.d/cloudflare.conf
+
+                      systemctl restart fail2ban
+                      service fail2ban restart
+                      docker restart nginx
+
                       echo "已配置cloudflare模式，可在cf后台，站点-安全性-事件中查看拦截记录"
                       ;;
 
@@ -2364,6 +2369,7 @@ EOF
           docker exec -it nginx chmod -R 777 /var/www/html
 
           # 获取宿主机当前时区
+          timedatectl set-timezone Asia/Shanghai
           HOST_TIMEZONE=$(timedatectl show --property=Timezone --value)
 
           # 调整多个容器的时区
