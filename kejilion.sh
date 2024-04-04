@@ -2312,7 +2312,7 @@ EOF
                       echo "到cf后台右上角我的个人资料，选择左侧API令牌，获取Global API Key"
                       echo "https://dash.cloudflare.com/login"
                       read -p "输入CF的账号: " cfuser
-                      read -p "输入远程服务器密码: " cftoken
+                      read -p "输入CF的Global API Key: " cftoken
 
                       wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default11.conf
 
