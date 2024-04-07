@@ -44,7 +44,7 @@ for cert_file in $certs_directory*_cert.pem; do
         certbot certonly --standalone -d $domain --email your@email.com --agree-tos --no-eff-email --force-renewal
 
         # 复制续签后的证书和私钥
-        cp /etc/letsencrypt/live/$domain/cert.pem ${certs_directory}${domain}_cert.pem
+        cp /etc/letsencrypt/live/$domain/fullchain.pem ${certs_directory}${domain}_cert.pem
         cp /etc/letsencrypt/live/$domain/privkey.pem ${certs_directory}${domain}_key.pem
 
         # 启动 Nginx
