@@ -521,7 +521,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.3.9 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.4 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2541,7 +2541,7 @@ EOF
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
-      echo "23. Memos网页备忘录"
+      echo "23. Memos网页备忘录                     24. Webtop远程桌面网页版"
       echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
       echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
       echo "29. searxng聚合搜索站                   30. PhotoPrism私有相册系统"
@@ -3480,6 +3480,36 @@ EOF
             docker_rum="docker run -d --name memos -p 5230:5230 -v /home/docker/memos:/var/opt/memos --restart always ghcr.io/usememos/memos:latest"
             docker_describe="Memos是一款轻量级、自托管的备忘录中心"
             docker_url="官网介绍: https://github.com/usememos/memos"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+
+          24)
+            docker_name="webtop"
+            docker_img="lscr.io/linuxserver/webtop:latest"
+            docker_port=3083
+            docker_rum="docker run -d \
+                          --name=webtop \
+                          --security-opt seccomp=unconfined \
+                          -e PUID=1000 \
+                          -e PGID=1000 \
+                          -e TZ=Etc/UTC \
+                          -e SUBFOLDER=/ \
+                          -e TITLE=Webtop \
+                          -e LC_ALL=zh_CN.UTF-8 \
+                          -e DOCKER_MODS=linuxserver/mods:universal-package-install \
+                          -e INSTALL_PACKAGES=font-noto-cjk \
+                          -p 3083:3000 \
+                          -v /home/docker/webtop/data:/config \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          --device /dev/dri:/dev/dri \
+                          --shm-size="1gb" \
+                          --restart unless-stopped \
+                          lscr.io/linuxserver/webtop:latest"
+
+            docker_describe="webtop基于 Alpine、Ubuntu、Fedora 和 Arch 的容器，包含官方支持的完整桌面环境，可通过任何现代 Web 浏览器访问"
+            docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
             docker_use=""
             docker_passwd=""
             docker_app
