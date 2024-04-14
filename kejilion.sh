@@ -3656,8 +3656,8 @@ EOF
                             hslr/sun-panel"
             docker_describe="Sun-Panel服务器、NAS导航面板、Homepage、浏览器首页"
             docker_url="官网介绍: https://doc.sun-panel.top/zh_cn/"
-            docker_use="账号: admin@sun.cc"
-            docker_passwd="密码: 12345678"
+            docker_use="echo \"账号: admin@sun.cc  密码: 12345678\""
+            docker_passwd=""
             docker_app
               ;;
 
