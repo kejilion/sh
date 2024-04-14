@@ -1376,8 +1376,11 @@ EOF
       echo "7. yabs性能带宽测试"
       echo "8. bench性能测试"
       echo "------------------------"
-      echo -e "9. spiritysdx融合怪测评 \033[33mNEW\033[0m"
+      echo "9. spiritysdx融合怪测评"
       echo "------------------------"
+      echo "11. nxtrace快速回程测试脚本"
+      echo "12. nxtrace指定IP回程测试脚本"   
+      echo "------------------------"      
       echo "0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
@@ -1421,6 +1424,18 @@ EOF
               clear
               curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
               ;;
+          11)
+              clear
+              curl nxtrace.org/nt |bash
+              nexttrace --fast-trace --tcp
+              ;;
+          12)
+              clear
+              curl https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh -sSf | sh
+              read -p "输入一个指定IP: " testip
+              curl nxtrace.org/nt |bash
+              nexttrace $testip
+              ;;                            
           0)
               kejilion
 
