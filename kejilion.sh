@@ -1380,7 +1380,9 @@ EOF
       echo "------------------------"
       echo "11. nxtrace快速回程测试脚本"
       echo "12. nxtrace指定IP回程测试脚本"   
-      echo "------------------------"      
+      echo "------------------------"    
+      echo "13. ludashi2020的三网线路测试"   
+      echo "------------------------"         
       echo "0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
@@ -1431,11 +1433,37 @@ EOF
               ;;
           12)
               clear
-              curl https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh -sSf | sh
+              
+              echo "可参考的IP列表"
+              echo "------------------------"
+              echo "北京电信: 219.141.136.12"
+              echo "北京联通: 202.106.50.1"
+              echo "北京移动: 221.179.155.161"
+              echo "上海电信: 202.96.209.133"
+              echo "上海联通: 210.22.97.1"
+              echo "上海移动: 211.136.112.200"
+              echo "广州电信: 58.60.188.222"
+              echo "广州联通: 210.21.196.6"
+              echo "广州移动: 120.196.165.24"
+              echo "成都电信: 61.139.2.69"
+              echo "成都联通: 119.6.6.6"
+              echo "成都移动: 211.137.96.205"
+              echo "湖南电信: 36.111.200.100"
+              echo "湖南联通: 42.48.16.100"
+              echo "湖南移动: 39.134.254.6"
+              echo "------------------------"
+              
               read -p "输入一个指定IP: " testip
               curl nxtrace.org/nt |bash
               nexttrace $testip
-              ;;                            
+              ;;     
+
+          13)
+              clear
+              curl https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh -sSf | sh
+              ;;     
+                             
+
           0)
               kejilion
 
