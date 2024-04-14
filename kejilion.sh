@@ -1366,23 +1366,29 @@ EOF
     while true; do
       clear
       echo "▶ 测试脚本合集"
-      echo "------------------------"
+      echo ""      
+      echo "----解锁状态检测-----------"
       echo "1. ChatGPT解锁状态检测"
       echo "2. Region流媒体解锁测试"
       echo "3. yeahwu流媒体解锁检测"
-      echo "4. besttrace三网回程延迟路由测试"
-      echo "5. mtr_trace三网回程线路测试"
-      echo "6. Superspeed三网测速"
-      echo "7. yabs性能带宽测试"
-      echo "8. bench性能测试"
-      echo "------------------------"
-      echo "9. spiritysdx融合怪测评"
-      echo "------------------------"
-      echo "11. nxtrace快速回程测试脚本"
-      echo "12. nxtrace指定IP回程测试脚本"   
-      echo "------------------------"    
-      echo "13. ludashi2020的三网线路测试"   
-      echo "------------------------"         
+      echo ""
+      echo "----网络线路测速-----------"      
+      echo "11. besttrace三网回程延迟路由测试"
+      echo "12. mtr_trace三网回程线路测试"
+      echo "13. Superspeed三网测速"
+      echo "14. nxtrace快速回程测试脚本"
+      echo "15. nxtrace指定IP回程测试脚本"    
+      echo "16. ludashi2020三网线路测试"  
+      echo ""                  
+      echo "----硬件性能测试----------"   
+      echo "21. yabs性能测试"      
+      echo "22. icu/gb5 CPU性能测试脚本"  
+      echo ""           
+      echo "----综合性测试-----------"           
+      echo "31. bench性能测试"
+      echo "32. spiritysdx融合怪测评" 
+      echo ""                   
+      echo "------------------------"               
       echo "0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
@@ -1401,37 +1407,25 @@ EOF
               install wget
               wget -qO- https://github.com/yeahwu/check/raw/main/check.sh | bash
               ;;
-          4)
+          11)
               clear
               install wget
               wget -qO- git.io/besttrace | bash
               ;;
-          5)
+          12)
               clear
               curl https://raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh | bash
               ;;
-          6)
+          13)
               clear
               bash <(curl -Lso- https://git.io/superspeed_uxh)
               ;;
-          7)
-              clear
-              curl -sL yabs.sh | bash -s -- -i -5
-              ;;
-          8)
-              clear
-              curl -Lso- bench.sh | bash
-              ;;
-          9)
-              clear
-              curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
-              ;;
-          11)
+          14)
               clear
               curl nxtrace.org/nt |bash
               nexttrace --fast-trace --tcp
               ;;
-          12)
+          15)
               clear
               
               echo "可参考的IP列表"
@@ -1458,12 +1452,30 @@ EOF
               nexttrace $testip
               ;;     
 
-          13)
+          16)
               clear
               curl https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh -sSf | sh
               ;;     
-                             
 
+          21)
+              clear
+              curl -sL yabs.sh | bash -s -- -i -5
+              ;;
+          22)
+              clear
+              bash <(curl -sL bash.icu/gb5)
+              ;;     
+
+          31)
+              clear
+              curl -Lso- bench.sh | bash
+              ;;
+          32)
+              clear
+              curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
+              ;;
+              
+                             
           0)
               kejilion
 
