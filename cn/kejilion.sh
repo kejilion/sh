@@ -521,7 +521,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.3.9 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.4.1 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -1366,17 +1366,28 @@ EOF
     while true; do
       clear
       echo "▶ 测试脚本合集"
-      echo "------------------------"
+      echo ""
+      echo "----解锁状态检测-----------"
       echo "1. ChatGPT解锁状态检测"
       echo "2. Region流媒体解锁测试"
       echo "3. yeahwu流媒体解锁检测"
-      echo "4. besttrace三网回程延迟路由测试"
-      echo "5. mtr_trace三网回程线路测试"
-      echo "6. Superspeed三网测速"
-      echo "7. yabs性能带宽测试"
-      echo "8. bench性能测试"
-      echo "------------------------"
-      echo -e "9. spiritysdx融合怪测评 \033[33mNEW\033[0m"
+      echo ""
+      echo "----网络线路测速-----------"
+      echo "11. besttrace三网回程延迟路由测试"
+      echo "12. mtr_trace三网回程线路测试"
+      echo "13. Superspeed三网测速"
+      echo "14. nxtrace快速回程测试脚本"
+      echo "15. nxtrace指定IP回程测试脚本"
+      echo "16. ludashi2020三网线路测试"
+      echo ""
+      echo "----硬件性能测试----------"
+      echo "21. yabs性能测试"
+      echo "22. icu/gb5 CPU性能测试脚本"
+      echo ""
+      echo "----综合性测试-----------"
+      echo "31. bench性能测试"
+      echo "32. spiritysdx融合怪测评"
+      echo ""
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -1396,31 +1407,75 @@ EOF
               install wget
               wget -qO- https://hub.gitmirror.com/https://github.com/yeahwu/check/raw/main/check.sh | bash
               ;;
-          4)
+          11)
               clear
               install wget
               wget -qO- git.io/besttrace | bash
               ;;
-          5)
+          12)
               clear
               curl https://raw.gitmirror.com/zhucaidan/mtr_trace/main/mtr_trace.sh | bash
               ;;
-          6)
+          13)
               clear
               bash <(curl -Lso- https://git.io/superspeed_uxh)
               ;;
-          7)
+          14)
+              clear
+              curl nxtrace.org/nt |bash
+              nexttrace --fast-trace --tcp
+              ;;
+          15)
+              clear
+
+              echo "可参考的IP列表"
+              echo "------------------------"
+              echo "北京电信: 219.141.136.12"
+              echo "北京联通: 202.106.50.1"
+              echo "北京移动: 221.179.155.161"
+              echo "上海电信: 202.96.209.133"
+              echo "上海联通: 210.22.97.1"
+              echo "上海移动: 211.136.112.200"
+              echo "广州电信: 58.60.188.222"
+              echo "广州联通: 210.21.196.6"
+              echo "广州移动: 120.196.165.24"
+              echo "成都电信: 61.139.2.69"
+              echo "成都联通: 119.6.6.6"
+              echo "成都移动: 211.137.96.205"
+              echo "湖南电信: 36.111.200.100"
+              echo "湖南联通: 42.48.16.100"
+              echo "湖南移动: 39.134.254.6"
+              echo "------------------------"
+
+              read -p "输入一个指定IP: " testip
+              curl nxtrace.org/nt |bash
+              nexttrace $testip
+              ;;
+
+          16)
+              clear
+              curl https://raw.gitmirror.com/ludashi2020/backtrace/main/install.sh -sSf | sh
+              ;;
+
+          21)
               clear
               curl -sL yabs.sh | bash -s -- -i -5
               ;;
-          8)
+          22)
+              clear
+              bash <(curl -sL bash.icu/gb5)
+              ;;
+
+          31)
               clear
               curl -Lso- bench.sh | bash
               ;;
-          9)
+          32)
               clear
               curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
               ;;
+
+
           0)
               kejilion
 
@@ -1881,7 +1936,7 @@ EOF
       add_yuming
       install_ssltls
 
-      docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2.11
+      docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
       duankou=8010
       reverse_proxy
 
@@ -2541,11 +2596,12 @@ EOF
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
-      echo "23. Memos网页备忘录"
+      echo "23. Memos网页备忘录                     24. Webtop远程桌面网页版"
       echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
       echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
       echo "29. searxng聚合搜索站                   30. PhotoPrism私有相册系统"
       echo "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件"
+      echo "33. Sun-Panel导航面板"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
@@ -3485,6 +3541,36 @@ EOF
             docker_app
               ;;
 
+          24)
+            docker_name="webtop"
+            docker_img="lscr.io/linuxserver/webtop:latest"
+            docker_port=3083
+            docker_rum="docker run -d \
+                          --name=webtop \
+                          --security-opt seccomp=unconfined \
+                          -e PUID=1000 \
+                          -e PGID=1000 \
+                          -e TZ=Etc/UTC \
+                          -e SUBFOLDER=/ \
+                          -e TITLE=Webtop \
+                          -e LC_ALL=zh_CN.UTF-8 \
+                          -e DOCKER_MODS=linuxserver/mods:universal-package-install \
+                          -e INSTALL_PACKAGES=font-noto-cjk \
+                          -p 3083:3000 \
+                          -v /home/docker/webtop/data:/config \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          --device /dev/dri:/dev/dri \
+                          --shm-size="1gb" \
+                          --restart unless-stopped \
+                          lscr.io/linuxserver/webtop:latest"
+
+            docker_describe="webtop基于 Alpine、Ubuntu、Fedora 和 Arch 的容器，包含官方支持的完整桌面环境，可通过任何现代 Web 浏览器访问"
+            docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+
           25)
             docker_name="nextcloud"
             docker_img="nextcloud:latest"
@@ -3613,6 +3699,22 @@ EOF
             docker_app
               ;;
 
+          33)
+            docker_name="sun-panel"
+            docker_img="hslr/sun-panel"
+            docker_port=3009
+            docker_rum="docker run -d --restart=always -p 3009:3002 \
+                            -v /home/docker/sun-panel/conf:/app/conf \
+                            -v /home/docker/sun-panel/uploads:/app/uploads \
+                            -v /home/docker/sun-panel/database:/app/database \
+                            --name sun-panel \
+                            hslr/sun-panel"
+            docker_describe="Sun-Panel服务器、NAS导航面板、Homepage、浏览器首页"
+            docker_url="官网介绍: https://doc.sun-panel.top/zh_cn/"
+            docker_use="echo \"账号: admin@sun.cc  密码: 12345678\""
+            docker_passwd=""
+            docker_app
+              ;;
 
           51)
           clear
