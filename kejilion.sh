@@ -1366,29 +1366,29 @@ EOF
     while true; do
       clear
       echo "▶ 测试脚本合集"
-      echo ""      
+      echo ""
       echo "----解锁状态检测-----------"
       echo "1. ChatGPT解锁状态检测"
       echo "2. Region流媒体解锁测试"
       echo "3. yeahwu流媒体解锁检测"
       echo ""
-      echo "----网络线路测速-----------"      
+      echo "----网络线路测速-----------"
       echo "11. besttrace三网回程延迟路由测试"
       echo "12. mtr_trace三网回程线路测试"
       echo "13. Superspeed三网测速"
       echo "14. nxtrace快速回程测试脚本"
-      echo "15. nxtrace指定IP回程测试脚本"    
-      echo "16. ludashi2020三网线路测试"  
-      echo ""                  
-      echo "----硬件性能测试----------"   
-      echo "21. yabs性能测试"      
-      echo "22. icu/gb5 CPU性能测试脚本"  
-      echo ""           
-      echo "----综合性测试-----------"           
+      echo "15. nxtrace指定IP回程测试脚本"
+      echo "16. ludashi2020三网线路测试"
+      echo ""
+      echo "----硬件性能测试----------"
+      echo "21. yabs性能测试"
+      echo "22. icu/gb5 CPU性能测试脚本"
+      echo ""
+      echo "----综合性测试-----------"
       echo "31. bench性能测试"
-      echo "32. spiritysdx融合怪测评" 
-      echo ""                   
-      echo "------------------------"               
+      echo "32. spiritysdx融合怪测评"
+      echo ""
+      echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
@@ -1427,7 +1427,7 @@ EOF
               ;;
           15)
               clear
-              
+
               echo "可参考的IP列表"
               echo "------------------------"
               echo "北京电信: 219.141.136.12"
@@ -1446,16 +1446,16 @@ EOF
               echo "湖南联通: 42.48.16.100"
               echo "湖南移动: 39.134.254.6"
               echo "------------------------"
-              
+
               read -p "输入一个指定IP: " testip
               curl nxtrace.org/nt |bash
               nexttrace $testip
-              ;;     
+              ;;
 
           16)
               clear
               curl https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh -sSf | sh
-              ;;     
+              ;;
 
           21)
               clear
@@ -1464,7 +1464,7 @@ EOF
           22)
               clear
               bash <(curl -sL bash.icu/gb5)
-              ;;     
+              ;;
 
           31)
               clear
@@ -1474,8 +1474,8 @@ EOF
               clear
               curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
               ;;
-              
-                             
+
+
           0)
               kejilion
 
@@ -2126,7 +2126,7 @@ EOF
         echo "操作"
         echo "------------------------"
         echo "1. 申请/更新域名证书               2. 更换站点域名"
-        echo -e "3. 清理站点缓存                    4. 查看站点分析报告 \033[33mNEW\033[0m"
+        echo "3. 清理站点缓存                    4. 查看站点分析报告"
         echo "------------------------"
         echo "7. 删除指定站点                    8. 删除指定数据库"
         echo "------------------------"
@@ -2160,6 +2160,10 @@ EOF
             3)
                 docker exec -it nginx rm -rf /var/cache/nginx
                 docker restart nginx
+                docker exec php php -r 'opcache_reset();'
+                docker restart php
+                docker exec php74 php -r 'opcache_reset();'
+                docker restart php74
                 ;;
             4)
                 install goaccess
@@ -2601,7 +2605,7 @@ EOF
       echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
       echo "29. searxng聚合搜索站                   30. PhotoPrism私有相册系统"
       echo "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件"
-      echo "33. Sun-Panel导航面板"      
+      echo "33. Sun-Panel导航面板"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
