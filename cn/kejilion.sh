@@ -17,10 +17,12 @@ install() {
 
     for package in "$@"; do
         if ! command -v "$package" &>/dev/null; then
-            if command -v apt &>/dev/null; then
-                apt update -y && apt install -y "$package"
+            if command -v dnf &>/dev/null; then
+                dnf -y update && dnf install -y "$package"
             elif command -v yum &>/dev/null; then
                 yum -y update && yum -y install "$package"
+            elif command -v apt &>/dev/null; then
+                apt update -y && apt install -y "$package"
             elif command -v apk &>/dev/null; then
                 apk update && apk add "$package"
             else
@@ -47,12 +49,14 @@ remove() {
     fi
 
     for package in "$@"; do
-        if command -v apt &>/dev/null; then
-            apt purge -y "$package"
+        if command -v dnf &>/dev/null; then
+            dnf remove -y "${package}*"
         elif command -v yum &>/dev/null; then
-            yum remove -y "$package"
+            yum remove -y "${package}*"
+        elif command -v apt &>/dev/null; then
+            apt purge -y "${package}*"
         elif command -v apk &>/dev/null; then
-            apk del "$package"
+            apk del "${package}*"
         else
             echo "未知的包管理器!"
             return 1
@@ -114,6 +118,8 @@ install_add_docker() {
         systemctl start docker
         systemctl enable docker
     fi
+
+    sleep 2
 }
 
 install_docker() {
@@ -513,6 +519,94 @@ tmux_run() {
 }
 
 
+f2b_status() {
+     docker restart fail2ban
+     sleep 3
+     docker exec -it fail2ban fail2ban-client status
+}
+
+f2b_status_xxx() {
+    docker exec -it fail2ban fail2ban-client status $xxx
+}
+
+f2b_install_sshd() {
+
+    docker run -d \
+        --name=fail2ban \
+        --net=host \
+        --cap-add=NET_ADMIN \
+        --cap-add=NET_RAW \
+        -e PUID=1000 \
+        -e PGID=1000 \
+        -e TZ=Etc/UTC \
+        -e VERBOSITY=-vv \
+        -v /path/to/fail2ban/config:/config \
+        -v /var/log:/var/log:ro \
+        -v /home/web/log/nginx/:/remotelogs/nginx:ro \
+        --restart unless-stopped \
+        lscr.io/linuxserver/fail2ban:latest
+
+    sleep 3
+    if grep -q 'Alpine' /etc/issue; then
+        cd /path/to/fail2ban/config/fail2ban/filter.d
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/alpine-sshd.conf
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/alpine-sshd-ddos.conf
+        cd /path/to/fail2ban/config/fail2ban/jail.d/
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/alpine-ssh.conf
+    elif grep -qi 'CentOS' /etc/redhat-release; then
+        cd /path/to/fail2ban/config/fail2ban/jail.d/
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/centos-ssh.conf
+    else
+        install rsyslog
+        systemctl start rsyslog
+        systemctl enable rsyslog
+        cd /path/to/fail2ban/config/fail2ban/jail.d/
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/linux-ssh.conf
+    fi
+}
+
+f2b_sshd() {
+    if grep -q 'Alpine' /etc/issue; then
+        xxx=alpine-sshd
+        f2b_status_xxx
+    elif grep -qi 'CentOS' /etc/redhat-release; then
+        xxx=centos-sshd
+        f2b_status_xxx
+    else
+        xxx=linux-sshd
+        f2b_status_xxx
+    fi
+}
+
+
+
+
+
+
+server_reboot() {
+
+    read -p "确定现在重启服务器吗？(Y/N): " rboot
+    case "$rboot" in
+      [Yy])
+        echo "已重启"
+        reboot
+        ;;
+      [Nn])
+        echo "已取消"
+        ;;
+      *)
+        echo "无效的选择，请输入 Y 或 N。"
+        ;;
+    esac
+
+
+}
+
+
+
+
+
+
 
 while true; do
 clear
@@ -521,7 +615,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.4.1 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.4.2 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -1588,18 +1682,8 @@ EOF
               sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
               service sshd restart
               echo "ROOT登录设置完毕！"
-              read -p "需要重启服务器吗？(Y/N): " choice
-          case "$choice" in
-            [Yy])
-              reboot
-              ;;
-            [Nn])
-              echo "已取消"
-              ;;
-            *)
-              echo "无效的选择，请输入 Y 或 N。"
-              ;;
-          esac
+              server_reboot
+
               ;;
           0)
               kejilion
@@ -2126,7 +2210,7 @@ EOF
         echo "操作"
         echo "------------------------"
         echo "1. 申请/更新域名证书               2. 更换站点域名"
-        echo -e "3. 清理站点缓存                    4. 查看站点分析报告 \033[33mNEW\033[0m"
+        echo "3. 清理站点缓存                    4. 查看站点分析报告"
         echo "------------------------"
         echo "7. 删除指定站点                    8. 删除指定数据库"
         echo "------------------------"
@@ -2160,6 +2244,10 @@ EOF
             3)
                 docker exec -it nginx rm -rf /var/cache/nginx
                 docker restart nginx
+                docker exec php php -r 'opcache_reset();'
+                docker restart php
+                docker exec php74 php -r 'opcache_reset();'
+                docker restart php74
                 ;;
             4)
                 install goaccess
@@ -2274,7 +2362,8 @@ EOF
       ;;
 
     35)
-      if [ -x "$(command -v fail2ban-client)" ] && [ -d "/etc/fail2ban" ]; then
+
+        if docker inspect fail2ban &>/dev/null || [ -x "$(command -v fail2ban-client)" ]; then
           while true; do
               clear
               echo "服务器防御程序已启动"
@@ -2296,72 +2385,77 @@ EOF
               read -p "请输入你的选择: " sub_choice
               case $sub_choice in
                   1)
-                      sed -i 's/false/true/g' /etc/fail2ban/jail.d/sshd.local
-                      systemctl restart fail2ban
-                      service fail2ban restart
-                      sleep 1
-                      fail2ban-client status
+                      sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/alpine-ssh.conf
+                      sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/linux-ssh.conf
+                      sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/centos-ssh.conf
+                      f2b_status
                       ;;
                   2)
-                      sed -i 's/true/false/g' /etc/fail2ban/jail.d/sshd.local
-                      systemctl restart fail2ban
-                      service fail2ban restart
-                      sleep 1
-                      fail2ban-client status
+                      sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/alpine-ssh.conf
+                      sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/linux-ssh.conf
+                      sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/centos-ssh.conf
+                      f2b_status
                       ;;
                   3)
-                      sed -i 's/false/true/g' /etc/fail2ban/jail.d/nginx.local
-                      systemctl restart fail2ban
-                      service fail2ban restart
-                      sleep 1
-                      fail2ban-client status
+                      sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+                      f2b_status
                       ;;
                   4)
-                      sed -i 's/true/false/g' /etc/fail2ban/jail.d/nginx.local
-                      systemctl restart fail2ban
-                      service fail2ban restart
-                      sleep 1
-                      fail2ban-client status
+                      sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+                      f2b_status
                       ;;
                   5)
                       echo "------------------------"
-                      fail2ban-client status sshd
+                      f2b_sshd
                       echo "------------------------"
                       ;;
                   6)
+
                       echo "------------------------"
-                      fail2ban-client status fail2ban-nginx-cc
+                      xxx=fail2ban-nginx-cc
+                      f2b_status_xxx
                       echo "------------------------"
-                      fail2ban-client status nginx-bad-request
+                      xxx=docker-nginx-bad-request
+                      f2b_status_xxx
                       echo "------------------------"
-                      fail2ban-client status nginx-botsearch
+                      xxx=docker-nginx-botsearch
+                      f2b_status_xxx
                       echo "------------------------"
-                      fail2ban-client status nginx-http-auth
+                      xxx=docker-nginx-http-auth
+                      f2b_status_xxx
                       echo "------------------------"
-                      fail2ban-client status nginx-limit-req
+                      xxx=docker-nginx-limit-req
+                      f2b_status_xxx
                       echo "------------------------"
-                      fail2ban-client status php-url-fopen
+                      xxx=docker-php-url-fopen
+                      f2b_status_xxx
                       echo "------------------------"
+
                       ;;
 
                   7)
-                      fail2ban-client status
+                      docker exec -it fail2ban fail2ban-client status
                       ;;
                   8)
-                      tail -f /var/log/fail2ban.log
+                      tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
                       break
 
                       ;;
                   9)
+                      docker rm -f fail2ban
+                      rm -rf /path/to/fail2ban
                       remove fail2ban
+                      rm -rf /etc/fail2ban
+                      echo "重启后生效"
+                      server_reboot
                       break
                       ;;
 
                   11)
                       install nano
-                      nano /etc/fail2ban/jail.d/nginx.local
-                      systemctl restart fail2ban
-                      service fail2ban restart
+                      nano /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+                      f2b_status
+
                       break
                       ;;
                   21)
@@ -2371,19 +2465,17 @@ EOF
                       read -p "输入CF的Global API Key: " cftoken
 
                       wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default11.conf
-
-                      cd /etc/fail2ban/jail.d/
-                      curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/nginx.local
-
-                      cd /etc/fail2ban/action.d/
-                      curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/cloudflare.conf
-
-                      sed -i "s/kejilion@outlook.com/$cfuser/g" /etc/fail2ban/action.d/cloudflare.conf
-                      sed -i "s/APIKEY00000/$cftoken/g" /etc/fail2ban/action.d/cloudflare.conf
-
-                      systemctl restart fail2ban
-                      service fail2ban restart
                       docker restart nginx
+
+                      cd /path/to/fail2ban/config/fail2ban/jail.d/
+                      curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+
+                      cd /path/to/fail2ban/config/fail2ban/action.d
+                      curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
+
+                      sed -i "s/kejilion@outlook.com/$cfuser/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
+                      sed -i "s/APIKEY00000/$cftoken/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
+                      f2b_status
 
                       echo "已配置cloudflare模式，可在cf后台，站点-安全性-事件中查看拦截记录"
                       ;;
@@ -2400,62 +2492,28 @@ EOF
           done
       else
           clear
-          install epel-release fail2ban
-
-          if grep -q 'Alpine' /etc/issue; then
-              echo "当前系统为Alpine 将采用默认配置"
-          else
-              rm -rf /etc/fail2ban/jail.d/*
-              cd /etc/fail2ban/jail.d/
-              curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/sshd.local
-          fi
-
-          systemctl start fail2ban
-          service fail2ban start
-          systemctl enable fail2ban
-          rc-update add fail2ban
-
+          install_docker
 
           docker rm -f nginx
-
           wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
           wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
           default_server_ssl
           docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
           docker exec -it nginx chmod -R 777 /var/www/html
 
-          # 获取宿主机当前时区
-          timedatectl set-timezone Asia/Shanghai
-          HOST_TIMEZONE=$(timedatectl show --property=Timezone --value)
+          f2b_install_sshd
 
-          # 调整多个容器的时区
-          docker exec -it nginx ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
-          docker exec -it php ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
-          docker exec -it php74 ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
-          docker exec -it mysql ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
-          docker exec -it redis ln -sf "/usr/share/zoneinfo/$HOST_TIMEZONE" /etc/localtime
-          rm -rf /home/web/log/nginx/*
-          docker restart nginx
-
-
-          cd /etc/fail2ban/filter.d/
+          cd /path/to/fail2ban/config/fail2ban/filter.d
           curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/fail2ban-nginx-cc.conf
-
-          cd /etc/fail2ban/jail.d/
-          curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/nginx.local
-          sed -i "/cloudflare/d" /etc/fail2ban/jail.d/nginx.local
-
-          cd /etc/fail2ban/action.d/
-          curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/cloudflare.conf
+          cd /path/to/fail2ban/config/fail2ban/jail.d/
+          curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+          sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
 
           cd ~
-          systemctl restart fail2ban
-          service fail2ban restart
+          f2b_status
 
-
-          sleep 1
-          fail2ban-client status
-          echo "防御程序已开启"
+          echo "防御程序已开启，建议 reboot 重启服务器，完美适配系统。"
+          server_reboot
       fi
 
         ;;
@@ -3898,18 +3956,8 @@ EOF
               sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
               service sshd restart
               echo "ROOT登录设置完毕！"
-              read -p "需要重启服务器吗？(Y/N): " choice
-          case "$choice" in
-            [Yy])
-              reboot
-              ;;
-            [Nn])
-              echo "已取消"
-              ;;
-            *)
-              echo "无效的选择，请输入 Y 或 N。"
-              ;;
-          esac
+              server_reboot
+
               ;;
 
           4)
@@ -4612,14 +4660,14 @@ EOF
                         rm -f /etc/apt/sources.list.d/xanmod-release.list
                         rm -f check_x86-64_psabi.sh*
 
-                        reboot
+                        server_reboot
 
                           ;;
                       2)
                         apt purge -y 'linux-*xanmod1*'
                         update-grub
                         echo "XanMod内核已卸载。重启后生效"
-                        reboot
+                        server_reboot
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
@@ -4685,7 +4733,7 @@ EOF
             echo "XanMod内核安装并BBR3启用成功。重启后生效"
             rm -f /etc/apt/sources.list.d/xanmod-release.list
             rm -f check_x86-64_psabi.sh*
-            reboot
+            server_reboot
 
               ;;
             [Nn])
@@ -4795,8 +4843,6 @@ EOF
                       remove iptables-persistent
                       rm /etc/iptables/rules.v4
                       break
-                      # echo "防火墙已卸载，重启生效"
-                      # reboot
                           ;;
 
                       0)
@@ -5192,7 +5238,7 @@ EOF
               ;;
 
           22)
-            if [ -x "$(command -v fail2ban-client)" ] && [ -d "/etc/fail2ban" ]; then
+            if docker inspect fail2ban &>/dev/null || [ -x "$(command -v fail2ban-client)" ]; then
                 while true; do
                     clear
                     echo "SSH防御程序已启动"
@@ -5209,15 +5255,21 @@ EOF
 
                         1)
                             echo "------------------------"
-                            fail2ban-client status sshd
+                            f2b_sshd
                             echo "------------------------"
                             ;;
                         2)
-                            tail -f /var/log/fail2ban.log
+                            tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
                             break
                             ;;
                         9)
+                            docker rm -f fail2ban
+                            rm -rf /path/to/fail2ban
                             remove fail2ban
+                            rm -rf /etc/fail2ban
+                            echo "重启后生效"
+                            server_reboot
+
                             break
                             ;;
                         0)
@@ -5241,26 +5293,15 @@ EOF
               read -p "确定继续吗？(Y/N): " choice
 
               case "$choice" in
-                  [Yy])
+                [Yy])
                   clear
-                  install epel-release fail2ban
+                  install_docker
+                  f2b_install_sshd
 
-                  if grep -q 'Alpine' /etc/issue; then
-                      echo "当前系统为Alpine 将采用默认配置"
-                  else
-                      rm -rf /etc/fail2ban/jail.d/*
-                      cd /etc/fail2ban/jail.d/
-                      curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/sshd.local
-                  fi
-
-                  systemctl start fail2ban
-                  service fail2ban start
-                  systemctl enable fail2ban
-                  rc-update add fail2ban
-
-                  sleep 1
-                  fail2ban-client status
-                  echo "Fail2Ban防御程序已开启"
+                  cd ~
+                  f2b_status
+                  echo "Fail2Ban防御程序已开启，建议 reboot 重启服务器，完美适配系统。"
+                  server_reboot
 
                   ;;
                 [Nn])
@@ -5271,9 +5312,7 @@ EOF
                   ;;
               esac
             fi
-
               ;;
-
 
           31)
             clear
@@ -5315,8 +5354,7 @@ EOF
 
           99)
               clear
-              echo "正在重启服务器，即将断开SSH连接"
-              reboot
+              server_reboot
               ;;
           0)
               kejilion
