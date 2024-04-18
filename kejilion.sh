@@ -52,11 +52,11 @@ remove() {
         if command -v dnf &>/dev/null; then
             dnf remove -y "${package}*"
         elif command -v yum &>/dev/null; then
-            yum remove -y "$package"
+            yum remove -y "${package}*"
         elif command -v apt &>/dev/null; then
-            apt purge -y "$package"
+            apt purge -y "${package}*"
         elif command -v apk &>/dev/null; then
-            apk del "$package"
+            apk del "${package}*"
         else
             echo "未知的包管理器!"
             return 1
