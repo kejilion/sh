@@ -565,6 +565,24 @@ f2b_install_sshd() {
     fi
 }
 
+f2b_sshd() {
+    if grep -q 'Alpine' /etc/issue; then
+        xxx=alpine-sshd
+        f2b_status_xxx
+    elif grep -qi 'CentOS' /etc/redhat-release; then
+        xxx=centos-sshd
+        f2b_status_xxx
+    else
+        xxx=linux-sshd
+        f2b_status_xxx
+    fi
+}
+
+
+
+
+
+
 server_reboot() {
 
     read -p "确定现在重启服务器吗？(Y/N): " rboot
@@ -583,6 +601,9 @@ server_reboot() {
 
 
 }
+
+
+
 
 
 
@@ -2385,12 +2406,7 @@ EOF
                       ;;
                   5)
                       echo "------------------------"
-                      xxx=linux-sshd
-                      f2b_status_xxx
-                      xxx=alpine-sshd
-                      f2b_status_xxx
-                      xxx=centos-sshd
-                      f2b_status_xxx
+                      f2b_sshd
                       echo "------------------------"
                       ;;
                   6)
@@ -5239,12 +5255,7 @@ EOF
 
                         1)
                             echo "------------------------"
-                            xxx=linux-sshd
-                            f2b_status_xxx
-                            xxx=alpine-sshd
-                            f2b_status_xxx
-                            xxx=centos-sshd
-                            f2b_status_xxx
+                            f2b_sshd
                             echo "------------------------"
                             ;;
                         2)
