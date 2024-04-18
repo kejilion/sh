@@ -1553,10 +1553,14 @@ EOF
 
           21)
               clear
+              new_swap=1024
+              add_swap
               curl -sL yabs.sh | bash -s -- -i -5
               ;;
           22)
               clear
+              new_swap=1024
+              add_swap
               bash <(curl -sL bash.icu/gb5)
               ;;
 
@@ -4710,6 +4714,8 @@ EOF
               break
             fi
 
+            new_swap=1024
+            add_swap
             install wget gnupg
 
             # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
