@@ -585,7 +585,7 @@ f2b_sshd() {
 
 server_reboot() {
 
-    read -p "确定现在重启服务器吗？(Y/N): " rboot
+    read -p $'\e[33m现在重启服务器吗？(Y/N): \e[0m' rboot
     case "$rboot" in
       [Yy])
         echo "已重启"
@@ -2450,8 +2450,6 @@ EOF
                       rm -rf /path/to/fail2ban
                       remove fail2ban
                       rm -rf /etc/fail2ban
-                      echo "重启后生效"
-                      server_reboot
                       break
                       ;;
 
@@ -2516,8 +2514,7 @@ EOF
           cd ~
           f2b_status
 
-          echo "防御程序已开启，建议 reboot 重启服务器，完美适配系统。"
-          server_reboot
+          echo "防御程序已开启"
       fi
 
         ;;
@@ -5273,8 +5270,6 @@ EOF
                             rm -rf /path/to/fail2ban
                             remove fail2ban
                             rm -rf /etc/fail2ban
-                            echo "重启后生效"
-                            server_reboot
 
                             break
                             ;;
@@ -5306,8 +5301,7 @@ EOF
 
                   cd ~
                   f2b_status
-                  echo "Fail2Ban防御程序已开启，建议 reboot 重启服务器，完美适配系统。"
-                  server_reboot
+                  echo "Fail2Ban防御程序已开启"
 
                   ;;
                 [Nn])
