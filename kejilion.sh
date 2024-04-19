@@ -1425,7 +1425,7 @@ EOF
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
-                  remove docker docker-ce docker-compose > /dev/null 2>&1
+                  remove docker > /dev/null 2>&1
                   ;;
                 [Nn])
                   ;;
@@ -4156,13 +4156,6 @@ EOF
               ;;
 
           8)
-          dd_xitong_1() {
-            read -p "请输入你重装后的密码: " vpspasswd
-            echo "任意键继续，重装后初始用户名: root  初始密码: $vpspasswd  初始端口: 22"
-            read -n 1 -s -r -p ""
-            install wget
-            bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
-          }
 
           dd_xitong_2() {
             echo "任意键继续，重装后初始用户名: root  初始密码: LeitboGi0ro  初始端口: 22"
@@ -4180,7 +4173,7 @@ EOF
 
           clear
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
-          echo -e "\e[37m感谢MollyLau和MoeClub的脚本支持！\e[0m "
+          echo -e "\e[37m感谢MollyLau的脚本支持！\e[0m "
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
@@ -4214,28 +4207,28 @@ EOF
 
                 case "$sys_choice" in
                   1)
-                    xitong="-d 12"
-                    dd_xitong_1
-                    exit
+                    dd_xitong_2
+                    bash InstallNET.sh -debian 12
                     reboot
+                    exit
                     ;;
 
                   2)
-                    xitong="-d 11"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -debian 11
                     reboot
                     exit
                     ;;
 
                   3)
-                    xitong="-d 10"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -debian 10
                     reboot
                     exit
                     ;;
                   4)
-                    xitong="-d 9"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -debian 9
                     reboot
                     exit
                     ;;
@@ -4254,14 +4247,14 @@ EOF
                     ;;
 
                   13)
-                    xitong="-u 20.04"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -ubuntu 20.04
                     reboot
                     exit
                     ;;
                   14)
-                    xitong="-u 18.04"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -ubuntu 18.04
                     reboot
                     exit
                     ;;
@@ -4289,16 +4282,12 @@ EOF
                     exit
                     ;;
 
-
-
                   31)
                     dd_xitong_2
                     bash InstallNET.sh -alpine
                     reboot
                     exit
                     ;;
-
-
 
                   41)
                     dd_xitong_3
