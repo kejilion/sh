@@ -1203,7 +1203,7 @@ EOF
                           ;;
                       11)
                           read -p "请输入容器名: " dockername
-                          docker exec -it $dockername /bin/bash
+                          docker exec -it $dockername /bin/sh
                           break_end
                           ;;
                       12)
@@ -2447,8 +2447,6 @@ EOF
                   9)
                       docker rm -f fail2ban
                       rm -rf /path/to/fail2ban
-                      remove fail2ban
-                      rm -rf /etc/fail2ban
                       echo "Fail2Ban防御程序已卸载"
                       break
                       ;;
@@ -2499,8 +2497,6 @@ EOF
           read -p "确定继续吗？(Y/N): " choice
           case "$choice" in
             [Yy])
-              docker rm -f fail2ban
-              rm -rf /path/to/fail2ban
               remove fail2ban
               rm -rf /etc/fail2ban
               echo "Fail2Ban防御程序已卸载"
@@ -4075,7 +4071,6 @@ EOF
               ;;
           6)
               clear
-              #!/bin/bash
 
               # 去掉 #Port 的注释
               sed -i 's/#Port/Port/' /etc/ssh/sshd_config
@@ -5278,8 +5273,6 @@ EOF
                         9)
                             docker rm -f fail2ban
                             rm -rf /path/to/fail2ban
-                            remove fail2ban
-                            rm -rf /etc/fail2ban
                             echo "Fail2Ban防御程序已卸载"
 
                             break
@@ -5301,8 +5294,6 @@ EOF
                 read -p "确定继续吗？(Y/N): " choice
                 case "$choice" in
                   [Yy])
-                    docker rm -f fail2ban
-                    rm -rf /path/to/fail2ban
                     remove fail2ban
                     rm -rf /etc/fail2ban
                     echo "Fail2Ban防御程序已卸载"
