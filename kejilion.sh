@@ -2617,7 +2617,7 @@ EOF
     37)
       clear
       docker rm -f nginx php php74 mysql redis
-      docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine wordpress:fpm-alpine wordpress:php7.4-fpm-alpine
+      docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine wordpress:php8.3-fpm-alpine wordpress:php7.4-fpm-alpine
 
       check_port
       install_dependency
@@ -2633,7 +2633,7 @@ EOF
         case "$choice" in
           [Yy])
             docker rm -f nginx php php74 mysql redis
-            docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine wordpress:fpm-alpine wordpress:php7.4-fpm-alpine
+            docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine wordpress:php8.3-fpm-alpine wordpress:php7.4-fpm-alpine
             rm -rf /home/web
             ;;
           [Nn])
