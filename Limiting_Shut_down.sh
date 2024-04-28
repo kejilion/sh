@@ -36,7 +36,7 @@ threshold=$((threshold_gb * 1024 * 1024 * 1024))
 if (( $(echo "$rx * 1024 * 1024 * 1024 > $threshold" | bc -l) || $(echo "$tx * 1024 * 1024 * 1024 > $threshold" | bc -l) )); then
     echo "流量达到${threshold_gb}GB，正在关闭服务器..."
     # 在此处执行关闭服务器的命令，例如：
-    # shutdown -h now
+    shutdown -h now
     # 或者
     # systemctl poweroff
 else
