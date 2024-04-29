@@ -602,6 +602,25 @@ server_reboot() {
 
 }
 
+output_status() {
+    output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
+        NR > 2 { rx_total += $2; tx_total += $10 }
+        END {
+            rx_units = "Bytes";
+            tx_units = "Bytes";
+            if (rx_total > 1024) { rx_total /= 1024; rx_units = "KB"; }
+            if (rx_total > 1024) { rx_total /= 1024; rx_units = "MB"; }
+            if (rx_total > 1024) { rx_total /= 1024; rx_units = "GB"; }
+
+            if (tx_total > 1024) { tx_total /= 1024; tx_units = "KB"; }
+            if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
+            if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
+
+            printf("总接收: %.2f %s\n总发送: %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
+        }' /proc/net/dev)
+
+}
+
 
 
 
@@ -615,7 +634,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.4.4 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.4.5 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -699,22 +718,7 @@ case $choice in
       fi
     fi
 
-    output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
-        NR > 2 { rx_total += $2; tx_total += $10 }
-        END {
-            rx_units = "Bytes";
-            tx_units = "Bytes";
-            if (rx_total > 1024) { rx_total /= 1024; rx_units = "KB"; }
-            if (rx_total > 1024) { rx_total /= 1024; rx_units = "MB"; }
-            if (rx_total > 1024) { rx_total /= 1024; rx_units = "GB"; }
-
-            if (tx_total > 1024) { tx_total /= 1024; tx_units = "KB"; }
-            if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
-            if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
-
-            printf("总接收: %.2f %s\n总发送: %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
-        }' /proc/net/dev)
-
+    output_status
 
     current_time=$(date "+%Y-%m-%d %I:%M %p")
 
@@ -3241,7 +3245,7 @@ EOF
                     sleep 1
                     docker exec -it db mongosh --eval "printjson(rs.initiate())"
                     sleep 5
-                    docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat:6.3
+                    docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
                     clear
 
@@ -3982,6 +3986,7 @@ EOF
       echo "20. 定时任务管理"
       echo "21. 本机host解析"
       echo "22. fail2banSSH防御程序"
+      echo "23. 限流自动关机"
       echo "------------------------"
       echo "31. 留言板"
       echo "------------------------"
@@ -5375,6 +5380,52 @@ EOF
               esac
             fi
               ;;
+
+
+          23)
+            clear
+            echo "当前流量使用情况，重启服务器流量计算会清零！"
+            output_status
+            echo "$output"
+
+            # 检查是否存在 Limiting_Shut_down.sh 文件
+            if [ -f ~/Limiting_Shut_down.sh ]; then
+                # 获取 threshold_gb 的值
+                threshold_gb=$(grep -oP 'threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+                echo "当前设置的限流阈值为 ${threshold_gb}GB"
+            else
+                echo "当前未启用限流关机功能"
+            fi
+
+            echo
+            echo "------------------------------------------------"
+            echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！"
+            read -p "是否设置流量阈值?(Y/N): " Limiting
+
+            case "$Limiting" in
+              [Yy])
+                # 输入新的虚拟内存大小
+                echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
+                read -p "请输入流量阈值（单位为GB）: " threshold_gb
+                cd ~
+                curl -Ss -O https://raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down.sh
+                chmod +x ~/Limiting_Shut_down.sh
+                sed -i "s/110/$threshold_gb/g" ~/Limiting_Shut_down.sh
+                crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
+                (crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
+                echo "限流关机已设置"
+
+                ;;
+              [Nn])
+                echo "已取消"
+                ;;
+              *)
+                echo "无效的选择，请输入 Y 或 N。"
+                ;;
+            esac
+
+              ;;
+
 
           31)
             clear
