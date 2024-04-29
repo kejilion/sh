@@ -5399,8 +5399,8 @@ EOF
 
             echo
             echo "------------------------------------------------"
-            echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！"
-            read -p "是否设置流量阈值?(Y/N): " Limiting
+            echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！每月1日重置流量重启服务器。"
+            read -p "是否设置流量阈值?(Y/N)，停用限流关机功能(X): " Limiting
 
             case "$Limiting" in
               [Yy])
@@ -5413,11 +5413,19 @@ EOF
                 sed -i "s/110/$threshold_gb/g" ~/Limiting_Shut_down.sh
                 crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
                 (crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
+                crontab -l | grep -v 'reboot' | crontab -
+                (crontab -l ; echo "0 1 1 * * reboot") | crontab - > /dev/null 2>&1
                 echo "限流关机已设置"
 
                 ;;
               [Nn])
                 echo "已取消"
+                ;;
+              [Xx])
+                crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
+                crontab -l | grep -v 'reboot' | crontab -
+                rm ~/Limiting_Shut_down.sh
+                echo "已关闭限流关机功能"
                 ;;
               *)
                 echo "无效的选择，请输入 Y 或 N。"
