@@ -5400,10 +5400,10 @@ EOF
             echo
             echo "------------------------------------------------"
             echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！每月1日重置流量重启服务器。"
-            read -p "是否设置流量阈值?(Y/N)，停用限流关机功能(X): " Limiting
+            read -p "开启限流关机功能(1)    停用限流关机功能(2)    退出(0): " Limiting
 
             case "$Limiting" in
-              [Yy])
+              1)
                 # 输入新的虚拟内存大小
                 echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
                 read -p "请输入流量阈值（单位为GB）: " threshold_gb
@@ -5418,10 +5418,10 @@ EOF
                 echo "限流关机已设置"
 
                 ;;
-              [Nn])
+              0)
                 echo "已取消"
                 ;;
-              [Xx])
+              2)
                 crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
                 crontab -l | grep -v 'reboot' | crontab -
                 rm ~/Limiting_Shut_down.sh
