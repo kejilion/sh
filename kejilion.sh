@@ -628,6 +628,7 @@ ldnmp_install_status() {
     echo "LDNMP环境已安装，开始部署网站"
    else
     echo "LDNMP环境未安装，请先安装LDNMP环境，再部署网站"
+    break_end
     kejilion
 
    fi
@@ -641,6 +642,7 @@ nginx_install_status() {
     echo "nginx环境已安装，开始部署网站"
    else
     echo "nginx未安装，请先安装nginx环境，再部署网站"
+    break_end
     kejilion
 
    fi
