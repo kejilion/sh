@@ -622,6 +622,32 @@ output_status() {
 }
 
 
+ldnmp_install_status() {
+
+   if docker inspect "php" &>/dev/null; then
+    echo "LDNMP环境已安装，开始部署网站"
+   else
+    echo "LDNMP环境未安装，请先安装LDNMP环境，再部署网站"
+    kejilion
+
+   fi
+
+}
+
+
+nginx_install_status() {
+
+   if docker inspect "nginx" &>/dev/null; then
+    echo "nginx环境已安装，开始部署网站"
+   else
+    echo "nginx未安装，请先安装nginx环境，再部署网站"
+    kejilion
+
+   fi
+
+}
+
+
 
 
 
@@ -634,7 +660,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.4.5 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.4.6 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -1720,15 +1746,15 @@ EOF
     echo  "4. 安装可道云桌面"
     echo  "5. 安装苹果CMS网站"
     echo  "6. 安装独角数发卡网"
-    echo  "8. 安装flarum论坛网站"
-    echo  "9. 安装Bitwarden密码管理平台"
-    echo  "10. 安装Halo博客网站"
-    echo  "11. 安装typecho轻量博客网站"
+    echo  "7. 安装flarum论坛网站"
+    echo  "8. 安装typecho轻量博客网站"
     echo  "------------------------"
-    echo -e "21. 仅安装nginx \033[33mNEW\033[0m"
+    echo  "21. 仅安装nginx"
     echo  "22. 站点重定向"
     echo  "23. 站点反向代理"
-    echo -e "24. 自定义静态站点 \033[36mBeta\033[0m"
+    echo  "24. 自定义静态站点"
+    echo  "25. 安装Bitwarden密码管理平台"
+    echo  "26. 安装Halo博客网站"
     echo  "------------------------"
     echo  "31. 站点数据管理"
     echo  "32. 备份全站数据"
@@ -1776,6 +1802,7 @@ EOF
       2)
       clear
       # wordpress
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1810,6 +1837,7 @@ EOF
       3)
       clear
       # Discuz论坛
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1845,6 +1873,7 @@ EOF
       4)
       clear
       # 可道云桌面
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1878,6 +1907,7 @@ EOF
       5)
       clear
       # 苹果CMS
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1919,6 +1949,7 @@ EOF
       6)
       clear
       # 独脚数卡
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1962,9 +1993,10 @@ EOF
       nginx_status
         ;;
 
-      8)
+      7)
       clear
       # flarum论坛
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -2002,46 +2034,10 @@ EOF
       nginx_status
         ;;
 
-      9)
-      clear
-      # Bitwarden
-      add_yuming
-      install_ssltls
-
-      docker run -d \
-        --name bitwarden \
-        --restart always \
-        -p 3280:80 \
-        -v /home/web/html/$yuming/bitwarden/data:/data \
-        vaultwarden/server
-      duankou=3280
-      reverse_proxy
-
-      clear
-      echo "您的Bitwarden网站搭建好了！"
-      echo "https://$yuming"
-      nginx_status
-        ;;
-
-      10)
-      clear
-      # halo
-      add_yuming
-      install_ssltls
-
-      docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
-      duankou=8010
-      reverse_proxy
-
-      clear
-      echo "您的Halo网站搭建好了！"
-      echo "https://$yuming"
-      nginx_status
-        ;;
-
-      11)
+      8)
       clear
       # typecho
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -2098,6 +2094,7 @@ EOF
 
       22)
       clear
+      nginx_install_status
       ip_address
       add_yuming
       read -p "请输入跳转域名: " reverseproxy
@@ -2119,6 +2116,7 @@ EOF
 
       23)
       clear
+      nginx_install_status
       ip_address
       add_yuming
       read -p "请输入你的反代IP: " reverseproxy
@@ -2141,6 +2139,7 @@ EOF
 
       24)
       clear
+      nginx_install_status
       # 静态界面
       add_yuming
       install_ssltls
@@ -2166,6 +2165,47 @@ EOF
       echo "https://$yuming"
       nginx_status
         ;;
+
+      25)
+      clear
+      nginx_install_status
+      # Bitwarden
+      add_yuming
+      install_ssltls
+
+      docker run -d \
+        --name bitwarden \
+        --restart always \
+        -p 3280:80 \
+        -v /home/web/html/$yuming/bitwarden/data:/data \
+        vaultwarden/server
+      duankou=3280
+      reverse_proxy
+
+      clear
+      echo "您的Bitwarden网站搭建好了！"
+      echo "https://$yuming"
+      nginx_status
+        ;;
+
+      26)
+      clear
+      nginx_install_status
+      # halo
+      add_yuming
+      install_ssltls
+
+      docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
+      duankou=8010
+      reverse_proxy
+
+      clear
+      echo "您的Halo网站搭建好了！"
+      echo "https://$yuming"
+      nginx_status
+        ;;
+
+
 
     31)
     while true; do
