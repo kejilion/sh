@@ -625,7 +625,7 @@ output_status() {
 ldnmp_install_status() {
 
    if docker inspect "php" &>/dev/null; then
-    echo "LDNMP环境已安装，开始部署网站"
+    echo "LDNMP环境已安装，开始部署 $webname"
    else
     echo "LDNMP环境未安装，请先安装LDNMP环境，再部署网站"
     break_end
@@ -639,7 +639,7 @@ ldnmp_install_status() {
 nginx_install_status() {
 
    if docker inspect "nginx" &>/dev/null; then
-    echo "nginx环境已安装，开始部署网站"
+    echo "nginx环境已安装，开始部署 $webname"
    else
     echo "nginx未安装，请先安装nginx环境，再部署网站"
     break_end
@@ -650,7 +650,93 @@ nginx_install_status() {
 }
 
 
+ldnmp_web_on() {
+      clear
+      echo "您的 $webname 搭建好了！"
+      echo "https://$yuming"
+      echo "------------------------"
+      echo "$webname 安装信息如下: "
 
+}
+
+nginx_web_on() {
+      clear
+      echo "您的 $webname 搭建好了！"
+      echo "https://$yuming"
+
+}
+
+
+
+install_panel() {
+            if $lujing ; then
+                clear
+                echo "$panelname 已安装，应用操作"
+                echo ""
+                echo "------------------------"
+                echo "1. 管理$panelname          2. 卸载$panelname"
+                echo "------------------------"
+                echo "0. 返回上一级选单"
+                echo "------------------------"
+                read -p "请输入你的选择: " sub_choice
+
+                case $sub_choice in
+                    1)
+                        clear
+                        $gongneng1
+                        $gongneng1_1
+                        ;;
+                    2)
+                        clear
+                        $gongneng2
+                        $gongneng2_1
+                        $gongneng2_2
+                        ;;
+                    0)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                    *)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                esac
+            else
+                clear
+                echo "安装提示"
+                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装$panelname！"
+                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
+                echo "官网介绍: $panelurl "
+                echo ""
+
+                read -p "确定安装 $panelname 吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                        iptables_open
+                        install wget
+                        if grep -q 'Alpine' /etc/issue; then
+                            $ubuntu_mingling
+                            $ubuntu_mingling2
+                        elif grep -qi 'CentOS' /etc/redhat-release; then
+                            $centos_mingling
+                            $centos_mingling2
+                        elif grep -qi 'Ubuntu' /etc/os-release; then
+                            $ubuntu_mingling
+                            $ubuntu_mingling2
+                        elif grep -qi 'Debian' /etc/os-release; then
+                            $ubuntu_mingling
+                            $ubuntu_mingling2
+                        else
+                            echo "Unsupported OS"
+                        fi
+                                                    ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+
+            fi
+
+}
 
 
 
@@ -884,11 +970,11 @@ case $choice in
       echo "14. fzf 全局搜索工具"
       echo "------------------------"
       echo "21. cmatrix 黑客帝国屏保"
-      echo -e "22. sl 跑火车屏保 \033[33mNEW\033[0m"
+      echo "22. sl 跑火车屏保"
       echo "------------------------"
-      echo -e "26. 俄罗斯方块小游戏 \033[33mNEW\033[0m"
-      echo -e "27. 贪吃蛇小游戏 \033[33mNEW\033[0m"
-      echo -e "28. 太空入侵者小游戏 \033[33mNEW\033[0m"
+      echo "26. 俄罗斯方块小游戏"
+      echo "27. 贪吃蛇小游戏"
+      echo "28. 太空入侵者小游戏"
       echo "------------------------"
       echo "31. 全部安装"
       echo "32. 全部卸载"
@@ -1804,6 +1890,7 @@ EOF
       2)
       clear
       # wordpress
+      webname="WordPress"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -1823,11 +1910,7 @@ EOF
 
       restart_ldnmp
 
-      clear
-      echo "您的WordPress搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "WP安装信息如下: "
+      ldnmp_web_on
       echo "数据库名: $dbname"
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
@@ -1839,6 +1922,7 @@ EOF
       3)
       clear
       # Discuz论坛
+      webname="Discuz论坛"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -1858,11 +1942,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的Discuz论坛搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "数据库名: $dbname"
       echo "用户名: $dbuse"
@@ -1875,6 +1955,7 @@ EOF
       4)
       clear
       # 可道云桌面
+      webname="可道云桌面"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -1893,11 +1974,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的可道云桌面搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
@@ -1909,6 +1986,7 @@ EOF
       5)
       clear
       # 苹果CMS
+      webname="苹果CMS"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -1931,11 +2009,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的苹果CMS搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "数据库端口: 3306"
       echo "数据库名: $dbname"
@@ -1951,6 +2025,7 @@ EOF
       6)
       clear
       # 独脚数卡
+      webname="独脚数卡"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -1968,11 +2043,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的独角数卡网站搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "数据库端口: 3306"
       echo "数据库名: $dbname"
@@ -1998,6 +2069,7 @@ EOF
       7)
       clear
       # flarum论坛
+      webname="flarum论坛"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2022,11 +2094,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的flarum论坛网站搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "数据库名: $dbname"
       echo "用户名: $dbuse"
@@ -2039,6 +2107,7 @@ EOF
       8)
       clear
       # typecho
+      webname="typecho"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2058,10 +2127,7 @@ EOF
 
 
       clear
-      echo "您的typecho搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库前缀: typecho_"
       echo "数据库地址: mysql"
       echo "用户名: $dbuse"
@@ -2096,6 +2162,7 @@ EOF
 
       22)
       clear
+      webname="站点重定向"
       nginx_install_status
       ip_address
       add_yuming
@@ -2109,15 +2176,14 @@ EOF
 
       docker restart nginx
 
-      clear
-      echo "您的重定向网站做好了！"
-      echo "https://$yuming"
+      nginx_web_on
       nginx_status
 
         ;;
 
       23)
       clear
+      webname="站点反向代理"
       nginx_install_status
       ip_address
       add_yuming
@@ -2133,16 +2199,14 @@ EOF
 
       docker restart nginx
 
-      clear
-      echo "您的反向代理网站做好了！"
-      echo "https://$yuming"
+      nginx_web_on
       nginx_status
         ;;
 
       24)
       clear
+      webname="静态站点"
       nginx_install_status
-      # 静态界面
       add_yuming
       install_ssltls
 
@@ -2162,16 +2226,14 @@ EOF
       docker exec nginx chmod -R 777 /var/www/html
       docker restart nginx
 
-      clear
-      echo "您的静态网站搭建好了！"
-      echo "https://$yuming"
+      nginx_web_on
       nginx_status
         ;;
 
       25)
       clear
+      webname="Bitwarden"
       nginx_install_status
-      # Bitwarden
       add_yuming
       install_ssltls
 
@@ -2184,16 +2246,14 @@ EOF
       duankou=3280
       reverse_proxy
 
-      clear
-      echo "您的Bitwarden网站搭建好了！"
-      echo "https://$yuming"
+      nginx_web_on
       nginx_status
         ;;
 
       26)
       clear
+      webname="halo"
       nginx_install_status
-      # halo
       add_yuming
       install_ssltls
 
@@ -2201,9 +2261,7 @@ EOF
       duankou=8010
       reverse_proxy
 
-      clear
-      echo "您的Halo网站搭建好了！"
-      echo "https://$yuming"
+      nginx_web_on
       nginx_status
         ;;
 
@@ -2735,254 +2793,73 @@ EOF
 
       case $sub_choice in
           1)
-            if [ -f "/etc/init.d/bt" ] && [ -d "/www/server/panel" ]; then
-                clear
-                echo "宝塔面板已安装，应用操作"
-                echo ""
-                echo "------------------------"
-                echo "1. 管理宝塔面板           2. 卸载宝塔面板"
-                echo "------------------------"
-                echo "0. 返回上一级选单"
-                echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
 
-                case $sub_choice in
-                    1)
-                        clear
-                        # 更新宝塔面板操作
-                        bt
-                        ;;
-                    2)
-                        clear
-                        curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1
-                        chmod +x bt-uninstall.sh
-                        ./bt-uninstall.sh
-                        ;;
-                    0)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                    *)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                esac
-            else
-                clear
-                echo "安装提示"
-                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装宝塔面板！"
-                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍: https://www.bt.cn/new/index.html"
-                echo ""
+            lujing="[ -d "/www/server/panel" ]"
+            panelname="宝塔面板"
 
-                # 获取当前系统类型
-                get_system_type() {
-                    if [ -f /etc/os-release ]; then
-                        . /etc/os-release
-                        if [ "$ID" == "centos" ]; then
-                            echo "centos"
-                        elif [ "$ID" == "ubuntu" ]; then
-                            echo "ubuntu"
-                        elif [ "$ID" == "debian" ]; then
-                            echo "debian"
-                        else
-                            echo "unknown"
-                        fi
-                    else
-                        echo "unknown"
-                    fi
-                }
+            gongneng1="bt"
+            gongneng1_1=""
+            gongneng2="curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh"
+            gongneng2_1="chmod +x bt-uninstall.sh"
+            gongneng2_2="./bt-uninstall.sh"
 
-                system_type=$(get_system_type)
+            panelurl="https://www.bt.cn/new/index.html"
 
-                if [ "$system_type" == "unknown" ]; then
-                    echo "不支持的操作系统类型"
-                else
-                    read -p "确定安装宝塔吗？(Y/N): " choice
-                    case "$choice" in
-                        [Yy])
-                            iptables_open
-                            install wget
-                            if [ "$system_type" == "centos" ]; then
-                                yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
-                            elif [ "$system_type" == "ubuntu" ]; then
-                                wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
-                            elif [ "$system_type" == "debian" ]; then
-                                wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
-                            fi
-                            ;;
-                        [Nn])
-                            ;;
-                        *)
-                            ;;
-                    esac
-                fi
-            fi
+
+            centos_mingling="wget -O install.sh https://download.bt.cn/install/install_6.0.sh"
+            centos_mingling2="sh install.sh ed8484bec"
+
+            ubuntu_mingling="wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh"
+            ubuntu_mingling2="bash install.sh ed8484bec"
+
+            install_panel
+
+
 
               ;;
           2)
-            if [ -f "/etc/init.d/bt" ] && [ -d "/www/server/panel" ]; then
-                clear
-                echo "aaPanel已安装，应用操作"
-                echo ""
-                echo "------------------------"
-                echo "1. 管理aaPanel           2. 卸载aaPanel"
-                echo "------------------------"
-                echo "0. 返回上一级选单"
-                echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
 
-                case $sub_choice in
-                    1)
-                        clear
-                        # 更新aaPanel操作
-                        bt
-                        ;;
-                    2)
-                        clear
-                        curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1
-                        chmod +x bt-uninstall.sh
-                        ./bt-uninstall.sh
-                        ;;
-                    0)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                    *)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                esac
-            else
-                clear
-                echo "安装提示"
-                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装aaPanel！"
-                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍: https://www.aapanel.com/new/index.html"
-                echo ""
+            lujing="[ -d "/www/server/panel" ]"
+            panelname="aapanel"
 
-                # 获取当前系统类型
-                get_system_type() {
-                    if [ -f /etc/os-release ]; then
-                        . /etc/os-release
-                        if [ "$ID" == "centos" ]; then
-                            echo "centos"
-                        elif [ "$ID" == "ubuntu" ]; then
-                            echo "ubuntu"
-                        elif [ "$ID" == "debian" ]; then
-                            echo "debian"
-                        else
-                            echo "unknown"
-                        fi
-                    else
-                        echo "unknown"
-                    fi
-                }
+            gongneng1="bt"
+            gongneng1_1=""
+            gongneng2="curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh"
+            gongneng2_1="chmod +x bt-uninstall.sh"
+            gongneng2_2="./bt-uninstall.sh"
 
-                system_type=$(get_system_type)
+            panelurl="https://www.aapanel.com/new/index.html"
 
-                if [ "$system_type" == "unknown" ]; then
-                    echo "不支持的操作系统类型"
-                else
-                    read -p "确定安装aaPanel吗？(Y/N): " choice
-                    case "$choice" in
-                        [Yy])
-                            iptables_open
-                            install wget
-                            if [ "$system_type" == "centos" ]; then
-                                yum install -y wget && wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && bash install.sh aapanel
-                            elif [ "$system_type" == "ubuntu" ]; then
-                                wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh aapanel
-                            elif [ "$system_type" == "debian" ]; then
-                                wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh aapanel
-                            fi
-                            ;;
-                        [Nn])
-                            ;;
-                        *)
-                            ;;
-                    esac
-                fi
-            fi
+            centos_mingling="wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh"
+            centos_mingling2="bash install.sh aapanel"
+
+            ubuntu_mingling="wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh"
+            ubuntu_mingling2="bash install.sh aapanel"
+
+            install_panel
+
               ;;
           3)
-            if command -v 1pctl &> /dev/null; then
-                clear
-                echo "1Panel已安装，应用操作"
-                echo ""
-                echo "------------------------"
-                echo "1. 查看1Panel信息           2. 卸载1Panel"
-                echo "------------------------"
-                echo "0. 返回上一级选单"
-                echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
 
-                case $sub_choice in
-                    1)
-                        clear
-                        1pctl user-info
-                        1pctl update password
-                        ;;
-                    2)
-                        clear
-                        1pctl uninstall
+            lujing="command -v 1pctl &> /dev/null"
+            panelname="1Panel"
 
-                        ;;
-                    0)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                    *)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                esac
-            else
+            gongneng1="1pctl user-info"
+            gongneng1_1="1pctl update password"
+            gongneng2="1pctl uninstall"
+            gongneng2_1=""
+            gongneng2_2=""
 
-                clear
-                echo "安装提示"
-                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装1Panel！"
-                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍: https://1panel.cn/"
-                echo ""
-                # 获取当前系统类型
-                get_system_type() {
-                  if [ -f /etc/os-release ]; then
-                    . /etc/os-release
-                    if [ "$ID" == "centos" ]; then
-                      echo "centos"
-                    elif [ "$ID" == "ubuntu" ]; then
-                      echo "ubuntu"
-                    elif [ "$ID" == "debian" ]; then
-                      echo "debian"
-                    else
-                      echo "unknown"
-                    fi
-                  else
-                    echo "unknown"
-                  fi
-                }
+            panelurl="https://1panel.cn/"
 
-                system_type=$(get_system_type)
 
-                if [ "$system_type" == "unknown" ]; then
-                  echo "不支持的操作系统类型"
-                else
-                  read -p "确定安装1Panel吗？(Y/N): " choice
-                  case "$choice" in
-                    [Yy])
-                      iptables_open
-                      install_docker
-                      if [ "$system_type" == "centos" ]; then
-                        curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sh quick_start.sh
-                      elif [ "$system_type" == "ubuntu" ]; then
-                        curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
-                      elif [ "$system_type" == "debian" ]; then
-                        curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
-                      fi
-                      ;;
-                    [Nn])
-                      ;;
-                    *)
-                      ;;
-                  esac
-                fi
-            fi
+            centos_mingling="curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh"
+            centos_mingling2="sh quick_start.sh"
 
+            ubuntu_mingling="curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh"
+            ubuntu_mingling2="bash quick_start.sh"
+
+            install_panel
 
               ;;
           4)
