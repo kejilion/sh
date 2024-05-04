@@ -197,6 +197,9 @@ install_ldnmp() {
           "docker exec nginx chmod -R 777 /var/www/html"
           "docker restart nginx > /dev/null 2>&1"
 
+          # "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
+          # "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
+
           "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apk update > /dev/null 2>&1"
           "docker exec php74 apt update > /dev/null 2>&1"
@@ -1880,10 +1883,10 @@ EOF
       dbrootpasswd=$(openssl rand -base64 16) && dbuse=$(openssl rand -hex 4) && dbusepasswd=$(openssl rand -base64 8)
 
       # 在 docker-compose.yml 文件中进行替换
-      sed -i "s/webroot/$dbrootpasswd/g" /home/web/docker-compose.yml
-      sed -i "s/kejilionYYDS/$dbusepasswd/g" /home/web/docker-compose.yml
-      sed -i "s/kejilion/$dbuse/g" /home/web/docker-compose.yml
-
+      sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
+      sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
+      sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
+      
       install_ldnmp
 
         ;;
