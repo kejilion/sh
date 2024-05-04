@@ -3755,7 +3755,7 @@ EOF
 
 
 
-          35)
+          36)
             docker_name="lobe-chat"
             docker_img="lobehub/lobe-chat:latest"
             docker_port=8036
