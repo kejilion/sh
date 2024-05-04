@@ -197,6 +197,9 @@ install_ldnmp() {
           "docker exec nginx chmod -R 777 /var/www/html"
           "docker restart nginx > /dev/null 2>&1"
 
+          "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
+          "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
+
           "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apk update > /dev/null 2>&1"
           "docker exec php74 apt update > /dev/null 2>&1"
@@ -585,7 +588,7 @@ f2b_sshd() {
 
 server_reboot() {
 
-    read -p "确定现在重启服务器吗？(Y/N): " rboot
+    read -p $'\e[33m现在重启服务器吗？(Y/N): \e[0m' rboot
     case "$rboot" in
       [Yy])
         echo "已重启"
@@ -602,8 +605,141 @@ server_reboot() {
 
 }
 
+output_status() {
+    output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
+        NR > 2 { rx_total += $2; tx_total += $10 }
+        END {
+            rx_units = "Bytes";
+            tx_units = "Bytes";
+            if (rx_total > 1024) { rx_total /= 1024; rx_units = "KB"; }
+            if (rx_total > 1024) { rx_total /= 1024; rx_units = "MB"; }
+            if (rx_total > 1024) { rx_total /= 1024; rx_units = "GB"; }
+
+            if (tx_total > 1024) { tx_total /= 1024; tx_units = "KB"; }
+            if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
+            if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
+
+            printf("总接收: %.2f %s\n总发送: %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
+        }' /proc/net/dev)
+
+}
 
 
+ldnmp_install_status() {
+
+   if docker inspect "php" &>/dev/null; then
+    echo "LDNMP环境已安装，开始部署 $webname"
+   else
+    echo "LDNMP环境未安装，请先安装LDNMP环境，再部署网站"
+    break_end
+    kejilion
+
+   fi
+
+}
+
+
+nginx_install_status() {
+
+   if docker inspect "nginx" &>/dev/null; then
+    echo "nginx环境已安装，开始部署 $webname"
+   else
+    echo "nginx未安装，请先安装nginx环境，再部署网站"
+    break_end
+    kejilion
+
+   fi
+
+}
+
+
+ldnmp_web_on() {
+      clear
+      echo "您的 $webname 搭建好了！"
+      echo "https://$yuming"
+      echo "------------------------"
+      echo "$webname 安装信息如下: "
+
+}
+
+nginx_web_on() {
+      clear
+      echo "您的 $webname 搭建好了！"
+      echo "https://$yuming"
+
+}
+
+
+
+install_panel() {
+            if $lujing ; then
+                clear
+                echo "$panelname 已安装，应用操作"
+                echo ""
+                echo "------------------------"
+                echo "1. 管理$panelname          2. 卸载$panelname"
+                echo "------------------------"
+                echo "0. 返回上一级选单"
+                echo "------------------------"
+                read -p "请输入你的选择: " sub_choice
+
+                case $sub_choice in
+                    1)
+                        clear
+                        $gongneng1
+                        $gongneng1_1
+                        ;;
+                    2)
+                        clear
+                        $gongneng2
+                        $gongneng2_1
+                        $gongneng2_2
+                        ;;
+                    0)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                    *)
+                        break  # 跳出循环，退出菜单
+                        ;;
+                esac
+            else
+                clear
+                echo "安装提示"
+                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装$panelname！"
+                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
+                echo "官网介绍: $panelurl "
+                echo ""
+
+                read -p "确定安装 $panelname 吗？(Y/N): " choice
+                case "$choice" in
+                    [Yy])
+                        iptables_open
+                        install wget
+                        if grep -q 'Alpine' /etc/issue; then
+                            $ubuntu_mingling
+                            $ubuntu_mingling2
+                        elif grep -qi 'CentOS' /etc/redhat-release; then
+                            $centos_mingling
+                            $centos_mingling2
+                        elif grep -qi 'Ubuntu' /etc/os-release; then
+                            $ubuntu_mingling
+                            $ubuntu_mingling2
+                        elif grep -qi 'Debian' /etc/os-release; then
+                            $ubuntu_mingling
+                            $ubuntu_mingling2
+                        else
+                            echo "Unsupported OS"
+                        fi
+                                                    ;;
+                    [Nn])
+                        ;;
+                    *)
+                        ;;
+                esac
+
+            fi
+
+}
 
 
 
@@ -615,7 +751,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.4.2 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.4.7 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -699,22 +835,7 @@ case $choice in
       fi
     fi
 
-    output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
-        NR > 2 { rx_total += $2; tx_total += $10 }
-        END {
-            rx_units = "Bytes";
-            tx_units = "Bytes";
-            if (rx_total > 1024) { rx_total /= 1024; rx_units = "KB"; }
-            if (rx_total > 1024) { rx_total /= 1024; rx_units = "MB"; }
-            if (rx_total > 1024) { rx_total /= 1024; rx_units = "GB"; }
-
-            if (tx_total > 1024) { tx_total /= 1024; tx_units = "KB"; }
-            if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
-            if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
-
-            printf("总接收: %.2f %s\n总发送: %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
-        }' /proc/net/dev)
-
+    output_status
 
     current_time=$(date "+%Y-%m-%d %I:%M %p")
 
@@ -852,11 +973,11 @@ case $choice in
       echo "14. fzf 全局搜索工具"
       echo "------------------------"
       echo "21. cmatrix 黑客帝国屏保"
-      echo -e "22. sl 跑火车屏保 \033[33mNEW\033[0m"
+      echo "22. sl 跑火车屏保"
       echo "------------------------"
-      echo -e "26. 俄罗斯方块小游戏 \033[33mNEW\033[0m"
-      echo -e "27. 贪吃蛇小游戏 \033[33mNEW\033[0m"
-      echo -e "28. 太空入侵者小游戏 \033[33mNEW\033[0m"
+      echo "26. 俄罗斯方块小游戏"
+      echo "27. 贪吃蛇小游戏"
+      echo "28. 太空入侵者小游戏"
       echo "------------------------"
       echo "31. 全部安装"
       echo "32. 全部卸载"
@@ -1203,7 +1324,7 @@ EOF
                           ;;
                       11)
                           read -p "请输入容器名: " dockername
-                          docker exec -it $dockername /bin/bash
+                          docker exec -it $dockername /bin/sh
                           break_end
                           ;;
                       12)
@@ -1425,7 +1546,7 @@ EOF
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
-                  remove docker docker-ce docker-compose > /dev/null 2>&1
+                  remove docker > /dev/null 2>&1
                   ;;
                 [Nn])
                   ;;
@@ -1553,10 +1674,14 @@ EOF
 
           21)
               clear
+              new_swap=1024
+              add_swap
               curl -sL yabs.sh | bash -s -- -i -5
               ;;
           22)
               clear
+              new_swap=1024
+              add_swap
               bash <(curl -sL bash.icu/gb5)
               ;;
 
@@ -1712,15 +1837,15 @@ EOF
     echo  "4. 安装可道云桌面"
     echo  "5. 安装苹果CMS网站"
     echo  "6. 安装独角数发卡网"
-    echo  "8. 安装flarum论坛网站"
-    echo  "9. 安装Bitwarden密码管理平台"
-    echo  "10. 安装Halo博客网站"
-    echo  "11. 安装typecho轻量博客网站"
+    echo  "7. 安装flarum论坛网站"
+    echo  "8. 安装typecho轻量博客网站"
     echo  "------------------------"
-    echo -e "21. 仅安装nginx \033[33mNEW\033[0m"
+    echo  "21. 仅安装nginx"
     echo  "22. 站点重定向"
     echo  "23. 站点反向代理"
-    echo -e "24. 自定义静态站点 \033[36mBeta\033[0m"
+    echo  "24. 自定义静态站点"
+    echo  "25. 安装Bitwarden密码管理平台"
+    echo  "26. 安装Halo博客网站"
     echo  "------------------------"
     echo  "31. 站点数据管理"
     echo  "32. 备份全站数据"
@@ -1768,6 +1893,8 @@ EOF
       2)
       clear
       # wordpress
+      webname="WordPress"
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1786,11 +1913,7 @@ EOF
 
       restart_ldnmp
 
-      clear
-      echo "您的WordPress搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "WP安装信息如下: "
+      ldnmp_web_on
       echo "数据库名: $dbname"
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
@@ -1802,6 +1925,8 @@ EOF
       3)
       clear
       # Discuz论坛
+      webname="Discuz论坛"
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1820,11 +1945,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的Discuz论坛搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "数据库名: $dbname"
       echo "用户名: $dbuse"
@@ -1837,6 +1958,8 @@ EOF
       4)
       clear
       # 可道云桌面
+      webname="可道云桌面"
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1854,11 +1977,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的可道云桌面搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
@@ -1870,6 +1989,8 @@ EOF
       5)
       clear
       # 苹果CMS
+      webname="苹果CMS"
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1881,7 +2002,8 @@ EOF
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://hub.gitmirror.com/https://github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && rm maccms10.zip
+      # wget https://hub.gitmirror.com/https://github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && rm maccms10.zip
+      wget https://hub.gitmirror.com/https://github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && mv maccms10-*/* . && rm -r maccms10-* && rm maccms10.zip
       cd /home/web/html/$yuming/template/ && wget https://hub.gitmirror.com/https://github.com/kejilion/Website_source_code/raw/main/DYXS2.zip && unzip DYXS2.zip && rm /home/web/html/$yuming/template/DYXS2.zip
       cp /home/web/html/$yuming/template/DYXS2/asset/admin/Dyxs2.php /home/web/html/$yuming/application/admin/controller
       cp /home/web/html/$yuming/template/DYXS2/asset/admin/dycms.html /home/web/html/$yuming/application/admin/view/system
@@ -1890,11 +2012,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的苹果CMS搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "数据库端口: 3306"
       echo "数据库名: $dbname"
@@ -1910,6 +2028,8 @@ EOF
       6)
       clear
       # 独脚数卡
+      webname="独脚数卡"
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1926,11 +2046,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的独角数卡网站搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "数据库端口: 3306"
       echo "数据库名: $dbname"
@@ -1953,9 +2069,11 @@ EOF
       nginx_status
         ;;
 
-      8)
+      7)
       clear
       # flarum论坛
+      webname="flarum论坛"
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -1979,11 +2097,7 @@ EOF
       restart_ldnmp
 
 
-      clear
-      echo "您的flarum论坛网站搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库地址: mysql"
       echo "数据库名: $dbname"
       echo "用户名: $dbuse"
@@ -1993,46 +2107,11 @@ EOF
       nginx_status
         ;;
 
-      9)
-      clear
-      # Bitwarden
-      add_yuming
-      install_ssltls
-
-      docker run -d \
-        --name bitwarden \
-        --restart always \
-        -p 3280:80 \
-        -v /home/web/html/$yuming/bitwarden/data:/data \
-        vaultwarden/server
-      duankou=3280
-      reverse_proxy
-
-      clear
-      echo "您的Bitwarden网站搭建好了！"
-      echo "https://$yuming"
-      nginx_status
-        ;;
-
-      10)
-      clear
-      # halo
-      add_yuming
-      install_ssltls
-
-      docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
-      duankou=8010
-      reverse_proxy
-
-      clear
-      echo "您的Halo网站搭建好了！"
-      echo "https://$yuming"
-      nginx_status
-        ;;
-
-      11)
+      8)
       clear
       # typecho
+      webname="typecho"
+      ldnmp_install_status
       add_yuming
       install_ssltls
       add_db
@@ -2051,10 +2130,7 @@ EOF
 
 
       clear
-      echo "您的typecho搭建好了！"
-      echo "https://$yuming"
-      echo "------------------------"
-      echo "安装信息如下: "
+      ldnmp_web_on
       echo "数据库前缀: typecho_"
       echo "数据库地址: mysql"
       echo "用户名: $dbuse"
@@ -2089,6 +2165,8 @@ EOF
 
       22)
       clear
+      webname="站点重定向"
+      nginx_install_status
       ip_address
       add_yuming
       read -p "请输入跳转域名: " reverseproxy
@@ -2101,15 +2179,15 @@ EOF
 
       docker restart nginx
 
-      clear
-      echo "您的重定向网站做好了！"
-      echo "https://$yuming"
+      nginx_web_on
       nginx_status
 
         ;;
 
       23)
       clear
+      webname="站点反向代理"
+      nginx_install_status
       ip_address
       add_yuming
       read -p "请输入你的反代IP: " reverseproxy
@@ -2124,15 +2202,14 @@ EOF
 
       docker restart nginx
 
-      clear
-      echo "您的反向代理网站做好了！"
-      echo "https://$yuming"
+      nginx_web_on
       nginx_status
         ;;
 
       24)
       clear
-      # 静态界面
+      webname="静态站点"
+      nginx_install_status
       add_yuming
       install_ssltls
 
@@ -2152,11 +2229,46 @@ EOF
       docker exec nginx chmod -R 777 /var/www/html
       docker restart nginx
 
-      clear
-      echo "您的静态网站搭建好了！"
-      echo "https://$yuming"
+      nginx_web_on
       nginx_status
         ;;
+
+      25)
+      clear
+      webname="Bitwarden"
+      nginx_install_status
+      add_yuming
+      install_ssltls
+
+      docker run -d \
+        --name bitwarden \
+        --restart always \
+        -p 3280:80 \
+        -v /home/web/html/$yuming/bitwarden/data:/data \
+        vaultwarden/server
+      duankou=3280
+      reverse_proxy
+
+      nginx_web_on
+      nginx_status
+        ;;
+
+      26)
+      clear
+      webname="halo"
+      nginx_install_status
+      add_yuming
+      install_ssltls
+
+      docker run -d --name halo --restart always --network web_default -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
+      duankou=8010
+      reverse_proxy
+
+      nginx_web_on
+      nginx_status
+        ;;
+
+
 
     31)
     while true; do
@@ -2363,7 +2475,7 @@ EOF
 
     35)
 
-        if docker inspect fail2ban &>/dev/null || [ -x "$(command -v fail2ban-client)" ]; then
+        if docker inspect fail2ban &>/dev/null ; then
           while true; do
               clear
               echo "服务器防御程序已启动"
@@ -2438,16 +2550,12 @@ EOF
                       ;;
                   8)
                       tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
-                      break
 
                       ;;
                   9)
                       docker rm -f fail2ban
                       rm -rf /path/to/fail2ban
-                      remove fail2ban
-                      rm -rf /etc/fail2ban
-                      echo "重启后生效"
-                      server_reboot
+                      echo "Fail2Ban防御程序已卸载"
                       break
                       ;;
 
@@ -2490,6 +2598,25 @@ EOF
               break_end
 
           done
+
+      elif [ -x "$(command -v fail2ban-client)" ] ; then
+          clear
+          echo "卸载旧版fail2ban"
+          read -p "确定继续吗？(Y/N): " choice
+          case "$choice" in
+            [Yy])
+              remove fail2ban
+              rm -rf /etc/fail2ban
+              echo "Fail2Ban防御程序已卸载"
+              ;;
+            [Nn])
+              echo "已取消"
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              ;;
+          esac
+
       else
           clear
           install_docker
@@ -2512,8 +2639,7 @@ EOF
           cd ~
           f2b_status
 
-          echo "防御程序已开启，建议 reboot 重启服务器，完美适配系统。"
-          server_reboot
+          echo "防御程序已开启"
       fi
 
         ;;
@@ -2659,7 +2785,8 @@ EOF
       echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
       echo "29. searxng聚合搜索站                   30. PhotoPrism私有相册系统"
       echo "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件"
-      echo "33. Sun-Panel导航面板"
+      echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
+      echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
@@ -2669,254 +2796,73 @@ EOF
 
       case $sub_choice in
           1)
-            if [ -f "/etc/init.d/bt" ] && [ -d "/www/server/panel" ]; then
-                clear
-                echo "宝塔面板已安装，应用操作"
-                echo ""
-                echo "------------------------"
-                echo "1. 管理宝塔面板           2. 卸载宝塔面板"
-                echo "------------------------"
-                echo "0. 返回上一级选单"
-                echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
 
-                case $sub_choice in
-                    1)
-                        clear
-                        # 更新宝塔面板操作
-                        bt
-                        ;;
-                    2)
-                        clear
-                        curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1
-                        chmod +x bt-uninstall.sh
-                        ./bt-uninstall.sh
-                        ;;
-                    0)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                    *)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                esac
-            else
-                clear
-                echo "安装提示"
-                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装宝塔面板！"
-                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍: https://www.bt.cn/new/index.html"
-                echo ""
+            lujing="[ -d "/www/server/panel" ]"
+            panelname="宝塔面板"
 
-                # 获取当前系统类型
-                get_system_type() {
-                    if [ -f /etc/os-release ]; then
-                        . /etc/os-release
-                        if [ "$ID" == "centos" ]; then
-                            echo "centos"
-                        elif [ "$ID" == "ubuntu" ]; then
-                            echo "ubuntu"
-                        elif [ "$ID" == "debian" ]; then
-                            echo "debian"
-                        else
-                            echo "unknown"
-                        fi
-                    else
-                        echo "unknown"
-                    fi
-                }
+            gongneng1="bt"
+            gongneng1_1=""
+            gongneng2="curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh"
+            gongneng2_1="chmod +x bt-uninstall.sh"
+            gongneng2_2="./bt-uninstall.sh"
 
-                system_type=$(get_system_type)
+            panelurl="https://www.bt.cn/new/index.html"
 
-                if [ "$system_type" == "unknown" ]; then
-                    echo "不支持的操作系统类型"
-                else
-                    read -p "确定安装宝塔吗？(Y/N): " choice
-                    case "$choice" in
-                        [Yy])
-                            iptables_open
-                            install wget
-                            if [ "$system_type" == "centos" ]; then
-                                yum install -y wget && wget -O install.sh https://download.bt.cn/install/install_6.0.sh && sh install.sh ed8484bec
-                            elif [ "$system_type" == "ubuntu" ]; then
-                                wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
-                            elif [ "$system_type" == "debian" ]; then
-                                wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh && bash install.sh ed8484bec
-                            fi
-                            ;;
-                        [Nn])
-                            ;;
-                        *)
-                            ;;
-                    esac
-                fi
-            fi
+
+            centos_mingling="wget -O install.sh https://download.bt.cn/install/install_6.0.sh"
+            centos_mingling2="sh install.sh ed8484bec"
+
+            ubuntu_mingling="wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh"
+            ubuntu_mingling2="bash install.sh ed8484bec"
+
+            install_panel
+
+
 
               ;;
           2)
-            if [ -f "/etc/init.d/bt" ] && [ -d "/www/server/panel" ]; then
-                clear
-                echo "aaPanel已安装，应用操作"
-                echo ""
-                echo "------------------------"
-                echo "1. 管理aaPanel           2. 卸载aaPanel"
-                echo "------------------------"
-                echo "0. 返回上一级选单"
-                echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
 
-                case $sub_choice in
-                    1)
-                        clear
-                        # 更新aaPanel操作
-                        bt
-                        ;;
-                    2)
-                        clear
-                        curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1
-                        chmod +x bt-uninstall.sh
-                        ./bt-uninstall.sh
-                        ;;
-                    0)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                    *)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                esac
-            else
-                clear
-                echo "安装提示"
-                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装aaPanel！"
-                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍: https://www.aapanel.com/new/index.html"
-                echo ""
+            lujing="[ -d "/www/server/panel" ]"
+            panelname="aapanel"
 
-                # 获取当前系统类型
-                get_system_type() {
-                    if [ -f /etc/os-release ]; then
-                        . /etc/os-release
-                        if [ "$ID" == "centos" ]; then
-                            echo "centos"
-                        elif [ "$ID" == "ubuntu" ]; then
-                            echo "ubuntu"
-                        elif [ "$ID" == "debian" ]; then
-                            echo "debian"
-                        else
-                            echo "unknown"
-                        fi
-                    else
-                        echo "unknown"
-                    fi
-                }
+            gongneng1="bt"
+            gongneng1_1=""
+            gongneng2="curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh"
+            gongneng2_1="chmod +x bt-uninstall.sh"
+            gongneng2_2="./bt-uninstall.sh"
 
-                system_type=$(get_system_type)
+            panelurl="https://www.aapanel.com/new/index.html"
 
-                if [ "$system_type" == "unknown" ]; then
-                    echo "不支持的操作系统类型"
-                else
-                    read -p "确定安装aaPanel吗？(Y/N): " choice
-                    case "$choice" in
-                        [Yy])
-                            iptables_open
-                            install wget
-                            if [ "$system_type" == "centos" ]; then
-                                yum install -y wget && wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh && bash install.sh aapanel
-                            elif [ "$system_type" == "ubuntu" ]; then
-                                wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh aapanel
-                            elif [ "$system_type" == "debian" ]; then
-                                wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh && bash install.sh aapanel
-                            fi
-                            ;;
-                        [Nn])
-                            ;;
-                        *)
-                            ;;
-                    esac
-                fi
-            fi
+            centos_mingling="wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh"
+            centos_mingling2="bash install.sh aapanel"
+
+            ubuntu_mingling="wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh"
+            ubuntu_mingling2="bash install.sh aapanel"
+
+            install_panel
+
               ;;
           3)
-            if command -v 1pctl &> /dev/null; then
-                clear
-                echo "1Panel已安装，应用操作"
-                echo ""
-                echo "------------------------"
-                echo "1. 查看1Panel信息           2. 卸载1Panel"
-                echo "------------------------"
-                echo "0. 返回上一级选单"
-                echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
 
-                case $sub_choice in
-                    1)
-                        clear
-                        1pctl user-info
-                        1pctl update password
-                        ;;
-                    2)
-                        clear
-                        1pctl uninstall
+            lujing="command -v 1pctl &> /dev/null"
+            panelname="1Panel"
 
-                        ;;
-                    0)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                    *)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                esac
-            else
+            gongneng1="1pctl user-info"
+            gongneng1_1="1pctl update password"
+            gongneng2="1pctl uninstall"
+            gongneng2_1=""
+            gongneng2_2=""
 
-                clear
-                echo "安装提示"
-                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装1Panel！"
-                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍: https://1panel.cn/"
-                echo ""
-                # 获取当前系统类型
-                get_system_type() {
-                  if [ -f /etc/os-release ]; then
-                    . /etc/os-release
-                    if [ "$ID" == "centos" ]; then
-                      echo "centos"
-                    elif [ "$ID" == "ubuntu" ]; then
-                      echo "ubuntu"
-                    elif [ "$ID" == "debian" ]; then
-                      echo "debian"
-                    else
-                      echo "unknown"
-                    fi
-                  else
-                    echo "unknown"
-                  fi
-                }
+            panelurl="https://1panel.cn/"
 
-                system_type=$(get_system_type)
 
-                if [ "$system_type" == "unknown" ]; then
-                  echo "不支持的操作系统类型"
-                else
-                  read -p "确定安装1Panel吗？(Y/N): " choice
-                  case "$choice" in
-                    [Yy])
-                      iptables_open
-                      install_docker
-                      if [ "$system_type" == "centos" ]; then
-                        curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && sh quick_start.sh
-                      elif [ "$system_type" == "ubuntu" ]; then
-                        curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
-                      elif [ "$system_type" == "debian" ]; then
-                        curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
-                      fi
-                      ;;
-                    [Nn])
-                      ;;
-                    *)
-                      ;;
-                  esac
-                fi
-            fi
+            centos_mingling="curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh"
+            centos_mingling2="sh quick_start.sh"
 
+            ubuntu_mingling="curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh"
+            ubuntu_mingling2="bash quick_start.sh"
+
+            install_panel
 
               ;;
           4)
@@ -3221,7 +3167,7 @@ EOF
                     sleep 1
                     docker exec -it db mongosh --eval "printjson(rs.initiate())"
                     sleep 5
-                    docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat:6.3
+                    docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
                     clear
 
@@ -3657,7 +3603,7 @@ EOF
             docker_name="dockge"
             docker_img="louislam/dockge:latest"
             docker_port=5003
-            docker_rum="docker run -d --name dockge --restart unless-stopped -p 5003:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/opt/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge"
+            docker_rum="docker run -d --name dockge --restart unless-stopped -p 5003:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/home/docker/dockge/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge"
             docker_describe="dockge是一个可视化的docker-compose容器管理面板"
             docker_url="官网介绍: https://hub.gitmirror.com/https://github.com/louislam/dockge"
             docker_use=""
@@ -3773,6 +3719,60 @@ EOF
             docker_passwd=""
             docker_app
               ;;
+
+          34)
+            docker_name="pingvin-share"
+            docker_img="stonith404/pingvin-share"
+            docker_port=3060
+            docker_rum="docker run -d \
+                            --name pingvin-share \
+                            --restart always \
+                            -p 3060:3000 \
+                            -v /home/docker/pingvin-share/data:/opt/app/backend/data \
+                            stonith404/pingvin-share"
+            docker_describe="Pingvin Share 是一个可自建的文件分享平台，是 WeTransfer 的一个替代品"
+            docker_url="官网介绍: https://hub.gitmirror.com/https://github.com/stonith404/pingvin-share"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+
+
+          35)
+            docker_name="moments"
+            docker_img="kingwrcy/moments:latest"
+            docker_port=8035
+            docker_rum="docker run -d --restart unless-stopped \
+                            -p 8035:3000 \
+                            -v /home/docker/moments/data:/app/data \
+                            -v /etc/localtime:/etc/localtime:ro \
+                            -v /etc/timezone:/etc/timezone:ro \
+                            --name moments \
+                            kingwrcy/moments:latest"
+            docker_describe="极简朋友圈，高仿微信朋友圈，记录你的美好生活"
+            docker_url="官网介绍: https://hub.gitmirror.com/https://github.com/kingwrcy/moments?tab=readme-ov-file"
+            docker_use="echo \"账号: admin  密码: a123456\""
+            docker_passwd=""
+            docker_app
+              ;;
+
+
+
+          36)
+            docker_name="lobe-chat"
+            docker_img="lobehub/lobe-chat:latest"
+            docker_port=8036
+            docker_rum="docker run -d -p 8036:3210 \
+                            --name lobe-chat \
+                            --restart=always \
+                            lobehub/lobe-chat"
+            docker_describe="LobeChat聚合市面上主流的AI大模型，ChatGPT/Claude/Gemini/Groq/Ollama"
+            docker_url="官网介绍: https://hub.gitmirror.com/https://github.com/lobehub/lobe-chat"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+
 
           51)
           clear
@@ -3925,6 +3925,7 @@ EOF
       echo "20. 定时任务管理"
       echo "21. 本机host解析"
       echo "22. fail2banSSH防御程序"
+      echo "23. 限流自动关机"
       echo "------------------------"
       echo "31. 留言板"
       echo "------------------------"
@@ -4053,7 +4054,6 @@ EOF
               ;;
           6)
               clear
-              #!/bin/bash
 
               # 去掉 #Port 的注释
               sed -i 's/#Port/Port/' /etc/ssh/sshd_config
@@ -4134,13 +4134,6 @@ EOF
               ;;
 
           8)
-          dd_xitong_1() {
-            read -p "请输入你重装后的密码: " vpspasswd
-            echo "任意键继续，重装后初始用户名: root  初始密码: $vpspasswd  初始端口: 22"
-            read -n 1 -s -r -p ""
-            install wget
-            bash <(wget --no-check-certificate -qO- 'https://raw.gitmirror.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
-          }
 
           dd_xitong_2() {
             echo "任意键继续，重装后初始用户名: root  初始密码: LeitboGi0ro  初始端口: 22"
@@ -4158,7 +4151,7 @@ EOF
 
           clear
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
-          echo -e "\e[37m感谢MollyLau和MoeClub的脚本支持！\e[0m "
+          echo -e "\e[37m感谢MollyLau的脚本支持！\e[0m "
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
@@ -4192,28 +4185,28 @@ EOF
 
                 case "$sys_choice" in
                   1)
-                    xitong="-d 12"
-                    dd_xitong_1
-                    exit
+                    dd_xitong_2
+                    bash InstallNET.sh -debian 12
                     reboot
+                    exit
                     ;;
 
                   2)
-                    xitong="-d 11"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -debian 11
                     reboot
                     exit
                     ;;
 
                   3)
-                    xitong="-d 10"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -debian 10
                     reboot
                     exit
                     ;;
                   4)
-                    xitong="-d 9"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -debian 9
                     reboot
                     exit
                     ;;
@@ -4232,14 +4225,14 @@ EOF
                     ;;
 
                   13)
-                    xitong="-u 20.04"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -ubuntu 20.04
                     reboot
                     exit
                     ;;
                   14)
-                    xitong="-u 18.04"
-                    dd_xitong_1
+                    dd_xitong_2
+                    bash InstallNET.sh -ubuntu 18.04
                     reboot
                     exit
                     ;;
@@ -4267,16 +4260,12 @@ EOF
                     exit
                     ;;
 
-
-
                   31)
                     dd_xitong_2
                     bash InstallNET.sh -alpine
                     reboot
                     exit
                     ;;
-
-
 
                   41)
                     dd_xitong_3
@@ -4710,6 +4699,8 @@ EOF
               break
             fi
 
+            new_swap=1024
+            add_swap
             install wget gnupg
 
             # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
@@ -5238,7 +5229,7 @@ EOF
               ;;
 
           22)
-            if docker inspect fail2ban &>/dev/null || [ -x "$(command -v fail2ban-client)" ]; then
+            if docker inspect fail2ban &>/dev/null ; then
                 while true; do
                     clear
                     echo "SSH防御程序已启动"
@@ -5265,10 +5256,7 @@ EOF
                         9)
                             docker rm -f fail2ban
                             rm -rf /path/to/fail2ban
-                            remove fail2ban
-                            rm -rf /etc/fail2ban
-                            echo "重启后生效"
-                            server_reboot
+                            echo "Fail2Ban防御程序已卸载"
 
                             break
                             ;;
@@ -5282,6 +5270,25 @@ EOF
                     break_end
 
                 done
+
+            elif [ -x "$(command -v fail2ban-client)" ] ; then
+                clear
+                echo "卸载旧版fail2ban"
+                read -p "确定继续吗？(Y/N): " choice
+                case "$choice" in
+                  [Yy])
+                    remove fail2ban
+                    rm -rf /etc/fail2ban
+                    echo "Fail2Ban防御程序已卸载"
+                    ;;
+                  [Nn])
+                    echo "已取消"
+                    ;;
+                  *)
+                    echo "无效的选择，请输入 Y 或 N。"
+                    ;;
+                esac
+
             else
 
               clear
@@ -5300,8 +5307,7 @@ EOF
 
                   cd ~
                   f2b_status
-                  echo "Fail2Ban防御程序已开启，建议 reboot 重启服务器，完美适配系统。"
-                  server_reboot
+                  echo "Fail2Ban防御程序已开启"
 
                   ;;
                 [Nn])
@@ -5313,6 +5319,60 @@ EOF
               esac
             fi
               ;;
+
+
+          23)
+            clear
+            echo "当前流量使用情况，重启服务器流量计算会清零！"
+            output_status
+            echo "$output"
+
+            # 检查是否存在 Limiting_Shut_down.sh 文件
+            if [ -f ~/Limiting_Shut_down.sh ]; then
+                # 获取 threshold_gb 的值
+                threshold_gb=$(grep -oP 'threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+                echo "当前设置的限流阈值为 ${threshold_gb}GB"
+            else
+                echo "当前未启用限流关机功能"
+            fi
+
+            echo
+            echo "------------------------------------------------"
+            echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！每月1日重置流量重启服务器。"
+            read -p "1. 开启限流关机功能    2. 停用限流关机功能    0. 退出  : " Limiting
+
+            case "$Limiting" in
+              1)
+                # 输入新的虚拟内存大小
+                echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
+                read -p "请输入流量阈值（单位为GB）: " threshold_gb
+                cd ~
+                curl -Ss -O https://raw.gitmirror.com/kejilion/sh/main/Limiting_Shut_down.sh
+                chmod +x ~/Limiting_Shut_down.sh
+                sed -i "s/110/$threshold_gb/g" ~/Limiting_Shut_down.sh
+                crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
+                (crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
+                crontab -l | grep -v 'reboot' | crontab -
+                (crontab -l ; echo "0 1 1 * * reboot") | crontab - > /dev/null 2>&1
+                echo "限流关机已设置"
+
+                ;;
+              0)
+                echo "已取消"
+                ;;
+              2)
+                crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
+                crontab -l | grep -v 'reboot' | crontab -
+                rm ~/Limiting_Shut_down.sh
+                echo "已关闭限流关机功能"
+                ;;
+              *)
+                echo "无效的选择，请输入 Y 或 N。"
+                ;;
+            esac
+
+              ;;
+
 
           31)
             clear
