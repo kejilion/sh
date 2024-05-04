@@ -33,7 +33,7 @@ done
 # 获取当前服务器ipv4和ipv6
 ip_address() {
     ipv4_address=$(curl -s ipv4.ip.sb)
-    ipv6_address=$(curl -s --max-time 2 ipv6.ip.sb)
+    ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
 }
 
 # 安装依赖包
@@ -4406,17 +4406,9 @@ EOF
                         ;;
                 esac
 
-                read -p $'\033[1;35m主机名已更改，是否立即重启系统以使更改生效？ (y/n): \033[0m' restart_choice
-
-                if [[ "$restart_choice" =~ ^[Yy]$ ]]; then
-                    echo -e "${green}正在重启系统...${re}"
-                    sleep 1
-                    reboot
-                else
-                    echo -e "${red}请稍后手动重启系统以使配置生效。${re}"
+                echo -e $'\033[1;35m主机名已更改，重新连接ssh生效\033[0m'
                     sleep 2
                     main_menu
-                fi
             else
                 echo -e "${green}取消更改主机名。${re}"
                 sleep 2
@@ -5130,6 +5122,7 @@ EOF
       echo -e "${white}10. M佬Juicity一键脚本        14.伊朗版Xray面板一键脚本${re}"
       echo -e "${white}11. M佬Tuic-v5一键脚本        15.OpenVPN一键安装脚本 ${re}"
       echo -e "${white}12. Brutal-Reality一键脚本    16.一键搭建TG代理 ${re}"
+      echo -e "${white}17. 老王Reality一键脚本       18.sing-box面板(sui) ▶${re}"
       echo "---------------------------------------------------------" 
       echo -e "${skyblue} 0. 返回主菜单${re}"
       echo "---------------"
@@ -5331,6 +5324,56 @@ EOF
             break_end
         ;;
 
+        17)
+        clear
+            bash -c "$(curl -L https://raw.githubusercontent.com/eooce/xray-reality/master/install.sh)"
+            sleep 2
+            break_end
+        ;; 
+
+        18)
+        while true; do
+        clear
+          echo -e "${skyblue}▶ Sui面板${re}"
+          echo "--------------"
+          echo -e "${green}1.安装sui面板${re}"
+          echo -e "${red}2.卸载sui面板${re}"
+          echo "--------------"
+          echo -e "${skyblue}0. 返回上一级菜单${re}"
+          echo "--------------"
+          read -p $'\033[1;91m请输入你的选择: \033[0m' sub_choice
+            case $sub_choice in
+                1)
+                    bash <(curl -Ls https://raw.githubusercontent.com/Misaka-blog/s-ui/master/install.sh)
+                    sleep 2
+                    echo ""
+                    break_end
+
+                    ;;
+                2)
+                    systemctl disable sing-box --now
+                    systemctl disable s-ui --now
+
+                    rm -f /etc/systemd/system/s-ui.service
+                    rm -f /etc/systemd/system/sing-box.service
+                    systemctl daemon-reload
+
+                    rm -fr /usr/local/s-ui
+                    clear
+                    echo -e "${green}sui面板已卸载${re}"
+                    break_end
+
+                    ;;
+                0)
+                    break
+
+                    ;;
+                *)
+                    echo -e "${red}无效的输入!${re}"
+                    ;;
+            esac  
+        done
+        ;;
         0)
             main_menu # 返回主菜单
         ;;
@@ -5341,7 +5384,6 @@ EOF
       esac
     done
     ;; 
-
 
   13)
     while true; do
@@ -6392,6 +6434,7 @@ EOF
                 echo "------------------------"
                 echo -e "${skyblue}7. 新增开设LXC小鸡${re}"
                 echo -e "${red}8. 删除指定LXC小鸡${re}" 
+                echo -e "${red}9. 删除所有LXC小鸡和配置${re}" 
                 echo "------------------------"
                 echo -e "${white}0. 返回上一级菜单${re}"
                 echo "------------------------"
@@ -6493,6 +6536,38 @@ EOF
                         sleep 2
                         break_end
                     ;;
+
+                    9)
+                        clear
+                        read -p $'\033[1;35m删除后无法恢复，确定要继续删除所有Lxc小鸡吗 [y/n]: \033[0m' confirm
+
+                        if [[ "$confirm" =~ ^[Yy]$ ]]; then   
+                            lxc list -c n --format csv | xargs -I {} lxc delete -f {}
+
+                            sudo find /var/log -type f -delete
+                            sudo find /var/tmp -type f -delete
+                            sudo find /tmp -type f -delete
+                            sudo find /var/cache/apt/archives -type f -delete
+
+                            # 删除配置
+                            rm -rf /usr/local/bin/ssh_sh.sh
+                            rm -rf /usr/local/bin/config.sh
+                            rm -rf /usr/local/bin/ssh_bash.sh
+                            rm -rf /usr/local/bin/check-dns.sh
+                            rm -rf /root/ssh_sh.sh
+                            rm -rf /root/config.sh
+                            rm -rf /root/ssh_bash.sh
+                            rm -rf /root/buildone.sh
+                            rm -rf /root/add_more.sh
+                            rm -rf /root/build_ipv6_network.sh
+
+                            echo -e "${green}已删除所有Lxc小鸡${re}"
+                            break_end
+                        else 
+                            echo -e "${green}已取消删除${re}"
+                            break_end
+                        fi    
+                    ;;                    
                     
                     0)
                         break
@@ -6651,7 +6726,7 @@ EOF
                 clear
                 echo -e "${purple}▶ 管理incus小鸡${re}"
                 echo "------------------------"
-                echo -e "${skyblue}1. 查看所有incus小鸡${re}"
+                echo -e "${skyblue}1. 查看所有incus小鸡运行状态${re}"
                 echo "------------------------"
                 echo -e "${skyblue}2. 暂停所有incus小鸡${re}"
                 echo -e "${skyblue}3. 启动所有incus小鸡${re}"
@@ -6661,7 +6736,8 @@ EOF
                 echo -e "${skyblue}6. 给指定小鸡重装系统${re}"
                 echo "------------------------"
                 echo -e "${skyblue}7. 新增开设incus小鸡${re}"
-                echo -e "${red}8. 删除指定incus小鸡${re}" 
+                echo -e "${red}8. 删除指定incus小鸡${re}"
+                echo -e "${red}9. 删除所有incus小鸡和配置${re}" 
                 echo "------------------------"
                 echo -e "${white}0. 返回上一级菜单${re}"
                 echo "------------------------"
@@ -6760,6 +6836,38 @@ EOF
                         echo -e "${green}${nat}小鸡已删除${re}"
                         sleep 2
                         break_end
+                    ;;
+
+                    9)
+                        clear
+                        read -p $'\033[1;35m删除后无法恢复，确定要继续删除所有incus小鸡吗 [y/n]: \033[0m' confirm
+
+                        if [[ "$confirm" =~ ^[Yy]$ ]]; then   
+                            incus list -c n --format csv | xargs -I {} incus delete -f {}
+
+                            sudo find /var/log -type f -delete
+                            sudo find /var/tmp -type f -delete
+                            sudo find /tmp -type f -delete
+                            sudo find /var/cache/apt/archives -type f -delete
+
+                            # 删除配置
+                            rm -rf /usr/local/bin/ssh_sh.sh
+                            rm -rf /usr/local/bin/config.sh
+                            rm -rf /usr/local/bin/ssh_bash.sh
+                            rm -rf /usr/local/bin/check-dns.sh
+                            rm -rf /root/ssh_sh.sh
+                            rm -rf /root/config.sh
+                            rm -rf /root/ssh_bash.sh
+                            rm -rf /root/buildone.sh
+                            rm -rf /root/add_more.sh
+                            rm -rf /root/build_ipv6_network.sh
+
+                            echo -e "${green}已删除所有incus小鸡${re}"
+                            break_end
+                        else 
+                            echo -e "${green}已取消删除${re}"
+                            break_end
+                        fi 
                     ;;
 
                     0)
