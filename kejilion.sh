@@ -751,7 +751,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.4.7 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.4.8 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -1839,6 +1839,7 @@ EOF
     echo  "6. 安装独角数发卡网"
     echo  "7. 安装flarum论坛网站"
     echo  "8. 安装typecho轻量博客网站"
+    echo  "20. 自定义动态站点"    
     echo  "------------------------"
     echo  "21. 仅安装nginx"
     echo  "22. 站点重定向"
@@ -2139,6 +2140,48 @@ EOF
       nginx_status
         ;;
 
+      20)
+      clear
+      webname="PHP动态站点"
+      ldnmp_install_status
+      add_yuming
+      install_ssltls
+      add_db
+
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+      cd /home/web/html
+      mkdir $yuming
+      cd $yuming
+
+      install lrzsz
+      clear
+      echo -e "目前只允许上传\033[33zip格式的源码包，\033[0m请提前准备好，按任意键继续..."
+      read -n 1 -s -r -p ""
+      rz -y
+      unzip $(ls -t *.zip | head -n 1) 
+      rm -f $(ls -t *.zip | head -n 1)
+      find "$(realpath .)" -name "index.php" -print
+
+      read -p "请输入index.php的路径，类似（/home/web/html/$yuming/wordpress/） " index_lujing
+       
+      sed -i "s#root /var/www/html/$yuming#root $index_lujingg#g" /home/web/conf.d/$yuming.conf
+      sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
+
+      restart_ldnmp
+
+      ldnmp_web_on
+      prefix="web$(shuf -i 10-99 -n 1)_"      
+      echo "数据库地址: mysql"
+      echo "数据库名: $dbname"
+      echo "用户名: $dbuse"
+      echo "密码: $dbusepasswd"
+      echo "表前缀: $prefix"
+      echo "管理员登录信息自行设置"
+      nginx_status
+        ;;
+
 
       21)
       check_port
@@ -2323,6 +2366,7 @@ EOF
         echo "------------------------"
         echo "1. 申请/更新域名证书               2. 更换站点域名"
         echo "3. 清理站点缓存                    4. 查看站点分析报告"
+        echo "5. 查看全局配置                    6. 查看站点配置"
         echo "------------------------"
         echo "7. 删除指定站点                    8. 删除指定数据库"
         echo "------------------------"
@@ -2367,8 +2411,21 @@ EOF
 
                 ;;
 
+            5)
+                install nano
+                nano /home/web/nginx.conf
+                docker restart nginx
+                ;;
+
+            6)
+                read -p "查看站点配置，请输入你的域名: " yuming
+                install nano
+                nano /home/web/conf.d/$yuming.conf
+                docker restart nginx
+                ;;
+
             7)
-                read -p "请输入你的域名: " yuming
+                read -p "删除站点数据目录，请输入你的域名: " yuming
                 rm -r /home/web/html/$yuming
                 rm /home/web/conf.d/$yuming.conf
                 rm /home/web/certs/${yuming}_key.pem
@@ -2376,7 +2433,7 @@ EOF
                 docker restart nginx
                 ;;
             8)
-                read -p "请输入数据库名: " shujuku
+                read -p "删除站点数据库，请输入数据库名: " shujuku
                 dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
                 docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $shujuku;" 2> /dev/null
                 ;;
