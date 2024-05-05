@@ -2170,6 +2170,20 @@ EOF
        
       sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
       sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
+      
+      clear
+      read -p "请选择PHP版本:  1. php最新版 | 2. php7.4 : " pho_v  
+      case "$pho_v" in
+        1)
+          sed -i "s#php:9000#php:9000#g" /home/web/conf.d/$yuming.conf        
+          ;;
+        2)
+          sed -i "s#php:9000#php74:9000#g" /home/web/conf.d/$yuming.conf     
+          ;;
+        *)
+          echo "无效的选择，请重新输入。"
+          ;;
+      esac
 
       restart_ldnmp
 
