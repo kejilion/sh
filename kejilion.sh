@@ -2168,7 +2168,7 @@ EOF
 
       read -p "请输入index.php的路径，类似（/home/web/html/$yuming/wordpress/）： " index_lujing
        
-      sed -i "s#root /var/www/html/$yuming#root $index_lujing#g" /home/web/conf.d/$yuming.conf
+      sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
       sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
       restart_ldnmp
