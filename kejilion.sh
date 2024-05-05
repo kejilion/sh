@@ -2157,16 +2157,18 @@ EOF
 
       install lrzsz
       clear
-      echo -e "目前只允许上传\033[33zip格式的源码包，\033[0m请提前准备好，按任意键继续..."
+      echo -e "目前只允许上传zip格式的源码包，请提前准备好，按任意键继续..."
       read -n 1 -s -r -p ""
       rz -y
       unzip $(ls -t *.zip | head -n 1) 
       rm -f $(ls -t *.zip | head -n 1)
+      clear
+      echo "index.php所在路径"
       find "$(realpath .)" -name "index.php" -print
 
-      read -p "请输入index.php的路径，类似（/home/web/html/$yuming/wordpress/） " index_lujing
+      read -p "请输入index.php的路径，类似（/home/web/html/$yuming/wordpress/）： " index_lujing
        
-      sed -i "s#root /var/www/html/$yuming#root $index_lujingg#g" /home/web/conf.d/$yuming.conf
+      sed -i "s#root /var/www/html/$yuming#root $index_lujing#g" /home/web/conf.d/$yuming.conf
       sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
       restart_ldnmp
