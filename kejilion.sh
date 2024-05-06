@@ -1839,7 +1839,7 @@ EOF
     echo  "6. 安装独角数发卡网"
     echo  "7. 安装flarum论坛网站"
     echo  "8. 安装typecho轻量博客网站"
-    echo  "20. 自定义动态站点"    
+    echo  "20. 自定义动态站点"
     echo  "------------------------"
     echo  "21. 仅安装nginx"
     echo  "22. 站点重定向"
@@ -1887,7 +1887,7 @@ EOF
       sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
       sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
       sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
-      
+
       install_ldnmp
 
         ;;
@@ -2155,30 +2155,39 @@ EOF
       mkdir $yuming
       cd $yuming
 
-      install lrzsz
       clear
-      echo -e "目前只允许上传zip格式的源码包，请提前准备好，按任意键继续..."
-      read -n 1 -s -r -p ""
-      rz -y
-      unzip $(ls -t *.zip | head -n 1) 
+      echo "上传PHP源码"
+      echo "-------------"
+      echo "目前只允许上传zip格式的源码包，请将源码包放到/home/web/html/${yuming}目录下"
+      read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
+
+      if [ -n "$url_download" ]; then
+          curl -Ss -O -k "$url_download"
+      fi
+
+      unzip $(ls -t *.zip | head -n 1)
       rm -f $(ls -t *.zip | head -n 1)
+
       clear
       echo "index.php所在路径"
+      echo "-------------"
       find "$(realpath .)" -name "index.php" -print
 
       read -p "请输入index.php的路径，类似（/home/web/html/$yuming/wordpress/）： " index_lujing
-       
+
       sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
       sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
-      
+
       clear
-      read -p "请选择PHP版本:  1. php最新版 | 2. php7.4 : " pho_v  
+      echo "请选择PHP版本"
+      echo "-------------"
+      read -p "1. php最新版 | 2. php7.4 : " pho_v
       case "$pho_v" in
         1)
-          sed -i "s#php:9000#php:9000#g" /home/web/conf.d/$yuming.conf        
+          sed -i "s#php:9000#php:9000#g" /home/web/conf.d/$yuming.conf
           ;;
         2)
-          sed -i "s#php:9000#php74:9000#g" /home/web/conf.d/$yuming.conf     
+          sed -i "s#php:9000#php74:9000#g" /home/web/conf.d/$yuming.conf
           ;;
         *)
           echo "无效的选择，请重新输入。"
@@ -2188,7 +2197,7 @@ EOF
       restart_ldnmp
 
       ldnmp_web_on
-      prefix="web$(shuf -i 10-99 -n 1)_"      
+      prefix="web$(shuf -i 10-99 -n 1)_"
       echo "数据库地址: mysql"
       echo "数据库名: $dbname"
       echo "用户名: $dbuse"
