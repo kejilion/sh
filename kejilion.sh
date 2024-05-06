@@ -2162,7 +2162,7 @@ EOF
       read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
 
       if [ -n "$url_download" ]; then
-          curl -Ss -O -k "$url_download"
+          wget "$url_download"
       fi
 
       unzip $(ls -t *.zip | head -n 1)
