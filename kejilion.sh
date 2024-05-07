@@ -217,11 +217,14 @@ install_ldnmp() {
           # php安装扩展
           "docker exec php install-php-extensions mysqli > /dev/null 2>&1"
           "docker exec php install-php-extensions pdo_mysql > /dev/null 2>&1"
-          "docker exec php install-php-extensions gd intl zip > /dev/null 2>&1"
+          "docker exec php install-php-extensions gd > /dev/null 2>&1"
+          "docker exec php install-php-extensions intl > /dev/null 2>&1"
+          "docker exec php install-php-extensions zip > /dev/null 2>&1"
           "docker exec php install-php-extensions exif > /dev/null 2>&1"
           "docker exec php install-php-extensions bcmath > /dev/null 2>&1"
           "docker exec php install-php-extensions opcache > /dev/null 2>&1"
-          "docker exec php install-php-extensions imagick redis > /dev/null 2>&1"
+          "docker exec php install-php-extensions imagick > /dev/null 2>&1"
+          "docker exec php install-php-extensions redis > /dev/null 2>&1"
 
           # php配置参数
           "docker exec php sh -c 'echo \"upload_max_filesize=50M \" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
@@ -237,11 +240,14 @@ install_ldnmp() {
           # php7.4安装扩展
           "docker exec php74 install-php-extensions mysqli > /dev/null 2>&1"
           "docker exec php74 install-php-extensions pdo_mysql > /dev/null 2>&1"
-          "docker exec php74 install-php-extensions gd intl zip > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions gd > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions intl > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions zip > /dev/null 2>&1"
           "docker exec php74 install-php-extensions exif > /dev/null 2>&1"
           "docker exec php74 install-php-extensions bcmath > /dev/null 2>&1"
           "docker exec php74 install-php-extensions opcache > /dev/null 2>&1"
-          "docker exec php74 install-php-extensions imagick redis > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions imagick > /dev/null 2>&1"
+          "docker exec php74 install-php-extensions redis > /dev/null 2>&1"
 
           # php7.4配置参数
           "docker exec php74 sh -c 'echo \"upload_max_filesize=50M \" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
@@ -2288,11 +2294,29 @@ EOF
       mkdir $yuming
       cd $yuming
 
-      install lrzsz
+
       clear
-      echo -e "目前只允许上传\033[33mindex.html\033[0m文件，请提前准备好，按任意键继续..."
-      read -n 1 -s -r -p ""
-      rz -y
+      echo "上传静态源码"
+      echo "-------------"
+      echo "目前只允许上传zip格式的源码包，请将源码包放到/home/web/html/${yuming}目录下"
+      read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
+
+      if [ -n "$url_download" ]; then
+          wget "$url_download"
+      fi
+
+      unzip $(ls -t *.zip | head -n 1)
+      rm -f $(ls -t *.zip | head -n 1)
+
+      clear
+      echo "index.html所在路径"
+      echo "-------------"
+      find "$(realpath .)" -name "index.html" -print
+
+      read -p "请输入index.html的路径，类似（/home/web/html/$yuming/wordpress/）： " index_lujing
+
+      sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
+      sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
       docker exec nginx chmod -R 777 /var/www/html
       docker restart nginx
@@ -4991,7 +5015,7 @@ EOF
           current_hostname=$(hostname)
           echo "当前主机名: $current_hostname"
           read -p "是否要更改主机名？(y/n): " answer
-          if [ "$answer" == "y" ]; then
+          if [[ "${answer,,}" == "y" ]]; then
               # 获取新的主机名
               read -p "请输入新的主机名: " new_hostname
               if [ -n "$new_hostname" ]; then
