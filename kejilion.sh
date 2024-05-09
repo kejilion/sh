@@ -4,11 +4,11 @@ sh_v="2.5.0"
 
 
 huang='\033[1;33m'
-bai='${bai}'
+bai='\033[0m'
 lv='\033[0;32m'
 lan='\033[0;34m'
 hong='\033[0;31m'
-kjlan='${kjlan}'
+kjlan='\033[96m'
 hui='\e[37m'
 
 
