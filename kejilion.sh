@@ -757,7 +757,7 @@ echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v2.4.8 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
+echo -e "\033[96m科技lion一键脚本工具 v2.4.9 （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
 echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -1588,10 +1588,11 @@ EOF
       clear
       echo "▶ 测试脚本合集"
       echo ""
-      echo "----解锁状态检测-----------"
+      echo "----IP及解锁状态检测-----------"
       echo "1. ChatGPT解锁状态检测"
       echo "2. Region流媒体解锁测试"
       echo "3. yeahwu流媒体解锁检测"
+      echo "4. xykt_IP质量体检脚本"
       echo ""
       echo "----网络线路测速-----------"
       echo "11. besttrace三网回程延迟路由测试"
@@ -1627,6 +1628,10 @@ EOF
               clear
               install wget
               wget -qO- https://github.com/yeahwu/check/raw/main/check.sh | bash
+              ;;
+          4)
+              clear
+              bash <(curl -Ls IP.Check.Place)
               ;;
           11)
               clear
