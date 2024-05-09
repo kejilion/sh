@@ -5744,10 +5744,13 @@ EOF
     if [ "$sh_v" = "$sh_v_new" ]; then
         echo -e "${lv}你已经是最新版本！v$sh_v ${bai}"
     else
+        echo "发现新版本！"
         echo -e "当前版本v$sh_v     最新版本${huang}v$sh_v_new${bai}"
+        echo "------------------------"
         read -p "确定更新脚本吗？(Y/N): " choice
         case "$choice" in
             [Yy])
+                clear
                 curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
                 echo -e "脚本已更新到最新版本${huang}v$sh_v_new${bai}"
                 break_end
