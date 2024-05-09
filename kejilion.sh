@@ -3898,7 +3898,7 @@ EOF
             docker_app
               ;;
 
-          36)
+          37)
             docker_name="myip"
             docker_img="ghcr.io/jason5ng32/myip:latest"
             docker_port=8037
