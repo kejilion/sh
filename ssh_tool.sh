@@ -5336,7 +5336,7 @@ EOF
                 fi
             done
 
-            PORT=$port bash -c "$(curl -L https://raw.githubusercontent.com/eooce/xray-reality/master/install.sh)"
+            PORT=$port bash -c "$(curl -L https://raw.githubusercontent.com/eooce/xray-reality/master/reality.sh)"
             sleep 2
             break_end
         ;; 
