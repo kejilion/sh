@@ -1,8 +1,10 @@
 #!/bin/bash
 
-sh_v="2.4.9"
+sh_v="2.4.10"
 
-
+huang='\033[1;33m'
+bai='\033[0m'
+lv='\033[0;32m'
 
 ln -sf ~/kejilion.sh /usr/local/bin/k
 
@@ -5736,10 +5738,29 @@ EOF
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/update_log.sh && chmod +x update_log.sh && ./update_log.sh
     rm update_log.sh
     echo ""
-    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-    echo "脚本已更新到最新版本！"
-    break_end
-    kejilion
+
+    sh_v_new=$(curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
+
+    if [ "$sh_v" = "$sh_v_new" ]; then
+        echo -e "${lv}你已经是最新版本！v$sh_v ${bai}"
+    else
+        echo -e "当前版本v$sh_v     最新版本${huang}v$sh_v_new${bai}"
+        read -p "确定更新脚本吗？(Y/N): " choice
+        case "$choice" in
+            [Yy])
+                curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
+                echo -e "脚本已更新到最新版本${huang}v$sh_v_new${bai}"
+                break_end
+                kejilion
+                ;;
+            [Nn])
+                echo "已取消"
+                ;;
+            *)
+                ;;
+        esac
+    fi
+
     ;;
 
   0)
