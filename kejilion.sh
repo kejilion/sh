@@ -1,10 +1,16 @@
 #!/bin/bash
 
-sh_v="2.4.10"
+sh_v="2.5.0"
+
 
 huang='\033[1;33m'
-bai='\033[0m'
+bai='${bai}'
 lv='\033[0;32m'
+lan='\033[0;34m'
+hong='\033[0;31m'
+kjlan='${kjlan}'
+hui='\e[37m'
+
 
 ln -sf ~/kejilion.sh /usr/local/bin/k
 
@@ -75,7 +81,7 @@ remove() {
 
 
 break_end() {
-      echo -e "\033[0;32m操作完成\033[0m"
+      echo -e "${lv}操作完成${bai}"
       echo "按任意键继续..."
       read -n 1 -s -r -p ""
       echo ""
@@ -103,7 +109,7 @@ check_port() {
             echo ""
         else
             clear
-            echo -e "\e[1;31m端口 $PORT 已被占用，无法安装环境，卸载以下程序后重试！\e[0m"
+            echo -e "${hong}端口 $PORT 已被占用，无法安装环境，卸载以下程序后重试！${bai}"
             echo "$result"
             break_end
             kejilion
@@ -389,7 +395,7 @@ nginx_status() {
         dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
         docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $dbname;" 2> /dev/null
 
-        echo -e "\e[1;31m检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！\e[0m"
+        echo -e "${hong}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！${bai}"
     fi
 
 }
@@ -397,7 +403,7 @@ nginx_status() {
 
 add_yuming() {
       ip_address
-      echo -e "先将域名解析到本机IP: \033[33m$ipv4_address  $ipv6_address\033[0m"
+      echo -e "先将域名解析到本机IP: ${huang}$ipv4_address  $ipv6_address${bai}"
       read -p "请输入你解析的域名: " yuming
 }
 
@@ -601,7 +607,7 @@ f2b_sshd() {
 
 server_reboot() {
 
-    read -p $'\e[33m现在重启服务器吗？(Y/N): \e[0m' rboot
+    read -p "${huang}现在重启服务器吗？(Y/N): ${bai}" rboot
     case "$rboot" in
       [Yy])
         echo "已重启"
@@ -643,7 +649,7 @@ ldnmp_install_status() {
    if docker inspect "php" &>/dev/null; then
     echo "LDNMP环境已安装，开始部署 $webname"
    else
-    echo "LDNMP环境未安装，请先安装LDNMP环境，再部署网站"
+    echo -e "${huang}LDNMP环境未安装，请先安装LDNMP环境，再部署网站${bai}"
     break_end
     kejilion
 
@@ -657,7 +663,7 @@ nginx_install_status() {
    if docker inspect "nginx" &>/dev/null; then
     echo "nginx环境已安装，开始部署 $webname"
    else
-    echo "nginx未安装，请先安装nginx环境，再部署网站"
+    echo -e "${huang}nginx未安装，请先安装nginx环境，再部署网站${bai}"
     break_end
     kejilion
 
@@ -760,12 +766,12 @@ install_panel() {
 while true; do
 clear
 
-echo -e "\033[96m_  _ ____  _ _ _    _ ____ _  _ "
+echo -e "${kjlan}_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "\033[96m科技lion一键脚本工具 v$sh_v （支持Ubuntu/Debian/CentOS/Alpine系统）\033[0m"
-echo -e "\033[96m-输入\033[93mk\033[96m可快速启动此脚本-\033[0m"
+echo -e "${kjlan}科技lion一键脚本工具 v$sh_v （支持Ubuntu/Debian/CentOS/Alpine系统）${bai}"
+echo -e "${kjlan}-输入${huang}k${kjlan}可快速启动此脚本-${bai}"
 echo "------------------------"
 echo "1. 系统信息查询"
 echo "2. 系统更新"
@@ -776,7 +782,7 @@ echo "6. Docker管理 ▶ "
 echo "7. WARP管理 ▶ "
 echo "8. 测试脚本合集 ▶ "
 echo "9. 甲骨文云脚本合集 ▶ "
-echo -e "\033[33m10. LDNMP建站 ▶ \033[0m"
+echo -e "${huang}10. LDNMP建站 ▶ ${bai}"
 echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
@@ -1846,7 +1852,7 @@ EOF
 
   while true; do
     clear
-    echo -e "\033[33m▶ LDNMP建站\033[0m"
+    echo -e "${huang}▶ LDNMP建站${bai}"
     echo  "------------------------"
     echo  "1. 安装LDNMP环境"
     echo  "------------------------"
@@ -2420,7 +2426,7 @@ EOF
         echo ""
         echo "站点目录"
         echo "------------------------"
-        echo -e "数据 \e[37m/home/web/html\e[0m     证书 \e[37m/home/web/certs\e[0m     配置 \e[37m/home/web/conf.d\e[0m"
+        echo -e "数据 ${hui}/home/web/html${bai}     证书 ${hui}/home/web/certs${bai}     配置 ${hui}/home/web/conf.d${bai}"
         echo "------------------------"
         echo ""
         echo "操作"
@@ -2905,6 +2911,7 @@ EOF
       echo "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件"
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
+      echo "37. MyIP工具箱"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
@@ -3149,9 +3156,9 @@ EOF
                 timeout=3
 
                 if echo "quit" | timeout $timeout telnet smtp.qq.com $port | grep 'Connected'; then
-                  echo -e "\e[32m端口$port当前可用\e[0m"
+                  echo -e "${lv}端口 $port 当前可用${bai}"
                 else
-                  echo -e "\e[31m端口$port当前不可用\e[0m"
+                  echo -e "${hong}端口 $port 当前不可用${bai}"
                 fi
                 echo "------------------------"
                 echo ""
@@ -3891,6 +3898,18 @@ EOF
             docker_app
               ;;
 
+          36)
+            docker_name="myip"
+            docker_img="ghcr.io/jason5ng32/myip:latest"
+            docker_port=8037
+            docker_rum="docker run -d -p 8037:18966 --name myip --restart always ghcr.io/jason5ng32/myip:latest"
+            docker_describe="是一个多功能IP工具箱，可以查看自己IP信息及连通性，用网页面板呈现"
+            docker_url="官网介绍: https://github.com/jason5ng32/MyIP/blob/main/README_ZH.md"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+
 
           51)
           clear
@@ -3914,7 +3933,7 @@ EOF
       echo "▶ 我的工作区"
       echo "系统将为你提供5个后台运行的工作区，你可以用来执行长时间的任务"
       echo "即使你断开SSH，工作区中的任务也不会中断，非常方便！来试试吧！"
-      echo -e "\033[33m注意: 进入工作区后使用Ctrl+b再单独按d，退出工作区！\033[0m"
+      echo -e "${huang}注意: 进入工作区后使用Ctrl+b再单独按d，退出工作区！${bai}"
       echo "------------------------"
       echo "a. 安装工作区环境"
       echo "------------------------"
@@ -4082,18 +4101,13 @@ EOF
           4)
             clear
 
-            RED="\033[31m"
-            GREEN="\033[32m"
-            YELLOW="\033[33m"
-            NC="\033[0m"
-
             # 系统检测
             OS=$(cat /etc/os-release | grep -o -E "Debian|Ubuntu|CentOS" | head -n 1)
 
             if [[ $OS == "Debian" || $OS == "Ubuntu" || $OS == "CentOS" ]]; then
-                echo -e "检测到你的系统是 ${YELLOW}${OS}${NC}"
+                echo -e "检测到你的系统是 ${huang}${OS}${bai}"
             else
-                echo -e "${RED}很抱歉，你的系统不受支持！${NC}"
+                echo -e "${hong}很抱歉，你的系统不受支持！${bai}"
                 exit 1
             fi
 
@@ -4105,7 +4119,7 @@ EOF
 
             # 卸载Python3旧版本
             if [[ $VERSION == "3"* ]]; then
-                echo -e "${YELLOW}你的Python3版本是${NC}${RED}${VERSION}${NC}，${YELLOW}最新版本是${NC}${RED}${PY_VERSION}${NC}"
+                echo -e "${huang}你的Python3版本是${bai}${hong}${VERSION}${bai}，${huang}最新版本是${bai}${hong}${PY_VERSION}${bai}"
                 read -p "是否确认升级最新版Python3？默认不升级 [y/N]: " CONFIRM
                 if [[ $CONFIRM == "y" ]]; then
                     if [[ $OS == "CentOS" ]]; then
@@ -4116,16 +4130,16 @@ EOF
                         rm-rf /usr/local/python3*
                     fi
                 else
-                    echo -e "${YELLOW}已取消升级Python3${NC}"
+                    echo -e "${huang}已取消升级Python3${bai}"
                     exit 1
                 fi
             else
-                echo -e "${RED}检测到没有安装Python3。${NC}"
+                echo -e "${hong}检测到没有安装Python3。${bai}"
                 read -p "是否确认安装最新版Python3？默认安装 [Y/n]: " CONFIRM
                 if [[ $CONFIRM != "n" ]]; then
-                    echo -e "${GREEN}开始安装最新版Python3...${NC}"
+                    echo -e "${lv}开始安装最新版Python3...${bai}"
                 else
-                    echo -e "${YELLOW}已取消安装Python3${NC}"
+                    echo -e "${huang}已取消安装Python3${bai}"
                     exit 1
                 fi
             fi
@@ -4154,10 +4168,10 @@ EOF
                 ln -sf /usr/local/python3/bin/python3 /usr/bin/python3
                 ln -sf /usr/local/python3/bin/pip3 /usr/bin/pip3
                 clear
-                echo -e "${YELLOW}Python3安装${GREEN}成功，${NC}版本为: ${NC}${GREEN}${PY_VERSION}${NC}"
+                echo -e "${huang}Python3安装${lv}成功，${bai}版本为: ${bai}${lv}${PY_VERSION}${bai}"
             else
                 clear
-                echo -e "${RED}Python3安装失败！${NC}"
+                echo -e "${hong}Python3安装失败！${bai}"
                 exit 1
             fi
             cd /root/ && rm -rf Python-${PY_VERSION}.tgz && rm -rf Python-${PY_VERSION}
@@ -4269,7 +4283,7 @@ EOF
 
           clear
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
-          echo -e "\e[37m感谢MollyLau的脚本支持！\e[0m "
+          echo -e "${hui}感谢MollyLau的脚本支持！${bai} "
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
