@@ -5326,7 +5326,17 @@ EOF
 
         17)
         clear
-            bash -c "$(curl -L https://raw.githubusercontent.com/eooce/xray-reality/master/install.sh)"
+            read -p $'\033[1;35m请输入reality节点端口(nat小鸡请输入可用端口范围内的端口),回车跳过则使用默认8880端口：\033[0m' port
+            [[ -z $port ]]
+            until [[ -z $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; do
+                if [[ -n $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; then
+                    echo -e $'\033[1;91m${PORT}端口已经被其他程序占用，请更换端口重试！\033[0m'
+                    read -p "设置 reality 端口[1-65535]（回车将使用8880端口）：" port
+                    [[ -z $PORT ]] && port=8880
+                fi
+            done
+
+            PORT=$port bash -c "$(curl -L https://raw.githubusercontent.com/eooce/xray-reality/master/install.sh)"
             sleep 2
             break_end
         ;; 
