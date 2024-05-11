@@ -194,6 +194,32 @@ add_swap() {
     echo -e "虚拟内存大小已调整为${huang}${new_swap}${bai}MB"
 }
 
+ldnmp_v() {
+
+      # 获取nginx版本
+      nginx_version=$(docker exec nginx nginx -v 2>&1)
+      nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n -e "nginx : v${huang}$nginx_version${bai}"
+
+      # 获取mysql版本
+      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
+      echo -n -e "            mysql : v${huang}$mysql_version${bai}"
+
+      # 获取php版本
+      php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
+      echo -n -e "            php : v${huang}$php_version${bai}"
+
+      # 获取redis版本
+      redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
+      echo -e "            redis : v${huang}$redis_version${bai}"
+
+      echo "------------------------"
+      echo ""
+
+}
+
+
 
 
 install_ldnmp() {
@@ -301,27 +327,8 @@ install_ldnmp() {
       clear
       echo "LDNMP环境安装完毕"
       echo "------------------------"
+      ldnmp_v
 
-      # 获取nginx版本
-      nginx_version=$(docker exec nginx nginx -v 2>&1)
-      nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
-      echo -n -e "nginx : v${huang}$nginx_version${bai}"
-
-      # 获取mysql版本
-      dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-      mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-      echo -n -e "            mysql : v${huang}$mysql_version${bai}"
-
-      # 获取php版本
-      php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
-      echo -n -e "            php : v${huang}$php_version${bai}"
-
-      # 获取redis版本
-      redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
-      echo -e "            redis : v${huang}$redis_version${bai}"
-
-      echo "------------------------"
-      echo ""
 
 
 }
@@ -2251,7 +2258,7 @@ EOF
       nginx_version=$(docker exec nginx nginx -v 2>&1)
       nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
       echo "nginx已安装完成"
-      echo "当前版本: v$nginx_version"
+      echo -e "当前版本: v${huang}$nginx_version${bai}"
       echo ""
         ;;
 
@@ -2385,23 +2392,7 @@ EOF
         clear
         echo "LDNMP环境"
         echo "------------------------"
-        # 获取nginx版本
-        nginx_version=$(docker exec nginx nginx -v 2>&1)
-        nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
-        echo -n "nginx : v$nginx_version"
-        # 获取mysql版本
-        dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-        mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-        echo -n "            mysql : v$mysql_version"
-        # 获取php版本
-        php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
-        echo -n "            php : v$php_version"
-        # 获取redis版本
-        redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
-        echo "            redis : v$redis_version"
-        echo "------------------------"
-        echo ""
-
+        ldnmp_v
 
         # ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
         echo "站点信息                      证书到期时间"
@@ -2431,7 +2422,7 @@ EOF
         echo ""
         echo "操作"
         echo "------------------------"
-        echo "1. 申请/更新域名证书               2. 更换站点域名"
+        echo -e "1. 申请/更新域名证书               ${hui}2. 更换站点域名${bai}"
         echo "3. 清理站点缓存                    4. 查看站点分析报告"
         echo "5. 查看全局配置                    6. 查看站点配置"
         echo "------------------------"
@@ -5767,7 +5758,7 @@ EOF
             [Yy])
                 clear
                 curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-                echo -e "脚本已更新到最新版本${huang}v$sh_v_new${bai}"
+                echo -e "脚本已更新到最新版本v${huang}$sh_v_new${bai}"
                 break_end
                 kejilion
                 ;;
