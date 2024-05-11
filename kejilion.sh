@@ -318,7 +318,7 @@ install_ldnmp() {
               progressBar+="."
           done
           progressBar+="]"
-          echo -ne "\r[$percentage%] $progressBar"
+          echo -ne "\r[${lv}$percentage%${bai}] $progressBar"
       done
 
       echo  # 打印换行，以便输出不被覆盖
