@@ -3928,8 +3928,6 @@ EOF
       echo "即使你断开SSH，工作区中的任务也不会中断，非常方便！来试试吧！"
       echo -e "${huang}注意: 进入工作区后使用Ctrl+b再单独按d，退出工作区！${bai}"
       echo "------------------------"
-      echo "a. 安装工作区环境"
-      echo "------------------------"
       echo "1. 1号工作区"
       echo "2. 2号工作区"
       echo "3. 3号工作区"
@@ -3950,69 +3948,76 @@ EOF
       read -p "请输入你的选择: " sub_choice
 
       case $sub_choice in
-          a)
-              clear
-              install tmux
 
-              ;;
           b)
               clear
               remove tmux
               ;;
           1)
               clear
+              install tmux
               SESSION_NAME="work1"
               tmux_run
 
               ;;
           2)
               clear
+              install tmux
               SESSION_NAME="work2"
               tmux_run
               ;;
           3)
               clear
+              install tmux
               SESSION_NAME="work3"
               tmux_run
               ;;
           4)
               clear
+              install tmux
               SESSION_NAME="work4"
               tmux_run
               ;;
           5)
               clear
+              install tmux
               SESSION_NAME="work5"
               tmux_run
               ;;
           6)
               clear
+              install tmux
               SESSION_NAME="work6"
               tmux_run
               ;;
           7)
               clear
+              install tmux
               SESSION_NAME="work7"
               tmux_run
               ;;
           8)
               clear
+              install tmux
               SESSION_NAME="work8"
               tmux_run
               ;;
           9)
               clear
+              install tmux
               SESSION_NAME="work9"
               tmux_run
               ;;
           10)
               clear
+              install tmux
               SESSION_NAME="work10"
               tmux_run
               ;;
 
           99)
               clear
+              install tmux
               tmux list-sessions
               ;;
           0)
