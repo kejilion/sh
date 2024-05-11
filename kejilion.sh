@@ -199,20 +199,20 @@ ldnmp_v() {
       # 获取nginx版本
       nginx_version=$(docker exec nginx nginx -v 2>&1)
       nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
-      echo -n -e "nginx : v${huang}$nginx_version${bai}"
+      echo -n -e "nginx : ${huang}v$nginx_version${bai}"
 
       # 获取mysql版本
       dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
       mysql_version=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SELECT VERSION();" 2>/dev/null | tail -n 1)
-      echo -n -e "            mysql : v${huang}$mysql_version${bai}"
+      echo -n -e "            mysql : ${huang}v$mysql_version${bai}"
 
       # 获取php版本
       php_version=$(docker exec php php -v 2>/dev/null | grep -oP "PHP \K[0-9]+\.[0-9]+\.[0-9]+")
-      echo -n -e "            php : v${huang}$php_version${bai}"
+      echo -n -e "            php : ${huang}v$php_version${bai}"
 
       # 获取redis版本
       redis_version=$(docker exec redis redis-server -v 2>&1 | grep -oP "v=+\K[0-9]+\.[0-9]+")
-      echo -e "            redis : v${huang}$redis_version${bai}"
+      echo -e "            redis : ${huang}v$redis_version${bai}"
 
       echo "------------------------"
       echo ""
@@ -2258,7 +2258,7 @@ EOF
       nginx_version=$(docker exec nginx nginx -v 2>&1)
       nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
       echo "nginx已安装完成"
-      echo -e "当前版本: v${huang}$nginx_version${bai}"
+      echo -e "当前版本: ${huang}v$nginx_version${bai}"
       echo ""
         ;;
 
@@ -5748,7 +5748,7 @@ EOF
     sh_v_new=$(curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
 
     if [ "$sh_v" = "$sh_v_new" ]; then
-        echo -e "${lv}你已经是最新版本！v$sh_v ${bai}"
+        echo -e "${lv}你已经是最新版本！v$sh_v${bai}"
     else
         echo "发现新版本！"
         echo -e "当前版本v$sh_v     最新版本${huang}v$sh_v_new${bai}"
@@ -5758,7 +5758,7 @@ EOF
             [Yy])
                 clear
                 curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-                echo -e "脚本已更新到最新版本v${huang}$sh_v_new${bai}"
+                echo -e "脚本已更新到最新版本${huang}v$sh_v_new${bai}"
                 break_end
                 kejilion
                 ;;
