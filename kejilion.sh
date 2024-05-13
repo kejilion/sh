@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.1"
+sh_v="2.5.2"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -5746,10 +5746,14 @@ EOF
 
   00)
     cd ~
-    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/update_log.sh && chmod +x update_log.sh && ./update_log.sh
-    rm update_log.sh
+    clear
+    echo "更新日志"
+    echo "------------------------"
+    echo "全部日志: https://raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt"
+    echo "------------------------"
+    curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt | tail -n 35
     echo ""
-
+    echo ""
     sh_v_new=$(curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
 
     if [ "$sh_v" = "$sh_v_new" ]; then
