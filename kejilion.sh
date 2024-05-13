@@ -928,7 +928,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 
 ip_address
-echo "私钥信息已生成，务必复制保存，可保存成 ${huang}${ipv4_address}_sshkey.ppk${bai} 文件，用于以后的SSH登录"
+echo -e "私钥信息已生成，务必复制保存，可保存成 ${huang}${ipv4_address}_sshkey.ppk${bai} 文件，用于以后的SSH登录"
 echo "--------------------------------"
 cat ~/.ssh/sshkey
 echo "--------------------------------"
@@ -938,15 +938,21 @@ sed -i -e 's/^#\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
        -e 's/^#\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
        -e 's/^#\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 
-if grep -q 'Alpine' /etc/issue; then
-    service sshd restart
-elif grep -qi 'CentOS' /etc/redhat-release; then
+
+if command -v dnf &>/dev/null; then
     systemctl restart sshd
-else
+elif command -v yum &>/dev/null; then
+    systemctl restart sshd
+elif command -v apt &>/dev/null; then
     service ssh restart
+elif command -v apk &>/dev/null; then
+    service sshd restart
+else
+    echo "未知的包管理器!"
+    return 1
 fi
 
-echo "${lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${bai}"
+echo -e "${lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${bai}"
 
 }
 
