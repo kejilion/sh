@@ -5588,7 +5588,7 @@ EOF
               ;;
 
 
-          66)
+          24)
 
               clear
               echo "ROOT私钥登录模式"
