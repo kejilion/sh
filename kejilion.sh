@@ -792,6 +792,135 @@ set_timedate() {
 
 
 
+linux_update() {
+    clear
+
+    # Update system on Debian-based systems
+    if [ -f "/etc/debian_version" ]; then
+        apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+    fi
+
+    # Update system on Red Hat-based systems
+    if [ -f "/etc/redhat-release" ]; then
+        yum -y update
+    fi
+
+    # Update system on Alpine Linux
+    if [ -f "/etc/alpine-release" ]; then
+        apk update && apk upgrade
+    fi
+
+}
+
+
+linux_clean() {
+    clear
+    clean_debian() {
+        apt autoremove --purge -y
+        apt clean -y
+        apt autoclean -y
+        apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+    }
+
+    clean_redhat() {
+        yum autoremove -y
+        yum clean all
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+    }
+
+    clean_alpine() {
+        apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
+        apk autoremove
+        apk cache clean
+        rm -rf /var/log/*
+        rm -rf /var/cache/apk/*
+
+    }
+
+    # Main script
+    if [ -f "/etc/debian_version" ]; then
+        # Debian-based systems
+        clean_debian
+    elif [ -f "/etc/redhat-release" ]; then
+        # Red Hat-based systems
+        clean_redhat
+    elif [ -f "/etc/alpine-release" ]; then
+        # Alpine Linux
+        clean_alpine
+    fi
+
+
+}
+
+new_ssh_port() {
+  # 备份 SSH 配置文件
+  cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+
+  # 替换 SSH 配置文件中的端口号
+  sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
+
+  # 重启 SSH 服务
+  service sshd restart
+  echo "SSH 端口已修改为: $new_port"
+
+  clear
+  iptables_open
+  remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
+
+}
+
+
+bbr_on() {
+
+cat > /etc/sysctl.conf << EOF
+net.core.default_qdisc=fq_pie
+net.ipv4.tcp_congestion_control=bbr
+EOF
+sysctl -p
+
+}
+
+
+set_dns() {
+
+cloudflare_ipv4="1.1.1.1"
+google_ipv4="8.8.8.8"
+cloudflare_ipv6="2606:4700:4700::1111"
+google_ipv6="2001:4860:4860::8888"
+
+# 检查机器是否有IPv6地址
+ipv6_available=0
+if [[ $(ip -6 addr | grep -c "inet6") -gt 0 ]]; then
+    ipv6_available=1
+fi
+
+# 设置DNS地址为Cloudflare和Google（IPv4和IPv6）
+echo "设置DNS为Cloudflare和Google"
+
+# 设置IPv4地址
+echo "nameserver $cloudflare_ipv4" > /etc/resolv.conf
+echo "nameserver $google_ipv4" >> /etc/resolv.conf
+
+# 如果有IPv6地址，则设置IPv6地址
+if [[ $ipv6_available -eq 1 ]]; then
+    echo "nameserver $cloudflare_ipv6" >> /etc/resolv.conf
+    echo "nameserver $google_ipv6" >> /etc/resolv.conf
+fi
+
+echo "DNS地址已更新"
+echo "------------------------"
+cat /etc/resolv.conf
+echo "------------------------"
+
+}
+
 
 
 
@@ -940,69 +1069,11 @@ case $choice in
     ;;
 
   2)
-    clear
-
-    # Update system on Debian-based systems
-    if [ -f "/etc/debian_version" ]; then
-        apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
-    fi
-
-    # Update system on Red Hat-based systems
-    if [ -f "/etc/redhat-release" ]; then
-        yum -y update
-    fi
-
-    # Update system on Alpine Linux
-    if [ -f "/etc/alpine-release" ]; then
-        apk update && apk upgrade
-    fi
-
-
+    linux_update
     ;;
 
   3)
-    clear
-    clean_debian() {
-        apt autoremove --purge -y
-        apt clean -y
-        apt autoclean -y
-        apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
-        journalctl --rotate
-        journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
-    }
-
-    clean_redhat() {
-        yum autoremove -y
-        yum clean all
-        journalctl --rotate
-        journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
-    }
-
-    clean_alpine() {
-        apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
-        apk autoremove
-        apk cache clean
-        rm -rf /var/log/*
-        rm -rf /var/cache/apk/*
-
-    }
-
-    # Main script
-    if [ -f "/etc/debian_version" ]; then
-        # Debian-based systems
-        clean_debian
-    elif [ -f "/etc/redhat-release" ]; then
-        # Red Hat-based systems
-        clean_redhat
-    elif [ -f "/etc/alpine-release" ]; then
-        # Alpine Linux
-        clean_alpine
-    fi
-
+    linux_clean
     ;;
 
   4)
@@ -1230,11 +1301,7 @@ case $choice in
 
               case $sub_choice in
                   1)
-                    cat > /etc/sysctl.conf << EOF
-net.core.default_qdisc=fq_pie
-net.ipv4.tcp_congestion_control=bbr
-EOF
-                    sysctl -p
+                    bbr_on
 
                       ;;
                   2)
@@ -4090,6 +4157,8 @@ EOF
       echo "------------------------"
       echo "31. 留言板"
       echo "------------------------"
+      echo "66. 一条龙系统调优"
+      echo "------------------------"
       echo "99. 重启服务器"
       echo "------------------------"
       echo "0. 返回主菜单"
@@ -4225,20 +4294,7 @@ EOF
               # 提示用户输入新的 SSH 端口号
               read -p "请输入新的 SSH 端口号: " new_port
 
-              # 备份 SSH 配置文件
-              cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-
-              # 替换 SSH 配置文件中的端口号
-              sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
-
-              # 重启 SSH 服务
-              service sshd restart
-
-              echo "SSH 端口已修改为: $new_port"
-
-              clear
-              iptables_open
-              remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
+              new_ssh_port
 
               ;;
 
@@ -4254,35 +4310,7 @@ EOF
             read -p "是否要设置为Cloudflare和Google的DNS地址？(y/n): " choice
 
             if [ "$choice" == "y" ]; then
-                # 定义DNS地址
-                cloudflare_ipv4="1.1.1.1"
-                google_ipv4="8.8.8.8"
-                cloudflare_ipv6="2606:4700:4700::1111"
-                google_ipv6="2001:4860:4860::8888"
-
-                # 检查机器是否有IPv6地址
-                ipv6_available=0
-                if [[ $(ip -6 addr | grep -c "inet6") -gt 0 ]]; then
-                    ipv6_available=1
-                fi
-
-                # 设置DNS地址为Cloudflare和Google（IPv4和IPv6）
-                echo "设置DNS为Cloudflare和Google"
-
-                # 设置IPv4地址
-                echo "nameserver $cloudflare_ipv4" > /etc/resolv.conf
-                echo "nameserver $google_ipv4" >> /etc/resolv.conf
-
-                # 如果有IPv6地址，则设置IPv6地址
-                if [[ $ipv6_available -eq 1 ]]; then
-                    echo "nameserver $cloudflare_ipv6" >> /etc/resolv.conf
-                    echo "nameserver $google_ipv6" >> /etc/resolv.conf
-                fi
-
-                echo "DNS地址已更新"
-                echo "------------------------"
-                cat /etc/resolv.conf
-                echo "------------------------"
+                set_dns
             else
                 echo "DNS设置未更改"
             fi
@@ -5567,6 +5595,75 @@ EOF
             fi
 
             echo "留言板操作完成。"
+
+              ;;
+
+          66)
+
+              clear
+              echo "一条龙系统调优"
+              echo "------------------------------------------------"
+              echo "将对以下内容进行操作与优化"
+              echo "1. 更新系统到最新"
+              echo "2. 清理系统垃圾文件"
+              echo -e "3. 设置虚拟内存${huang}1G${bai}"
+              echo -e "4. 设置SSH端口号为${huang}5522${bai}"
+              echo -e "5. 开放所有端口"
+              echo -e "6. 开启${huang}BBR${bai}加速"
+              echo -e "7. 设置时区到${huang}上海${bai}"
+              echo -e "8. 优化DNS地址到${huang}1111 8888${bai}"
+              echo -e "9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+              echo "------------------------------------------------"
+              read -p "确定一键保养吗？(Y/N): " choice
+
+              case "$choice" in
+                [Yy])
+                  clear
+
+                  echo "------------------------------------------------"
+                  linux_update
+                  echo -e "[${lv}OK${bai}] 1/9. 更新系统到最新"
+
+                  echo "------------------------------------------------"
+                  linux_clean
+                  echo -e "[${lv}OK${bai}] 2/9. 清理系统垃圾文件"
+
+                  echo "------------------------------------------------"
+                  add_swap
+                  echo -e "[${lv}OK${bai}] 3/9. 设置虚拟内存${huang}1G${bai}"
+
+                  echo "------------------------------------------------"
+                  new_port=5522
+                  new_ssh_port
+                  echo -e "[${lv}OK${bai}] 4/9. 设置SSH端口号为${huang}5522${bai}"
+                  echo -e "[${lv}OK${bai}] 5/9. 开放所有端口"
+
+                  echo "------------------------------------------------"
+                  bbr_on
+                  echo -e "[${lv}OK${bai}] 6/9. 开启${huang}BBR${bai}加速"
+
+                  echo "------------------------------------------------"
+                  set_timedate Asia/Shanghai
+                  echo -e "[${lv}OK${bai}] 7/9. 设置时区到${huang}上海${bai}"
+
+                  echo "------------------------------------------------"
+                  set_dns
+                  echo -e "[${lv}OK${bai}] 8/9. 优化DNS地址到${huang}1111 8888${bai}"
+
+                  echo "------------------------------------------------"
+                  install_add_docker
+                  install wget sudo tar unzip socat btop
+                  echo -e "[${lv}OK${bai}] 9/9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+                  echo -e "${lv}一条龙系统调优已完成${bai}"
+
+                  ;;
+                [Nn])
+                  echo "已取消"
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
 
               ;;
 
