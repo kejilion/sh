@@ -933,10 +933,10 @@ echo "--------------------------------"
 cat ~/.ssh/sshkey
 echo "--------------------------------"
 
-sed -i -e 's/^#\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
-       -e 's/^#\s*PasswordAuthentication .*/PasswordAuthentication no/' \
-       -e 's/^#\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-       -e 's/^#\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+sed -i -e 's/^\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
+       -e 's/^\s*PasswordAuthentication .*/PasswordAuthentication no/' \
+       -e 's/^\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+       -e 's/^\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 
 
 if command -v dnf &>/dev/null; then
