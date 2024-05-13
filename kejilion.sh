@@ -793,7 +793,6 @@ set_timedate() {
 
 
 linux_update() {
-    clear
 
     # Update system on Debian-based systems
     if [ -f "/etc/debian_version" ]; then
@@ -814,7 +813,6 @@ linux_update() {
 
 
 linux_clean() {
-    clear
     clean_debian() {
         apt autoremove --purge -y
         apt clean -y
@@ -1069,10 +1067,12 @@ case $choice in
     ;;
 
   2)
+    clear
     linux_update
     ;;
 
   3)
+    clear
     linux_clean
     ;;
 
@@ -5629,6 +5629,7 @@ EOF
                   echo -e "[${lv}OK${bai}] 2/9. 清理系统垃圾文件"
 
                   echo "------------------------------------------------"
+                  new_swap=1024
                   add_swap
                   echo -e "[${lv}OK${bai}] 3/9. 设置虚拟内存${huang}1G${bai}"
 
