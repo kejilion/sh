@@ -928,7 +928,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 
 ip_address
-echo "私钥信息已生成，务必复制保存，可保存成 ${ipv4_address}_sshkey.ppk 文件，用于以后的SSH登录"
+echo "私钥信息已生成，务必复制保存，可保存成 ${huang}${ipv4_address}_sshkey.ppk${bai} 文件，用于以后的SSH登录"
 echo "--------------------------------"
 cat ~/.ssh/sshkey
 echo "--------------------------------"
@@ -946,7 +946,7 @@ else
     service ssh restart
 fi
 
-
+echo "${lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${bai}"
 
 }
 
