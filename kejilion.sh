@@ -614,7 +614,7 @@ f2b_sshd() {
 
 server_reboot() {
 
-    read -p "$(echo -e "现在${huang}重启服务器${bai}吗？(Y/N): ")" rboot
+    read -p "$(echo -e "${huang}现在重启服务器吗？(Y/N): ${bai}")" rboot
     case "$rboot" in
       [Yy])
         echo "已重启"
@@ -1333,8 +1333,7 @@ EOF
                           docker stop $(docker ps -q)
                           ;;
                       8)
-                          read -p "" choice
-                          read -p "$(echo -e "确定${hong}删除所有容器${bai}吗？(Y/N): ")" choice
+                          read -p "$(echo -e "${hong}确定删除所有容器吗？(Y/N): ${bai}")" choice
                           case "$choice" in
                             [Yy])
                               docker rm -f $(docker ps -a -q)
@@ -1422,7 +1421,7 @@ EOF
                           docker rmi -f $dockername
                           ;;
                       4)
-                          read -p "$(echo -e "确定${hong}删除所有镜像${bai}吗？(Y/N): ")" choice
+                          read -p "$(echo -e "${hong}确定删除所有镜像吗？(Y/N): ${bai}")" choice
                           case "$choice" in
                             [Yy])
                               docker rmi -f $(docker images -q)
@@ -1555,7 +1554,7 @@ EOF
               ;;
           7)
               clear
-              read -p "$(echo -e "确定${huang}清理无用的镜像容器网络${bai}吗？(Y/N): ")" choice
+              read -p "$(echo -e "${huang}确定清理无用的镜像容器网络吗？(Y/N): ${bai}")" choice
               case "$choice" in
                 [Yy])
                   docker system prune -af --volumes
@@ -1569,7 +1568,7 @@ EOF
               ;;
           8)
               clear
-              read -p "$(echo -e "确定${hong}卸载docker环境${bai}吗？(Y/N): ")" choice
+              read -p "$(echo -e "${hong}确定卸载docker环境吗？(Y/N): ${bai}")" choice
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
@@ -2852,7 +2851,7 @@ EOF
 
     38)
         clear
-        read -p "$(echo -e "强烈建议先备份全部网站数据，再卸载LDNMP环境。确定${hong}删除所有网站数据${bai}吗？(Y/N): ")" choice
+        read -p "$(echo -e "${hong}强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ${bai}")" choice
         case "$choice" in
           [Yy])
             docker rm -f nginx php php74 mysql redis
@@ -5754,7 +5753,7 @@ EOF
     sh_v_new=$(curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
 
     if [ "$sh_v" = "$sh_v_new" ]; then
-        echo -e "${lv}你已经是最新版本！v$sh_v${bai}"
+        echo -e "${lv}你已经是最新版本！${huang}v$sh_v${bai}"
     else
         echo "发现新版本！"
         echo -e "当前版本v$sh_v     最新版本${huang}v$sh_v_new${bai}"
@@ -5764,7 +5763,7 @@ EOF
             [Yy])
                 clear
                 curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-                echo -e "脚本已更新到最新版本${huang}v$sh_v_new${bai}"
+                echo -e "${lv}脚本已更新到最新版本${huang}v$sh_v_new${bai}"
                 break_end
                 kejilion
                 ;;
