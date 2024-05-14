@@ -5257,8 +5257,9 @@ EOF
             [[ -z $port ]]
             until [[ -z $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; do
                 if [[ -n $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; then
-                    echo -e $'\033[1;91m${PORT}端口已经被其他程序占用，请更换端口重试！\033[0m'
-                    read -p "设置 reality 端口[1-65535]（回车将使用随机端口）：" port
+                    echo -e $'\033[1;91m${port}端口已经被其他程序占用，请更换端口重试！\033[0m'
+                    read -p "设置 Hysteria2 端口[1-65535]（回车将使用随机端口）：" port
+                    [[ -z $HY2_PORT ]] && port=8880
                 fi
             done
 
@@ -5339,9 +5340,9 @@ EOF
             [[ -z $port ]]
             until [[ -z $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; do
                 if [[ -n $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; then
-                    echo -e $'\033[1;91m${PORT}端口已经被其他程序占用，请更换端口重试！\033[0m'
+                    echo -e $'\033[1;91m${port}端口已经被其他程序占用，请更换端口重试！\033[0m'
                     read -p "设置 reality 端口[1-65535]（回车将使用随机端口）：" port
-                    [[ -z $PORT ]] && port=$(shuf -i 2000-65000 -n 1)
+                    [[ -z $PORT ]] && port=8880
                 fi
             done
 
