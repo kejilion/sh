@@ -4195,7 +4195,7 @@ case $choice in
       echo "------------------------"
       echo "1. 设置脚本启动快捷键"
       echo "------------------------"
-      echo "2. 修改ROOT密码"
+      echo "2. 修改登录密码"
       echo "3. ROOT密码登录模式"
       echo "4. 安装Python最新版"
       echo "5. 开放所有端口"
@@ -4239,8 +4239,8 @@ case $choice in
               ;;
 
           2)
-              root_use
-              echo "设置你的ROOT密码"
+              clear
+              echo "设置你的登录密码"
               passwd
               ;;
           3)
