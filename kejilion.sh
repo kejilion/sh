@@ -919,6 +919,27 @@ echo "------------------------"
 
 }
 
+
+restart_ssh() {
+
+if command -v dnf &>/dev/null; then
+    systemctl restart sshd
+elif command -v yum &>/dev/null; then
+    systemctl restart sshd
+elif command -v apt &>/dev/null; then
+    service ssh restart
+elif command -v apk &>/dev/null; then
+    service sshd restart
+else
+    echo "未知的包管理器!"
+    return 1
+fi
+
+}
+
+
+
+
 add_sshkey() {
 
 ssh-keygen -t rsa -b 4096 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
@@ -938,19 +959,6 @@ sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
        -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
        -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 
-
-if command -v dnf &>/dev/null; then
-    systemctl restart sshd
-elif command -v yum &>/dev/null; then
-    systemctl restart sshd
-elif command -v apt &>/dev/null; then
-    service ssh restart
-elif command -v apk &>/dev/null; then
-    service sshd restart
-else
-    echo "未知的包管理器!"
-    return 1
-fi
 
 echo -e "${lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${bai}"
 
@@ -1963,7 +1971,7 @@ case $choice in
               passwd
               sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
               sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-              service sshd restart
+              restart_ssh
               echo "ROOT登录设置完毕！"
               server_reboot
 
@@ -4219,7 +4227,7 @@ case $choice in
               passwd
               sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
               sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-              service sshd restart
+              restart_ssh
               echo "ROOT登录设置完毕！"
               server_reboot
 
