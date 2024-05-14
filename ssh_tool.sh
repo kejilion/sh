@@ -5262,7 +5262,7 @@ EOF
                 fi
             done
 
-            PORT=$port bash -c "$(curl -L https://raw.githubusercontent.com/eooce/xray-reality/master/Hysteria2.sh)"
+            HY2_PORT=$port bash -c "$(curl -L https://raw.githubusercontent.com/eooce/xray-reality/master/Hysteria2.sh)"
             sleep 2
             break_end
         ;;     
