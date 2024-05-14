@@ -13,6 +13,8 @@ hui='\e[37m'
 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
 
+
+
 ip_address() {
 ipv4_address=$(curl -s ipv4.ip.sb)
 ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
@@ -976,6 +978,12 @@ echo -e "${lv}ROOT登录设置完毕！${bai}"
 server_reboot
 
 
+}
+
+
+root_use() {
+clear
+[ "$EUID" -ne 0 ] && echo -e "${huang}请注意，该功能需要root用户才能运行！${bai}" && break_end && kejilion
 }
 
 
@@ -2043,6 +2051,7 @@ case $choice in
 
     case $sub_choice in
       1)
+      root_use
       check_port
       install_dependency
       install_docker
@@ -2386,6 +2395,7 @@ case $choice in
 
 
       21)
+      root_use
       check_port
       install_dependency
       install_docker
@@ -2534,6 +2544,7 @@ case $choice in
 
 
     31)
+    root_use
     while true; do
         clear
         echo "LDNMP环境"
@@ -2723,7 +2734,7 @@ case $choice in
       ;;
 
     34)
-      clear
+      root_use
       cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
       check_port
       install_dependency
@@ -2983,7 +2994,7 @@ case $choice in
 
 
     37)
-      clear
+      root_use
       docker rm -f nginx php php74 mysql redis
       docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine
 
@@ -2996,7 +3007,7 @@ case $choice in
 
 
     38)
-        clear
+        root_use
         read -p "$(echo -e "${hong}强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ${bai}")" choice
         case "$choice" in
           [Yy])
