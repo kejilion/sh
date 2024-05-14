@@ -220,8 +220,6 @@ ldnmp_v() {
 }
 
 
-
-
 install_ldnmp() {
 
       new_swap=1024
@@ -329,9 +327,8 @@ install_ldnmp() {
       echo "------------------------"
       ldnmp_v
 
-
-
 }
+
 
 install_certbot() {
     install certbot
@@ -363,7 +360,6 @@ install_ssltls() {
       iptables_open
       cd ~
       certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
-      # cp /etc/letsencrypt/live/$yuming/cert.pem /home/web/certs/${yuming}_cert.pem
       cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem
       cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
       docker start nginx > /dev/null 2>&1
@@ -858,8 +854,12 @@ linux_clean() {
 }
 
 new_ssh_port() {
+
+
   # 备份 SSH 配置文件
   cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+
+  sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
 
   # 替换 SSH 配置文件中的端口号
   sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
@@ -963,6 +963,23 @@ sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
 echo -e "${lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${bai}"
 
 }
+
+
+add_sshpasswd() {
+
+echo "设置你的ROOT密码"
+passwd
+sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
+sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
+restart_ssh
+echo -e "${lv}ROOT登录设置完毕！${bai}"
+server_reboot
+
+
+}
+
+
+
 
 
 while true; do
@@ -1967,13 +1984,7 @@ case $choice in
               ;;
           5)
               clear
-              echo "设置你的ROOT密码"
-              passwd
-              sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
-              sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-              restart_ssh
-              echo "ROOT登录设置完毕！"
-              server_reboot
+              add_sshpasswd
 
               ;;
           0)
@@ -4223,14 +4234,7 @@ case $choice in
               ;;
           3)
               clear
-              echo "设置你的ROOT密码"
-              passwd
-              sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
-              sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-              restart_ssh
-              echo "ROOT登录设置完毕！"
-              server_reboot
-
+              add_sshpasswd
               ;;
 
           4)
