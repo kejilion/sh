@@ -5118,7 +5118,7 @@ EOF
       echo -e "${yellow}---------------------------------------------------------${re}"
       echo -e "${yellow}        单协议                    XRAY面板及其他${re}"
       echo -e "${yellow}---------------------------------------------------------${re}"
-      echo -e "${white} 9. M佬Hysteria2一键脚本      13.新版Xray面板一键脚本${re}"
+      echo -e "${white} 9. 老王Hysteria2一键脚本     13.新版Xray面板一键脚本${re}"
       echo -e "${white}10. M佬Juicity一键脚本        14.伊朗版Xray面板一键脚本${re}"
       echo -e "${white}11. M佬Tuic-v5一键脚本        15.OpenVPN一键安装脚本 ${re}"
       echo -e "${white}12. Brutal-Reality一键脚本    16.一键搭建TG代理 ${re}"
@@ -5253,7 +5253,17 @@ EOF
         ;;
         9)
         clear
-            install wget && wget -N --no-check-certificate https://raw.githubusercontent.com/Misaka-blog/hysteria-install/main/hy2/hysteria.sh && bash hysteria.sh
+            read -p $'\033[1;35m请输入Hysteria2节点端口(nat小鸡请输入可用端口范围内的端口),回车跳过则使用随机端口：\033[0m' port
+            [[ -z $port ]]
+            until [[ -z $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; do
+                if [[ -n $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; then
+                    echo -e $'\033[1;91m${PORT}端口已经被其他程序占用，请更换端口重试！\033[0m'
+                    read -p "设置 reality 端口[1-65535]（回车将使用随机端口）：" port
+                    [[ -z $PORT ]] && port=$(shuf -i 2000-65000 -n 1)
+                fi
+            done
+
+            PORT=$port bash -c "$(curl -L https://raw.githubusercontent.com/eooce/xray-reality/master/Hysteria2.sh)"
             sleep 2
             break_end
         ;;     
@@ -5326,13 +5336,13 @@ EOF
 
         17)
         clear
-            read -p $'\033[1;35m请输入reality节点端口(nat小鸡请输入可用端口范围内的端口),回车跳过则使用默认8880端口：\033[0m' port
+            read -p $'\033[1;35m请输入reality节点端口(nat小鸡请输入可用端口范围内的端口),回车跳过则使用随机端口：\033[0m' port
             [[ -z $port ]]
             until [[ -z $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; do
                 if [[ -n $(ss -tunlp | grep -w udp | awk '{print $5}' | sed 's/.*://g' | grep -w "$port") ]]; then
                     echo -e $'\033[1;91m${PORT}端口已经被其他程序占用，请更换端口重试！\033[0m'
-                    read -p "设置 reality 端口[1-65535]（回车将使用8880端口）：" port
-                    [[ -z $PORT ]] && port=8880
+                    read -p "设置 reality 端口[1-65535]（回车将使用随机端口）：" port
+                    [[ -z $PORT ]] && port=$(shuf -i 2000-65000 -n 1)
                 fi
             done
 
