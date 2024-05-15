@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.1"
+sh_v="2.5.2"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -11,6 +11,8 @@ kjlan='\033[96m'
 hui='\e[37m'
 
 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+
+
 
 
 ip_address() {
@@ -220,8 +222,6 @@ ldnmp_v() {
 }
 
 
-
-
 install_ldnmp() {
 
       new_swap=1024
@@ -329,9 +329,8 @@ install_ldnmp() {
       echo "------------------------"
       ldnmp_v
 
-
-
 }
+
 
 install_certbot() {
     install certbot
@@ -363,7 +362,6 @@ install_ssltls() {
       iptables_open
       cd ~
       certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
-      # cp /etc/letsencrypt/live/$yuming/cert.pem /home/web/certs/${yuming}_cert.pem
       cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem
       cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
       docker start nginx > /dev/null 2>&1
@@ -769,6 +767,228 @@ install_panel() {
 
 
 
+current_timezone() {
+    if grep -q 'Alpine' /etc/issue; then
+       :
+    else
+       timedatectl show --property=Timezone --value
+    fi
+
+}
+
+
+set_timedate() {
+    shiqu="$1"
+    if grep -q 'Alpine' /etc/issue; then
+        install tzdata
+        cp /usr/share/zoneinfo/${shiqu} /etc/localtime
+        hwclock --systohc
+    else
+        timedatectl set-timezone ${shiqu}
+    fi
+}
+
+
+
+linux_update() {
+
+    # Update system on Debian-based systems
+    if [ -f "/etc/debian_version" ]; then
+        apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+    fi
+
+    # Update system on Red Hat-based systems
+    if [ -f "/etc/redhat-release" ]; then
+        yum -y update
+    fi
+
+    # Update system on Alpine Linux
+    if [ -f "/etc/alpine-release" ]; then
+        apk update && apk upgrade
+    fi
+
+}
+
+
+linux_clean() {
+    clean_debian() {
+        apt autoremove --purge -y
+        apt clean -y
+        apt autoclean -y
+        apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+    }
+
+    clean_redhat() {
+        yum autoremove -y
+        yum clean all
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+    }
+
+    clean_alpine() {
+        apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
+        apk autoremove
+        apk cache clean
+        rm -rf /var/log/*
+        rm -rf /var/cache/apk/*
+
+    }
+
+    # Main script
+    if [ -f "/etc/debian_version" ]; then
+        # Debian-based systems
+        clean_debian
+    elif [ -f "/etc/redhat-release" ]; then
+        # Red Hat-based systems
+        clean_redhat
+    elif [ -f "/etc/alpine-release" ]; then
+        # Alpine Linux
+        clean_alpine
+    fi
+
+
+}
+
+new_ssh_port() {
+
+
+  # 备份 SSH 配置文件
+  cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+
+  sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
+
+  # 替换 SSH 配置文件中的端口号
+  sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
+
+  # 重启 SSH 服务
+  service sshd restart
+  echo "SSH 端口已修改为: $new_port"
+
+  clear
+  iptables_open
+  remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
+
+}
+
+
+bbr_on() {
+
+cat > /etc/sysctl.conf << EOF
+net.core.default_qdisc=fq_pie
+net.ipv4.tcp_congestion_control=bbr
+EOF
+sysctl -p
+
+}
+
+
+set_dns() {
+
+cloudflare_ipv4="1.1.1.1"
+google_ipv4="8.8.8.8"
+cloudflare_ipv6="2606:4700:4700::1111"
+google_ipv6="2001:4860:4860::8888"
+
+# 检查机器是否有IPv6地址
+ipv6_available=0
+if [[ $(ip -6 addr | grep -c "inet6") -gt 0 ]]; then
+    ipv6_available=1
+fi
+
+# 设置DNS地址为Cloudflare和Google（IPv4和IPv6）
+echo "设置DNS为Cloudflare和Google"
+
+# 设置IPv4地址
+echo "nameserver $cloudflare_ipv4" > /etc/resolv.conf
+echo "nameserver $google_ipv4" >> /etc/resolv.conf
+
+# 如果有IPv6地址，则设置IPv6地址
+if [[ $ipv6_available -eq 1 ]]; then
+    echo "nameserver $cloudflare_ipv6" >> /etc/resolv.conf
+    echo "nameserver $google_ipv6" >> /etc/resolv.conf
+fi
+
+echo "DNS地址已更新"
+echo "------------------------"
+cat /etc/resolv.conf
+echo "------------------------"
+
+}
+
+
+restart_ssh() {
+
+if command -v dnf &>/dev/null; then
+    systemctl restart sshd
+elif command -v yum &>/dev/null; then
+    systemctl restart sshd
+elif command -v apt &>/dev/null; then
+    service ssh restart
+elif command -v apk &>/dev/null; then
+    service sshd restart
+else
+    echo "未知的包管理器!"
+    return 1
+fi
+
+}
+
+
+
+
+add_sshkey() {
+
+ssh-keygen -t rsa -b 4096 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
+
+cat ~/.ssh/sshkey.pub >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+
+
+ip_address
+echo -e "私钥信息已生成，务必复制保存，可保存成 ${huang}${ipv4_address}_ssh.key${bai} 文件，用于以后的SSH登录"
+echo "--------------------------------"
+cat ~/.ssh/sshkey
+echo "--------------------------------"
+
+sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
+       -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
+       -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+       -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+echo -e "${lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${bai}"
+
+}
+
+
+add_sshpasswd() {
+
+echo "设置你的ROOT密码"
+passwd
+sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
+sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
+rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+restart_ssh
+echo -e "${lv}ROOT登录设置完毕！${bai}"
+server_reboot
+
+
+}
+
+
+root_use() {
+clear
+[ "$EUID" -ne 0 ] && echo -e "${huang}请注意，该功能需要root用户才能运行！${bai}" && break_end && kejilion
+}
+
+
+
+
 
 while true; do
 clear
@@ -914,68 +1134,12 @@ case $choice in
 
   2)
     clear
-
-    # Update system on Debian-based systems
-    if [ -f "/etc/debian_version" ]; then
-        apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
-    fi
-
-    # Update system on Red Hat-based systems
-    if [ -f "/etc/redhat-release" ]; then
-        yum -y update
-    fi
-
-    # Update system on Alpine Linux
-    if [ -f "/etc/alpine-release" ]; then
-        apk update && apk upgrade
-    fi
-
-
+    linux_update
     ;;
 
   3)
     clear
-    clean_debian() {
-        apt autoremove --purge -y
-        apt clean -y
-        apt autoclean -y
-        apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
-        journalctl --rotate
-        journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
-    }
-
-    clean_redhat() {
-        yum autoremove -y
-        yum clean all
-        journalctl --rotate
-        journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
-    }
-
-    clean_alpine() {
-        apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
-        apk autoremove
-        apk cache clean
-        rm -rf /var/log/*
-        rm -rf /var/cache/apk/*
-
-    }
-
-    # Main script
-    if [ -f "/etc/debian_version" ]; then
-        # Debian-based systems
-        clean_debian
-    elif [ -f "/etc/redhat-release" ]; then
-        # Red Hat-based systems
-        clean_redhat
-    elif [ -f "/etc/alpine-release" ]; then
-        # Alpine Linux
-        clean_alpine
-    fi
-
+    linux_clean
     ;;
 
   4)
@@ -1203,11 +1367,7 @@ case $choice in
 
               case $sub_choice in
                   1)
-                    cat > /etc/sysctl.conf << EOF
-net.core.default_qdisc=fq_pie
-net.ipv4.tcp_congestion_control=bbr
-EOF
-                    sysctl -p
+                    bbr_on
 
                       ;;
                   2)
@@ -1832,13 +1992,7 @@ EOF
               ;;
           5)
               clear
-              echo "设置你的ROOT密码"
-              passwd
-              sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
-              sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-              service sshd restart
-              echo "ROOT登录设置完毕！"
-              server_reboot
+              add_sshpasswd
 
               ;;
           0)
@@ -1897,6 +2051,7 @@ EOF
 
     case $sub_choice in
       1)
+      root_use
       check_port
       install_dependency
       install_docker
@@ -2240,6 +2395,7 @@ EOF
 
 
       21)
+      root_use
       check_port
       install_dependency
       install_docker
@@ -2388,6 +2544,7 @@ EOF
 
 
     31)
+    root_use
     while true; do
         clear
         echo "LDNMP环境"
@@ -2577,7 +2734,7 @@ EOF
       ;;
 
     34)
-      clear
+      root_use
       cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
       check_port
       install_dependency
@@ -2837,7 +2994,7 @@ EOF
 
 
     37)
-      clear
+      root_use
       docker rm -f nginx php php74 mysql redis
       docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine
 
@@ -2850,7 +3007,7 @@ EOF
 
 
     38)
-        clear
+        root_use
         read -p "$(echo -e "${hong}强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ${bai}")" choice
         case "$choice" in
           [Yy])
@@ -4038,8 +4195,8 @@ EOF
       echo "------------------------"
       echo "1. 设置脚本启动快捷键"
       echo "------------------------"
-      echo "2. 修改ROOT密码"
-      echo "3. 开启ROOT密码登录模式"
+      echo "2. 修改登录密码"
+      echo "3. ROOT密码登录模式"
       echo "4. 安装Python最新版"
       echo "5. 开放所有端口"
       echo "6. 修改SSH连接端口"
@@ -4060,8 +4217,11 @@ EOF
       echo "21. 本机host解析"
       echo "22. fail2banSSH防御程序"
       echo "23. 限流自动关机"
+      echo "24. ROOT私钥登录模式"
       echo "------------------------"
       echo "31. 留言板"
+      echo "------------------------"
+      echo "66. 一条龙系统调优"
       echo "------------------------"
       echo "99. 重启服务器"
       echo "------------------------"
@@ -4080,23 +4240,16 @@ EOF
 
           2)
               clear
-              echo "设置你的ROOT密码"
+              echo "设置你的登录密码"
               passwd
               ;;
           3)
-              clear
-              echo "设置你的ROOT密码"
-              passwd
-              sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
-              sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-              service sshd restart
-              echo "ROOT登录设置完毕！"
-              server_reboot
-
+              root_use
+              add_sshpasswd
               ;;
 
           4)
-            clear
+            root_use
 
             # 系统检测
             OS=$(cat /etc/os-release | grep -o -E "Debian|Ubuntu|CentOS" | head -n 1)
@@ -4175,14 +4328,14 @@ EOF
               ;;
 
           5)
-              clear
+              root_use
               iptables_open
               remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
               echo "端口已全部开放"
 
               ;;
           6)
-              clear
+              root_use
 
               # 去掉 #Port 的注释
               sed -i 's/#Port/Port/' /etc/ssh/sshd_config
@@ -4198,26 +4351,13 @@ EOF
               # 提示用户输入新的 SSH 端口号
               read -p "请输入新的 SSH 端口号: " new_port
 
-              # 备份 SSH 配置文件
-              cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-
-              # 替换 SSH 配置文件中的端口号
-              sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
-
-              # 重启 SSH 服务
-              service sshd restart
-
-              echo "SSH 端口已修改为: $new_port"
-
-              clear
-              iptables_open
-              remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
+              new_ssh_port
 
               ;;
 
 
           7)
-            clear
+            root_use
             echo "当前DNS地址"
             echo "------------------------"
             cat /etc/resolv.conf
@@ -4227,35 +4367,7 @@ EOF
             read -p "是否要设置为Cloudflare和Google的DNS地址？(y/n): " choice
 
             if [ "$choice" == "y" ]; then
-                # 定义DNS地址
-                cloudflare_ipv4="1.1.1.1"
-                google_ipv4="8.8.8.8"
-                cloudflare_ipv6="2606:4700:4700::1111"
-                google_ipv6="2001:4860:4860::8888"
-
-                # 检查机器是否有IPv6地址
-                ipv6_available=0
-                if [[ $(ip -6 addr | grep -c "inet6") -gt 0 ]]; then
-                    ipv6_available=1
-                fi
-
-                # 设置DNS地址为Cloudflare和Google（IPv4和IPv6）
-                echo "设置DNS为Cloudflare和Google"
-
-                # 设置IPv4地址
-                echo "nameserver $cloudflare_ipv4" > /etc/resolv.conf
-                echo "nameserver $google_ipv4" >> /etc/resolv.conf
-
-                # 如果有IPv6地址，则设置IPv6地址
-                if [[ $ipv6_available -eq 1 ]]; then
-                    echo "nameserver $cloudflare_ipv6" >> /etc/resolv.conf
-                    echo "nameserver $google_ipv6" >> /etc/resolv.conf
-                fi
-
-                echo "DNS地址已更新"
-                echo "------------------------"
-                cat /etc/resolv.conf
-                echo "------------------------"
+                set_dns
             else
                 echo "DNS设置未更改"
             fi
@@ -4278,7 +4390,7 @@ EOF
             wget --no-check-certificate -qO InstallNET.sh 'https://raw.gitmirror.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
           }
 
-          clear
+          root_use
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
           echo -e "${hui}感谢MollyLau的脚本支持！${bai} "
           read -p "确定继续吗？(Y/N): " choice
@@ -4448,28 +4560,27 @@ EOF
               ;;
 
           9)
-            clear
-            install sudo
+            root_use
 
             # 提示用户输入新用户名
             read -p "请输入新用户名: " new_username
 
             # 创建新用户并设置密码
-            sudo useradd -m -s /bin/bash "$new_username"
-            sudo passwd "$new_username"
+            useradd -m -s /bin/bash "$new_username"
+            passwd "$new_username"
 
             # 赋予新用户sudo权限
             echo "$new_username ALL=(ALL:ALL) ALL" | sudo tee -a /etc/sudoers
 
             # 禁用ROOT用户登录
-            sudo passwd -l root
+            passwd -l root
 
             echo "操作已完成。"
             ;;
 
 
           10)
-            clear
+            root_use
             ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
             echo ""
@@ -4511,7 +4622,7 @@ EOF
           12)
 
 
-            clear
+            root_use
             # 获取当前交换空间信息
             swap_used=$(free -m | awk 'NR==3{print $3}')
             swap_total=$(free -m | awk 'NR==3{print $2}')
@@ -4546,9 +4657,8 @@ EOF
 
           13)
               while true; do
-                clear
-                install sudo
-                clear
+                root_use
+
                 # 显示所有用户、用户权限、用户组和是否在sudoers中
                 echo "用户列表"
                 echo "----------------------------------------------------------------------------"
@@ -4579,8 +4689,8 @@ EOF
                        read -p "请输入新用户名: " new_username
 
                        # 创建新用户并设置密码
-                       sudo useradd -m -s /bin/bash "$new_username"
-                       sudo passwd "$new_username"
+                       useradd -m -s /bin/bash "$new_username"
+                       passwd "$new_username"
 
                        echo "操作已完成。"
                           ;;
@@ -4590,8 +4700,8 @@ EOF
                        read -p "请输入新用户名: " new_username
 
                        # 创建新用户并设置密码
-                       sudo useradd -m -s /bin/bash "$new_username"
-                       sudo passwd "$new_username"
+                       useradd -m -s /bin/bash "$new_username"
+                       passwd "$new_username"
 
                        # 赋予新用户sudo权限
                        echo "$new_username ALL=(ALL:ALL) ALL" | sudo tee -a /etc/sudoers
@@ -4607,13 +4717,13 @@ EOF
                       4)
                        read -p "请输入用户名: " username
                        # 从sudoers文件中移除用户的sudo权限
-                       sudo sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
+                       sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
                           ;;
                       5)
                        read -p "请输入要删除的用户名: " username
                        # 删除用户及其主目录
-                       sudo userdel -r "$username"
+                       userdel -r "$username"
                           ;;
 
                       0)
@@ -4679,18 +4789,19 @@ EOF
               ;;
 
           15)
+            root_use
             while true; do
-                clear
+
                 echo "系统时间信息"
 
                 # 获取当前系统时区
-                current_timezone=$(timedatectl show --property=Timezone --value)
+                timezone=$(current_timezone)
 
                 # 获取当前系统时间
                 current_time=$(date +"%Y-%m-%d %H:%M:%S")
 
                 # 显示时区和时间
-                echo "当前系统时区：$current_timezone"
+                echo "当前系统时区：$timezone"
                 echo "当前系统时间：$current_time"
 
                 echo ""
@@ -4713,27 +4824,28 @@ EOF
                 echo "------------------------"
                 read -p "请输入你的选择: " sub_choice
 
+
                 case $sub_choice in
-                    1) timedatectl set-timezone Asia/Shanghai ;;
-                    2) timedatectl set-timezone Asia/Hong_Kong ;;
-                    3) timedatectl set-timezone Asia/Tokyo ;;
-                    4) timedatectl set-timezone Asia/Seoul ;;
-                    5) timedatectl set-timezone Asia/Singapore ;;
-                    6) timedatectl set-timezone Asia/Kolkata ;;
-                    7) timedatectl set-timezone Asia/Dubai ;;
-                    8) timedatectl set-timezone Australia/Sydney ;;
-                    11) timedatectl set-timezone Europe/London ;;
-                    12) timedatectl set-timezone Europe/Paris ;;
-                    13) timedatectl set-timezone Europe/Berlin ;;
-                    14) timedatectl set-timezone Europe/Moscow ;;
-                    15) timedatectl set-timezone Europe/Amsterdam ;;
-                    16) timedatectl set-timezone Europe/Madrid ;;
-                    21) timedatectl set-timezone America/Los_Angeles ;;
-                    22) timedatectl set-timezone America/New_York ;;
-                    23) timedatectl set-timezone America/Vancouver ;;
-                    24) timedatectl set-timezone America/Mexico_City ;;
-                    25) timedatectl set-timezone America/Sao_Paulo ;;
-                    26) timedatectl set-timezone America/Argentina/Buenos_Aires ;;
+                    1) set_timedate Asia/Shanghai ;;
+                    2) set_timedate Asia/Hong_Kong ;;
+                    3) set_timedate Asia/Tokyo ;;
+                    4) set_timedate Asia/Seoul ;;
+                    5) set_timedate Asia/Singapore ;;
+                    6) set_timedate Asia/Kolkata ;;
+                    7) set_timedate Asia/Dubai ;;
+                    8) set_timedate Australia/Sydney ;;
+                    11) set_timedate Europe/London ;;
+                    12) set_timedate Europe/Paris ;;
+                    13) set_timedate Europe/Berlin ;;
+                    14) set_timedate Europe/Moscow ;;
+                    15) set_timedate Europe/Amsterdam ;;
+                    16) set_timedate Europe/Madrid ;;
+                    21) set_timedate America/Los_Angeles ;;
+                    22) set_timedate America/New_York ;;
+                    23) set_timedate America/Vancouver ;;
+                    24) set_timedate America/Mexico_City ;;
+                    25) set_timedate America/Sao_Paulo ;;
+                    26) set_timedate America/Argentina/Buenos_Aires ;;
                     0) break ;; # 跳出循环，退出菜单
                     *) break ;; # 跳出循环，退出菜单
                 esac
@@ -4741,9 +4853,10 @@ EOF
               ;;
 
           16)
+          root_use
           if dpkg -l | grep -q 'linux-xanmod'; then
             while true; do
-                  clear
+
                   kernel_version=$(uname -r)
                   echo "您已安装xanmod的BBRv3内核"
                   echo "当前内核版本: $kernel_version"
@@ -4867,9 +4980,9 @@ EOF
               ;;
 
           17)
+          root_use
           if dpkg -l | grep -q iptables-persistent; then
             while true; do
-                  clear
                   echo "防火墙已安装"
                   echo "------------------------"
                   iptables -L INPUT
@@ -5034,7 +5147,7 @@ EOF
               ;;
 
           18)
-          clear
+          root_use
           current_hostname=$(hostname)
           echo "当前主机名: $current_hostname"
           read -p "是否要更改主机名？(y/n): " answer
@@ -5063,7 +5176,7 @@ EOF
               ;;
 
           19)
-
+          root_use
           # 获取系统信息
           source /etc/os-release
 
@@ -5164,7 +5277,6 @@ EOF
 
           # 主菜单
           while true; do
-              clear
               case "$ID" in
                   ubuntu)
                       echo "Ubuntu 更新源切换脚本"
@@ -5321,9 +5433,8 @@ EOF
               ;;
 
           21)
-
+              root_use
               while true; do
-                  clear
                   echo "本机host解析列表"
                   echo "如果你在这里添加解析匹配，将不再使用动态解析了"
                   cat /etc/hosts
@@ -5358,6 +5469,7 @@ EOF
               ;;
 
           22)
+            root_use
             if docker inspect fail2ban &>/dev/null ; then
                 while true; do
                     clear
@@ -5451,7 +5563,7 @@ EOF
 
 
           23)
-            clear
+            root_use
             echo "当前流量使用情况，重启服务器流量计算会清零！"
             output_status
             echo "$output"
@@ -5503,6 +5615,28 @@ EOF
               ;;
 
 
+          24)
+              root_use
+              echo "ROOT私钥登录模式"
+              echo "------------------------------------------------"
+              echo "将会生成密钥对，更安全的方式SSH登录"
+              read -p "确定继续吗？(Y/N): " choice
+
+              case "$choice" in
+                [Yy])
+                  clear
+                  add_sshkey
+                  ;;
+                [Nn])
+                  echo "已取消"
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
+
+              ;;
+
           31)
             clear
             install sshpass
@@ -5538,6 +5672,76 @@ EOF
             fi
 
             echo "留言板操作完成。"
+
+              ;;
+
+          66)
+
+              root_use
+              echo "一条龙系统调优"
+              echo "------------------------------------------------"
+              echo "将对以下内容进行操作与优化"
+              echo "1. 更新系统到最新"
+              echo "2. 清理系统垃圾文件"
+              echo -e "3. 设置虚拟内存${huang}1G${bai}"
+              echo -e "4. 设置SSH端口号为${huang}5522${bai}"
+              echo -e "5. 开放所有端口"
+              echo -e "6. 开启${huang}BBR${bai}加速"
+              echo -e "7. 设置时区到${huang}上海${bai}"
+              echo -e "8. 优化DNS地址到${huang}1111 8888${bai}"
+              echo -e "9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+              echo "------------------------------------------------"
+              read -p "确定一键保养吗？(Y/N): " choice
+
+              case "$choice" in
+                [Yy])
+                  clear
+
+                  echo "------------------------------------------------"
+                  linux_update
+                  echo -e "[${lv}OK${bai}] 1/9. 更新系统到最新"
+
+                  echo "------------------------------------------------"
+                  linux_clean
+                  echo -e "[${lv}OK${bai}] 2/9. 清理系统垃圾文件"
+
+                  echo "------------------------------------------------"
+                  new_swap=1024
+                  add_swap
+                  echo -e "[${lv}OK${bai}] 3/9. 设置虚拟内存${huang}1G${bai}"
+
+                  echo "------------------------------------------------"
+                  new_port=5522
+                  new_ssh_port
+                  echo -e "[${lv}OK${bai}] 4/9. 设置SSH端口号为${huang}5522${bai}"
+                  echo -e "[${lv}OK${bai}] 5/9. 开放所有端口"
+
+                  echo "------------------------------------------------"
+                  bbr_on
+                  echo -e "[${lv}OK${bai}] 6/9. 开启${huang}BBR${bai}加速"
+
+                  echo "------------------------------------------------"
+                  set_timedate Asia/Shanghai
+                  echo -e "[${lv}OK${bai}] 7/9. 设置时区到${huang}上海${bai}"
+
+                  echo "------------------------------------------------"
+                  set_dns
+                  echo -e "[${lv}OK${bai}] 8/9. 优化DNS地址到${huang}1111 8888${bai}"
+
+                  echo "------------------------------------------------"
+                  install_add_docker
+                  install wget sudo tar unzip socat btop
+                  echo -e "[${lv}OK${bai}] 9/9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+                  echo -e "${lv}一条龙系统调优已完成${bai}"
+
+                  ;;
+                [Nn])
+                  echo "已取消"
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
 
               ;;
 
@@ -5746,24 +5950,28 @@ EOF
 
   00)
     cd ~
-    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/update_log.sh && chmod +x update_log.sh && ./update_log.sh
-    rm update_log.sh
+    clear
+    echo "更新日志"
+    echo "------------------------"
+    echo "全部日志: https://raw.gitmirror.com/kejilion/sh/main/kejilion_sh_log.txt"
+    echo "------------------------"
+    curl -s https://raw.gitmirror.com/kejilion/sh/main/kejilion_sh_log.txt | tail -n 35
     echo ""
-
+    echo ""
     sh_v_new=$(curl -s https://raw.gitmirror.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
 
     if [ "$sh_v" = "$sh_v_new" ]; then
         echo -e "${lv}你已经是最新版本！${huang}v$sh_v${bai}"
     else
         echo "发现新版本！"
-        echo -e "当前版本v$sh_v     最新版本${huang}v$sh_v_new${bai}"
+        echo -e "当前版本 v$sh_v        最新版本 ${huang}v$sh_v_new${bai}"
         echo "------------------------"
         read -p "确定更新脚本吗？(Y/N): " choice
         case "$choice" in
             [Yy])
                 clear
                 curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-                echo -e "${lv}脚本已更新到最新版本${huang}v$sh_v_new${bai}"
+                echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
                 break_end
                 kejilion
                 ;;
