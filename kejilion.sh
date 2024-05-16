@@ -4400,7 +4400,7 @@ case $choice in
 
           root_use
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
-          echo -e "${hui}感谢MollyLau的脚本支持！${bai} "
+          echo -e "${hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${bai} "
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
