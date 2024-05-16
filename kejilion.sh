@@ -2342,7 +2342,7 @@ case $choice in
       cd $yuming
 
       clear
-      echo -e "[${huang}1/4${bai}] 上传PHP源码"
+      echo -e "[${huang}1/5${bai}] 上传PHP源码"
       echo "-------------"
       echo "目前只允许上传zip格式的源码包，请将源码包放到/home/web/html/${yuming}目录下"
       read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
@@ -2355,7 +2355,7 @@ case $choice in
       rm -f $(ls -t *.zip | head -n 1)
 
       clear
-      echo -e "[${huang}2/4${bai}] index.php所在路径"
+      echo -e "[${huang}2/5${bai}] index.php所在路径"
       echo "-------------"
       find "$(realpath .)" -name "index.php" -print
 
@@ -2365,7 +2365,7 @@ case $choice in
       sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
       clear
-      echo -e "[${huang}3/4${bai}] 请选择PHP版本"
+      echo -e "[${huang}3/5${bai}] 请选择PHP版本"
       echo "-------------"
       read -p "1. php最新版 | 2. php7.4 : " pho_v
       case "$pho_v" in
@@ -2384,16 +2384,24 @@ case $choice in
 
 
       clear
-      echo -e "[${huang}4/4${bai}] 安装指定扩展"
+      echo -e "[${huang}4/5${bai}] 安装指定扩展"
       echo "-------------"
       echo "已经安装的扩展"
       docker exec php php -m
 
-      read -p "输入需要安装的扩展名称，如 ${huang}SourceGuardian imap ftp${bai} 等等。直接回车将跳过安装 ： " php_extensions
+      read -p "$(echo -e "输入需要安装的扩展名称，如 ${huang}SourceGuardian imap ftp${bai} 等等。直接回车将跳过安装 ： ")" php_extensions
       if [ -n "$php_extensions" ]; then
           docker exec $PHP_Version install-php-extensions $php_extensions
       fi
 
+
+      clear
+      echo -e "[${huang}5/5${bai}] 编辑站点配置"
+      echo "-------------"
+      echo "按任意键继续，可以详细设置站点配置，如伪静态等内容"
+      read -n 1 -s -r -p ""
+      install nano
+      nano /home/web/conf.d/$yuming.conf
 
       restart_ldnmp
 
