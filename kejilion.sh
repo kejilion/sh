@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.2"
+sh_v="2.5.3"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -4390,6 +4390,14 @@ case $choice in
             wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
           }
 
+          dd_xitong_4() {
+            echo -e "任意键继续，重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}123@@@${bai}  初始端口: ${huang}3389${bai}"
+            read -n 1 -s -r -p ""
+            install wget
+            curl -O https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
+          }
+
+
           root_use
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
           echo -e "${hui}感谢MollyLau的脚本支持！${bai} "
@@ -4418,9 +4426,10 @@ case $choice in
                 echo "------------------------"
                 echo "41. Windows 11"
                 echo "42. Windows 10"
-                echo "43. Windows Server 2022"
-                echo "44. Windows Server 2019"
-                echo "44. Windows Server 2016"
+                echo "43. Windows 7"
+                echo "44. Windows Server 2022"
+                echo "45. Windows Server 2019"
+                echo "46. Windows Server 2016"
                 echo "------------------------"
                 read -p "请选择要重装的系统: " sys_choice
 
@@ -4523,20 +4532,27 @@ case $choice in
                     ;;
 
                   43)
-                    dd_xitong_3
-                    bash InstallNET.sh -windows 2022 -lang "cn"
+                    dd_xitong_4
+                    bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
                     reboot
                     exit
                     ;;
 
                   44)
+                    dd_xitong_4
+                    bash reinstall.sh windows --image-name 'Windows Server 2022 SERVERDATACENTER' --lang zh-cn
+                    reboot
+                    exit
+                    ;;
+
+                  45)
                     dd_xitong_3
                     bash InstallNET.sh -windows 2019 -lang "cn"
                     reboot
                     exit
                     ;;
 
-                  45)
+                  46)
                     dd_xitong_3
                     bash InstallNET.sh -windows 2016 -lang "cn"
                     reboot
