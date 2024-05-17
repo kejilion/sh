@@ -769,9 +769,9 @@ install_panel() {
 
 current_timezone() {
     if grep -q 'Alpine' /etc/issue; then
-       :
+       date +"%Z %z"
     else
-       timedatectl show --property=Timezone --value
+       timedatectl | grep "Time zone" | awk '{print $3}'
     fi
 
 }
@@ -1099,6 +1099,9 @@ case $choice in
 
     runtime=$(cat /proc/uptime | awk -F. '{run_days=int($1 / 86400);run_hours=int(($1 % 86400) / 3600);run_minutes=int(($1 % 3600) / 60); if (run_days > 0) printf("%d天 ", run_days); if (run_hours > 0) printf("%d时 ", run_hours); printf("%d分\n", run_minutes)}')
 
+    timezone=$(current_timezone)
+
+
     echo ""
     echo "系统信息查询"
     echo "------------------------"
@@ -1125,6 +1128,7 @@ case $choice in
     echo "公网IPv6地址: $ipv6_address"
     echo "------------------------"
     echo "地理位置: $country $city"
+    echo "系统时区: $timezone"
     echo "系统时间: $current_time"
     echo "------------------------"
     echo "系统运行时长: $runtime"
