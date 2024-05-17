@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.2"
+sh_v="2.5.4"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -2342,7 +2342,7 @@ case $choice in
       cd $yuming
 
       clear
-      echo "上传PHP源码"
+      echo -e "[${huang}1/5${bai}] 上传PHP源码"
       echo "-------------"
       echo "目前只允许上传zip格式的源码包，请将源码包放到/home/web/html/${yuming}目录下"
       read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
@@ -2355,7 +2355,7 @@ case $choice in
       rm -f $(ls -t *.zip | head -n 1)
 
       clear
-      echo "index.php所在路径"
+      echo -e "[${huang}2/5${bai}] index.php所在路径"
       echo "-------------"
       find "$(realpath .)" -name "index.php" -print
 
@@ -2365,20 +2365,43 @@ case $choice in
       sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
       clear
-      echo "请选择PHP版本"
+      echo -e "[${huang}3/5${bai}] 请选择PHP版本"
       echo "-------------"
       read -p "1. php最新版 | 2. php7.4 : " pho_v
       case "$pho_v" in
         1)
           sed -i "s#php:9000#php:9000#g" /home/web/conf.d/$yuming.conf
+          PHP_Version="php"
           ;;
         2)
           sed -i "s#php:9000#php74:9000#g" /home/web/conf.d/$yuming.conf
+          PHP_Version="php74"
           ;;
         *)
           echo "无效的选择，请重新输入。"
           ;;
       esac
+
+
+      clear
+      echo -e "[${huang}4/5${bai}] 安装指定扩展"
+      echo "-------------"
+      echo "已经安装的扩展"
+      docker exec php php -m
+
+      read -p "$(echo -e "输入需要安装的扩展名称，如 ${huang}SourceGuardian imap ftp${bai} 等等。直接回车将跳过安装 ： ")" php_extensions
+      if [ -n "$php_extensions" ]; then
+          docker exec $PHP_Version install-php-extensions $php_extensions
+      fi
+
+
+      clear
+      echo -e "[${huang}5/5${bai}] 编辑站点配置"
+      echo "-------------"
+      echo "按任意键继续，可以详细设置站点配置，如伪静态等内容"
+      read -n 1 -s -r -p ""
+      install nano
+      nano /home/web/conf.d/$yuming.conf
 
       restart_ldnmp
 
@@ -2477,7 +2500,7 @@ case $choice in
 
 
       clear
-      echo "上传静态源码"
+      echo -e "[${huang}1/2${bai}] 上传静态源码"
       echo "-------------"
       echo "目前只允许上传zip格式的源码包，请将源码包放到/home/web/html/${yuming}目录下"
       read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
@@ -2490,11 +2513,11 @@ case $choice in
       rm -f $(ls -t *.zip | head -n 1)
 
       clear
-      echo "index.html所在路径"
+      echo -e "[${huang}2/2${bai}] index.html所在路径"
       echo "-------------"
       find "$(realpath .)" -name "index.html" -print
 
-      read -p "请输入index.html的路径，类似（/home/web/html/$yuming/wordpress/）： " index_lujing
+      read -p "请输入index.html的路径，类似（/home/web/html/$yuming/index/）： " index_lujing
 
       sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
       sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
@@ -2505,6 +2528,7 @@ case $choice in
       nginx_web_on
       nginx_status
         ;;
+
 
       25)
       clear
@@ -4390,9 +4414,17 @@ case $choice in
             wget --no-check-certificate -qO InstallNET.sh 'https://raw.gitmirror.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
           }
 
+          dd_xitong_4() {
+            echo -e "任意键继续，重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}123@@@${bai}  初始端口: ${huang}3389${bai}"
+            read -n 1 -s -r -p ""
+            install wget
+            curl -O https://raw.gitmirror.com/bin456789/reinstall/main/reinstall.sh
+          }
+
+
           root_use
           echo "请备份数据，将为你重装系统，预计花费15分钟。"
-          echo -e "${hui}感谢MollyLau的脚本支持！${bai} "
+          echo -e "${hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${bai} "
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
@@ -4418,9 +4450,10 @@ case $choice in
                 echo "------------------------"
                 echo "41. Windows 11"
                 echo "42. Windows 10"
-                echo "43. Windows Server 2022"
-                echo "44. Windows Server 2019"
-                echo "44. Windows Server 2016"
+                echo "43. Windows 7"
+                echo "44. Windows Server 2022"
+                echo "45. Windows Server 2019"
+                echo "46. Windows Server 2016"
                 echo "------------------------"
                 read -p "请选择要重装的系统: " sys_choice
 
@@ -4523,20 +4556,27 @@ case $choice in
                     ;;
 
                   43)
-                    dd_xitong_3
-                    bash InstallNET.sh -windows 2022 -lang "cn"
+                    dd_xitong_4
+                    bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
                     reboot
                     exit
                     ;;
 
                   44)
+                    dd_xitong_4
+                    bash reinstall.sh windows --image-name 'Windows Server 2022 SERVERDATACENTER' --lang zh-cn
+                    reboot
+                    exit
+                    ;;
+
+                  45)
                     dd_xitong_3
                     bash InstallNET.sh -windows 2019 -lang "cn"
                     reboot
                     exit
                     ;;
 
-                  45)
+                  46)
                     dd_xitong_3
                     bash InstallNET.sh -windows 2016 -lang "cn"
                     reboot
@@ -5389,7 +5429,7 @@ EOF
                   echo ""
                   echo "操作"
                   echo "------------------------"
-                  echo "1. 添加定时任务              2. 删除定时任务"
+                  echo "1. 添加定时任务              2. 删除定时任务              3. 编辑定时任务"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
@@ -5399,17 +5439,27 @@ EOF
                       1)
                           read -p "请输入新任务的执行命令: " newquest
                           echo "------------------------"
-                          echo "1. 每周任务                 2. 每天任务"
+                          echo "1. 每月任务                 2. 每周任务"
+                          echo "3. 每天任务                 4. 每小时任务"
+                          echo "------------------------"
                           read -p "请输入你的选择: " dingshi
 
                           case $dingshi in
                               1)
+                                  read -p "选择每月的几号执行任务？ (1-30): " day
+                                  (crontab -l ; echo "0 0 $day * * $newquest") | crontab - > /dev/null 2>&1
+                                  ;;
+                              2)
                                   read -p "选择周几执行任务？ (0-6，0代表星期日): " weekday
                                   (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
                                   ;;
-                              2)
+                              3)
                                   read -p "选择每天几点执行任务？（小时，0-23）: " hour
                                   (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
+                                  ;;
+                              4)
+                                  read -p "输入每小时的第几分钟执行任务？（分钟，0-60）: " minute
+                                  (crontab -l ; echo "$minute * * * * $newquest") | crontab - > /dev/null 2>&1
                                   ;;
                               *)
                                   break  # 跳出
@@ -5419,6 +5469,9 @@ EOF
                       2)
                           read -p "请输入需要删除任务的关键字: " kquest
                           crontab -l | grep -v "$kquest" | crontab -
+                          ;;
+                      3)
+                          crontab -e
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
