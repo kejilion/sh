@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.3"
+sh_v="2.5.4"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -5429,7 +5429,7 @@ EOF
                   echo ""
                   echo "操作"
                   echo "------------------------"
-                  echo "1. 添加定时任务              2. 删除定时任务"
+                  echo "1. 添加定时任务              2. 删除定时任务              3. 编辑定时任务"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
@@ -5439,17 +5439,27 @@ EOF
                       1)
                           read -p "请输入新任务的执行命令: " newquest
                           echo "------------------------"
-                          echo "1. 每周任务                 2. 每天任务"
+                          echo "1. 每月任务                 2. 每周任务"
+                          echo "3. 每天任务                 4. 每小时任务"
+                          echo "------------------------"
                           read -p "请输入你的选择: " dingshi
 
                           case $dingshi in
                               1)
+                                  read -p "选择每月的几号执行任务？ (1-30): " day
+                                  (crontab -l ; echo "0 0 $day * * $newquest") | crontab - > /dev/null 2>&1
+                                  ;;
+                              2)
                                   read -p "选择周几执行任务？ (0-6，0代表星期日): " weekday
                                   (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
                                   ;;
-                              2)
+                              3)
                                   read -p "选择每天几点执行任务？（小时，0-23）: " hour
                                   (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
+                                  ;;
+                              4)
+                                  read -p "输入每小时的第几分钟执行任务？（分钟，0-60）: " minute
+                                  (crontab -l ; echo "$minute * * * * $newquest") | crontab - > /dev/null 2>&1
                                   ;;
                               *)
                                   break  # 跳出
@@ -5459,6 +5469,9 @@ EOF
                       2)
                           read -p "请输入需要删除任务的关键字: " kquest
                           crontab -l | grep -v "$kquest" | crontab -
+                          ;;
+                      3)
+                          crontab -e
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
