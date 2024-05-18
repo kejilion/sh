@@ -408,11 +408,11 @@ nginx_status() {
 repeat_add_yuming() {
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
-    echo -e "${huang}当前${yuming}域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！${bai}"
+    echo -e "${huang}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！${bai}"
     break_end
     kejilion
 else
-    echo "当前${yuming}域名可用"
+    echo "当前 ${yuming} 域名可用"
 fi
 
 }
@@ -2613,7 +2613,7 @@ case $choice in
         echo ""
         echo "操作"
         echo "------------------------"
-        echo -e "1. 申请/更新域名证书               ${hui}2. 更换站点域名${bai}"
+        echo "1. 申请/更新域名证书"
         echo "3. 清理站点缓存                    4. 查看站点分析报告"
         echo "5. 查看全局配置                    6. 查看站点配置"
         echo "------------------------"
