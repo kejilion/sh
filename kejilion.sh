@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.4"
+sh_v="2.5.5"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -127,7 +127,8 @@ install_add_docker() {
         rc-update add docker default
         service docker start
     else
-        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+        curl -fsSL https://get.docker.com | sh
+        # curl -fsSL https://get.docker.com | sh -s docker --mirror Aliyun
         systemctl start docker
         systemctl enable docker
     fi
@@ -137,7 +138,7 @@ install_add_docker() {
 
 
 install_docker() {
-    if ! command -v docker &>/dev/null || ! command -v docker-compose &>/dev/null; then
+    if ! command -v docker compose &>/dev/null; then
         install_add_docker
     else
         echo "Docker环境已经安装"
@@ -227,7 +228,7 @@ install_ldnmp() {
       new_swap=1024
       add_swap
 
-      cd /home/web && docker-compose up -d
+      cd /home/web && docker compose up -d
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
 
@@ -424,7 +425,7 @@ add_yuming() {
       echo -e "先将域名解析到本机IP: ${huang}$ipv4_address  $ipv6_address${bai}"
       read -p "请输入你解析的域名: " yuming
       repeat_add_yuming
-      
+
 }
 
 
@@ -1437,7 +1438,7 @@ case $choice in
               clear
               echo "Dcoker版本"
               docker --version
-              docker-compose --version
+
               echo ""
               echo "Dcoker镜像列表"
               docker image ls
@@ -3562,7 +3563,7 @@ case $choice in
 
                             cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
                             curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
-                            cd /home/docker/cloud/ && docker-compose up -d
+                            cd /home/docker/cloud/ && docker compose up -d
 
 
                             clear
@@ -3606,7 +3607,7 @@ case $choice in
                     install_docker
                     cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
                     curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
-                    cd /home/docker/cloud/ && docker-compose up -d
+                    cd /home/docker/cloud/ && docker compose up -d
 
 
                     clear
