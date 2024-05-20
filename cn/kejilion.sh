@@ -127,7 +127,8 @@ install_add_docker() {
         rc-update add docker default
         service docker start
     else
-        curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+        # curl -fsSL https://get.docker.com | sh && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
+        curl -fsSL https://get.docker.com | sh -s docker --mirror Aliyun && ln -s /usr/libexec/docker/cli-plugins/docker-compose /usr/local/bin
         systemctl start docker
         systemctl enable docker
     fi
@@ -405,11 +406,26 @@ nginx_status() {
 
 }
 
+repeat_add_yuming() {
+
+if [ -e /home/web/conf.d/$yuming.conf ]; then
+    echo -e "${huang}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！${bai}"
+    break_end
+    kejilion
+else
+    echo "当前 ${yuming} 域名可用"
+fi
+
+}
+
+
 
 add_yuming() {
       ip_address
       echo -e "先将域名解析到本机IP: ${huang}$ipv4_address  $ipv6_address${bai}"
       read -p "请输入你解析的域名: " yuming
+      repeat_add_yuming
+
 }
 
 
@@ -729,7 +745,7 @@ install_panel() {
             else
                 clear
                 echo "安装提示"
-                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装$panelname！"
+                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装 $panelname！"
                 echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
                 echo "官网介绍: $panelurl "
                 echo ""
@@ -769,9 +785,9 @@ install_panel() {
 
 current_timezone() {
     if grep -q 'Alpine' /etc/issue; then
-       :
+       date +"%Z %z"
     else
-       timedatectl show --property=Timezone --value
+       timedatectl | grep "Time zone" | awk '{print $3}'
     fi
 
 }
@@ -890,28 +906,19 @@ sysctl -p
 
 set_dns() {
 
-cloudflare_ipv4="1.1.1.1"
-google_ipv4="8.8.8.8"
-cloudflare_ipv6="2606:4700:4700::1111"
-google_ipv6="2001:4860:4860::8888"
-
 # 检查机器是否有IPv6地址
 ipv6_available=0
 if [[ $(ip -6 addr | grep -c "inet6") -gt 0 ]]; then
     ipv6_available=1
 fi
 
-# 设置DNS地址为Cloudflare和Google（IPv4和IPv6）
-echo "设置DNS为Cloudflare和Google"
+echo "nameserver $dns1_ipv4" > /etc/resolv.conf
+echo "nameserver $dns2_ipv4" >> /etc/resolv.conf
 
-# 设置IPv4地址
-echo "nameserver $cloudflare_ipv4" > /etc/resolv.conf
-echo "nameserver $google_ipv4" >> /etc/resolv.conf
 
-# 如果有IPv6地址，则设置IPv6地址
 if [[ $ipv6_available -eq 1 ]]; then
-    echo "nameserver $cloudflare_ipv6" >> /etc/resolv.conf
-    echo "nameserver $google_ipv6" >> /etc/resolv.conf
+    echo "nameserver $dns1_ipv6" >> /etc/resolv.conf
+    echo "nameserver $dns2_ipv6" >> /etc/resolv.conf
 fi
 
 echo "DNS地址已更新"
@@ -1099,6 +1106,9 @@ case $choice in
 
     runtime=$(cat /proc/uptime | awk -F. '{run_days=int($1 / 86400);run_hours=int(($1 % 86400) / 3600);run_minutes=int(($1 % 3600) / 60); if (run_days > 0) printf("%d天 ", run_days); if (run_hours > 0) printf("%d时 ", run_hours); printf("%d分\n", run_minutes)}')
 
+    timezone=$(current_timezone)
+
+
     echo ""
     echo "系统信息查询"
     echo "------------------------"
@@ -1125,6 +1135,7 @@ case $choice in
     echo "公网IPv6地址: $ipv6_address"
     echo "------------------------"
     echo "地理位置: $country $city"
+    echo "系统时区: $timezone"
     echo "系统时间: $current_time"
     echo "------------------------"
     echo "系统运行时长: $runtime"
@@ -2603,7 +2614,7 @@ case $choice in
         echo ""
         echo "操作"
         echo "------------------------"
-        echo -e "1. 申请/更新域名证书               ${hui}2. 更换站点域名${bai}"
+        echo "1. 申请/更新域名证书"
         echo "3. 清理站点缓存                    4. 查看站点分析报告"
         echo "5. 查看全局配置                    6. 查看站点配置"
         echo "------------------------"
@@ -4217,35 +4228,22 @@ case $choice in
       clear
       echo "▶ 系统工具"
       echo "------------------------"
-      echo "1. 设置脚本启动快捷键"
+      echo "1. 设置脚本启动快捷键                  2. 修改登录密码"
+      echo "3. ROOT密码登录模式                    4. 安装Python最新版"
+      echo "5. 开放所有端口                        6. 修改SSH连接端口"
+      echo "7. 优化DNS地址                         8. 一键重装系统"
+      echo "9. 禁用ROOT账户创建新账户              10. 切换优先ipv4/ipv6"
       echo "------------------------"
-      echo "2. 修改登录密码"
-      echo "3. ROOT密码登录模式"
-      echo "4. 安装Python最新版"
-      echo "5. 开放所有端口"
-      echo "6. 修改SSH连接端口"
-      echo "7. 优化DNS地址"
-      echo "8. 一键重装系统"
-      echo "9. 禁用ROOT账户创建新账户"
-      echo "10. 切换优先ipv4/ipv6"
-      echo "11. 查看端口占用状态"
-      echo "12. 修改虚拟内存大小"
-      echo "13. 用户管理"
-      echo "14. 用户/密码生成器"
-      echo "15. 系统时区调整"
-      echo "16. 设置BBR3加速"
-      echo "17. 防火墙高级管理器"
-      echo "18. 修改主机名"
-      echo "19. 切换系统更新源"
-      echo "20. 定时任务管理"
-      echo "21. 本机host解析"
-      echo "22. fail2banSSH防御程序"
-      echo "23. 限流自动关机"
-      echo "24. ROOT私钥登录模式"
+      echo "11. 查看端口占用状态                   12. 修改虚拟内存大小"
+      echo "13. 用户管理                           14. 用户/密码生成器"
+      echo "15. 系统时区调整                       16. 设置BBR3加速"
+      echo "17. 防火墙高级管理器                   18. 修改主机名"
+      echo "19. 切换系统更新源                     20. 定时任务管理"
       echo "------------------------"
-      echo "31. 留言板"
+      echo "21. 本机host解析                       22. fail2banSSH防御程序"
+      echo "23. 限流自动关机                       24. ROOT私钥登录模式"
       echo "------------------------"
-      echo "66. 一条龙系统调优"
+      echo "31. 留言板                             66. 一条龙系统调优"
       echo "------------------------"
       echo "99. 重启服务器"
       echo "------------------------"
@@ -4388,10 +4386,37 @@ case $choice in
             echo "------------------------"
             echo ""
             # 询问用户是否要优化DNS设置
-            read -p "是否要设置为Cloudflare和Google的DNS地址？(y/n): " choice
+            read -p "是否要设置DNS地址？(y/n): " choice
 
             if [ "$choice" == "y" ]; then
-                set_dns
+                read -p "1. 国外DNS优化    2. 国内DNS优化    0. 退出  : " Limiting
+
+                case "$Limiting" in
+                  1)
+
+                    dns1_ipv4="1.1.1.1"
+                    dns2_ipv4="8.8.8.8"
+                    dns1_ipv6="2606:4700:4700::1111"
+                    dns2_ipv6="2001:4860:4860::8888"
+                    set_dns
+                    ;;
+
+                  2)
+                    dns1_ipv4="223.5.5.5"
+                    dns2_ipv4="183.60.83.19"
+                    dns1_ipv6="2400:3200::1"
+                    dns2_ipv6="2400:da00::6666"
+                    set_dns
+                    ;;
+                  0)
+                    echo "已取消"
+                    ;;
+                  *)
+                    echo "无效的选择，请输入 Y 或 N。"
+                    ;;
+                esac
+
+
             else
                 echo "DNS设置未更改"
             fi
@@ -5778,6 +5803,10 @@ EOF
                   echo -e "[${lv}OK${bai}] 7/9. 设置时区到${huang}上海${bai}"
 
                   echo "------------------------------------------------"
+                  dns1_ipv4="1.1.1.1"
+                  dns2_ipv4="8.8.8.8"
+                  dns1_ipv6="2606:4700:4700::1111"
+                  dns2_ipv6="2001:4860:4860::8888"
                   set_dns
                   echo -e "[${lv}OK${bai}] 8/9. 优化DNS地址到${huang}1111 8888${bai}"
 
