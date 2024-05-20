@@ -1437,7 +1437,8 @@ case $choice in
           2)
               clear
               echo "Dcoker版本"
-              docker --version
+              docker -v
+              docker compose version
 
               echo ""
               echo "Dcoker镜像列表"
