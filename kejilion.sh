@@ -128,7 +128,6 @@ install_add_docker() {
         service docker start
     else
         curl -fsSL https://get.docker.com | sh
-        # curl -fsSL https://get.docker.com | sh -s docker --mirror Aliyun
         systemctl start docker
         systemctl enable docker
     fi
@@ -4448,183 +4447,176 @@ case $choice in
           }
 
 
-          root_use
-          echo "请备份数据，将为你重装系统，预计花费15分钟。"
-          echo -e "${hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${bai} "
-          read -p "确定继续吗？(Y/N): " choice
+            while true; do
+              root_use
+              echo "请备份数据，将为你重装系统，预计花费15分钟。"
+              echo -e "${hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${bai} "
+              echo "------------------------"
+              echo "1. Debian 12"
+              echo "2. Debian 11"
+              echo "3. Debian 10"
+              echo "4. Debian 9"
+              echo "------------------------"
+              echo "11. Ubuntu 24.04"
+              echo "12. Ubuntu 22.04"
+              echo "13. Ubuntu 20.04"
+              echo "14. Ubuntu 18.04"
+              echo "------------------------"
+              echo "21. CentOS 9"
+              echo "22. CentOS 8"
+              echo "23. CentOS 7"
+              echo "------------------------"
+              echo "31. Alpine 3.19"
+              echo "------------------------"
+              echo "41. Windows 11"
+              echo "42. Windows 10"
+              echo "43. Windows 7"
+              echo "44. Windows Server 2022"
+              echo "45. Windows Server 2019"
+              echo "46. Windows Server 2016"
+              echo "------------------------"
+              echo "0. 返回上一级选单"
+              echo "------------------------"
+              read -p "请选择要重装的系统: " sys_choice
 
-          case "$choice" in
-            [Yy])
-              while true; do
+              case "$sys_choice" in
+                1)
+                  dd_xitong_2
+                  bash InstallNET.sh -debian 12
+                  reboot
+                  exit
+                  ;;
 
-                echo "------------------------"
-                echo "1. Debian 12"
-                echo "2. Debian 11"
-                echo "3. Debian 10"
-                echo "4. Debian 9"
-                echo "------------------------"
-                echo "11. Ubuntu 24.04"
-                echo "12. Ubuntu 22.04"
-                echo "13. Ubuntu 20.04"
-                echo "14. Ubuntu 18.04"
-                echo "------------------------"
-                echo "21. CentOS 9"
-                echo "22. CentOS 8"
-                echo "23. CentOS 7"
-                echo "------------------------"
-                echo "31. Alpine 3.19"
-                echo "------------------------"
-                echo "41. Windows 11"
-                echo "42. Windows 10"
-                echo "43. Windows 7"
-                echo "44. Windows Server 2022"
-                echo "45. Windows Server 2019"
-                echo "46. Windows Server 2016"
-                echo "------------------------"
-                read -p "请选择要重装的系统: " sys_choice
+                2)
+                  dd_xitong_2
+                  bash InstallNET.sh -debian 11
+                  reboot
+                  exit
+                  ;;
 
-                case "$sys_choice" in
-                  1)
-                    dd_xitong_2
-                    bash InstallNET.sh -debian 12
-                    reboot
-                    exit
-                    ;;
+                3)
+                  dd_xitong_2
+                  bash InstallNET.sh -debian 10
+                  reboot
+                  exit
+                  ;;
+                4)
+                  dd_xitong_2
+                  bash InstallNET.sh -debian 9
+                  reboot
+                  exit
+                  ;;
 
-                  2)
-                    dd_xitong_2
-                    bash InstallNET.sh -debian 11
-                    reboot
-                    exit
-                    ;;
+                11)
+                  dd_xitong_2
+                  bash InstallNET.sh -ubuntu 24.04
+                  reboot
+                  exit
+                  ;;
+                12)
+                  dd_xitong_2
+                  bash InstallNET.sh -ubuntu 22.04
+                  reboot
+                  exit
+                  ;;
 
-                  3)
-                    dd_xitong_2
-                    bash InstallNET.sh -debian 10
-                    reboot
-                    exit
-                    ;;
-                  4)
-                    dd_xitong_2
-                    bash InstallNET.sh -debian 9
-                    reboot
-                    exit
-                    ;;
-
-                  11)
-                    dd_xitong_2
-                    bash InstallNET.sh -ubuntu 24.04
-                    reboot
-                    exit
-                    ;;
-                  12)
-                    dd_xitong_2
-                    bash InstallNET.sh -ubuntu 22.04
-                    reboot
-                    exit
-                    ;;
-
-                  13)
-                    dd_xitong_2
-                    bash InstallNET.sh -ubuntu 20.04
-                    reboot
-                    exit
-                    ;;
-                  14)
-                    dd_xitong_2
-                    bash InstallNET.sh -ubuntu 18.04
-                    reboot
-                    exit
-                    ;;
+                13)
+                  dd_xitong_2
+                  bash InstallNET.sh -ubuntu 20.04
+                  reboot
+                  exit
+                  ;;
+                14)
+                  dd_xitong_2
+                  bash InstallNET.sh -ubuntu 18.04
+                  reboot
+                  exit
+                  ;;
 
 
-                  21)
-                    dd_xitong_2
-                    bash InstallNET.sh -centos 9
-                    reboot
-                    exit
-                    ;;
+                21)
+                  dd_xitong_2
+                  bash InstallNET.sh -centos 9
+                  reboot
+                  exit
+                  ;;
 
 
-                  22)
-                    dd_xitong_2
-                    bash InstallNET.sh -centos 8
-                    reboot
-                    exit
-                    ;;
+                22)
+                  dd_xitong_2
+                  bash InstallNET.sh -centos 8
+                  reboot
+                  exit
+                  ;;
 
-                  23)
-                    dd_xitong_2
-                    bash InstallNET.sh -centos 7
-                    reboot
-                    exit
-                    ;;
+                23)
+                  dd_xitong_2
+                  bash InstallNET.sh -centos 7
+                  reboot
+                  exit
+                  ;;
 
-                  31)
-                    dd_xitong_2
-                    bash InstallNET.sh -alpine
-                    reboot
-                    exit
-                    ;;
+                31)
+                  dd_xitong_2
+                  bash InstallNET.sh -alpine
+                  reboot
+                  exit
+                  ;;
 
-                  41)
-                    dd_xitong_3
-                    bash InstallNET.sh -windows 11 -lang "cn"
-                    reboot
-                    exit
-                    ;;
+                41)
+                  dd_xitong_3
+                  bash InstallNET.sh -windows 11 -lang "cn"
+                  reboot
+                  exit
+                  ;;
 
-                  42)
-                    dd_xitong_3
-                    bash InstallNET.sh -windows 10 -lang "cn"
-                    reboot
-                    exit
-                    ;;
+                42)
+                  dd_xitong_3
+                  bash InstallNET.sh -windows 10 -lang "cn"
+                  reboot
+                  exit
+                  ;;
 
-                  43)
-                    dd_xitong_4
-                    bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
-                    reboot
-                    exit
-                    ;;
+                43)
+                  dd_xitong_4
+                  bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
+                  reboot
+                  exit
+                  ;;
 
-                  44)
-                    dd_xitong_4
-                    bash reinstall.sh windows --image-name 'Windows Server 2022 SERVERDATACENTER' --lang zh-cn
-                    reboot
-                    exit
-                    ;;
+                44)
+                  dd_xitong_4
+                  bash reinstall.sh windows --image-name 'Windows Server 2022 SERVERDATACENTER' --lang zh-cn
+                  reboot
+                  exit
+                  ;;
 
-                  45)
-                    dd_xitong_3
-                    bash InstallNET.sh -windows 2019 -lang "cn"
-                    reboot
-                    exit
-                    ;;
+                45)
+                  dd_xitong_3
+                  bash InstallNET.sh -windows 2019 -lang "cn"
+                  reboot
+                  exit
+                  ;;
 
-                  46)
-                    dd_xitong_3
-                    bash InstallNET.sh -windows 2016 -lang "cn"
-                    reboot
-                    exit
-                    ;;
+                46)
+                  dd_xitong_3
+                  bash InstallNET.sh -windows 2016 -lang "cn"
+                  reboot
+                  exit
+                  ;;
 
+                0)
+                  break
+                  ;;
 
-                  *)
-                    echo "无效的选择，请重新输入。"
-                    ;;
-                esac
-              done
+                *)
+                  echo "无效的选择，请重新输入。"
+                  break
+                  ;;
+              esac
+            done
+
               ;;
-            [Nn])
-              echo "已取消"
-              ;;
-            *)
-              echo "无效的选择，请输入 Y 或 N。"
-              ;;
-          esac
-              ;;
-
           9)
             root_use
 
