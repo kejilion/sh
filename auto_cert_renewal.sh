@@ -41,7 +41,8 @@ for cert_file in $certs_directory*_cert.pem; do
         ip6tables -F
 
         # 续签证书
-        certbot certonly --standalone -d $domain --email your@email.com --agree-tos --no-eff-email --force-renewal
+        # certbot certonly --standalone -d $domain --email your@email.com --agree-tos --no-eff-email --force-renewal
+        certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
 
         # 复制续签后的证书和私钥
         cp /etc/letsencrypt/live/$domain/fullchain.pem ${certs_directory}${domain}_cert.pem
