@@ -1739,6 +1739,7 @@ case $choice in
               esac
               ;;
           8)
+              clear
               bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
               ;;
 
