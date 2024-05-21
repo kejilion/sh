@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.5"
+sh_v="2.5.6"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -333,7 +333,7 @@ install_ldnmp() {
 
 
 install_certbot() {
-    install certbot
+    install certbot epel-release
 
     # 切换到一个一致的目录（例如，家目录）
     cd ~ || exit
@@ -361,7 +361,9 @@ install_ssltls() {
       docker stop nginx > /dev/null 2>&1
       iptables_open
       cd ~
-      certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
+      # certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
+      certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
+
       cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem
       cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
       docker start nginx > /dev/null 2>&1
@@ -370,7 +372,15 @@ install_ssltls() {
 
 default_server_ssl() {
 install openssl
-openssl req -x509 -nodes -newkey rsa:2048 -keyout /home/web/certs/default_server.key -out /home/web/certs/default_server.crt -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
+# openssl req -x509 -nodes -newkey rsa:2048 -keyout /home/web/certs/default_server.key -out /home/web/certs/default_server.crt -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
+
+if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+    openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout /home/web/certs/default_server.key -out /home/web/certs/default_server.crt -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
+else
+    openssl genpkey -algorithm Ed25519 -out /home/web/certs/default_server.key
+    openssl req -x509 -key /home/web/certs/default_server.key -out /home/web/certs/default_server.crt -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
+fi
+
 
 }
 
@@ -950,7 +960,8 @@ fi
 
 add_sshkey() {
 
-ssh-keygen -t rsa -b 4096 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
+# ssh-keygen -t rsa -b 4096 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
+ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
 
 cat ~/.ssh/sshkey.pub >> ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
@@ -1412,17 +1423,17 @@ case $choice in
       echo "------------------------"
       echo "1. 安装更新Docker环境"
       echo "------------------------"
-      echo "2. 查看Dcoker全局状态"
+      echo "2. 查看Docker全局状态"
       echo "------------------------"
-      echo "3. Dcoker容器管理 ▶"
-      echo "4. Dcoker镜像管理 ▶"
-      echo "5. Dcoker网络管理 ▶"
-      echo "6. Dcoker卷管理 ▶"
+      echo "3. Docker容器管理 ▶"
+      echo "4. Docker镜像管理 ▶"
+      echo "5. Docker网络管理 ▶"
+      echo "6. Docker卷管理 ▶"
       echo "------------------------"
       echo "7. 清理无用的docker容器和镜像网络数据卷"
-      echo "8. 更换Dcoker源"
+      echo "8. 更换Docker源"
       echo "------------------------"
-      echo "9. 卸载Dcoker环境"
+      echo "9. 卸载Docker环境"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -1436,21 +1447,21 @@ case $choice in
               ;;
           2)
               clear
-              echo "Dcoker版本"
+              echo "Docker版本"
               docker -v
               docker compose version
 
               echo ""
-              echo "Dcoker镜像列表"
+              echo "Docker镜像列表"
               docker image ls
               echo ""
-              echo "Dcoker容器列表"
+              echo "Docker容器列表"
               docker ps -a
               echo ""
-              echo "Dcoker卷列表"
+              echo "Docker卷列表"
               docker volume ls
               echo ""
-              echo "Dcoker网络列表"
+              echo "Docker网络列表"
               docker network ls
               echo ""
 
