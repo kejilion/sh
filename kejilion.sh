@@ -239,9 +239,7 @@ install_ldnmp() {
           # "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
           # "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
 
-          "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apk update > /dev/null 2>&1"
-          "docker exec php74 apt update > /dev/null 2>&1"
           "docker exec php74 apk update > /dev/null 2>&1"
 
           # php安装包管理
@@ -437,7 +435,6 @@ else
 fi
 
 }
-
 
 
 add_yuming() {
