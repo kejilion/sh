@@ -137,7 +137,7 @@ install_add_docker() {
 
 
 install_docker() {
-    if ! command -v docker compose &>/dev/null; then
+    if ! command -v docker &>/dev/null; then
         install_add_docker
     else
         echo "Docker环境已经安装"
@@ -239,9 +239,7 @@ install_ldnmp() {
           "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
           "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
 
-          "docker exec php apt update > /dev/null 2>&1"
           "docker exec php apk update > /dev/null 2>&1"
-          "docker exec php74 apt update > /dev/null 2>&1"
           "docker exec php74 apk update > /dev/null 2>&1"
 
           # php安装包管理
@@ -333,7 +331,18 @@ install_ldnmp() {
 
 
 install_certbot() {
-    install epel-release certbot
+
+    if command -v yum &>/dev/null; then
+        install epel-release certbot
+    elif command -v apt &>/dev/null; then
+        install snapd
+        snap install core
+        snap install --classic certbot
+        rm /usr/bin/certbot
+        ln -s /snap/bin/certbot /usr/bin/certbot
+    else
+        install certbot
+    fi
 
     # 切换到一个一致的目录（例如，家目录）
     cd ~ || exit
@@ -426,7 +435,6 @@ else
 fi
 
 }
-
 
 
 add_yuming() {
@@ -670,6 +678,19 @@ output_status() {
 
             printf("总接收: %.2f %s\n总发送: %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
         }' /proc/net/dev)
+
+}
+
+
+ldnmp_install_status_one() {
+
+   if docker inspect "php" &>/dev/null; then
+    echo -e "${huang}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境${bai}"
+    break_end
+    kejilion
+   else
+    echo
+   fi
 
 }
 
@@ -2080,6 +2101,7 @@ case $choice in
     case $sub_choice in
       1)
       root_use
+      ldnmp_install_status_one
       check_port
       install_dependency
       install_docker
