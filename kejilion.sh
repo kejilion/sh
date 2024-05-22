@@ -137,7 +137,7 @@ install_add_docker() {
 
 
 install_docker() {
-    if ! command -v docker compose &>/dev/null; then
+    if ! command -v docker &>/dev/null; then
         install_add_docker
     else
         echo "Docker环境已经安装"
