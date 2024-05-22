@@ -333,7 +333,7 @@ install_ldnmp() {
 
 
 install_certbot() {
-    install certbot epel-release
+    install epel-release certbot
 
     # 切换到一个一致的目录（例如，家目录）
     cd ~ || exit
