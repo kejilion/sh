@@ -333,7 +333,18 @@ install_ldnmp() {
 
 
 install_certbot() {
-    install epel-release certbot
+
+    if command -v yum &>/dev/null; then
+        install epel-release certbot
+    elif command -v apt &>/dev/null; then
+        install snapd
+        snap install core
+        snap install --classic certbot
+        rm /usr/bin/certbot
+        ln -s /snap/bin/certbot /usr/bin/certbot
+    else
+        install certbot
+    fi
 
     # 切换到一个一致的目录（例如，家目录）
     cd ~ || exit
