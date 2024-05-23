@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.6"
+sh_v="2.5.7"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -678,6 +678,19 @@ output_status() {
 
             printf("总接收: %.2f %s\n总发送: %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
         }' /proc/net/dev)
+
+}
+
+
+ldnmp_install_status_one() {
+
+   if docker inspect "php" &>/dev/null; then
+    echo -e "${huang}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境${bai}"
+    break_end
+    kejilion
+   else
+    echo
+   fi
 
 }
 
@@ -2088,6 +2101,7 @@ case $choice in
     case $sub_choice in
       1)
       root_use
+      ldnmp_install_status_one
       check_port
       install_dependency
       install_docker
@@ -4154,10 +4168,9 @@ case $choice in
       echo "8. 8号工作区"
       echo "9. 9号工作区"
       echo "10. 10号工作区"
+      echo "11. 自定义工作区"
       echo "------------------------"
       echo "99. 工作区状态"
-      echo "------------------------"
-      echo "b. 卸载工作区"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4165,10 +4178,6 @@ case $choice in
 
       case $sub_choice in
 
-          b)
-              clear
-              remove tmux
-              ;;
           1)
               clear
               install tmux
@@ -4228,6 +4237,13 @@ case $choice in
               clear
               install tmux
               SESSION_NAME="work10"
+              tmux_run
+              ;;
+
+          11)
+              clear
+              read -p "请输入您自定义的工作区名称（1001 kj001 work10）: " SESSION_NAME
+              install tmux
               tmux_run
               ;;
 
