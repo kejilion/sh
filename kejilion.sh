@@ -4256,11 +4256,13 @@ case $choice in
               ;;
 
           99)
+            while true; do
               clear
               echo "当前已存在的工作区列表"
               echo "------------------------"
               tmux list-sessions
               echo "------------------------"
+
               read -p "1. 删除指定工作区    0. 退出: " gongzuoqu_del
               case "$gongzuoqu_del" in
                 1)
@@ -4274,6 +4276,7 @@ case $choice in
                   echo "无效的选择，请输入 Y 或 N。"
                   ;;
               esac
+            done
 
               ;;
           0)
