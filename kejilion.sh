@@ -2175,9 +2175,9 @@ case $choice in
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20230520.zip
-      unzip -o Discuz_X3.5_SC_UTF8_20230520.zip
-      rm Discuz_X3.5_SC_UTF8_20230520.zip
+      wget -O latest.zip https://github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20240520.zip
+      unzip latest.zip
+      rm latest.zip
 
       restart_ldnmp
 
@@ -2207,12 +2207,11 @@ case $choice in
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://github.com/kalcaddle/kodbox/archive/refs/tags/1.42.04.zip
-      unzip -o 1.42.04.zip
-      rm 1.42.04.zip
+      wget -O latest.zip https://github.com/kalcaddle/kodbox/archive/refs/tags/1.50.02.zip
+      unzip -o latest.zip
+      rm latest.zip
 
       restart_ldnmp
-
 
       ldnmp_web_on
       echo "数据库地址: mysql"
@@ -4157,8 +4156,8 @@ case $choice in
     while true; do
       clear
       echo "▶ 我的工作区"
-      echo "系统将为你提供5个后台运行的工作区，你可以用来执行长时间的任务"
-      echo "即使你断开SSH，工作区中的任务也不会中断，非常方便！来试试吧！"
+      echo "系统将为你提供可以后台常驻运行的工作区，你可以用来执行长时间的任务"
+      echo "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
       echo -e "${huang}注意: 进入工作区后使用Ctrl+b再单独按d，退出工作区！${bai}"
       echo "------------------------"
       echo "1. 1号工作区"
