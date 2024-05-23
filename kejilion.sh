@@ -4245,8 +4245,12 @@ case $choice in
 
           11)
               clear
-              read -p "请输入您自定义的工作区名称（1001 kj001 work10）: " SESSION_NAME
               install tmux
+              clear
+              echo "当前已存在的工作区列表"
+              tmux list-sessions
+              echo ""
+              read -p "请输入您自定义的工作区名称（1001 kj001 work10）: " SESSION_NAME
               tmux_run
               ;;
 
