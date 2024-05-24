@@ -51,7 +51,7 @@ install() {
 
 install_dependency() {
       clear
-      install wget socat unzip tar grep
+      install wget socat unzip tar
 }
 
 
@@ -4637,8 +4637,8 @@ case $choice in
                   ;;
 
                 31)
-                  dd_xitong_3
-                  bash reinstall.sh alpine
+                  dd_xitong_1
+                  bash InstallNET.sh -alpine
                   reboot
                   exit
                   ;;
