@@ -51,7 +51,7 @@ install() {
 
 install_dependency() {
       clear
-      install wget socat unzip tar
+      install wget socat unzip tar grep
 }
 
 
