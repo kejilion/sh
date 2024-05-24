@@ -2808,6 +2808,8 @@ case $choice in
 
     34)
       root_use
+      echo "请确认home目录中已经放置网站备份的gz压缩包，按任意键继续……"
+      read -n 1 -s -r -p ""
       cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
       check_port
       install_dependency
