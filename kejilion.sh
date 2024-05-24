@@ -4492,26 +4492,36 @@ case $choice in
 
           8)
 
+          dd_xitong_1() {
+            echo -e "重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}LeitboGi0ro${bai}  初始端口: ${huang}22${bai}"
+            echo -e "按任意键继续..."
+            read -n 1 -s -r -p ""
+            install wget
+            wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
+          }
+
           dd_xitong_2() {
-            echo -e "任意键继续，重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}LeitboGi0ro${bai}  初始端口: ${huang}22${bai}"
+            echo -e "重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}Teddysun.com${bai}  初始端口: ${huang}3389${bai}"
+            echo -e "按任意键继续..."
             read -n 1 -s -r -p ""
             install wget
             wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
           }
 
           dd_xitong_3() {
-            echo -e "任意键继续，重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}Teddysun.com${bai}  初始端口: ${huang}3389${bai}"
+            echo -e "重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}123@@@${bai}  初始端口: ${huang}22${bai}"
+            echo -e "按任意键继续..."
             read -n 1 -s -r -p ""
-            install wget
-            wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
+            curl -O https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
           }
 
           dd_xitong_4() {
-            echo -e "任意键继续，重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}123@@@${bai}  初始端口: ${huang}3389${bai}"
+            echo -e "重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}123@@@${bai}  初始端口: ${huang}3389${bai}"
+            echo -e "按任意键继续..."
             read -n 1 -s -r -p ""
-            install wget
             curl -O https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
           }
+
 
 
             while true; do
@@ -4533,7 +4543,7 @@ case $choice in
               echo "22. CentOS 8"
               echo "23. CentOS 7"
               echo "------------------------"
-              echo "31. Alpine 3.19"
+              echo "31. Alpine Linux"
               echo "------------------------"
               echo "41. Windows 11"
               echo "42. Windows 10"
@@ -4548,53 +4558,53 @@ case $choice in
 
               case "$sys_choice" in
                 1)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -debian 12
                   reboot
                   exit
                   ;;
 
                 2)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -debian 11
                   reboot
                   exit
                   ;;
 
                 3)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -debian 10
                   reboot
                   exit
                   ;;
                 4)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -debian 9
                   reboot
                   exit
                   ;;
 
                 11)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -ubuntu 24.04
                   reboot
                   exit
                   ;;
                 12)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -ubuntu 22.04
                   reboot
                   exit
                   ;;
 
                 13)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -ubuntu 20.04
                   reboot
                   exit
                   ;;
                 14)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -ubuntu 18.04
                   reboot
                   exit
@@ -4602,7 +4612,7 @@ case $choice in
 
 
                 21)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -centos 9
                   reboot
                   exit
@@ -4610,35 +4620,35 @@ case $choice in
 
 
                 22)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -centos 8
                   reboot
                   exit
                   ;;
 
                 23)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -centos 7
                   reboot
                   exit
                   ;;
 
                 31)
-                  dd_xitong_2
-                  bash InstallNET.sh -alpine
+                  dd_xitong_3
+                  bash reinstall.sh alpine
                   reboot
                   exit
                   ;;
 
                 41)
-                  dd_xitong_3
+                  dd_xitong_2
                   bash InstallNET.sh -windows 11 -lang "cn"
                   reboot
                   exit
                   ;;
 
                 42)
-                  dd_xitong_3
+                  dd_xitong_2
                   bash InstallNET.sh -windows 10 -lang "cn"
                   reboot
                   exit
@@ -4659,14 +4669,14 @@ case $choice in
                   ;;
 
                 45)
-                  dd_xitong_3
+                  dd_xitong_2
                   bash InstallNET.sh -windows 2019 -lang "cn"
                   reboot
                   exit
                   ;;
 
                 46)
-                  dd_xitong_3
+                  dd_xitong_2
                   bash InstallNET.sh -windows 2016 -lang "cn"
                   reboot
                   exit
