@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.7"
+sh_v="2.5.8"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -143,6 +143,46 @@ install_docker() {
         echo "Docker环境已经安装"
     fi
 }
+
+docker_restart() {
+if [ -f "/etc/alpine-release" ]; then
+    service docker restart
+else
+    systemctl restart docker
+fi
+
+}
+
+docker_ipv6_on() {
+mkdir -p /etc/docker &>/dev/null
+
+cat > /etc/docker/daemon.json << EOF
+
+{
+  "ipv6": true,
+  "fixed-cidr-v6": "2001:db8:1::/64"
+}
+
+EOF
+
+docker_restart
+
+echo "Docker已开启v6访问"
+
+}
+
+
+docker_ipv6_off() {
+
+rm -rf etc/docker/daemon.json &>/dev/null
+
+docker_restart
+
+echo "Docker已关闭v6访问"
+
+}
+
+
 
 
 
@@ -477,12 +517,38 @@ restart_ldnmp() {
 }
 
 
+
+
+has_ipv4_has_ipv6() {
+
+ip_address
+if [ -z "$ipv4_address" ]; then
+    has_ipv4=false
+else
+    has_ipv4=true
+fi
+
+if [ -z "$ipv6_address" ]; then
+    has_ipv6=false
+else
+    has_ipv6=true
+fi
+
+
+}
+
 docker_app() {
+
+has_ipv4_has_ipv6
 if docker inspect "$docker_name" &>/dev/null; then
     clear
     echo "$docker_name 已安装，访问地址: "
-    ip_address
-    echo "http:$ipv4_address:$docker_port"
+    if $has_ipv4; then
+        echo "http:$ipv4_address:$docker_port"
+    fi
+    if $has_ipv6; then
+        echo "http:[$ipv6_address]:$docker_port"
+    fi
     echo ""
     echo "应用操作"
     echo "------------------------"
@@ -502,10 +568,14 @@ if docker inspect "$docker_name" &>/dev/null; then
             clear
             echo "$docker_name 已经安装完成"
             echo "------------------------"
-            # 获取外部 IP 地址
-            ip_address
             echo "您可以使用以下地址访问:"
-            echo "http:$ipv4_address:$docker_port"
+            if $has_ipv4; then
+                echo "http:$ipv4_address:$docker_port"
+            fi
+            if $has_ipv6; then
+                echo "http:[$ipv6_address]:$docker_port"
+            fi
+            echo ""
             $docker_use
             $docker_passwd
             ;;
@@ -541,10 +611,14 @@ else
             clear
             echo "$docker_name 已经安装完成"
             echo "------------------------"
-            # 获取外部 IP 地址
-            ip_address
             echo "您可以使用以下地址访问:"
-            echo "http:$ipv4_address:$docker_port"
+            if $has_ipv4; then
+                echo "http:$ipv4_address:$docker_port"
+            fi
+            if $has_ipv6; then
+                echo "http:[$ipv6_address]:$docker_port"
+            fi
+            echo ""
             $docker_use
             $docker_passwd
             ;;
@@ -1452,9 +1526,13 @@ case $choice in
       echo "6. Docker卷管理 ▶"
       echo "------------------------"
       echo "7. 清理无用的docker容器和镜像网络数据卷"
+      echo "------------------------"
       echo "8. 更换Docker源"
       echo "------------------------"
-      echo "9. 卸载Docker环境"
+      echo "11. 开启Docker-ipv6访问"
+      echo "12. 关闭Docker-ipv6访问"
+      echo "------------------------"
+      echo "20. 卸载Docker环境"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -1775,7 +1853,17 @@ case $choice in
               bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
               ;;
 
-          9)
+          11)
+              clear
+              docker_ipv6_on
+              ;;
+
+          12)
+              clear
+              docker_ipv6_off
+              ;;
+
+          20)
               clear
               read -p "$(echo -e "${hong}确定卸载docker环境吗？(Y/N): ${bai}")" choice
               case "$choice" in
@@ -2473,7 +2561,7 @@ case $choice in
       install_docker
       install_certbot
 
-      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx
+      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
 
       wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
       wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
@@ -3449,13 +3537,19 @@ case $choice in
               ;;
 
           10)
-            if docker inspect rocketchat &>/dev/null; then
 
+            has_ipv4_has_ipv6
+
+            if docker inspect rocketchat &>/dev/null; then
 
                     clear
                     echo "rocket.chat已安装，访问地址: "
-                    ip_address
-                    echo "http:$ipv4_address:3897"
+                    if $has_ipv4; then
+                        echo "http:$ipv4_address:3897"
+                    fi
+                    if $has_ipv6; then
+                        echo "http:[$ipv6_address]:3897"
+                    fi
                     echo ""
 
                     echo "应用操作"
@@ -3480,7 +3574,12 @@ case $choice in
                             echo "rocket.chat已经安装完成"
                             echo "------------------------"
                             echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                            echo "http:$ipv4_address:3897"
+                            if $has_ipv4; then
+                                echo "http:$ipv4_address:3897"
+                            fi
+                            if $has_ipv6; then
+                                echo "http:[$ipv6_address]:3897"
+                            fi
                             echo ""
                             ;;
                         2)
@@ -3528,7 +3627,12 @@ case $choice in
                     echo "rocket.chat已经安装完成"
                     echo "------------------------"
                     echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                    echo "http:$ipv4_address:3897"
+                    if $has_ipv4; then
+                        echo "http:$ipv4_address:3897"
+                    fi
+                    if $has_ipv6; then
+                        echo "http:[$ipv6_address]:3897"
+                    fi
                     echo ""
 
                         ;;
@@ -3581,12 +3685,20 @@ case $choice in
 
               ;;
           13)
+            has_ipv4_has_ipv6
+
             if docker inspect cloudreve &>/dev/null; then
 
                     clear
                     echo "cloudreve已安装，访问地址: "
-                    ip_address
-                    echo "http:$ipv4_address:5212"
+
+                    if $has_ipv4; then
+                        echo "http:$ipv4_address:5212"
+                    fi
+                    if $has_ipv6; then
+                        echo "http:[$ipv6_address]:5212"
+                    fi
+
                     echo ""
 
                     echo "应用操作"
@@ -3614,8 +3726,14 @@ case $choice in
                             echo "cloudreve已经安装完成"
                             echo "------------------------"
                             echo "您可以使用以下地址访问cloudreve:"
-                            ip_address
-                            echo "http:$ipv4_address:5212"
+
+                            if $has_ipv4; then
+                                echo "http:$ipv4_address:5212"
+                            fi
+                            if $has_ipv6; then
+                                echo "http:[$ipv6_address]:5212"
+                            fi
+
                             sleep 3
                             docker logs cloudreve
                             echo ""
@@ -3658,8 +3776,12 @@ case $choice in
                     echo "cloudreve已经安装完成"
                     echo "------------------------"
                     echo "您可以使用以下地址访问cloudreve:"
-                    ip_address
-                    echo "http:$ipv4_address:5212"
+                    if $has_ipv4; then
+                        echo "http:$ipv4_address:5212"
+                    fi
+                    if $has_ipv6; then
+                        echo "http:[$ipv6_address]:5212"
+                    fi
                     sleep 3
                     docker logs cloudreve
                     echo ""
