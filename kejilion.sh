@@ -2622,7 +2622,7 @@ case $choice in
       nginx_status
         ;;
 
-      23)
+      24)
       clear
       webname="反向代理-域名"
       nginx_install_status
