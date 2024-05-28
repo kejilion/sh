@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.6"
+sh_v="2.5.8"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -120,6 +120,7 @@ check_port() {
     fi
 }
 
+
 install_add_docker() {
     if [ -f "/etc/alpine-release" ]; then
         apk update
@@ -143,6 +144,46 @@ install_docker() {
         echo "Docker环境已经安装"
     fi
 }
+
+docker_restart() {
+if [ -f "/etc/alpine-release" ]; then
+    service docker restart
+else
+    systemctl restart docker
+fi
+
+}
+
+docker_ipv6_on() {
+mkdir -p /etc/docker &>/dev/null
+
+cat > /etc/docker/daemon.json << EOF
+
+{
+  "ipv6": true,
+  "fixed-cidr-v6": "2001:db8:1::/64"
+}
+
+EOF
+
+docker_restart
+
+echo "Docker已开启v6访问"
+
+}
+
+
+docker_ipv6_off() {
+
+rm -rf etc/docker/daemon.json &>/dev/null
+
+docker_restart
+
+echo "Docker已关闭v6访问"
+
+}
+
+
 
 
 
@@ -477,12 +518,38 @@ restart_ldnmp() {
 }
 
 
+
+
+has_ipv4_has_ipv6() {
+
+ip_address
+if [ -z "$ipv4_address" ]; then
+    has_ipv4=false
+else
+    has_ipv4=true
+fi
+
+if [ -z "$ipv6_address" ]; then
+    has_ipv6=false
+else
+    has_ipv6=true
+fi
+
+
+}
+
 docker_app() {
+
+has_ipv4_has_ipv6
 if docker inspect "$docker_name" &>/dev/null; then
     clear
     echo "$docker_name 已安装，访问地址: "
-    ip_address
-    echo "http:$ipv4_address:$docker_port"
+    if $has_ipv4; then
+        echo "http:$ipv4_address:$docker_port"
+    fi
+    if $has_ipv6; then
+        echo "http:[$ipv6_address]:$docker_port"
+    fi
     echo ""
     echo "应用操作"
     echo "------------------------"
@@ -502,10 +569,14 @@ if docker inspect "$docker_name" &>/dev/null; then
             clear
             echo "$docker_name 已经安装完成"
             echo "------------------------"
-            # 获取外部 IP 地址
-            ip_address
             echo "您可以使用以下地址访问:"
-            echo "http:$ipv4_address:$docker_port"
+            if $has_ipv4; then
+                echo "http:$ipv4_address:$docker_port"
+            fi
+            if $has_ipv6; then
+                echo "http:[$ipv6_address]:$docker_port"
+            fi
+            echo ""
             $docker_use
             $docker_passwd
             ;;
@@ -541,10 +612,14 @@ else
             clear
             echo "$docker_name 已经安装完成"
             echo "------------------------"
-            # 获取外部 IP 地址
-            ip_address
             echo "您可以使用以下地址访问:"
-            echo "http:$ipv4_address:$docker_port"
+            if $has_ipv4; then
+                echo "http:$ipv4_address:$docker_port"
+            fi
+            if $has_ipv6; then
+                echo "http:[$ipv6_address]:$docker_port"
+            fi
+            echo ""
             $docker_use
             $docker_passwd
             ;;
@@ -901,26 +976,7 @@ linux_clean() {
 
 }
 
-new_ssh_port() {
 
-
-  # 备份 SSH 配置文件
-  cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-
-  sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
-
-  # 替换 SSH 配置文件中的端口号
-  sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
-
-  # 重启 SSH 服务
-  service sshd restart
-  echo "SSH 端口已修改为: $new_port"
-
-  clear
-  iptables_open
-  remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
-
-}
 
 
 bbr_on() {
@@ -977,6 +1033,29 @@ fi
 }
 
 
+new_ssh_port() {
+
+
+  # 备份 SSH 配置文件
+  cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+
+  sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
+
+  # 替换 SSH 配置文件中的端口号
+  sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
+
+  rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+
+  # 重启 SSH 服务
+  restart_ssh
+  echo "SSH 端口已修改为: $new_port"
+
+  clear
+  iptables_open
+  remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
+
+}
+
 
 
 add_sshkey() {
@@ -990,6 +1069,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 ip_address
 echo -e "私钥信息已生成，务必复制保存，可保存成 ${huang}${ipv4_address}_ssh.key${bai} 文件，用于以后的SSH登录"
+
 echo "--------------------------------"
 cat ~/.ssh/sshkey
 echo "--------------------------------"
@@ -1452,9 +1532,13 @@ case $choice in
       echo "6. Docker卷管理 ▶"
       echo "------------------------"
       echo "7. 清理无用的docker容器和镜像网络数据卷"
+      echo "------------------------"
       echo "8. 更换Docker源"
       echo "------------------------"
-      echo "9. 卸载Docker环境"
+      echo "11. 开启Docker-ipv6访问"
+      echo "12. 关闭Docker-ipv6访问"
+      echo "------------------------"
+      echo "20. 卸载Docker环境"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -1775,7 +1859,17 @@ case $choice in
               bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
               ;;
 
-          9)
+          11)
+              clear
+              docker_ipv6_on
+              ;;
+
+          12)
+              clear
+              docker_ipv6_off
+              ;;
+
+          20)
               clear
               read -p "$(echo -e "${hong}确定卸载docker环境吗？(Y/N): ${bai}")" choice
               case "$choice" in
@@ -2077,10 +2171,11 @@ case $choice in
     echo  "------------------------"
     echo  "21. 仅安装nginx"
     echo  "22. 站点重定向"
-    echo  "23. 站点反向代理"
-    echo  "24. 自定义静态站点"
-    echo  "25. 安装Bitwarden密码管理平台"
-    echo  "26. 安装Halo博客网站"
+    echo  "23. 站点反向代理-IP+端口"
+    echo  "24. 站点反向代理-域名"
+    echo  "25. 自定义静态站点"
+    echo  "26. 安装Bitwarden密码管理平台"
+    echo  "27. 安装Halo博客网站"
     echo  "------------------------"
     echo  "31. 站点数据管理"
     echo  "32. 备份全站数据"
@@ -2175,9 +2270,9 @@ case $choice in
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://hub.gitmirror.com/https://github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20230520.zip
-      unzip -o Discuz_X3.5_SC_UTF8_20230520.zip
-      rm Discuz_X3.5_SC_UTF8_20230520.zip
+      wget -O latest.zip https://hub.gitmirror.com/https://github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20240520.zip
+      unzip latest.zip
+      rm latest.zip
 
       restart_ldnmp
 
@@ -2207,12 +2302,11 @@ case $choice in
       cd /home/web/html
       mkdir $yuming
       cd $yuming
-      wget https://hub.gitmirror.com/https://github.com/kalcaddle/kodbox/archive/refs/tags/1.42.04.zip
-      unzip -o 1.42.04.zip
-      rm 1.42.04.zip
+      wget -O latest.zip https://hub.gitmirror.com/https://github.com/kalcaddle/kodbox/archive/refs/tags/1.50.02.zip
+      unzip -o latest.zip
+      rm latest.zip
 
       restart_ldnmp
-
 
       ldnmp_web_on
       echo "数据库地址: mysql"
@@ -2474,7 +2568,7 @@ case $choice in
       install_docker
       install_certbot
 
-      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx
+      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
 
       wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
       wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
@@ -2514,7 +2608,7 @@ case $choice in
 
       23)
       clear
-      webname="站点反向代理"
+      webname="反向代理-IP+端口"
       nginx_install_status
       ip_address
       add_yuming
@@ -2535,6 +2629,28 @@ case $choice in
         ;;
 
       24)
+      clear
+      webname="反向代理-域名"
+      nginx_install_status
+      ip_address
+      add_yuming
+      echo -e "域名格式: ${huang}http://www.google.com${bai}"
+      read -p "请输入你的反代域名: " fandai_yuming
+
+      install_ssltls
+
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/reverse-proxy-domain.conf
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+      sed -i "s|fandaicom|$fandai_yuming|g" /home/web/conf.d/$yuming.conf
+
+      docker restart nginx
+
+      nginx_web_on
+      nginx_status
+        ;;
+
+
+      25)
       clear
       webname="静态站点"
       nginx_install_status
@@ -2580,7 +2696,7 @@ case $choice in
         ;;
 
 
-      25)
+      26)
       clear
       webname="Bitwarden"
       nginx_install_status
@@ -2600,7 +2716,7 @@ case $choice in
       nginx_status
         ;;
 
-      26)
+      27)
       clear
       webname="halo"
       nginx_install_status
@@ -2809,6 +2925,9 @@ case $choice in
 
     34)
       root_use
+      echo "请确认home目录中已经放置网站备份的gz压缩包，按任意键继续……"
+      read -n 1 -s -r -p ""
+      echo "开始解压……"
       cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
       check_port
       install_dependency
@@ -3121,16 +3240,19 @@ case $choice in
       echo "5. AList多存储文件列表程序              6. Ubuntu远程桌面网页版"
       echo "7. 哪吒探针VPS监控面板                  8. QB离线BT磁力下载面板"
       echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
+      echo "------------------------"
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
       echo "13. Cloudreve网盘                       14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
+      echo "------------------------"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
       echo "23. Memos网页备忘录                     24. Webtop远程桌面网页版"
       echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
       echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
       echo "29. searxng聚合搜索站                   30. PhotoPrism私有相册系统"
+      echo "------------------------"
       echo "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件"
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
@@ -3444,13 +3566,19 @@ case $choice in
               ;;
 
           10)
-            if docker inspect rocketchat &>/dev/null; then
 
+            has_ipv4_has_ipv6
+
+            if docker inspect rocketchat &>/dev/null; then
 
                     clear
                     echo "rocket.chat已安装，访问地址: "
-                    ip_address
-                    echo "http:$ipv4_address:3897"
+                    if $has_ipv4; then
+                        echo "http:$ipv4_address:3897"
+                    fi
+                    if $has_ipv6; then
+                        echo "http:[$ipv6_address]:3897"
+                    fi
                     echo ""
 
                     echo "应用操作"
@@ -3475,7 +3603,12 @@ case $choice in
                             echo "rocket.chat已经安装完成"
                             echo "------------------------"
                             echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                            echo "http:$ipv4_address:3897"
+                            if $has_ipv4; then
+                                echo "http:$ipv4_address:3897"
+                            fi
+                            if $has_ipv6; then
+                                echo "http:[$ipv6_address]:3897"
+                            fi
                             echo ""
                             ;;
                         2)
@@ -3523,7 +3656,12 @@ case $choice in
                     echo "rocket.chat已经安装完成"
                     echo "------------------------"
                     echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                    echo "http:$ipv4_address:3897"
+                    if $has_ipv4; then
+                        echo "http:$ipv4_address:3897"
+                    fi
+                    if $has_ipv6; then
+                        echo "http:[$ipv6_address]:3897"
+                    fi
                     echo ""
 
                         ;;
@@ -3576,12 +3714,20 @@ case $choice in
 
               ;;
           13)
+            has_ipv4_has_ipv6
+
             if docker inspect cloudreve &>/dev/null; then
 
                     clear
                     echo "cloudreve已安装，访问地址: "
-                    ip_address
-                    echo "http:$ipv4_address:5212"
+
+                    if $has_ipv4; then
+                        echo "http:$ipv4_address:5212"
+                    fi
+                    if $has_ipv6; then
+                        echo "http:[$ipv6_address]:5212"
+                    fi
+
                     echo ""
 
                     echo "应用操作"
@@ -3609,8 +3755,14 @@ case $choice in
                             echo "cloudreve已经安装完成"
                             echo "------------------------"
                             echo "您可以使用以下地址访问cloudreve:"
-                            ip_address
-                            echo "http:$ipv4_address:5212"
+
+                            if $has_ipv4; then
+                                echo "http:$ipv4_address:5212"
+                            fi
+                            if $has_ipv6; then
+                                echo "http:[$ipv6_address]:5212"
+                            fi
+
                             sleep 3
                             docker logs cloudreve
                             echo ""
@@ -3653,8 +3805,12 @@ case $choice in
                     echo "cloudreve已经安装完成"
                     echo "------------------------"
                     echo "您可以使用以下地址访问cloudreve:"
-                    ip_address
-                    echo "http:$ipv4_address:5212"
+                    if $has_ipv4; then
+                        echo "http:$ipv4_address:5212"
+                    fi
+                    if $has_ipv6; then
+                        echo "http:[$ipv6_address]:5212"
+                    fi
                     sleep 3
                     docker logs cloudreve
                     echo ""
@@ -4154,8 +4310,8 @@ case $choice in
     while true; do
       clear
       echo "▶ 我的工作区"
-      echo "系统将为你提供5个后台运行的工作区，你可以用来执行长时间的任务"
-      echo "即使你断开SSH，工作区中的任务也不会中断，非常方便！来试试吧！"
+      echo "系统将为你提供可以后台常驻运行的工作区，你可以用来执行长时间的任务"
+      echo "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
       echo -e "${huang}注意: 进入工作区后使用Ctrl+b再单独按d，退出工作区！${bai}"
       echo "------------------------"
       echo "1. 1号工作区"
@@ -4168,10 +4324,9 @@ case $choice in
       echo "8. 8号工作区"
       echo "9. 9号工作区"
       echo "10. 10号工作区"
+      echo "11. 自定义工作区"
       echo "------------------------"
-      echo "99. 工作区状态"
-      echo "------------------------"
-      echo "b. 卸载工作区"
+      echo "99. 工作区状态管理"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -4179,10 +4334,6 @@ case $choice in
 
       case $sub_choice in
 
-          b)
-              clear
-              remove tmux
-              ;;
           1)
               clear
               install tmux
@@ -4245,10 +4396,41 @@ case $choice in
               tmux_run
               ;;
 
-          99)
+          11)
               clear
               install tmux
+              clear
+              echo "当前已存在的工作区列表"
+              echo "------------------------"
               tmux list-sessions
+              echo "------------------------"
+              read -p "请输入您自定义的工作区名称，如1001 kj001 work10: " SESSION_NAME
+              tmux_run
+              ;;
+
+          99)
+            while true; do
+              clear
+              echo "当前已存在的工作区列表"
+              echo "------------------------"
+              tmux list-sessions
+              echo "------------------------"
+
+              read -p "1. 删除指定工作区    0. 退出: " gongzuoqu_del
+              case "$gongzuoqu_del" in
+                1)
+                  read -p "请输入要删除的工作区名称: " gongzuoqu_name
+                  tmux kill-window -t $gongzuoqu_name
+                  ;;
+                0)
+                  break
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
+            done
+
               ;;
           0)
               kejilion
@@ -4464,26 +4646,36 @@ case $choice in
 
           8)
 
+          dd_xitong_1() {
+            echo -e "重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}LeitboGi0ro${bai}  初始端口: ${huang}22${bai}"
+            echo -e "按任意键继续..."
+            read -n 1 -s -r -p ""
+            install wget
+            wget --no-check-certificate -qO InstallNET.sh 'https://raw.gitmirror.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
+          }
+
           dd_xitong_2() {
-            echo -e "任意键继续，重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}LeitboGi0ro${bai}  初始端口: ${huang}22${bai}"
+            echo -e "重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}Teddysun.com${bai}  初始端口: ${huang}3389${bai}"
+            echo -e "按任意键继续..."
             read -n 1 -s -r -p ""
             install wget
             wget --no-check-certificate -qO InstallNET.sh 'https://raw.gitmirror.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
           }
 
           dd_xitong_3() {
-            echo -e "任意键继续，重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}Teddysun.com${bai}  初始端口: ${huang}3389${bai}"
+            echo -e "重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}123@@@${bai}  初始端口: ${huang}22${bai}"
+            echo -e "按任意键继续..."
             read -n 1 -s -r -p ""
-            install wget
-            wget --no-check-certificate -qO InstallNET.sh 'https://raw.gitmirror.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
+            curl -O https://raw.gitmirror.com/bin456789/reinstall/main/reinstall.sh
           }
 
           dd_xitong_4() {
-            echo -e "任意键继续，重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}123@@@${bai}  初始端口: ${huang}3389${bai}"
+            echo -e "重装后初始用户名: ${huang}Administrator${bai}  初始密码: ${huang}123@@@${bai}  初始端口: ${huang}3389${bai}"
+            echo -e "按任意键继续..."
             read -n 1 -s -r -p ""
-            install wget
             curl -O https://raw.gitmirror.com/bin456789/reinstall/main/reinstall.sh
           }
+
 
 
             while true; do
@@ -4505,7 +4697,7 @@ case $choice in
               echo "22. CentOS 8"
               echo "23. CentOS 7"
               echo "------------------------"
-              echo "31. Alpine 3.19"
+              echo "31. Alpine Linux"
               echo "------------------------"
               echo "41. Windows 11"
               echo "42. Windows 10"
@@ -4520,53 +4712,53 @@ case $choice in
 
               case "$sys_choice" in
                 1)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -debian 12
                   reboot
                   exit
                   ;;
 
                 2)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -debian 11
                   reboot
                   exit
                   ;;
 
                 3)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -debian 10
                   reboot
                   exit
                   ;;
                 4)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -debian 9
                   reboot
                   exit
                   ;;
 
                 11)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -ubuntu 24.04
                   reboot
                   exit
                   ;;
                 12)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -ubuntu 22.04
                   reboot
                   exit
                   ;;
 
                 13)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -ubuntu 20.04
                   reboot
                   exit
                   ;;
                 14)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -ubuntu 18.04
                   reboot
                   exit
@@ -4574,7 +4766,7 @@ case $choice in
 
 
                 21)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -centos 9
                   reboot
                   exit
@@ -4582,35 +4774,35 @@ case $choice in
 
 
                 22)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -centos 8
                   reboot
                   exit
                   ;;
 
                 23)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -centos 7
                   reboot
                   exit
                   ;;
 
                 31)
-                  dd_xitong_2
+                  dd_xitong_1
                   bash InstallNET.sh -alpine
                   reboot
                   exit
                   ;;
 
                 41)
-                  dd_xitong_3
+                  dd_xitong_2
                   bash InstallNET.sh -windows 11 -lang "cn"
                   reboot
                   exit
                   ;;
 
                 42)
-                  dd_xitong_3
+                  dd_xitong_2
                   bash InstallNET.sh -windows 10 -lang "cn"
                   reboot
                   exit
@@ -4631,14 +4823,14 @@ case $choice in
                   ;;
 
                 45)
-                  dd_xitong_3
+                  dd_xitong_2
                   bash InstallNET.sh -windows 2019 -lang "cn"
                   reboot
                   exit
                   ;;
 
                 46)
-                  dd_xitong_3
+                  dd_xitong_2
                   bash InstallNET.sh -windows 2016 -lang "cn"
                   reboot
                   exit
@@ -6070,8 +6262,7 @@ EOF
     echo "全部日志: https://raw.gitmirror.com/kejilion/sh/main/kejilion_sh_log.txt"
     echo "------------------------"
     curl -s https://raw.gitmirror.com/kejilion/sh/main/kejilion_sh_log.txt | tail -n 35
-    echo ""
-    echo ""
+
     sh_v_new=$(curl -s https://raw.gitmirror.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
 
     if [ "$sh_v" = "$sh_v_new" ]; then
