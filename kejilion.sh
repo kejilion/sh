@@ -120,6 +120,7 @@ check_port() {
     fi
 }
 
+
 install_add_docker() {
     if [ -f "/etc/alpine-release" ]; then
         apk update
@@ -975,26 +976,7 @@ linux_clean() {
 
 }
 
-new_ssh_port() {
 
-
-  # 备份 SSH 配置文件
-  cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
-
-  sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
-
-  # 替换 SSH 配置文件中的端口号
-  sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
-
-  # 重启 SSH 服务
-  service sshd restart
-  echo "SSH 端口已修改为: $new_port"
-
-  clear
-  iptables_open
-  remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
-
-}
 
 
 bbr_on() {
@@ -1051,6 +1033,29 @@ fi
 }
 
 
+new_ssh_port() {
+
+
+  # 备份 SSH 配置文件
+  cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
+
+  sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
+
+  # 替换 SSH 配置文件中的端口号
+  sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
+
+  rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+
+  # 重启 SSH 服务
+  restart_ssh
+  echo "SSH 端口已修改为: $new_port"
+
+  clear
+  iptables_open
+  remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
+
+}
+
 
 
 add_sshkey() {
@@ -1064,6 +1069,7 @@ chmod 600 ~/.ssh/authorized_keys
 
 ip_address
 echo -e "私钥信息已生成，务必复制保存，可保存成 ${huang}${ipv4_address}_ssh.key${bai} 文件，用于以后的SSH登录"
+
 echo "--------------------------------"
 cat ~/.ssh/sshkey
 echo "--------------------------------"
