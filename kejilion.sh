@@ -2628,14 +2628,14 @@ case $choice in
       nginx_install_status
       ip_address
       add_yuming
-      echo "域名格式: https://www.google.com"
+      echo -e "域名格式: ${huang}http://www.google.com${bai}"
       read -p "请输入你的反代域名: " fandai_yuming
 
       install_ssltls
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-      sed -i "s/fandai.com/$fandai_yuming/g" /home/web/conf.d/$yuming.conf
+      sed -i "s|fandaicom|$fandai_yuming|g" /home/web/conf.d/$yuming.conf
 
       docker restart nginx
 
