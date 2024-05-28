@@ -2165,10 +2165,11 @@ case $choice in
     echo  "------------------------"
     echo  "21. 仅安装nginx"
     echo  "22. 站点重定向"
-    echo  "23. 站点反向代理"
-    echo  "24. 自定义静态站点"
-    echo  "25. 安装Bitwarden密码管理平台"
-    echo  "26. 安装Halo博客网站"
+    echo  "23. 站点反向代理-IP+端口"
+    echo  "24. 站点反向代理-域名"
+    echo  "25. 自定义静态站点"
+    echo  "26. 安装Bitwarden密码管理平台"
+    echo  "27. 安装Halo博客网站"
     echo  "------------------------"
     echo  "31. 站点数据管理"
     echo  "32. 备份全站数据"
@@ -2601,7 +2602,7 @@ case $choice in
 
       23)
       clear
-      webname="站点反向代理"
+      webname="反向代理-IP+端口"
       nginx_install_status
       ip_address
       add_yuming
@@ -2621,7 +2622,29 @@ case $choice in
       nginx_status
         ;;
 
-      24)
+      23)
+      clear
+      webname="反向代理-域名"
+      nginx_install_status
+      ip_address
+      add_yuming
+      echo "域名格式: https://www.google.com"
+      read -p "请输入你的反代域名: " fandai_yuming
+
+      install_ssltls
+
+      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
+      sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+      sed -i "s/fandai.com/$fandai_yuming/g" /home/web/conf.d/$yuming.conf
+
+      docker restart nginx
+
+      nginx_web_on
+      nginx_status
+        ;;
+
+
+      25)
       clear
       webname="静态站点"
       nginx_install_status
@@ -2667,7 +2690,7 @@ case $choice in
         ;;
 
 
-      25)
+      26)
       clear
       webname="Bitwarden"
       nginx_install_status
@@ -2687,7 +2710,7 @@ case $choice in
       nginx_status
         ;;
 
-      26)
+      27)
       clear
       webname="halo"
       nginx_install_status
