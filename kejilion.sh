@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.8"
+sh_v="2.5.9"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -1103,7 +1103,6 @@ root_use() {
 clear
 [ "$EUID" -ne 0 ] && echo -e "${huang}请注意，该功能需要root用户才能运行！${bai}" && break_end && kejilion
 }
-
 
 
 
@@ -4810,14 +4809,23 @@ case $choice in
 
                 43)
                   dd_xitong_4
-                  bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
+                  URL="https://massgrave.dev/windows_7_links"
+                  web_content=$(wget -q -O - "$URL")
+                  iso_link=$(echo "$web_content" | grep -oP '(?<=href=")[^"]*cn[^"]*windows_7[^"]*professional[^"]*x64[^"]*\.iso')
+                  # bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
+                  # bash reinstall.sh windows --iso='$iso_link' --image-name='Windows 7 PROFESSIONAL'
+                  bash reinstall.sh windows --iso="$iso_link" --image-name='Windows 7 PROFESSIONAL'
+
                   reboot
                   exit
                   ;;
 
                 44)
                   dd_xitong_4
-                  bash reinstall.sh windows --image-name 'Windows Server 2022 SERVERDATACENTER' --lang zh-cn
+                  URL="https://massgrave.dev/windows_server_links"
+                  web_content=$(wget -q -O - "$URL")
+                  iso_link=$(echo "$web_content" | grep -oP '(?<=href=")[^"]*cn[^"]*windows_server[^"]*2022[^"]*x64[^"]*\.iso')
+                  bash reinstall.sh windows --iso="$iso_link" --image-name='Windows Server 2022 SERVERDATACENTER'
                   reboot
                   exit
                   ;;
