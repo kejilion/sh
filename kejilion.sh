@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.9"
+sh_v="2.5.10"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -2485,7 +2485,7 @@ case $choice in
       cd $yuming
 
       clear
-      echo -e "[${huang}1/5${bai}] 上传PHP源码"
+      echo -e "[${huang}1/6${bai}] 上传PHP源码"
       echo "-------------"
       echo "目前只允许上传zip格式的源码包，请将源码包放到/home/web/html/${yuming}目录下"
       read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
@@ -2498,7 +2498,7 @@ case $choice in
       rm -f $(ls -t *.zip | head -n 1)
 
       clear
-      echo -e "[${huang}2/5${bai}] index.php所在路径"
+      echo -e "[${huang}2/6${bai}] index.php所在路径"
       echo "-------------"
       find "$(realpath .)" -name "index.php" -print
 
@@ -2508,7 +2508,7 @@ case $choice in
       sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
       clear
-      echo -e "[${huang}3/5${bai}] 请选择PHP版本"
+      echo -e "[${huang}3/6${bai}] 请选择PHP版本"
       echo "-------------"
       read -p "1. php最新版 | 2. php7.4 : " pho_v
       case "$pho_v" in
@@ -2527,7 +2527,7 @@ case $choice in
 
 
       clear
-      echo -e "[${huang}4/5${bai}] 安装指定扩展"
+      echo -e "[${huang}4/6${bai}] 安装指定扩展"
       echo "-------------"
       echo "已经安装的扩展"
       docker exec php php -m
@@ -2539,12 +2539,43 @@ case $choice in
 
 
       clear
-      echo -e "[${huang}5/5${bai}] 编辑站点配置"
+      echo -e "[${huang}5/6${bai}] 编辑站点配置"
       echo "-------------"
       echo "按任意键继续，可以详细设置站点配置，如伪静态等内容"
       read -n 1 -s -r -p ""
       install nano
       nano /home/web/conf.d/$yuming.conf
+
+
+      clear
+      echo -e "[${huang}6/6${bai}] 数据库管理"
+      echo "-------------"
+      read -p "1. 我搭建新站        2. 我搭建老站有数据库备份： " use_db
+      case $use_db in
+          1)
+              break
+              ;;
+          2)
+              echo "数据库备份必须是.gz结尾的压缩包。请放到/home/目录下，支持宝塔备份数据导入。"
+              read -p "也可以输入下载链接，远程下载备份数据，直接回车将跳过远程下载： " url_download_db
+
+              cd /home/
+              if [ -n "$url_download_db" ]; then
+                  wget "$url_download_db"
+              fi
+              gunzip $(ls -t *.gz | head -n 1)
+              latest_sql=$(ls -t *.sql | head -n 1)
+              dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+              docker exec -i mysql mysql -u root -p"$dbrootpasswd" $dbname < "/home/$latest_sql"
+              echo "数据库导入的表数据"
+              docker exec -i mysql mysql -u root -p"$dbrootpasswd" -e "USE $dbname; SHOW TABLES;"
+              rm -f *.sql
+              echo "数据库导入完成"
+              ;;
+          *)
+              break  # 跳出
+              ;;
+      esac
 
       restart_ldnmp
 
