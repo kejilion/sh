@@ -2553,7 +2553,7 @@ case $choice in
       read -p "1. 我搭建新站        2. 我搭建老站有数据库备份： " use_db
       case $use_db in
           1)
-              break
+              echo
               ;;
           2)
               echo "数据库备份必须是.gz结尾的压缩包。请放到/home/目录下，支持宝塔备份数据导入。"
@@ -2573,7 +2573,7 @@ case $choice in
               echo "数据库导入完成"
               ;;
           *)
-              break  # 跳出
+              echo
               ;;
       esac
 
