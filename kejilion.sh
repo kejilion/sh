@@ -6052,6 +6052,7 @@ EOF
                   new_port=5522
                   new_ssh_port
                   echo -e "[${lv}OK${bai}] 4/9. 设置SSH端口号为${huang}5522${bai}"
+                  echo "------------------------------------------------"
                   echo -e "[${lv}OK${bai}] 5/9. 开放所有端口"
 
                   echo "------------------------------------------------"
@@ -6074,6 +6075,7 @@ EOF
                   install_add_docker
                   install wget sudo tar unzip socat btop
                   echo -e "[${lv}OK${bai}] 9/9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+                  echo "------------------------------------------------"
                   echo -e "${lv}一条龙系统调优已完成${bai}"
 
                   ;;
