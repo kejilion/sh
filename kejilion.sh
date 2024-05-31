@@ -1050,7 +1050,6 @@ new_ssh_port() {
   restart_ssh
   echo "SSH 端口已修改为: $new_port"
 
-  clear
   iptables_open
   remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 
