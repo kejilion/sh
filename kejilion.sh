@@ -1093,8 +1093,6 @@ sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
 echo -e "${lv}ROOT登录设置完毕！${bai}"
-server_reboot
-
 
 }
 
@@ -2556,7 +2554,7 @@ case $choice in
               echo
               ;;
           2)
-              echo "数据库备份必须是.gz结尾的压缩包。请放到/home/目录下，支持宝塔备份数据导入。"
+              echo "数据库备份必须是.gz结尾的压缩包。请放到/home/目录下，支持宝塔/1panel备份数据导入。"
               read -p "也可以输入下载链接，远程下载备份数据，直接回车将跳过远程下载： " url_download_db
 
               cd /home/
