@@ -467,6 +467,15 @@ nginx_status() {
 
 repeat_add_yuming() {
 
+domain_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$"
+if [[ $yuming =~ $domain_regex ]]; then
+  echo "域名格式正确"
+else
+  echo "域名格式不正确，请重新输入"
+  break_end
+  kejilion
+fi
+
 if [ -e /home/web/conf.d/$yuming.conf ]; then
     echo -e "${huang}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！${bai}"
     break_end
@@ -4094,7 +4103,6 @@ case $choice in
                           -p 3083:3000 \
                           -v /home/docker/webtop/data:/config \
                           -v /var/run/docker.sock:/var/run/docker.sock \
-                          --device /dev/dri:/dev/dri \
                           --shm-size="1gb" \
                           --restart unless-stopped \
                           lscr.io/linuxserver/webtop:latest"
