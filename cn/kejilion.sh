@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.8"
+sh_v="2.5.10"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -466,6 +466,15 @@ nginx_status() {
 }
 
 repeat_add_yuming() {
+
+domain_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$"
+if [[ $yuming =~ $domain_regex ]]; then
+  echo "域名格式正确"
+else
+  echo "域名格式不正确，请重新输入"
+  break_end
+  kejilion
+fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
     echo -e "${huang}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！${bai}"
@@ -1050,7 +1059,6 @@ new_ssh_port() {
   restart_ssh
   echo "SSH 端口已修改为: $new_port"
 
-  clear
   iptables_open
   remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 
@@ -1093,8 +1101,6 @@ sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
 echo -e "${lv}ROOT登录设置完毕！${bai}"
-server_reboot
-
 
 }
 
@@ -1103,7 +1109,6 @@ root_use() {
 clear
 [ "$EUID" -ne 0 ] && echo -e "${huang}请注意，该功能需要root用户才能运行！${bai}" && break_end && kejilion
 }
-
 
 
 
@@ -2486,7 +2491,7 @@ case $choice in
       cd $yuming
 
       clear
-      echo -e "[${huang}1/5${bai}] 上传PHP源码"
+      echo -e "[${huang}1/6${bai}] 上传PHP源码"
       echo "-------------"
       echo "目前只允许上传zip格式的源码包，请将源码包放到/home/web/html/${yuming}目录下"
       read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
@@ -2499,7 +2504,7 @@ case $choice in
       rm -f $(ls -t *.zip | head -n 1)
 
       clear
-      echo -e "[${huang}2/5${bai}] index.php所在路径"
+      echo -e "[${huang}2/6${bai}] index.php所在路径"
       echo "-------------"
       find "$(realpath .)" -name "index.php" -print
 
@@ -2509,7 +2514,7 @@ case $choice in
       sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
       clear
-      echo -e "[${huang}3/5${bai}] 请选择PHP版本"
+      echo -e "[${huang}3/6${bai}] 请选择PHP版本"
       echo "-------------"
       read -p "1. php最新版 | 2. php7.4 : " pho_v
       case "$pho_v" in
@@ -2528,7 +2533,7 @@ case $choice in
 
 
       clear
-      echo -e "[${huang}4/5${bai}] 安装指定扩展"
+      echo -e "[${huang}4/6${bai}] 安装指定扩展"
       echo "-------------"
       echo "已经安装的扩展"
       docker exec php php -m
@@ -2540,12 +2545,43 @@ case $choice in
 
 
       clear
-      echo -e "[${huang}5/5${bai}] 编辑站点配置"
+      echo -e "[${huang}5/6${bai}] 编辑站点配置"
       echo "-------------"
       echo "按任意键继续，可以详细设置站点配置，如伪静态等内容"
       read -n 1 -s -r -p ""
       install nano
       nano /home/web/conf.d/$yuming.conf
+
+
+      clear
+      echo -e "[${huang}6/6${bai}] 数据库管理"
+      echo "-------------"
+      read -p "1. 我搭建新站        2. 我搭建老站有数据库备份： " use_db
+      case $use_db in
+          1)
+              echo
+              ;;
+          2)
+              echo "数据库备份必须是.gz结尾的压缩包。请放到/home/目录下，支持宝塔/1panel备份数据导入。"
+              read -p "也可以输入下载链接，远程下载备份数据，直接回车将跳过远程下载： " url_download_db
+
+              cd /home/
+              if [ -n "$url_download_db" ]; then
+                  wget "$url_download_db"
+              fi
+              gunzip $(ls -t *.gz | head -n 1)
+              latest_sql=$(ls -t *.sql | head -n 1)
+              dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+              docker exec -i mysql mysql -u root -p"$dbrootpasswd" $dbname < "/home/$latest_sql"
+              echo "数据库导入的表数据"
+              docker exec -i mysql mysql -u root -p"$dbrootpasswd" -e "USE $dbname; SHOW TABLES;"
+              rm -f *.sql
+              echo "数据库导入完成"
+              ;;
+          *)
+              echo
+              ;;
+      esac
 
       restart_ldnmp
 
@@ -4067,7 +4103,6 @@ case $choice in
                           -p 3083:3000 \
                           -v /home/docker/webtop/data:/config \
                           -v /var/run/docker.sock:/var/run/docker.sock \
-                          --device /dev/dri:/dev/dri \
                           --shm-size="1gb" \
                           --restart unless-stopped \
                           lscr.io/linuxserver/webtop:latest"
@@ -4810,14 +4845,23 @@ case $choice in
 
                 43)
                   dd_xitong_4
-                  bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
+                  URL="https://massgrave.dev/windows_7_links"
+                  web_content=$(wget -q -O - "$URL")
+                  iso_link=$(echo "$web_content" | grep -oP '(?<=href=")[^"]*cn[^"]*windows_7[^"]*professional[^"]*x64[^"]*\.iso')
+                  # bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
+                  # bash reinstall.sh windows --iso='$iso_link' --image-name='Windows 7 PROFESSIONAL'
+                  bash reinstall.sh windows --iso="$iso_link" --image-name='Windows 7 PROFESSIONAL'
+
                   reboot
                   exit
                   ;;
 
                 44)
                   dd_xitong_4
-                  bash reinstall.sh windows --image-name 'Windows Server 2022 SERVERDATACENTER' --lang zh-cn
+                  URL="https://massgrave.dev/windows_server_links"
+                  web_content=$(wget -q -O - "$URL")
+                  iso_link=$(echo "$web_content" | grep -oP '(?<=href=")[^"]*cn[^"]*windows_server[^"]*2022[^"]*x64[^"]*\.iso')
+                  bash reinstall.sh windows --iso="$iso_link" --image-name='Windows Server 2022 SERVERDATACENTER'
                   reboot
                   exit
                   ;;
@@ -6016,6 +6060,7 @@ EOF
                   new_port=5522
                   new_ssh_port
                   echo -e "[${lv}OK${bai}] 4/9. 设置SSH端口号为${huang}5522${bai}"
+                  echo "------------------------------------------------"
                   echo -e "[${lv}OK${bai}] 5/9. 开放所有端口"
 
                   echo "------------------------------------------------"
@@ -6038,6 +6083,7 @@ EOF
                   install_add_docker
                   install wget sudo tar unzip socat btop
                   echo -e "[${lv}OK${bai}] 9/9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+                  echo "------------------------------------------------"
                   echo -e "${lv}一条龙系统调优已完成${bai}"
 
                   ;;
