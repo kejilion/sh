@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.10"
+sh_v="2.5.11"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -376,11 +376,15 @@ install_certbot() {
     if command -v yum &>/dev/null; then
         install epel-release certbot
     elif command -v apt &>/dev/null; then
-        install snapd
-        snap install core
-        snap install --classic certbot
-        rm /usr/bin/certbot
-        ln -s /snap/bin/certbot /usr/bin/certbot
+        if [ -z "$ipv4_address" ]; then
+            install certbot
+        else
+            install snapd
+            snap install core
+            snap install --classic certbot
+            rm /usr/bin/certbot
+            ln -s /snap/bin/certbot /usr/bin/certbot
+        fi
     else
         install certbot
     fi
