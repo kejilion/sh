@@ -375,16 +375,6 @@ install_certbot() {
 
     if command -v yum &>/dev/null; then
         install epel-release certbot
-    elif command -v apt &>/dev/null; then
-        if [ -z "$ipv4_address" ]; then
-            install certbot
-        else
-            install snapd
-            snap install core
-            snap install --classic certbot
-            rm /usr/bin/certbot
-            ln -s /snap/bin/certbot /usr/bin/certbot
-        fi
     else
         install certbot
     fi
