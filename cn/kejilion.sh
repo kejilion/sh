@@ -128,6 +128,7 @@ install_add_docker() {
         rc-update add docker default
         service docker start
     else
+        country=$(curl -s ipinfo.io/country)
         if [ "$country" = "CN" ]; then
             cd ~
             curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
@@ -1883,6 +1884,7 @@ case $choice in
 
           9)
               clear
+              install nano
               mkdir -p /etc/docker && nano /etc/docker/daemon.json
               if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
                   systemctl restart docker
