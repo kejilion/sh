@@ -132,7 +132,12 @@ install_add_docker() {
             cd ~
             curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
             sh install --mirror Aliyun
-            rm -f install
+            rm -f install          
+            cat > /etc/docker/daemon.json << EOF
+{
+    "registry-mirrors": ["https://docker.kejilion.pro"]
+}
+EOF
         else
             curl -fsSL https://get.docker.com | sh
         fi
@@ -1550,6 +1555,7 @@ case $choice in
       echo "7. 清理无用的docker容器和镜像网络数据卷"
       echo "------------------------"
       echo "8. 更换Docker源"
+      echo "9. 编辑daemon.json文件"
       echo "------------------------"
       echo "11. 开启Docker-ipv6访问"
       echo "12. 关闭Docker-ipv6访问"
@@ -1873,6 +1879,16 @@ case $choice in
           8)
               clear
               bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
+              ;;
+
+          9)
+              clear
+              mkdir -p /etc/docker && nano /etc/docker/daemon.json
+              if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+                  systemctl restart docker
+              else
+                  service docker restart
+              fi              
               ;;
 
           11)
