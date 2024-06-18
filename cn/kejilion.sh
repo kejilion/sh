@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.5.10"
+sh_v="2.6.0"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -128,7 +128,14 @@ install_add_docker() {
         rc-update add docker default
         service docker start
     else
-        curl -fsSL https://get.docker.com | sh
+        if [ "$country" = "CN" ]; then
+            cd ~
+            curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
+            sh install --mirror Aliyun
+            rm -f install
+        else
+            curl -fsSL https://get.docker.com | sh
+        fi
         systemctl start docker
         systemctl enable docker
     fi
@@ -375,12 +382,6 @@ install_certbot() {
 
     if command -v yum &>/dev/null; then
         install epel-release certbot
-    elif command -v apt &>/dev/null; then
-        install snapd
-        snap install core
-        snap install --classic certbot
-        rm /usr/bin/certbot
-        ln -s /snap/bin/certbot /usr/bin/certbot
     else
         install certbot
     fi
@@ -411,8 +412,18 @@ install_ssltls() {
       docker stop nginx > /dev/null 2>&1
       iptables_open
       cd ~
-      # certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
-      certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
+
+      certbot_version=$(certbot --version 2>&1 | grep -oP "\d+\.\d+\.\d+")
+
+      version_ge() {
+          [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$1" ]
+      }
+
+      if version_ge "$certbot_version" "1.10.0"; then
+          certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
+      else
+          certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
+      fi
 
       cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem
       cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
@@ -2067,7 +2078,7 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              echo "活跃脚本: CPU占用10-20% 内存占用15% "
+              echo "活跃脚本: CPU占用10-20% 内存占用20% "
               read -p "确定安装吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
@@ -2078,7 +2089,7 @@ case $choice in
                           -e TZ=Asia/Shanghai \
                           -e CPU_UTIL=10-20 \
                           -e CPU_CORE=1 \
-                          -e MEM_UTIL=15 \
+                          -e MEM_UTIL=20 \
                           -e SPEEDTEST_INTERVAL=120 \
                           fogforest/lookbusy
                   ;;
