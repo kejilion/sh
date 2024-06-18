@@ -128,7 +128,12 @@ install_add_docker() {
         rc-update add docker default
         service docker start
     else
-        curl -fsSL https://get.docker.com | sh
+        if [ "$country" = "CN" ]; then
+            curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
+            sh install --mirror Aliyun
+        else
+            curl -fsSL https://get.docker.com | sh
+        fi
         systemctl start docker
         systemctl enable docker
     fi
