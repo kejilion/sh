@@ -129,8 +129,10 @@ install_add_docker() {
         service docker start
     else
         if [ "$country" = "CN" ]; then
+            cd ~
             curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
             sh install --mirror Aliyun
+            rm -f install
         else
             curl -fsSL https://get.docker.com | sh
         fi
