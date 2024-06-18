@@ -1883,6 +1883,7 @@ case $choice in
 
           9)
               clear
+              install nano
               mkdir -p /etc/docker && nano /etc/docker/daemon.json
               if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
                   systemctl restart docker
