@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.0"
+sh_v="2.6.1"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -133,7 +133,7 @@ install_add_docker() {
             cd ~
             curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
             sh install --mirror Aliyun
-            rm -f install          
+            rm -f install
             cat > /etc/docker/daemon.json << EOF
 {
     "registry-mirrors": ["https://docker.kejilion.pro"]
@@ -1890,7 +1890,7 @@ case $choice in
                   systemctl restart docker
               else
                   service docker restart
-              fi              
+              fi
               ;;
 
           11)
@@ -4514,7 +4514,7 @@ case $choice in
       echo "▶ 系统工具"
       echo "------------------------"
       echo "1. 设置脚本启动快捷键                  2. 修改登录密码"
-      echo "3. ROOT密码登录模式                    4. 安装Python最新版"
+      echo "3. ROOT密码登录模式                    4. 安装Python指定版本"
       echo "5. 开放所有端口                        6. 修改SSH连接端口"
       echo "7. 优化DNS地址                         8. 一键重装系统"
       echo "9. 禁用ROOT账户创建新账户              10. 切换优先ipv4/ipv6"
@@ -4557,81 +4557,72 @@ case $choice in
 
           4)
             root_use
-
-            # 系统检测
-            OS=$(cat /etc/os-release | grep -o -E "Debian|Ubuntu|CentOS" | head -n 1)
-
-            if [[ $OS == "Debian" || $OS == "Ubuntu" || $OS == "CentOS" ]]; then
-                echo -e "检测到你的系统是 ${huang}${OS}${bai}"
-            else
-                echo -e "${hong}很抱歉，你的系统不受支持！${bai}"
-                exit 1
-            fi
-
-            # 检测安装Python3的版本
             VERSION=$(python3 -V 2>&1 | awk '{print $2}')
+            echo -e "当前python版本号: ${huang}$VERSION${bai}"
+            echo "------------"
+            echo "推荐版本:  3.12    3.11    3.10    3.9    3.8    2.7"
+            echo "查询更多版本: https://www.python.org/downloads/"
+            echo "------------"
+            read -p "输入你要安装的python版本号: " py_new_v
 
-            # 获取最新Python3版本
-            PY_VERSION=$(curl -s https://www.python.org/ | grep "downloads/release" | grep -o 'Python [0-9.]*' | grep -o '[0-9.]*')
+            if ! grep -q 'export PYENV_ROOT="\$HOME/.pyenv"' ~/.bashrc; then
+                if command -v yum &>/dev/null; then
+                    yum update -y && yum install git -y
+                    yum groupinstall "Development Tools" -y
+                    yum install openssl-devel bzip2-devel libffi-devel ncurses-devel zlib-devel readline-devel sqlite-devel xz-devel findutils -y
 
-            # 卸载Python3旧版本
-            if [[ $VERSION == "3"* ]]; then
-                echo -e "${huang}你的Python3版本是${bai}${hong}${VERSION}${bai}，${huang}最新版本是${bai}${hong}${PY_VERSION}${bai}"
-                read -p "是否确认升级最新版Python3？默认不升级 [y/N]: " CONFIRM
-                if [[ $CONFIRM == "y" ]]; then
-                    if [[ $OS == "CentOS" ]]; then
-                        echo ""
-                        rm-rf /usr/local/python3* >/dev/null 2>&1
-                    else
-                        apt --purge remove python3 python3-pip -y
-                        rm-rf /usr/local/python3*
-                    fi
+                    curl -O https://www.openssl.org/source/openssl-1.1.1u.tar.gz
+                    tar -xzf openssl-1.1.1u.tar.gz
+                    cd openssl-1.1.1u
+                    ./config --prefix=/usr/local/openssl --openssldir=/usr/local/openssl shared zlib
+                    make
+                    make install
+                    echo "/usr/local/openssl/lib" > /etc/ld.so.conf.d/openssl-1.1.1u.conf
+                    ldconfig -v
+                    cd ..
+
+                    export LDFLAGS="-L/usr/local/openssl/lib"
+                    export CPPFLAGS="-I/usr/local/openssl/include"
+                    export PKG_CONFIG_PATH="/usr/local/openssl/lib/pkgconfig"
+
+                elif command -v apt &>/dev/null; then
+                    apt update -y && apt install git -y
+                    apt install build-essential libssl-dev zlib1g-dev libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev liblzma-dev libgdbm-dev libnss3-dev libedit-dev -y
+                elif command -v apk &>/dev/null; then
+                    apk update && apk add git
+                    apk add --no-cache bash gcc musl-dev libffi-dev openssl-dev bzip2-dev zlib-dev readline-dev sqlite-dev libc6-compat linux-headers make xz-dev build-base  ncurses-dev
                 else
-                    echo -e "${huang}已取消升级Python3${bai}"
-                    exit 1
+                    echo "未知的包管理器!"
+                    return 1
                 fi
-            else
-                echo -e "${hong}检测到没有安装Python3。${bai}"
-                read -p "是否确认安装最新版Python3？默认安装 [Y/n]: " CONFIRM
-                if [[ $CONFIRM != "n" ]]; then
-                    echo -e "${lv}开始安装最新版Python3...${bai}"
-                else
-                    echo -e "${huang}已取消安装Python3${bai}"
-                    exit 1
-                fi
+
+                curl https://pyenv.run | bash
+                cat << EOF >> ~/.bashrc
+
+export PYENV_ROOT="\$HOME/.pyenv"
+if [[ -d "\$PYENV_ROOT/bin" ]]; then
+  export PATH="\$PYENV_ROOT/bin:\$PATH"
+fi
+eval "\$(pyenv init --path)"
+eval "\$(pyenv init -)"
+eval "\$(pyenv virtualenv-init -)"
+
+EOF
+
             fi
 
-            # 安装相关依赖
-            if [[ $OS == "CentOS" ]]; then
-                yum update
-                yum groupinstall -y "development tools"
-                yum install wget openssl-devel bzip2-devel libffi-devel zlib-devel -y
-            else
-                apt update
-                apt install wget build-essential libreadline-dev libncursesw5-dev libssl-dev libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev -y
-            fi
+            sleep 1
+            source ~/.bashrc
+            sleep 1
+            pyenv install $py_new_v
+            pyenv global $py_new_v
 
-            # 安装python3
-            cd /root/
-            wget https://www.python.org/ftp/python/${PY_VERSION}/Python-"$PY_VERSION".tgz
-            tar -zxf Python-${PY_VERSION}.tgz
-            cd Python-${PY_VERSION}
-            ./configure --prefix=/usr/local/python3
-            make -j $(nproc)
-            make install
-            if [ $? -eq 0 ];then
-                rm -f /usr/local/bin/python3*
-                rm -f /usr/local/bin/pip3*
-                ln -sf /usr/local/python3/bin/python3 /usr/bin/python3
-                ln -sf /usr/local/python3/bin/pip3 /usr/bin/pip3
-                clear
-                echo -e "${huang}Python3安装${lv}成功，${bai}版本为: ${bai}${lv}${PY_VERSION}${bai}"
-            else
-                clear
-                echo -e "${hong}Python3安装失败！${bai}"
-                exit 1
-            fi
-            cd /root/ && rm -rf Python-${PY_VERSION}.tgz && rm -rf Python-${PY_VERSION}
+            rm -rf /tmp/python-build.*
+            rm -rf $(pyenv root)/cache/*
+
+            VERSION=$(python -V 2>&1 | awk '{print $2}')
+            echo -e "当前python版本号: ${huang}$VERSION${bai}"
+
               ;;
 
           5)
