@@ -2841,7 +2841,7 @@ case $choice in
         echo "------------------------"
         echo "1. 申请/更新域名证书"
         echo "3. 清理站点缓存                    4. 查看站点分析报告"
-        echo "5. 查看全局配置                    6. 查看站点配置"
+        echo "5. 编辑全局配置                    6. 编辑站点配置"
         echo "------------------------"
         echo "7. 删除指定站点                    8. 删除指定数据库"
         echo "------------------------"
@@ -2896,7 +2896,7 @@ case $choice in
                 ;;
 
             6)
-                read -p "查看站点配置，请输入你的域名: " yuming
+                read -p "编辑站点配置，请输入你要编辑的域名: " yuming
                 install nano
                 nano /home/web/conf.d/$yuming.conf
                 docker restart nginx
