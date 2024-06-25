@@ -354,7 +354,6 @@ install_ldnmp() {
           # redis调优
           "docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1"
           "docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1"
-          "docker restart redis > /dev/null 2>&1"
 
       )
 
@@ -2881,7 +2880,7 @@ case $choice in
                 docker exec php74 php -r 'opcache_reset();'
                 docker restart php74
                 docker exec redis redis-cli FLUSHALL
-                docker restart redis
+
 
                 ;;
             4)
@@ -3215,6 +3214,8 @@ case $choice in
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
 
+                  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
+
                   docker restart nginx
                   docker restart php
                   docker restart php74
@@ -3238,6 +3239,8 @@ case $choice in
                   wget -O /home/custom_mysql_config.cnf https://raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
+
+                  docker exec -it redis redis-cli CONFIG SET maxmemory 1024mb
 
                   docker restart nginx
                   docker restart php
