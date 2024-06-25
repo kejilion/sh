@@ -2280,7 +2280,7 @@ case $choice in
       unzip latest.zip
       rm latest.zip
 
-      echo "define('FS_METHOD', 'direct'); define('WP_CACHE', true); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
+      echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
 
       restart_ldnmp
 
