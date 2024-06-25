@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.1"
+sh_v="2.6.2"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -350,6 +350,12 @@ install_ldnmp() {
           # php7.4重启
           "docker exec php74 chmod -R 777 /var/www/html"
           "docker restart php74 > /dev/null 2>&1"
+
+          # redis调优
+          "docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1"
+          "docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1"
+          "docker restart redis > /dev/null 2>&1"
+
       )
 
       total_commands=${#commands[@]}  # 计算总命令数
@@ -2275,7 +2281,7 @@ case $choice in
       unzip latest.zip
       rm latest.zip
 
-      echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
+      echo "define('FS_METHOD', 'direct'); define('WP_CACHE', true); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
 
       restart_ldnmp
 
@@ -2874,6 +2880,9 @@ case $choice in
                 docker restart php
                 docker exec php74 php -r 'opcache_reset();'
                 docker restart php74
+                docker exec redis redis-cli FLUSHALL
+                docker restart redis
+
                 ;;
             4)
                 install goaccess
