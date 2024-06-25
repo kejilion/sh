@@ -2873,7 +2873,7 @@ case $choice in
 
 
             3)
-                docker exec -it nginx rm -rf /var/cache/nginx
+                # docker exec -it nginx rm -rf /var/cache/nginx
                 docker restart nginx
                 docker exec php php -r 'opcache_reset();'
                 docker restart php
