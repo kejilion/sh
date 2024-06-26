@@ -2879,8 +2879,10 @@ case $choice in
                 docker restart php
                 docker exec php74 php -r 'opcache_reset();'
                 docker restart php74
+                docker restart redis
                 docker exec redis redis-cli FLUSHALL
-
+                docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
+                docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
 
                 ;;
             4)
@@ -3215,6 +3217,7 @@ case $choice in
                   rm -rf /home/custom_mysql_config.cnf
 
                   docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
+                  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
 
                   docker restart nginx
                   docker restart php
@@ -3241,6 +3244,7 @@ case $choice in
                   rm -rf /home/custom_mysql_config.cnf
 
                   docker exec -it redis redis-cli CONFIG SET maxmemory 1024mb
+                  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
 
                   docker restart nginx
                   docker restart php
