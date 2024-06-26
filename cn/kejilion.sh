@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.1"
+sh_v="2.6.2"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -350,6 +350,11 @@ install_ldnmp() {
           # php7.4重启
           "docker exec php74 chmod -R 777 /var/www/html"
           "docker restart php74 > /dev/null 2>&1"
+
+          # redis调优
+          "docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1"
+          "docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1"
+
       )
 
       total_commands=${#commands[@]}  # 计算总命令数
@@ -2836,7 +2841,7 @@ case $choice in
         echo "------------------------"
         echo "1. 申请/更新域名证书"
         echo "3. 清理站点缓存                    4. 查看站点分析报告"
-        echo "5. 查看全局配置                    6. 查看站点配置"
+        echo "5. 编辑全局配置                    6. 编辑站点配置"
         echo "------------------------"
         echo "7. 删除指定站点                    8. 删除指定数据库"
         echo "------------------------"
@@ -2868,12 +2873,17 @@ case $choice in
 
 
             3)
-                docker exec -it nginx rm -rf /var/cache/nginx
+                # docker exec -it nginx rm -rf /var/cache/nginx
                 docker restart nginx
                 docker exec php php -r 'opcache_reset();'
                 docker restart php
                 docker exec php74 php -r 'opcache_reset();'
                 docker restart php74
+                docker restart redis
+                docker exec redis redis-cli FLUSHALL
+                docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
+                docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+
                 ;;
             4)
                 install goaccess
@@ -2888,7 +2898,7 @@ case $choice in
                 ;;
 
             6)
-                read -p "查看站点配置，请输入你的域名: " yuming
+                read -p "编辑站点配置，请输入你要编辑的域名: " yuming
                 install nano
                 nano /home/web/conf.d/$yuming.conf
                 docker restart nginx
@@ -3206,6 +3216,9 @@ case $choice in
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
 
+                  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
+                  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+
                   docker restart nginx
                   docker restart php
                   docker restart php74
@@ -3229,6 +3242,9 @@ case $choice in
                   wget -O /home/custom_mysql_config.cnf https://raw.gitmirror.com/kejilion/sh/main/custom_mysql_config.cnf
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
+
+                  docker exec -it redis redis-cli CONFIG SET maxmemory 1024mb
+                  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
 
                   docker restart nginx
                   docker restart php
