@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.2"
+sh_v="2.6.3"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -4769,6 +4769,9 @@ EOF
               echo "23. CentOS 7"
               echo "------------------------"
               echo "31. Alpine Linux"
+              echo "32. Rocky Linux"
+              echo "33. Alma Linux"
+              echo "34. Fedora Linux"
               echo "------------------------"
               echo "41. Windows 11"
               echo "42. Windows 10"
@@ -4861,6 +4864,27 @@ EOF
                 31)
                   dd_xitong_1
                   bash InstallNET.sh -alpine
+                  reboot
+                  exit
+                  ;;
+
+                32)
+                  dd_xitong_1
+                  bash InstallNET.sh -rockylinux
+                  reboot
+                  exit
+                  ;;
+
+                33)
+                  dd_xitong_1
+                  bash InstallNET.sh -almalinux
+                  reboot
+                  exit
+                  ;;
+
+                34)
+                  dd_xitong_1
+                  bash InstallNET.sh -fedora
                   reboot
                   exit
                   ;;
