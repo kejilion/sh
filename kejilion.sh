@@ -3028,7 +3028,7 @@ case $choice in
               echo "------------------------"
               echo "11. 配置拦截参数"
               echo "------------------------"
-              echo "21. cloudflare模式"
+              echo "21. cloudflare模式                22. 高负载开启5秒盾"
               echo "------------------------"
               echo "9. 卸载防御程序"
               echo "------------------------"
@@ -3095,6 +3095,7 @@ case $choice in
                   9)
                       docker rm -f fail2ban
                       rm -rf /path/to/fail2ban
+                      crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
                       echo "Fail2Ban防御程序已卸载"
                       break
                       ;;
@@ -3128,6 +3129,38 @@ case $choice in
                       echo "已配置cloudflare模式，可在cf后台，站点-安全性-事件中查看拦截记录"
                       ;;
 
+                  22)
+                      echo -e "${huang}网站每5分钟自动检测，当达检测到高负载会自动开盾，低负载也会自动关闭5秒盾。${bai}"
+                      echo "--------------"
+                      echo "获取CF参数: "
+                      echo -e "到cf后台右上角我的个人资料，选择左侧API令牌，获取${huang}Global API Key${bai}"
+                      echo -e "到cf后台域名概要页面右下方获取${huang}区域ID${bai}"
+                      echo "https://dash.cloudflare.com/login"
+                      echo "--------------"
+                      read -p "输入CF的账号: " cfuser
+                      read -p "输入CF的Global API Key: " cftoken
+                      read -p "输入CF中域名的区域ID: " cfzonID
+
+                      cd ~
+                      install jp bc
+                      curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
+                      chmod +x CF-Under-Attack.sh
+                      sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
+                      sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
+                      sed -i "s/CCCC/$cfzonID/g" ~/CF-Under-Attack.sh
+
+                      cron_job="*/5 * * * * ~/CF-Under-Attack.sh"
+
+                      existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
+
+                      if [ -z "$existing_cron" ]; then
+                          (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
+                          echo "高负载自动开盾脚本已添加"
+                      else
+                          echo "自动开盾脚本已存在，无需添加"
+                      fi
+
+                      ;;
                   0)
                       break
                       ;;
