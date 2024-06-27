@@ -27,7 +27,7 @@ if (( $(echo "$CURRENT_LOAD > $LOAD_THRESHOLD" | bc -l) )); then
         NEW_STATUS="under_attack"
     else
         echo "系统负载高，但Under Attack模式已经开启"
-        # exit 0
+        exit 0
     fi
 else
     if [ "$STATUS" == "under_attack" ]; then
@@ -35,7 +35,7 @@ else
         NEW_STATUS="high"
     else
         echo "系统负载低，Under Attack模式已经关闭"
-        # exit 0
+        exit 0
     fi
 fi
 
