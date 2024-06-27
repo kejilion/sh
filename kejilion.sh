@@ -3142,7 +3142,7 @@ case $choice in
                       read -p "输入CF中域名的区域ID: " cfzonID
 
                       cd ~
-                      install jp bc
+                      install jq bc
                       curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
                       chmod +x CF-Under-Attack.sh
                       sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
