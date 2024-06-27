@@ -4876,15 +4876,15 @@ EOF
                   ;;
 
                 33)
-                  dd_xitong_1
-                  bash InstallNET.sh -almalinux
+                  dd_xitong_3
+                  bash reinstall.sh alma
                   reboot
                   exit
                   ;;
 
                 34)
-                  dd_xitong_1
-                  bash InstallNET.sh -fedora
+                  dd_xitong_3
+                  bash reinstall.sh fedora
                   reboot
                   exit
                   ;;
