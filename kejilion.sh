@@ -4572,6 +4572,7 @@ case $choice in
       echo "------------------------"
       echo "21. 本机host解析                       22. fail2banSSH防御程序"
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
+      echo "25. TG-bot系统监控预警"
       echo "------------------------"
       echo "31. 留言板                             66. 一条龙系统调优"
       echo "------------------------"
@@ -6071,6 +6072,44 @@ EOF
               esac
 
               ;;
+
+          25)
+              root_use
+              echo "TG-bot监控预警功能"
+              echo "------------------------------------------------"
+              echo "您需要配置tg机器人API和接收预警的用户ID，即可实现本机CPU，内存，硬盘的实时监控预警"
+              echo "到达阈值后会向用户发预警消息"
+              read -p "确定继续吗？(Y/N): " choice
+
+              case "$choice" in
+                [Yy])
+                  cd ~
+                  install nano tmux
+                  if [ -f ~/TG-check-notify.sh ]; then
+                      chmod +x ~/TG-check-notify.sh
+                      nano ~/TG-check-notify.sh
+                  else
+                      curl -sS -o https://raw.githubusercontent.com/kejilion/sh/main/TG-check-notify.sh
+                      chmod +x ~/TG-check-notify.sh
+                      nano ~/TG-check-notify.sh
+                  fi
+                  tmux kill-session -t TG-check-notify > /dev/null 2>&1
+                  tmux new -d -s TG-check-notify "~/TG-check-notify.sh"
+                  echo "TG-bot预警系统已启动"
+                  echo -e "${hui}你还可以将root目录中的TG-check-notify.sh预警文件放到其他机器上直接使用！${bai}"
+                  ;;
+                [Nn])
+                  echo "已取消"
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
+
+              ;;
+
+
+
 
           31)
             clear
