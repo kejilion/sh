@@ -6089,7 +6089,8 @@ EOF
                       chmod +x ~/TG-check-notify.sh
                       nano ~/TG-check-notify.sh
                   else
-                      curl -sS -o https://raw.githubusercontent.com/kejilion/sh/main/TG-check-notify.sh
+                      curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/TG-check-notify.sh
+
                       chmod +x ~/TG-check-notify.sh
                       nano ~/TG-check-notify.sh
                   fi
