@@ -18,7 +18,7 @@ country=$(curl -s ipinfo.io/$public_ip/country)
 isp_info=$(curl -s ipinfo.io/org | sed -e 's/\"//g' | awk -F' ' '{print $2}')
 
 ipv4_address=$(curl -s ipv4.ip.sb)
-masked_ip=$(echo $ipv4_address | awk -F'.' '{print $1"."$2".*.*"}')
+masked_ip=$(echo $ipv4_address | awk -F'.' '{print "*."$3"."$4}')
 
 # 发送Telegram通知的函数
 send_tg_notification() {
