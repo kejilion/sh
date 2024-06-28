@@ -6095,6 +6095,7 @@ EOF
                   fi
                   tmux kill-session -t TG-check-notify > /dev/null 2>&1
                   tmux new -d -s TG-check-notify "~/TG-check-notify.sh"
+                  clear
                   echo "TG-bot预警系统已启动"
                   echo -e "${hui}你还可以将root目录中的TG-check-notify.sh预警文件放到其他机器上直接使用！${bai}"
                   ;;
