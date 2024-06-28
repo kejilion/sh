@@ -1180,13 +1180,9 @@ case $choice in
       cpu_info=$(lscpu | grep 'BIOS Model name' | awk -F': ' '{print $2}' | sed 's/^[ \t]*//')
     fi
 
-    if [ -f /etc/alpine-release ]; then
-        # Alpine Linux 使用以下命令获取 CPU 使用率
-        cpu_usage_percent=$(top -bn1 | grep '^CPU' | awk '{print " "$4}' | cut -c 1-2)
-    else
-        # 其他系统使用以下命令获取 CPU 使用率
-        cpu_usage_percent=$(top -bn1 | grep "Cpu(s)" | awk '{print " "$2}')
-    fi
+
+    cpu_usage_percent=$(awk '{u=$2+$4; t=$2+$4+$5; if (NR==1){u1=u; t1=t;} else printf "%.0f\n", (($2+$4-u1) * 100 / (t-t1))}' \
+        <(grep 'cpu ' /proc/stat) <(sleep 1; grep 'cpu ' /proc/stat))
 
 
     cpu_cores=$(nproc)
