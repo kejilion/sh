@@ -69,7 +69,7 @@ check_and_notify() {
     local CURRENT_VALUE=$4
 
     if (( $(echo "$USAGE > $THRESHOLD" | bc -l) )); then
-        send_tg_notification "警告: ${isp_info}-${country}-${masked_ip} 的 $TYPE 使用率已达到 ${CURRENT_VALUE}GB，超过阈值 ${NETWORK_THRESHOLD_GB}GB。"
+        send_tg_notification "警告: ${isp_info}-${country}-${masked_ip} 的 $TYPE 使用率已达到 $USAGE%，超过阈值 $THRESHOLD%。"
     fi
 }
 
