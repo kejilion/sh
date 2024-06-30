@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.4"
+sh_v="2.6.5"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -1959,6 +1959,7 @@ case $choice in
       echo "14. nxtrace快速回程测试脚本"
       echo "15. nxtrace指定IP回程测试脚本"
       echo "16. ludashi2020三网线路测试"
+      echo "17. i-abc多功能测速脚本"
       echo ""
       echo "----硬件性能测试----------"
       echo "21. yabs性能测试"
@@ -2040,6 +2041,12 @@ case $choice in
               clear
               curl https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh -sSf | sh
               ;;
+
+          17)
+              clear
+              bash <(curl -sL bash.icu/speedtest)
+              ;;
+
 
           21)
               clear
@@ -6084,7 +6091,7 @@ EOF
               case "$choice" in
                 [Yy])
                   cd ~
-                  install nano tmux
+                  install nano tmux bc
                   if [ -f ~/TG-check-notify.sh ]; then
                       chmod +x ~/TG-check-notify.sh
                       nano ~/TG-check-notify.sh
