@@ -6109,7 +6109,7 @@ EOF
                   sed -i "3i$(grep '^TELEGRAM_BOT_TOKEN=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
                   sed -i "4i$(grep '^CHAT_ID=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
                   chmod +x ~/TG-SSH-check-notify.sh
-                  sed -i '/TG-SSH-check-notify.sh/d' ~/.bashrc
+                  sed -i '/TG-SSH-check-notify.sh/d' ~/.bashrc > /dev/null 2>&1
                   echo 'bash ~/TG-SSH-check-notify.sh' >> ~/.bashrc && source ~/.bashrc
                   clear
                   echo "TG-bot预警系统已启动"
