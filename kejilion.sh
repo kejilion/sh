@@ -6105,12 +6105,19 @@ EOF
                   tmux new -d -s TG-check-notify "~/TG-check-notify.sh"
                   crontab -l | grep -v '~/TG-check-notify.sh' | crontab - > /dev/null 2>&1
                   (crontab -l ; echo "@reboot tmux new -d -s TG-check-notify '~/TG-check-notify.sh'") | crontab - > /dev/null 2>&1
+
                   curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/TG-SSH-check-notify.sh
                   sed -i "3i$(grep '^TELEGRAM_BOT_TOKEN=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
                   sed -i "4i$(grep '^CHAT_ID=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
                   chmod +x ~/TG-SSH-check-notify.sh
-                  sed -i '/TG-SSH-check-notify.sh/d' ~/.bashrc > /dev/null 2>&1
-                  echo 'bash ~/TG-SSH-check-notify.sh' >> ~/.bashrc && source ~/.bashrc
+
+                  # 添加到 ~/.profile 文件中
+                  if ! grep -q 'bash ~/TG-SSH-check-notify.sh' ~/.profile; then
+                      echo 'bash ~/TG-SSH-check-notify.sh' >> ~/.profile
+                  fi
+
+                  source ~/.profile
+
                   clear
                   echo "TG-bot预警系统已启动"
                   echo -e "${hui}你还可以将root目录中的TG-check-notify.sh预警文件放到其他机器上直接使用！${bai}"
