@@ -2,8 +2,7 @@
 
 # 设置OpenSSH的版本号
 OPENSSH_VERSION="9.8p1"
-MIN_OPENSSH_VERSION="8.5"
-MAX_OPENSSH_VERSION="9.7"
+
 
 # 检测系统类型
 if [ -f /etc/os-release ]; then
@@ -57,11 +56,21 @@ sync_time() {
 
 # 检查OpenSSH版本
 check_openssh_version() {
-    CURRENT_VERSION=$(ssh -V 2>&1 | awk '{print $2}' | cut -d'p' -f1)
-    if [[ "$CURRENT_VERSION" < "$MIN_OPENSSH_VERSION" || "$CURRENT_VERSION" > "$MAX_OPENSSH_VERSION" ]]; then
-        echo "当前OpenSSH版本: $CURRENT_VERSION 无需修复！"
-        exit 1
+    current_version=$(ssh -V 2>&1 | awk '{print $1}' | cut -d_ -f2 | cut -d'p' -f1)
+
+    # 版本范围
+    min_version=8.5
+    max_version=9.7
+
+    echo "Current SSH version: $current_version"
+
+    if awk -v ver="$current_version" -v min="$min_version" -v max="$max_version" 'BEGIN{if(ver>=min && ver<=max) exit 0; else exit 1}'; then
+      echo "SSH版本: $current_version  在8.5到9.7之间，需要更新。"
+    else
+      echo "SSSH版本: $current_version  不在8.5到9.7之间，无需更新。"
+      exit 1
     fi
+
 }
 
 # 下载、编译和安装OpenSSH
