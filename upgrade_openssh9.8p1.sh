@@ -131,7 +131,7 @@ main() {
     fi
     check_openssh_version
     install_dependencies
-    sync_time
+    # sync_time
     install_openssh
     restart_ssh
     set_path_priority
