@@ -64,9 +64,9 @@ check_openssh_version() {
     max_version=9.7
 
     if awk -v ver="$current_version" -v min="$min_version" -v max="$max_version" 'BEGIN{if(ver>=min && ver<=max) exit 0; else exit 1}'; then
-      echo "SSH版本: $current_version  在8.5到9.7之间，需要更新。"
+      echo "SSH版本: $current_version  在8.5到9.7之间，需要修复。"
     else
-      echo "SSH版本: $current_version  不在8.5到9.7之间，无需更新。"
+      echo "SSH版本: $current_version  不在8.5到9.7之间，无需修复。"
       exit 1
     fi
 
