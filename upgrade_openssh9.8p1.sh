@@ -31,8 +31,8 @@ install_dependencies() {
     wait_for_lock
     case $OS in
         ubuntu|debian)
-            DEBIAN_FRONTEND=noninteractive apt-get update
-            DEBIAN_FRONTEND=noninteractive apt-get install -y build-essential zlib1g-dev libssl-dev libpam0g-dev wget ntpdate -o Dpkg::Options::="--force-confnew"
+            DEBIAN_FRONTEND=noninteractive apt update
+            DEBIAN_FRONTEND=noninteractive apt install -y build-essential zlib1g-dev libssl-dev libpam0g-dev wget ntpdate -o Dpkg::Options::="--force-confnew"
             ;;
         centos|rhel|fedora)
             yum install -y epel-release
