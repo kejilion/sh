@@ -131,9 +131,9 @@ main() {
     if [[ $OS == "ubuntu" || $OS == "debian" ]]; then
         fix_dpkg
     fi
+    check_openssh_version
     install_dependencies
     sync_time
-    check_openssh_version
     install_openssh
     restart_ssh
     set_path_priority
