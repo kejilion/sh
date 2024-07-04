@@ -105,6 +105,12 @@ clean_up() {
 }
 
 
+# 标题
+check_openssh_test() {
+echo "SSH高危漏洞修复工具"
+echo "--------------------------"
+}
+
 # 检查OpenSSH版本
 check_openssh_version() {
     current_version=$(ssh -V 2>&1 | awk '{print $1}' | cut -d_ -f2 | cut -d'p' -f1)
@@ -114,6 +120,7 @@ check_openssh_version() {
     max_version=9.7
 
     if awk -v ver="$current_version" -v min="$min_version" -v max="$max_version" 'BEGIN{if(ver>=min && ver<=max) exit 0; else exit 1}'; then
+      check_openssh_test
       echo "SSH版本: $current_version  在8.5到9.7之间，需要修复。"
       read -p "确定继续吗？(Y/N): " choice
           case "$choice" in
@@ -136,6 +143,7 @@ check_openssh_version() {
               ;;
           esac
     else
+      check_openssh_test
       echo "SSH版本: $current_version  不在8.5到9.7之间，无需修复。"
       exit 1
     fi
