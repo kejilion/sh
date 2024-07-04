@@ -942,28 +942,41 @@ set_timedate() {
 
 
 
+
 linux_update() {
-
-    # Update system on Debian-based systems
-    if [ -f "/etc/debian_version" ]; then
-        apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
-    fi
-
-    # Update system on Red Hat-based systems
-    if [ -f "/etc/redhat-release" ]; then
+    if command -v dnf &>/dev/null; then
+        dnf -y update
+    elif command -v yum &>/dev/null; then
         yum -y update
-    fi
-
-    # Update system on Alpine Linux
-    if [ -f "/etc/alpine-release" ]; then
+    elif command -v apt &>/dev/null; then
+        DEBIAN_FRONTEND=noninteractive apt update -y
+        DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+    elif command -v apk &>/dev/null; then
         apk update && apk upgrade
+    else
+        echo "未知的包管理器!"
+        return 1
     fi
-
 }
 
 
+
 linux_clean() {
-    clean_debian() {
+    if command -v dnf &>/dev/null; then
+        dnf autoremove -y
+        dnf clean all
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        dnf remove $(dnf repoquery --installonly --latest-limit=-1 -q) -y
+    elif command -v yum &>/dev/null; then
+        yum autoremove -y
+        yum clean all
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+    elif command -v apt &>/dev/null; then
         apt autoremove --purge -y
         apt clean -y
         apt autoclean -y
@@ -972,38 +985,16 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
         apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
-    }
-
-    clean_redhat() {
-        yum autoremove -y
-        yum clean all
-        journalctl --rotate
-        journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
-    }
-
-    clean_alpine() {
+    elif command -v apk &>/dev/null; then
         apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
         apk autoremove
         apk cache clean
         rm -rf /var/log/*
         rm -rf /var/cache/apk/*
-
-    }
-
-    # Main script
-    if [ -f "/etc/debian_version" ]; then
-        # Debian-based systems
-        clean_debian
-    elif [ -f "/etc/redhat-release" ]; then
-        # Red Hat-based systems
-        clean_redhat
-    elif [ -f "/etc/alpine-release" ]; then
-        # Alpine Linux
-        clean_alpine
+    else
+        echo "未知的包管理器!"
+        return 1
     fi
-
 
 }
 
