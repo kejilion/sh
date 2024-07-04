@@ -28,9 +28,10 @@ fix_dpkg() {
 
 # 安装依赖包
 install_dependencies() {
-    wait_for_lock
     case $OS in
         ubuntu|debian)
+            wait_for_lock
+            fix_dpkg
             DEBIAN_FRONTEND=noninteractive apt update
             DEBIAN_FRONTEND=noninteractive apt install -y build-essential zlib1g-dev libssl-dev libpam0g-dev wget ntpdate -o Dpkg::Options::="--force-confnew"
             ;;
@@ -126,9 +127,6 @@ clean_up() {
 
 # 主函数
 main() {
-    if [[ $OS == "ubuntu" || $OS == "debian" ]]; then
-        fix_dpkg
-    fi
     check_openssh_version
     install_dependencies
     # sync_time
