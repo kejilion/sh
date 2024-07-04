@@ -50,27 +50,6 @@ install_dependencies() {
     esac
 }
 
-# 同步系统时间
-sync_time() {
-    ntpdate time.nist.gov
-}
-
-# 检查OpenSSH版本
-check_openssh_version() {
-    current_version=$(ssh -V 2>&1 | awk '{print $1}' | cut -d_ -f2 | cut -d'p' -f1)
-
-    # 版本范围
-    min_version=8.5
-    max_version=9.7
-
-    if awk -v ver="$current_version" -v min="$min_version" -v max="$max_version" 'BEGIN{if(ver>=min && ver<=max) exit 0; else exit 1}'; then
-      echo "SSH版本: $current_version  在8.5到9.7之间，需要修复。"
-    else
-      echo "SSH版本: $current_version  不在8.5到9.7之间，无需修复。"
-      exit 1
-    fi
-
-}
 
 # 下载、编译和安装OpenSSH
 install_openssh() {
@@ -125,16 +104,43 @@ clean_up() {
     rm -rf openssh-${OPENSSH_VERSION}*
 }
 
-# 主函数
-main() {
-    check_openssh_version
-    install_dependencies
-    # sync_time
-    install_openssh
-    restart_ssh
-    set_path_priority
-    verify_installation
-    clean_up
+
+# 检查OpenSSH版本
+check_openssh_version() {
+    current_version=$(ssh -V 2>&1 | awk '{print $1}' | cut -d_ -f2 | cut -d'p' -f1)
+
+    # 版本范围
+    min_version=8.5
+    max_version=9.7
+
+    if awk -v ver="$current_version" -v min="$min_version" -v max="$max_version" 'BEGIN{if(ver>=min && ver<=max) exit 0; else exit 1}'; then
+      echo "SSH版本: $current_version  在8.5到9.7之间，需要修复。"
+      read -p "确定继续吗？(Y/N): " choice
+          case "$choice" in
+            [Yy])
+              install_dependencies
+              install_openssh
+              restart_ssh
+              set_path_priority
+              verify_installation
+              clean_up
+
+              ;;
+            [Nn])
+              echo "已取消"
+              exit 1
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              exit 1
+              ;;
+          esac
+    else
+      echo "SSH版本: $current_version  不在8.5到9.7之间，无需修复。"
+      exit 1
+    fi
+
 }
 
-main
+
+check_openssh_version
