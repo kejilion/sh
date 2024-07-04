@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.2"
+sh_v="2.6.6"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -942,28 +942,41 @@ set_timedate() {
 
 
 
+
 linux_update() {
-
-    # Update system on Debian-based systems
-    if [ -f "/etc/debian_version" ]; then
-        apt update -y && DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
-    fi
-
-    # Update system on Red Hat-based systems
-    if [ -f "/etc/redhat-release" ]; then
+    if command -v dnf &>/dev/null; then
+        dnf -y update
+    elif command -v yum &>/dev/null; then
         yum -y update
-    fi
-
-    # Update system on Alpine Linux
-    if [ -f "/etc/alpine-release" ]; then
+    elif command -v apt &>/dev/null; then
+        DEBIAN_FRONTEND=noninteractive apt update -y
+        DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+    elif command -v apk &>/dev/null; then
         apk update && apk upgrade
+    else
+        echo "未知的包管理器!"
+        return 1
     fi
-
 }
 
 
+
 linux_clean() {
-    clean_debian() {
+    if command -v dnf &>/dev/null; then
+        dnf autoremove -y
+        dnf clean all
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        dnf remove $(dnf repoquery --installonly --latest-limit=-1 -q) -y
+    elif command -v yum &>/dev/null; then
+        yum autoremove -y
+        yum clean all
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+    elif command -v apt &>/dev/null; then
         apt autoremove --purge -y
         apt clean -y
         apt autoclean -y
@@ -972,38 +985,16 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
         apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
-    }
-
-    clean_redhat() {
-        yum autoremove -y
-        yum clean all
-        journalctl --rotate
-        journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
-    }
-
-    clean_alpine() {
+    elif command -v apk &>/dev/null; then
         apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
         apk autoremove
         apk cache clean
         rm -rf /var/log/*
         rm -rf /var/cache/apk/*
-
-    }
-
-    # Main script
-    if [ -f "/etc/debian_version" ]; then
-        # Debian-based systems
-        clean_debian
-    elif [ -f "/etc/redhat-release" ]; then
-        # Red Hat-based systems
-        clean_redhat
-    elif [ -f "/etc/alpine-release" ]; then
-        # Alpine Linux
-        clean_alpine
+    else
+        echo "未知的包管理器!"
+        return 1
     fi
-
 
 }
 
@@ -1180,13 +1171,9 @@ case $choice in
       cpu_info=$(lscpu | grep 'BIOS Model name' | awk -F': ' '{print $2}' | sed 's/^[ \t]*//')
     fi
 
-    if [ -f /etc/alpine-release ]; then
-        # Alpine Linux 使用以下命令获取 CPU 使用率
-        cpu_usage_percent=$(top -bn1 | grep '^CPU' | awk '{print " "$4}' | cut -c 1-2)
-    else
-        # 其他系统使用以下命令获取 CPU 使用率
-        cpu_usage_percent=$(top -bn1 | grep "Cpu(s)" | awk '{print " "$2}')
-    fi
+
+    cpu_usage_percent=$(awk '{u=$2+$4; t=$2+$4+$5; if (NR==1){u1=u; t1=t;} else printf "%.0f\n", (($2+$4-u1) * 100 / (t-t1))}' \
+        <(grep 'cpu ' /proc/stat) <(sleep 1; grep 'cpu ' /proc/stat))
 
 
     cpu_cores=$(nproc)
@@ -1963,6 +1950,7 @@ case $choice in
       echo "14. nxtrace快速回程测试脚本"
       echo "15. nxtrace指定IP回程测试脚本"
       echo "16. ludashi2020三网线路测试"
+      echo "17. i-abc多功能测速脚本"
       echo ""
       echo "----硬件性能测试----------"
       echo "21. yabs性能测试"
@@ -2044,6 +2032,12 @@ case $choice in
               clear
               curl https://raw.gitmirror.com/ludashi2020/backtrace/main/install.sh -sSf | sh
               ;;
+
+          17)
+              clear
+              bash <(curl -sL bash.icu/speedtest)
+              ;;
+
 
           21)
               clear
@@ -3028,7 +3022,7 @@ case $choice in
               echo "------------------------"
               echo "11. 配置拦截参数"
               echo "------------------------"
-              echo "21. cloudflare模式"
+              echo "21. cloudflare模式                22. 高负载开启5秒盾"
               echo "------------------------"
               echo "9. 卸载防御程序"
               echo "------------------------"
@@ -3095,6 +3089,7 @@ case $choice in
                   9)
                       docker rm -f fail2ban
                       rm -rf /path/to/fail2ban
+                      crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
                       echo "Fail2Ban防御程序已卸载"
                       break
                       ;;
@@ -3128,6 +3123,38 @@ case $choice in
                       echo "已配置cloudflare模式，可在cf后台，站点-安全性-事件中查看拦截记录"
                       ;;
 
+                  22)
+                      echo -e "${huang}网站每5分钟自动检测，当达检测到高负载会自动开盾，低负载也会自动关闭5秒盾。${bai}"
+                      echo "--------------"
+                      echo "获取CF参数: "
+                      echo -e "到cf后台右上角我的个人资料，选择左侧API令牌，获取${huang}Global API Key${bai}"
+                      echo -e "到cf后台域名概要页面右下方获取${huang}区域ID${bai}"
+                      echo "https://dash.cloudflare.com/login"
+                      echo "--------------"
+                      read -p "输入CF的账号: " cfuser
+                      read -p "输入CF的Global API Key: " cftoken
+                      read -p "输入CF中域名的区域ID: " cfzonID
+
+                      cd ~
+                      install jq bc
+                      curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/CF-Under-Attack.sh
+                      chmod +x CF-Under-Attack.sh
+                      sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
+                      sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
+                      sed -i "s/CCCC/$cfzonID/g" ~/CF-Under-Attack.sh
+
+                      cron_job="*/5 * * * * ~/CF-Under-Attack.sh"
+
+                      existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
+
+                      if [ -z "$existing_cron" ]; then
+                          (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
+                          echo "高负载自动开盾脚本已添加"
+                      else
+                          echo "自动开盾脚本已存在，无需添加"
+                      fi
+
+                      ;;
                   0)
                       break
                       ;;
@@ -4543,6 +4570,7 @@ case $choice in
       echo "------------------------"
       echo "21. 本机host解析                       22. fail2banSSH防御程序"
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
+      echo "25. TG-bot系统监控预警                 26. 修复OoenSSH高危漏洞（岫源）"
       echo "------------------------"
       echo "31. 留言板                             66. 一条龙系统调优"
       echo "------------------------"
@@ -4769,6 +4797,9 @@ EOF
               echo "23. CentOS 7"
               echo "------------------------"
               echo "31. Alpine Linux"
+              echo "32. Rocky Linux"
+              echo "33. Alma Linux"
+              echo "34. Fedora Linux"
               echo "------------------------"
               echo "41. Windows 11"
               echo "42. Windows 10"
@@ -4861,6 +4892,27 @@ EOF
                 31)
                   dd_xitong_1
                   bash InstallNET.sh -alpine
+                  reboot
+                  exit
+                  ;;
+
+                32)
+                  dd_xitong_1
+                  bash InstallNET.sh -rockylinux
+                  reboot
+                  exit
+                  ;;
+
+                33)
+                  dd_xitong_3
+                  bash reinstall.sh alma
+                  reboot
+                  exit
+                  ;;
+
+                34)
+                  dd_xitong_3
+                  bash reinstall.sh fedora
                   reboot
                   exit
                   ;;
@@ -6017,6 +6069,67 @@ EOF
                   ;;
               esac
 
+              ;;
+
+          25)
+              root_use
+              echo "TG-bot监控预警功能"
+              echo "------------------------------------------------"
+              echo "您需要配置tg机器人API和接收预警的用户ID，即可实现本机CPU，内存，硬盘，流量，SSH登录的实时监控预警"
+              echo "到达阈值后会向用户发预警消息"
+              echo -e "${hui}-关于流量，重启服务器将重新计算-${bai}"
+              read -p "确定继续吗？(Y/N): " choice
+
+              case "$choice" in
+                [Yy])
+                  cd ~
+                  install nano tmux bc jq
+                  if [ -f ~/TG-check-notify.sh ]; then
+                      chmod +x ~/TG-check-notify.sh
+                      nano ~/TG-check-notify.sh
+                  else
+                      curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/TG-check-notify.sh
+                      chmod +x ~/TG-check-notify.sh
+                      nano ~/TG-check-notify.sh
+                  fi
+                  tmux kill-session -t TG-check-notify > /dev/null 2>&1
+                  tmux new -d -s TG-check-notify "~/TG-check-notify.sh"
+                  crontab -l | grep -v '~/TG-check-notify.sh' | crontab - > /dev/null 2>&1
+                  (crontab -l ; echo "@reboot tmux new -d -s TG-check-notify '~/TG-check-notify.sh'") | crontab - > /dev/null 2>&1
+
+                  curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/TG-SSH-check-notify.sh > /dev/null 2>&1
+                  sed -i "3i$(grep '^TELEGRAM_BOT_TOKEN=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh > /dev/null 2>&1
+                  sed -i "4i$(grep '^CHAT_ID=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
+                  chmod +x ~/TG-SSH-check-notify.sh
+
+                  # 添加到 ~/.profile 文件中
+                  if ! grep -q 'bash ~/TG-SSH-check-notify.sh' ~/.profile; then
+                      echo 'bash ~/TG-SSH-check-notify.sh' >> ~/.profile
+                  fi
+
+                  source ~/.profile
+
+                  clear
+                  echo "TG-bot预警系统已启动"
+                  echo -e "${hui}你还可以将root目录中的TG-check-notify.sh预警文件放到其他机器上直接使用！${bai}"
+                  ;;
+                [Nn])
+                  echo "已取消"
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
+
+              ;;
+
+          26)
+              root_use
+              cd ~
+              curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/upgrade_openssh9.8p1.sh
+              chmod +x ~/upgrade_openssh9.8p1.sh
+              ~/upgrade_openssh9.8p1.sh
+              rm -f ~/upgrade_openssh9.8p1.sh
               ;;
 
           31)
