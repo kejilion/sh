@@ -3364,7 +3364,7 @@ case $choice in
       echo "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件"
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
-      echo "37. MyIP工具箱"
+      echo "37. MyIP工具箱                          38. 小雅alist全家桶"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
@@ -4396,6 +4396,9 @@ case $choice in
             docker_app
               ;;
 
+          38)
+            bash -c "$(curl --insecure -fsSL https://ddsrem.com/xiaoya_install.sh)"
+              ;;
 
           51)
           clear
