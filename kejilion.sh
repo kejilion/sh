@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.5"
+sh_v="2.6.6"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -4579,7 +4579,7 @@ case $choice in
       echo "------------------------"
       echo "21. 本机host解析                       22. fail2banSSH防御程序"
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
-      echo "25. TG-bot系统监控预警"
+      echo "25. TG-bot系统监控预警                 26. 修复OoenSSH高危漏洞（岫源）"
       echo "------------------------"
       echo "31. 留言板                             66. 一条龙系统调优"
       echo "------------------------"
@@ -6106,8 +6106,8 @@ EOF
                   crontab -l | grep -v '~/TG-check-notify.sh' | crontab - > /dev/null 2>&1
                   (crontab -l ; echo "@reboot tmux new -d -s TG-check-notify '~/TG-check-notify.sh'") | crontab - > /dev/null 2>&1
 
-                  curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/TG-SSH-check-notify.sh
-                  sed -i "3i$(grep '^TELEGRAM_BOT_TOKEN=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
+                  curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/TG-SSH-check-notify.sh > /dev/null 2>&1
+                  sed -i "3i$(grep '^TELEGRAM_BOT_TOKEN=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh > /dev/null 2>&1
                   sed -i "4i$(grep '^CHAT_ID=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
                   chmod +x ~/TG-SSH-check-notify.sh
 
@@ -6132,8 +6132,14 @@ EOF
 
               ;;
 
-
-
+          26)
+              root_use
+              cd ~
+              curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/upgrade_openssh9.8p1.sh
+              chmod +x ~/upgrade_openssh9.8p1.sh
+              ~/upgrade_openssh9.8p1.sh
+              rm -f ~/upgrade_openssh9.8p1.sh
+              ;;
 
           31)
             clear
