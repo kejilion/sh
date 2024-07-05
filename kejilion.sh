@@ -88,7 +88,7 @@ systemctl() {
     if command -v apk &>/dev/null; then
         service "$2" "$1"
     else
-        systemctl "$1" "$2"
+        /bin/systemctl "$1" "$2"
     fi
 }
 
