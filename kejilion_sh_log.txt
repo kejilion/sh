@@ -505,5 +505,6 @@ k install nano wget | k add nano wget | k 安装 nano wget  使用这三个方�
 k remove nano wget | k del nano wget | k 卸载 nano wget  使用这三个方式判断系统自动卸载软件
 k update | k 更新 使用这两个方式判断系统自动更新系统
 k clean | k 清理 使用这两个方式判断系统自动清理系统垃圾
+k dd | k 重装 使用这两个方式可以快速换出重装面板
 未来还会增加更多k的快捷功能，方便大家日常使用。
 -----------------------
