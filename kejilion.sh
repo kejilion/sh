@@ -84,6 +84,32 @@ remove() {
 }
 
 
+systemctl() {
+    if command -v apk &>/dev/null; then
+        service "$2" "$1"
+    else
+        systemctl "$1" "$2"
+    fi
+}
+
+restart() {
+    systemctl restart "$1"
+}
+
+start() {
+    systemctl start "$1"
+}
+
+stop() {
+    systemctl stop "$1"
+}
+
+
+status() {
+    systemctl status "$1"
+}
+
+
 break_end() {
       echo -e "${lv}操作完成${bai}"
       echo "按任意键继续..."
@@ -163,11 +189,8 @@ install_docker() {
 }
 
 docker_restart() {
-if [ -f "/etc/alpine-release" ]; then
-    service docker restart
-else
-    systemctl restart docker
-fi
+
+restart docker
 
 }
 
@@ -1043,20 +1066,7 @@ echo "------------------------"
 
 
 restart_ssh() {
-
-if command -v dnf &>/dev/null; then
-    systemctl restart sshd
-elif command -v yum &>/dev/null; then
-    systemctl restart sshd
-elif command -v apt &>/dev/null; then
-    service ssh restart
-elif command -v apk &>/dev/null; then
-    service sshd restart
-else
-    echo "未知的包管理器!"
-    return 1
-fi
-
+    restart sshd
 }
 
 
@@ -2228,11 +2238,7 @@ case $choice in
               clear
               install nano
               mkdir -p /etc/docker && nano /etc/docker/daemon.json
-              if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
-                  systemctl restart docker
-              else
-                  service docker restart
-              fi
+              restart docker
               ;;
 
           11)
@@ -6509,7 +6515,7 @@ else
             shift
             install "$@"
             ;;
-        remove|del|卸载)
+        remove|del|uninstall|卸载)
             shift
             remove "$@"
             ;;
@@ -6525,10 +6531,24 @@ else
         bbr3|bbrv3)
             bbrv3
             ;;
+        status|状态)
+            shift
+            status "$@"
+            ;;
+        start|启动)
+            shift
+            start "$@"
+            ;;
+        stop|停止)
+            shift
+            stop "$@"
+            ;;
+        restart|重启)
+            shift
+            restart "$@"
+            ;;
         *)
             echo "无效参数"
             ;;
     esac
 fi
-
-
