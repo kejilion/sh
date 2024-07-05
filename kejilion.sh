@@ -306,6 +306,7 @@ install_ldnmp() {
           "docker exec php74 chmod +x /usr/local/bin/install-php-extensions > /dev/null 2>&1"
 
           # php安装扩展
+          "docker exec php install-php-extensions imagick > /dev/null 2>&1"
           "docker exec php install-php-extensions mysqli > /dev/null 2>&1"
           "docker exec php install-php-extensions pdo_mysql > /dev/null 2>&1"
           "docker exec php install-php-extensions gd > /dev/null 2>&1"
@@ -314,8 +315,8 @@ install_ldnmp() {
           "docker exec php install-php-extensions exif > /dev/null 2>&1"
           "docker exec php install-php-extensions bcmath > /dev/null 2>&1"
           "docker exec php install-php-extensions opcache > /dev/null 2>&1"
-          "docker exec php install-php-extensions imagick > /dev/null 2>&1"
           "docker exec php install-php-extensions redis > /dev/null 2>&1"
+
 
           # php配置参数
           "docker exec php sh -c 'echo \"upload_max_filesize=50M \" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
@@ -329,6 +330,7 @@ install_ldnmp() {
           "docker restart php > /dev/null 2>&1"
 
           # php7.4安装扩展
+          "docker exec php74 install-php-extensions imagick > /dev/null 2>&1"
           "docker exec php74 install-php-extensions mysqli > /dev/null 2>&1"
           "docker exec php74 install-php-extensions pdo_mysql > /dev/null 2>&1"
           "docker exec php74 install-php-extensions gd > /dev/null 2>&1"
@@ -337,7 +339,6 @@ install_ldnmp() {
           "docker exec php74 install-php-extensions exif > /dev/null 2>&1"
           "docker exec php74 install-php-extensions bcmath > /dev/null 2>&1"
           "docker exec php74 install-php-extensions opcache > /dev/null 2>&1"
-          "docker exec php74 install-php-extensions imagick > /dev/null 2>&1"
           "docker exec php74 install-php-extensions redis > /dev/null 2>&1"
 
           # php7.4配置参数
