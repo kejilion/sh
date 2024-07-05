@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.6"
+sh_v="2.6.7"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -30,6 +30,7 @@ install() {
 
     for package in "$@"; do
         if ! command -v "$package" &>/dev/null; then
+            echo "正在安装 $package..."
             if command -v dnf &>/dev/null; then
                 dnf -y update && dnf install -y "$package"
             elif command -v yum &>/dev/null; then
@@ -42,6 +43,8 @@ install() {
                 echo "未知的包管理器!"
                 return 1
             fi
+        else
+            echo "$package 已经安装。"
         fi
     done
 
@@ -62,6 +65,7 @@ remove() {
     fi
 
     for package in "$@"; do
+        echo "正在卸载 $package..."
         if command -v dnf &>/dev/null; then
             dnf remove -y "${package}*"
         elif command -v yum &>/dev/null; then
@@ -1126,7 +1130,7 @@ clear
 
 
 
-
+kejilion_sh() {
 while true; do
 clear
 
@@ -6107,7 +6111,7 @@ EOF
                   chmod +x ~/TG-SSH-check-notify.sh
 
                   # 添加到 ~/.profile 文件中
-                  if ! grep -q 'bash ~/TG-SSH-check-notify.sh' ~/.profile; then
+                  if ! grep -q 'bash ~/TG-SSH-check-notify.sh' ~/.profile > /dev/null 2>&1; then
                       echo 'bash ~/TG-SSH-check-notify.sh' >> ~/.profile
                   fi
 
@@ -6501,3 +6505,36 @@ EOF
 esac
     break_end
 done
+
+}
+
+
+
+
+if [ "$#" -eq 0 ]; then
+    # 如果没有参数，运行交互式逻辑
+    kejilion_sh
+else
+    # 如果有参数，执行相应函数
+    case $1 in
+        install|add|安装)
+            shift
+            install "$@"
+            ;;
+        remove|del|卸载)
+            shift
+            remove "$@"
+            ;;
+        update|更新)
+            linux_update
+            ;;
+        clean|清理)
+            linux_clean
+            ;;
+        *)
+            echo "无效参数"
+            ;;
+    esac
+fi
+
+
