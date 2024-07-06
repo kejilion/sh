@@ -57,7 +57,7 @@ install_openssh() {
     tar -xzf openssh-${OPENSSH_VERSION}.tar.gz
     cd openssh-${OPENSSH_VERSION}
     ./configure
-    make
+    make -j$(nproc)
     make install
 }
 
