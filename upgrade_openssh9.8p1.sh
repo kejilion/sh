@@ -13,10 +13,6 @@ else
     exit 1
 fi
 
-# 询问用户是否需要多线程编译
-echo "请输入同时编译的核心数量："
-read multi_thread_compile
-
 # 等待并检查锁文件
 wait_for_lock() {
     while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
@@ -61,13 +57,13 @@ install_openssh() {
     tar -xzf openssh-${OPENSSH_VERSION}.tar.gz
     cd openssh-${OPENSSH_VERSION}
     ./configure
-    make -j$multi_thread_compile
+    make -j$(nproc)
     make install
 }
 
 # 重启SSH服务
 restart_ssh() {
-    case $OS in
+    case $OS 在
         ubuntu|debian)
             systemctl restart ssh
             ;;
