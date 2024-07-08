@@ -609,7 +609,7 @@ fi
 }
 
 docker_app() {
-send_stats “搭建$docker_name”
+send_stats "搭建$docker_name"
 has_ipv4_has_ipv6
 if docker inspect "$docker_name" &>/dev/null; then
     clear
@@ -887,7 +887,7 @@ nginx_web_on() {
 
 
 install_panel() {
-            send_stats “搭建$panelname ”
+            send_stats "搭建$panelname "
             if $lujing ; then
                 clear
                 echo "$panelname 已安装，应用操作"
@@ -1153,7 +1153,7 @@ clear
 
 
 dd_xitong() {
-        send_stats “重装系统”
+        send_stats "重装系统"
         dd_xitong_1() {
           echo -e "重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}LeitboGi0ro${bai}  初始端口: ${huang}22${bai}"
           echo -e "按任意键继续..."
@@ -1367,7 +1367,7 @@ dd_xitong() {
 
 bbrv3() {
           root_use
-          send_stats “bbrv3管理”
+          send_stats "bbrv3管理"
           if dpkg -l | grep -q 'linux-xanmod'; then
             while true; do
 
@@ -1942,13 +1942,11 @@ case $choice in
       case $sub_choice in
           1)
             clear
-            send_stats "安装docker环境"
             install_add_docker
 
               ;;
           2)
               clear
-              send_stats "docker全局状态"
               echo "Docker版本"
               docker -v
               docker compose version
@@ -1971,7 +1969,6 @@ case $choice in
           3)
               while true; do
                   clear
-                  send_stats "docker容器管理"
                   echo "Docker容器列表"
                   docker ps -a
                   echo ""
@@ -2081,7 +2078,6 @@ case $choice in
           4)
               while true; do
                   clear
-                  send_stats "Docker镜像管理"
                   echo "Docker镜像列表"
                   docker image ls
                   echo ""
@@ -2135,7 +2131,6 @@ case $choice in
           5)
               while true; do
                   clear
-                  send_stats "Docker网络管理"
                   echo "Docker网络列表"
                   echo "------------------------------------------------------------"
                   docker network ls
@@ -2207,7 +2202,6 @@ case $choice in
           6)
               while true; do
                   clear
-                  send_stats "Docker卷管理"
                   echo "Docker卷列表"
                   docker volume ls
                   echo ""
@@ -4831,7 +4825,7 @@ case $choice in
   12)
     while true; do
       clear
-      send_stats “我的工作区”
+      send_stats "我的工作区"
       echo "▶ 我的工作区"
       echo "系统将为你提供可以后台常驻运行的工作区，你可以用来执行长时间的任务"
       echo "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
@@ -4970,7 +4964,7 @@ case $choice in
   13)
     while true; do
       clear
-      send_stats “系统工具”
+      send_stats "系统工具"
       echo "▶ 系统工具"
       echo "------------------------"
       echo "1. 设置脚本启动快捷键                  2. 修改登录密码"
@@ -5000,7 +4994,7 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              send_stats “设置脚本快捷键”
+              send_stats "设置脚本快捷键"
               read -p "请输入你的快捷按键: " kuaijiejian
               echo "alias $kuaijiejian='~/kejilion.sh'" >> ~/.bashrc
               source ~/.bashrc
@@ -5009,19 +5003,19 @@ case $choice in
 
           2)
               clear
-              send_stats “设置你的登录密码”
+              send_stats "设置你的登录密码"
               echo "设置你的登录密码"
               passwd
               ;;
           3)
               root_use
-              send_stats “root密码模式”
+              send_stats "root密码模式"
               add_sshpasswd
               ;;
 
           4)
             root_use
-            send_stats “py版本管理”
+            send_stats "py版本管理"
             VERSION=$(python3 -V 2>&1 | awk '{print $2}')
             echo -e "当前python版本号: ${huang}$VERSION${bai}"
             echo "------------"
@@ -5092,7 +5086,7 @@ EOF
 
           5)
               root_use
-              send_stats “开放端口”
+              send_stats "开放端口"
               iptables_open
               remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
               echo "端口已全部开放"
@@ -5100,7 +5094,7 @@ EOF
               ;;
           6)
               root_use
-              send_stats “修改SSH端口”
+              send_stats "修改SSH端口"
               # 去掉 #Port 的注释
               sed -i 's/#Port/Port/' /etc/ssh/sshd_config
 
@@ -5122,7 +5116,7 @@ EOF
 
           7)
             root_use
-            send_stats “优化DNS”
+            send_stats "优化DNS"
             echo "当前DNS地址"
             echo "------------------------"
             cat /etc/resolv.conf
@@ -5172,7 +5166,7 @@ EOF
               ;;
           9)
             root_use
-            send_stats “新用户禁用root”
+            send_stats "新用户禁用root"
             # 提示用户输入新用户名
             read -p "请输入新用户名: " new_username
 
@@ -5192,7 +5186,7 @@ EOF
 
           10)
             root_use
-            send_stats “设置v4/v6优先级”
+            send_stats "设置v4/v6优先级"
             ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
             echo ""
@@ -5235,7 +5229,7 @@ EOF
 
 
             root_use
-            send_stats “设置虚拟内存”
+            send_stats "设置虚拟内存"
             # 获取当前交换空间信息
             swap_used=$(free -m | awk 'NR==3{print $3}')
             swap_total=$(free -m | awk 'NR==3{print $2}')
@@ -5271,7 +5265,7 @@ EOF
           13)
               while true; do
                 root_use
-                send_stats “用户管理”
+                send_stats "用户管理"
                 # 显示所有用户、用户权限、用户组和是否在sudoers中
                 echo "用户列表"
                 echo "----------------------------------------------------------------------------"
@@ -5352,7 +5346,7 @@ EOF
 
           14)
             clear
-            send_stats “用户信息生成器”
+            send_stats "用户信息生成器"
             echo "随机用户名"
             echo "------------------------"
             for i in {1..5}; do
@@ -5403,7 +5397,7 @@ EOF
 
           15)
             root_use
-            send_stats “换时区”
+            send_stats "换时区"
             while true; do
 
                 echo "系统时间信息"
@@ -5473,7 +5467,7 @@ EOF
 
           17)
           root_use
-          send_stats “高级防火墙管理”
+          send_stats "高级防火墙管理"
           if dpkg -l | grep -q iptables-persistent; then
             while true; do
                   echo "防火墙已安装"
@@ -5641,7 +5635,7 @@ EOF
 
           18)
           root_use
-          send_stats “修改主机名”
+          send_stats "修改主机名"
           current_hostname=$(hostname)
           echo "当前主机名: $current_hostname"
           read -p "是否要更改主机名？(y/n): " answer
@@ -5671,7 +5665,7 @@ EOF
 
           19)
           root_use
-          send_stats “换系统更新源”
+          send_stats "换系统更新源"
           # 获取系统信息
           source /etc/os-release
 
@@ -5876,7 +5870,7 @@ EOF
               ;;
 
           20)
-          send_stats “定时任务管理”
+          send_stats "定时任务管理"
               while true; do
                   clear
                   echo "定时任务列表"
@@ -5942,7 +5936,7 @@ EOF
 
           21)
               root_use
-              send_stats “本地host解析”
+              send_stats "本地host解析"
               while true; do
                   echo "本机host解析列表"
                   echo "如果你在这里添加解析匹配，将不再使用动态解析了"
@@ -5979,7 +5973,7 @@ EOF
 
           22)
             root_use
-            send_stats “ssh防御”
+            send_stats "ssh防御"
             if docker inspect fail2ban &>/dev/null ; then
                 while true; do
                     clear
@@ -6074,7 +6068,7 @@ EOF
 
           23)
             root_use
-            send_stats “限流关机功能”
+            send_stats "限流关机功能"
             echo "当前流量使用情况，重启服务器流量计算会清零！"
             output_status
             echo "$output"
@@ -6128,7 +6122,7 @@ EOF
 
           24)
               root_use
-              send_stats “私钥登录”
+              send_stats "私钥登录"
               echo "ROOT私钥登录模式"
               echo "------------------------------------------------"
               echo "将会生成密钥对，更安全的方式SSH登录"
@@ -6151,7 +6145,7 @@ EOF
 
           25)
               root_use
-              send_stats “电报预警”
+              send_stats "电报预警"
               echo "TG-bot监控预警功能"
               echo "------------------------------------------------"
               echo "您需要配置tg机器人API和接收预警的用户ID，即可实现本机CPU，内存，硬盘，流量，SSH登录的实时监控预警"
@@ -6204,7 +6198,7 @@ EOF
 
           26)
               root_use
-              send_stats “修复SSH高危漏洞”
+              send_stats "修复SSH高危漏洞"
               cd ~
               install wget
               curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/upgrade_openssh9.8p1.sh
@@ -6215,7 +6209,7 @@ EOF
 
           31)
             clear
-            send_stats “留言板”
+            send_stats "留言板"
             install sshpass
 
             remote_ip="66.42.61.110"
@@ -6255,7 +6249,7 @@ EOF
           66)
 
               root_use
-              send_stats “一条龙调优”
+              send_stats "一条龙调优"
               echo "一条龙系统调优"
               echo "------------------------------------------------"
               echo "将对以下内容进行操作与优化"
@@ -6331,7 +6325,7 @@ EOF
 
           99)
               clear
-              send_stats “重启系统”
+              send_stats "重启系统"
               server_reboot
               ;;
           0)
@@ -6349,7 +6343,7 @@ EOF
 
   14)
     clear
-    send_stats “集群控制”
+    send_stats "集群控制"
     while true; do
       clear
       echo "▶ VPS集群控制"
@@ -6528,7 +6522,7 @@ EOF
     ;;
 
   p)
-    send_stats “幻兽帕鲁开服脚本”
+    send_stats "幻兽帕鲁开服脚本"
     cd ~
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
     exit
@@ -6536,7 +6530,7 @@ EOF
 
 
   00)
-    send_stats “脚本更新”
+    send_stats "脚本更新"
     cd ~
     clear
     echo "更新日志"
@@ -6598,12 +6592,12 @@ else
     case $1 in
         install|add|安装)
             shift
-            send_stats “安装软件”
+            send_stats "安装软件"
             install "$@"
             ;;
         remove|del|uninstall|卸载)
             shift
-            send_stats “卸载软件”
+            send_stats "卸载软件"
             remove "$@"
             ;;
         update|更新)
@@ -6620,22 +6614,22 @@ else
             ;;
         status|状态)
             shift
-            send_stats “软件状态查看”
+            send_stats "软件状态查看"
             status "$@"
             ;;
         start|启动)
             shift
-            send_stats “软件启动”
+            send_stats "软件启动"
             start "$@"
             ;;
         stop|停止)
             shift
-            send_stats “软件暂停”
+            send_stats "软件暂停"
             stop "$@"
             ;;
         restart|重启)
             shift
-            send_stats “软件重启”
+            send_stats "软件重启"
             restart "$@"
             ;;
         *)
