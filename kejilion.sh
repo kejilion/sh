@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.7"
+sh_v="2.6.8"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -12,6 +12,17 @@ hui='\e[37m'
 
 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
+
+
+# 收集用户行为函数，只记录时间和使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
+# 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求。
+# 全文可搜搜 send_stats 函数调用位置。
+
+send_stats() {
+    curl -s -X POST "https://api.kejilion.pro/api/log" \
+         -H "Content-Type: application/json" \
+         -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" &>/dev/null &
+}
 
 
 
@@ -598,7 +609,7 @@ fi
 }
 
 docker_app() {
-
+send_stats “搭建$docker_name”
 has_ipv4_has_ipv6
 if docker inspect "$docker_name" &>/dev/null; then
     clear
@@ -876,6 +887,7 @@ nginx_web_on() {
 
 
 install_panel() {
+            send_stats “搭建$panelname ”
             if $lujing ; then
                 clear
                 echo "$panelname 已安装，应用操作"
@@ -1141,6 +1153,7 @@ clear
 
 
 dd_xitong() {
+        send_stats “重装系统”
         dd_xitong_1() {
           echo -e "重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}LeitboGi0ro${bai}  初始端口: ${huang}22${bai}"
           echo -e "按任意键继续..."
@@ -1354,6 +1367,7 @@ dd_xitong() {
 
 bbrv3() {
           root_use
+          send_stats “bbrv3管理”
           if dpkg -l | grep -q 'linux-xanmod'; then
             while true; do
 
@@ -1522,6 +1536,7 @@ read -p "请输入你的选择: " choice
 case $choice in
   1)
     clear
+    send_stats "系统信息查询"
     # 函数: 获取IPv4和IPv6地址
     ip_address
 
@@ -1630,17 +1645,20 @@ case $choice in
 
   2)
     clear
+    send_stats "系统更新"
     linux_update
     ;;
 
   3)
     clear
+    send_stats "系统清理"
     linux_clean
     ;;
 
   4)
   while true; do
       clear
+      send_stats "常用工具"
       echo "▶ 安装常用工具"
       echo "------------------------"
       echo "1. curl 下载工具"
@@ -1845,6 +1863,7 @@ case $choice in
 
   5)
     clear
+    send_stats "bbr管理"
     if [ -f "/etc/alpine-release" ]; then
         while true; do
               clear
@@ -1894,6 +1913,7 @@ case $choice in
   6)
     while true; do
       clear
+      send_stats "docker管理"
       echo "▶ Docker管理器"
       echo "------------------------"
       echo "1. 安装更新Docker环境"
@@ -2284,6 +2304,7 @@ case $choice in
 
   7)
     clear
+    send_stats "warp管理"
     install wget
     wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh [option] [lisence/url/token]
     ;;
@@ -2291,6 +2312,7 @@ case $choice in
   8)
     while true; do
       clear
+      send_stats "测试脚本合集"
       echo "▶ 测试脚本合集"
       echo ""
       echo "----IP及解锁状态检测-----------"
@@ -2434,6 +2456,7 @@ case $choice in
   9)
      while true; do
       clear
+      send_stats "甲骨文云脚本合集"
       echo "▶ 甲骨文云脚本合集"
       echo "------------------------"
       echo "1. 安装闲置机器活跃脚本"
@@ -2545,6 +2568,7 @@ case $choice in
 
   while true; do
     clear
+    send_stats "LDNMP建站"
     echo -e "${huang}▶ LDNMP建站${bai}"
     echo  "------------------------"
     echo  "1. 安装LDNMP环境"
@@ -2584,6 +2608,7 @@ case $choice in
 
     case $sub_choice in
       1)
+      send_stats "安装LDNMP环境"
       root_use
       ldnmp_install_status_one
       check_port
@@ -2615,6 +2640,8 @@ case $choice in
       clear
       # wordpress
       webname="WordPress"
+      send_stats "安装$webname"
+
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2647,6 +2674,7 @@ case $choice in
       clear
       # Discuz论坛
       webname="Discuz论坛"
+      send_stats "安装$webname"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2680,6 +2708,7 @@ case $choice in
       clear
       # 可道云桌面
       webname="可道云桌面"
+      send_stats "安装$webname"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2710,6 +2739,7 @@ case $choice in
       clear
       # 苹果CMS
       webname="苹果CMS"
+      send_stats "安装$webname"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2749,6 +2779,7 @@ case $choice in
       clear
       # 独脚数卡
       webname="独脚数卡"
+      send_stats "安装$webname"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2793,6 +2824,7 @@ case $choice in
       clear
       # flarum论坛
       webname="flarum论坛"
+      send_stats "安装$webname"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2831,6 +2863,7 @@ case $choice in
       clear
       # typecho
       webname="typecho"
+      send_stats "安装$webname"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2862,6 +2895,7 @@ case $choice in
       20)
       clear
       webname="PHP动态站点"
+      send_stats "安装$webname"
       ldnmp_install_status
       add_yuming
       install_ssltls
@@ -2982,6 +3016,7 @@ case $choice in
 
 
       21)
+      send_stats "安装nginx环境"
       root_use
       check_port
       install_dependency
@@ -3008,6 +3043,7 @@ case $choice in
       22)
       clear
       webname="站点重定向"
+      send_stats "安装$webname"
       nginx_install_status
       ip_address
       add_yuming
@@ -3029,6 +3065,7 @@ case $choice in
       23)
       clear
       webname="反向代理-IP+端口"
+      send_stats "安装$webname"
       nginx_install_status
       ip_address
       add_yuming
@@ -3051,6 +3088,7 @@ case $choice in
       24)
       clear
       webname="反向代理-域名"
+      send_stats "安装$webname"
       nginx_install_status
       ip_address
       add_yuming
@@ -3073,6 +3111,7 @@ case $choice in
       25)
       clear
       webname="静态站点"
+      send_stats "安装$webname"
       nginx_install_status
       add_yuming
       install_ssltls
@@ -3119,6 +3158,7 @@ case $choice in
       26)
       clear
       webname="Bitwarden"
+      send_stats "安装$webname"
       nginx_install_status
       add_yuming
       install_ssltls
@@ -3139,6 +3179,7 @@ case $choice in
       27)
       clear
       webname="halo"
+      send_stats "安装$webname"
       nginx_install_status
       add_yuming
       install_ssltls
@@ -3157,6 +3198,7 @@ case $choice in
     root_use
     while true; do
         clear
+        send_stats "LDNMP环境"
         echo "LDNMP环境"
         echo "------------------------"
         ldnmp_v
@@ -3281,6 +3323,7 @@ case $choice in
 
     32)
       clear
+      send_stats "LDNMP环境备份"
       cd /home/ && tar czvf web_$(date +"%Y%m%d%H%M%S").tar.gz web
 
       while true; do
@@ -3350,6 +3393,7 @@ case $choice in
 
     34)
       root_use
+      send_stats "LDNMP环境还原"
       echo "请确认home目录中已经放置网站备份的gz压缩包，按任意键继续……"
       read -n 1 -s -r -p ""
       echo "开始解压……"
@@ -3364,7 +3408,7 @@ case $choice in
       ;;
 
     35)
-
+        send_stats "LDNMP环境防御"
         if docker inspect fail2ban &>/dev/null ; then
           while true; do
               clear
@@ -3570,6 +3614,7 @@ case $choice in
     36)
           while true; do
               clear
+              send_stats "优化LDNMP环境"
               echo "优化LDNMP环境"
               echo "------------------------"
               echo "1. 标准模式              2. 高性能模式 (推荐2H2G以上)"
@@ -3652,6 +3697,7 @@ case $choice in
 
     37)
       root_use
+      send_stats "更新LDNMP环境"
       docker rm -f nginx php php74 mysql redis
       docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine
 
@@ -3665,6 +3711,7 @@ case $choice in
 
     38)
         root_use
+        send_stats "卸载LDNMP环境"
         read -p "$(echo -e "${hong}强烈建议先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ${bai}")" choice
         case "$choice" in
           [Yy])
@@ -3697,6 +3744,7 @@ case $choice in
   11)
     while true; do
       clear
+      send_stats "面板工具"
       echo "▶ 面板工具"
       echo "------------------------"
       echo "1. 宝塔面板官方版                       2. aaPanel宝塔国际版"
@@ -3900,6 +3948,7 @@ case $choice in
               ;;
 
           9)
+            send_stats "搭建邮局"
             if docker inspect mailserver &>/dev/null; then
 
                     clear
@@ -4030,7 +4079,7 @@ case $choice in
               ;;
 
           10)
-
+            send_stats "搭建聊天"
             has_ipv4_has_ipv6
 
             if docker inspect rocketchat &>/dev/null; then
@@ -4178,6 +4227,7 @@ case $choice in
 
               ;;
           13)
+            send_stats "搭建网盘"
             has_ipv4_has_ipv6
 
             if docker inspect cloudreve &>/dev/null; then
@@ -4384,7 +4434,7 @@ case $choice in
               ;;
 
           19)
-
+            send_stats "搭建雷池"
             if docker inspect safeline-tengine &>/dev/null; then
 
                     clear
@@ -4775,6 +4825,7 @@ case $choice in
   12)
     while true; do
       clear
+      send_stats “我的工作区”
       echo "▶ 我的工作区"
       echo "系统将为你提供可以后台常驻运行的工作区，你可以用来执行长时间的任务"
       echo "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
@@ -4913,6 +4964,7 @@ case $choice in
   13)
     while true; do
       clear
+      send_stats “系统工具”
       echo "▶ 系统工具"
       echo "------------------------"
       echo "1. 设置脚本启动快捷键                  2. 修改登录密码"
@@ -4942,6 +4994,7 @@ case $choice in
       case $sub_choice in
           1)
               clear
+              send_stats “设置脚本快捷键”
               read -p "请输入你的快捷按键: " kuaijiejian
               echo "alias $kuaijiejian='~/kejilion.sh'" >> ~/.bashrc
               source ~/.bashrc
@@ -4950,16 +5003,19 @@ case $choice in
 
           2)
               clear
+              send_stats “设置你的登录密码”
               echo "设置你的登录密码"
               passwd
               ;;
           3)
               root_use
+              send_stats “root密码模式”
               add_sshpasswd
               ;;
 
           4)
             root_use
+            send_stats “py版本管理”
             VERSION=$(python3 -V 2>&1 | awk '{print $2}')
             echo -e "当前python版本号: ${huang}$VERSION${bai}"
             echo "------------"
@@ -5030,6 +5086,7 @@ EOF
 
           5)
               root_use
+              send_stats “开放端口”
               iptables_open
               remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
               echo "端口已全部开放"
@@ -5037,7 +5094,7 @@ EOF
               ;;
           6)
               root_use
-
+              send_stats “修改SSH端口”
               # 去掉 #Port 的注释
               sed -i 's/#Port/Port/' /etc/ssh/sshd_config
 
@@ -5059,6 +5116,7 @@ EOF
 
           7)
             root_use
+            send_stats “优化DNS”
             echo "当前DNS地址"
             echo "------------------------"
             cat /etc/resolv.conf
@@ -5103,11 +5161,12 @@ EOF
               ;;
 
           8)
+
             dd_xitong
               ;;
           9)
             root_use
-
+            send_stats “新用户禁用root”
             # 提示用户输入新用户名
             read -p "请输入新用户名: " new_username
 
@@ -5127,6 +5186,7 @@ EOF
 
           10)
             root_use
+            send_stats “设置v4/v6优先级”
             ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
             echo ""
@@ -5169,6 +5229,7 @@ EOF
 
 
             root_use
+            send_stats “设置虚拟内存”
             # 获取当前交换空间信息
             swap_used=$(free -m | awk 'NR==3{print $3}')
             swap_total=$(free -m | awk 'NR==3{print $2}')
@@ -5204,7 +5265,7 @@ EOF
           13)
               while true; do
                 root_use
-
+                send_stats “用户管理”
                 # 显示所有用户、用户权限、用户组和是否在sudoers中
                 echo "用户列表"
                 echo "----------------------------------------------------------------------------"
@@ -5285,7 +5346,7 @@ EOF
 
           14)
             clear
-
+            send_stats “用户信息生成器”
             echo "随机用户名"
             echo "------------------------"
             for i in {1..5}; do
@@ -5336,6 +5397,7 @@ EOF
 
           15)
             root_use
+            send_stats “换时区”
             while true; do
 
                 echo "系统时间信息"
@@ -5399,11 +5461,13 @@ EOF
               ;;
 
           16)
+
             bbrv3
               ;;
 
           17)
           root_use
+          send_stats “高级防火墙管理”
           if dpkg -l | grep -q iptables-persistent; then
             while true; do
                   echo "防火墙已安装"
@@ -5571,6 +5635,7 @@ EOF
 
           18)
           root_use
+          send_stats “修改主机名”
           current_hostname=$(hostname)
           echo "当前主机名: $current_hostname"
           read -p "是否要更改主机名？(y/n): " answer
@@ -5600,6 +5665,7 @@ EOF
 
           19)
           root_use
+          send_stats “换系统更新源”
           # 获取系统信息
           source /etc/os-release
 
@@ -5804,7 +5870,7 @@ EOF
               ;;
 
           20)
-
+          send_stats “定时任务管理”
               while true; do
                   clear
                   echo "定时任务列表"
@@ -5870,6 +5936,7 @@ EOF
 
           21)
               root_use
+              send_stats “本地host解析”
               while true; do
                   echo "本机host解析列表"
                   echo "如果你在这里添加解析匹配，将不再使用动态解析了"
@@ -5906,6 +5973,7 @@ EOF
 
           22)
             root_use
+            send_stats “ssh防御”
             if docker inspect fail2ban &>/dev/null ; then
                 while true; do
                     clear
@@ -6000,6 +6068,7 @@ EOF
 
           23)
             root_use
+            send_stats “限流关机功能”
             echo "当前流量使用情况，重启服务器流量计算会清零！"
             output_status
             echo "$output"
@@ -6053,6 +6122,7 @@ EOF
 
           24)
               root_use
+              send_stats “私钥登录”
               echo "ROOT私钥登录模式"
               echo "------------------------------------------------"
               echo "将会生成密钥对，更安全的方式SSH登录"
@@ -6075,6 +6145,7 @@ EOF
 
           25)
               root_use
+              send_stats “电报预警”
               echo "TG-bot监控预警功能"
               echo "------------------------------------------------"
               echo "您需要配置tg机器人API和接收预警的用户ID，即可实现本机CPU，内存，硬盘，流量，SSH登录的实时监控预警"
@@ -6127,6 +6198,7 @@ EOF
 
           26)
               root_use
+              send_stats “修复SSH高危漏洞”
               cd ~
               install wget
               curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/upgrade_openssh9.8p1.sh
@@ -6137,6 +6209,7 @@ EOF
 
           31)
             clear
+            send_stats “留言板”
             install sshpass
 
             remote_ip="66.42.61.110"
@@ -6176,6 +6249,7 @@ EOF
           66)
 
               root_use
+              send_stats “一条龙调优”
               echo "一条龙系统调优"
               echo "------------------------------------------------"
               echo "将对以下内容进行操作与优化"
@@ -6251,6 +6325,7 @@ EOF
 
           99)
               clear
+              send_stats “重启系统”
               server_reboot
               ;;
           0)
@@ -6268,6 +6343,7 @@ EOF
 
   14)
     clear
+    send_stats “集群控制”
     while true; do
       clear
       echo "▶ VPS集群控制"
@@ -6446,6 +6522,7 @@ EOF
     ;;
 
   p)
+    send_stats “幻兽帕鲁开服脚本”
     cd ~
     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
     exit
@@ -6453,6 +6530,7 @@ EOF
 
 
   00)
+    send_stats “脚本更新”
     cd ~
     clear
     echo "更新日志"
@@ -6514,10 +6592,12 @@ else
     case $1 in
         install|add|安装)
             shift
+            send_stats “安装软件”
             install "$@"
             ;;
         remove|del|uninstall|卸载)
             shift
+            send_stats “卸载软件”
             remove "$@"
             ;;
         update|更新)
@@ -6534,18 +6614,22 @@ else
             ;;
         status|状态)
             shift
+            send_stats “软件状态查看”
             status "$@"
             ;;
         start|启动)
             shift
+            send_stats “软件启动”
             start "$@"
             ;;
         stop|停止)
             shift
+            send_stats “软件暂停”
             stop "$@"
             ;;
         restart|重启)
             shift
+            send_stats “软件重启”
             restart "$@"
             ;;
         *)
