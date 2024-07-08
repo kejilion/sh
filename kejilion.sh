@@ -15,7 +15,7 @@ cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
 
 # 收集功能埋点信息的函数，记录时间，系统发行版，国家和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
-# 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求。
+# 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求的功能。
 # 全文可搜搜 send_stats 函数调用位置，透明开源，如有顾虑可拒绝使用。
 
 # send_stats() {
@@ -1507,6 +1507,50 @@ EOF
 
 
 }
+
+
+yinsiyuanquan() {
+# 文件列表
+files=(/usr/local/bin/k)
+
+# 标志变量，表示是否找到关键字
+found=false
+
+# 遍历文件列表
+for file in "${files[@]}"; do
+    if grep -q 'send_stats "' "$file"; then
+        found=true
+        break
+    fi
+done
+
+
+}
+
+
+yinsiyuanquan1() {
+# 根据标志变量的值显示相应的消息
+if $found; then
+    status_message="${lv}正在采集数据${bai}"
+else
+    status_message="${hui}采集已关闭${bai}"
+fi
+
+
+}
+
+
+
+yinsiyuanquan2() {
+# 根据标志变量的值显示相应的消息
+if $found; then
+    :
+else
+    sed -i '/send_stats "/d' /usr/local/bin/k
+fi
+
+}
+
 
 
 
@@ -4994,7 +5038,7 @@ case $choice in
       echo "------------------------"
       echo "31. 留言板                             66. 一条龙系统调优"
       echo "------------------------"
-      echo "99. 重启服务器"
+      echo "99. 重启服务器                         100. 隐私与安全"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -6337,6 +6381,44 @@ EOF
               send_stats "重启系统"
               server_reboot
               ;;
+          100)
+
+              root_use              
+              send_stats "隐私与安全"
+
+              yinsiyuanquan  
+              yinsiyuanquan1            
+              echo "隐私与安全"
+              echo "脚本将收集用户使用功能的数据，优化脚本体验，制作更多好玩好用的功能"
+              echo "将收集使用功能的时间，系统版本，国家和使用的功能的名称，不会涉及敏感数据，放心使用！"
+              echo "------------------------------------------------"
+              echo -e "当前状态: $status_message"
+              echo "--------------------"  
+              echo "1. 开启采集"
+              echo "2. 关闭采集"              
+              echo "--------------------"  
+              echo "0. 返回上一级"                  
+              read -p "请输入你的选择: " sub_choice
+              case $sub_choice in
+                  1)
+                      cd ~
+                      cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+                      echo "已开启采集"  
+                      ;;
+                  2)
+                      cd ~
+                      sed -i '/send_stats "/d' /usr/local/bin/k
+                      echo "已关闭采集" 
+                      ;;
+                  0)
+                      break
+                      ;;
+                  *)
+                      echo "无效的选择，请重新输入。"
+                      ;;
+              esac
+
+              ;;
           0)
               kejilion
 
@@ -6562,6 +6644,9 @@ EOF
                 clear
                 curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
                 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+
+                yinsiyuanquan
+                yinsiyuanquan2
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
                 break_end
                 kejilion
