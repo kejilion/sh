@@ -14,14 +14,26 @@ cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
 
 
-# 收集功能埋点信息的函数，只记录时间和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
+# 收集功能埋点信息的函数，记录时间，系统发行版，国家和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
 # 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求。
-# 全文可搜搜 send_stats 函数调用位置。
+# 全文可搜搜 send_stats 函数调用位置，透明开源，如有顾虑可拒绝使用。
 
-send_stats() {
+# send_stats() {
+#     isp_info=$(curl -s ipinfo.io/org)    
+#     country=$(curl -s ipinfo.io/country)
+#     os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
+#     curl -s -X POST "https://api.kejilion.pro/api/log" \
+#          -H "Content-Type: application/json" \
+#          -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" &>/dev/null &
+# }
+
+
+send_stats() {   
+    country=$(curl -s ipinfo.io/country)
+    os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')    
     curl -s -X POST "https://api.kejilion.pro/api/log" \
          -H "Content-Type: application/json" \
-         -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" &>/dev/null &
+         -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\"}" &>/dev/null &
 }
 
 
@@ -1572,21 +1584,7 @@ case $choice in
     queue_algorithm=$(sysctl -n net.core.default_qdisc)
 
     # 尝试使用 lsb_release 获取系统信息
-    os_info=$(lsb_release -ds 2>/dev/null)
-
-    # 如果 lsb_release 命令失败，则尝试其他方法
-    if [ -z "$os_info" ]; then
-      # 检查常见的发行文件
-      if [ -f "/etc/os-release" ]; then
-        os_info=$(source /etc/os-release && echo "$PRETTY_NAME")
-      elif [ -f "/etc/debian_version" ]; then
-        os_info="Debian $(cat /etc/debian_version)"
-      elif [ -f "/etc/redhat-release" ]; then
-        os_info=$(cat /etc/redhat-release)
-      else
-        os_info="Unknown"
-      fi
-    fi
+    os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
 
     output_status
 
@@ -1942,11 +1940,13 @@ case $choice in
       case $sub_choice in
           1)
             clear
+            send_stats "安装docker环境"
             install_add_docker
 
               ;;
           2)
               clear
+              send_stats "docker全局状态"
               echo "Docker版本"
               docker -v
               docker compose version
@@ -1969,6 +1969,7 @@ case $choice in
           3)
               while true; do
                   clear
+                  send_stats "Docker容器管理"
                   echo "Docker容器列表"
                   docker ps -a
                   echo ""
@@ -2078,6 +2079,7 @@ case $choice in
           4)
               while true; do
                   clear
+                  send_stats "Docker镜像管理"
                   echo "Docker镜像列表"
                   docker image ls
                   echo ""
@@ -2131,6 +2133,7 @@ case $choice in
           5)
               while true; do
                   clear
+                  send_stats "Docker网络管理"
                   echo "Docker网络列表"
                   echo "------------------------------------------------------------"
                   docker network ls
@@ -2202,6 +2205,7 @@ case $choice in
           6)
               while true; do
                   clear
+                  send_stats "Docker卷管理"
                   echo "Docker卷列表"
                   docker volume ls
                   echo ""
@@ -2237,6 +2241,7 @@ case $choice in
               ;;
           7)
               clear
+              send_stats "Docker清理"              
               read -p "$(echo -e "${huang}确定清理无用的镜像容器网络吗？(Y/N): ${bai}")" choice
               case "$choice" in
                 [Yy])
@@ -2251,6 +2256,7 @@ case $choice in
               ;;
           8)
               clear
+              send_stats "Docker源" 
               bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
               ;;
 
@@ -2263,16 +2269,19 @@ case $choice in
 
           11)
               clear
+              send_stats "Docker v6 开" 
               docker_ipv6_on
               ;;
 
           12)
               clear
+              send_stats "Docker v6 关" 
               docker_ipv6_off
               ;;
 
           20)
               clear
+              send_stats "Docker卸载"   
               read -p "$(echo -e "${hong}确定卸载docker环境吗？(Y/N): ${bai}")" choice
               case "$choice" in
                 [Yy])
