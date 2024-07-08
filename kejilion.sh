@@ -3198,7 +3198,7 @@ case $choice in
     root_use
     while true; do
         clear
-        send_stats "LDNMP环境"
+        send_stats "LDNMP站点管理"
         echo "LDNMP环境"
         echo "------------------------"
         ldnmp_v
