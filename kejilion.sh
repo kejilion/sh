@@ -1942,11 +1942,13 @@ case $choice in
       case $sub_choice in
           1)
             clear
+            send_stats "安装docker环境"
             install_add_docker
 
               ;;
           2)
               clear
+              send_stats "docker全局状态"
               echo "Docker版本"
               docker -v
               docker compose version
@@ -1969,6 +1971,7 @@ case $choice in
           3)
               while true; do
                   clear
+                  send_stats "docker容器管理"
                   echo "Docker容器列表"
                   docker ps -a
                   echo ""
@@ -2078,6 +2081,7 @@ case $choice in
           4)
               while true; do
                   clear
+                  send_stats "Docker镜像管理"
                   echo "Docker镜像列表"
                   docker image ls
                   echo ""
@@ -2131,6 +2135,7 @@ case $choice in
           5)
               while true; do
                   clear
+                  send_stats "Docker网络管理"
                   echo "Docker网络列表"
                   echo "------------------------------------------------------------"
                   docker network ls
@@ -2202,6 +2207,7 @@ case $choice in
           6)
               while true; do
                   clear
+                  send_stats "Docker卷管理"
                   echo "Docker卷列表"
                   docker volume ls
                   echo ""
