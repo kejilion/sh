@@ -6128,6 +6128,7 @@ EOF
           26)
               root_use
               cd ~
+              install wget
               curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/upgrade_openssh9.8p1.sh
               chmod +x ~/upgrade_openssh9.8p1.sh
               ~/upgrade_openssh9.8p1.sh
@@ -6548,7 +6549,18 @@ else
             restart "$@"
             ;;
         *)
-            echo "无效参数"
+            echo "无效参数，以下是k命令参考用例："
+            echo "启动脚本            k"
+            echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
+            echo "卸载软件包          k remove nano wget | k del nano wget | k uninstall nano wget | k 卸载 nano wget"
+            echo "更新系统            k update | k 更新"
+            echo "清理系统垃圾        k clean | k 清理"
+            echo "打开重装系统面板    k dd | k 重装"
+            echo "打开bbr3控制面板    k bbr3 | k bbrv3"
+            echo "软件启动            k start sshd | k 启动 sshd "
+            echo "软件停止            k stop sshd | k 停止 sshd "
+            echo "软件重启            k restart sshd | k 重启 sshd "
+            echo "软件状态查看        k status sshd | k 状态 sshd "
             ;;
     esac
 fi
