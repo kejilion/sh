@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.9"
+sh_v="2.6.10"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -10,6 +10,23 @@ hong='\033[31m'
 kjlan='\033[96m'
 hui='\e[37m'
 
+
+
+
+
+
+permission_granted="false"
+
+
+CheckFirstRun_true() {
+    # 如果未同意许可条款，则提示用户并获取许可
+    if grep -q '^permission_granted="true"' /usr/local/bin/k; then
+        sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
+        sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k  
+    fi
+}
+
+CheckFirstRun_true
 
 
 # 收集功能埋点信息的函数，记录当前脚本版本号，使用时间，系统版本，国家和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
@@ -70,8 +87,8 @@ yinsiyuanquan2() {
 if [ "$VAR_VALUE" == "true" ]; then
     :
 elif [ "$VAR_VALUE" == "false" ]; then
+    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ./kejilion.sh
     sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' /usr/local/bin/k
-    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ~/kejilion.sh
 else
     :
 fi
@@ -83,6 +100,41 @@ fi
 yinsiyuanquan
 yinsiyuanquan2
 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+
+
+
+
+CheckFirstRun_false() {
+    # 如果未同意许可条款，则提示用户并获取许可
+    if grep -q '^permission_granted="false"' /usr/local/bin/k; then
+        UserLicenseAgreement
+    fi
+}
+
+# 提示用户同意条款
+UserLicenseAgreement() {
+    clear
+    echo -e "${kjlan}欢迎使用科技lion脚本工具箱"
+    echo -e "首次使用脚本，请先阅读并同意用户许可协议:${bai}"
+    echo "用户许可协议: https://blog.kejilion.pro/user-license-agreement/"
+    echo -e "----------------------"
+    read -r -p "是否同意以上条款？(y/n): " user_input
+
+
+    # 判断用户输入并更新许可状态
+    if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
+        send_stats "许可同意"
+        sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
+        sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
+    else
+        send_stats "许可拒绝"
+        echo "您未同意条款，脚本退出。"
+        exit 1
+    fi
+}
+
+CheckFirstRun_false
+
 
 
 
