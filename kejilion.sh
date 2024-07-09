@@ -10,8 +10,6 @@ hong='\033[31m'
 kjlan='\033[96m'
 hui='\e[37m'
 
-cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
-
 
 
 # 收集功能埋点信息的函数，记录当前脚本版本号，使用时间，系统版本，国家和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
@@ -35,6 +33,57 @@ send_stats() {
          -H "Content-Type: application/json" \
          -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"version\":\"$sh_v\"}" &>/dev/null &
 }
+
+
+
+
+
+yinsiyuanquan() {
+FILE_PATH="/usr/local/bin/k"
+VAR_NAME="ENABLE_STATS"
+
+# 从文件中读取变量值
+VAR_VALUE=$(grep "^$VAR_NAME=" "$FILE_PATH" | cut -d '=' -f2)
+
+# 去掉可能存在的引号
+VAR_VALUE=$(echo $VAR_VALUE | tr -d '"')
+
+}
+
+
+yinsiyuanquan1() {
+
+if [ "$VAR_VALUE" == "true" ]; then
+    status_message="${lv}正在采集数据${bai}"
+elif [ "$VAR_VALUE" == "false" ]; then
+    status_message="${hui}采集已关闭${bai}"
+else
+    status_message="无法确定 $VAR_NAME 的状态"
+fi
+
+}
+
+
+
+yinsiyuanquan2() {
+
+if [ "$VAR_VALUE" == "true" ]; then
+    :
+elif [ "$VAR_VALUE" == "false" ]; then
+    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' /usr/local/bin/k
+    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ~/kejilion.sh
+else
+    :
+fi
+
+}
+
+
+
+yinsiyuanquan
+yinsiyuanquan2
+cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+
 
 
 
@@ -1508,46 +1557,6 @@ EOF
 
 }
 
-
-yinsiyuanquan() {
-FILE_PATH="/usr/local/bin/k"
-VAR_NAME="ENABLE_STATS"
-
-# 从文件中读取变量值
-VAR_VALUE=$(grep "^$VAR_NAME=" "$FILE_PATH" | cut -d '=' -f2)
-
-# 去掉可能存在的引号
-VAR_VALUE=$(echo $VAR_VALUE | tr -d '"')
-
-}
-
-
-yinsiyuanquan1() {
-
-if [ "$VAR_VALUE" == "true" ]; then
-    status_message="${lv}正在采集数据${bai}"
-elif [ "$VAR_VALUE" == "false" ]; then
-    status_message="${hui}采集已关闭${bai}"
-else
-    status_message="无法确定 $VAR_NAME 的状态"
-fi
-
-}
-
-
-
-yinsiyuanquan2() {
-
-if [ "$VAR_VALUE" == "true" ]; then
-    :
-elif [ "$VAR_VALUE" == "false" ]; then
-    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' /usr/local/bin/k
-    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ~/kejilion.sh
-else
-    :
-fi
-
-}
 
 
 
