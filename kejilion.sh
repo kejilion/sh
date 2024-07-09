@@ -23,9 +23,8 @@ send_stats() {
     os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
     curl -s -X POST "https://api.kejilion.pro/api/log" \
          -H "Content-Type: application/json" \
-         -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\"}" &>/dev/null &
+         -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"version\":\"$sh_v\"}" &>/dev/null &
 }
-
 
 
 ip_address() {
@@ -6257,7 +6256,6 @@ EOF
               root_use
               send_stats "修复SSH高危漏洞"
               cd ~
-              install wget
               curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/upgrade_openssh9.8p1.sh
               chmod +x ~/upgrade_openssh9.8p1.sh
               ~/upgrade_openssh9.8p1.sh
