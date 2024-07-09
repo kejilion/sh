@@ -5101,6 +5101,8 @@ case $choice in
       echo "------------------------"
       echo "99. 重启服务器                         100. 隐私与安全"
       echo "------------------------"
+      echo "101. 卸载科技lion脚本"
+      echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
@@ -6484,6 +6486,34 @@ EOF
               esac
             done
               ;;
+
+          101)
+              clear
+              send_stats "卸载科技lion脚本"
+              echo "卸载科技lion脚本"
+              echo "------------------------------------------------"
+              echo "将彻底卸载kejilion脚本，不影响你其他功能"
+              read -p "确定继续吗？(Y/N): " choice
+
+              case "$choice" in
+                [Yy])
+                  clear
+                  rm -f /usr/local/bin/k
+                  rm ~/kejilion.sh
+                  echo "脚本已卸载"
+                  break_end
+                  clear
+                  exit
+                  ;;
+                [Nn])
+                  echo "已取消"
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
+              ;;
+
           0)
               kejilion
 
