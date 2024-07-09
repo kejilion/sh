@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.8"
+sh_v="2.6.9"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -18,13 +18,24 @@ cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 # 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求的功能。
 # 全文可搜搜 send_stats 函数调用位置，透明开源，如有顾虑可拒绝使用。
 
+
+
+
+ENABLE_STATS=true
+
 send_stats() {
+
+    if [ "$ENABLE_STATS" == "false" ]; then
+        return
+    fi
+
     country=$(curl -s ipinfo.io/country)
     os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
     curl -s -X POST "https://api.kejilion.pro/api/log" \
          -H "Content-Type: application/json" \
          -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"version\":\"$sh_v\"}" &>/dev/null &
 }
+
 
 
 ip_address() {
@@ -1499,43 +1510,41 @@ EOF
 
 
 yinsiyuanquan() {
-# 文件列表
-files=(/usr/local/bin/k)
+FILE_PATH="/usr/local/bin/k"
+VAR_NAME="ENABLE_STATS"
 
-# 标志变量，表示是否找到关键字
-found=false
+# 从文件中读取变量值
+VAR_VALUE=$(grep "^$VAR_NAME=" "$FILE_PATH" | cut -d '=' -f2)
 
-# 遍历文件列表
-for file in "${files[@]}"; do
-    if grep -q 'send_stats "' "$file"; then
-        found=true
-        break
-    fi
-done
-
+# 去掉可能存在的引号
+VAR_VALUE=$(echo $VAR_VALUE | tr -d '"')
 
 }
 
 
 yinsiyuanquan1() {
-# 根据标志变量的值显示相应的消息
-if $found; then
-    status_message="${lv}正在采集数据${bai}"
-else
-    status_message="${hui}采集已关闭${bai}"
-fi
 
+if [ "$VAR_VALUE" == "true" ]; then
+    status_message="${lv}正在采集数据${bai}"
+elif [ "$VAR_VALUE" == "false" ]; then
+    status_message="${hui}采集已关闭${bai}"
+else
+    status_message="无法确定 $VAR_NAME 的状态"
+fi
 
 }
 
 
 
 yinsiyuanquan2() {
-# 根据标志变量的值显示相应的消息
-if $found; then
+
+if [ "$VAR_VALUE" == "true" ]; then
     :
+elif [ "$VAR_VALUE" == "false" ]; then
+    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' /usr/local/bin/k
+    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ~/kejilion.sh
 else
-    sed -i '/send_stats "/d' /usr/local/bin/k
+    :
 fi
 
 }
@@ -6406,12 +6415,14 @@ EOF
               case $sub_choice in
                   1)
                       cd ~
-                      cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+                      sed -i 's/^ENABLE_STATS=false/ENABLE_STATS=true/' /usr/local/bin/k
+                      sed -i 's/^ENABLE_STATS=false/ENABLE_STATS=true/' ~/kejilion.sh
                       echo "已开启采集"
                       ;;
                   2)
                       cd ~
-                      sed -i '/send_stats "/d' /usr/local/bin/k
+                      sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' /usr/local/bin/k
+                      sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ~/kejilion.sh
                       echo "已关闭采集"
                       ;;
                   0)
@@ -6647,10 +6658,9 @@ EOF
             [Yy])
                 clear
                 curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-                cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
-
                 yinsiyuanquan
                 yinsiyuanquan2
+                cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
                 break_end
                 kejilion
