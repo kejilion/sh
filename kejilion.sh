@@ -111,6 +111,8 @@ install() {
                 apt update -y && apt install -y "$package"
             elif command -v apk &>/dev/null; then
                 apk update && apk add "$package"
+            elif command -v pacman &>/dev/null; then
+                pacman -Syu --noconfirm && pacman -S --noconfirm "$package"
             else
                 echo "未知的包管理器!"
                 return 1
@@ -122,6 +124,7 @@ install() {
 
     return 0
 }
+
 
 
 install_dependency() {
@@ -146,6 +149,8 @@ remove() {
             apt purge -y "${package}*"
         elif command -v apk &>/dev/null; then
             apk del "${package}*"
+        elif command -v pacman &>/dev/null; then
+            pacman -Rns --noconfirm "${package}"
         else
             echo "未知的包管理器!"
             return 1
@@ -1054,6 +1059,8 @@ linux_update() {
         DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
     elif command -v apk &>/dev/null; then
         apk update && apk upgrade
+    elif command -v pacman &>/dev/null; then
+        pacman -Syu --noconfirm
     else
         echo "未知的包管理器!"
         return 1
@@ -1070,6 +1077,7 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
         dnf remove $(dnf repoquery --installonly --latest-limit=-1 -q) -y
+
     elif command -v yum &>/dev/null; then
         yum autoremove -y
         yum clean all
@@ -1077,6 +1085,7 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
         yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+
     elif command -v apt &>/dev/null; then
         apt autoremove --purge -y
         apt clean -y
@@ -1086,17 +1095,27 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
         apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+
     elif command -v apk &>/dev/null; then
         apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
         apk autoremove
         apk cache clean
         rm -rf /var/log/*
         rm -rf /var/cache/apk/*
+
+    elif command -v pacman &>/dev/null; then
+        pacman -Rns $(pacman -Qdtq) --noconfirm
+        pacman -Scc --noconfirm
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+
     else
         echo "未知的包管理器!"
         return 1
     fi
 
+    return 0
 }
 
 
