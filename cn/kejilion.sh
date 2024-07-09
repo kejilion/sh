@@ -15,27 +15,16 @@ cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
 
 # 收集功能埋点信息的函数，记录时间，系统发行版，国家和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
-# 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求。
+# 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求的功能。
 # 全文可搜搜 send_stats 函数调用位置，透明开源，如有顾虑可拒绝使用。
 
-# send_stats() {
-#     isp_info=$(curl -s ipinfo.io/org)    
-#     country=$(curl -s ipinfo.io/country)
-#     os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
-#     curl -s -X POST "https://api.kejilion.pro/api/log" \
-#          -H "Content-Type: application/json" \
-#          -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"}" &>/dev/null &
-# }
-
-
-send_stats() {   
+send_stats() {
     country=$(curl -s ipinfo.io/country)
-    os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')    
+    os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
     curl -s -X POST "https://api.kejilion.pro/api/log" \
          -H "Content-Type: application/json" \
-         -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\"}" &>/dev/null &
+         -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"version\":\"$sh_v\"}" &>/dev/null &
 }
-
 
 
 ip_address() {
@@ -1382,7 +1371,7 @@ bbrv3() {
           send_stats "bbrv3管理"
           if dpkg -l | grep -q 'linux-xanmod'; then
             while true; do
-
+                  clear
                   kernel_version=$(uname -r)
                   echo "您已安装xanmod的BBRv3内核"
                   echo "当前内核版本: $kernel_version"
@@ -1507,6 +1496,50 @@ EOF
 
 
 }
+
+
+yinsiyuanquan() {
+# 文件列表
+files=(/usr/local/bin/k)
+
+# 标志变量，表示是否找到关键字
+found=false
+
+# 遍历文件列表
+for file in "${files[@]}"; do
+    if grep -q 'send_stats "' "$file"; then
+        found=true
+        break
+    fi
+done
+
+
+}
+
+
+yinsiyuanquan1() {
+# 根据标志变量的值显示相应的消息
+if $found; then
+    status_message="${lv}正在采集数据${bai}"
+else
+    status_message="${hui}采集已关闭${bai}"
+fi
+
+
+}
+
+
+
+yinsiyuanquan2() {
+# 根据标志变量的值显示相应的消息
+if $found; then
+    :
+else
+    sed -i '/send_stats "/d' /usr/local/bin/k
+fi
+
+}
+
 
 
 
@@ -2241,7 +2274,7 @@ case $choice in
               ;;
           7)
               clear
-              send_stats "Docker清理"              
+              send_stats "Docker清理"
               read -p "$(echo -e "${huang}确定清理无用的镜像容器网络吗？(Y/N): ${bai}")" choice
               case "$choice" in
                 [Yy])
@@ -2256,7 +2289,7 @@ case $choice in
               ;;
           8)
               clear
-              send_stats "Docker源" 
+              send_stats "Docker源"
               bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
               ;;
 
@@ -2269,19 +2302,19 @@ case $choice in
 
           11)
               clear
-              send_stats "Docker v6 开" 
+              send_stats "Docker v6 开"
               docker_ipv6_on
               ;;
 
           12)
               clear
-              send_stats "Docker v6 关" 
+              send_stats "Docker v6 关"
               docker_ipv6_off
               ;;
 
           20)
               clear
-              send_stats "Docker卸载"   
+              send_stats "Docker卸载"
               read -p "$(echo -e "${hong}确定卸载docker环境吗？(Y/N): ${bai}")" choice
               case "$choice" in
                 [Yy])
@@ -2355,42 +2388,50 @@ case $choice in
       case $sub_choice in
           1)
               clear
+              send_stats "ChatGPT解锁状态检测"
               bash <(curl -Ls https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh)
               ;;
           2)
               clear
+              send_stats "Region流媒体解锁测试"
               bash <(curl -L -s check.unlock.media)
               ;;
           3)
               clear
+              send_stats "yeahwu流媒体解锁检测"
               install wget
               wget -qO- https://hub.gitmirror.com/https://github.com/yeahwu/check/raw/main/check.sh | bash
               ;;
           4)
               clear
+              send_stats "xykt_IP质量体检脚本"
               bash <(curl -Ls IP.Check.Place)
               ;;
           11)
               clear
+              send_stats "besttrace三网回程延迟路由测试"
               install wget
               wget -qO- git.io/besttrace | bash
               ;;
           12)
               clear
+              send_stats "mtr_trace三网回程线路测试"
               curl https://raw.gitmirror.com/zhucaidan/mtr_trace/main/mtr_trace.sh | bash
               ;;
           13)
               clear
+              send_stats "Superspeed三网测速"
               bash <(curl -Lso- https://git.io/superspeed_uxh)
               ;;
           14)
               clear
+              send_stats "nxtrace快速回程测试脚本"
               curl nxtrace.org/nt |bash
               nexttrace --fast-trace --tcp
               ;;
           15)
               clear
-
+              send_stats "nxtrace指定IP回程测试脚本"
               echo "可参考的IP列表"
               echo "------------------------"
               echo "北京电信: 219.141.136.12"
@@ -2417,23 +2458,27 @@ case $choice in
 
           16)
               clear
+              send_stats "ludashi2020三网线路测试"
               curl https://raw.gitmirror.com/ludashi2020/backtrace/main/install.sh -sSf | sh
               ;;
 
           17)
               clear
+              send_stats "i-abc多功能测速脚本"
               bash <(curl -sL bash.icu/speedtest)
               ;;
 
 
           21)
               clear
+              send_stats "yabs性能测试"
               new_swap=1024
               add_swap
               curl -sL yabs.sh | bash -s -- -i -5
               ;;
           22)
               clear
+              send_stats "icu/gb5 CPU性能测试脚本"
               new_swap=1024
               add_swap
               bash <(curl -sL bash.icu/gb5)
@@ -2441,13 +2486,14 @@ case $choice in
 
           31)
               clear
+              send_stats "bench性能测试"
               curl -Lso- bench.sh | bash
               ;;
           32)
+              send_stats "spiritysdx融合怪测评"
               clear
               curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
               ;;
-
 
           0)
               kejilion
@@ -4994,7 +5040,7 @@ case $choice in
       echo "------------------------"
       echo "31. 留言板                             66. 一条龙系统调优"
       echo "------------------------"
-      echo "99. 重启服务器"
+      echo "99. 重启服务器                         100. 隐私与安全"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -5408,7 +5454,7 @@ EOF
             root_use
             send_stats "换时区"
             while true; do
-
+                clear
                 echo "系统时间信息"
 
                 # 获取当前系统时区
@@ -5947,6 +5993,7 @@ EOF
               root_use
               send_stats "本地host解析"
               while true; do
+                  clear
                   echo "本机host解析列表"
                   echo "如果你在这里添加解析匹配，将不再使用动态解析了"
                   cat /etc/hosts
@@ -6209,7 +6256,6 @@ EOF
               root_use
               send_stats "修复SSH高危漏洞"
               cd ~
-              install wget
               curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/upgrade_openssh9.8p1.sh
               chmod +x ~/upgrade_openssh9.8p1.sh
               ~/upgrade_openssh9.8p1.sh
@@ -6336,6 +6382,46 @@ EOF
               clear
               send_stats "重启系统"
               server_reboot
+              ;;
+          100)
+
+            root_use
+            send_stats "隐私与安全"
+            while true; do
+              clear
+              yinsiyuanquan
+              yinsiyuanquan1
+              echo "隐私与安全"
+              echo "脚本将收集用户使用功能的数据，优化脚本体验，制作更多好玩好用的功能"
+              echo "将收集使用功能的时间，系统版本，国家和使用的功能的名称，不会涉及敏感数据，放心使用！"
+              echo "------------------------------------------------"
+              echo -e "当前状态: $status_message"
+              echo "--------------------"
+              echo "1. 开启采集"
+              echo "2. 关闭采集"
+              echo "--------------------"
+              echo "0. 返回上一级"
+              echo "--------------------"
+              read -p "请输入你的选择: " sub_choice
+              case $sub_choice in
+                  1)
+                      cd ~
+                      cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+                      echo "已开启采集"
+                      ;;
+                  2)
+                      cd ~
+                      sed -i '/send_stats "/d' /usr/local/bin/k
+                      echo "已关闭采集"
+                      ;;
+                  0)
+                      break
+                      ;;
+                  *)
+                      echo "无效的选择，请重新输入。"
+                      ;;
+              esac
+            done
               ;;
           0)
               kejilion
@@ -6562,6 +6648,9 @@ EOF
                 clear
                 curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
                 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+
+                yinsiyuanquan
+                yinsiyuanquan2
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
                 break_end
                 kejilion
