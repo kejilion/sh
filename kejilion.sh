@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.1"
+sh_v="2.7.2"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -1851,6 +1851,7 @@ case $choice in
               clear
               echo "工具已安装，使用方法如下："
               curl --help
+              send_stats "安装curl"
               ;;
           2)
               clear
@@ -1858,6 +1859,7 @@ case $choice in
               clear
               echo "工具已安装，使用方法如下："
               wget --help
+              send_stats "安装wget"
               ;;
             3)
               clear
@@ -1865,6 +1867,7 @@ case $choice in
               clear
               echo "工具已安装，使用方法如下："
               sudo --help
+              send_stats "安装sudo"
               ;;
             4)
               clear
@@ -1872,18 +1875,21 @@ case $choice in
               clear
               echo "工具已安装，使用方法如下："
               socat -h
+              send_stats "安装socat"
               ;;
             5)
               clear
               install htop
               clear
               htop
+              send_stats "安装htop"
               ;;
             6)
               clear
               install iftop
               clear
               iftop
+              send_stats "安装iftop"
               ;;
             7)
               clear
@@ -1891,6 +1897,7 @@ case $choice in
               clear
               echo "工具已安装，使用方法如下："
               unzip
+              send_stats "安装unzip"
               ;;
             8)
               clear
@@ -1898,6 +1905,7 @@ case $choice in
               clear
               echo "工具已安装，使用方法如下："
               tar --help
+              send_stats "安装tar"
               ;;
             9)
               clear
@@ -1905,6 +1913,7 @@ case $choice in
               clear
               echo "工具已安装，使用方法如下："
               tmux --help
+              send_stats "安装tmux"
               ;;
             10)
               clear
@@ -1912,6 +1921,7 @@ case $choice in
               clear
               echo "工具已安装，使用方法如下："
               ffmpeg --help
+              send_stats "安装ffmpeg"
               ;;
 
             11)
@@ -1919,6 +1929,7 @@ case $choice in
               install btop
               clear
               btop
+              send_stats "安装btop"
               ;;
             12)
               clear
@@ -1927,6 +1938,7 @@ case $choice in
               clear
               ranger
               cd ~
+              send_stats "安装ranger"
               ;;
             13)
               clear
@@ -1935,6 +1947,7 @@ case $choice in
               clear
               gdu
               cd ~
+              send_stats "安装gdu"
               ;;
             14)
               clear
@@ -1943,6 +1956,7 @@ case $choice in
               clear
               fzf
               cd ~
+              send_stats "安装fzf"
               ;;
 
             21)
@@ -1950,40 +1964,47 @@ case $choice in
               install cmatrix
               clear
               cmatrix
+              send_stats "安装cmatrix"
               ;;
             22)
               clear
               install sl
               clear
               /usr/games/sl
+              send_stats "安装sl"
               ;;
             26)
               clear
               install bastet
               clear
               /usr/games/bastet
+              send_stats "安装bastet"
               ;;
             27)
               clear
               install nsnake
               clear
               /usr/games/nsnake
+              send_stats "安装nsnake"
               ;;
             28)
               clear
               install ninvaders
               clear
               /usr/games/ninvaders
+              send_stats "安装ninvaders"
 
               ;;
 
           31)
               clear
+              send_stats "全部安装"
               install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders
               ;;
 
           32)
               clear
+              send_stats "全部卸载"
               remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders
               ;;
 
@@ -1991,11 +2012,13 @@ case $choice in
               clear
               read -p "请输入安装的工具名（wget curl sudo htop）: " installname
               install $installname
+              send_stats "安装指定软件"
               ;;
           42)
               clear
               read -p "请输入卸载的工具名（htop ufw tmux cmatrix）: " removename
               remove $removename
+              send_stats "卸载指定软件"
               ;;
 
           0)
@@ -2034,7 +2057,7 @@ case $choice in
               case $sub_choice in
                   1)
                     bbr_on
-
+                    send_stats "alpine开启bbr3"
                       ;;
                   2)
                     sed -i '/net.core.default_qdisc=fq_pie/d' /etc/sysctl.conf
@@ -2143,33 +2166,41 @@ case $choice in
 
                   case $sub_choice in
                       1)
+                          send_stats "新建容器"
                           read -p "请输入创建命令: " dockername
                           $dockername
                           ;;
 
                       2)
+                          send_stats "启动指定容器"
                           read -p "请输入容器名: " dockername
                           docker start $dockername
                           ;;
                       3)
+                          send_stats "停止指定容器"
                           read -p "请输入容器名: " dockername
                           docker stop $dockername
                           ;;
                       4)
+                          send_stats "删除指定容器"
                           read -p "请输入容器名: " dockername
                           docker rm -f $dockername
                           ;;
                       5)
+                          send_stats "重启指定容器"
                           read -p "请输入容器名: " dockername
                           docker restart $dockername
                           ;;
                       6)
+                          send_stats "启动所有容器"
                           docker start $(docker ps -a -q)
                           ;;
                       7)
+                          send_stats "停止所有容器"
                           docker stop $(docker ps -q)
                           ;;
                       8)
+                          send_stats "删除所有容器"
                           read -p "$(echo -e "${hong}注意：${bai}确定删除所有容器吗？(Y/N): ")" choice
                           case "$choice" in
                             [Yy])
@@ -2183,19 +2214,23 @@ case $choice in
                           esac
                           ;;
                       9)
+                          send_stats "重启所有容器"
                           docker restart $(docker ps -q)
                           ;;
                       11)
+                          send_stats "进入容器"
                           read -p "请输入容器名: " dockername
                           docker exec -it $dockername /bin/sh
                           break_end
                           ;;
                       12)
+                          send_stats "查看容器日志"
                           read -p "请输入容器名: " dockername
                           docker logs $dockername
                           break_end
                           ;;
                       13)
+                          send_stats "查看容器网络"
                           echo ""
                           container_ids=$(docker ps -q)
 
@@ -2247,18 +2282,22 @@ case $choice in
 
                   case $sub_choice in
                       1)
+                          send_stats "拉取镜像"
                           read -p "请输入镜像名: " dockername
                           docker pull $dockername
                           ;;
                       2)
+                          send_stats "更新镜像"
                           read -p "请输入镜像名: " dockername
                           docker pull $dockername
                           ;;
                       3)
+                          send_stats "删除镜像"
                           read -p "请输入镜像名: " dockername
                           docker rmi -f $dockername
                           ;;
                       4)
+                          send_stats "删除所有镜像"
                           read -p "$(echo -e "${hong}注意：${bai}确定删除所有镜像吗？(Y/N): ")" choice
                           case "$choice" in
                             [Yy])
@@ -2324,16 +2363,19 @@ case $choice in
 
                   case $sub_choice in
                       1)
+                          send_stats "创建网络"
                           read -p "设置新网络名: " dockernetwork
                           docker network create $dockernetwork
                           ;;
                       2)
+                          send_stats "加入网络"
                           read -p "加入网络名: " dockernetwork
                           read -p "那些容器加入该网络: " dockername
                           docker network connect $dockernetwork $dockername
                           echo ""
                           ;;
                       3)
+                          send_stats "退出网络"
                           read -p "退出网络名: " dockernetwork
                           read -p "那些容器退出该网络: " dockername
                           docker network disconnect $dockernetwork $dockername
@@ -2341,6 +2383,7 @@ case $choice in
                           ;;
 
                       4)
+                          send_stats "删除网络"
                           read -p "请输入要删除的网络名: " dockernetwork
                           docker network rm $dockernetwork
                           ;;
@@ -2373,11 +2416,13 @@ case $choice in
 
                   case $sub_choice in
                       1)
+                          send_stats "新建卷"
                           read -p "设置新卷名: " dockerjuan
                           docker volume create $dockerjuan
 
                           ;;
                       2)
+                          send_stats "删除卷"
                           read -p "输入删除卷名: " dockerjuan
                           docker volume rm $dockerjuan
 
@@ -2654,16 +2699,36 @@ case $choice in
               read -p "确定安装吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
-
+                  
                   install_docker
 
+                  # 设置默认值
+                  DEFAULT_CPU_CORE=1
+                  DEFAULT_CPU_UTIL="10-20"
+                  DEFAULT_MEM_UTIL=20
+                  DEFAULT_SPEEDTEST_INTERVAL=120
+                  
+                  # 提示用户输入CPU核心数和占用百分比，如果回车则使用默认值
+                  read -p "请输入CPU核心数 [默认: $DEFAULT_CPU_CORE]: " cpu_core
+                  cpu_core=${cpu_core:-$DEFAULT_CPU_CORE}
+                  
+                  read -p "请输入CPU占用百分比范围（例如10-20） [默认: $DEFAULT_CPU_UTIL]: " cpu_util
+                  cpu_util=${cpu_util:-$DEFAULT_CPU_UTIL}
+                  
+                  read -p "请输入内存占用百分比 [默认: $DEFAULT_MEM_UTIL]: " mem_util
+                  mem_util=${mem_util:-$DEFAULT_MEM_UTIL}
+                  
+                  read -p "请输入Speedtest间隔时间（秒） [默认: $DEFAULT_SPEEDTEST_INTERVAL]: " speedtest_interval
+                  speedtest_interval=${speedtest_interval:-$DEFAULT_SPEEDTEST_INTERVAL}
+                  
+                  # 运行Docker容器
                   docker run -itd --name=lookbusy --restart=always \
-                          -e TZ=Asia/Shanghai \
-                          -e CPU_UTIL=10-20 \
-                          -e CPU_CORE=1 \
-                          -e MEM_UTIL=20 \
-                          -e SPEEDTEST_INTERVAL=120 \
-                          fogforest/lookbusy
+                      -e TZ=Asia/Shanghai \
+                      -e CPU_UTIL="$cpu_util" \
+                      -e CPU_CORE="$cpu_core" \
+                      -e MEM_UTIL="$mem_util" \
+                      -e SPEEDTEST_INTERVAL="$speedtest_interval" \
+                      fogforest/lookbusy
                   ;;
                 [Nn])
 
@@ -2677,6 +2742,7 @@ case $choice in
               clear
               docker rm -f lookbusy
               docker rmi fogforest/lookbusy
+              send_stats "甲骨文云卸载活跃脚本"
               ;;
 
           3)
@@ -2707,6 +2773,7 @@ case $choice in
               read -p "请输入你重装后的密码: " vpspasswd
               install wget
               bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
+              send_stats "甲骨文云重装系统脚本"
               ;;
             [Nn])
               echo "已取消"
@@ -3418,6 +3485,7 @@ case $choice in
         read -p "请输入你的选择: " sub_choice
         case $sub_choice in
             1)
+                send_stats "申请域名证书"
                 read -p "请输入你的域名: " yuming
                 install_ssltls
 
@@ -3441,6 +3509,7 @@ case $choice in
 
 
             3)
+                send_stats "清理站点缓存"
                 # docker exec -it nginx rm -rf /var/cache/nginx
                 docker restart nginx
                 docker exec php php -r 'opcache_reset();'
@@ -3454,18 +3523,21 @@ case $choice in
 
                 ;;
             4)
+                send_stats "查看站点数据"
                 install goaccess
                 goaccess --log-format=COMBINED /home/web/log/nginx/access.log
 
                 ;;
 
             5)
+                send_stats "编辑全局配置"
                 install nano
                 nano /home/web/nginx.conf
                 docker restart nginx
                 ;;
 
             6)
+                send_stats "编辑站点配置"
                 read -p "编辑站点配置，请输入你要编辑的域名: " yuming
                 install nano
                 nano /home/web/conf.d/$yuming.conf
@@ -3473,6 +3545,7 @@ case $choice in
                 ;;
 
             7)
+                send_stats "删除站点数据目录"
                 read -p "删除站点数据目录，请输入你的域名: " yuming
                 rm -r /home/web/html/$yuming
                 rm /home/web/conf.d/$yuming.conf
@@ -3481,6 +3554,7 @@ case $choice in
                 docker restart nginx
                 ;;
             8)
+                send_stats "删除站点数据库"
                 read -p "删除站点数据库，请输入数据库名: " shujuku
                 dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
                 docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $shujuku;" 2> /dev/null
@@ -3535,6 +3609,7 @@ case $choice in
 
     33)
       clear
+      send_stats "定时远程备份"
       read -p "输入远程服务器IP: " useip
       read -p "输入远程服务器密码: " usepasswd
 
@@ -3678,6 +3753,7 @@ case $choice in
                       break
                       ;;
                   21)
+                      send_stats "cloudflare模式"
                       echo "到cf后台右上角我的个人资料，选择左侧API令牌，获取Global API Key"
                       echo "https://dash.cloudflare.com/login"
                       read -p "输入CF的账号: " cfuser
@@ -3700,6 +3776,7 @@ case $choice in
                       ;;
 
                   22)
+                      send_stats "高负载开启5秒盾"
                       echo -e "${huang}网站每5分钟自动检测，当达检测到高负载会自动开盾，低负载也会自动关闭5秒盾。${bai}"
                       echo "--------------"
                       echo "获取CF参数: "
@@ -3800,6 +3877,7 @@ case $choice in
               read -p "请输入你的选择: " sub_choice
               case $sub_choice in
                   1)
+                  send_stats "站点标准模式"
                   # nginx调优
                   sed -i 's/worker_connections.*/worker_connections 1024;/' /home/web/nginx.conf
 
@@ -3832,7 +3910,7 @@ case $choice in
 
                       ;;
                   2)
-
+                  send_stats "站点高性能模式"
                   # nginx调优
                   sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
 
@@ -4101,6 +4179,7 @@ case $choice in
               ;;
           7)
             clear
+            send_stats "搭建哪吒"
             curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
             ./nezha.sh
               ;;
@@ -5040,6 +5119,7 @@ case $choice in
               clear
               install tmux
               SESSION_NAME="work1"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
 
               ;;
@@ -5047,60 +5127,70 @@ case $choice in
               clear
               install tmux
               SESSION_NAME="work2"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
               ;;
           3)
               clear
               install tmux
               SESSION_NAME="work3"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
               ;;
           4)
               clear
               install tmux
               SESSION_NAME="work4"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
               ;;
           5)
               clear
               install tmux
               SESSION_NAME="work5"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
               ;;
           6)
               clear
               install tmux
               SESSION_NAME="work6"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
               ;;
           7)
               clear
               install tmux
               SESSION_NAME="work7"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
               ;;
           8)
               clear
               install tmux
               SESSION_NAME="work8"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
               ;;
           9)
               clear
               install tmux
               SESSION_NAME="work9"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
               ;;
           10)
               clear
               install tmux
               SESSION_NAME="work10"
+              send_stats "启动工作区$SESSION_NAME"
               tmux_run
               ;;
 
           11)
               clear
               install tmux
+              send_stats "自定义工作区"
               clear
               echo "当前已存在的工作区列表"
               echo "------------------------"
@@ -5113,6 +5203,7 @@ case $choice in
           99)
             while true; do
               clear
+              send_stats "当前工作区列表"
               echo "当前已存在的工作区列表"
               echo "------------------------"
               tmux list-sessions
@@ -5181,11 +5272,11 @@ case $choice in
       case $sub_choice in
           1)
               clear
-              send_stats "设置脚本快捷键"
               read -p "请输入你的快捷按键: " kuaijiejian
               echo "alias $kuaijiejian='~/kejilion.sh'" >> ~/.bashrc
               source ~/.bashrc
               echo "快捷键已设置"
+              send_stats "脚本快捷键已设置"
               ;;
 
           2)
@@ -5298,6 +5389,8 @@ EOF
 
               new_ssh_port
 
+              send_stats "SSH端口已修改"
+
               ;;
 
 
@@ -5317,12 +5410,13 @@ EOF
 
                 case "$Limiting" in
                   1)
-
+                    
                     dns1_ipv4="1.1.1.1"
                     dns2_ipv4="8.8.8.8"
                     dns1_ipv6="2606:4700:4700::1111"
                     dns2_ipv6="2001:4860:4860::8888"
                     set_dns
+                    send_stats "国外DNS优化"
                     ;;
 
                   2)
@@ -5331,6 +5425,7 @@ EOF
                     dns1_ipv6="2400:3200::1"
                     dns2_ipv6="2400:da00::6666"
                     set_dns
+                    send_stats "国内DNS优化"
                     ;;
                   0)
                     echo "已取消"
@@ -5433,6 +5528,7 @@ EOF
                 # 输入新的虚拟内存大小
                 read -p "请输入虚拟内存大小MB: " new_swap
                 add_swap
+                send_stats "虚拟内存已设置"
 
                 ;;
               [Nn])
@@ -5653,6 +5749,7 @@ EOF
           if dpkg -l | grep -q iptables-persistent; then
             while true; do
                   echo "防火墙已安装"
+                  send_stats "高级防火墙已安装"
                   echo "------------------------"
                   iptables -L INPUT
 
@@ -5836,6 +5933,7 @@ EOF
                       systemctl restart systemd-hostnamed
                   fi
                   echo "主机名已更改为: $new_hostname"
+                  send_stats "主机名已更改"
               else
                   echo "无效的主机名。未更改主机名。"
                   exit 1
@@ -6137,11 +6235,13 @@ EOF
                       1)
                           read -p "请输入新的解析记录 格式: 110.25.5.33 kejilion.pro : " addhost
                           echo "$addhost" >> /etc/hosts
+                          send_stats "本地host解析新增"
 
                           ;;
                       2)
                           read -p "请输入需要删除的解析内容关键字: " delhost
                           sed -i "/$delhost/d" /etc/hosts
+                          send_stats "本地host解析删除"
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
@@ -6236,6 +6336,7 @@ EOF
                   cd ~
                   f2b_status
                   echo "Fail2Ban防御程序已开启"
+                  send_stats "Fail2Ban防御程序已开启"
 
                   ;;
                 [Nn])
@@ -6284,7 +6385,7 @@ EOF
                 crontab -l | grep -v 'reboot' | crontab -
                 (crontab -l ; echo "0 1 1 * * reboot") | crontab - > /dev/null 2>&1
                 echo "限流关机已设置"
-
+                send_stats "限流关机已设置"
                 ;;
               0)
                 echo "已取消"
@@ -6314,6 +6415,7 @@ EOF
               case "$choice" in
                 [Yy])
                   clear
+                  send_stats "私钥登录使用"
                   add_sshkey
                   ;;
                 [Nn])
@@ -6338,6 +6440,7 @@ EOF
 
               case "$choice" in
                 [Yy])
+                  send_stats "电报预警启用"
                   cd ~
                   install nano tmux bc jq
                   if [ -f ~/TG-check-notify.sh ]; then
@@ -6450,7 +6553,7 @@ EOF
               case "$choice" in
                 [Yy])
                   clear
-
+                  send_stats "一条龙调优启动"
                   echo "------------------------------------------------"
                   linux_update
                   echo -e "[${lv}OK${bai}] 1/9. 更新系统到最新"
@@ -6513,13 +6616,12 @@ EOF
           100)
 
             root_use
-            send_stats "隐私与安全"
             while true; do
               clear
               yinsiyuanquan1
               echo "隐私与安全"
               echo "脚本将收集用户使用功能的数据，优化脚本体验，制作更多好玩好用的功能"
-              echo "将收集脚本版本号，使用的时间，系统版本，国家和使用的功能的名称，不会涉及敏感数据，放心使用！"
+              echo "将收集脚本版本号，使用的时间，系统版本，CPU架构，机器所属国家和使用的功能的名称，"
               echo "------------------------------------------------"
               echo -e "当前状态: $status_message"
               echo "--------------------"
@@ -6535,12 +6637,14 @@ EOF
                       sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' /usr/local/bin/k
                       sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' ~/kejilion.sh
                       echo "已开启采集"
+                      send_stats "隐私与安全已开启采集"
                       ;;
                   2)
                       cd ~
                       sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
                       sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
                       echo "已关闭采集"
+                      send_stats "隐私与安全已关闭采集"
                       ;;
                   0)
                       break
