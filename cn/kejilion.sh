@@ -104,6 +104,7 @@ UserLicenseAgreement() {
         sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
         sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
     else
+        clear
         send_stats "许可拒绝"
         echo "您未同意条款，脚本退出。"
         exit 1
