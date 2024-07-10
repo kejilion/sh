@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.0"
+sh_v="2.7.2"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -1719,15 +1719,10 @@ case $choice in
 
     ip_address
 
-    if [ "$(uname -m)" == "x86_64" ]; then
-      cpu_info=$(cat /proc/cpuinfo | grep 'model name' | uniq | sed -e 's/model name[[:space:]]*: //')
-    else
-      cpu_info=$(lscpu | grep 'BIOS Model name' | awk -F': ' '{print $2}' | sed 's/^[ \t]*//')
-    fi
+    cpu_info=$(lscpu | awk -F': +' '/Model name:/ {print $2; exit}')
 
     cpu_usage_percent=$(awk '{u=$2+$4; t=$2+$4+$5; if (NR==1){u1=u; t1=t;} else printf "%.0f\n", (($2+$4-u1) * 100 / (t-t1))}' \
         <(grep 'cpu ' /proc/stat) <(sleep 1; grep 'cpu ' /proc/stat))
-
 
     cpu_cores=$(nproc)
 
@@ -1735,10 +1730,11 @@ case $choice in
 
     disk_info=$(df -h | awk '$NF=="/"{printf "%s/%s (%s)", $3, $2, $5}')
 
-    country=$(curl -s ipinfo.io/country)
-    city=$(curl -s ipinfo.io/city)
+    ipinfo=$(curl -s ipinfo.io)
+    country=$(echo "$ipinfo" | grep 'country' | awk -F': ' '{print $2}' | tr -d '",')
+    city=$(echo "$ipinfo" | grep 'city' | awk -F': ' '{print $2}' | tr -d '",')
+    isp_info=$(echo "$ipinfo" | grep 'org' | awk -F': ' '{print $2}' | tr -d '",')
 
-    isp_info=$(curl -s ipinfo.io/org)
 
     cpu_arch=$(uname -m)
 
@@ -1757,16 +1753,7 @@ case $choice in
     current_time=$(date "+%Y-%m-%d %I:%M %p")
 
 
-    swap_used=$(free -m | awk 'NR==3{print $3}')
-    swap_total=$(free -m | awk 'NR==3{print $2}')
-
-    if [ "$swap_total" -eq 0 ]; then
-        swap_percentage=0
-    else
-        swap_percentage=$((swap_used * 100 / swap_total))
-    fi
-
-    swap_info="${swap_used}MB/${swap_total}MB (${swap_percentage}%)"
+    swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dMB/%dMB (%d%%)", used, total, percentage}')
 
     runtime=$(cat /proc/uptime | awk -F. '{run_days=int($1 / 86400);run_hours=int(($1 % 86400) / 3600);run_minutes=int(($1 % 3600) / 60); if (run_days > 0) printf("%d天 ", run_days); if (run_hours > 0) printf("%d时 ", run_hours); printf("%d分\n", run_minutes)}')
 
@@ -2077,7 +2064,7 @@ case $choice in
   6)
     while true; do
       clear
-      send_stats "docker管理"
+      # send_stats "docker管理"
       echo "▶ Docker管理器"
       echo "------------------------"
       echo "1. 安装更新Docker环境"
@@ -2488,7 +2475,7 @@ case $choice in
   8)
     while true; do
       clear
-      send_stats "测试脚本合集"
+      # send_stats "测试脚本合集"
       echo "▶ 测试脚本合集"
       echo ""
       echo "----IP及解锁状态检测-----------"
@@ -2757,7 +2744,7 @@ case $choice in
 
   while true; do
     clear
-    send_stats "LDNMP建站"
+    # send_stats "LDNMP建站"
     echo -e "${huang}▶ LDNMP建站${bai}"
     echo  "------------------------"
     echo  "1. 安装LDNMP环境"
@@ -3942,7 +3929,7 @@ case $choice in
   11)
     while true; do
       clear
-      send_stats "面板工具"
+      # send_stats "面板工具"
       echo "▶ 面板工具"
       echo "------------------------"
       echo "1. 宝塔面板官方版                       2. aaPanel宝塔国际版"
@@ -5162,7 +5149,7 @@ case $choice in
   13)
     while true; do
       clear
-      send_stats "系统工具"
+      # send_stats "系统工具"
       echo "▶ 系统工具"
       echo "------------------------"
       echo "1. 设置脚本启动快捷键                  2. 修改登录密码"
@@ -5434,13 +5421,8 @@ EOF
             swap_used=$(free -m | awk 'NR==3{print $3}')
             swap_total=$(free -m | awk 'NR==3{print $2}')
 
-            if [ "$swap_total" -eq 0 ]; then
-              swap_percentage=0
-            else
-              swap_percentage=$((swap_used * 100 / swap_total))
-            fi
 
-            swap_info="${swap_used}MB/${swap_total}MB (${swap_percentage}%)"
+            swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dMB/%dMB (%d%%)", used, total, percentage}')
 
             echo "当前虚拟内存: $swap_info"
 
@@ -6822,10 +6804,11 @@ EOF
                 clear
                 country=$(curl -s ipinfo.io/country)
                 if [ "$country" = "CN" ]; then
-                    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/cn/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
+                    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/cn/kejilion.sh && chmod +x kejilion.sh
                 else
                     curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
                 fi
+                CheckFirstRun_true
                 yinsiyuanquan2
                 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
