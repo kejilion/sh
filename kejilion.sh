@@ -6804,7 +6804,7 @@ EOF
                 clear
                 country=$(curl -s ipinfo.io/country)
                 if [ "$country" = "CN" ]; then
-                    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/cn/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
+                    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/cn/kejilion.sh && chmod +x kejilion.sh
                 else
                     curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
                 fi
