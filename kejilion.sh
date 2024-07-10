@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.10"
+sh_v="2.6.11"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -12,14 +12,10 @@ hui='\e[37m'
 
 
 
-
-
-
 permission_granted="false"
 
 
 CheckFirstRun_true() {
-    # 如果未同意许可条款，则提示用户并获取许可
     if grep -q '^permission_granted="true"' /usr/local/bin/k; then
         sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
         sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
@@ -88,7 +84,6 @@ cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
 
 CheckFirstRun_false() {
-    # 如果未同意许可条款，则提示用户并获取许可
     if grep -q '^permission_granted="false"' /usr/local/bin/k; then
         UserLicenseAgreement
     fi
@@ -104,7 +99,6 @@ UserLicenseAgreement() {
     read -r -p "是否同意以上条款？(y/n): " user_input
 
 
-    # 判断用户输入并更新许可状态
     if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
         send_stats "许可同意"
         sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
@@ -196,30 +190,73 @@ remove() {
 }
 
 
+# 通用 systemctl 函数，适用于各种发行版
 systemctl() {
-    if command -v apk &>/dev/null; then
-        service "$2" "$1"
+    COMMAND="$1"
+    SERVICE_NAME="$2"
+
+    if command -v service &>/dev/null; then
+        service "$SERVICE_NAME" "$COMMAND"
     else
-        /bin/systemctl "$1" "$2"
+        /bin/systemctl "$COMMAND" "$SERVICE_NAME"
     fi
 }
 
+
+# 重启服务
 restart() {
     systemctl restart "$1"
+    if [ $? -eq 0 ]; then
+        echo "$1 服务已重启。"
+    else
+        echo "错误：重启 $1 服务失败。"
+    fi
 }
 
+# 启动服务
 start() {
     systemctl start "$1"
+    if [ $? -eq 0 ]; then
+        echo "$1 服务已启动。"
+    else
+        echo "错误：启动 $1 服务失败。"
+    fi
 }
 
+# 停止服务
 stop() {
     systemctl stop "$1"
+    if [ $? -eq 0 ]; then
+        echo "$1 服务已停止。"
+    else
+        echo "错误：停止 $1 服务失败。"
+    fi
 }
 
-
+# 查看服务状态
 status() {
     systemctl status "$1"
+    if [ $? -eq 0 ]; then
+        echo "$1 服务状态已显示。"
+    else
+        echo "错误：无法显示 $1 服务状态。"
+    fi
 }
+
+
+enable() {
+    SERVICE_NAME="$1"
+    if command -v rc-update &>/dev/null; then
+        rc-update add "$SERVICE_NAME" default
+    else
+       /bin/systemctl enable "$SERVICE_NAME"
+    fi
+
+    echo "$SERVICE_NAME 已设置为开机自启。"
+}
+
+# 使用示例
+# enable <service_name>
 
 
 break_end() {
@@ -263,13 +300,11 @@ check_port() {
 }
 
 
+
+
+
 install_add_docker() {
-    if [ -f "/etc/alpine-release" ]; then
-        apk update
-        apk add docker docker-compose
-        rc-update add docker default
-        service docker start
-    else
+    if command -v apt &>/dev/null || command -v yum &>/dev/null; then
         country=$(curl -s ipinfo.io/country)
         if [ "$country" = "CN" ]; then
             cd ~
@@ -286,8 +321,11 @@ EOF
         fi
         systemctl start docker
         systemctl enable docker
+    else
+       k install docker docker-compose
+       k enable docker
+       k start docker
     fi
-
     sleep 2
 }
 
@@ -1646,7 +1684,7 @@ echo -e "${kjlan}_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "${kjlan}科技lion脚本工具箱 v$sh_v （支持Ubuntu/Debian/CentOS/Alpine系统）${bai}"
+echo -e "${kjlan}科技lion脚本工具箱 v$sh_v （设配Ubuntu/Debian/CentOS/Alpine系统）${bai}"
 echo -e "${kjlan}-输入${huang}k${kjlan}可快速启动此脚本-${bai}"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -2413,7 +2451,8 @@ case $choice in
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
-                  remove docker > /dev/null 2>&1
+                  k remove docker docker-compose
+
                   ;;
                 [Nn])
                   ;;
@@ -6853,6 +6892,12 @@ else
             send_stats "软件重启"
             restart "$@"
             ;;
+
+        enable|autostart|开机启动)
+            shift
+            send_stats "软件开机自启"
+            enable "$@"
+            ;;
         *)
             echo "无效参数，以下是k命令参考用例："
             echo "启动脚本            k"
@@ -6866,6 +6911,7 @@ else
             echo "软件停止            k stop sshd | k 停止 sshd "
             echo "软件重启            k restart sshd | k 重启 sshd "
             echo "软件状态查看        k status sshd | k 状态 sshd "
+            echo "软件开机启动        k enable docker | k autostart docke | k 开机启动 docker "
             ;;
     esac
 fi
