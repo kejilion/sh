@@ -2077,7 +2077,7 @@ case $choice in
   6)
     while true; do
       clear
-      send_stats "docker管理"
+      # send_stats "docker管理"
       echo "▶ Docker管理器"
       echo "------------------------"
       echo "1. 安装更新Docker环境"
@@ -2488,7 +2488,7 @@ case $choice in
   8)
     while true; do
       clear
-      send_stats "测试脚本合集"
+      # send_stats "测试脚本合集"
       echo "▶ 测试脚本合集"
       echo ""
       echo "----IP及解锁状态检测-----------"
@@ -2757,7 +2757,7 @@ case $choice in
 
   while true; do
     clear
-    send_stats "LDNMP建站"
+    # send_stats "LDNMP建站"
     echo -e "${huang}▶ LDNMP建站${bai}"
     echo  "------------------------"
     echo  "1. 安装LDNMP环境"
@@ -3942,7 +3942,7 @@ case $choice in
   11)
     while true; do
       clear
-      send_stats "面板工具"
+      # send_stats "面板工具"
       echo "▶ 面板工具"
       echo "------------------------"
       echo "1. 宝塔面板官方版                       2. aaPanel宝塔国际版"
@@ -5162,7 +5162,7 @@ case $choice in
   13)
     while true; do
       clear
-      send_stats "系统工具"
+      # send_stats "系统工具"
       echo "▶ 系统工具"
       echo "------------------------"
       echo "1. 设置脚本启动快捷键                  2. 修改登录密码"
