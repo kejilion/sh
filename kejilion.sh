@@ -1684,7 +1684,7 @@ echo -e "${kjlan}_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "${kjlan}科技lion脚本工具箱 v$sh_v （设配Ubuntu/Debian/CentOS/Alpine系统）${bai}"
+echo -e "${kjlan}科技lion脚本工具箱 v$sh_v ${bai}"
 echo -e "${kjlan}-输入${huang}k${kjlan}可快速启动此脚本-${bai}"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -1714,7 +1714,7 @@ case $choice in
   1)
     clear
     send_stats "系统信息查询"
-    # 函数: 获取IPv4和IPv6地址
+
     ip_address
 
     if [ "$(uname -m)" == "x86_64" ]; then
@@ -1722,7 +1722,6 @@ case $choice in
     else
       cpu_info=$(lscpu | grep 'BIOS Model name' | awk -F': ' '{print $2}' | sed 's/^[ \t]*//')
     fi
-
 
     cpu_usage_percent=$(awk '{u=$2+$4; t=$2+$4+$5; if (NR==1){u1=u; t1=t;} else printf "%.0f\n", (($2+$4-u1) * 100 / (t-t1))}' \
         <(grep 'cpu ' /proc/stat) <(sleep 1; grep 'cpu ' /proc/stat))
