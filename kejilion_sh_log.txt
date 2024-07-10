@@ -532,4 +532,5 @@ k restart sshd | k 重启 sshd 增加了启动，暂停，重启的程序基础�
 优化包管理的兼容性，适配更多Linux发行版系统！
 修复梳理精简一些不必要的判断，提升脚本运行效率！
 LDNMP建站修复安装可道云后网页出现File not found.的问题
+k命令 适配了各大系统的程序开机启动模块 k enable docker | k autostart docke | k 开机启动 docker
 ------------------------
