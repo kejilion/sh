@@ -2911,7 +2911,7 @@ case $choice in
       wget -O latest.zip https://github.com/kalcaddle/kodbox/archive/refs/tags/1.50.02.zip
       unzip -o latest.zip
       rm latest.zip
-
+      mv /home/web/html/$yuming/kodbox* /home/web/html/$yuming/kodbox
       restart_ldnmp
 
       ldnmp_web_on
