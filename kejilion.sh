@@ -22,7 +22,7 @@ CheckFirstRun_true() {
     # 如果未同意许可条款，则提示用户并获取许可
     if grep -q '^permission_granted="true"' /usr/local/bin/k; then
         sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
-        sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k  
+        sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
     fi
 }
 
@@ -36,7 +36,7 @@ CheckFirstRun_true
 
 
 
-ENABLE_STATS=true
+ENABLE_STATS="true"
 
 send_stats() {
 
@@ -53,42 +53,26 @@ send_stats() {
 
 
 
-
-
-yinsiyuanquan() {
-FILE_PATH="/usr/local/bin/k"
-VAR_NAME="ENABLE_STATS"
-
-# 从文件中读取变量值
-VAR_VALUE=$(grep "^$VAR_NAME=" "$FILE_PATH" | cut -d '=' -f2)
-
-# 去掉可能存在的引号
-VAR_VALUE=$(echo $VAR_VALUE | tr -d '"')
-
-}
-
-
 yinsiyuanquan1() {
 
-if [ "$VAR_VALUE" == "true" ]; then
+if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k; then
     status_message="${lv}正在采集数据${bai}"
-elif [ "$VAR_VALUE" == "false" ]; then
+elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k; then
     status_message="${hui}采集已关闭${bai}"
 else
-    status_message="无法确定 $VAR_NAME 的状态"
+    status_message="无法确定的状态"
 fi
 
 }
-
 
 
 yinsiyuanquan2() {
 
-if [ "$VAR_VALUE" == "true" ]; then
+if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k; then
     :
-elif [ "$VAR_VALUE" == "false" ]; then
-    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ./kejilion.sh
-    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' /usr/local/bin/k
+elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k; then
+    sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ./kejilion.sh
+    sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 else
     :
 fi
@@ -97,7 +81,6 @@ fi
 
 
 
-yinsiyuanquan
 yinsiyuanquan2
 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
@@ -114,8 +97,8 @@ CheckFirstRun_false() {
 # 提示用户同意条款
 UserLicenseAgreement() {
     clear
-    echo -e "${kjlan}欢迎使用科技lion脚本工具箱"
-    echo -e "首次使用脚本，请先阅读并同意用户许可协议:${bai}"
+    echo -e "${kjlan}欢迎使用科技lion脚本工具箱${bai}"
+    echo "首次使用脚本，请先阅读并同意用户许可协议:"
     echo "用户许可协议: https://blog.kejilion.pro/user-license-agreement/"
     echo -e "----------------------"
     read -r -p "是否同意以上条款？(y/n): " user_input
@@ -1663,7 +1646,7 @@ echo -e "${kjlan}_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "${kjlan}科技lion一键脚本工具 v$sh_v （支持Ubuntu/Debian/CentOS/Alpine系统）${bai}"
+echo -e "${kjlan}科技lion脚本工具箱 v$sh_v （支持Ubuntu/Debian/CentOS/Alpine系统）${bai}"
 echo -e "${kjlan}-输入${huang}k${kjlan}可快速启动此脚本-${bai}"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -6502,7 +6485,6 @@ EOF
             send_stats "隐私与安全"
             while true; do
               clear
-              yinsiyuanquan
               yinsiyuanquan1
               echo "隐私与安全"
               echo "脚本将收集用户使用功能的数据，优化脚本体验，制作更多好玩好用的功能"
@@ -6519,14 +6501,14 @@ EOF
               case $sub_choice in
                   1)
                       cd ~
-                      sed -i 's/^ENABLE_STATS=false/ENABLE_STATS=true/' /usr/local/bin/k
-                      sed -i 's/^ENABLE_STATS=false/ENABLE_STATS=true/' ~/kejilion.sh
+                      sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' /usr/local/bin/k
+                      sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' ~/kejilion.sh
                       echo "已开启采集"
                       ;;
                   2)
                       cd ~
-                      sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' /usr/local/bin/k
-                      sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ~/kejilion.sh
+                      sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
+                      sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
                       echo "已关闭采集"
                       ;;
                   0)
@@ -6552,7 +6534,7 @@ EOF
                   clear
                   rm -f /usr/local/bin/k
                   rm ~/kejilion.sh
-                  echo "脚本已卸载"
+                  echo "脚本已卸载，再见！"
                   break_end
                   clear
                   exit
@@ -6790,7 +6772,6 @@ EOF
             [Yy])
                 clear
                 curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-                yinsiyuanquan
                 yinsiyuanquan2
                 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
