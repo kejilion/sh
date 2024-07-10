@@ -195,7 +195,7 @@ systemctl() {
     COMMAND="$1"
     SERVICE_NAME="$2"
 
-    if command -v service &>/dev/null; then
+    if command -v apk &>/dev/null; then
         service "$SERVICE_NAME" "$COMMAND"
     else
         /bin/systemctl "$COMMAND" "$SERVICE_NAME"
@@ -246,7 +246,7 @@ status() {
 
 enable() {
     SERVICE_NAME="$1"
-    if command -v rc-update &>/dev/null; then
+    if command -v apk &>/dev/null; then
         rc-update add "$SERVICE_NAME" default
     else
        /bin/systemctl enable "$SERVICE_NAME"
