@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.6.9"
+sh_v="2.6.11"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -12,6 +12,19 @@ hui='\e[37m'
 
 
 
+permission_granted="false"
+
+
+CheckFirstRun_true() {
+    if grep -q '^permission_granted="true"' /usr/local/bin/k; then
+        sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
+        sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
+    fi
+}
+
+CheckFirstRun_true
+
+
 # 收集功能埋点信息的函数，记录当前脚本版本号，使用时间，系统版本，国家和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
 # 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求的功能。
 # 全文可搜搜 send_stats 函数调用位置，透明开源，如有顾虑可拒绝使用。
@@ -19,7 +32,7 @@ hui='\e[37m'
 
 
 
-ENABLE_STATS=true
+ENABLE_STATS="true"
 
 send_stats() {
 
@@ -36,42 +49,26 @@ send_stats() {
 
 
 
-
-
-yinsiyuanquan() {
-FILE_PATH="/usr/local/bin/k"
-VAR_NAME="ENABLE_STATS"
-
-# 从文件中读取变量值
-VAR_VALUE=$(grep "^$VAR_NAME=" "$FILE_PATH" | cut -d '=' -f2)
-
-# 去掉可能存在的引号
-VAR_VALUE=$(echo $VAR_VALUE | tr -d '"')
-
-}
-
-
 yinsiyuanquan1() {
 
-if [ "$VAR_VALUE" == "true" ]; then
+if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k; then
     status_message="${lv}正在采集数据${bai}"
-elif [ "$VAR_VALUE" == "false" ]; then
+elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k; then
     status_message="${hui}采集已关闭${bai}"
 else
-    status_message="无法确定 $VAR_NAME 的状态"
+    status_message="无法确定的状态"
 fi
 
 }
-
 
 
 yinsiyuanquan2() {
 
-if [ "$VAR_VALUE" == "true" ]; then
+if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k; then
     :
-elif [ "$VAR_VALUE" == "false" ]; then
-    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' /usr/local/bin/k
-    sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ~/kejilion.sh
+elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k; then
+    sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ./kejilion.sh
+    sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 else
     :
 fi
@@ -80,9 +77,41 @@ fi
 
 
 
-yinsiyuanquan
 yinsiyuanquan2
 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+
+
+
+
+CheckFirstRun_false() {
+    if grep -q '^permission_granted="false"' /usr/local/bin/k; then
+        UserLicenseAgreement
+    fi
+}
+
+# 提示用户同意条款
+UserLicenseAgreement() {
+    clear
+    echo -e "${kjlan}欢迎使用科技lion脚本工具箱${bai}"
+    echo "首次使用脚本，请先阅读并同意用户许可协议:"
+    echo "用户许可协议: https://blog.kejilion.pro/user-license-agreement/"
+    echo -e "----------------------"
+    read -r -p "是否同意以上条款？(y/n): " user_input
+
+
+    if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
+        send_stats "许可同意"
+        sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
+        sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
+    else
+        send_stats "许可拒绝"
+        echo "您未同意条款，脚本退出。"
+        exit 1
+    fi
+}
+
+CheckFirstRun_false
+
 
 
 
@@ -111,6 +140,8 @@ install() {
                 apt update -y && apt install -y "$package"
             elif command -v apk &>/dev/null; then
                 apk update && apk add "$package"
+            elif command -v pacman &>/dev/null; then
+                pacman -Syu --noconfirm && pacman -S --noconfirm "$package"
             else
                 echo "未知的包管理器!"
                 return 1
@@ -122,6 +153,7 @@ install() {
 
     return 0
 }
+
 
 
 install_dependency() {
@@ -146,6 +178,8 @@ remove() {
             apt purge -y "${package}*"
         elif command -v apk &>/dev/null; then
             apk del "${package}*"
+        elif command -v pacman &>/dev/null; then
+            pacman -Rns --noconfirm "${package}"
         else
             echo "未知的包管理器!"
             return 1
@@ -156,30 +190,73 @@ remove() {
 }
 
 
+# 通用 systemctl 函数，适用于各种发行版
 systemctl() {
+    COMMAND="$1"
+    SERVICE_NAME="$2"
+
     if command -v apk &>/dev/null; then
-        service "$2" "$1"
+        service "$SERVICE_NAME" "$COMMAND"
     else
-        /bin/systemctl "$1" "$2"
+        /bin/systemctl "$COMMAND" "$SERVICE_NAME"
     fi
 }
 
+
+# 重启服务
 restart() {
     systemctl restart "$1"
+    if [ $? -eq 0 ]; then
+        echo "$1 服务已重启。"
+    else
+        echo "错误：重启 $1 服务失败。"
+    fi
 }
 
+# 启动服务
 start() {
     systemctl start "$1"
+    if [ $? -eq 0 ]; then
+        echo "$1 服务已启动。"
+    else
+        echo "错误：启动 $1 服务失败。"
+    fi
 }
 
+# 停止服务
 stop() {
     systemctl stop "$1"
+    if [ $? -eq 0 ]; then
+        echo "$1 服务已停止。"
+    else
+        echo "错误：停止 $1 服务失败。"
+    fi
 }
 
-
+# 查看服务状态
 status() {
     systemctl status "$1"
+    if [ $? -eq 0 ]; then
+        echo "$1 服务状态已显示。"
+    else
+        echo "错误：无法显示 $1 服务状态。"
+    fi
 }
+
+
+enable() {
+    SERVICE_NAME="$1"
+    if command -v apk &>/dev/null; then
+        rc-update add "$SERVICE_NAME" default
+    else
+       /bin/systemctl enable "$SERVICE_NAME"
+    fi
+
+    echo "$SERVICE_NAME 已设置为开机自启。"
+}
+
+# 使用示例
+# enable <service_name>
 
 
 break_end() {
@@ -223,13 +300,11 @@ check_port() {
 }
 
 
+
+
+
 install_add_docker() {
-    if [ -f "/etc/alpine-release" ]; then
-        apk update
-        apk add docker docker-compose
-        rc-update add docker default
-        service docker start
-    else
+    if command -v apt &>/dev/null || command -v yum &>/dev/null; then
         country=$(curl -s ipinfo.io/country)
         if [ "$country" = "CN" ]; then
             cd ~
@@ -246,8 +321,11 @@ EOF
         fi
         systemctl start docker
         systemctl enable docker
+    else
+       k install docker docker-compose
+       k enable docker
+       k start docker
     fi
-
     sleep 2
 }
 
@@ -1054,6 +1132,8 @@ linux_update() {
         DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
     elif command -v apk &>/dev/null; then
         apk update && apk upgrade
+    elif command -v pacman &>/dev/null; then
+        pacman -Syu --noconfirm
     else
         echo "未知的包管理器!"
         return 1
@@ -1070,6 +1150,7 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
         dnf remove $(dnf repoquery --installonly --latest-limit=-1 -q) -y
+
     elif command -v yum &>/dev/null; then
         yum autoremove -y
         yum clean all
@@ -1077,6 +1158,7 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
         yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+
     elif command -v apt &>/dev/null; then
         apt autoremove --purge -y
         apt clean -y
@@ -1086,17 +1168,27 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
         apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+
     elif command -v apk &>/dev/null; then
         apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
         apk autoremove
         apk cache clean
         rm -rf /var/log/*
         rm -rf /var/cache/apk/*
+
+    elif command -v pacman &>/dev/null; then
+        pacman -Rns $(pacman -Qdtq) --noconfirm
+        pacman -Scc --noconfirm
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=50M
+
     else
         echo "未知的包管理器!"
         return 1
     fi
 
+    return 0
 }
 
 
@@ -1592,7 +1684,7 @@ echo -e "${kjlan}_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "${kjlan}科技lion一键脚本工具 v$sh_v （支持Ubuntu/Debian/CentOS/Alpine系统）${bai}"
+echo -e "${kjlan}科技lion脚本工具箱 v$sh_v ${bai}"
 echo -e "${kjlan}-输入${huang}k${kjlan}可快速启动此脚本-${bai}"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -1622,7 +1714,7 @@ case $choice in
   1)
     clear
     send_stats "系统信息查询"
-    # 函数: 获取IPv4和IPv6地址
+
     ip_address
 
     if [ "$(uname -m)" == "x86_64" ]; then
@@ -1630,7 +1722,6 @@ case $choice in
     else
       cpu_info=$(lscpu | grep 'BIOS Model name' | awk -F': ' '{print $2}' | sed 's/^[ \t]*//')
     fi
-
 
     cpu_usage_percent=$(awk '{u=$2+$4; t=$2+$4+$5; if (NR==1){u1=u; t1=t;} else printf "%.0f\n", (($2+$4-u1) * 100 / (t-t1))}' \
         <(grep 'cpu ' /proc/stat) <(sleep 1; grep 'cpu ' /proc/stat))
@@ -2359,7 +2450,8 @@ case $choice in
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
-                  remove docker > /dev/null 2>&1
+                  k remove docker docker-compose
+
                   ;;
                 [Nn])
                   ;;
@@ -2818,7 +2910,7 @@ case $choice in
       wget -O latest.zip https://hub.gitmirror.com/https://github.com/kalcaddle/kodbox/archive/refs/tags/1.50.02.zip
       unzip -o latest.zip
       rm latest.zip
-
+      mv /home/web/html/$yuming/kodbox* /home/web/html/$yuming/kodbox
       restart_ldnmp
 
       ldnmp_web_on
@@ -5082,6 +5174,8 @@ case $choice in
       echo "------------------------"
       echo "99. 重启服务器                         100. 隐私与安全"
       echo "------------------------"
+      echo "101. 卸载科技lion脚本"
+      echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
       read -p "请输入你的选择: " sub_choice
@@ -6429,7 +6523,6 @@ EOF
             send_stats "隐私与安全"
             while true; do
               clear
-              yinsiyuanquan
               yinsiyuanquan1
               echo "隐私与安全"
               echo "脚本将收集用户使用功能的数据，优化脚本体验，制作更多好玩好用的功能"
@@ -6446,14 +6539,14 @@ EOF
               case $sub_choice in
                   1)
                       cd ~
-                      sed -i 's/^ENABLE_STATS=false/ENABLE_STATS=true/' /usr/local/bin/k
-                      sed -i 's/^ENABLE_STATS=false/ENABLE_STATS=true/' ~/kejilion.sh
+                      sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' /usr/local/bin/k
+                      sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' ~/kejilion.sh
                       echo "已开启采集"
                       ;;
                   2)
                       cd ~
-                      sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' /usr/local/bin/k
-                      sed -i 's/^ENABLE_STATS=true/ENABLE_STATS=false/' ~/kejilion.sh
+                      sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
+                      sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
                       echo "已关闭采集"
                       ;;
                   0)
@@ -6465,6 +6558,34 @@ EOF
               esac
             done
               ;;
+
+          101)
+              clear
+              send_stats "卸载科技lion脚本"
+              echo "卸载科技lion脚本"
+              echo "------------------------------------------------"
+              echo "将彻底卸载kejilion脚本，不影响你其他功能"
+              read -p "确定继续吗？(Y/N): " choice
+
+              case "$choice" in
+                [Yy])
+                  clear
+                  rm -f /usr/local/bin/k
+                  rm ~/kejilion.sh
+                  echo "脚本已卸载，再见！"
+                  break_end
+                  clear
+                  exit
+                  ;;
+                [Nn])
+                  echo "已取消"
+                  ;;
+                *)
+                  echo "无效的选择，请输入 Y 或 N。"
+                  ;;
+              esac
+              ;;
+
           0)
               kejilion
 
@@ -6689,7 +6810,6 @@ EOF
             [Yy])
                 clear
                 curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-                yinsiyuanquan
                 yinsiyuanquan2
                 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
@@ -6771,6 +6891,12 @@ else
             send_stats "软件重启"
             restart "$@"
             ;;
+
+        enable|autostart|开机启动)
+            shift
+            send_stats "软件开机自启"
+            enable "$@"
+            ;;
         *)
             echo "无效参数，以下是k命令参考用例："
             echo "启动脚本            k"
@@ -6784,6 +6910,7 @@ else
             echo "软件停止            k stop sshd | k 停止 sshd "
             echo "软件重启            k restart sshd | k 重启 sshd "
             echo "软件状态查看        k status sshd | k 状态 sshd "
+            echo "软件开机启动        k enable docker | k autostart docke | k 开机启动 docker "
             ;;
     esac
 fi
