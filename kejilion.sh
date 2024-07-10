@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.0"
+sh_v="2.7.1"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -5421,13 +5421,8 @@ EOF
             swap_used=$(free -m | awk 'NR==3{print $3}')
             swap_total=$(free -m | awk 'NR==3{print $2}')
 
-            if [ "$swap_total" -eq 0 ]; then
-              swap_percentage=0
-            else
-              swap_percentage=$((swap_used * 100 / swap_total))
-            fi
 
-            swap_info="${swap_used}MB/${swap_total}MB (${swap_percentage}%)"
+            swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dMB/%dMB (%d%%)", used, total, percentage}')
 
             echo "当前虚拟内存: $swap_info"
 
