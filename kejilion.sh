@@ -1685,7 +1685,7 @@ echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
 echo -e "${kjlan}科技lion脚本工具箱 v$sh_v 只为更简单的Linux的使用！"
-echo -e "-设配Ubuntu/Debian/CentOS/Alpine/Kali/Arch/RedHat/Fedora/Alma/Rocky系统-"
+echo -e "设配Ubuntu/Debian/CentOS/Alpine/Kali/Arch/RedHat/Fedora/Alma/Rocky系统"
 echo -e "-输入${huang}k${kjlan}可快速启动此脚本-${bai}"
 echo "------------------------"
 echo "1. 系统信息查询"
@@ -6796,8 +6796,8 @@ EOF
     echo "------------------------"
     echo "全部日志: https://raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt"
     echo "------------------------"
-    curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt | tail -n 35
 
+    curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt | tail -n 35
     sh_v_new=$(curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
 
     if [ "$sh_v" = "$sh_v_new" ]; then
@@ -6810,7 +6810,12 @@ EOF
         case "$choice" in
             [Yy])
                 clear
-                curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
+                country=$(curl -s ipinfo.io/country)
+                if [ "$country" = "CN" ]; then
+                    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/cn/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
+                else
+                    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
+                fi
                 yinsiyuanquan2
                 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
