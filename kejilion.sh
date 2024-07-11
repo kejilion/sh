@@ -2871,6 +2871,8 @@ case $choice in
                       -e MEM_UTIL="$mem_util" \
                       -e SPEEDTEST_INTERVAL="$speedtest_interval" \
                       fogforest/lookbusy
+                  send_stats "甲骨文云安装活跃脚本"
+                  
                   ;;
                 [Nn])
 
@@ -5637,10 +5639,12 @@ EOF
                 1)
                     sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null 2>&1
                     echo "已切换为 IPv4 优先"
+                    send_stats "已切换为 IPv4 优先"
                     ;;
                 2)
                     sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
                     echo "已切换为 IPv6 优先"
+                    send_stats "已切换为 IPv6 优先"
                     ;;
                 *)
                     echo "无效的选择"
