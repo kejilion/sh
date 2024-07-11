@@ -6871,6 +6871,7 @@ EOF
       case $sub_choice in
           1)
             clear
+            send_stats "安装集群环境"
             install python3 python3-paramiko speedtest-cli lrzsz
             mkdir cluster && cd cluster
             touch servers.py
@@ -6886,6 +6887,7 @@ EOF
 
               while true; do
                   clear
+                  send_stats "集群控制中心"
                   echo "集群服务器列表"
                   cat ~/cluster/servers.py
 
@@ -6906,6 +6908,7 @@ EOF
 
                   case $sub_choice in
                       1)
+                          send_stats "添加集群服务器"
                           read -p "服务器名称: " server_name
                           read -p "服务器IP: " server_ip
                           read -p "服务器端口（22）: " server_port
@@ -6918,10 +6921,12 @@ EOF
 
                           ;;
                       2)
+                          send_stats "删除集群服务器"
                           read -p "请输入需要删除的关键字: " rmserver
                           sed -i "/$rmserver/d" ~/cluster/servers.py
                           ;;
                       3)
+                          send_stats "编辑集群服务器"
                           install nano
                           nano ~/cluster/servers.py
                           ;;
@@ -6958,7 +6963,7 @@ EOF
                           cluster_python3
                           ;;
                       51)
-
+                          send_stats "自定义执行命令"
                           read -p "请输入批量执行的命令: " mingling
                           py_task=custom_tasks.py
                           cd ~/cluster/
@@ -6982,6 +6987,7 @@ EOF
               ;;
           7)
             clear
+            send_stats "备份集群"
             echo "将下载服务器列表数据，按任意键下载！"
             read -n 1 -s -r -p ""
             sz -y ~/cluster/servers.py
@@ -6990,6 +6996,7 @@ EOF
 
           8)
             clear
+            send_stats "还原集群"
             echo "请上传您的servers.py，按任意键开始上传！"
             read -n 1 -s -r -p ""
             cd ~/cluster/
@@ -6999,6 +7006,7 @@ EOF
           9)
 
             clear
+            send_stats "卸载集群"
             read -p "请先备份环境，确定要卸载集群控制环境吗？(Y/N): " choice
             case "$choice" in
               [Yy])
