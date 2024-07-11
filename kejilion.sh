@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.2"
+sh_v="2.7.3"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -305,7 +305,26 @@ check_port() {
 
 
 install_add_docker() {
-    if command -v apt &>/dev/null || command -v yum &>/dev/null; then
+    if command -v dnf &>/dev/null; then
+        dnf update -y
+        dnf install -y yum-utils device-mapper-persistent-data lvm2
+        rm -f /etc/yum.repos.d/docker*.repo > /dev/null
+        yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo > /dev/null
+        dnf install -y docker-ce docker-ce-cli containerd.io
+        k enable docker
+        k start docker
+    elif [ -f /etc/os-release ] && grep -q "Kali" /etc/os-release; then
+        apt update
+        apt upgrade -y
+        apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+        rm -f /usr/share/keyrings/docker-archive-keyring.gpg && curl -fsSL https://download.docker.com/linux/debian/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg > /dev/null
+        sed -i '/^deb \[arch=amd64 signed-by=\/usr\/share\/keyrings\/docker-archive-keyring.gpg\] https:\/\/download.docker.com\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+        apt update
+        apt install -y docker-ce docker-ce-cli containerd.io
+        k enable docker
+        k start docker
+    elif command -v apt &>/dev/null || command -v yum &>/dev/null; then
         country=$(curl -s ipinfo.io/country)
         if [ "$country" = "CN" ]; then
             cd ~
@@ -320,12 +339,12 @@ EOF
         else
             curl -fsSL https://get.docker.com | sh
         fi
-        systemctl start docker
-        systemctl enable docker
+        k enable docker
+        k start docker
     else
-       k install docker docker-compose
-       k enable docker
-       k start docker
+        k install docker docker-compose
+        k enable docker
+        k start docker
     fi
     sleep 2
 }
@@ -339,11 +358,62 @@ install_docker() {
     fi
 }
 
-docker_restart() {
 
-restart docker
 
+
+
+check_crontab_installed() {
+    if command -v crontab >/dev/null 2>&1; then
+        echo "crontab 已经安装。"
+        return 1
+    else
+        install_crontab
+        return 0
+    fi
 }
+
+
+# 在不同发行版上安装 crontab 的函数
+install_crontab() {
+    # 根据发行版更新包列表并安装 crontab
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case "$ID" in
+            ubuntu|debian|kali)
+                apt update
+                apt install -y cron
+                systemctl enable cron
+                systemctl start cron
+                ;;
+            centos|rhel|almalinux|rocky|fedora)
+                yum install -y cronie
+                systemctl enable crond
+                systemctl start crond
+                ;;
+            alpine)
+                apk add --no-cache cronie
+                rc-update add crond
+                rc-service crond start
+                ;;
+            arch|manjaro)
+                pacman -S --noconfirm cronie
+                systemctl enable cronie
+                systemctl start cronie
+                ;;
+            *)
+                echo "不支持的发行版: $ID"
+                exit 1
+                ;;
+        esac
+    else
+        echo "无法确定操作系统。"
+        exit 1
+    fi
+
+    echo "crontab 已安装且 cron 服务正在运行。"
+}
+
+
 
 docker_ipv6_on() {
 mkdir -p /etc/docker &>/dev/null
@@ -357,7 +427,7 @@ cat > /etc/docker/daemon.json << EOF
 
 EOF
 
-docker_restart
+k restart docker
 
 echo "Docker已开启v6访问"
 
@@ -368,7 +438,7 @@ docker_ipv6_off() {
 
 rm -rf etc/docker/daemon.json &>/dev/null
 
-docker_restart
+k restart docker
 
 echo "Docker已关闭v6访问"
 
@@ -506,6 +576,7 @@ install_ldnmp() {
           # php重启
           "docker exec php chmod -R 777 /var/www/html"
           "docker restart php > /dev/null 2>&1"
+          "docker exec php install-php-extensions imagick > /dev/null 2>&1"
 
           # php7.4安装扩展
           "docker exec php74 install-php-extensions imagick > /dev/null 2>&1"
@@ -533,6 +604,11 @@ install_ldnmp() {
           # redis调优
           "docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1"
           "docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1"
+
+          # 最后一次php重启
+          "docker restart php > /dev/null 2>&1"
+          "docker restart php74 > /dev/null 2>&1"
+
 
       )
 
@@ -584,6 +660,7 @@ install_certbot() {
     chmod +x auto_cert_renewal.sh
 
     # 设置定时任务字符串
+    check_crontab_installed
     cron_job="0 0 * * * ~/auto_cert_renewal.sh"
 
     # 检查是否存在相同的定时任务
@@ -2722,7 +2799,7 @@ case $choice in
               read -p "确定安装吗？(Y/N): " choice
               case "$choice" in
                 [Yy])
-                  
+
                   install_docker
 
                   # 设置默认值
@@ -2730,20 +2807,20 @@ case $choice in
                   DEFAULT_CPU_UTIL="10-20"
                   DEFAULT_MEM_UTIL=20
                   DEFAULT_SPEEDTEST_INTERVAL=120
-                  
+
                   # 提示用户输入CPU核心数和占用百分比，如果回车则使用默认值
                   read -p "请输入CPU核心数 [默认: $DEFAULT_CPU_CORE]: " cpu_core
                   cpu_core=${cpu_core:-$DEFAULT_CPU_CORE}
-                  
+
                   read -p "请输入CPU占用百分比范围（例如10-20） [默认: $DEFAULT_CPU_UTIL]: " cpu_util
                   cpu_util=${cpu_util:-$DEFAULT_CPU_UTIL}
-                  
+
                   read -p "请输入内存占用百分比 [默认: $DEFAULT_MEM_UTIL]: " mem_util
                   mem_util=${mem_util:-$DEFAULT_MEM_UTIL}
-                  
+
                   read -p "请输入Speedtest间隔时间（秒） [默认: $DEFAULT_SPEEDTEST_INTERVAL]: " speedtest_interval
                   speedtest_interval=${speedtest_interval:-$DEFAULT_SPEEDTEST_INTERVAL}
-                  
+
                   # 运行Docker容器
                   docker run -itd --name=lookbusy --restart=always \
                       -e TZ=Asia/Shanghai \
@@ -3649,10 +3726,12 @@ case $choice in
 
       case $dingshi in
           1)
+              check_crontab_installed
               read -p "选择每周备份的星期几 (0-6，0代表星期日): " weekday
               (crontab -l ; echo "0 0 * * $weekday ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
               ;;
           2)
+              check_crontab_installed
               read -p "选择每天备份的时间（小时，0-23）: " hour
               (crontab -l ; echo "0 $hour * * * ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
               ;;
@@ -3813,6 +3892,7 @@ case $choice in
 
                       cd ~
                       install jq bc
+                      check_crontab_installed
                       curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
                       chmod +x CF-Under-Attack.sh
                       sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
@@ -5090,12 +5170,14 @@ case $choice in
               ;;
 
           38)
+            send_stats "小雅全家桶"
             bash -c "$(curl --insecure -fsSL https://ddsrem.com/xiaoya_install.sh)"
               ;;
 
           51)
-          clear
-          curl -L https://raw.githubusercontent.com/oneclickvirt/pve/main/scripts/install_pve.sh -o install_pve.sh && chmod +x install_pve.sh && bash install_pve.sh
+            clear
+            send_stats "PVE开小鸡"
+            curl -L https://raw.githubusercontent.com/oneclickvirt/pve/main/scripts/install_pve.sh -o install_pve.sh && chmod +x install_pve.sh && bash install_pve.sh
               ;;
           0)
               kejilion
@@ -5433,7 +5515,7 @@ EOF
 
                 case "$Limiting" in
                   1)
-                    
+
                     dns1_ipv4="1.1.1.1"
                     dns2_ipv4="8.8.8.8"
                     dns1_ipv6="2606:4700:4700::1111"
@@ -6176,6 +6258,8 @@ EOF
           send_stats "定时任务管理"
               while true; do
                   clear
+                  check_crontab_installed
+                  clear
                   echo "定时任务列表"
                   crontab -l
                   echo ""
@@ -6403,6 +6487,7 @@ EOF
                 curl -Ss -O https://raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down.sh
                 chmod +x ~/Limiting_Shut_down.sh
                 sed -i "s/110/$threshold_gb/g" ~/Limiting_Shut_down.sh
+                check_crontab_installed
                 crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
                 (crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
                 crontab -l | grep -v 'reboot' | crontab -
@@ -6414,6 +6499,7 @@ EOF
                 echo "已取消"
                 ;;
               2)
+                check_crontab_installed
                 crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
                 crontab -l | grep -v 'reboot' | crontab -
                 rm ~/Limiting_Shut_down.sh
@@ -6466,6 +6552,7 @@ EOF
                   send_stats "电报预警启用"
                   cd ~
                   install nano tmux bc jq
+                  check_crontab_installed
                   if [ -f ~/TG-check-notify.sh ]; then
                       chmod +x ~/TG-check-notify.sh
                       nano ~/TG-check-notify.sh
