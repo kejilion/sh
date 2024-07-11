@@ -1461,139 +1461,140 @@ dd_xitong() {
             read -p "请选择要重装的系统: " sys_choice
             case "$sys_choice" in
               1)
+                send_stats "重装debian 12"
                 dd_xitong_1
                 bash InstallNET.sh -debian 12
-                send_stats "重装debian 12"
                 reboot
                 exit
                 ;;
               2)
+                send_stats "重装debian 11"
                 dd_xitong_1
                 bash InstallNET.sh -debian 11
-                send_stats "重装debian 11"
                 reboot
                 exit
                 ;;
               3)
+                send_stats "重装debian 10"
                 dd_xitong_1
                 bash InstallNET.sh -debian 10
-                send_stats "重装debian 10"
                 reboot
                 exit
                 ;;
               4)
+                send_stats "重装debian 9"
                 dd_xitong_1
                 bash InstallNET.sh -debian 9
-                send_stats "重装debian 9"
                 reboot
                 exit
                 ;;
               11)
+                send_stats "重装ubuntu 24.04"
                 dd_xitong_1
                 bash InstallNET.sh -ubuntu 24.04
-                send_stats "重装ubuntu 24.04"
                 reboot
                 exit
                 ;;
               12)
+                send_stats "重装ubuntu 22.04"
                 dd_xitong_1
                 bash InstallNET.sh -ubuntu 22.04
-                send_stats "重装ubuntu 22.04"
                 reboot
                 exit
                 ;;
               13)
+                send_stats "重装ubuntu 20.04"
                 dd_xitong_1
                 bash InstallNET.sh -ubuntu 20.04
-                send_stats "重装ubuntu 20.04"
                 reboot
                 exit
                 ;;
               14)
+                send_stats "重装ubuntu 18.04"
                 dd_xitong_1
                 bash InstallNET.sh -ubuntu 18.04
-                send_stats "重装ubuntu 18.04"
                 reboot
                 exit
                 ;;
               21)
+                send_stats "重装centos 9"
                 dd_xitong_3
                 bash reinstall.sh centos 9
-                send_stats "重装centos 9"
                 reboot
                 exit
                 ;;
               22)
+                send_stats "重装centos 8"
                 dd_xitong_3
                 bash reinstall.sh centos 8
-                send_stats "重装centos 8"
                 reboot
                 exit
                 ;;
               23)
+                send_stats "重装centos 7"
                 dd_xitong_3
                 bash reinstall.sh centos 7
-                send_stats "重装centos 7"
                 reboot
                 exit
                 ;;
               31)
+                send_stats "重装alpine"
                 dd_xitong_1
                 bash InstallNET.sh -alpine
-                send_stats "重装alpine"
                 reboot
                 exit
                 ;;
               32)
+                send_stats "重装rockylinux"
                 dd_xitong_1
                 bash InstallNET.sh -rockylinux
-                send_stats "重装rockylinux"
                 reboot
                 exit
                 ;;
               33)
+                send_stats "重装alma"
                 dd_xitong_3
                 bash reinstall.sh alma
-                send_stats "重装alma"
                 reboot
                 exit
                 ;;
               34)
+                send_stats "重装fedora"
                 dd_xitong_3
                 bash reinstall.sh fedora
-                send_stats "重装fedora"
                 reboot
                 exit
                 ;;
               35)
+                send_stats "重装kali"
                 dd_xitong_3
                 bash reinstall.sh kali
-                send_stats "重装kali"
                 reboot
                 exit
                 ;;
               36)
+                send_stats "重装arch"
                 dd_xitong_3
                 bash reinstall.sh arch
-                send_stats "重装arch"
                 reboot
                 exit
                 ;;
               41)
+                send_stats "重装windows11"
                 dd_xitong_2
                 bash InstallNET.sh -windows 11 -lang "cn"
-                send_stats "重装windows11"
                 reboot
                 exit
                 ;;
               42)
                 dd_xitong_2
-                bash InstallNET.sh -windows 10 -lang "cn"
                 send_stats "重装windows10"
+                bash InstallNET.sh -windows 10 -lang "cn"
                 reboot
                 exit
                 ;;
               43)
+                send_stats "重装windows7"
                 dd_xitong_4
                 URL="https://massgrave.dev/windows_7_links"
                 web_content=$(wget -q -O - "$URL")
@@ -1601,31 +1602,30 @@ dd_xitong() {
                 # bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
                 # bash reinstall.sh windows --iso='$iso_link' --image-name='Windows 7 PROFESSIONAL'
                 bash reinstall.sh windows --iso="$iso_link" --image-name='Windows 7 PROFESSIONAL'
-                send_stats "重装windows7"
                 reboot
                 exit
                 ;;
               44)
+                send_stats "重装windows server 22"
                 dd_xitong_4
                 URL="https://massgrave.dev/windows_server_links"
                 web_content=$(wget -q -O - "$URL")
                 iso_link=$(echo "$web_content" | grep -oP '(?<=href=")[^"]*cn[^"]*windows_server[^"]*2022[^"]*x64[^"]*\.iso')
                 bash reinstall.sh windows --iso="$iso_link" --image-name='Windows Server 2022 SERVERDATACENTER'
-                send_stats "重装windows server 22"
                 reboot
                 exit
                 ;;
               45)
+                send_stats "重装windows server 19"
                 dd_xitong_2
                 bash InstallNET.sh -windows 2019 -lang "cn"
-                send_stats "重装windows server 19"
                 reboot
                 exit
                 ;;
               46)
+                send_stats "重装windows server 16"
                 dd_xitong_2
                 bash InstallNET.sh -windows 2016 -lang "cn"
-                send_stats "重装windows server 16"
                 reboot
                 exit
                 ;;
