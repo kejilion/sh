@@ -134,9 +134,9 @@ install() {
         if ! command -v "$package" &>/dev/null; then
             echo "正在安装 $package..."
             if command -v dnf &>/dev/null; then
-                dnf -y update && yum -y epel-release && dnf install -y "$package"
+                dnf -y update && dnf install -y epel-release && dnf install -y "$package"
             elif command -v yum &>/dev/null; then
-                yum -y update && yum -y epel-release && yum -y install "$package"
+                yum -y update && yum install -y epel-release && yum -y install "$package"
             elif command -v apt &>/dev/null; then
                 apt update -y && apt install -y "$package"
             elif command -v apk &>/dev/null; then
