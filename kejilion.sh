@@ -1033,7 +1033,7 @@ f2b_sshd() {
     if grep -q 'Alpine' /etc/issue; then
         xxx=alpine-sshd
         f2b_status_xxx
-    elif grep -qi 'CentOS' /etc/redhat-release; then
+    elif command -v dnf &>/dev/null; then
         xxx=centos-sshd
         f2b_status_xxx
     else
@@ -1193,7 +1193,7 @@ install_panel() {
                         if grep -q 'Alpine' /etc/issue; then
                             $ubuntu_mingling
                             $ubuntu_mingling2
-                        elif grep -qi 'CentOS' /etc/redhat-release; then
+                        elif command -v dnf &>/dev/null; then
                             $centos_mingling
                             $centos_mingling2
                         elif grep -qi 'Ubuntu' /etc/os-release; then
@@ -6176,7 +6176,7 @@ EOF
               debian)
                   initial_debian_source=$(grep -E '^deb ' /etc/apt/sources.list | head -n 1 | awk '{print $2}')
                   ;;
-              centos)
+              centos|rhel|almalinux|rocky|fedora)
                   initial_centos_source=$(awk -F= '/^baseurl=/ {print $2}' /etc/yum.repos.d/CentOS-Base.repo | head -n 1 | tr -d ' ')
                   ;;
               *)
@@ -6194,7 +6194,7 @@ EOF
                   debian)
                       cp /etc/apt/sources.list /etc/apt/sources.list.bak
                       ;;
-                  centos)
+                  centos|rhel|almalinux|rocky|fedora)
                       if [ ! -f /etc/yum.repos.d/CentOS-Base.repo.bak ]; then
                           cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
                       else
@@ -6218,7 +6218,7 @@ EOF
                   debian)
                       cp /etc/apt/sources.list.bak /etc/apt/sources.list
                       ;;
-                  centos)
+                  centos|rhel|almalinux|rocky|fedora)
                       cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo
                       ;;
                   *)
@@ -6238,7 +6238,7 @@ EOF
                   debian)
                       sed -i 's|'"$initial_debian_source"'|'"$1"'|g' /etc/apt/sources.list
                       ;;
-                  centos)
+                  centos|rhel|almalinux|rocky|fedora)
                       sed -i "s|^baseurl=.*$|baseurl=$1|g" /etc/yum.repos.d/CentOS-Base.repo
                       ;;
                   *)
@@ -6259,7 +6259,7 @@ EOF
                       echo "Debian 更新源切换脚本"
                       echo "------------------------"
                       ;;
-                  centos)
+                  centos|rhel|almalinux|rocky|fedora)
                       echo "CentOS 更新源切换脚本"
                       echo "------------------------"
                       ;;
@@ -6289,7 +6289,7 @@ EOF
                           debian)
                               switch_source $aliyun_debian_source
                               ;;
-                          centos)
+                          centos|rhel|almalinux|rocky|fedora)
                               switch_source $aliyun_centos_source
                               ;;
                           *)
@@ -6308,7 +6308,7 @@ EOF
                           debian)
                               switch_source $official_debian_source
                               ;;
-                          centos)
+                          centos|rhel|almalinux|rocky|fedora)
                               switch_source $official_centos_source
                               ;;
                           *)
@@ -6327,7 +6327,7 @@ EOF
                           debian)
                               switch_source $initial_debian_source
                               ;;
-                          centos)
+                          centos|rhel|almalinux|rocky|fedora)
                               switch_source $initial_centos_source
                               ;;
                           *)
