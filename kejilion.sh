@@ -302,11 +302,34 @@ check_port() {
 
 
 
+install_add_docker_guanfang() {
+country=$(curl -s ipinfo.io/country)
+if [ "$country" = "CN" ]; then
+    cd ~
+    curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
+    sh install --mirror Aliyun
+    rm -f install
+    cat > /etc/docker/daemon.json << EOF
+{
+    "registry-mirrors": ["https://docker.kejilion.pro"]
+}
+EOF
+
+else
+    curl -fsSL https://get.docker.com | sh
+fi
+k enable docker
+k start docker
+
+}
+
 
 
 install_add_docker() {
 
-    if command -v dnf &>/dev/null; then
+    if  [ -f /etc/os-release ] && grep -q "Fedora" /etc/os-release; then
+        install_add_docker_guanfang
+    elif command -v dnf &>/dev/null; then
         dnf update -y
         dnf install -y yum-utils device-mapper-persistent-data lvm2
         rm -f /etc/yum.repos.d/docker*.repo > /dev/null
@@ -367,22 +390,7 @@ install_add_docker() {
         k start docker
 
     elif command -v apt &>/dev/null || command -v yum &>/dev/null; then
-        country=$(curl -s ipinfo.io/country)
-        if [ "$country" = "CN" ]; then
-            cd ~
-            curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
-            sh install --mirror Aliyun
-            rm -f install
-            cat > /etc/docker/daemon.json << EOF
-{
-    "registry-mirrors": ["https://docker.kejilion.pro"]
-}
-EOF
-        else
-            curl -fsSL https://get.docker.com | sh
-        fi
-        k enable docker
-        k start docker
+        install_add_docker_guanfang
     else
         k install docker docker-compose
         k enable docker
