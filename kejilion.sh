@@ -6566,8 +6566,10 @@ EOF
             # 检查是否存在 Limiting_Shut_down.sh 文件
             if [ -f ~/Limiting_Shut_down.sh ]; then
                 # 获取 threshold_gb 的值
-                threshold_gb=$(grep -oP 'threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
-                echo -e "当前设置的限流阈值为 ${hang}${threshold_gb}${bai}GB"
+                rx_threshold_gb=$(grep -oP 'rx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+                tx_threshold_gb=$(grep -oP 'tx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+                echo -e "当前设置的进站限流阈值为 ${hang}${rx_threshold_gb}${bai}GB"
+                echo -e "当前设置的出站限流阈值为 ${hang}${tx_threshold_gb}${bai}GB"
             else
                 echo -e "${hui}前未启用限流关机功能${bai}"
             fi
@@ -6582,7 +6584,7 @@ EOF
                 # 输入新的虚拟内存大小
                 echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
                 read -p "请输入进站流量阈值（单位为GB）: " rx_threshold_gb
-                read -p "请输入出站流量阈值（单位为GB）: " rx_threshold_gb
+                read -p "请输入出站流量阈值（单位为GB）: " tx_threshold_gb
                 cd ~
                 curl -Ss -o ~/Limiting_Shut_down.sh https://raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh
                 chmod +x ~/Limiting_Shut_down.sh
