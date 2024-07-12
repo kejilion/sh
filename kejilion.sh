@@ -134,7 +134,7 @@ install() {
         if ! command -v "$package" &>/dev/null; then
             echo "正在安装 $package..."
             if command -v dnf &>/dev/null; then
-                dnf -y update && dnf install -y "$package"
+                dnf -y update && dnf -y epel-release && dnf install -y "$package"
             elif command -v yum &>/dev/null; then
                 yum -y update && yum -y epel-release && yum -y install "$package"
             elif command -v apt &>/dev/null; then
@@ -1266,6 +1266,7 @@ linux_clean() {
     if command -v dnf &>/dev/null; then
         dnf autoremove -y
         dnf clean all
+        dnf makecache
         journalctl --rotate
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
@@ -1274,6 +1275,7 @@ linux_clean() {
     elif command -v yum &>/dev/null; then
         yum autoremove -y
         yum clean all
+        yum makecache
         journalctl --rotate
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
