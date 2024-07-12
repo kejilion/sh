@@ -1921,7 +1921,7 @@ elrepo_install() {
 
 elrepo() {
           root_use
-          send_stats "红帽内核升级"
+          send_stats "红帽内核管理"
           if uname -r | grep -q 'elrepo'; then
             while true; do
                   clear
@@ -1971,7 +1971,7 @@ elrepo() {
           echo "请备份数据，将为你升级Linux内核"
           echo "官网介绍: https://elrepo.org/"
           echo "------------------------------------------------"
-          echo "仅支持红帽系列发行版 CentOS/RedHat/Alma/Rocky "
+          echo "仅支持红帽系列发行版 CentOS/RedHat/Alma/Rocky/oracle "
           echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"
           echo "------------------------------------------------"
           read -p "确定继续吗？(Y/N): " choice
@@ -1981,7 +1981,7 @@ elrepo() {
               new_swap=1024
               add_swap
               elrepo_install
-              send_stats "安装红帽内核"
+              send_stats "升级红帽内核"
               server_reboot
               ;;
             [Nn])
