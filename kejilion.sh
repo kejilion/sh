@@ -136,7 +136,7 @@ install() {
             if command -v dnf &>/dev/null; then
                 dnf -y update && dnf install -y "$package"
             elif command -v yum &>/dev/null; then
-                yum -y update && yum -y install "$package"
+                yum -y update && yum -y epel-release && yum -y install "$package"
             elif command -v apt &>/dev/null; then
                 apt update -y && apt install -y "$package"
             elif command -v apk &>/dev/null; then
@@ -689,7 +689,7 @@ install_ldnmp() {
 install_certbot() {
 
     if command -v yum &>/dev/null; then
-        install epel-release certbot
+        install certbot
     else
         install certbot
     fi
@@ -6564,11 +6564,13 @@ EOF
               1)
                 # 输入新的虚拟内存大小
                 echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
-                read -p "请输入流量阈值（单位为GB）: " threshold_gb
+                read -p "请输入进站流量阈值（单位为GB）: " rx_threshold_gb
+                read -p "请输入出站流量阈值（单位为GB）: " rx_threshold_gb
                 cd ~
-                curl -Ss -O https://raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down.sh
+                curl -Ss -o ~/Limiting_Shut_down.sh https://raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh
                 chmod +x ~/Limiting_Shut_down.sh
-                sed -i "s/110/$threshold_gb/g" ~/Limiting_Shut_down.sh
+                sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
+                sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
                 check_crontab_installed
                 crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
                 (crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
