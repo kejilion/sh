@@ -35,7 +35,7 @@ install_dependencies() {
             DEBIAN_FRONTEND=noninteractive apt update
             DEBIAN_FRONTEND=noninteractive apt install -y build-essential zlib1g-dev libssl-dev libpam0g-dev wget ntpdate -o Dpkg::Options::="--force-confnew"
             ;;
-        centos|rhel|fedora)
+        centos|rhel|almalinux|rocky|fedora)
             yum install -y epel-release
             yum groupinstall -y "Development Tools"
             yum install -y zlib-devel openssl-devel pam-devel wget ntpdate
