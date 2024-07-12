@@ -1017,7 +1017,7 @@ f2b_install_sshd() {
         curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/alpine-sshd-ddos.conf
         cd /path/to/fail2ban/config/fail2ban/jail.d/
         curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/alpine-ssh.conf
-    elif grep -qi 'CentOS' /etc/redhat-release; then
+    elif command -v dnf &>/dev/null; then
         cd /path/to/fail2ban/config/fail2ban/jail.d/
         curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
     else
