@@ -1943,12 +1943,17 @@ elrepo() {
                         dnf remove -y elrepo-release
                         rpm -qa | grep elrepo | grep kernel | xargs rpm -e --nodeps
                         elrepo_install
+                        send_stats "更新红帽内核"
+                        server_reboot
+                        
                           ;;
                       2)
                         dnf remove -y elrepo-release
                         rpm -qa | grep elrepo | grep kernel | xargs rpm -e --nodeps
                         echo "elrepo内核已卸载。重启后生效"
+                        send_stats "卸载红帽内核"
                         server_reboot
+                        
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
@@ -1967,7 +1972,7 @@ elrepo() {
           echo "官网介绍: https://elrepo.org/"
           echo "------------------------------------------------"
           echo "仅支持红帽系列发行版 CentOS/RedHat/Alma/Rocky "
-          echo "升级Linux内核可提升系统性能和安全，建议有条件的升级，生产环境谨慎升级！"
+          echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"
           echo "------------------------------------------------"
           read -p "确定继续吗？(Y/N): " choice
 
@@ -1976,7 +1981,8 @@ elrepo() {
               new_swap=1024
               add_swap
               elrepo_install
-
+              send_stats "安装红帽内核"
+              server_reboot
               ;;
             [Nn])
               echo "已取消"
