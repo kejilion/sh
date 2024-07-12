@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.4"
+sh_v="2.7.5"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -1883,6 +1883,120 @@ EOF
 
 
 }
+
+
+elrepo_install() {
+    # 导入 ELRepo GPG 公钥
+    echo "导入 ELRepo GPG 公钥..."
+    rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+    # 检测系统版本
+    os_version=$(rpm -q --qf "%{VERSION}" $(rpm -qf /etc/os-release) 2>/dev/null | awk -F '.' '{print $1}')
+    os_name=$(awk -F= '/^NAME/{print $2}' /etc/os-release)
+    # 确保我们在一个支持的操作系统上运行
+    if [[ "$os_name" != *"Red Hat"* && "$os_name" != *"AlmaLinux"* && "$os_name" != *"Rocky"* && "$os_name" != *"Oracle"* && "$os_name" != *"CentOS"* ]]; then
+        echo "不支持的操作系统：$os_name"
+        break
+    fi
+    # 打印检测到的操作系统信息
+    echo "检测到的操作系统: $os_name $os_version"
+    # 根据系统版本安装对应的 ELRepo 仓库配置
+    if [[ "$os_version" == 8 ]]; then
+        echo "安装 ELRepo 仓库配置 (版本 8)..."
+        yum -y install https://www.elrepo.org/elrepo-release-8.el8.elrepo.noarch.rpm
+    elif [[ "$os_version" == 9 ]]; then
+        echo "安装 ELRepo 仓库配置 (版本 9)..."
+        yum -y install https://www.elrepo.org/elrepo-release-9.el9.elrepo.noarch.rpm
+    else
+        echo "不支持的系统版本：$os_version"
+        break
+    fi
+    # 启用 ELRepo 内核仓库并安装最新的主线内核
+    echo "启用 ELRepo 内核仓库并安装最新的主线内核..."
+    yum -y --enablerepo=elrepo-kernel install kernel-ml
+    echo "已安装 ELRepo 仓库配置并更新到最新主线内核。"
+    server_reboot
+
+}
+
+
+elrepo() {
+          root_use
+          send_stats "红帽内核管理"
+          if uname -r | grep -q 'elrepo'; then
+            while true; do
+                  clear
+                  kernel_version=$(uname -r)
+                  echo "您已安装elrepo内核"
+                  echo "当前内核版本: $kernel_version"
+
+                  echo ""
+                  echo "内核管理"
+                  echo "------------------------"
+                  echo "1. 更新elrepo内核              2. 卸载elrepo内核"
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                        dnf remove -y elrepo-release
+                        rpm -qa | grep elrepo | grep kernel | xargs rpm -e --nodeps
+                        elrepo_install
+                        send_stats "更新红帽内核"
+                        server_reboot
+                        
+                          ;;
+                      2)
+                        dnf remove -y elrepo-release
+                        rpm -qa | grep elrepo | grep kernel | xargs rpm -e --nodeps
+                        echo "elrepo内核已卸载。重启后生效"
+                        send_stats "卸载红帽内核"
+                        server_reboot
+                        
+                          ;;
+                      0)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                  esac
+            done
+        else
+
+          clear
+          echo "请备份数据，将为你升级Linux内核"
+          echo "官网介绍: https://elrepo.org/"
+          echo "------------------------------------------------"
+          echo "仅支持红帽系列发行版 CentOS/RedHat/Alma/Rocky/oracle "
+          echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"
+          echo "------------------------------------------------"
+          read -p "确定继续吗？(Y/N): " choice
+
+          case "$choice" in
+            [Yy])
+              new_swap=1024
+              add_swap
+              elrepo_install
+              send_stats "升级红帽内核"
+              server_reboot
+              ;;
+            [Nn])
+              echo "已取消"
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              ;;
+          esac
+        fi
+
+}
+
+
+
 
 
 
@@ -5477,6 +5591,7 @@ case $choice in
       echo "21. 本机host解析                       22. fail2banSSH防御程序"
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
       echo "25. TG-bot系统监控预警                 26. 修复OpenSSH高危漏洞（岫源）"
+      echo "27. 红帽系Linux内核升级"
       echo "------------------------"
       echo "31. 留言板                             66. 一条龙系统调优"
       echo "------------------------"
@@ -6720,6 +6835,10 @@ EOF
               chmod +x ~/upgrade_openssh9.8p1.sh
               ~/upgrade_openssh9.8p1.sh
               rm -f ~/upgrade_openssh9.8p1.sh
+              ;;
+
+          27)
+              elrepo
               ;;
 
           31)
