@@ -1262,6 +1262,21 @@ linux_update() {
 
 
 
+wait_for_lock() {
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+        echo "等待dpkg锁释放..."
+        sleep 1
+    done
+}
+
+# 修复dpkg中断问题
+fix_dpkg() {
+    DEBIAN_FRONTEND=noninteractive dpkg --configure -a
+}
+
+
+
+
 linux_clean() {
     if command -v dnf &>/dev/null; then
         dnf autoremove -y
@@ -1282,6 +1297,8 @@ linux_clean() {
         yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
 
     elif command -v apt &>/dev/null; then
+        wait_for_lock
+        fix_dpkg
         apt autoremove --purge -y
         apt clean -y
         apt autoclean -y
