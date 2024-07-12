@@ -1922,7 +1922,7 @@ elrepo_install() {
 elrepo() {
           root_use
           send_stats "红帽内核升级"
-          if dpkg -l | grep -q 'elrepo'; then
+          if uname -r | grep -q 'elrepo'; then
             while true; do
                   clear
                   kernel_version=$(uname -r)
