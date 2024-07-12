@@ -2165,28 +2165,28 @@ case $choice in
               clear
               install sl
               clear
-              /usr/games/sl
+              sl
               send_stats "安装sl"
               ;;
             26)
               clear
               install bastet
               clear
-              /usr/games/bastet
+              bastet
               send_stats "安装bastet"
               ;;
             27)
               clear
               install nsnake
               clear
-              /usr/games/nsnake
+              nsnake
               send_stats "安装nsnake"
               ;;
             28)
               clear
               install ninvaders
               clear
-              /usr/games/ninvaders
+              ninvaders
               send_stats "安装ninvaders"
 
               ;;
