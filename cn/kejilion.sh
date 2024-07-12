@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.3"
+sh_v="2.7.4"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -134,9 +134,9 @@ install() {
         if ! command -v "$package" &>/dev/null; then
             echo "正在安装 $package..."
             if command -v dnf &>/dev/null; then
-                dnf -y update && dnf install -y "$package"
+                dnf -y update && dnf install -y epel-release && dnf install -y "$package"
             elif command -v yum &>/dev/null; then
-                yum -y update && yum -y install "$package"
+                yum -y update && yum install -y epel-release && yum -y install "$package"
             elif command -v apt &>/dev/null; then
                 apt update -y && apt install -y "$package"
             elif command -v apk &>/dev/null; then
@@ -302,11 +302,34 @@ check_port() {
 
 
 
+install_add_docker_guanfang() {
+country=$(curl -s ipinfo.io/country)
+if [ "$country" = "CN" ]; then
+    cd ~
+    curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
+    sh install --mirror Aliyun
+    rm -f install
+    cat > /etc/docker/daemon.json << EOF
+{
+    "registry-mirrors": ["https://docker.kejilion.pro"]
+}
+EOF
+
+else
+    curl -fsSL https://get.docker.com | sh
+fi
+k enable docker
+k start docker
+
+}
+
 
 
 install_add_docker() {
 
-    if command -v dnf &>/dev/null; then
+    if  [ -f /etc/os-release ] && grep -q "Fedora" /etc/os-release; then
+        install_add_docker_guanfang
+    elif command -v dnf &>/dev/null; then
         dnf update -y
         dnf install -y yum-utils device-mapper-persistent-data lvm2
         rm -f /etc/yum.repos.d/docker*.repo > /dev/null
@@ -367,22 +390,7 @@ install_add_docker() {
         k start docker
 
     elif command -v apt &>/dev/null || command -v yum &>/dev/null; then
-        country=$(curl -s ipinfo.io/country)
-        if [ "$country" = "CN" ]; then
-            cd ~
-            curl -sS -O https://raw.gitmirror.com/kejilion/docker/main/install && chmod +x install
-            sh install --mirror Aliyun
-            rm -f install
-            cat > /etc/docker/daemon.json << EOF
-{
-    "registry-mirrors": ["https://docker.kejilion.pro"]
-}
-EOF
-        else
-            curl -fsSL https://get.docker.com | sh
-        fi
-        k enable docker
-        k start docker
+        install_add_docker_guanfang
     else
         k install docker docker-compose
         k enable docker
@@ -689,7 +697,7 @@ install_ldnmp() {
 install_certbot() {
 
     if command -v yum &>/dev/null; then
-        install epel-release certbot
+        install certbot
     else
         install certbot
     fi
@@ -698,7 +706,7 @@ install_certbot() {
     cd ~ || exit
 
     # 下载并使脚本可执行
-    curl -O https://raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
+    curl -O https://raw.gitmirror.com/kejilion/sh/main/auto_cert_renewal.sh
     chmod +x auto_cert_renewal.sh
 
     # 设置定时任务字符串
@@ -828,7 +836,7 @@ add_db() {
 
 reverse_proxy() {
       ip_address
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/reverse-proxy.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0.0.0.0/$ipv4_address/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0000/$duankou/g" /home/web/conf.d/$yuming.conf
@@ -965,7 +973,7 @@ fi
 
 cluster_python3() {
     cd ~/cluster/
-    curl -sS -O https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
+    curl -sS -O https://raw.gitmirror.com/kejilion/python-for-vps/main/cluster/$py_task
     python3 ~/cluster/$py_task
 }
 
@@ -1013,19 +1021,19 @@ f2b_install_sshd() {
     sleep 3
     if grep -q 'Alpine' /etc/issue; then
         cd /path/to/fail2ban/config/fail2ban/filter.d
-        curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/alpine-sshd.conf
-        curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/alpine-sshd-ddos.conf
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/alpine-sshd.conf
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/alpine-sshd-ddos.conf
         cd /path/to/fail2ban/config/fail2ban/jail.d/
-        curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/alpine-ssh.conf
-    elif grep -qi 'CentOS' /etc/redhat-release; then
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/alpine-ssh.conf
+    elif command -v dnf &>/dev/null; then
         cd /path/to/fail2ban/config/fail2ban/jail.d/
-        curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/centos-ssh.conf
     else
         install rsyslog
         systemctl start rsyslog
         systemctl enable rsyslog
         cd /path/to/fail2ban/config/fail2ban/jail.d/
-        curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/linux-ssh.conf
+        curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/linux-ssh.conf
     fi
 }
 
@@ -1033,7 +1041,7 @@ f2b_sshd() {
     if grep -q 'Alpine' /etc/issue; then
         xxx=alpine-sshd
         f2b_status_xxx
-    elif grep -qi 'CentOS' /etc/redhat-release; then
+    elif command -v dnf &>/dev/null; then
         xxx=centos-sshd
         f2b_status_xxx
     else
@@ -1193,7 +1201,7 @@ install_panel() {
                         if grep -q 'Alpine' /etc/issue; then
                             $ubuntu_mingling
                             $ubuntu_mingling2
-                        elif grep -qi 'CentOS' /etc/redhat-release; then
+                        elif command -v dnf &>/dev/null; then
                             $centos_mingling
                             $centos_mingling2
                         elif grep -qi 'Ubuntu' /etc/os-release; then
@@ -1240,6 +1248,18 @@ set_timedate() {
 }
 
 
+wait_for_lock() {
+    while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
+        echo "等待dpkg锁释放..."
+        sleep 1
+    done
+}
+
+# 修复dpkg中断问题
+fix_dpkg() {
+    DEBIAN_FRONTEND=noninteractive dpkg --configure -a
+}
+
 
 
 linux_update() {
@@ -1248,6 +1268,8 @@ linux_update() {
     elif command -v yum &>/dev/null; then
         yum -y update
     elif command -v apt &>/dev/null; then
+        wait_for_lock
+        fix_dpkg
         DEBIAN_FRONTEND=noninteractive apt update -y
         DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
     elif command -v apk &>/dev/null; then
@@ -1261,11 +1283,11 @@ linux_update() {
 }
 
 
-
 linux_clean() {
     if command -v dnf &>/dev/null; then
         dnf autoremove -y
         dnf clean all
+        dnf makecache
         journalctl --rotate
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
@@ -1274,12 +1296,15 @@ linux_clean() {
     elif command -v yum &>/dev/null; then
         yum autoremove -y
         yum clean all
+        yum makecache
         journalctl --rotate
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=50M
         yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
 
     elif command -v apt &>/dev/null; then
+        wait_for_lock
+        fix_dpkg
         apt autoremove --purge -y
         apt clean -y
         apt autoclean -y
@@ -1432,16 +1457,16 @@ dd_xitong() {
           if [ "$country" = "CN" ]; then
               wget --no-check-certificate -qO InstallNET.sh 'https://gitee.com/mb9e8j2/Tools/raw/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
           else
-              wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
+              wget --no-check-certificate -qO InstallNET.sh 'https://raw.gitmirror.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
           fi
         }
 
         dd_xitong_bin456789() {
           country=$(curl -s ipinfo.io/country)
           if [ "$country" = "CN" ]; then
-              curl -O https://mirror.ghproxy.com/https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
+              curl -O https://mirror.ghproxy.com/https://raw.gitmirror.com/bin456789/reinstall/main/reinstall.sh
           else
-              curl -O https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
+              curl -O https://raw.gitmirror.com/bin456789/reinstall/main/reinstall.sh
           fi
         }
 
@@ -1487,12 +1512,14 @@ dd_xitong() {
             echo "11. Ubuntu 24.04              12. Ubuntu 22.04"
             echo "13. Ubuntu 20.04              14. Ubuntu 18.04"
             echo "------------------------"
-            echo "21. CentOS 9                  22. CentOS 8"
-            echo "23. CentOS 7"
+            echo "21. Rocky Linux 9             22. Rocky Linux 8"
+            echo "23. Alma Linux 9              24. Alma Linux 8"
+            echo "25. oracle Linux 9            26. oracle Linux 8"
+            echo "27. Fedora Linux 40           28. Fedora Linux 39"
+            echo "29. CentOS 7"
             echo "------------------------"
-            echo "31. Alpine Linux              32. Rocky Linux"
-            echo "33. Alma Linux                34. Fedora Linux"
-            echo "35. Kali Linux                36. Arch Linux"
+            echo "31. Alpine Linux              32. Arch Linux"
+            echo "33. Kali Linux                34. openEuler"
             echo "------------------------"
             echo "41. Windows 11                42. Windows 10"
             echo "43. Windows 7                 44. Windows Server 2022"
@@ -1558,27 +1585,80 @@ dd_xitong() {
                 reboot
                 exit
                 ;;
+
+
               21)
-                send_stats "重装centos 9"
+                send_stats "重装rockylinux9"
                 dd_xitong_3
-                bash reinstall.sh centos 9
+                bash reinstall.sh rocky
                 reboot
                 exit
                 ;;
+
               22)
-                send_stats "重装centos 8"
+                send_stats "重装rockylinux8"
                 dd_xitong_3
-                bash reinstall.sh centos 8
+                bash reinstall.sh rocky 8
                 reboot
                 exit
                 ;;
+
               23)
+                send_stats "重装alma9"
+                dd_xitong_3
+                bash reinstall.sh alma
+                reboot
+                exit
+                ;;
+
+              24)
+                send_stats "重装alma8"
+                dd_xitong_3
+                bash reinstall.sh alma 8
+                reboot
+                exit
+                ;;
+
+              25)
+                send_stats "重装oracle9"
+                dd_xitong_3
+                bash reinstall.sh oracle
+                reboot
+                exit
+                ;;
+
+              26)
+                send_stats "重装oracle8"
+                dd_xitong_3
+                bash reinstall.sh oracle 8
+                reboot
+                exit
+                ;;
+
+              27)
+                send_stats "重装fedora40"
+                dd_xitong_3
+                bash reinstall.sh fedora
+                reboot
+                exit
+                ;;
+
+              28)
+                send_stats "重装fedora39"
+                dd_xitong_3
+                bash reinstall.sh fedora 39
+                reboot
+                exit
+                ;;
+
+              29)
                 send_stats "重装centos 7"
                 dd_xitong_3
                 bash reinstall.sh centos 7
                 reboot
                 exit
                 ;;
+
               31)
                 send_stats "重装alpine"
                 dd_xitong_1
@@ -1586,41 +1666,31 @@ dd_xitong() {
                 reboot
                 exit
                 ;;
+
               32)
-                send_stats "重装rockylinux"
-                dd_xitong_1
-                bash InstallNET.sh -rockylinux
-                reboot
-                exit
-                ;;
-              33)
-                send_stats "重装alma"
-                dd_xitong_3
-                bash reinstall.sh alma
-                reboot
-                exit
-                ;;
-              34)
-                send_stats "重装fedora"
-                dd_xitong_3
-                bash reinstall.sh fedora
-                reboot
-                exit
-                ;;
-              35)
-                send_stats "重装kali"
-                dd_xitong_3
-                bash reinstall.sh kali
-                reboot
-                exit
-                ;;
-              36)
                 send_stats "重装arch"
                 dd_xitong_3
                 bash reinstall.sh arch
                 reboot
                 exit
                 ;;
+
+              33)
+                send_stats "重装kali"
+                dd_xitong_3
+                bash reinstall.sh kali
+                reboot
+                exit
+                ;;
+
+              34)
+                send_stats "重装openeuler"
+                dd_xitong_3
+                bash reinstall.sh openeuler
+                reboot
+                exit
+                ;;
+
               41)
                 send_stats "重装windows11"
                 dd_xitong_2
@@ -1708,13 +1778,13 @@ bbrv3() {
                         update-grub
 
                         # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
-                        wget -qO - https://raw.githubusercontent.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
+                        wget -qO - https://raw.gitmirror.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
 
                         # 步骤3：添加存储库
                         echo 'deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] http://deb.xanmod.org releases main' | tee /etc/apt/sources.list.d/xanmod-release.list
 
                         # version=$(wget -q https://dl.xanmod.org/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
-                        version=$(wget -q https://raw.githubusercontent.com/kejilion/sh/main/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
+                        version=$(wget -q https://raw.gitmirror.com/kejilion/sh/main/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
 
                         apt update -y
                         apt install -y linux-xanmod-x64v$version
@@ -1778,13 +1848,13 @@ bbrv3() {
             install wget gnupg
 
             # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
-            wget -qO - https://raw.githubusercontent.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
+            wget -qO - https://raw.gitmirror.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
 
             # 步骤3：添加存储库
             echo 'deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] http://deb.xanmod.org releases main' | tee /etc/apt/sources.list.d/xanmod-release.list
 
             # version=$(wget -q https://dl.xanmod.org/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
-            version=$(wget -q https://raw.githubusercontent.com/kejilion/sh/main/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
+            version=$(wget -q https://raw.gitmirror.com/kejilion/sh/main/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
 
             apt update -y
             apt install -y linux-xanmod-x64v$version
@@ -2112,28 +2182,28 @@ case $choice in
               clear
               install sl
               clear
-              /usr/games/sl
+              sl
               send_stats "安装sl"
               ;;
             26)
               clear
               install bastet
               clear
-              /usr/games/bastet
+              bastet
               send_stats "安装bastet"
               ;;
             27)
               clear
               install nsnake
               clear
-              /usr/games/nsnake
+              nsnake
               send_stats "安装nsnake"
               ;;
             28)
               clear
               install ninvaders
               clear
-              /usr/games/ninvaders
+              ninvaders
               send_stats "安装ninvaders"
 
               ;;
@@ -2219,7 +2289,7 @@ case $choice in
         done
     else
         install wget
-        wget --no-check-certificate -O tcpx.sh https://raw.githubusercontent.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
+        wget --no-check-certificate -O tcpx.sh https://raw.gitmirror.com/ylx2016/Linux-NetSpeed/master/tcpx.sh
         chmod +x tcpx.sh
         ./tcpx.sh
     fi
@@ -2724,7 +2794,7 @@ case $choice in
           12)
               clear
               send_stats "mtr_trace三网回程线路测试"
-              curl https://raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh | bash
+              curl https://raw.gitmirror.com/zhucaidan/mtr_trace/main/mtr_trace.sh | bash
               ;;
           13)
               clear
@@ -2767,7 +2837,7 @@ case $choice in
           16)
               clear
               send_stats "ludashi2020三网线路测试"
-              curl https://raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh -sSf | sh
+              curl https://raw.gitmirror.com/ludashi2020/backtrace/main/install.sh -sSf | sh
               ;;
 
           17)
@@ -2871,6 +2941,8 @@ case $choice in
                       -e MEM_UTIL="$mem_util" \
                       -e SPEEDTEST_INTERVAL="$speedtest_interval" \
                       fogforest/lookbusy
+                  send_stats "甲骨文云安装活跃脚本"
+
                   ;;
                 [Nn])
 
@@ -2914,7 +2986,7 @@ case $choice in
 
               read -p "请输入你重装后的密码: " vpspasswd
               install wget
-              bash <(wget --no-check-certificate -qO- 'https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
+              bash <(wget --no-check-certificate -qO- 'https://raw.gitmirror.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
               send_stats "甲骨文云重装系统脚本"
               ;;
             [Nn])
@@ -3004,12 +3076,12 @@ case $choice in
       # 创建必要的目录和文件
       cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
 
-      wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
-      wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
+      wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
+      wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
       default_server_ssl
 
       # 下载 docker-compose.yml 文件并进行替换
-      wget -O /home/web/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+      wget -O /home/web/docker-compose.yml https://raw.gitmirror.com/kejilion/docker/main/LNMP-docker-compose-10.yml
 
       dbrootpasswd=$(openssl rand -base64 16) && dbuse=$(openssl rand -hex 4) && dbusepasswd=$(openssl rand -base64 8)
 
@@ -3032,7 +3104,7 @@ case $choice in
       install_ssltls
       add_db
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/wordpress.com.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
       cd /home/web/html
@@ -3065,7 +3137,7 @@ case $choice in
       install_ssltls
       add_db
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/discuz.com.conf
 
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
@@ -3099,7 +3171,7 @@ case $choice in
       install_ssltls
       add_db
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/kdy.com.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
       cd /home/web/html
@@ -3130,7 +3202,7 @@ case $choice in
       install_ssltls
       add_db
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/maccms.com.conf
 
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
@@ -3142,7 +3214,7 @@ case $choice in
       cd /home/web/html/$yuming/template/ && wget https://hub.gitmirror.com/https://github.com/kejilion/Website_source_code/raw/main/DYXS2.zip && unzip DYXS2.zip && rm /home/web/html/$yuming/template/DYXS2.zip
       cp /home/web/html/$yuming/template/DYXS2/asset/admin/Dyxs2.php /home/web/html/$yuming/application/admin/controller
       cp /home/web/html/$yuming/template/DYXS2/asset/admin/dycms.html /home/web/html/$yuming/application/admin/view/system
-      mv /home/web/html/$yuming/admin.php /home/web/html/$yuming/vip.php && wget -O /home/web/html/$yuming/application/extra/maccms.php https://raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php
+      mv /home/web/html/$yuming/admin.php /home/web/html/$yuming/vip.php && wget -O /home/web/html/$yuming/application/extra/maccms.php https://raw.gitmirror.com/kejilion/Website_source_code/main/maccms.php
 
       restart_ldnmp
 
@@ -3170,7 +3242,7 @@ case $choice in
       install_ssltls
       add_db
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/dujiaoka.com.conf
 
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
@@ -3215,7 +3287,7 @@ case $choice in
       install_ssltls
       add_db
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/flarum.com.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
       cd /home/web/html
@@ -3254,7 +3326,7 @@ case $choice in
       install_ssltls
       add_db
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/typecho.com.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
       cd /home/web/html
@@ -3286,7 +3358,7 @@ case $choice in
       install_ssltls
       add_db
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/index_php.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
       cd /home/web/html
@@ -3410,8 +3482,8 @@ case $choice in
 
       cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
 
-      wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
-      wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
+      wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
+      wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
       default_server_ssl
       docker rm -f nginx >/dev/null 2>&1
       docker rmi nginx nginx:alpine >/dev/null 2>&1
@@ -3436,7 +3508,7 @@ case $choice in
 
       install_ssltls
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/rewrite.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf
 
@@ -3459,7 +3531,7 @@ case $choice in
 
       install_ssltls
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/reverse-proxy.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
       sed -i "s/0000/$port/g" /home/web/conf.d/$yuming.conf
@@ -3482,7 +3554,7 @@ case $choice in
 
       install_ssltls
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/reverse-proxy-domain.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
       sed -i "s|fandaicom|$fandai_yuming|g" /home/web/conf.d/$yuming.conf
 
@@ -3501,7 +3573,7 @@ case $choice in
       add_yuming
       install_ssltls
 
-      wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/html.conf
+      wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/html.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
       cd /home/web/html
@@ -3756,7 +3828,7 @@ case $choice in
       read -p "输入远程服务器密码: " usepasswd
 
       cd ~
-      wget -O ${useip}_beifen.sh https://raw.githubusercontent.com/kejilion/sh/main/beifen.sh > /dev/null 2>&1
+      wget -O ${useip}_beifen.sh https://raw.gitmirror.com/kejilion/sh/main/beifen.sh > /dev/null 2>&1
       chmod +x ${useip}_beifen.sh
 
       sed -i "s/0.0.0.0/$useip/g" ${useip}_beifen.sh
@@ -3903,14 +3975,14 @@ case $choice in
                       read -p "输入CF的账号: " cfuser
                       read -p "输入CF的Global API Key: " cftoken
 
-                      wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default11.conf
+                      wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default11.conf
                       docker restart nginx
 
                       cd /path/to/fail2ban/config/fail2ban/jail.d/
-                      curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+                      curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
 
                       cd /path/to/fail2ban/config/fail2ban/action.d
-                      curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
+                      curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
 
                       sed -i "s/kejilion@outlook.com/$cfuser/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
                       sed -i "s/APIKEY00000/$cftoken/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
@@ -3935,7 +4007,7 @@ case $choice in
                       cd ~
                       install jq bc
                       check_crontab_installed
-                      curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
+                      curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/CF-Under-Attack.sh
                       chmod +x CF-Under-Attack.sh
                       sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
                       sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
@@ -3987,8 +4059,8 @@ case $choice in
           install_docker
 
           docker rm -f nginx
-          wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
-          wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
+          wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
+          wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
           default_server_ssl
           docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
           docker exec -it nginx chmod -R 777 /var/www/html
@@ -3996,9 +4068,9 @@ case $choice in
           f2b_install_sshd
 
           cd /path/to/fail2ban/config/fail2ban/filter.d
-          curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
+          curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/fail2ban-nginx-cc.conf
           cd /path/to/fail2ban/config/fail2ban/jail.d/
-          curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+          curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
           sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
 
           cd ~
@@ -4027,19 +4099,19 @@ case $choice in
                   sed -i 's/worker_connections.*/worker_connections 1024;/' /home/web/nginx.conf
 
                   # php调优
-                  wget -O /home/optimized_php.ini https://raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
+                  wget -O /home/optimized_php.ini https://raw.gitmirror.com/kejilion/sh/main/optimized_php.ini
                   docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
                   docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
                   rm -rf /home/optimized_php.ini
 
                   # php调优
-                  wget -O /home/www.conf https://raw.githubusercontent.com/kejilion/sh/main/www-1.conf
+                  wget -O /home/www.conf https://raw.gitmirror.com/kejilion/sh/main/www-1.conf
                   docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
                   docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
                   rm -rf /home/www.conf
 
                   # mysql调优
-                  wget -O /home/custom_mysql_config.cnf https://raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
+                  wget -O /home/custom_mysql_config.cnf https://raw.gitmirror.com/kejilion/sh/main/custom_mysql_config-1.cnf
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
 
@@ -4060,13 +4132,13 @@ case $choice in
                   sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
 
                   # php调优
-                  wget -O /home/www.conf https://raw.githubusercontent.com/kejilion/sh/main/www.conf
+                  wget -O /home/www.conf https://raw.gitmirror.com/kejilion/sh/main/www.conf
                   docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
                   docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
                   rm -rf /home/www.conf
 
                   # mysql调优
-                  wget -O /home/custom_mysql_config.cnf https://raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
+                  wget -O /home/custom_mysql_config.cnf https://raw.gitmirror.com/kejilion/sh/main/custom_mysql_config.cnf
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
 
@@ -4325,7 +4397,7 @@ case $choice in
           7)
             clear
             send_stats "搭建哪吒"
-            curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
+            curl -L https://raw.gitmirror.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
             ./nezha.sh
               ;;
 
@@ -4670,7 +4742,7 @@ case $choice in
                             docker rmi -f p3terx/aria2-pro
 
                             cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-                            curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
+                            curl -o /home/docker/cloud/docker-compose.yml https://raw.gitmirror.com/kejilion/docker/main/cloudreve-docker-compose.yml
                             cd /home/docker/cloud/ && docker compose up -d
 
 
@@ -4720,7 +4792,7 @@ case $choice in
                     clear
                     install_docker
                     cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-                    curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
+                    curl -o /home/docker/cloud/docker-compose.yml https://raw.gitmirror.com/kejilion/docker/main/cloudreve-docker-compose.yml
                     cd /home/docker/cloud/ && docker compose up -d
 
 
@@ -5219,7 +5291,7 @@ case $choice in
           51)
             clear
             send_stats "PVE开小鸡"
-            curl -L https://raw.githubusercontent.com/oneclickvirt/pve/main/scripts/install_pve.sh -o install_pve.sh && chmod +x install_pve.sh && bash install_pve.sh
+            curl -L https://raw.gitmirror.com/oneclickvirt/pve/main/scripts/install_pve.sh -o install_pve.sh && chmod +x install_pve.sh && bash install_pve.sh
               ;;
           0)
               kejilion
@@ -5637,10 +5709,12 @@ EOF
                 1)
                     sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null 2>&1
                     echo "已切换为 IPv4 优先"
+                    send_stats "已切换为 IPv4 优先"
                     ;;
                 2)
                     sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
                     echo "已切换为 IPv6 优先"
+                    send_stats "已切换为 IPv6 优先"
                     ;;
                 *)
                     echo "无效的选择"
@@ -6119,7 +6193,7 @@ EOF
               debian)
                   initial_debian_source=$(grep -E '^deb ' /etc/apt/sources.list | head -n 1 | awk '{print $2}')
                   ;;
-              centos)
+              centos|rhel|almalinux|rocky|fedora)
                   initial_centos_source=$(awk -F= '/^baseurl=/ {print $2}' /etc/yum.repos.d/CentOS-Base.repo | head -n 1 | tr -d ' ')
                   ;;
               *)
@@ -6137,7 +6211,7 @@ EOF
                   debian)
                       cp /etc/apt/sources.list /etc/apt/sources.list.bak
                       ;;
-                  centos)
+                  centos|rhel|almalinux|rocky|fedora)
                       if [ ! -f /etc/yum.repos.d/CentOS-Base.repo.bak ]; then
                           cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
                       else
@@ -6161,7 +6235,7 @@ EOF
                   debian)
                       cp /etc/apt/sources.list.bak /etc/apt/sources.list
                       ;;
-                  centos)
+                  centos|rhel|almalinux|rocky|fedora)
                       cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo
                       ;;
                   *)
@@ -6181,7 +6255,7 @@ EOF
                   debian)
                       sed -i 's|'"$initial_debian_source"'|'"$1"'|g' /etc/apt/sources.list
                       ;;
-                  centos)
+                  centos|rhel|almalinux|rocky|fedora)
                       sed -i "s|^baseurl=.*$|baseurl=$1|g" /etc/yum.repos.d/CentOS-Base.repo
                       ;;
                   *)
@@ -6202,7 +6276,7 @@ EOF
                       echo "Debian 更新源切换脚本"
                       echo "------------------------"
                       ;;
-                  centos)
+                  centos|rhel|almalinux|rocky|fedora)
                       echo "CentOS 更新源切换脚本"
                       echo "------------------------"
                       ;;
@@ -6232,7 +6306,7 @@ EOF
                           debian)
                               switch_source $aliyun_debian_source
                               ;;
-                          centos)
+                          centos|rhel|almalinux|rocky|fedora)
                               switch_source $aliyun_centos_source
                               ;;
                           *)
@@ -6251,7 +6325,7 @@ EOF
                           debian)
                               switch_source $official_debian_source
                               ;;
-                          centos)
+                          centos|rhel|almalinux|rocky|fedora)
                               switch_source $official_centos_source
                               ;;
                           *)
@@ -6270,7 +6344,7 @@ EOF
                           debian)
                               switch_source $initial_debian_source
                               ;;
-                          centos)
+                          centos|rhel|almalinux|rocky|fedora)
                               switch_source $initial_centos_source
                               ;;
                           *)
@@ -6509,8 +6583,10 @@ EOF
             # 检查是否存在 Limiting_Shut_down.sh 文件
             if [ -f ~/Limiting_Shut_down.sh ]; then
                 # 获取 threshold_gb 的值
-                threshold_gb=$(grep -oP 'threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
-                echo -e "当前设置的限流阈值为 ${hang}${threshold_gb}${bai}GB"
+                rx_threshold_gb=$(grep -oP 'rx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+                tx_threshold_gb=$(grep -oP 'tx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+                echo -e "当前设置的进站限流阈值为 ${hang}${rx_threshold_gb}${bai}GB"
+                echo -e "当前设置的出站限流阈值为 ${hang}${tx_threshold_gb}${bai}GB"
             else
                 echo -e "${hui}前未启用限流关机功能${bai}"
             fi
@@ -6524,11 +6600,13 @@ EOF
               1)
                 # 输入新的虚拟内存大小
                 echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
-                read -p "请输入流量阈值（单位为GB）: " threshold_gb
+                read -p "请输入进站流量阈值（单位为GB）: " rx_threshold_gb
+                read -p "请输入出站流量阈值（单位为GB）: " tx_threshold_gb
                 cd ~
-                curl -Ss -O https://raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down.sh
+                curl -Ss -o ~/Limiting_Shut_down.sh https://raw.gitmirror.com/kejilion/sh/main/Limiting_Shut_down1.sh
                 chmod +x ~/Limiting_Shut_down.sh
-                sed -i "s/110/$threshold_gb/g" ~/Limiting_Shut_down.sh
+                sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
+                sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
                 check_crontab_installed
                 crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
                 (crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
@@ -6599,7 +6677,7 @@ EOF
                       chmod +x ~/TG-check-notify.sh
                       nano ~/TG-check-notify.sh
                   else
-                      curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/TG-check-notify.sh
+                      curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/TG-check-notify.sh
                       chmod +x ~/TG-check-notify.sh
                       nano ~/TG-check-notify.sh
                   fi
@@ -6608,7 +6686,7 @@ EOF
                   crontab -l | grep -v '~/TG-check-notify.sh' | crontab - > /dev/null 2>&1
                   (crontab -l ; echo "@reboot tmux new -d -s TG-check-notify '~/TG-check-notify.sh'") | crontab - > /dev/null 2>&1
 
-                  curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/TG-SSH-check-notify.sh > /dev/null 2>&1
+                  curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/TG-SSH-check-notify.sh > /dev/null 2>&1
                   sed -i "3i$(grep '^TELEGRAM_BOT_TOKEN=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh > /dev/null 2>&1
                   sed -i "4i$(grep '^CHAT_ID=' ~/TG-check-notify.sh)" TG-SSH-check-notify.sh
                   chmod +x ~/TG-SSH-check-notify.sh
@@ -6638,7 +6716,7 @@ EOF
               root_use
               send_stats "修复SSH高危漏洞"
               cd ~
-              curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/upgrade_openssh9.8p1.sh
+              curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/upgrade_openssh9.8p1.sh
               chmod +x ~/upgrade_openssh9.8p1.sh
               ~/upgrade_openssh9.8p1.sh
               rm -f ~/upgrade_openssh9.8p1.sh
@@ -6871,6 +6949,7 @@ EOF
       case $sub_choice in
           1)
             clear
+            send_stats "安装集群环境"
             install python3 python3-paramiko speedtest-cli lrzsz
             mkdir cluster && cd cluster
             touch servers.py
@@ -6886,6 +6965,7 @@ EOF
 
               while true; do
                   clear
+                  send_stats "集群控制中心"
                   echo "集群服务器列表"
                   cat ~/cluster/servers.py
 
@@ -6906,6 +6986,7 @@ EOF
 
                   case $sub_choice in
                       1)
+                          send_stats "添加集群服务器"
                           read -p "服务器名称: " server_name
                           read -p "服务器IP: " server_ip
                           read -p "服务器端口（22）: " server_port
@@ -6918,10 +6999,12 @@ EOF
 
                           ;;
                       2)
+                          send_stats "删除集群服务器"
                           read -p "请输入需要删除的关键字: " rmserver
                           sed -i "/$rmserver/d" ~/cluster/servers.py
                           ;;
                       3)
+                          send_stats "编辑集群服务器"
                           install nano
                           nano ~/cluster/servers.py
                           ;;
@@ -6958,11 +7041,11 @@ EOF
                           cluster_python3
                           ;;
                       51)
-
+                          send_stats "自定义执行命令"
                           read -p "请输入批量执行的命令: " mingling
                           py_task=custom_tasks.py
                           cd ~/cluster/
-                          curl -sS -O https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
+                          curl -sS -O https://raw.gitmirror.com/kejilion/python-for-vps/main/cluster/$py_task
                           sed -i "s#Customtasks#$mingling#g" ~/cluster/$py_task
                           python3 ~/cluster/$py_task
                           ;;
@@ -6982,6 +7065,7 @@ EOF
               ;;
           7)
             clear
+            send_stats "备份集群"
             echo "将下载服务器列表数据，按任意键下载！"
             read -n 1 -s -r -p ""
             sz -y ~/cluster/servers.py
@@ -6990,6 +7074,7 @@ EOF
 
           8)
             clear
+            send_stats "还原集群"
             echo "请上传您的servers.py，按任意键开始上传！"
             read -n 1 -s -r -p ""
             cd ~/cluster/
@@ -6999,6 +7084,7 @@ EOF
           9)
 
             clear
+            send_stats "卸载集群"
             read -p "请先备份环境，确定要卸载集群控制环境吗？(Y/N): " choice
             case "$choice" in
               [Yy])
@@ -7031,7 +7117,7 @@ EOF
   p)
     send_stats "幻兽帕鲁开服脚本"
     cd ~
-    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
+    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
     exit
     ;;
 
@@ -7042,11 +7128,11 @@ EOF
     clear
     echo "更新日志"
     echo "------------------------"
-    echo "全部日志: https://raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt"
+    echo "全部日志: https://raw.gitmirror.com/kejilion/sh/main/kejilion_sh_log.txt"
     echo "------------------------"
 
-    curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt | tail -n 35
-    sh_v_new=$(curl -s https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
+    curl -s https://raw.gitmirror.com/kejilion/sh/main/kejilion_sh_log.txt | tail -n 35
+    sh_v_new=$(curl -s https://raw.gitmirror.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
 
     if [ "$sh_v" = "$sh_v_new" ]; then
         echo -e "${lv}你已经是最新版本！${huang}v$sh_v${bai}"
@@ -7062,7 +7148,7 @@ EOF
                 if [ "$country" = "CN" ]; then
                     curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/cn/kejilion.sh && chmod +x kejilion.sh
                 else
-                    curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
+                    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
                 fi
                 CheckFirstRun_true
                 yinsiyuanquan2
