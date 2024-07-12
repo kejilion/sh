@@ -1240,28 +1240,6 @@ set_timedate() {
 }
 
 
-
-
-linux_update() {
-    if command -v dnf &>/dev/null; then
-        dnf -y update
-    elif command -v yum &>/dev/null; then
-        yum -y update
-    elif command -v apt &>/dev/null; then
-        DEBIAN_FRONTEND=noninteractive apt update -y
-        DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
-    elif command -v apk &>/dev/null; then
-        apk update && apk upgrade
-    elif command -v pacman &>/dev/null; then
-        pacman -Syu --noconfirm
-    else
-        echo "未知的包管理器!"
-        return 1
-    fi
-}
-
-
-
 wait_for_lock() {
     while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
         echo "等待dpkg锁释放..."
@@ -1275,6 +1253,26 @@ fix_dpkg() {
 }
 
 
+
+linux_update() {
+    if command -v dnf &>/dev/null; then
+        dnf -y update
+    elif command -v yum &>/dev/null; then
+        yum -y update
+    elif command -v apt &>/dev/null; then
+        wait_for_lock
+        fix_dpkg
+        DEBIAN_FRONTEND=noninteractive apt update -y
+        DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
+    elif command -v apk &>/dev/null; then
+        apk update && apk upgrade
+    elif command -v pacman &>/dev/null; then
+        pacman -Syu --noconfirm
+    else
+        echo "未知的包管理器!"
+        return 1
+    fi
+}
 
 
 linux_clean() {
