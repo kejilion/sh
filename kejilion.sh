@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.3"
+sh_v="2.7.4"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -1487,12 +1487,13 @@ dd_xitong() {
             echo "11. Ubuntu 24.04              12. Ubuntu 22.04"
             echo "13. Ubuntu 20.04              14. Ubuntu 18.04"
             echo "------------------------"
-            echo "21. CentOS 9                  22. CentOS 8"
-            echo "23. CentOS 7"
+            echo "21. Rocky Linux 9             22. Rocky Linux 8"
+            echo "23. Alma Linux 9              24. Alma Linux 8"
+            echo "25. oracle Linux 9            26. oracle Linux 8"
+            echo "27. Fedora Linux 40           28. Fedora Linux 39"
             echo "------------------------"
-            echo "31. Alpine Linux              32. Rocky Linux"
-            echo "33. Alma Linux                34. Fedora Linux"
-            echo "35. Kali Linux                36. Arch Linux"
+            echo "31. Alpine Linux              32. Arch Linux"
+            echo "33. Kali Linux                34. openEuler"
             echo "------------------------"
             echo "41. Windows 11                42. Windows 10"
             echo "43. Windows 7                 44. Windows Server 2022"
@@ -1558,27 +1559,72 @@ dd_xitong() {
                 reboot
                 exit
                 ;;
+
+
               21)
-                send_stats "重装centos 9"
+                send_stats "重装rockylinux9"
                 dd_xitong_3
-                bash reinstall.sh centos 9
+                bash reinstall.sh rocky
                 reboot
                 exit
                 ;;
+
               22)
-                send_stats "重装centos 8"
+                send_stats "重装rockylinux8"
                 dd_xitong_3
-                bash reinstall.sh centos 8
+                bash reinstall.sh rocky 8
                 reboot
                 exit
                 ;;
+
               23)
-                send_stats "重装centos 7"
+                send_stats "重装alma9"
                 dd_xitong_3
-                bash reinstall.sh centos 7
+                bash reinstall.sh alma
                 reboot
                 exit
                 ;;
+
+              24)
+                send_stats "重装alma8"
+                dd_xitong_3
+                bash reinstall.sh alma 8
+                reboot
+                exit
+                ;;
+
+              25)
+                send_stats "重装oracle9"
+                dd_xitong_3
+                bash reinstall.sh oracle
+                reboot
+                exit
+                ;;
+
+              26)
+                send_stats "重装oracle8"
+                dd_xitong_3
+                bash reinstall.sh oracle 8
+                reboot
+                exit
+                ;;
+
+              27)
+                send_stats "重装fedora40"
+                dd_xitong_3
+                bash reinstall.sh fedora
+                reboot
+                exit
+                ;;
+
+              28)
+                send_stats "重装fedora39"
+                dd_xitong_3
+                bash reinstall.sh fedora 39
+                reboot
+                exit
+                ;;
+
               31)
                 send_stats "重装alpine"
                 dd_xitong_1
@@ -1586,41 +1632,31 @@ dd_xitong() {
                 reboot
                 exit
                 ;;
+
               32)
-                send_stats "重装rockylinux"
-                dd_xitong_1
-                bash InstallNET.sh -rockylinux
-                reboot
-                exit
-                ;;
-              33)
-                send_stats "重装alma"
-                dd_xitong_3
-                bash reinstall.sh alma
-                reboot
-                exit
-                ;;
-              34)
-                send_stats "重装fedora"
-                dd_xitong_3
-                bash reinstall.sh fedora
-                reboot
-                exit
-                ;;
-              35)
-                send_stats "重装kali"
-                dd_xitong_3
-                bash reinstall.sh kali
-                reboot
-                exit
-                ;;
-              36)
                 send_stats "重装arch"
                 dd_xitong_3
                 bash reinstall.sh arch
                 reboot
                 exit
                 ;;
+
+              33)
+                send_stats "重装kali"
+                dd_xitong_3
+                bash reinstall.sh kali
+                reboot
+                exit
+                ;;
+
+              34)
+                send_stats "重装openeuler"
+                dd_xitong_3
+                bash reinstall.sh openeuler
+                reboot
+                exit
+                ;;
+
               41)
                 send_stats "重装windows11"
                 dd_xitong_2
@@ -2872,7 +2908,7 @@ case $choice in
                       -e SPEEDTEST_INTERVAL="$speedtest_interval" \
                       fogforest/lookbusy
                   send_stats "甲骨文云安装活跃脚本"
-                  
+
                   ;;
                 [Nn])
 
