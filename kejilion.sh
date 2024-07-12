@@ -1516,6 +1516,7 @@ dd_xitong() {
             echo "23. Alma Linux 9              24. Alma Linux 8"
             echo "25. oracle Linux 9            26. oracle Linux 8"
             echo "27. Fedora Linux 40           28. Fedora Linux 39"
+            echo "29. CentOS 7"
             echo "------------------------"
             echo "31. Alpine Linux              32. Arch Linux"
             echo "33. Kali Linux                34. openEuler"
@@ -1646,6 +1647,14 @@ dd_xitong() {
                 send_stats "重装fedora39"
                 dd_xitong_3
                 bash reinstall.sh fedora 39
+                reboot
+                exit
+                ;;
+
+              29)
+                send_stats "重装centos 7"
+                dd_xitong_3
+                bash reinstall.sh centos 7
                 reboot
                 exit
                 ;;
