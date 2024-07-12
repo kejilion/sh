@@ -25,7 +25,7 @@ echo "当前接收流量: $rx"
 echo "当前发送流量: $tx"
 
 rx_threshold_gb=110
-tx_threshold_gb=110
+tx_threshold_gb=120
 
 # 将GB转换为字节
 rx_threshold=$((rx_threshold_gb * 1024 * 1024 * 1024))
