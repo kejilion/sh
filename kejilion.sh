@@ -2000,6 +2000,107 @@ elrepo() {
 }
 
 
+# 高性能模式优化函数
+optimize_high_performance() {
+    echo -e "${lv}切换到高性能模式...${bai}"
+    
+    echo -e "${lv}优化文件描述符...${bai}"
+    ulimit -n 65535
+    
+    echo -e "${lv}优化虚拟内存...${bai}"
+    sysctl -w vm.swappiness=10 2>/dev/null
+    sysctl -w vm.dirty_ratio=15 2>/dev/null
+    sysctl -w vm.dirty_background_ratio=5 2>/dev/null
+    sysctl -w vm.overcommit_memory=1 2>/dev/null
+    sysctl -w vm.min_free_kbytes=65536 2>/dev/null
+    
+    echo -e "${lv}优化网络设置...${bai}"
+    sysctl -w net.core.rmem_max=16777216 2>/dev/null
+    sysctl -w net.core.wmem_max=16777216 2>/dev/null
+    sysctl -w net.core.netdev_max_backlog=250000 2>/dev/null
+    sysctl -w net.core.somaxconn=4096 2>/dev/null
+    sysctl -w net.ipv4.tcp_rmem='4096 87380 16777216' 2>/dev/null
+    sysctl -w net.ipv4.tcp_wmem='4096 65536 16777216' 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=htcp 2>/dev/null
+    sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
+    sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
+    sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
+    
+    echo -e "${lv}优化缓存管理...${bai}"
+    sysctl -w vm.vfs_cache_pressure=50 2>/dev/null
+    
+    echo -e "${lv}优化CPU设置...${bai}"
+    sysctl -w kernel.sched_autogroup_enabled=0 2>/dev/null
+}
+
+# 均衡模式优化函数
+optimize_balanced() {
+    echo -e "${lv}切换到均衡模式...${bai}"
+    
+    echo -e "${lv}优化文件描述符...${bai}"
+    ulimit -n 32768
+    
+    echo -e "${lv}优化虚拟内存...${bai}"
+    sysctl -w vm.swappiness=30 2>/dev/null
+    sysctl -w vm.dirty_ratio=20 2>/dev/null
+    sysctl -w vm.dirty_background_ratio=10 2>/dev/null
+    sysctl -w vm.overcommit_memory=0 2>/dev/null
+    sysctl -w vm.min_free_kbytes=32768 2>/dev/null
+    
+    echo -e "${lv}优化网络设置...${bai}"
+    sysctl -w net.core.rmem_max=8388608 2>/dev/null
+    sysctl -w net.core.wmem_max=8388608 2>/dev/null
+    sysctl -w net.core.netdev_max_backlog=125000 2>/dev/null
+    sysctl -w net.core.somaxconn=2048 2>/dev/null
+    sysctl -w net.ipv4.tcp_rmem='4096 87380 8388608' 2>/dev/null
+    sysctl -w net.ipv4.tcp_wmem='4096 32768 8388608' 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=cubic 2>/dev/null
+    sysctl -w net.ipv4.tcp_max_syn_backlog=4096 2>/dev/null
+    sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
+    sysctl -w net.ipv4.ip_local_port_range='1024 49151' 2>/dev/null
+    
+    echo -e "${lv}优化缓存管理...${bai}"
+    sysctl -w vm.vfs_cache_pressure=75 2>/dev/null
+    
+    echo -e "${lv}优化CPU设置...${bai}"
+    sysctl -w kernel.sched_autogroup_enabled=1 2>/dev/null
+}
+
+# 还原默认设置函数
+restore_defaults() {
+    echo -e "${lv}还原到默认设置...${bai}"
+    
+    echo -e "${lv}还原文件描述符...${bai}"
+    ulimit -n 1024
+    
+    echo -e "${lv}还原虚拟内存...${bai}"
+    sysctl -w vm.swappiness=60 2>/dev/null
+    sysctl -w vm.dirty_ratio=20 2>/dev/null
+    sysctl -w vm.dirty_background_ratio=10 2>/dev/null
+    sysctl -w vm.overcommit_memory=0 2>/dev/null
+    sysctl -w vm.min_free_kbytes=16384 2>/dev/null
+    
+    echo -e "${lv}还原网络设置...${bai}"
+    sysctl -w net.core.rmem_max=212992 2>/dev/null
+    sysctl -w net.core.wmem_max=212992 2>/dev/null
+    sysctl -w net.core.netdev_max_backlog=1000 2>/dev/null
+    sysctl -w net.core.somaxconn=128 2>/dev/null
+    sysctl -w net.ipv4.tcp_rmem='4096 87380 6291456' 2>/dev/null
+    sysctl -w net.ipv4.tcp_wmem='4096 16384 4194304' 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=cubic 2>/dev/null
+    sysctl -w net.ipv4.tcp_max_syn_backlog=2048 2>/dev/null
+    sysctl -w net.ipv4.tcp_tw_reuse=0 2>/dev/null
+    sysctl -w net.ipv4.ip_local_port_range='32768 60999' 2>/dev/null
+    
+    echo -e "${lv}还原缓存管理...${bai}"
+    sysctl -w vm.vfs_cache_pressure=100 2>/dev/null
+    
+    echo -e "${lv}还原CPU设置...${bai}"
+    sysctl -w kernel.sched_autogroup_enabled=1 2>/dev/null
+}
+
+
+
 
 
 
@@ -5615,7 +5716,7 @@ case $choice in
       echo "21. 本机host解析                       22. fail2banSSH防御程序"
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
       echo "25. TG-bot系统监控预警                 26. 修复OpenSSH高危漏洞（岫源）"
-      echo "27. 红帽系Linux内核升级"
+      echo "27. 红帽系Linux内核升级                28. Linux系统内核参数优化"
       echo "------------------------"
       echo "31. 留言板                             66. 一条龙系统调优"
       echo "------------------------"
@@ -6865,6 +6966,57 @@ EOF
               elrepo
               ;;
 
+
+          28)
+            root_use
+            while true; do  
+              clear            
+              send_stats "Linux内核调优管理"
+              echo -e "Linux系统内核参数优化 ${huang}测试版${bai}"
+              echo "------------------------------------------------"
+              echo "自动化内核参数的优化与还原脚本，涵盖文件描述符、虚拟内存、网络参数、I/O调度器、进程调度和缓存管理设置。"
+              echo -e "${huang}提示: ${bai}生产环境请谨慎调优！"
+              echo "--------------------"
+              echo "1. 高性能模式优化"
+              echo "2. 均衡模式优化"
+              echo "3. 还原默认设置"
+              echo "--------------------"
+              echo "0. 返回上一级"
+              echo "--------------------"
+              read -p "请输入你的选择: " sub_choice
+              case $sub_choice in
+                  1)
+                      cd ~
+                      clear
+                      optimize_high_performance
+                      send_stats "高性能模式优化"
+                      break_end
+                      ;;
+                  2)
+                      cd ~
+                      clear
+                      optimize_balanced
+                      send_stats "均衡模式优化"
+                      break_end
+                      ;;
+                  2)
+                      cd ~
+                      clear
+                      restore_defaults
+                      send_stats "还原默认设置"
+                      break_end
+                      ;;
+                  0)
+                      break
+                      ;;
+                  *)
+                      echo "无效的选择，请重新输入。"
+                      ;;
+              esac
+            done
+              ;;
+
+
           31)
             clear
             send_stats "留言板"
@@ -6920,6 +7072,7 @@ EOF
               echo -e "7. 设置时区到${huang}上海${bai}"
               echo -e "8. 优化DNS地址到${huang}1111 8888${bai}"
               echo -e "9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+              echo -e "10. Linux系统内核参数优化"
               echo "------------------------------------------------"
               read -p "确定一键保养吗？(Y/N): " choice
 
@@ -6929,31 +7082,31 @@ EOF
                   send_stats "一条龙调优启动"
                   echo "------------------------------------------------"
                   linux_update
-                  echo -e "[${lv}OK${bai}] 1/9. 更新系统到最新"
+                  echo -e "[${lv}OK${bai}] 1/10. 更新系统到最新"
 
                   echo "------------------------------------------------"
                   linux_clean
-                  echo -e "[${lv}OK${bai}] 2/9. 清理系统垃圾文件"
+                  echo -e "[${lv}OK${bai}] 2/10. 清理系统垃圾文件"
 
                   echo "------------------------------------------------"
                   new_swap=1024
                   add_swap
-                  echo -e "[${lv}OK${bai}] 3/9. 设置虚拟内存${huang}1G${bai}"
+                  echo -e "[${lv}OK${bai}] 3/10. 设置虚拟内存${huang}1G${bai}"
 
                   echo "------------------------------------------------"
                   new_port=5522
                   new_ssh_port
-                  echo -e "[${lv}OK${bai}] 4/9. 设置SSH端口号为${huang}5522${bai}"
+                  echo -e "[${lv}OK${bai}] 4/10. 设置SSH端口号为${huang}5522${bai}"
                   echo "------------------------------------------------"
-                  echo -e "[${lv}OK${bai}] 5/9. 开放所有端口"
+                  echo -e "[${lv}OK${bai}] 5/10. 开放所有端口"
 
                   echo "------------------------------------------------"
                   bbr_on
-                  echo -e "[${lv}OK${bai}] 6/9. 开启${huang}BBR${bai}加速"
+                  echo -e "[${lv}OK${bai}] 6/10. 开启${huang}BBR${bai}加速"
 
                   echo "------------------------------------------------"
                   set_timedate Asia/Shanghai
-                  echo -e "[${lv}OK${bai}] 7/9. 设置时区到${huang}上海${bai}"
+                  echo -e "[${lv}OK${bai}] 7/10. 设置时区到${huang}上海${bai}"
 
                   echo "------------------------------------------------"
                   dns1_ipv4="1.1.1.1"
@@ -6961,13 +7114,17 @@ EOF
                   dns1_ipv6="2606:4700:4700::1111"
                   dns2_ipv6="2001:4860:4860::8888"
                   set_dns
-                  echo -e "[${lv}OK${bai}] 8/9. 优化DNS地址到${huang}1111 8888${bai}"
+                  echo -e "[${lv}OK${bai}] 8/10. 优化DNS地址到${huang}1111 8888${bai}"
 
                   echo "------------------------------------------------"
                   install_add_docker
                   install wget sudo tar unzip socat btop
-                  echo -e "[${lv}OK${bai}] 9/9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+                  echo -e "[${lv}OK${bai}] 9/10. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
                   echo "------------------------------------------------"
+ 
+                  echo "------------------------------------------------"
+                  optimize_balanced
+                  echo -e "[${lv}OK${bai}] 10/10. Linux系统内核参数优化"
                   echo -e "${lv}一条龙系统调优已完成${bai}"
 
                   ;;
