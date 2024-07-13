@@ -16,7 +16,7 @@ permission_granted="false"
 
 
 CheckFirstRun_true() {
-    if grep -q '^permission_granted="true"' /usr/local/bin/k > /dev/null; then
+    if grep -q '^permission_granted="true"' /usr/local/bin/k > /dev/null 2>&1; then
         sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
         sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
     fi
@@ -51,9 +51,9 @@ send_stats() {
 
 yinsiyuanquan1() {
 
-if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k > /dev/null; then
+if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k > /dev/null 2>&1; then
     status_message="${lv}正在采集数据${bai}"
-elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null; then
+elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null 2>&1; then
     status_message="${hui}采集已关闭${bai}"
 else
     status_message="无法确定的状态"
@@ -64,9 +64,9 @@ fi
 
 yinsiyuanquan2() {
 
-if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k > /dev/null; then
+if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k > /dev/null 2>&1; then
     :
-elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null; then
+elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null 2>&1; then
     sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ./kejilion.sh
     sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 else
@@ -84,7 +84,7 @@ cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
 
 CheckFirstRun_false() {
-    if grep -q '^permission_granted="false"' /usr/local/bin/k > /dev/null; then
+    if grep -q '^permission_granted="false"' /usr/local/bin/k > /dev/null 2>&1; then
         UserLicenseAgreement
     fi
 }
