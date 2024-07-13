@@ -736,7 +736,7 @@ install_ssltls() {
           [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$1" ]
       }
 
-      if version_ge "$certbot_version" "1.17.0"; then
+      if version_ge "$certbot_version" "2.10.0"; then
           certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
       else
           certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
