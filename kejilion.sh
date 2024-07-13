@@ -6999,7 +6999,7 @@ EOF
                       send_stats "均衡模式优化"
                       break_end
                       ;;
-                  2)
+                  3)
                       cd ~
                       clear
                       restore_defaults
