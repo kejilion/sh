@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.5"
+sh_v="2.7.6"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -2156,6 +2156,8 @@ case $choice in
       echo "12. ranger 文件管理工具"
       echo "13. gdu 磁盘占用查看工具"
       echo "14. fzf 全局搜索工具"
+      echo "15. vim 文本编辑器"
+      echo "16. nano 文本编辑器"
       echo "------------------------"
       echo "21. cmatrix 黑客帝国屏保"
       echo "22. sl 跑火车屏保"
@@ -2287,6 +2289,24 @@ case $choice in
               fzf
               cd ~
               send_stats "安装fzf"
+              ;;
+            15)
+              clear
+              install vim
+              cd /
+              clear
+              vim -h
+              cd ~
+              send_stats "安装vim"
+              ;;
+            16)
+              clear
+              install nano
+              cd /
+              clear
+              nano -h
+              cd ~
+              send_stats "安装nano"
               ;;
 
             21)
