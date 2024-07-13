@@ -1829,11 +1829,13 @@ bbrv3() {
                 . /etc/os-release
                 if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
                     echo "当前环境不支持，仅支持Debian和Ubuntu系统"
-                    break
+                    break_end
+                    kejilion
                 fi
             else
                 echo "无法确定操作系统类型"
-                break
+                break_end
+                kejilion
             fi
 
             # 检查系统架构
@@ -1895,7 +1897,8 @@ elrepo_install() {
     # 确保我们在一个支持的操作系统上运行
     if [[ "$os_name" != *"Red Hat"* && "$os_name" != *"AlmaLinux"* && "$os_name" != *"Rocky"* && "$os_name" != *"Oracle"* && "$os_name" != *"CentOS"* ]]; then
         echo "不支持的操作系统：$os_name"
-        break
+        break_end
+        kejilion
     fi
     # 打印检测到的操作系统信息
     echo "检测到的操作系统: $os_name $os_version"
@@ -1908,7 +1911,8 @@ elrepo_install() {
         yum -y install https://www.elrepo.org/elrepo-release-9.el9.elrepo.noarch.rpm
     else
         echo "不支持的系统版本：$os_version"
-        break
+        break_end
+        kejilion
     fi
     # 启用 ELRepo 内核仓库并安装最新的主线内核
     echo "启用 ELRepo 内核仓库并安装最新的主线内核..."
