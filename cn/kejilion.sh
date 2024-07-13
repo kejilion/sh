@@ -16,7 +16,7 @@ permission_granted="false"
 
 
 CheckFirstRun_true() {
-    if grep -q '^permission_granted="true"' /usr/local/bin/k; then
+    if grep -q '^permission_granted="true"' /usr/local/bin/k > /dev/null 2>&1; then
         sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
         sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
     fi
@@ -51,9 +51,9 @@ send_stats() {
 
 yinsiyuanquan1() {
 
-if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k; then
+if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k > /dev/null 2>&1; then
     status_message="${lv}正在采集数据${bai}"
-elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k; then
+elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null 2>&1; then
     status_message="${hui}采集已关闭${bai}"
 else
     status_message="无法确定的状态"
@@ -64,9 +64,9 @@ fi
 
 yinsiyuanquan2() {
 
-if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k; then
+if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k > /dev/null 2>&1; then
     :
-elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k; then
+elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null 2>&1; then
     sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ./kejilion.sh
     sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 else
@@ -84,7 +84,7 @@ cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
 
 CheckFirstRun_false() {
-    if grep -q '^permission_granted="false"' /usr/local/bin/k; then
+    if grep -q '^permission_granted="false"' /usr/local/bin/k > /dev/null 2>&1; then
         UserLicenseAgreement
     fi
 }
@@ -736,7 +736,7 @@ install_ssltls() {
           [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$1" ]
       }
 
-      if version_ge "$certbot_version" "1.10.0"; then
+      if version_ge "$certbot_version" "1.17.0"; then
           certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
       else
           certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
@@ -1829,11 +1829,13 @@ bbrv3() {
                 . /etc/os-release
                 if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
                     echo "当前环境不支持，仅支持Debian和Ubuntu系统"
-                    break
+                    break_end
+                    kejilion
                 fi
             else
                 echo "无法确定操作系统类型"
-                break
+                break_end
+                kejilion
             fi
 
             # 检查系统架构
@@ -1895,7 +1897,8 @@ elrepo_install() {
     # 确保我们在一个支持的操作系统上运行
     if [[ "$os_name" != *"Red Hat"* && "$os_name" != *"AlmaLinux"* && "$os_name" != *"Rocky"* && "$os_name" != *"Oracle"* && "$os_name" != *"CentOS"* ]]; then
         echo "不支持的操作系统：$os_name"
-        break
+        break_end
+        kejilion
     fi
     # 打印检测到的操作系统信息
     echo "检测到的操作系统: $os_name $os_version"
@@ -1908,7 +1911,8 @@ elrepo_install() {
         yum -y install https://www.elrepo.org/elrepo-release-9.el9.elrepo.noarch.rpm
     else
         echo "不支持的系统版本：$os_version"
-        break
+        break_end
+        kejilion
     fi
     # 启用 ELRepo 内核仓库并安装最新的主线内核
     echo "启用 ELRepo 内核仓库并安装最新的主线内核..."
