@@ -1653,8 +1653,8 @@ dd_xitong() {
 
               29)
                 send_stats "重装centos 7"
-                dd_xitong_3
-                bash reinstall.sh centos 7
+                dd_xitong_1
+                bash InstallNET.sh -centos 7
                 reboot
                 exit
                 ;;
