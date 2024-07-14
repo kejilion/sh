@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.6"
+sh_v="2.7.7"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -2101,7 +2101,39 @@ restore_defaults() {
 
 
 
-
+# 网站搭建优化函数
+optimize_web_server() {
+    echo -e "${lv}切换到网站搭建优化模式...${bai}"
+    
+    echo -e "${lv}优化文件描述符...${bai}"
+    ulimit -n 65536
+    
+    echo -e "${lv}优化虚拟内存...${bai}"
+    sysctl -w vm.swappiness=10 2>/dev/null
+    sysctl -w vm.dirty_ratio=20 2>/dev/null
+    sysctl -w vm.dirty_background_ratio=10 2>/dev/null
+    sysctl -w vm.overcommit_memory=1 2>/dev/null
+    sysctl -w vm.min_free_kbytes=65536 2>/dev/null
+    
+    echo -e "${lv}优化网络设置...${bai}"
+    sysctl -w net.core.rmem_max=16777216 2>/dev/null
+    sysctl -w net.core.wmem_max=16777216 2>/dev/null
+    sysctl -w net.core.netdev_max_backlog=5000 2>/dev/null
+    sysctl -w net.core.somaxconn=4096 2>/dev/null
+    sysctl -w net.ipv4.tcp_rmem='4096 87380 16777216' 2>/dev/null
+    sysctl -w net.ipv4.tcp_wmem='4096 65536 16777216' 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=htcp 2>/dev/null
+    sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
+    sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
+    sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
+    
+    echo -e "${lv}优化缓存管理...${bai}"
+    sysctl -w vm.vfs_cache_pressure=50 2>/dev/null
+    
+    echo -e "${lv}优化CPU设置...${bai}"
+    sysctl -w kernel.sched_autogroup_enabled=0 2>/dev/null
+    
+}
 
 
 
@@ -6977,9 +7009,10 @@ EOF
               echo "提供三种系统配置模式：高性能模式、均衡模式和还原默认设置。用户可以通过执行相应的命令快速切换系统配置。"
               echo -e "${huang}提示: ${bai}生产环境请谨慎调优！"
               echo "--------------------"
-              echo "1. 高性能模式优化：     最大化系统性能，优化文件描述符、虚拟内存、网络设置、缓存管理和CPU设置。"
-              echo "2. 均衡模式优化：       在性能与资源消耗之间取得平衡，适合日常使用。"
-              echo "3. 还原默认设置：       将系统设置还原为默认配置。"
+              echo "1. 高性能优化模式：     最大化系统性能，优化文件描述符、虚拟内存、网络设置、缓存管理和CPU设置。"
+              echo "2. 均衡优化模式：       在性能与资源消耗之间取得平衡，适合日常使用。"
+              echo "3. 网站优化模式：       针对网站服务器进行优化，提高并发连接处理能力、响应速度和整体性能。"
+              echo "4. 还原默认设置：       将系统设置还原为默认配置。"
               echo "--------------------"
               echo "0. 返回上一级"
               echo "--------------------"
@@ -7000,6 +7033,13 @@ EOF
                       break_end
                       ;;
                   3)
+                      cd ~
+                      clear
+                      optimize_web_server
+                      send_stats "网站优化模式"
+                      break_end
+                      ;;
+                  4)
                       cd ~
                       clear
                       restore_defaults
