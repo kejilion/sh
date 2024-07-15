@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.7"
+sh_v="2.7.8"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -750,19 +750,20 @@ install_ssltls() {
 
 
 install_ssltls_text() {
-    echo "$yuming 公钥信息"
-    echo "-------------------"
+    echo -e "${huang}$yuming 公钥信息${bai}"
     cat /etc/letsencrypt/live/$yuming/fullchain.pem
-    echo "-------------------"
-    echo "$yuming 私钥信息"
-    echo "-------------------"
+    echo ""
+    echo -e "${huang}$yuming 私钥信息${bai}"
     cat /etc/letsencrypt/live/$yuming/privkey.pem
     echo "-------------------"
-    echo "证书存放路径"
+    echo -e "${huang}证书存放路径${bai}"
     echo "公钥: /etc/letsencrypt/live/$yuming/fullchain.pem"
     echo "私钥: /etc/letsencrypt/live/$yuming/privkey.pem"
 
 }
+
+
+
 
 
 add_ssl() {
@@ -776,8 +777,38 @@ fi
 
 install_ssltls
 install_ssltls_text
-
+ssl_ps
 }
+
+
+ssl_ps() {
+    echo -e "${huang}已申请的证书到期情况${bai}"
+    echo "站点信息                      证书到期时间"
+    echo "------------------------"
+    for cert_dir in /etc/letsencrypt/live/*; do
+      cert_file="$cert_dir/fullchain.pem"
+      if [ -f "$cert_file" ]; then
+        domain=$(basename "$cert_dir")
+        expire_date=$(openssl x509 -noout -enddate -in "$cert_file" | awk -F'=' '{print $2}')
+        formatted_date=$(date -d "$expire_date" '+%Y-%m-%d')
+        printf "%-30s%s\n" "$domain" "$formatted_date"
+      fi
+    done
+    echo ""
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7617,6 +7648,11 @@ else
             add_ssl
             ;;
 
+        sslps)
+            send_stats "查看证书到期情况"
+            ssl_ps
+            ;;
+
         *)
             send_stats "k命令参考用例"
             echo "无效参数，以下是k命令参考用例："
@@ -7633,6 +7669,8 @@ else
             echo "软件状态查看        k status sshd | k 状态 sshd "
             echo "软件开机启动        k enable docker | k autostart docke | k 开机启动 docker "
             echo "域名证书申请        k ssl"
+            echo "域名证书到期查询    k sslps"
             ;;
     esac
 fi
+
