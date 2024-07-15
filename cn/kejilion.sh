@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.5"
+sh_v="2.7.8"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -696,14 +696,12 @@ install_ldnmp() {
 
 install_certbot() {
 
-    if command -v yum &>/dev/null; then
-        install certbot
-    else
-        install certbot
-    fi
+
+    install certbot
+
 
     # 切换到一个一致的目录（例如，家目录）
-    cd ~ || exit
+    cd ~
 
     # 下载并使脚本可执行
     curl -O https://raw.gitmirror.com/kejilion/sh/main/auto_cert_renewal.sh
@@ -727,7 +725,7 @@ install_certbot() {
 
 install_ssltls() {
       docker stop nginx > /dev/null 2>&1
-      iptables_open
+      iptables_open > /dev/null 2>&1
       cd ~
 
       certbot_version=$(certbot --version 2>&1 | grep -oP "\d+\.\d+\.\d+")
@@ -742,10 +740,74 @@ install_ssltls() {
           certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
       fi
 
-      cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem
-      cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
+      cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
+      cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
       docker start nginx > /dev/null 2>&1
 }
+
+
+
+install_ssltls_text() {
+    echo -e "${huang}$yuming 公钥信息${bai}"
+    cat /etc/letsencrypt/live/$yuming/fullchain.pem
+    echo ""
+    echo -e "${huang}$yuming 私钥信息${bai}"
+    cat /etc/letsencrypt/live/$yuming/privkey.pem
+    echo ""
+    echo -e "${huang}证书存放路径${bai}"
+    echo "公钥: /etc/letsencrypt/live/$yuming/fullchain.pem"
+    echo "私钥: /etc/letsencrypt/live/$yuming/privkey.pem"
+    echo ""
+}
+
+
+
+
+
+add_ssl() {
+
+add_yuming
+
+if ! command -v certbot &> /dev/null
+then
+    install_certbot
+fi
+
+install_ssltls
+install_ssltls_text
+ssl_ps
+}
+
+
+ssl_ps() {
+    echo -e "${huang}已申请的证书到期情况${bai}"
+    echo "站点信息                      证书到期时间"
+    echo "------------------------"
+    for cert_dir in /etc/letsencrypt/live/*; do
+      cert_file="$cert_dir/fullchain.pem"
+      if [ -f "$cert_file" ]; then
+        domain=$(basename "$cert_dir")
+        expire_date=$(openssl x509 -noout -enddate -in "$cert_file" | awk -F'=' '{print $2}')
+        formatted_date=$(date -d "$expire_date" '+%Y-%m-%d')
+        printf "%-30s%s\n" "$domain" "$formatted_date"
+      fi
+    done
+    echo ""
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 default_server_ssl() {
@@ -1653,8 +1715,8 @@ dd_xitong() {
 
               29)
                 send_stats "重装centos 7"
-                dd_xitong_3
-                bash reinstall.sh centos 7
+                dd_xitong_1
+                bash InstallNET.sh -centos 7
                 reboot
                 exit
                 ;;
@@ -1949,7 +2011,7 @@ elrepo() {
                         elrepo_install
                         send_stats "更新红帽内核"
                         server_reboot
-                        
+
                           ;;
                       2)
                         dnf remove -y elrepo-release
@@ -1957,7 +2019,7 @@ elrepo() {
                         echo "elrepo内核已卸载。重启后生效"
                         send_stats "卸载红帽内核"
                         server_reboot
-                        
+
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
@@ -2000,7 +2062,140 @@ elrepo() {
 }
 
 
+# 高性能模式优化函数
+optimize_high_performance() {
+    echo -e "${lv}切换到高性能模式...${bai}"
 
+    echo -e "${lv}优化文件描述符...${bai}"
+    ulimit -n 65535
+
+    echo -e "${lv}优化虚拟内存...${bai}"
+    sysctl -w vm.swappiness=10 2>/dev/null
+    sysctl -w vm.dirty_ratio=15 2>/dev/null
+    sysctl -w vm.dirty_background_ratio=5 2>/dev/null
+    sysctl -w vm.overcommit_memory=1 2>/dev/null
+    sysctl -w vm.min_free_kbytes=65536 2>/dev/null
+
+    echo -e "${lv}优化网络设置...${bai}"
+    sysctl -w net.core.rmem_max=16777216 2>/dev/null
+    sysctl -w net.core.wmem_max=16777216 2>/dev/null
+    sysctl -w net.core.netdev_max_backlog=250000 2>/dev/null
+    sysctl -w net.core.somaxconn=4096 2>/dev/null
+    sysctl -w net.ipv4.tcp_rmem='4096 87380 16777216' 2>/dev/null
+    sysctl -w net.ipv4.tcp_wmem='4096 65536 16777216' 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=htcp 2>/dev/null
+    sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
+    sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
+    sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
+
+    echo -e "${lv}优化缓存管理...${bai}"
+    sysctl -w vm.vfs_cache_pressure=50 2>/dev/null
+
+    echo -e "${lv}优化CPU设置...${bai}"
+    sysctl -w kernel.sched_autogroup_enabled=0 2>/dev/null
+}
+
+# 均衡模式优化函数
+optimize_balanced() {
+    echo -e "${lv}切换到均衡模式...${bai}"
+
+    echo -e "${lv}优化文件描述符...${bai}"
+    ulimit -n 32768
+
+    echo -e "${lv}优化虚拟内存...${bai}"
+    sysctl -w vm.swappiness=30 2>/dev/null
+    sysctl -w vm.dirty_ratio=20 2>/dev/null
+    sysctl -w vm.dirty_background_ratio=10 2>/dev/null
+    sysctl -w vm.overcommit_memory=0 2>/dev/null
+    sysctl -w vm.min_free_kbytes=32768 2>/dev/null
+
+    echo -e "${lv}优化网络设置...${bai}"
+    sysctl -w net.core.rmem_max=8388608 2>/dev/null
+    sysctl -w net.core.wmem_max=8388608 2>/dev/null
+    sysctl -w net.core.netdev_max_backlog=125000 2>/dev/null
+    sysctl -w net.core.somaxconn=2048 2>/dev/null
+    sysctl -w net.ipv4.tcp_rmem='4096 87380 8388608' 2>/dev/null
+    sysctl -w net.ipv4.tcp_wmem='4096 32768 8388608' 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=cubic 2>/dev/null
+    sysctl -w net.ipv4.tcp_max_syn_backlog=4096 2>/dev/null
+    sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
+    sysctl -w net.ipv4.ip_local_port_range='1024 49151' 2>/dev/null
+
+    echo -e "${lv}优化缓存管理...${bai}"
+    sysctl -w vm.vfs_cache_pressure=75 2>/dev/null
+
+    echo -e "${lv}优化CPU设置...${bai}"
+    sysctl -w kernel.sched_autogroup_enabled=1 2>/dev/null
+}
+
+# 还原默认设置函数
+restore_defaults() {
+    echo -e "${lv}还原到默认设置...${bai}"
+
+    echo -e "${lv}还原文件描述符...${bai}"
+    ulimit -n 1024
+
+    echo -e "${lv}还原虚拟内存...${bai}"
+    sysctl -w vm.swappiness=60 2>/dev/null
+    sysctl -w vm.dirty_ratio=20 2>/dev/null
+    sysctl -w vm.dirty_background_ratio=10 2>/dev/null
+    sysctl -w vm.overcommit_memory=0 2>/dev/null
+    sysctl -w vm.min_free_kbytes=16384 2>/dev/null
+
+    echo -e "${lv}还原网络设置...${bai}"
+    sysctl -w net.core.rmem_max=212992 2>/dev/null
+    sysctl -w net.core.wmem_max=212992 2>/dev/null
+    sysctl -w net.core.netdev_max_backlog=1000 2>/dev/null
+    sysctl -w net.core.somaxconn=128 2>/dev/null
+    sysctl -w net.ipv4.tcp_rmem='4096 87380 6291456' 2>/dev/null
+    sysctl -w net.ipv4.tcp_wmem='4096 16384 4194304' 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=cubic 2>/dev/null
+    sysctl -w net.ipv4.tcp_max_syn_backlog=2048 2>/dev/null
+    sysctl -w net.ipv4.tcp_tw_reuse=0 2>/dev/null
+    sysctl -w net.ipv4.ip_local_port_range='32768 60999' 2>/dev/null
+
+    echo -e "${lv}还原缓存管理...${bai}"
+    sysctl -w vm.vfs_cache_pressure=100 2>/dev/null
+
+    echo -e "${lv}还原CPU设置...${bai}"
+    sysctl -w kernel.sched_autogroup_enabled=1 2>/dev/null
+}
+
+
+
+# 网站搭建优化函数
+optimize_web_server() {
+    echo -e "${lv}切换到网站搭建优化模式...${bai}"
+
+    echo -e "${lv}优化文件描述符...${bai}"
+    ulimit -n 65536
+
+    echo -e "${lv}优化虚拟内存...${bai}"
+    sysctl -w vm.swappiness=10 2>/dev/null
+    sysctl -w vm.dirty_ratio=20 2>/dev/null
+    sysctl -w vm.dirty_background_ratio=10 2>/dev/null
+    sysctl -w vm.overcommit_memory=1 2>/dev/null
+    sysctl -w vm.min_free_kbytes=65536 2>/dev/null
+
+    echo -e "${lv}优化网络设置...${bai}"
+    sysctl -w net.core.rmem_max=16777216 2>/dev/null
+    sysctl -w net.core.wmem_max=16777216 2>/dev/null
+    sysctl -w net.core.netdev_max_backlog=5000 2>/dev/null
+    sysctl -w net.core.somaxconn=4096 2>/dev/null
+    sysctl -w net.ipv4.tcp_rmem='4096 87380 16777216' 2>/dev/null
+    sysctl -w net.ipv4.tcp_wmem='4096 65536 16777216' 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=htcp 2>/dev/null
+    sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
+    sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
+    sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
+
+    echo -e "${lv}优化缓存管理...${bai}"
+    sysctl -w vm.vfs_cache_pressure=50 2>/dev/null
+
+    echo -e "${lv}优化CPU设置...${bai}"
+    sysctl -w kernel.sched_autogroup_enabled=0 2>/dev/null
+
+}
 
 
 
@@ -2156,6 +2351,8 @@ case $choice in
       echo "12. ranger 文件管理工具"
       echo "13. gdu 磁盘占用查看工具"
       echo "14. fzf 全局搜索工具"
+      echo "15. vim 文本编辑器"
+      echo "16. nano 文本编辑器"
       echo "------------------------"
       echo "21. cmatrix 黑客帝国屏保"
       echo "22. sl 跑火车屏保"
@@ -2288,6 +2485,24 @@ case $choice in
               cd ~
               send_stats "安装fzf"
               ;;
+            15)
+              clear
+              install vim
+              cd /
+              clear
+              vim -h
+              cd ~
+              send_stats "安装vim"
+              ;;
+            16)
+              clear
+              install nano
+              cd /
+              clear
+              nano -h
+              cd ~
+              send_stats "安装nano"
+              ;;
 
             21)
               clear
@@ -2329,13 +2544,13 @@ case $choice in
           31)
               clear
               send_stats "全部安装"
-              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders
+              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders vim nano
               ;;
 
           32)
               clear
               send_stats "全部卸载"
-              remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders
+              remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders vim nano
               ;;
 
           41)
@@ -5595,7 +5810,7 @@ case $choice in
       echo "21. 本机host解析                       22. fail2banSSH防御程序"
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
       echo "25. TG-bot系统监控预警                 26. 修复OpenSSH高危漏洞（岫源）"
-      echo "27. 红帽系Linux内核升级"
+      echo "27. 红帽系Linux内核升级                28. Linux系统内核参数优化"
       echo "------------------------"
       echo "31. 留言板                             66. 一条龙系统调优"
       echo "------------------------"
@@ -6845,6 +7060,65 @@ EOF
               elrepo
               ;;
 
+
+          28)
+            root_use
+            while true; do
+              clear
+              send_stats "Linux内核调优管理"
+              echo -e "Linux系统内核参数优化 ${huang}测试版${bai}"
+              echo "------------------------------------------------"
+              echo "提供三种系统配置模式：高性能模式、均衡模式和还原默认设置。用户可以通过执行相应的命令快速切换系统配置。"
+              echo -e "${huang}提示: ${bai}生产环境请谨慎调优！"
+              echo "--------------------"
+              echo "1. 高性能优化模式：     最大化系统性能，优化文件描述符、虚拟内存、网络设置、缓存管理和CPU设置。"
+              echo "2. 均衡优化模式：       在性能与资源消耗之间取得平衡，适合日常使用。"
+              echo "3. 网站优化模式：       针对网站服务器进行优化，提高并发连接处理能力、响应速度和整体性能。"
+              echo "4. 还原默认设置：       将系统设置还原为默认配置。"
+              echo "--------------------"
+              echo "0. 返回上一级"
+              echo "--------------------"
+              read -p "请输入你的选择: " sub_choice
+              case $sub_choice in
+                  1)
+                      cd ~
+                      clear
+                      optimize_high_performance
+                      send_stats "高性能模式优化"
+                      break_end
+                      ;;
+                  2)
+                      cd ~
+                      clear
+                      optimize_balanced
+                      send_stats "均衡模式优化"
+                      break_end
+                      ;;
+                  3)
+                      cd ~
+                      clear
+                      optimize_web_server
+                      send_stats "网站优化模式"
+                      break_end
+                      ;;
+                  4)
+                      cd ~
+                      clear
+                      restore_defaults
+                      send_stats "还原默认设置"
+                      break_end
+                      ;;
+                  0)
+                      break
+                      ;;
+                  *)
+                      echo "无效的选择，请重新输入。"
+                      ;;
+              esac
+            done
+              ;;
+
+
           31)
             clear
             send_stats "留言板"
@@ -6900,6 +7174,7 @@ EOF
               echo -e "7. 设置时区到${huang}上海${bai}"
               echo -e "8. 优化DNS地址到${huang}1111 8888${bai}"
               echo -e "9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+              echo -e "10. Linux系统内核参数优化"
               echo "------------------------------------------------"
               read -p "确定一键保养吗？(Y/N): " choice
 
@@ -6909,31 +7184,31 @@ EOF
                   send_stats "一条龙调优启动"
                   echo "------------------------------------------------"
                   linux_update
-                  echo -e "[${lv}OK${bai}] 1/9. 更新系统到最新"
+                  echo -e "[${lv}OK${bai}] 1/10. 更新系统到最新"
 
                   echo "------------------------------------------------"
                   linux_clean
-                  echo -e "[${lv}OK${bai}] 2/9. 清理系统垃圾文件"
+                  echo -e "[${lv}OK${bai}] 2/10. 清理系统垃圾文件"
 
                   echo "------------------------------------------------"
                   new_swap=1024
                   add_swap
-                  echo -e "[${lv}OK${bai}] 3/9. 设置虚拟内存${huang}1G${bai}"
+                  echo -e "[${lv}OK${bai}] 3/10. 设置虚拟内存${huang}1G${bai}"
 
                   echo "------------------------------------------------"
                   new_port=5522
                   new_ssh_port
-                  echo -e "[${lv}OK${bai}] 4/9. 设置SSH端口号为${huang}5522${bai}"
+                  echo -e "[${lv}OK${bai}] 4/10. 设置SSH端口号为${huang}5522${bai}"
                   echo "------------------------------------------------"
-                  echo -e "[${lv}OK${bai}] 5/9. 开放所有端口"
+                  echo -e "[${lv}OK${bai}] 5/10. 开放所有端口"
 
                   echo "------------------------------------------------"
                   bbr_on
-                  echo -e "[${lv}OK${bai}] 6/9. 开启${huang}BBR${bai}加速"
+                  echo -e "[${lv}OK${bai}] 6/10. 开启${huang}BBR${bai}加速"
 
                   echo "------------------------------------------------"
                   set_timedate Asia/Shanghai
-                  echo -e "[${lv}OK${bai}] 7/9. 设置时区到${huang}上海${bai}"
+                  echo -e "[${lv}OK${bai}] 7/10. 设置时区到${huang}上海${bai}"
 
                   echo "------------------------------------------------"
                   dns1_ipv4="1.1.1.1"
@@ -6941,13 +7216,17 @@ EOF
                   dns1_ipv6="2606:4700:4700::1111"
                   dns2_ipv6="2001:4860:4860::8888"
                   set_dns
-                  echo -e "[${lv}OK${bai}] 8/9. 优化DNS地址到${huang}1111 8888${bai}"
+                  echo -e "[${lv}OK${bai}] 8/10. 优化DNS地址到${huang}1111 8888${bai}"
 
                   echo "------------------------------------------------"
                   install_add_docker
                   install wget sudo tar unzip socat btop
-                  echo -e "[${lv}OK${bai}] 9/9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
+                  echo -e "[${lv}OK${bai}] 9/10. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
                   echo "------------------------------------------------"
+
+                  echo "------------------------------------------------"
+                  optimize_balanced
+                  echo -e "[${lv}OK${bai}] 10/10. Linux系统内核参数优化"
                   echo -e "${lv}一条龙系统调优已完成${bai}"
 
                   ;;
@@ -7361,7 +7640,19 @@ else
             send_stats "软件开机自启"
             enable "$@"
             ;;
+
+        ssl)
+            send_stats "快捷证书申请"
+            add_ssl
+            ;;
+
+        sslps)
+            send_stats "查看证书到期情况"
+            ssl_ps
+            ;;
+
         *)
+            send_stats "k命令参考用例"
             echo "无效参数，以下是k命令参考用例："
             echo "启动脚本            k"
             echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
@@ -7375,6 +7666,9 @@ else
             echo "软件重启            k restart sshd | k 重启 sshd "
             echo "软件状态查看        k status sshd | k 状态 sshd "
             echo "软件开机启动        k enable docker | k autostart docke | k 开机启动 docker "
+            echo "域名证书申请        k ssl"
+            echo "域名证书到期查询    k sslps"
             ;;
     esac
 fi
+
