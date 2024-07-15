@@ -696,14 +696,9 @@ install_ldnmp() {
 
 install_certbot() {
 
-    if command -v yum &>/dev/null; then
-        install certbot
-    else
-        install certbot
-    fi
+    install certbot
 
-    # 切换到一个一致的目录（例如，家目录）
-    cd ~ || exit
+    cd ~
 
     # 下载并使脚本可执行
     curl -O https://raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
@@ -724,6 +719,7 @@ install_certbot() {
         echo "续签任务已存在，无需添加"
     fi
 }
+
 
 install_ssltls() {
       docker stop nginx > /dev/null 2>&1
@@ -7673,4 +7669,3 @@ else
             ;;
     esac
 fi
-
