@@ -727,7 +727,7 @@ install_certbot() {
 
 install_ssltls() {
       docker stop nginx > /dev/null 2>&1
-      iptables_open
+      iptables_open > /dev/null 2>&1
       cd ~
 
       certbot_version=$(certbot --version 2>&1 | grep -oP "\d+\.\d+\.\d+")
