@@ -742,10 +742,43 @@ install_ssltls() {
           certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
       fi
 
-      cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem
-      cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem
+      cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
+      cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
       docker start nginx > /dev/null 2>&1
 }
+
+
+
+install_ssltls_text() {
+    echo "$yuming 公钥信息"
+    echo "-------------------"
+    cat /etc/letsencrypt/live/$yuming/fullchain.pem
+    echo "-------------------"
+    echo "$yuming 私钥信息"
+    echo "-------------------"
+    cat /etc/letsencrypt/live/$yuming/privkey.pem
+    echo "-------------------"
+    echo "证书存放路径"
+    echo "公钥: /etc/letsencrypt/live/$yuming/fullchain.pem"
+    echo "私钥: /etc/letsencrypt/live/$yuming/privkey.pem"
+
+}
+
+
+add_ssl() {
+
+add_yuming
+
+if ! command -v certbot &> /dev/null
+then
+    install_certbot
+fi
+
+install_ssltls
+install_ssltls_text
+
+}
+
 
 
 default_server_ssl() {
@@ -1949,7 +1982,7 @@ elrepo() {
                         elrepo_install
                         send_stats "更新红帽内核"
                         server_reboot
-                        
+
                           ;;
                       2)
                         dnf remove -y elrepo-release
@@ -1957,7 +1990,7 @@ elrepo() {
                         echo "elrepo内核已卸载。重启后生效"
                         send_stats "卸载红帽内核"
                         server_reboot
-                        
+
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
@@ -2003,17 +2036,17 @@ elrepo() {
 # 高性能模式优化函数
 optimize_high_performance() {
     echo -e "${lv}切换到高性能模式...${bai}"
-    
+
     echo -e "${lv}优化文件描述符...${bai}"
     ulimit -n 65535
-    
+
     echo -e "${lv}优化虚拟内存...${bai}"
     sysctl -w vm.swappiness=10 2>/dev/null
     sysctl -w vm.dirty_ratio=15 2>/dev/null
     sysctl -w vm.dirty_background_ratio=5 2>/dev/null
     sysctl -w vm.overcommit_memory=1 2>/dev/null
     sysctl -w vm.min_free_kbytes=65536 2>/dev/null
-    
+
     echo -e "${lv}优化网络设置...${bai}"
     sysctl -w net.core.rmem_max=16777216 2>/dev/null
     sysctl -w net.core.wmem_max=16777216 2>/dev/null
@@ -2025,10 +2058,10 @@ optimize_high_performance() {
     sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
-    
+
     echo -e "${lv}优化缓存管理...${bai}"
     sysctl -w vm.vfs_cache_pressure=50 2>/dev/null
-    
+
     echo -e "${lv}优化CPU设置...${bai}"
     sysctl -w kernel.sched_autogroup_enabled=0 2>/dev/null
 }
@@ -2036,17 +2069,17 @@ optimize_high_performance() {
 # 均衡模式优化函数
 optimize_balanced() {
     echo -e "${lv}切换到均衡模式...${bai}"
-    
+
     echo -e "${lv}优化文件描述符...${bai}"
     ulimit -n 32768
-    
+
     echo -e "${lv}优化虚拟内存...${bai}"
     sysctl -w vm.swappiness=30 2>/dev/null
     sysctl -w vm.dirty_ratio=20 2>/dev/null
     sysctl -w vm.dirty_background_ratio=10 2>/dev/null
     sysctl -w vm.overcommit_memory=0 2>/dev/null
     sysctl -w vm.min_free_kbytes=32768 2>/dev/null
-    
+
     echo -e "${lv}优化网络设置...${bai}"
     sysctl -w net.core.rmem_max=8388608 2>/dev/null
     sysctl -w net.core.wmem_max=8388608 2>/dev/null
@@ -2058,10 +2091,10 @@ optimize_balanced() {
     sysctl -w net.ipv4.tcp_max_syn_backlog=4096 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 49151' 2>/dev/null
-    
+
     echo -e "${lv}优化缓存管理...${bai}"
     sysctl -w vm.vfs_cache_pressure=75 2>/dev/null
-    
+
     echo -e "${lv}优化CPU设置...${bai}"
     sysctl -w kernel.sched_autogroup_enabled=1 2>/dev/null
 }
@@ -2069,17 +2102,17 @@ optimize_balanced() {
 # 还原默认设置函数
 restore_defaults() {
     echo -e "${lv}还原到默认设置...${bai}"
-    
+
     echo -e "${lv}还原文件描述符...${bai}"
     ulimit -n 1024
-    
+
     echo -e "${lv}还原虚拟内存...${bai}"
     sysctl -w vm.swappiness=60 2>/dev/null
     sysctl -w vm.dirty_ratio=20 2>/dev/null
     sysctl -w vm.dirty_background_ratio=10 2>/dev/null
     sysctl -w vm.overcommit_memory=0 2>/dev/null
     sysctl -w vm.min_free_kbytes=16384 2>/dev/null
-    
+
     echo -e "${lv}还原网络设置...${bai}"
     sysctl -w net.core.rmem_max=212992 2>/dev/null
     sysctl -w net.core.wmem_max=212992 2>/dev/null
@@ -2091,10 +2124,10 @@ restore_defaults() {
     sysctl -w net.ipv4.tcp_max_syn_backlog=2048 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=0 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='32768 60999' 2>/dev/null
-    
+
     echo -e "${lv}还原缓存管理...${bai}"
     sysctl -w vm.vfs_cache_pressure=100 2>/dev/null
-    
+
     echo -e "${lv}还原CPU设置...${bai}"
     sysctl -w kernel.sched_autogroup_enabled=1 2>/dev/null
 }
@@ -2104,17 +2137,17 @@ restore_defaults() {
 # 网站搭建优化函数
 optimize_web_server() {
     echo -e "${lv}切换到网站搭建优化模式...${bai}"
-    
+
     echo -e "${lv}优化文件描述符...${bai}"
     ulimit -n 65536
-    
+
     echo -e "${lv}优化虚拟内存...${bai}"
     sysctl -w vm.swappiness=10 2>/dev/null
     sysctl -w vm.dirty_ratio=20 2>/dev/null
     sysctl -w vm.dirty_background_ratio=10 2>/dev/null
     sysctl -w vm.overcommit_memory=1 2>/dev/null
     sysctl -w vm.min_free_kbytes=65536 2>/dev/null
-    
+
     echo -e "${lv}优化网络设置...${bai}"
     sysctl -w net.core.rmem_max=16777216 2>/dev/null
     sysctl -w net.core.wmem_max=16777216 2>/dev/null
@@ -2126,13 +2159,13 @@ optimize_web_server() {
     sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
-    
+
     echo -e "${lv}优化缓存管理...${bai}"
     sysctl -w vm.vfs_cache_pressure=50 2>/dev/null
-    
+
     echo -e "${lv}优化CPU设置...${bai}"
     sysctl -w kernel.sched_autogroup_enabled=0 2>/dev/null
-    
+
 }
 
 
@@ -7001,8 +7034,8 @@ EOF
 
           28)
             root_use
-            while true; do  
-              clear            
+            while true; do
+              clear
               send_stats "Linux内核调优管理"
               echo -e "Linux系统内核参数优化 ${huang}测试版${bai}"
               echo "------------------------------------------------"
@@ -7161,7 +7194,7 @@ EOF
                   install wget sudo tar unzip socat btop
                   echo -e "[${lv}OK${bai}] 9/10. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
                   echo "------------------------------------------------"
- 
+
                   echo "------------------------------------------------"
                   optimize_balanced
                   echo -e "[${lv}OK${bai}] 10/10. Linux系统内核参数优化"
@@ -7578,7 +7611,14 @@ else
             send_stats "软件开机自启"
             enable "$@"
             ;;
+
+        ssl)
+            send_stats "快捷证书申请"
+            add_ssl
+            ;;
+
         *)
+            send_stats "k命令参考用例"
             echo "无效参数，以下是k命令参考用例："
             echo "启动脚本            k"
             echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
@@ -7592,6 +7632,7 @@ else
             echo "软件重启            k restart sshd | k 重启 sshd "
             echo "软件状态查看        k status sshd | k 状态 sshd "
             echo "软件开机启动        k enable docker | k autostart docke | k 开机启动 docker "
+            echo "域名证书申请        k ssl"
             ;;
     esac
 fi
