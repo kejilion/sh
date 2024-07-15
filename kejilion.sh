@@ -755,11 +755,11 @@ install_ssltls_text() {
     echo ""
     echo -e "${huang}$yuming 私钥信息${bai}"
     cat /etc/letsencrypt/live/$yuming/privkey.pem
-    echo "-------------------"
+    echo ""
     echo -e "${huang}证书存放路径${bai}"
     echo "公钥: /etc/letsencrypt/live/$yuming/fullchain.pem"
     echo "私钥: /etc/letsencrypt/live/$yuming/privkey.pem"
-
+    echo ""
 }
 
 
