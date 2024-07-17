@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.8"
+sh_v="2.7.9"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -696,11 +696,8 @@ install_ldnmp() {
 
 install_certbot() {
 
-
     install certbot
 
-
-    # 切换到一个一致的目录（例如，家目录）
     cd ~
 
     # 下载并使脚本可执行
@@ -722,6 +719,7 @@ install_certbot() {
         echo "续签任务已存在，无需添加"
     fi
 }
+
 
 install_ssltls() {
       docker stop nginx > /dev/null 2>&1
@@ -5618,6 +5616,7 @@ case $choice in
 
           38)
             send_stats "小雅全家桶"
+            install_docker
             bash -c "$(curl --insecure -fsSL https://ddsrem.com/xiaoya_install.sh)"
               ;;
 
@@ -7172,9 +7171,9 @@ EOF
               echo -e "5. 开放所有端口"
               echo -e "6. 开启${huang}BBR${bai}加速"
               echo -e "7. 设置时区到${huang}上海${bai}"
-              echo -e "8. 优化DNS地址到${huang}1111 8888${bai}"
-              echo -e "9. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
-              echo -e "10. Linux系统内核参数优化"
+              echo -e "8. 自动优化DNS地址${huang}海外: 1.1.1.1 8.8.8.8  国内: 223.5.5.5 ${bai}"
+              echo -e "9. 安装常用工具${huang}docker wget sudo tar unzip socat btop nano vim${bai}"
+              echo -e "10. Linux系统内核参数优化切换到${huang}均衡优化模式${bai}"
               echo "------------------------------------------------"
               read -p "确定一键保养吗？(Y/N): " choice
 
@@ -7211,16 +7210,25 @@ EOF
                   echo -e "[${lv}OK${bai}] 7/10. 设置时区到${huang}上海${bai}"
 
                   echo "------------------------------------------------"
-                  dns1_ipv4="1.1.1.1"
-                  dns2_ipv4="8.8.8.8"
-                  dns1_ipv6="2606:4700:4700::1111"
-                  dns2_ipv6="2001:4860:4860::8888"
+
+                  if [ "$country" = "CN" ]; then
+                      dns1_ipv4="223.5.5.5"
+                      dns2_ipv4="183.60.83.19"
+                      dns1_ipv6="2400:3200::1"
+                      dns2_ipv6="2400:da00::6666"
+                  else
+                      dns1_ipv4="1.1.1.1"
+                      dns2_ipv4="8.8.8.8"
+                      dns1_ipv6="2606:4700:4700::1111"
+                      dns2_ipv6="2001:4860:4860::8888"
+                  fi
+
                   set_dns
-                  echo -e "[${lv}OK${bai}] 8/10. 优化DNS地址到${huang}1111 8888${bai}"
+                  echo -e "[${lv}OK${bai}] 8/10. 自动优化DNS地址${huang}${bai}"
 
                   echo "------------------------------------------------"
                   install_add_docker
-                  install wget sudo tar unzip socat btop
+                  install wget sudo tar unzip socat btop nano vim
                   echo -e "[${lv}OK${bai}] 9/10. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
                   echo "------------------------------------------------"
 
