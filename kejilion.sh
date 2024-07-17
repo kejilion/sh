@@ -7004,7 +7004,7 @@ EOF
                 [Yy])
                   send_stats "电报预警启用"
                   cd ~
-                  install nano tmux bc jq
+                  install nano tmux bc jq > /dev/null 2>&1
                   check_crontab_installed
                   if [ -f ~/TG-check-notify.sh ]; then
                       chmod +x ~/TG-check-notify.sh
@@ -7027,6 +7027,9 @@ EOF
                   # 添加到 ~/.profile 文件中
                   if ! grep -q 'bash ~/TG-SSH-check-notify.sh' ~/.profile > /dev/null 2>&1; then
                       echo 'bash ~/TG-SSH-check-notify.sh' >> ~/.profile
+                      if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+                         echo 'source ~/.profile' >> ~/.bashrc
+                      fi
                   fi
 
                   source ~/.profile
