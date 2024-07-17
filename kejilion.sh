@@ -7173,7 +7173,7 @@ EOF
               echo -e "7. 设置时区到${huang}上海${bai}"
               echo -e "8. 自动优化DNS地址${huang}海外: 1.1.1.1 8.8.8.8  国内: 223.5.5.5 ${bai}"
               echo -e "9. 安装常用工具${huang}docker wget sudo tar unzip socat btop nano vim${bai}"
-              echo -e "10. Linux系统内核参数优化"
+              echo -e "10. Linux系统内核参数优化切换到${huang}均衡优化模式${bai}"
               echo "------------------------------------------------"
               read -p "确定一键保养吗？(Y/N): " choice
 
