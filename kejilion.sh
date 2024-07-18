@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.9"
+sh_v="2.7.10"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -772,12 +772,7 @@ install_ssltls_text() {
 add_ssl() {
 
 add_yuming
-
-if ! command -v certbot &> /dev/null
-then
-    install_certbot
-fi
-
+install_certbot
 install_ssltls
 install_ssltls_text
 ssl_ps
@@ -4517,7 +4512,9 @@ case $choice in
             check_port
             install_dependency
             install_docker
+            install_certbot
             install_ldnmp
+
             ;;
           [Nn])
             ;;
