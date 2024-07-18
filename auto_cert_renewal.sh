@@ -37,7 +37,7 @@ for cert_dir in $certs_directory*; do
         echo "证书将在${days_before_expiry}天内过期，正在进行自动续签。"
 
         # 停止 Nginx
-        docker stop nginx
+        docker stop nginx > /dev/null 2>&1
 
         iptables -P INPUT ACCEPT
         iptables -P FORWARD ACCEPT
