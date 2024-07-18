@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.9"
+sh_v="2.7.10"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -134,15 +134,22 @@ install() {
         if ! command -v "$package" &>/dev/null; then
             echo "正在安装 $package..."
             if command -v dnf &>/dev/null; then
-                dnf -y update && dnf install -y epel-release && dnf install -y "$package"
+                dnf -y update
+                dnf install -y epel-release
+                dnf install -y "$package"
             elif command -v yum &>/dev/null; then
-                yum -y update && yum install -y epel-release && yum -y install "$package"
+                yum -y update
+                yum install -y epel-release
+                yum -y install "$package"
             elif command -v apt &>/dev/null; then
-                apt update -y && apt install -y "$package"
+                apt update -y
+                apt install -y "$package"
             elif command -v apk &>/dev/null; then
-                apk update && apk add "$package"
+                apk update
+                apk add "$package"
             elif command -v pacman &>/dev/null; then
-                pacman -Syu --noconfirm && pacman -S --noconfirm "$package"
+                pacman -Syu --noconfirm
+                pacman -S --noconfirm "$package"
             else
                 echo "未知的包管理器!"
                 return 1
@@ -765,12 +772,7 @@ install_ssltls_text() {
 add_ssl() {
 
 add_yuming
-
-if ! command -v certbot &> /dev/null
-then
-    install_certbot
-fi
-
+install_certbot
 install_ssltls
 install_ssltls_text
 ssl_ps
@@ -4510,7 +4512,9 @@ case $choice in
             check_port
             install_dependency
             install_docker
+            install_certbot
             install_ldnmp
+
             ;;
           [Nn])
             ;;
@@ -7004,7 +7008,7 @@ EOF
                 [Yy])
                   send_stats "电报预警启用"
                   cd ~
-                  install nano tmux bc jq
+                  install nano tmux bc jq > /dev/null 2>&1
                   check_crontab_installed
                   if [ -f ~/TG-check-notify.sh ]; then
                       chmod +x ~/TG-check-notify.sh
@@ -7027,6 +7031,9 @@ EOF
                   # 添加到 ~/.profile 文件中
                   if ! grep -q 'bash ~/TG-SSH-check-notify.sh' ~/.profile > /dev/null 2>&1; then
                       echo 'bash ~/TG-SSH-check-notify.sh' >> ~/.profile
+                      if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+                         echo 'source ~/.profile' >> ~/.bashrc
+                      fi
                   fi
 
                   source ~/.profile
