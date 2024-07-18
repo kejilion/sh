@@ -65,8 +65,6 @@ for cert_dir in $certs_directory*; do
         cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
         docker start nginx > /dev/null 2>&1
 
-        # 启动 Nginx
-        docker start nginx
 
         echo "证书已成功续签。"
     else
