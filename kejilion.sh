@@ -626,7 +626,6 @@ install_ldnmp() {
           # php重启
           "docker exec php chmod -R 777 /var/www/html"
           "docker restart php > /dev/null 2>&1"
-          "docker exec php install-php-extensions imagick > /dev/null 2>&1"
 
           # php7.4安装扩展
           "docker exec php74 install-php-extensions imagick > /dev/null 2>&1"
@@ -2038,9 +2037,10 @@ elrepo() {
 }
 
 
+
 # 高性能模式优化函数
 optimize_high_performance() {
-    echo -e "${lv}切换到高性能模式...${bai}"
+    echo -e "${lv}切换到${tiaoyou_moshi}...${bai}"
 
     echo -e "${lv}优化文件描述符...${bai}"
     ulimit -n 65535
@@ -2202,50 +2202,6 @@ optimize_web_server() {
 
 
 }
-
-
-# 直播推流优化函数
-optimize_live_streaming() {
-    echo -e "${lv}切换到直播推流优化模式...${bai}"
-
-    echo -e "${lv}优化文件描述符...${bai}"
-    ulimit -n 65536
-
-    echo -e "${lv}优化虚拟内存...${bai}"
-    sysctl -w vm.swappiness=10 2>/dev/null
-    sysctl -w vm.dirty_ratio=15 2>/dev/null
-    sysctl -w vm.dirty_background_ratio=5 2>/dev/null
-    sysctl -w vm.overcommit_memory=1 2>/dev/null
-    sysctl -w vm.min_free_kbytes=65536 2>/dev/null
-
-    echo -e "${lv}优化网络设置...${bai}"
-    sysctl -w net.core.rmem_max=16777216 2>/dev/null
-    sysctl -w net.core.wmem_max=16777216 2>/dev/null
-    sysctl -w net.core.netdev_max_backlog=250000 2>/dev/null
-    sysctl -w net.core.somaxconn=4096 2>/dev/null
-    sysctl -w net.ipv4.tcp_rmem='4096 87380 16777216' 2>/dev/null
-    sysctl -w net.ipv4.tcp_wmem='4096 65536 16777216' 2>/dev/null
-    sysctl -w net.ipv4.tcp_congestion_control=htcp 2>/dev/null
-    sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
-    sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
-    sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
-
-    echo -e "${lv}优化缓存管理...${bai}"
-    sysctl -w vm.vfs_cache_pressure=50 2>/dev/null
-
-    echo -e "${lv}优化CPU设置...${bai}"
-    sysctl -w kernel.sched_autogroup_enabled=0 2>/dev/null
-
-    echo -e "${lv}其他优化...${bai}"
-    # 禁用透明大页面，减少延迟
-    echo never > /sys/kernel/mm/transparent_hugepage/enabled
-    # 禁用 NUMA balancing
-    sysctl -w kernel.numa_balancing=0 2>/dev/null
-}
-
-
-
-
 
 
 
@@ -7130,8 +7086,9 @@ EOF
               echo "1. 高性能优化模式：     最大化系统性能，优化文件描述符、虚拟内存、网络设置、缓存管理和CPU设置。"
               echo "2. 均衡优化模式：       在性能与资源消耗之间取得平衡，适合日常使用。"
               echo "3. 网站优化模式：       针对网站服务器进行优化，提高并发连接处理能力、响应速度和整体性能。"
-              echo "4. 直播优化模式：       针对直播推流的特殊需求进行优化，减少延迟，提高传输性能，"
-              echo "5. 还原默认设置：       将系统设置还原为默认配置。"
+              echo "4. 直播优化模式：       针对直播推流的特殊需求进行优化，减少延迟，提高传输性能。"
+              echo "5. 游戏服优化模式：     针对游戏服务器进行优化，提高并发处理能力和响应速度。"
+              echo "6. 还原默认设置：       将系统设置还原为默认配置。"
               echo "--------------------"
               echo "0. 返回上一级"
               echo "--------------------"
@@ -7140,6 +7097,7 @@ EOF
                   1)
                       cd ~
                       clear
+                      tiaoyou_moshi="高性能优化模式"
                       optimize_high_performance
                       send_stats "高性能模式优化"
                       break_end
@@ -7161,11 +7119,20 @@ EOF
                   4)
                       cd ~
                       clear
-                      optimize_live_streaming
+                      tiaoyou_moshi="直播优化模式"
+                      optimize_high_performance
                       send_stats "直播推流优化"
                       break_end
                       ;;
                   5)
+                      cd ~
+                      clear
+                      tiaoyou_moshi="游戏服优化模式"
+                      optimize_high_performance
+                      send_stats "游戏服优化"
+                      break_end
+                      ;;
+                  6)
                       cd ~
                       clear
                       restore_defaults
