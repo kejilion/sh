@@ -7210,7 +7210,7 @@ EOF
                   echo -e "[${lv}OK${bai}] 7/10. 设置时区到${huang}上海${bai}"
 
                   echo "------------------------------------------------"
-
+                  country=$(curl -s ipinfo.io/country)
                   if [ "$country" = "CN" ]; then
                       dns1_ipv4="223.5.5.5"
                       dns2_ipv4="183.60.83.19"
