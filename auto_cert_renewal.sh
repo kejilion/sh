@@ -1,17 +1,26 @@
 # 定义证书存储目录
-certs_directory="/home/web/certs/"
+certs_directory="/etc/letsencrypt/live/"
+
 days_before_expiry=5  # 设置在证书到期前几天触发续签
 
 # 遍历所有证书文件
-for cert_file in $certs_directory*_cert.pem; do
+for cert_dir in $certs_directory*; do
     # 获取域名
-    domain=$(basename "$cert_file" "_cert.pem")
+    yuming=$(basename "$cert_dir")
+
+    # 忽略 README 目录
+    if [ "$yuming" = "README" ]; then
+        continue
+    fi
 
     # 输出正在检查的证书信息
-    echo "检查证书过期日期： ${domain}"
+    echo "检查证书过期日期： ${yuming}"
+
+    # 获取fullchain.pem文件路径
+    cert_file="${cert_dir}/fullchain.pem"
 
     # 获取证书过期日期
-    expiration_date=$(openssl x509 -enddate -noout -in "${certs_directory}${domain}_cert.pem" | cut -d "=" -f 2-)
+    expiration_date=$(openssl x509 -enddate -noout -in "${cert_file}" | cut -d "=" -f 2-)
 
     # 输出证书过期日期
     echo "过期日期： ${expiration_date}"
@@ -34,19 +43,27 @@ for cert_file in $certs_directory*_cert.pem; do
         iptables -P FORWARD ACCEPT
         iptables -P OUTPUT ACCEPT
         iptables -F
-    
+
         ip6tables -P INPUT ACCEPT
         ip6tables -P FORWARD ACCEPT
         ip6tables -P OUTPUT ACCEPT
         ip6tables -F
 
-        # 续签证书
-        # certbot certonly --standalone -d $domain --email your@email.com --agree-tos --no-eff-email --force-renewal
-        certbot certonly --standalone -d $domain --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
+        cd ~
+        certbot_version=$(certbot --version 2>&1 | grep -oP "\d+\.\d+\.\d+")
+        version_ge() {
+            [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$1" ]
+        }
 
-        # 复制续签后的证书和私钥
-        cp /etc/letsencrypt/live/$domain/fullchain.pem ${certs_directory}${domain}_cert.pem
-        cp /etc/letsencrypt/live/$domain/privkey.pem ${certs_directory}${domain}_key.pem
+        if version_ge "$certbot_version" "1.17.0"; then
+            certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
+        else
+            certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
+        fi
+
+        cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
+        cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
+        docker start nginx > /dev/null 2>&1
 
         # 启动 Nginx
         docker start nginx
