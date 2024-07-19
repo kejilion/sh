@@ -128,7 +128,7 @@ install() {
 
     for package in "$@"; do
         if ! command -v "$package" &>/dev/null; then
-            echo "正在安装 $package..."
+            echo -e "${huang}正在安装 $package...${bai}"
             if command -v dnf &>/dev/null; then
                 dnf -y update
                 dnf install -y epel-release
@@ -151,7 +151,7 @@ install() {
                 return 1
             fi
         else
-            echo "$package 已经安装。"
+            echo -e "${lv}$package 已经安装${bai}"
         fi
     done
 
@@ -173,7 +173,7 @@ remove() {
     fi
 
     for package in "$@"; do
-        echo "正在卸载 $package..."
+        echo -e "${huang}正在卸载 $package...${bai}"
         if command -v dnf &>/dev/null; then
             dnf remove -y "${package}*"
         elif command -v yum &>/dev/null; then
@@ -405,7 +405,7 @@ install_docker() {
     if ! command -v docker &>/dev/null; then
         install_add_docker
     else
-        echo "Docker环境已经安装"
+        echo -e "${lv}Docker环境已经安装${bai}"
     fi
 }
 
@@ -415,7 +415,7 @@ install_docker() {
 
 check_crontab_installed() {
     if command -v crontab >/dev/null 2>&1; then
-        echo "crontab 已经安装。"
+        echo -e "${lv}crontab 已经安装${bai}"
         return 1
     else
         install_crontab
@@ -461,7 +461,7 @@ install_crontab() {
         exit 1
     fi
 
-    echo "crontab 已安装且 cron 服务正在运行。"
+    echo -e "${lv}crontab 已安装且 cron 服务正在运行。${bai}"
 }
 
 
@@ -1326,7 +1326,7 @@ fix_dpkg() {
 
 
 linux_update() {
-    echo "正在系统更新..."
+    echo -e "${huang}正在系统更新...${bai}"
     if command -v dnf &>/dev/null; then
         dnf -y update
     elif command -v yum &>/dev/null; then
@@ -1348,7 +1348,7 @@ linux_update() {
 
 
 linux_clean() {
-    echo "正在系统清理..."
+    echo -e "${huang}正在系统清理...${bai}"
     if command -v dnf &>/dev/null; then
         dnf autoremove -y
         dnf clean all
@@ -2631,11 +2631,11 @@ linux_docker() {
       # send_stats "docker管理"
       echo "▶ Docker管理器"
       echo "------------------------"
-      echo "1. 安装更新Docker环境"
+      echo -e "1. 安装更新Docker环境 ${huang}★${bai}"
       echo "------------------------"
-      echo "2. 查看Docker全局状态"
+      echo -e "2. 查看Docker全局状态 ${huang}★${bai}"
       echo "------------------------"
-      echo "3. Docker容器管理 ▶"
+      echo -e "3. Docker容器管理 ▶ ${huang}★${bai}"
       echo "4. Docker镜像管理 ▶"
       echo "5. Docker网络管理 ▶"
       echo "6. Docker卷管理 ▶"
@@ -3064,7 +3064,7 @@ linux_test() {
       echo "1. ChatGPT解锁状态检测"
       echo "2. Region流媒体解锁测试"
       echo "3. yeahwu流媒体解锁检测"
-      echo "4. xykt_IP质量体检脚本"
+      echo "4. xykt_IP质量体检脚本 ${huang}★${bai}"
       echo ""
       echo "----网络线路测速-----------"
       echo "11. besttrace三网回程延迟路由测试"
@@ -3081,7 +3081,7 @@ linux_test() {
       echo ""
       echo "----综合性测试-----------"
       echo "31. bench性能测试"
-      echo "32. spiritysdx融合怪测评"
+      echo "32. spiritysdx融合怪测评 ${huang}★${bai}"
       echo ""
       echo "------------------------"
       echo "0. 返回主菜单"
@@ -3365,9 +3365,8 @@ linux_ldnmp() {
     # send_stats "LDNMP建站"
     echo -e "${huang}▶ LDNMP建站${bai}"
     echo  "------------------------"
-    echo  "1. 安装LDNMP环境"
-    echo  "------------------------"
-    echo  "2. 安装WordPress"
+    echo  -e "1. 安装LDNMP环境 ${huang}★${bai}"
+    echo  -e "2. 安装WordPress ${huang}★${bai}" 
     echo  "3. 安装Discuz论坛"
     echo  "4. 安装可道云桌面"
     echo  "5. 安装苹果CMS网站"
@@ -3376,15 +3375,15 @@ linux_ldnmp() {
     echo  "8. 安装typecho轻量博客网站"
     echo  "20. 自定义动态站点"
     echo  "------------------------"
-    echo  "21. 仅安装nginx"
+    echo  -e "21. 仅安装nginx ${huang}★${bai}"
     echo  "22. 站点重定向"
-    echo  "23. 站点反向代理-IP+端口"
+    echo  -e "23. 站点反向代理-IP+端口 ${huang}★${bai}"
     echo  "24. 站点反向代理-域名"
     echo  "25. 自定义静态站点"
     echo  "26. 安装Bitwarden密码管理平台"
     echo  "27. 安装Halo博客网站"
     echo  "------------------------"
-    echo  "31. 站点数据管理"
+    echo  -e "31. 站点数据管理 ${huang}★${bai}"
     echo  "32. 备份全站数据"
     echo  "33. 定时远程备份"
     echo  "34. 还原全站数据"
@@ -5671,7 +5670,7 @@ linux_work() {
       echo "9. 9号工作区"
       echo "10. 10号工作区"
       echo "------------------------"
-      echo "99. 工作区管理"
+      echo -e "99. 工作区管理 ${huang}★${bai}"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -5835,7 +5834,7 @@ linux_Settings() {
       echo "25. TG-bot系统监控预警                 26. 修复OpenSSH高危漏洞（岫源）"
       echo "27. 红帽系Linux内核升级                28. Linux系统内核参数优化"
       echo "------------------------"
-      echo "31. 留言板                             66. 一条龙系统调优"
+      echo -e "31. 留言板                             66. 一条龙系统调优 ${huang}★${bai}"
       echo "------------------------"
       echo "99. 重启服务器                         100. 隐私与安全"
       echo "------------------------"
