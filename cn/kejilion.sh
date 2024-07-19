@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.7.10"
+sh_v="2.8.0"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -75,6 +75,7 @@ fi
 
 yinsiyuanquan2
 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+
 
 
 
@@ -423,9 +424,9 @@ check_crontab_installed() {
 }
 
 
-# 在不同发行版上安装 crontab 的函数
+
 install_crontab() {
-    # 根据发行版更新包列表并安装 crontab
+
     if [ -f /etc/os-release ]; then
         . /etc/os-release
         case "$ID" in
@@ -547,6 +548,8 @@ add_swap() {
 
     echo -e "虚拟内存大小已调整为${huang}${new_swap}${bai}MB"
 }
+
+
 
 ldnmp_v() {
 
@@ -1300,6 +1303,7 @@ fix_dpkg() {
 
 
 linux_update() {
+    echo "正在系统更新..."
     if command -v dnf &>/dev/null; then
         dnf -y update
     elif command -v yum &>/dev/null; then
@@ -1321,6 +1325,7 @@ linux_update() {
 
 
 linux_clean() {
+    echo "正在系统清理..."
     if command -v dnf &>/dev/null; then
         dnf autoremove -y
         dnf clean all
@@ -1898,12 +1903,8 @@ bbrv3() {
             apt update -y
             apt install -y linux-xanmod-x64v$version
 
-            # 步骤5：启用BBR3
-            cat > /etc/sysctl.conf << EOF
-net.core.default_qdisc=fq_pie
-net.ipv4.tcp_congestion_control=bbr
-EOF
-            sysctl -p
+            bbr_on
+
             echo "XanMod内核安装并BBR3启用成功。重启后生效"
             rm -f /etc/apt/sources.list.d/xanmod-release.list
             rm -f check_x86-64_psabi.sh*
@@ -2205,46 +2206,8 @@ optimize_web_server() {
 
 
 
+linux_ps() {
 
-
-
-kejilion_sh() {
-while true; do
-clear
-
-echo -e "${kjlan}_  _ ____  _ _ _    _ ____ _  _ "
-echo "|_/  |___  | | |    | |  | |\ | "
-echo "| \_ |___ _| | |___ | |__| | \| "
-echo "                                "
-echo -e "${kjlan}科技lion脚本工具箱 v$sh_v 只为更简单的Linux的使用！"
-echo -e "适配Ubuntu/Debian/CentOS/Alpine/Kali/Arch/RedHat/Fedora/Alma/Rocky系统"
-echo -e "-输入${huang}k${kjlan}可快速启动此脚本-${bai}"
-echo "------------------------"
-echo "1. 系统信息查询"
-echo "2. 系统更新"
-echo "3. 系统清理"
-echo "4. 常用工具 ▶"
-echo "5. BBR管理 ▶"
-echo "6. Docker管理 ▶ "
-echo "7. WARP管理 ▶ "
-echo "8. 测试脚本合集 ▶ "
-echo "9. 甲骨文云脚本合集 ▶ "
-echo -e "${huang}10. LDNMP建站 ▶ ${bai}"
-echo "11. 面板工具 ▶ "
-echo "12. 我的工作区 ▶ "
-echo "13. 系统工具 ▶ "
-echo "14. VPS集群控制 ▶ "
-echo "------------------------"
-echo "p. 幻兽帕鲁开服脚本 ▶"
-echo "------------------------"
-echo "00. 脚本更新"
-echo "------------------------"
-echo "0. 退出脚本"
-echo "------------------------"
-read -p "请输入你的选择: " choice
-
-case $choice in
-  1)
     clear
     send_stats "系统信息查询"
 
@@ -2323,21 +2286,14 @@ case $choice in
     echo "系统运行时长: $runtime"
     echo
 
-    ;;
 
-  2)
-    clear
-    send_stats "系统更新"
-    linux_update
-    ;;
 
-  3)
-    clear
-    send_stats "系统清理"
-    linux_clean
-    ;;
+}
 
-  4)
+
+
+linux_tools() {
+
   while true; do
       clear
       send_stats "常用工具"
@@ -2584,9 +2540,13 @@ case $choice in
       break_end
   done
 
-    ;;
 
-  5)
+
+
+}
+
+
+linux_bbr() {
     clear
     send_stats "bbr管理"
     if [ -f "/etc/alpine-release" ]; then
@@ -2633,9 +2593,15 @@ case $choice in
         ./tcpx.sh
     fi
 
-    ;;
 
-  6)
+}
+
+
+
+
+
+linux_docker() {
+
     while true; do
       clear
       # send_stats "docker管理"
@@ -3058,17 +3024,13 @@ case $choice in
 
     done
 
-    ;;
+
+}
 
 
-  7)
-    clear
-    send_stats "warp管理"
-    install wget
-    wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh [option] [lisence/url/token]
-    ;;
 
-  8)
+linux_test() {
+
     while true; do
       clear
       # send_stats "测试脚本合集"
@@ -3223,9 +3185,14 @@ case $choice in
       break_end
 
     done
-    ;;
 
-  9)
+
+}
+
+
+linux_Oracle() {
+
+
      while true; do
       clear
       send_stats "甲骨文云脚本合集"
@@ -3357,10 +3324,17 @@ case $choice in
       break_end
 
     done
-    ;;
 
 
-  10)
+
+}
+
+
+
+
+
+
+linux_ldnmp() {
 
   while true; do
     clear
@@ -4560,9 +4534,13 @@ case $choice in
     break_end
 
   done
-      ;;
 
-  11)
+}
+
+
+
+linux_panel() {
+
     while true; do
       clear
       # send_stats "面板工具"
@@ -5645,9 +5623,11 @@ case $choice in
       break_end
 
     done
-    ;;
+}
 
-  12)
+
+linux_work() {
+
     while true; do
       clear
       send_stats "我的工作区"
@@ -5796,9 +5776,15 @@ case $choice in
       break_end
 
     done
-    ;;
 
-  13)
+
+}
+
+
+
+
+linux_Settings() {
+
     while true; do
       clear
       # send_stats "系统工具"
@@ -7366,9 +7352,14 @@ EOF
       break_end
 
     done
-    ;;
 
-  14)
+
+
+}
+
+
+linux_cluster() {
+
     clear
     send_stats "集群控制"
     while true; do
@@ -7554,17 +7545,14 @@ EOF
 
     done
 
-    ;;
-
-  p)
-    send_stats "幻兽帕鲁开服脚本"
-    cd ~
-    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
-    exit
-    ;;
 
 
-  00)
+}
+
+
+
+kejilion_update() {
+
     send_stats "脚本更新"
     cd ~
     clear
@@ -7607,6 +7595,123 @@ EOF
         esac
     fi
 
+
+}
+
+
+
+kejilion_sh() {
+while true; do
+clear
+
+echo -e "${kjlan}_  _ ____  _ _ _    _ ____ _  _ "
+echo "|_/  |___  | | |    | |  | |\ | "
+echo "| \_ |___ _| | |___ | |__| | \| "
+echo "                                "
+echo -e "${kjlan}科技lion脚本工具箱 v$sh_v 只为更简单的Linux的使用！"
+echo -e "适配Ubuntu/Debian/CentOS/Alpine/Kali/Arch/RedHat/Fedora/Alma/Rocky系统"
+echo -e "-输入${huang}k${kjlan}可快速启动此脚本-${bai}"
+echo "------------------------"
+echo "1. 系统信息查询"
+echo "2. 系统更新"
+echo "3. 系统清理"
+echo "4. 常用工具 ▶"
+echo "5. BBR管理 ▶"
+echo "6. Docker管理 ▶ "
+echo "7. WARP管理 ▶ "
+echo "8. 测试脚本合集 ▶ "
+echo "9. 甲骨文云脚本合集 ▶ "
+echo -e "${huang}10. LDNMP建站 ▶ ${bai}"
+echo "11. 面板工具 ▶ "
+echo "12. 我的工作区 ▶ "
+echo "13. 系统工具 ▶ "
+echo "14. VPS集群控制 ▶ "
+echo "------------------------"
+echo "p. 幻兽帕鲁开服脚本 ▶"
+echo "------------------------"
+echo "00. 脚本更新"
+echo "------------------------"
+echo "0. 退出脚本"
+echo "------------------------"
+read -p "请输入你的选择: " choice
+
+case $choice in
+  1)
+    linux_ps
+    ;;
+
+  2)
+    clear
+    send_stats "系统更新"
+    linux_update
+    ;;
+
+  3)
+    clear
+    send_stats "系统清理"
+    linux_clean
+    ;;
+
+  4)
+
+    linux_tools
+    ;;
+
+  5)
+    linux_bbr
+    ;;
+
+  6)
+    linux_docker
+    ;;
+
+
+  7)
+    clear
+    send_stats "warp管理"
+    install wget
+    wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh [option] [lisence/url/token]
+    ;;
+
+  8)
+    linux_test
+    ;;
+
+  9)
+    linux_Oracle
+    ;;
+
+
+  10)
+    linux_ldnmp
+      ;;
+
+  11)
+    linux_panel
+    ;;
+
+  12)
+    linux_work
+    ;;
+
+  13)
+    linux_Settings
+    ;;
+
+  14)
+    linux_cluster
+    ;;
+
+  p)
+    send_stats "幻兽帕鲁开服脚本"
+    cd ~
+    curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
+    exit
+    ;;
+
+
+  00)
+    kejilion_update
     ;;
 
   0)
@@ -7711,4 +7816,7 @@ else
             ;;
     esac
 fi
+
+
+
 
