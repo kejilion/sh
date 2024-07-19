@@ -1031,6 +1031,29 @@ tmux_run() {
 }
 
 
+tmux_run_d() {
+
+base_name="tmuxd"
+tmuxd_ID=1
+
+# 检查会话是否存在的函数
+session_exists() {
+  tmux has-session -t $1 2>/dev/null
+}
+
+# 循环直到找到一个不存在的会话名称
+while session_exists "$base_name-$tmuxd_ID"; do
+  tmuxd_ID=$((tmuxd_ID + 1))
+done
+
+# 创建新的 tmux 会话
+tmux new -d -s "$base_name-$tmuxd_ID" "$tmuxd"
+
+
+}
+
+
+
 f2b_status() {
      docker restart fail2ban
      sleep 3
@@ -5646,9 +5669,8 @@ linux_work() {
       echo "8. 8号工作区"
       echo "9. 9号工作区"
       echo "10. 10号工作区"
-      echo "11. 自定义工作区"
       echo "------------------------"
-      echo "99. 工作区状态管理"
+      echo "99. 工作区管理"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -5728,31 +5750,33 @@ linux_work() {
               tmux_run
               ;;
 
-          11)
-              clear
-              install tmux
-              send_stats "自定义工作区"
-              clear
-              echo "当前已存在的工作区列表"
-              echo "------------------------"
-              tmux list-sessions
-              echo "------------------------"
-              read -p "请输入您自定义的工作区名称，如1001 kj001 work10: " SESSION_NAME
-              tmux_run
-              ;;
-
           99)
             while true; do
               clear
-              send_stats "当前工作区列表"
+              send_stats "工作区管理"
               echo "当前已存在的工作区列表"
               echo "------------------------"
               tmux list-sessions
               echo "------------------------"
-
-              read -p "1. 删除指定工作区    0. 退出: " gongzuoqu_del
+              echo "1. 创建/进入工作区"
+              echo "2. 注入命令到后台工作区"
+              echo "3. 删除指定工作区"
+              echo "------------------------"
+              echo "0. 返回上一级"
+              echo "------------------------"
+              read -p "请输入你的选择: " gongzuoqu_del
               case "$gongzuoqu_del" in
                 1)
+                  read -p "请输入你创建或进入的工作区名称，如1001 kj001 work1: " SESSION_NAME
+                  tmux_run
+                  ;;
+
+                2)
+                  read -p "请输入你要后台执行的命令，如:curl -fsSL https://get.docker.com | sh: " tmuxd
+                  tmux_run_d
+                  ;;
+
+                3)
                   read -p "请输入要删除的工作区名称: " gongzuoqu_name
                   tmux kill-window -t $gongzuoqu_name
                   ;;
