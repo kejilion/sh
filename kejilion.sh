@@ -1907,7 +1907,8 @@ bbrv3() {
             arch=$(dpkg --print-architecture)
             if [ "$arch" != "amd64" ]; then
               echo "当前环境不支持，仅支持x86_64架构"
-              break
+              break_end
+              linux_Settings
             fi
 
             new_swap=1024
@@ -6444,7 +6445,8 @@ EOF
                 . /etc/os-release
                 if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
                     echo "当前环境不支持，仅支持Debian和Ubuntu系统"
-                    break
+                    break_end
+                    linux_Settings
                 fi
             else
                 echo "无法确定操作系统类型"
