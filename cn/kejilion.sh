@@ -128,7 +128,7 @@ install() {
 
     for package in "$@"; do
         if ! command -v "$package" &>/dev/null; then
-            echo "正在安装 $package..."
+            echo -e "${huang}正在安装 $package...${bai}"
             if command -v dnf &>/dev/null; then
                 dnf -y update
                 dnf install -y epel-release
@@ -151,7 +151,7 @@ install() {
                 return 1
             fi
         else
-            echo "$package 已经安装。"
+            echo -e "${lv}$package 已经安装${bai}"
         fi
     done
 
@@ -173,7 +173,7 @@ remove() {
     fi
 
     for package in "$@"; do
-        echo "正在卸载 $package..."
+        echo -e "${huang}正在卸载 $package...${bai}"
         if command -v dnf &>/dev/null; then
             dnf remove -y "${package}*"
         elif command -v yum &>/dev/null; then
@@ -295,7 +295,7 @@ check_port() {
             echo -e "${hong}注意：${bai}端口 ${huang}$PORT${hong} 已被占用，无法安装环境，卸载以下程序后重试！"
             echo "$result"
             break_end
-            kejilion
+            linux_ldnmp
 
         fi
     fi
@@ -405,7 +405,7 @@ install_docker() {
     if ! command -v docker &>/dev/null; then
         install_add_docker
     else
-        echo "Docker环境已经安装"
+        echo -e "${lv}Docker环境已经安装${bai}"
     fi
 }
 
@@ -415,7 +415,7 @@ install_docker() {
 
 check_crontab_installed() {
     if command -v crontab >/dev/null 2>&1; then
-        echo "crontab 已经安装。"
+        echo -e "${lv}crontab 已经安装${bai}"
         return 1
     else
         install_crontab
@@ -461,7 +461,7 @@ install_crontab() {
         exit 1
     fi
 
-    echo "crontab 已安装且 cron 服务正在运行。"
+    echo -e "${lv}crontab 已安装且 cron 服务正在运行。${bai}"
 }
 
 
@@ -843,13 +843,13 @@ if [[ $yuming =~ $domain_regex ]]; then
 else
   echo -e "${huang}注意：${bai}域名格式不正确，请重新输入"
   break_end
-  kejilion
+  linux_ldnmp
 fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
-    echo -e "${huang}注意：${bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
-    break_end
-    kejilion
+  echo -e "${huang}注意：${bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
+  break_end
+  linux_ldnmp
 fi
 
 }
@@ -1162,7 +1162,7 @@ ldnmp_install_status_one() {
    if docker inspect "php" &>/dev/null; then
     echo -e "${huang}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境${bai}"
     break_end
-    kejilion
+    linux_ldnmp
    else
     echo
    fi
@@ -1177,7 +1177,7 @@ ldnmp_install_status() {
    else
     echo -e "${huang}LDNMP环境未安装，请先安装LDNMP环境，再部署网站${bai}"
     break_end
-    kejilion
+    linux_ldnmp
 
    fi
 
@@ -1191,7 +1191,7 @@ nginx_install_status() {
    else
     echo -e "${huang}nginx未安装，请先安装nginx环境，再部署网站${bai}"
     break_end
-    kejilion
+    linux_ldnmp
 
    fi
 
@@ -1326,7 +1326,7 @@ fix_dpkg() {
 
 
 linux_update() {
-    echo "正在系统更新..."
+    echo -e "${huang}正在系统更新...${bai}"
     if command -v dnf &>/dev/null; then
         dnf -y update
     elif command -v yum &>/dev/null; then
@@ -1348,7 +1348,7 @@ linux_update() {
 
 
 linux_clean() {
-    echo "正在系统清理..."
+    echo -e "${huang}正在系统清理...${bai}"
     if command -v dnf &>/dev/null; then
         dnf autoremove -y
         dnf clean all
@@ -1895,19 +1895,20 @@ bbrv3() {
                 if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
                     echo "当前环境不支持，仅支持Debian和Ubuntu系统"
                     break_end
-                    kejilion
+                    linux_Settings
                 fi
             else
                 echo "无法确定操作系统类型"
                 break_end
-                kejilion
+                linux_Settings
             fi
 
             # 检查系统架构
             arch=$(dpkg --print-architecture)
             if [ "$arch" != "amd64" ]; then
               echo "当前环境不支持，仅支持x86_64架构"
-              break
+              break_end
+              linux_Settings
             fi
 
             new_swap=1024
@@ -1959,7 +1960,7 @@ elrepo_install() {
     if [[ "$os_name" != *"Red Hat"* && "$os_name" != *"AlmaLinux"* && "$os_name" != *"Rocky"* && "$os_name" != *"Oracle"* && "$os_name" != *"CentOS"* ]]; then
         echo "不支持的操作系统：$os_name"
         break_end
-        kejilion
+        linux_Settings
     fi
     # 打印检测到的操作系统信息
     echo "检测到的操作系统: $os_name $os_version"
@@ -1973,7 +1974,7 @@ elrepo_install() {
     else
         echo "不支持的系统版本：$os_version"
         break_end
-        kejilion
+        linux_Settings
     fi
     # 启用 ELRepo 内核仓库并安装最新的主线内核
     echo "启用 ELRepo 内核仓库并安装最新的主线内核..."
@@ -2597,7 +2598,7 @@ linux_bbr() {
                     sed -i '/net.core.default_qdisc=fq_pie/d' /etc/sysctl.conf
                     sed -i '/net.ipv4.tcp_congestion_control=bbr/d' /etc/sysctl.conf
                     sysctl -p
-                    reboot
+                    server_reboot
                       ;;
                   0)
                       break  # 跳出循环，退出菜单
@@ -2630,11 +2631,11 @@ linux_docker() {
       # send_stats "docker管理"
       echo "▶ Docker管理器"
       echo "------------------------"
-      echo "1. 安装更新Docker环境"
+      echo -e "1. 安装更新Docker环境 ${huang}★${bai}"
       echo "------------------------"
-      echo "2. 查看Docker全局状态"
+      echo -e "2. 查看Docker全局状态 ${huang}★${bai}"
       echo "------------------------"
-      echo "3. Docker容器管理 ▶"
+      echo -e "3. Docker容器管理 ▶ ${huang}★${bai}"
       echo "4. Docker镜像管理 ▶"
       echo "5. Docker网络管理 ▶"
       echo "6. Docker卷管理 ▶"
@@ -3063,7 +3064,7 @@ linux_test() {
       echo "1. ChatGPT解锁状态检测"
       echo "2. Region流媒体解锁测试"
       echo "3. yeahwu流媒体解锁检测"
-      echo "4. xykt_IP质量体检脚本"
+      echo "4. xykt_IP质量体检脚本 ${huang}★${bai}"
       echo ""
       echo "----网络线路测速-----------"
       echo "11. besttrace三网回程延迟路由测试"
@@ -3080,7 +3081,7 @@ linux_test() {
       echo ""
       echo "----综合性测试-----------"
       echo "31. bench性能测试"
-      echo "32. spiritysdx融合怪测评"
+      echo "32. spiritysdx融合怪测评 ${huang}★${bai}"
       echo ""
       echo "------------------------"
       echo "0. 返回主菜单"
@@ -3364,9 +3365,8 @@ linux_ldnmp() {
     # send_stats "LDNMP建站"
     echo -e "${huang}▶ LDNMP建站${bai}"
     echo  "------------------------"
-    echo  "1. 安装LDNMP环境"
-    echo  "------------------------"
-    echo  "2. 安装WordPress"
+    echo  -e "1. 安装LDNMP环境 ${huang}★${bai}"
+    echo  -e "2. 安装WordPress ${huang}★${bai}" 
     echo  "3. 安装Discuz论坛"
     echo  "4. 安装可道云桌面"
     echo  "5. 安装苹果CMS网站"
@@ -3375,15 +3375,15 @@ linux_ldnmp() {
     echo  "8. 安装typecho轻量博客网站"
     echo  "20. 自定义动态站点"
     echo  "------------------------"
-    echo  "21. 仅安装nginx"
+    echo  -e "21. 仅安装nginx ${huang}★${bai}"
     echo  "22. 站点重定向"
-    echo  "23. 站点反向代理-IP+端口"
+    echo  -e "23. 站点反向代理-IP+端口 ${huang}★${bai}"
     echo  "24. 站点反向代理-域名"
     echo  "25. 自定义静态站点"
     echo  "26. 安装Bitwarden密码管理平台"
     echo  "27. 安装Halo博客网站"
     echo  "------------------------"
-    echo  "31. 站点数据管理"
+    echo  -e "31. 站点数据管理 ${huang}★${bai}"
     echo  "32. 备份全站数据"
     echo  "33. 定时远程备份"
     echo  "34. 还原全站数据"
@@ -5670,7 +5670,7 @@ linux_work() {
       echo "9. 9号工作区"
       echo "10. 10号工作区"
       echo "------------------------"
-      echo "99. 工作区管理"
+      echo -e "99. 工作区管理 ${huang}★${bai}"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -5769,16 +5769,19 @@ linux_work() {
                 1)
                   read -p "请输入你创建或进入的工作区名称，如1001 kj001 work1: " SESSION_NAME
                   tmux_run
+                  send_stats "自定义工作区"
                   ;;
 
                 2)
                   read -p "请输入你要后台执行的命令，如:curl -fsSL https://get.docker.com | sh: " tmuxd
                   tmux_run_d
+                  send_stats "注入命令到后台工作区"
                   ;;
 
                 3)
                   read -p "请输入要删除的工作区名称: " gongzuoqu_name
                   tmux kill-window -t $gongzuoqu_name
+                  send_stats "删除工作区"
                   ;;
                 0)
                   break
@@ -5831,7 +5834,7 @@ linux_Settings() {
       echo "25. TG-bot系统监控预警                 26. 修复OpenSSH高危漏洞（岫源）"
       echo "27. 红帽系Linux内核升级                28. Linux系统内核参数优化"
       echo "------------------------"
-      echo "31. 留言板                             66. 一条龙系统调优"
+      echo -e "31. 留言板                             66. 一条龙系统调优 ${huang}★${bai}"
       echo "------------------------"
       echo "99. 重启服务器                         100. 隐私与安全"
       echo "------------------------"
@@ -6441,7 +6444,8 @@ EOF
                 . /etc/os-release
                 if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
                     echo "当前环境不支持，仅支持Debian和Ubuntu系统"
-                    break
+                    break_end
+                    linux_Settings
                 fi
             else
                 echo "无法确定操作系统类型"
@@ -7024,7 +7028,7 @@ EOF
                 [Yy])
                   send_stats "电报预警启用"
                   cd ~
-                  install nano tmux bc jq > /dev/null 2>&1
+                  install nano tmux bc jq
                   check_crontab_installed
                   if [ -f ~/TG-check-notify.sh ]; then
                       chmod +x ~/TG-check-notify.sh
