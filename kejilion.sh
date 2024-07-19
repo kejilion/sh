@@ -7029,7 +7029,7 @@ EOF
                 [Yy])
                   send_stats "电报预警启用"
                   cd ~
-                  install nano tmux bc jq > /dev/null 2>&1
+                  install nano tmux bc jq
                   check_crontab_installed
                   if [ -f ~/TG-check-notify.sh ]; then
                       chmod +x ~/TG-check-notify.sh
