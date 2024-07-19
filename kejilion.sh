@@ -295,7 +295,7 @@ check_port() {
             echo -e "${hong}注意：${bai}端口 ${huang}$PORT${hong} 已被占用，无法安装环境，卸载以下程序后重试！"
             echo "$result"
             break_end
-            kejilion
+            linux_ldnmp
 
         fi
     fi
@@ -843,13 +843,13 @@ if [[ $yuming =~ $domain_regex ]]; then
 else
   echo -e "${huang}注意：${bai}域名格式不正确，请重新输入"
   break_end
-  kejilion
+  linux_ldnmp
 fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
-    echo -e "${huang}注意：${bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
-    break_end
-    kejilion
+  echo -e "${huang}注意：${bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
+  break_end
+  linux_ldnmp
 fi
 
 }
@@ -1162,7 +1162,7 @@ ldnmp_install_status_one() {
    if docker inspect "php" &>/dev/null; then
     echo -e "${huang}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境${bai}"
     break_end
-    kejilion
+    linux_ldnmp
    else
     echo
    fi
@@ -1177,7 +1177,7 @@ ldnmp_install_status() {
    else
     echo -e "${huang}LDNMP环境未安装，请先安装LDNMP环境，再部署网站${bai}"
     break_end
-    kejilion
+    linux_ldnmp
 
    fi
 
@@ -1191,7 +1191,7 @@ nginx_install_status() {
    else
     echo -e "${huang}nginx未安装，请先安装nginx环境，再部署网站${bai}"
     break_end
-    kejilion
+    linux_ldnmp
 
    fi
 
@@ -1895,12 +1895,12 @@ bbrv3() {
                 if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
                     echo "当前环境不支持，仅支持Debian和Ubuntu系统"
                     break_end
-                    kejilion
+                    linux_Settings
                 fi
             else
                 echo "无法确定操作系统类型"
                 break_end
-                kejilion
+                linux_Settings
             fi
 
             # 检查系统架构
@@ -1959,7 +1959,7 @@ elrepo_install() {
     if [[ "$os_name" != *"Red Hat"* && "$os_name" != *"AlmaLinux"* && "$os_name" != *"Rocky"* && "$os_name" != *"Oracle"* && "$os_name" != *"CentOS"* ]]; then
         echo "不支持的操作系统：$os_name"
         break_end
-        kejilion
+        linux_Settings
     fi
     # 打印检测到的操作系统信息
     echo "检测到的操作系统: $os_name $os_version"
@@ -1973,7 +1973,7 @@ elrepo_install() {
     else
         echo "不支持的系统版本：$os_version"
         break_end
-        kejilion
+        linux_Settings
     fi
     # 启用 ELRepo 内核仓库并安装最新的主线内核
     echo "启用 ELRepo 内核仓库并安装最新的主线内核..."
@@ -2597,7 +2597,7 @@ linux_bbr() {
                     sed -i '/net.core.default_qdisc=fq_pie/d' /etc/sysctl.conf
                     sed -i '/net.ipv4.tcp_congestion_control=bbr/d' /etc/sysctl.conf
                     sysctl -p
-                    reboot
+                    server_reboot
                       ;;
                   0)
                       break  # 跳出循环，退出菜单
@@ -5769,16 +5769,19 @@ linux_work() {
                 1)
                   read -p "请输入你创建或进入的工作区名称，如1001 kj001 work1: " SESSION_NAME
                   tmux_run
+                  send_stats "自定义工作区"
                   ;;
 
                 2)
                   read -p "请输入你要后台执行的命令，如:curl -fsSL https://get.docker.com | sh: " tmuxd
                   tmux_run_d
+                  send_stats "注入命令到后台工作区"
                   ;;
 
                 3)
                   read -p "请输入要删除的工作区名称: " gongzuoqu_name
                   tmux kill-window -t $gongzuoqu_name
+                  send_stats "删除工作区"
                   ;;
                 0)
                   break
