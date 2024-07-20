@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.0"
+sh_v="2.8.1"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -175,11 +175,11 @@ remove() {
     for package in "$@"; do
         echo -e "${huang}正在卸载 $package...${bai}"
         if command -v dnf &>/dev/null; then
-            dnf remove -y "${package}*"
+            dnf remove -y "${package}"*
         elif command -v yum &>/dev/null; then
-            yum remove -y "${package}*"
+            yum remove -y "${package}"*
         elif command -v apt &>/dev/null; then
-            apt purge -y "${package}*"
+            apt purge -y "${package}"*
         elif command -v apk &>/dev/null; then
             apk del "${package}*"
         elif command -v pacman &>/dev/null; then
@@ -2060,6 +2060,117 @@ elrepo() {
         fi
 
 }
+
+
+
+
+clamav() {
+          root_use
+          send_stats "病毒扫描管理"
+          if command -v clamscan > /dev/null 2>&1; then
+            while true; do
+                  clear
+                  echo "已经安装，病毒扫描工具"
+                  echo ""
+                  echo "操作"
+                  echo "------------------------"
+                  echo "1. 全盘扫描              2. 重要目录扫描              3. 自定义目录扫描"
+                  echo "------------------------"
+                  echo "88. 卸载病毒扫描工具"
+                  echo "------------------------"
+                  echo "0. 返回上一级选单"
+                  echo "------------------------"
+                  read -p "请输入你的选择: " sub_choice
+
+                  case $sub_choice in
+                      1)
+                        send_stats "全盘扫描"
+                        freshclam
+                        clamscan -r /
+                        echo -e "${lv}扫描完成${bai}"
+                        break_end
+
+
+                          ;;
+                      2)
+                        send_stats "重要目录扫描"
+                        freshclam
+                        clamscan -r /etc /var /usr /home /root
+                        echo -e "${lv}扫描完成${bai}"
+                        break_end
+
+                          ;;
+
+                      3)
+                        send_stats "自定义目录扫描"
+                        read -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
+                        freshclam
+                        clamscan -r $directories
+                        echo -e "${lv}扫描完成${bai}"
+                        break_end
+
+                          ;;
+
+                      88)
+                          k del clamav clamav-daemon clamav-update clamd
+                          ;;
+
+                      0)
+                          break
+                          ;;
+
+                      *)
+                          break  # 跳出循环，退出菜单
+                          ;;
+
+                  esac
+            done
+        else
+
+          clear
+          echo "病毒扫描工具"
+          echo "官网介绍: https://www.clamav.net/"
+          echo "------------------------------------------------"
+          echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件，包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
+          echo "------------------------------------------------"
+          read -p "确定安装吗？(Y/N): " choice
+
+          case "$choice" in
+            [Yy])
+              if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+                 dnf install -y clamav clamav-update clamd
+                 systemctl enable clamd@scan.service
+                 systemctl enable clamav-freshclam.service
+              else
+                 k add clamav clamav-daemon 
+              fi       
+              ;;
+            [Nn])
+              echo "已取消"
+              ;;
+            *)
+              echo "无效的选择，请输入 Y 或 N。"
+              ;;
+          esac
+        fi
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -5810,6 +5921,14 @@ linux_work() {
 
 
 
+
+
+
+
+
+
+
+
 linux_Settings() {
 
     while true; do
@@ -5833,6 +5952,7 @@ linux_Settings() {
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
       echo "25. TG-bot系统监控预警                 26. 修复OpenSSH高危漏洞（岫源）"
       echo "27. 红帽系Linux内核升级                28. Linux系统内核参数优化"
+      echo "29. 病毒扫描工具"
       echo "------------------------"
       echo -e "31. 留言板                             66. 一条龙系统调优 ${huang}★${bai}"
       echo "------------------------"
@@ -7163,6 +7283,9 @@ EOF
             done
               ;;
 
+          29)
+              clamav
+              ;;
 
           31)
             clear
