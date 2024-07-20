@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.0"
+sh_v="2.8.1"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -47,6 +47,7 @@ send_stats() {
          -H "Content-Type: application/json" \
          -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"cpu_arch\":\"$cpu_arch\",\"version\":\"$sh_v\"}" &>/dev/null &
 }
+
 
 
 yinsiyuanquan1() {
@@ -175,11 +176,11 @@ remove() {
     for package in "$@"; do
         echo -e "${huang}正在卸载 $package...${bai}"
         if command -v dnf &>/dev/null; then
-            dnf remove -y "${package}*"
+            dnf remove -y "${package}"*
         elif command -v yum &>/dev/null; then
-            yum remove -y "${package}*"
+            yum remove -y "${package}"*
         elif command -v apt &>/dev/null; then
-            apt purge -y "${package}*"
+            apt purge -y "${package}"*
         elif command -v apk &>/dev/null; then
             apk del "${package}*"
         elif command -v pacman &>/dev/null; then
@@ -2060,6 +2061,101 @@ elrepo() {
         fi
 
 }
+
+
+
+
+clamav_freshclam() {
+    echo -e "${huang}正在更新病毒库...${bai}"
+    docker run --rm \
+        --mount source=$VOLUME_NAME,target=/var/lib/clamav \
+        clamav/clamav:latest \
+        freshclam
+}
+
+
+clamav_scan() {
+    if [ $# -eq 0 ]; then
+        echo "请指定要扫描的目录。"
+        return 1
+    fi
+
+    echo -e "${huang}正在扫描目录$@... ${bai}"
+
+    # 构建 mount 参数
+    MOUNT_PARAMS=""
+    for dir in "$@"; do
+        MOUNT_PARAMS+="--mount type=bind,source=${dir},target=/mnt/host${dir} "
+    done
+
+    # 构建 clamscan 命令参数
+    SCAN_PARAMS=""
+    for dir in "$@"; do
+        SCAN_PARAMS+="/mnt/host${dir} "
+    done
+
+    # 执行 Docker 命令
+    docker run -it --rm \
+        --name clamav_scan \
+        --mount source=$VOLUME_NAME,target=/var/lib/clamav \
+        $MOUNT_PARAMS \
+        clamav/clamav:latest \
+        clamscan -r $SCAN_PARAMS
+}
+
+
+clamav() {
+          root_use
+          send_stats "病毒扫描管理"
+          while true; do
+                clear
+                echo "clamav病毒扫描工具"
+                echo "------------------------"                
+                echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
+                echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
+                echo -e "${huang}注意:${bai} 目前该工具仅支持x86架构系统，不支持ARM架构！"               
+                echo "------------------------"
+                echo -e "${lv}1. 全盘扫描 ${bai}             ${huang}2. 重要目录扫描 ${bai}            ${kjlan} 3. 自定义目录扫描 ${bai}"
+                echo "------------------------"
+                echo "0. 返回上一级选单"
+                echo "------------------------"
+                read -p "请输入你的选择: " sub_choice  
+                case $sub_choice in
+                    1)
+                      send_stats "全盘扫描"                      
+                      install_docker
+                      docker volume create clam_db > /dev/null 2>&1
+                      clamav_freshclam
+                      clamav_scan /
+                      break_end                        
+
+                        ;;
+                    2)
+                      send_stats "重要目录扫描"
+                      install_docker
+                      docker volume create clam_db > /dev/null 2>&1
+                      clamav_freshclam
+                      clamav_scan /etc /var /usr /home /root
+                      break_end
+                        ;;  
+                    3)
+                      send_stats "自定义目录扫描"
+                      read -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
+                      clamav_freshclam
+                      clamav_scan $directories
+                      break_end  
+                        ;;
+                    0)
+                        break
+                        ;;  
+                    *)
+                        break  # 跳出循环，退出菜单
+                        ;;  
+                esac
+          done
+
+}
+
 
 
 
@@ -5810,6 +5906,14 @@ linux_work() {
 
 
 
+
+
+
+
+
+
+
+
 linux_Settings() {
 
     while true; do
@@ -5833,6 +5937,7 @@ linux_Settings() {
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
       echo "25. TG-bot系统监控预警                 26. 修复OpenSSH高危漏洞（岫源）"
       echo "27. 红帽系Linux内核升级                28. Linux系统内核参数优化"
+      echo "29. 病毒扫描工具"
       echo "------------------------"
       echo -e "31. 留言板                             66. 一条龙系统调优 ${huang}★${bai}"
       echo "------------------------"
@@ -7163,6 +7268,9 @@ EOF
             done
               ;;
 
+          29)
+              clamav
+              ;;
 
           31)
             clear
