@@ -2112,7 +2112,9 @@ clamav() {
                           ;;
 
                       88)
-                          k del clamav clamav-daemon clamav-update clamd
+                        k del clamav clamav-daemon clamav-update clamd
+                        break_end
+                        linux_Settings
                           ;;
 
                       0)
