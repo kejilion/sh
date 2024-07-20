@@ -2142,10 +2142,19 @@ clamav() {
               if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
                  dnf -y update
                  dnf install -y epel-release clamav clamav-update clamd
+                 systemctl status clamd@scan.service
+                 systemctl status clamav-freshclam.service
                  systemctl enable clamd@scan.service
                  systemctl enable clamav-freshclam.service
+              elif command -v apt &>/dev/null; then
+                 apt update -y
+                 apt install clamav clamav-daemon -y
+                 systemctl status clamav-daemon
+                 systemctl status clamav-freshclam.service
+                 systemctl enable clamav-daemon
+                 systemctl enable clamav-freshclam.service
               else
-                 k add clamav clamav-daemon 
+                 k add clamav
               fi       
               ;;
             [Nn])
