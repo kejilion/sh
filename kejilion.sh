@@ -49,6 +49,7 @@ send_stats() {
 }
 
 
+
 yinsiyuanquan1() {
 
 if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k > /dev/null 2>&1; then
@@ -2064,124 +2065,96 @@ elrepo() {
 
 
 
-clamav() {
-          root_use
-          send_stats "病毒扫描管理"
-          if command -v clamscan > /dev/null 2>&1; then
-            while true; do
-                  clear
-                  echo "已经安装，病毒扫描工具"
-                  echo ""
-                  echo "操作"
-                  echo "------------------------"
-                  echo "1. 全盘扫描              2. 重要目录扫描              3. 自定义目录扫描"
-                  echo "------------------------"
-                  echo "88. 卸载病毒扫描工具"
-                  echo "------------------------"
-                  echo "0. 返回上一级选单"
-                  echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
-
-                  case $sub_choice in
-                      1)
-                        send_stats "全盘扫描"
-                        freshclam
-                        clamscan -r /
-                        echo -e "${lv}扫描完成${bai}"
-                        break_end
-
-
-                          ;;
-                      2)
-                        send_stats "重要目录扫描"
-                        freshclam
-                        clamscan -r /etc /var /usr /home /root
-                        echo -e "${lv}扫描完成${bai}"
-                        break_end
-
-                          ;;
-
-                      3)
-                        send_stats "自定义目录扫描"
-                        read -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
-                        freshclam
-                        clamscan -r $directories
-                        echo -e "${lv}扫描完成${bai}"
-                        break_end
-
-                          ;;
-
-                      88)
-                        k del clamav clamav-daemon clamav-update clamd
-                        break_end
-                        linux_Settings
-                          ;;
-
-                      0)
-                          break
-                          ;;
-
-                      *)
-                          break  # 跳出循环，退出菜单
-                          ;;
-
-                  esac
-            done
-        else
-
-          clear
-          echo "病毒扫描工具"
-          echo "官网介绍: https://www.clamav.net/"
-          echo "------------------------------------------------"
-          echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件，包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
-          echo "------------------------------------------------"
-          read -p "确定安装吗？(Y/N): " choice
-
-          case "$choice" in
-            [Yy])
-              if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
-                 dnf -y update
-                 dnf install -y epel-release clamav clamav-update clamd
-                 systemctl start clamd@scan.service
-                 systemctl start clamav-freshclam.service
-                 systemctl enable clamd@scan.service
-                 systemctl enable clamav-freshclam.service
-              elif command -v apt &>/dev/null; then
-                 apt update -y
-                 apt install clamav clamav-daemon -y
-                 systemctl start clamav-daemon
-                 systemctl start clamav-freshclam.service
-                 systemctl enable clamav-daemon
-                 systemctl enable clamav-freshclam.service
-              else
-                 k add clamav
-              fi       
-              ;;
-            [Nn])
-              echo "已取消"
-              ;;
-            *)
-              echo "无效的选择，请输入 Y 或 N。"
-              ;;
-          esac
-        fi
-
+clamav_freshclam() {
+    echo -e "${huang}正在更新病毒库...${bai}"
+    docker run --rm \
+        --mount source=$VOLUME_NAME,target=/var/lib/clamav \
+        clamav/clamav:latest \
+        freshclam
 }
 
 
+clamav_scan() {
+    if [ $# -eq 0 ]; then
+        echo "请指定要扫描的目录。"
+        return 1
+    fi
+
+    echo -e "${huang}正在扫描目录$@... ${bai}"
+
+    # 构建 mount 参数
+    MOUNT_PARAMS=""
+    for dir in "$@"; do
+        MOUNT_PARAMS+="--mount type=bind,source=${dir},target=/mnt/host${dir} "
+    done
+
+    # 构建 clamscan 命令参数
+    SCAN_PARAMS=""
+    for dir in "$@"; do
+        SCAN_PARAMS+="/mnt/host${dir} "
+    done
+
+    # 执行 Docker 命令
+    docker run -it --rm \
+        --name clamav_scan \
+        --mount source=$VOLUME_NAME,target=/var/lib/clamav \
+        $MOUNT_PARAMS \
+        clamav/clamav:latest \
+        clamscan -r $SCAN_PARAMS
+}
 
 
+clamav() {
+          root_use
+          send_stats "病毒扫描管理"
+          while true; do
+                clear
+                echo "病毒扫描工具"
+                echo "------------------------"                
+                echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
+                echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
+                echo "官网介绍: https://www.clamav.net/"                
+                echo "------------------------"
+                echo -e "${lv}1. 全盘扫描 ${bai}             ${huang}2. 重要目录扫描 ${bai}            ${kjlan} 3. 自定义目录扫描 ${bai}"
+                echo "------------------------"
+                echo "0. 返回上一级选单"
+                echo "------------------------"
+                read -p "请输入你的选择: " sub_choice  
+                case $sub_choice in
+                    1)
+                      send_stats "全盘扫描"                      
+                      install_docker
+                      docker volume create clam_db > /dev/null 2>&1
+                      clamav_freshclam
+                      clamav_scan /
+                      break_end                        
 
+                        ;;
+                    2)
+                      send_stats "重要目录扫描"
+                      install_docker
+                      docker volume create clam_db > /dev/null 2>&1
+                      clamav_freshclam
+                      clamav_scan /etc /var /usr /home /root
+                      break_end
+                        ;;  
+                    3)
+                      send_stats "自定义目录扫描"
+                      read -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
+                      clamav_freshclam
+                      clamav_scan $directories
+                      break_end  
+                        ;;
+                    0)
+                        break
+                        ;;  
+                    *)
+                        break  # 跳出循环，退出菜单
+                        ;;  
+                esac
+          done
 
-
-
-
-
-
-
-
-
-
+}
 
 
 
