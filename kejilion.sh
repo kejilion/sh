@@ -2138,7 +2138,8 @@ clamav() {
           case "$choice" in
             [Yy])
               if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
-                 dnf install -y clamav clamav-update clamd
+                 dnf -y update
+                 dnf install -y epel-release clamav clamav-update clamd
                  systemctl enable clamd@scan.service
                  systemctl enable clamav-freshclam.service
               else
