@@ -552,6 +552,28 @@ add_swap() {
 
 
 
+check_swap() {
+
+swap_total=$(free -m | awk 'NR==3{print $2}')
+
+ # 判断是否需要创建虚拟内存
+if [ "$swap_total" -gt 0 ]; then
+    :
+else
+    new_swap=1024
+    add_swap
+fi
+
+}
+
+
+
+
+
+
+
+
+
 ldnmp_v() {
 
       # 获取nginx版本
@@ -580,9 +602,8 @@ ldnmp_v() {
 
 install_ldnmp() {
 
-      new_swap=1024
-      add_swap
-
+      check_swap
+      docker rm -f nginx >/dev/null 2>&1
       cd /home/web && docker compose up -d
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
@@ -806,32 +827,16 @@ fi
 }
 
 
-nginx_status() {
+certs_status() {
 
     sleep 1
-
-    nginx_container_name="nginx"
-
-    # 获取容器的状态
-    container_status=$(docker inspect -f '{{.State.Status}}' "$nginx_container_name" 2>/dev/null)
-
-    # 获取容器的重启状态
-    container_restart_count=$(docker inspect -f '{{.RestartCount}}' "$nginx_container_name" 2>/dev/null)
-
-    # 检查容器是否在运行，并且没有处于"Restarting"状态
-    if [ "$container_status" == "running" ]; then
-        echo ""
+    file_path="/home/web/certs/${yuming}_key.pem"
+    if [ -f "$file_path" ]; then
+        :
     else
-        rm -r /home/web/html/$yuming >/dev/null 2>&1
-        rm /home/web/conf.d/$yuming.conf >/dev/null 2>&1
-        rm /home/web/certs/${yuming}_key.pem >/dev/null 2>&1
-        rm /home/web/certs/${yuming}_cert.pem >/dev/null 2>&1
-        docker restart nginx >/dev/null 2>&1
-
-        dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-        docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $dbname;" 2> /dev/null
-
         echo -e "${hong}注意：${bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
+        break_end
+        linux_ldnmp
     fi
 
 }
@@ -1913,8 +1918,7 @@ bbrv3() {
               linux_Settings
             fi
 
-            new_swap=1024
-            add_swap
+            check_swap
             install wget gnupg
 
             # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
@@ -2044,8 +2048,7 @@ elrepo() {
 
           case "$choice" in
             [Yy])
-              new_swap=1024
-              add_swap
+              check_swap
               elrepo_install
               send_stats "升级红帽内核"
               server_reboot
@@ -3271,15 +3274,13 @@ linux_test() {
           21)
               clear
               send_stats "yabs性能测试"
-              new_swap=1024
-              add_swap
+              check_swap
               curl -sL yabs.sh | bash -s -- -i -5
               ;;
           22)
               clear
               send_stats "icu/gb5 CPU性能测试脚本"
-              new_swap=1024
-              add_swap
+              check_swap
               bash <(curl -sL bash.icu/gb5)
               ;;
 
@@ -3534,6 +3535,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
+      certs_status
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/wordpress.com.conf
@@ -3556,7 +3558,7 @@ linux_ldnmp() {
       echo "密码: $dbusepasswd"
       echo "数据库地址: mysql"
       echo "表前缀: wp_"
-      nginx_status
+
         ;;
 
       3)
@@ -3567,6 +3569,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
+      certs_status
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/discuz.com.conf
@@ -3589,7 +3592,7 @@ linux_ldnmp() {
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
       echo "表前缀: discuz_"
-      nginx_status
+
 
         ;;
 
@@ -3601,6 +3604,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
+      certs_status
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/kdy.com.conf
@@ -3621,7 +3625,7 @@ linux_ldnmp() {
       echo "密码: $dbusepasswd"
       echo "数据库名: $dbname"
       echo "redis主机: redis"
-      nginx_status
+
         ;;
 
       5)
@@ -3632,6 +3636,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
+      certs_status
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/maccms.com.conf
@@ -3661,7 +3666,7 @@ linux_ldnmp() {
       echo "------------------------"
       echo "安装成功后登录后台地址"
       echo "https://$yuming/vip.php"
-      nginx_status
+      
         ;;
 
       6)
@@ -3672,6 +3677,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
+      certs_status      
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/dujiaoka.com.conf
@@ -3706,7 +3712,7 @@ linux_ldnmp() {
       echo "登录时右上角如果出现红色error0请使用如下命令: "
       echo "我也很气愤独角数卡为啥这么麻烦，会有这样的问题！"
       echo "sed -i 's/ADMIN_HTTPS=false/ADMIN_HTTPS=true/g' /home/web/html/$yuming/dujiaoka/.env"
-      nginx_status
+      
         ;;
 
       7)
@@ -3717,6 +3723,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
+      certs_status
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/flarum.com.conf
@@ -3745,7 +3752,7 @@ linux_ldnmp() {
       echo "密码: $dbusepasswd"
       echo "表前缀: flarum_"
       echo "管理员信息自行设置"
-      nginx_status
+      
         ;;
 
       8)
@@ -3756,6 +3763,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
+      certs_status
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/typecho.com.conf
@@ -3778,7 +3786,7 @@ linux_ldnmp() {
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
       echo "数据库名: $dbname"
-      nginx_status
+      
         ;;
 
       20)
@@ -3788,6 +3796,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
+      certs_status
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/index_php.conf
@@ -3900,7 +3909,7 @@ linux_ldnmp() {
       echo "密码: $dbusepasswd"
       echo "表前缀: $prefix"
       echo "管理员登录信息自行设置"
-      nginx_status
+      
         ;;
 
 
@@ -3939,6 +3948,7 @@ linux_ldnmp() {
       read -p "请输入跳转域名: " reverseproxy
 
       install_ssltls
+      certs_status
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/rewrite.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -3947,7 +3957,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      nginx_status
+      
 
         ;;
 
@@ -3962,6 +3972,7 @@ linux_ldnmp() {
       read -p "请输入你的反代端口: " port
 
       install_ssltls
+      certs_status
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/reverse-proxy.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -3971,7 +3982,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      nginx_status
+      
         ;;
 
       24)
@@ -3985,6 +3996,7 @@ linux_ldnmp() {
       read -p "请输入你的反代域名: " fandai_yuming
 
       install_ssltls
+      certs_status
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/reverse-proxy-domain.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -3993,7 +4005,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      nginx_status
+      
         ;;
 
 
@@ -4004,6 +4016,7 @@ linux_ldnmp() {
       nginx_install_status
       add_yuming
       install_ssltls
+      certs_status
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/html.conf
       sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -4040,7 +4053,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      nginx_status
+      
         ;;
 
 
@@ -4051,6 +4064,7 @@ linux_ldnmp() {
       nginx_install_status
       add_yuming
       install_ssltls
+      certs_status
 
       docker run -d \
         --name bitwarden \
@@ -4062,7 +4076,7 @@ linux_ldnmp() {
       reverse_proxy
 
       nginx_web_on
-      nginx_status
+      
         ;;
 
       27)
@@ -4072,13 +4086,14 @@ linux_ldnmp() {
       nginx_install_status
       add_yuming
       install_ssltls
+      certs_status
 
       docker run -d --name halo --restart always -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
       duankou=8010
       reverse_proxy
 
       nginx_web_on
-      nginx_status
+      
         ;;
 
 
@@ -4134,6 +4149,7 @@ linux_ldnmp() {
                 send_stats "申请域名证书"
                 read -p "请输入你的域名: " yuming
                 install_ssltls
+                certs_status
 
                 ;;
 
@@ -4141,6 +4157,7 @@ linux_ldnmp() {
                 read -p "请输入旧域名: " oddyuming
                 read -p "请输入新域名: " yuming
                 install_ssltls
+                certs_status
                 mv /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
                 sed -i "s/$oddyuming/$yuming/g" /home/web/conf.d/$yuming.conf
                 mv /home/web/html/$oddyuming /home/web/html/$yuming
@@ -6156,18 +6173,16 @@ EOF
           10)
             root_use
             send_stats "设置v4/v6优先级"
+            echo "设置v4/v6优先级"
+            echo "------------------------"            
             ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
-            echo ""
             if [ "$ipv6_disabled" -eq 1 ]; then
                 echo "当前网络优先级设置: IPv4 优先"
             else
                 echo "当前网络优先级设置: IPv6 优先"
             fi
-            echo "------------------------"
-
             echo ""
-            echo "切换的网络优先级"
             echo "------------------------"
             echo "1. IPv4 优先          2. IPv6 优先          0. 退出"
             echo "------------------------"
