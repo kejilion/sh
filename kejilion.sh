@@ -552,6 +552,28 @@ add_swap() {
 
 
 
+check_swap() {
+
+swap_total=$(free -m | awk 'NR==3{print $2}')
+
+ # 判断是否需要创建虚拟内存
+if [ "$swap_total" -gt 0 ]; then
+    :
+else
+    new_swap=1024
+    add_swap
+fi
+
+}
+
+
+
+
+
+
+
+
+
 ldnmp_v() {
 
       # 获取nginx版本
@@ -580,8 +602,7 @@ ldnmp_v() {
 
 install_ldnmp() {
 
-      new_swap=1024
-      add_swap
+      check_swap
 
       cd /home/web && docker compose up -d
       clear
@@ -1913,8 +1934,7 @@ bbrv3() {
               linux_Settings
             fi
 
-            new_swap=1024
-            add_swap
+            check_swap
             install wget gnupg
 
             # wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
@@ -2044,8 +2064,7 @@ elrepo() {
 
           case "$choice" in
             [Yy])
-              new_swap=1024
-              add_swap
+              check_swap
               elrepo_install
               send_stats "升级红帽内核"
               server_reboot
@@ -3271,15 +3290,13 @@ linux_test() {
           21)
               clear
               send_stats "yabs性能测试"
-              new_swap=1024
-              add_swap
+              check_swap
               curl -sL yabs.sh | bash -s -- -i -5
               ;;
           22)
               clear
               send_stats "icu/gb5 CPU性能测试脚本"
-              new_swap=1024
-              add_swap
+              check_swap
               bash <(curl -sL bash.icu/gb5)
               ;;
 
@@ -6156,18 +6173,16 @@ EOF
           10)
             root_use
             send_stats "设置v4/v6优先级"
+            echo "设置v4/v6优先级"
+            echo "------------------------"            
             ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
-            echo ""
             if [ "$ipv6_disabled" -eq 1 ]; then
                 echo "当前网络优先级设置: IPv4 优先"
             else
                 echo "当前网络优先级设置: IPv6 优先"
             fi
-            echo "------------------------"
-
             echo ""
-            echo "切换的网络优先级"
             echo "------------------------"
             echo "1. IPv4 优先          2. IPv6 优先          0. 退出"
             echo "------------------------"
