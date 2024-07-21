@@ -328,7 +328,7 @@ k start docker
 
 
 install_add_docker() {
-
+    echo -e "${huang}正在安装docker环境...${bai}"
     if  [ -f /etc/os-release ] && grep -q "Fedora" /etc/os-release; then
         install_add_docker_guanfang
     elif command -v dnf &>/dev/null; then
