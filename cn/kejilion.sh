@@ -6090,48 +6090,42 @@ EOF
           7)
             root_use
             send_stats "优化DNS"
-            echo "当前DNS地址"
+            echo "优化DNS地址"
             echo "------------------------"
+            echo "当前DNS地址"
             cat /etc/resolv.conf
             echo "------------------------"
-            echo ""
-            # 询问用户是否要优化DNS设置
-            read -p "是否要设置DNS地址？(y/n): " choice
-
-            if [ "$choice" == "y" ]; then
-                read -p "1. 国外DNS优化    2. 国内DNS优化    0. 退出  : " Limiting
-
-                case "$Limiting" in
-                  1)
-
-                    dns1_ipv4="1.1.1.1"
-                    dns2_ipv4="8.8.8.8"
-                    dns1_ipv6="2606:4700:4700::1111"
-                    dns2_ipv6="2001:4860:4860::8888"
-                    set_dns
-                    send_stats "国外DNS优化"
-                    ;;
-
-                  2)
-                    dns1_ipv4="223.5.5.5"
-                    dns2_ipv4="183.60.83.19"
-                    dns1_ipv6="2400:3200::1"
-                    dns2_ipv6="2400:da00::6666"
-                    set_dns
-                    send_stats "国内DNS优化"
-                    ;;
-                  0)
-                    echo "已取消"
-                    ;;
-                  *)
-                    echo "无效的选择，请输入 Y 或 N。"
-                    ;;
-                esac
-
-
-            else
-                echo "DNS设置未更改"
-            fi
+            echo -e "${huang}1. 国外DNS优化: ${bai}"
+            echo " v4: 1.1.1.1 8.8.8.8"
+            echo " v6: 2606:4700:4700::1111 2001:4860:4860::8888"
+            echo -e "${huang}2. 国内DNS优化: ${bai}"
+            echo " v4: 223.5.5.5 183.60.83.19"
+            echo " v6: 2400:3200::1 2400:da00::6666"
+            echo "------------------------"
+            echo "0. 返回上一级"
+            echo "------------------------"
+            read -p "请输入你的选择: " Limiting
+            case "$Limiting" in
+              1)
+                dns1_ipv4="1.1.1.1"
+                dns2_ipv4="8.8.8.8"
+                dns1_ipv6="2606:4700:4700::1111"
+                dns2_ipv6="2001:4860:4860::8888"
+                set_dns
+                send_stats "国外DNS优化"
+                ;;
+              2)
+                dns1_ipv4="223.5.5.5"
+                dns2_ipv4="183.60.83.19"
+                dns1_ipv6="2400:3200::1"
+                dns2_ipv6="2400:da00::6666"
+                set_dns
+                send_stats "国内DNS优化"
+                ;;
+              *)
+                echo "已取消"
+                ;;
+            esac
 
               ;;
 
@@ -6175,7 +6169,7 @@ EOF
             echo ""
             echo "切换的网络优先级"
             echo "------------------------"
-            echo "1. IPv4 优先          2. IPv6 优先"
+            echo "1. IPv4 优先          2. IPv6 优先          0. 退出"
             echo "------------------------"
             read -p "选择优先的网络: " choice
 
@@ -6191,7 +6185,7 @@ EOF
                     send_stats "已切换为 IPv6 优先"
                     ;;
                 *)
-                    echo "无效的选择"
+                    echo "已取消"
                     ;;
 
             esac
