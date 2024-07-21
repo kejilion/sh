@@ -6090,8 +6090,9 @@ EOF
           7)
             root_use
             send_stats "优化DNS"
-            echo "当前DNS地址"
+            echo "优化DNS地址"
             echo "------------------------"
+            echo "当前DNS地址"
             cat /etc/resolv.conf
             echo "------------------------"
             echo -e "${huang}1. 国外DNS优化: ${bai}"
