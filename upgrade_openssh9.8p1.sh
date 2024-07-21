@@ -108,6 +108,7 @@ clean_up() {
 # 标题
 check_openssh_test() {
 echo "SSH高危漏洞修复工具"
+echo "视频介绍: https://www.bilibili.com/video/BV1dm421G7dy?t=0.1"
 echo "--------------------------"
 }
 
