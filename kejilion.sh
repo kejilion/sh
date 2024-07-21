@@ -603,7 +603,7 @@ ldnmp_v() {
 install_ldnmp() {
 
       check_swap
-
+      docker rm -f nginx >/dev/null 2>&1
       cd /home/web && docker compose up -d
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
