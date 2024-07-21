@@ -1882,10 +1882,10 @@ bbrv3() {
 
           clear
           echo "请备份数据，将为你升级Linux内核开启BBR3"
-          echo "官网介绍: https://xanmod.org/"
+          echo "视频介绍: https://www.bilibili.com/video/BV14K421x7BS?t=0.1" 
           echo "------------------------------------------------"
           echo "仅支持Debian/Ubuntu 仅支持x86_64架构"
-          echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"
+          echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"            
           echo "------------------------------------------------"
           read -p "确定继续吗？(Y/N): " choice
 
@@ -1944,8 +1944,6 @@ bbrv3() {
               ;;
           esac
         fi
-
-
 
 }
 
@@ -2036,10 +2034,10 @@ elrepo() {
 
           clear
           echo "请备份数据，将为你升级Linux内核"
-          echo "官网介绍: https://elrepo.org/"
+          echo "视频介绍: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"    
           echo "------------------------------------------------"
           echo "仅支持红帽系列发行版 CentOS/RedHat/Alma/Rocky/oracle "
-          echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"
+          echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"      
           echo "------------------------------------------------"
           read -p "确定继续吗？(Y/N): " choice
 
@@ -2141,6 +2139,7 @@ clamav() {
                     3)
                       send_stats "自定义目录扫描"
                       read -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
+                      install_docker
                       clamav_freshclam
                       clamav_scan $directories
                       break_end  
@@ -2725,7 +2724,7 @@ linux_docker() {
     while true; do
       clear
       # send_stats "docker管理"
-      echo "▶ Docker管理器"
+      echo "▶ Docker管理"
       echo "------------------------"
       echo -e "1. 安装更新Docker环境 ${huang}★${bai}"
       echo "------------------------"
@@ -3156,13 +3155,13 @@ linux_test() {
       # send_stats "测试脚本合集"
       echo "▶ 测试脚本合集"
       echo ""
-      echo "----IP及解锁状态检测-----------"
+      echo "----IP及解锁状态检测----"
       echo "1. ChatGPT解锁状态检测"
       echo "2. Region流媒体解锁测试"
       echo "3. yeahwu流媒体解锁检测"
       echo -e "4. xykt_IP质量体检脚本 ${huang}★${bai}"
       echo ""
-      echo "----网络线路测速-----------"
+      echo "----网络线路测速----"
       echo "11. besttrace三网回程延迟路由测试"
       echo "12. mtr_trace三网回程线路测试"
       echo "13. Superspeed三网测速"
@@ -3171,11 +3170,11 @@ linux_test() {
       echo "16. ludashi2020三网线路测试"
       echo "17. i-abc多功能测速脚本"
       echo ""
-      echo "----硬件性能测试----------"
+      echo "----硬件性能测试----"
       echo "21. yabs性能测试"
       echo "22. icu/gb5 CPU性能测试脚本"
       echo ""
-      echo "----综合性测试-----------"
+      echo "----综合性测试----"
       echo "31. bench性能测试"
       echo -e "32. spiritysdx融合怪测评 ${huang}★${bai}"
       echo ""
@@ -5974,6 +5973,10 @@ linux_Settings() {
           4)
             root_use
             send_stats "py版本管理"
+            echo "python版本管理"
+            echo "视频介绍: https://www.bilibili.com/video/BV1Pm42157cK?t=0.1"
+            echo "---------------------------------------"
+            echo "该功能可无缝安装python官方支持的任何版本！"
             VERSION=$(python3 -V 2>&1 | awk '{print $2}')
             echo -e "当前python版本号: ${huang}$VERSION${bai}"
             echo "------------"
@@ -7123,6 +7126,7 @@ EOF
               root_use
               send_stats "电报预警"
               echo "TG-bot监控预警功能"
+              echo "视频介绍: https://youtu.be/vLL-eb3Z_TY"
               echo "------------------------------------------------"
               echo "您需要配置tg机器人API和接收预警的用户ID，即可实现本机CPU，内存，硬盘，流量，SSH登录的实时监控预警"
               echo "到达阈值后会向用户发预警消息"
@@ -7174,7 +7178,6 @@ EOF
                   echo "无效的选择，请输入 Y 或 N。"
                   ;;
               esac
-
               ;;
 
           26)
@@ -7500,12 +7503,13 @@ linux_cluster() {
     send_stats "集群控制"
     while true; do
       clear
-      echo "▶ VPS集群控制"
+      echo "▶ 服务器集群控制"
+      echo "视频介绍: https://www.bilibili.com/video/BV1hH4y1j74M?t=0.1"       
       echo "你可以远程操控多台VPS一起执行任务（仅支持Ubuntu/Debian）"
       echo "------------------------"
       echo "1. 安装集群环境"
       echo "------------------------"
-      echo "2. 集群控制中心"
+      echo -e "2. 集群控制中心 ${huang}★${bai}"
       echo "------------------------"
       echo "7. 备份集群环境"
       echo "8. 还原集群环境"
@@ -7761,7 +7765,7 @@ echo -e "${huang}10. LDNMP建站 ▶ ${bai}"
 echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
-echo "14. VPS集群控制 ▶ "
+echo "14. 服务器集群控制 ▶ "
 echo "------------------------"
 echo "p. 幻兽帕鲁开服脚本 ▶"
 echo "------------------------"
@@ -7934,7 +7938,10 @@ else
 
         *)
             send_stats "k命令参考用例"
-            echo "无效参数，以下是k命令参考用例："
+            echo "无效参数"
+            echo "-------------------"
+            echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"             
+            echo "以下是k命令参考用例："
             echo "启动脚本            k"
             echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
             echo "卸载软件包          k remove nano wget | k del nano wget | k uninstall nano wget | k 卸载 nano wget"
