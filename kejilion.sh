@@ -290,7 +290,7 @@ check_port() {
     # 判断结果并输出相应信息
     if [ -n "$result" ]; then
             clear
-            echo -e "${hong}注意：${bai}端口 ${huang}$PORT${hong} 已被占用，无法安装环境，卸载以下程序后重试！"
+            echo -e "${hong}注意: ${bai}端口 ${huang}$PORT${bai} 已被占用，无法安装环境，卸载以下程序后重试！"
             echo "$result"
             send_stats "端口冲突无法安装LDNMP环境"
             break_end
@@ -831,7 +831,7 @@ certs_status() {
         :
     else
         send_stats "域名申请失败"
-        echo -e "${hong}注意：${bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
+        echo -e "${hong}注意: ${bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
         break_end
         linux_ldnmp
     fi
@@ -2872,7 +2872,7 @@ linux_docker() {
                           ;;
                       8)
                           send_stats "删除所有容器"
-                          read -p "$(echo -e "${hong}注意：${bai}确定删除所有容器吗？(Y/N): ")" choice
+                          read -p "$(echo -e "${hong}注意: ${bai}确定删除所有容器吗？(Y/N): ")" choice
                           case "$choice" in
                             [Yy])
                               docker rm -f $(docker ps -a -q)
@@ -2969,7 +2969,7 @@ linux_docker() {
                           ;;
                       4)
                           send_stats "删除所有镜像"
-                          read -p "$(echo -e "${hong}注意：${bai}确定删除所有镜像吗？(Y/N): ")" choice
+                          read -p "$(echo -e "${hong}注意: ${bai}确定删除所有镜像吗？(Y/N): ")" choice
                           case "$choice" in
                             [Yy])
                               docker rmi -f $(docker images -q)
@@ -3151,7 +3151,7 @@ linux_docker() {
           20)
               clear
               send_stats "Docker卸载"
-              read -p "$(echo -e "${hong}注意：${bai}确定卸载docker环境吗？(Y/N): ")" choice
+              read -p "$(echo -e "${hong}注意: ${bai}确定卸载docker环境吗？(Y/N): ")" choice
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
