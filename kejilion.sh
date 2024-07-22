@@ -1543,23 +1543,12 @@ clear
 dd_xitong() {
         send_stats "重装系统"
         dd_xitong_MollyLau() {
-          country=$(curl -s ipinfo.io/country)
-          if [ "$country" = "CN" ]; then
-              wget --no-check-certificate -qO InstallNET.sh 'https://gitee.com/mb9e8j2/Tools/raw/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
-          else
-              wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
-          fi
+            wget --no-check-certificate -qO InstallNET.sh 'https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
         }
 
         dd_xitong_bin456789() {
-          country=$(curl -s ipinfo.io/country)
-          if [ "$country" = "CN" ]; then
-              curl -O https://mirror.ghproxy.com/https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
-          else
-              curl -O https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
-          fi
+            curl -O https://raw.githubusercontent.com/bin456789/reinstall/main/reinstall.sh
         }
-
 
         dd_xitong_1() {
           echo -e "重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}LeitboGi0ro${bai}  初始端口: ${huang}22${bai}"
