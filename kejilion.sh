@@ -2126,8 +2126,8 @@ clamav_scan() {
         clamav/clamav:latest \
         clamscan -r --log=/var/log/clamav/scan.log $SCAN_PARAMS
 
-    echo -e "${lv}$@ 扫描完成，病毒报告存放在${huang}/home/docker/clamav/log/scan.log ${bai}"
-
+    echo -e "${lv}$@ 扫描完成，病毒报告存放在${huang}/home/docker/clamav/log/scan.log 如果有病毒请搜索FOUND关键字 ${bai}"
+    echo -e "${lv}如果有病毒请在${huang}scan.log${lv}文件中搜索FOUND关键字确认病毒位置 ${bai}"
 
 }
 
