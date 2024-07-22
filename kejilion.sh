@@ -1166,14 +1166,29 @@ output_status() {
 ldnmp_install_status_one() {
 
    if docker inspect "php" &>/dev/null; then
-    echo -e "${huang}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境${bai}"
+    echo -e "${huang}提示: ${bai}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境。"
     break_end
     linux_ldnmp
    else
-    echo
+    :
    fi
 
 }
+
+ldnmp_install_status_two() {
+
+   if docker inspect "php" &>/dev/null; then
+    echo -e "${huang}提示: ${bai}LDNMP环境已安装。无法还原LDNMP环境，请先卸载现有环境再次尝试还原。"
+    break_end
+    linux_ldnmp
+   else
+    :
+   fi
+
+}
+
+
+
 
 
 ldnmp_install_status() {
@@ -1448,7 +1463,7 @@ echo "------------------------"
 
 restart_ssh() {
     restart sshd ssh > /dev/null 2>&1
-    
+
 }
 
 
@@ -1888,10 +1903,10 @@ bbrv3() {
 
           clear
           echo "请备份数据，将为你升级Linux内核开启BBR3"
-          echo "视频介绍: https://www.bilibili.com/video/BV14K421x7BS?t=0.1" 
+          echo "视频介绍: https://www.bilibili.com/video/BV14K421x7BS?t=0.1"
           echo "------------------------------------------------"
           echo "仅支持Debian/Ubuntu 仅支持x86_64架构"
-          echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"            
+          echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"
           echo "------------------------------------------------"
           read -p "确定继续吗？(Y/N): " choice
 
@@ -2039,10 +2054,10 @@ elrepo() {
 
           clear
           echo "请备份数据，将为你升级Linux内核"
-          echo "视频介绍: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"    
+          echo "视频介绍: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"
           echo "------------------------------------------------"
           echo "仅支持红帽系列发行版 CentOS/RedHat/Alma/Rocky/oracle "
-          echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"      
+          echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"
           echo "------------------------------------------------"
           read -p "确定继续吗？(Y/N): " choice
 
@@ -2112,24 +2127,24 @@ clamav() {
           while true; do
                 clear
                 echo "clamav病毒扫描工具"
-                echo "------------------------"                
+                echo "------------------------"
                 echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
                 echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
-                echo -e "${huang}注意:${bai} 目前该工具仅支持x86架构系统，不支持ARM架构！"               
+                echo -e "${huang}注意:${bai} 目前该工具仅支持x86架构系统，不支持ARM架构！"
                 echo "------------------------"
                 echo -e "${lv}1. 全盘扫描 ${bai}             ${huang}2. 重要目录扫描 ${bai}            ${kjlan} 3. 自定义目录扫描 ${bai}"
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
-                read -p "请输入你的选择: " sub_choice  
+                read -p "请输入你的选择: " sub_choice
                 case $sub_choice in
                     1)
-                      send_stats "全盘扫描"                      
+                      send_stats "全盘扫描"
                       install_docker
                       docker volume create clam_db > /dev/null 2>&1
                       clamav_freshclam
                       clamav_scan /
-                      break_end                        
+                      break_end
 
                         ;;
                     2)
@@ -2139,21 +2154,21 @@ clamav() {
                       clamav_freshclam
                       clamav_scan /etc /var /usr /home /root
                       break_end
-                        ;;  
+                        ;;
                     3)
                       send_stats "自定义目录扫描"
                       read -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
                       install_docker
                       clamav_freshclam
                       clamav_scan $directories
-                      break_end  
+                      break_end
                         ;;
                     0)
                         break
-                        ;;  
+                        ;;
                     *)
                         break  # 跳出循环，退出菜单
-                        ;;  
+                        ;;
                 esac
           done
 
@@ -3463,7 +3478,7 @@ linux_ldnmp() {
     echo -e "${huang}▶ LDNMP建站${bai}"
     echo  "------------------------"
     echo  -e "1. 安装LDNMP环境 ${huang}★${bai}"
-    echo  -e "2. 安装WordPress ${huang}★${bai}" 
+    echo  -e "2. 安装WordPress ${huang}★${bai}"
     echo  "3. 安装Discuz论坛"
     echo  "4. 安装可道云桌面"
     echo  "5. 安装苹果CMS网站"
@@ -3666,7 +3681,7 @@ linux_ldnmp() {
       echo "------------------------"
       echo "安装成功后登录后台地址"
       echo "https://$yuming/vip.php"
-      
+
         ;;
 
       6)
@@ -3677,7 +3692,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
-      certs_status      
+      certs_status
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
@@ -3712,7 +3727,7 @@ linux_ldnmp() {
       echo "登录时右上角如果出现红色error0请使用如下命令: "
       echo "我也很气愤独角数卡为啥这么麻烦，会有这样的问题！"
       echo "sed -i 's/ADMIN_HTTPS=false/ADMIN_HTTPS=true/g' /home/web/html/$yuming/dujiaoka/.env"
-      
+
         ;;
 
       7)
@@ -3752,7 +3767,7 @@ linux_ldnmp() {
       echo "密码: $dbusepasswd"
       echo "表前缀: flarum_"
       echo "管理员信息自行设置"
-      
+
         ;;
 
       8)
@@ -3786,7 +3801,7 @@ linux_ldnmp() {
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
       echo "数据库名: $dbname"
-      
+
         ;;
 
       20)
@@ -3909,7 +3924,7 @@ linux_ldnmp() {
       echo "密码: $dbusepasswd"
       echo "表前缀: $prefix"
       echo "管理员登录信息自行设置"
-      
+
         ;;
 
 
@@ -3957,7 +3972,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      
+
 
         ;;
 
@@ -3982,7 +3997,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      
+
         ;;
 
       24)
@@ -4005,7 +4020,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      
+
         ;;
 
 
@@ -4053,7 +4068,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      
+
         ;;
 
 
@@ -4076,7 +4091,7 @@ linux_ldnmp() {
       reverse_proxy
 
       nginx_web_on
-      
+
         ;;
 
       27)
@@ -4093,7 +4108,7 @@ linux_ldnmp() {
       reverse_proxy
 
       nginx_web_on
-      
+
         ;;
 
 
@@ -4310,6 +4325,7 @@ linux_ldnmp() {
     34)
       root_use
       send_stats "LDNMP环境还原"
+      ldnmp_install_status_two
       echo "请确认home目录中已经放置网站备份的gz压缩包，按任意键继续……"
       read -n 1 -s -r -p ""
       echo "开始解压……"
@@ -6087,7 +6103,7 @@ EOF
 
               # 提示用户输入新的 SSH 端口号
               read -p "请输入新的 SSH 端口号: " new_port
-              
+
               # 判断端口号是否在有效范围内
               if [[ $new_port -ge 1 && $new_port -le 65535 ]]; then
                   :
@@ -6174,7 +6190,7 @@ EOF
             root_use
             send_stats "设置v4/v6优先级"
             echo "设置v4/v6优先级"
-            echo "------------------------"            
+            echo "------------------------"
             ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
             if [ "$ipv6_disabled" -eq 1 ]; then
@@ -7124,7 +7140,7 @@ EOF
               root_use
               send_stats "私钥登录"
               echo "ROOT私钥登录模式"
-              echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"              
+              echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
               echo "------------------------------------------------"
               echo "将会生成密钥对，更安全的方式SSH登录"
               read -p "确定继续吗？(Y/N): " choice
@@ -7528,7 +7544,7 @@ linux_cluster() {
     while true; do
       clear
       echo "▶ 服务器集群控制"
-      echo "视频介绍: https://www.bilibili.com/video/BV1hH4y1j74M?t=0.1"       
+      echo "视频介绍: https://www.bilibili.com/video/BV1hH4y1j74M?t=0.1"
       echo "你可以远程操控多台VPS一起执行任务（仅支持Ubuntu/Debian）"
       echo "------------------------"
       echo "1. 安装集群环境"
@@ -7964,7 +7980,7 @@ else
             send_stats "k命令参考用例"
             echo "无效参数"
             echo "-------------------"
-            echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"             
+            echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
             echo "以下是k命令参考用例："
             echo "启动脚本            k"
             echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
