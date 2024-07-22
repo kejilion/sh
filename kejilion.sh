@@ -279,10 +279,10 @@ kejilion() {
 
 check_port() {
     # 定义要检测的端口
-    PORT=443
+    PORT=80
 
     # 检查端口占用情况
-    result=$(ss -tulpn | grep ":$PORT")
+    result=$(ss -tulpn | grep ":\b23\b")
 
     # 判断结果并输出相应信息
     if [ -n "$result" ]; then
@@ -295,6 +295,7 @@ check_port() {
             clear
             echo -e "${hong}注意：${bai}端口 ${huang}$PORT${hong} 已被占用，无法安装环境，卸载以下程序后重试！"
             echo "$result"
+            send_stats "端口冲突无法安装LDNMP环境"
             break_end
             linux_ldnmp
 
@@ -834,6 +835,7 @@ certs_status() {
     if [ -f "$file_path" ]; then
         :
     else
+        send_stats "域名申请失败"
         echo -e "${hong}注意：${bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
         break_end
         linux_ldnmp
@@ -847,12 +849,14 @@ domain_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$"
 if [[ $yuming =~ $domain_regex ]]; then
   :
 else
+  send_stats "域名格式不正确"
   echo -e "${huang}注意：${bai}域名格式不正确，请重新输入"
   break_end
   linux_ldnmp
 fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
+  send_stats "域名重复使用"
   echo -e "${huang}注意：${bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
   break_end
   linux_ldnmp
@@ -1166,6 +1170,7 @@ output_status() {
 ldnmp_install_status_one() {
 
    if docker inspect "php" &>/dev/null; then
+    send_stats "无法再次安装LDNMP环境"
     echo -e "${huang}提示: ${bai}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境。"
     break_end
     linux_ldnmp
@@ -1178,6 +1183,7 @@ ldnmp_install_status_one() {
 ldnmp_install_status_two() {
 
    if docker inspect "php" &>/dev/null; then
+    send_stats "还原失败原因已安装LDNMP环境"
     echo -e "${huang}提示: ${bai}LDNMP环境已安装。无法还原LDNMP环境，请先卸载现有环境再次尝试还原。"
     break_end
     linux_ldnmp
@@ -1196,6 +1202,7 @@ ldnmp_install_status() {
    if docker inspect "php" &>/dev/null; then
     echo "LDNMP环境已安装，开始部署 $webname"
    else
+    send_stats "请先安装LDNMP环境"
     echo -e "${huang}LDNMP环境未安装，请先安装LDNMP环境，再部署网站${bai}"
     break_end
     linux_ldnmp
@@ -1210,6 +1217,7 @@ nginx_install_status() {
    if docker inspect "nginx" &>/dev/null; then
     echo "nginx环境已安装，开始部署 $webname"
    else
+    send_stats "请先安装nginx环境"
     echo -e "${huang}nginx未安装，请先安装nginx环境，再部署网站${bai}"
     break_end
     linux_ldnmp
@@ -6122,6 +6130,7 @@ EOF
                   :
               else
                   echo "端口号无效，请输入1到65535之间的数字。"
+                  send_stats "输入无效SSH端口"
                   break_end
                   linux_Settings
               fi
@@ -7777,6 +7786,7 @@ kejilion_update() {
                 yinsiyuanquan2
                 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
+                send_stats "脚本已经最新了"
                 break_end
                 kejilion
                 ;;
