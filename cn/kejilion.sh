@@ -278,27 +278,24 @@ kejilion() {
 }
 
 check_port() {
+
+    docker rm -f nginx >/dev/null 2>&1
+
     # 定义要检测的端口
-    PORT=443
+    PORT=80
 
     # 检查端口占用情况
-    result=$(ss -tulpn | grep ":$PORT")
+    result=$(ss -tulpn | grep ":\b$PORT\b")
 
     # 判断结果并输出相应信息
     if [ -n "$result" ]; then
-        is_nginx_container=$(docker ps --format '{{.Names}}' | grep 'nginx')
-
-        # 判断是否是Nginx容器占用端口
-        if [ -n "$is_nginx_container" ]; then
-            :
-        else
             clear
-            echo -e "${hong}注意：${bai}端口 ${huang}$PORT${hong} 已被占用，无法安装环境，卸载以下程序后重试！"
+            echo -e "${hong}注意: ${bai}端口 ${huang}$PORT${bai} 已被占用，无法安装环境，卸载以下程序后重试！"
             echo "$result"
+            send_stats "端口冲突无法安装LDNMP环境"
             break_end
             linux_ldnmp
 
-        fi
     fi
 }
 
@@ -603,7 +600,6 @@ ldnmp_v() {
 install_ldnmp() {
 
       check_swap
-      docker rm -f nginx >/dev/null 2>&1
       cd /home/web && docker compose up -d
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
@@ -834,7 +830,8 @@ certs_status() {
     if [ -f "$file_path" ]; then
         :
     else
-        echo -e "${hong}注意：${bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
+        send_stats "域名申请失败"
+        echo -e "${hong}注意: ${bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
         break_end
         linux_ldnmp
     fi
@@ -847,13 +844,15 @@ domain_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$"
 if [[ $yuming =~ $domain_regex ]]; then
   :
 else
-  echo -e "${huang}注意：${bai}域名格式不正确，请重新输入"
+  send_stats "域名格式不正确"
+  echo -e "${huang}提示: ${bai}域名格式不正确，请重新输入"
   break_end
   linux_ldnmp
 fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
-  echo -e "${huang}注意：${bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
+  send_stats "域名重复使用"
+  echo -e "${huang}提示: ${bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
   break_end
   linux_ldnmp
 fi
@@ -1126,7 +1125,7 @@ f2b_sshd() {
 
 server_reboot() {
 
-    read -p "$(echo -e "${huang}提示：${bai}现在重启服务器吗？(Y/N): ")" rboot
+    read -p "$(echo -e "${huang}提示: ${bai}现在重启服务器吗？(Y/N): ")" rboot
     case "$rboot" in
       [Yy])
         echo "已重启"
@@ -1166,14 +1165,31 @@ output_status() {
 ldnmp_install_status_one() {
 
    if docker inspect "php" &>/dev/null; then
-    echo -e "${huang}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境${bai}"
+    send_stats "无法再次安装LDNMP环境"
+    echo -e "${huang}提示: ${bai}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境。"
     break_end
     linux_ldnmp
    else
-    echo
+    :
    fi
 
 }
+
+ldnmp_install_status_two() {
+
+   if docker inspect "php" &>/dev/null; then
+    send_stats "还原失败原因已安装LDNMP环境"
+    echo -e "${huang}提示: ${bai}LDNMP环境已安装。无法还原LDNMP环境，请先卸载现有环境再次尝试还原。"
+    break_end
+    linux_ldnmp
+   else
+    :
+   fi
+
+}
+
+
+
 
 
 ldnmp_install_status() {
@@ -1181,7 +1197,8 @@ ldnmp_install_status() {
    if docker inspect "php" &>/dev/null; then
     echo "LDNMP环境已安装，开始部署 $webname"
    else
-    echo -e "${huang}LDNMP环境未安装，请先安装LDNMP环境，再部署网站${bai}"
+    send_stats "请先安装LDNMP环境"
+    echo -e "${huang}提示: ${bai}LDNMP环境未安装，请先安装LDNMP环境，再部署网站"
     break_end
     linux_ldnmp
 
@@ -1195,7 +1212,8 @@ nginx_install_status() {
    if docker inspect "nginx" &>/dev/null; then
     echo "nginx环境已安装，开始部署 $webname"
    else
-    echo -e "${huang}nginx未安装，请先安装nginx环境，再部署网站${bai}"
+    send_stats "请先安装nginx环境"
+    echo -e "${huang}提示: ${bai}nginx未安装，请先安装nginx环境，再部署网站"
     break_end
     linux_ldnmp
 
@@ -1448,7 +1466,7 @@ echo "------------------------"
 
 restart_ssh() {
     restart sshd ssh > /dev/null 2>&1
-    
+
 }
 
 
@@ -1517,7 +1535,7 @@ echo -e "${lv}ROOT登录设置完毕！${bai}"
 
 root_use() {
 clear
-[ "$EUID" -ne 0 ] && echo -e "${huang}注意：${bai}该功能需要root用户才能运行！" && break_end && kejilion
+[ "$EUID" -ne 0 ] && echo -e "${huang}提示: ${bai}该功能需要root用户才能运行！" && break_end && kejilion
 }
 
 
@@ -1525,23 +1543,12 @@ clear
 dd_xitong() {
         send_stats "重装系统"
         dd_xitong_MollyLau() {
-          country=$(curl -s ipinfo.io/country)
-          if [ "$country" = "CN" ]; then
-              wget --no-check-certificate -qO InstallNET.sh 'https://gitee.com/mb9e8j2/Tools/raw/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
-          else
-              wget --no-check-certificate -qO InstallNET.sh 'https://raw.gitmirror.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
-          fi
+            wget --no-check-certificate -qO InstallNET.sh 'https://raw.gitmirror.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
         }
 
         dd_xitong_bin456789() {
-          country=$(curl -s ipinfo.io/country)
-          if [ "$country" = "CN" ]; then
-              curl -O https://mirror.ghproxy.com/https://raw.gitmirror.com/bin456789/reinstall/main/reinstall.sh
-          else
-              curl -O https://raw.gitmirror.com/bin456789/reinstall/main/reinstall.sh
-          fi
+            curl -O https://raw.gitmirror.com/bin456789/reinstall/main/reinstall.sh
         }
-
 
         dd_xitong_1() {
           echo -e "重装后初始用户名: ${huang}root${bai}  初始密码: ${huang}LeitboGi0ro${bai}  初始端口: ${huang}22${bai}"
@@ -1888,10 +1895,10 @@ bbrv3() {
 
           clear
           echo "请备份数据，将为你升级Linux内核开启BBR3"
-          echo "视频介绍: https://www.bilibili.com/video/BV14K421x7BS?t=0.1" 
+          echo "视频介绍: https://www.bilibili.com/video/BV14K421x7BS?t=0.1"
           echo "------------------------------------------------"
           echo "仅支持Debian/Ubuntu 仅支持x86_64架构"
-          echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"            
+          echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"
           echo "------------------------------------------------"
           read -p "确定继续吗？(Y/N): " choice
 
@@ -2039,10 +2046,10 @@ elrepo() {
 
           clear
           echo "请备份数据，将为你升级Linux内核"
-          echo "视频介绍: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"    
+          echo "视频介绍: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"
           echo "------------------------------------------------"
           echo "仅支持红帽系列发行版 CentOS/RedHat/Alma/Rocky/oracle "
-          echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"      
+          echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"
           echo "------------------------------------------------"
           read -p "确定继续吗？(Y/N): " choice
 
@@ -2070,11 +2077,11 @@ elrepo() {
 clamav_freshclam() {
     echo -e "${huang}正在更新病毒库...${bai}"
     docker run --rm \
-        --mount source=$VOLUME_NAME,target=/var/lib/clamav \
+        --name clamav \
+        --mount source=clam_db,target=/var/lib/clamav \
         clamav/clamav:latest \
         freshclam
 }
-
 
 clamav_scan() {
     if [ $# -eq 0 ]; then
@@ -2096,14 +2103,27 @@ clamav_scan() {
         SCAN_PARAMS+="/mnt/host${dir} "
     done
 
+    mkdir -p /home/docker/clamav/log/ > /dev/null 2>&1
+    > /home/docker/clamav/log/scan.log > /dev/null 2>&1
+
     # 执行 Docker 命令
     docker run -it --rm \
-        --name clamav_scan \
-        --mount source=$VOLUME_NAME,target=/var/lib/clamav \
+        --name clamav \
+        --mount source=clam_db,target=/var/lib/clamav \
         $MOUNT_PARAMS \
+        -v /home/docker/clamav/log/:/var/log/clamav/ \
         clamav/clamav:latest \
-        clamscan -r $SCAN_PARAMS
+        clamscan -r --log=/var/log/clamav/scan.log $SCAN_PARAMS
+
+    echo -e "${lv}$@ 扫描完成，病毒报告存放在${huang}/home/docker/clamav/log/scan.log 如果有病毒请搜索FOUND关键字 ${bai}"
+    echo -e "${lv}如果有病毒请在${huang}scan.log${lv}文件中搜索FOUND关键字确认病毒位置 ${bai}"
+
 }
+
+
+
+
+
 
 
 clamav() {
@@ -2112,24 +2132,24 @@ clamav() {
           while true; do
                 clear
                 echo "clamav病毒扫描工具"
-                echo "------------------------"                
+                echo "------------------------"
                 echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
                 echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
-                echo -e "${huang}注意:${bai} 目前该工具仅支持x86架构系统，不支持ARM架构！"               
+                echo -e "${huang}提示: ${bai} 目前该工具仅支持x86架构系统，不支持ARM架构！"
                 echo "------------------------"
                 echo -e "${lv}1. 全盘扫描 ${bai}             ${huang}2. 重要目录扫描 ${bai}            ${kjlan} 3. 自定义目录扫描 ${bai}"
                 echo "------------------------"
                 echo "0. 返回上一级选单"
                 echo "------------------------"
-                read -p "请输入你的选择: " sub_choice  
+                read -p "请输入你的选择: " sub_choice
                 case $sub_choice in
                     1)
-                      send_stats "全盘扫描"                      
+                      send_stats "全盘扫描"
                       install_docker
                       docker volume create clam_db > /dev/null 2>&1
                       clamav_freshclam
                       clamav_scan /
-                      break_end                        
+                      break_end
 
                         ;;
                     2)
@@ -2139,21 +2159,21 @@ clamav() {
                       clamav_freshclam
                       clamav_scan /etc /var /usr /home /root
                       break_end
-                        ;;  
+                        ;;
                     3)
                       send_stats "自定义目录扫描"
                       read -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
                       install_docker
                       clamav_freshclam
                       clamav_scan $directories
-                      break_end  
+                      break_end
                         ;;
                     0)
                         break
-                        ;;  
+                        ;;
                     *)
                         break  # 跳出循环，退出菜单
-                        ;;  
+                        ;;
                 esac
           done
 
@@ -2841,7 +2861,7 @@ linux_docker() {
                           ;;
                       8)
                           send_stats "删除所有容器"
-                          read -p "$(echo -e "${hong}注意：${bai}确定删除所有容器吗？(Y/N): ")" choice
+                          read -p "$(echo -e "${hong}注意: ${bai}确定删除所有容器吗？(Y/N): ")" choice
                           case "$choice" in
                             [Yy])
                               docker rm -f $(docker ps -a -q)
@@ -2938,7 +2958,7 @@ linux_docker() {
                           ;;
                       4)
                           send_stats "删除所有镜像"
-                          read -p "$(echo -e "${hong}注意：${bai}确定删除所有镜像吗？(Y/N): ")" choice
+                          read -p "$(echo -e "${hong}注意: ${bai}确定删除所有镜像吗？(Y/N): ")" choice
                           case "$choice" in
                             [Yy])
                               docker rmi -f $(docker images -q)
@@ -3080,7 +3100,7 @@ linux_docker() {
           7)
               clear
               send_stats "Docker清理"
-              read -p "$(echo -e "${huang}注意：${bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(Y/N): ")" choice
+              read -p "$(echo -e "${huang}提示: ${bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(Y/N): ")" choice
               case "$choice" in
                 [Yy])
                   docker system prune -af --volumes
@@ -3120,7 +3140,7 @@ linux_docker() {
           20)
               clear
               send_stats "Docker卸载"
-              read -p "$(echo -e "${hong}注意：${bai}确定卸载docker环境吗？(Y/N): ")" choice
+              read -p "$(echo -e "${hong}注意: ${bai}确定卸载docker环境吗？(Y/N): ")" choice
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
@@ -3463,7 +3483,7 @@ linux_ldnmp() {
     echo -e "${huang}▶ LDNMP建站${bai}"
     echo  "------------------------"
     echo  -e "1. 安装LDNMP环境 ${huang}★${bai}"
-    echo  -e "2. 安装WordPress ${huang}★${bai}" 
+    echo  -e "2. 安装WordPress ${huang}★${bai}"
     echo  "3. 安装Discuz论坛"
     echo  "4. 安装可道云桌面"
     echo  "5. 安装苹果CMS网站"
@@ -3666,7 +3686,7 @@ linux_ldnmp() {
       echo "------------------------"
       echo "安装成功后登录后台地址"
       echo "https://$yuming/vip.php"
-      
+
         ;;
 
       6)
@@ -3677,7 +3697,7 @@ linux_ldnmp() {
       ldnmp_install_status
       add_yuming
       install_ssltls
-      certs_status      
+      certs_status
       add_db
 
       wget -O /home/web/conf.d/$yuming.conf https://raw.gitmirror.com/kejilion/nginx/main/dujiaoka.com.conf
@@ -3712,7 +3732,7 @@ linux_ldnmp() {
       echo "登录时右上角如果出现红色error0请使用如下命令: "
       echo "我也很气愤独角数卡为啥这么麻烦，会有这样的问题！"
       echo "sed -i 's/ADMIN_HTTPS=false/ADMIN_HTTPS=true/g' /home/web/html/$yuming/dujiaoka/.env"
-      
+
         ;;
 
       7)
@@ -3752,7 +3772,7 @@ linux_ldnmp() {
       echo "密码: $dbusepasswd"
       echo "表前缀: flarum_"
       echo "管理员信息自行设置"
-      
+
         ;;
 
       8)
@@ -3786,7 +3806,7 @@ linux_ldnmp() {
       echo "用户名: $dbuse"
       echo "密码: $dbusepasswd"
       echo "数据库名: $dbname"
-      
+
         ;;
 
       20)
@@ -3909,7 +3929,7 @@ linux_ldnmp() {
       echo "密码: $dbusepasswd"
       echo "表前缀: $prefix"
       echo "管理员登录信息自行设置"
-      
+
         ;;
 
 
@@ -3926,7 +3946,6 @@ linux_ldnmp() {
       wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
       wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
       default_server_ssl
-      docker rm -f nginx >/dev/null 2>&1
       docker rmi nginx nginx:alpine >/dev/null 2>&1
       docker run -d --name nginx --restart always -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
 
@@ -3957,7 +3976,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      
+
 
         ;;
 
@@ -3982,7 +4001,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      
+
         ;;
 
       24)
@@ -4005,7 +4024,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      
+
         ;;
 
 
@@ -4053,7 +4072,7 @@ linux_ldnmp() {
       docker restart nginx
 
       nginx_web_on
-      
+
         ;;
 
 
@@ -4076,7 +4095,7 @@ linux_ldnmp() {
       reverse_proxy
 
       nginx_web_on
-      
+
         ;;
 
       27)
@@ -4093,7 +4112,7 @@ linux_ldnmp() {
       reverse_proxy
 
       nginx_web_on
-      
+
         ;;
 
 
@@ -4310,9 +4329,10 @@ linux_ldnmp() {
     34)
       root_use
       send_stats "LDNMP环境还原"
+      ldnmp_install_status_two
       echo "请确认home目录中已经放置网站备份的gz压缩包，按任意键继续……"
       read -n 1 -s -r -p ""
-      echo "开始解压……"
+      echo -e "${huang}正在解压...${bai}"
       cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
       check_port
       install_dependency
@@ -4619,7 +4639,7 @@ linux_ldnmp() {
       root_use
       send_stats "更新LDNMP环境"
 
-        read -p "$(echo -e "${huang}注意：${bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
+        read -p "$(echo -e "${huang}提示: ${bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
         case "$choice" in
           [Yy])
             docker rm -f nginx php php74 mysql redis
@@ -5770,7 +5790,7 @@ linux_work() {
       echo "▶ 我的工作区"
       echo "系统将为你提供可以后台常驻运行的工作区，你可以用来执行长时间的任务"
       echo "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
-      echo -e "${huang}注意：${bai}进入工作区后使用Ctrl+b再单独按d，退出工作区！"
+      echo -e "${huang}提示: ${bai}进入工作区后使用Ctrl+b再单独按d，退出工作区！"
       echo "------------------------"
       echo "1. 1号工作区"
       echo "2. 2号工作区"
@@ -6087,12 +6107,13 @@ EOF
 
               # 提示用户输入新的 SSH 端口号
               read -p "请输入新的 SSH 端口号: " new_port
-              
+
               # 判断端口号是否在有效范围内
               if [[ $new_port -ge 1 && $new_port -le 65535 ]]; then
                   :
               else
                   echo "端口号无效，请输入1到65535之间的数字。"
+                  send_stats "输入无效SSH端口"
                   break_end
                   linux_Settings
               fi
@@ -6174,7 +6195,7 @@ EOF
             root_use
             send_stats "设置v4/v6优先级"
             echo "设置v4/v6优先级"
-            echo "------------------------"            
+            echo "------------------------"
             ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
             if [ "$ipv6_disabled" -eq 1 ]; then
@@ -7124,7 +7145,7 @@ EOF
               root_use
               send_stats "私钥登录"
               echo "ROOT私钥登录模式"
-              echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"              
+              echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
               echo "------------------------------------------------"
               echo "将会生成密钥对，更安全的方式SSH登录"
               read -p "确定继续吗？(Y/N): " choice
@@ -7528,7 +7549,7 @@ linux_cluster() {
     while true; do
       clear
       echo "▶ 服务器集群控制"
-      echo "视频介绍: https://www.bilibili.com/video/BV1hH4y1j74M?t=0.1"       
+      echo "视频介绍: https://www.bilibili.com/video/BV1hH4y1j74M?t=0.1"
       echo "你可以远程操控多台VPS一起执行任务（仅支持Ubuntu/Debian）"
       echo "------------------------"
       echo "1. 安装集群环境"
@@ -7748,6 +7769,7 @@ kejilion_update() {
                 yinsiyuanquan2
                 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
+                send_stats "脚本已经最新了"
                 break_end
                 kejilion
                 ;;
@@ -7964,7 +7986,7 @@ else
             send_stats "k命令参考用例"
             echo "无效参数"
             echo "-------------------"
-            echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"             
+            echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
             echo "以下是k命令参考用例："
             echo "启动脚本            k"
             echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
