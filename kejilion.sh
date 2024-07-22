@@ -2085,11 +2085,11 @@ elrepo() {
 clamav_freshclam() {
     echo -e "${huang}正在更新病毒库...${bai}"
     docker run --rm \
-        --mount source=$VOLUME_NAME,target=/var/lib/clamav \
+        --name clamav \
+        --mount source=clam_db,target=/var/lib/clamav \
         clamav/clamav:latest \
         freshclam
 }
-
 
 clamav_scan() {
     if [ $# -eq 0 ]; then
@@ -2111,14 +2111,27 @@ clamav_scan() {
         SCAN_PARAMS+="/mnt/host${dir} "
     done
 
+    mkdir -p /home/docker/clamav/log/ > /dev/null 2>&1
+    > /home/docker/clamav/log/scan.log > /dev/null 2>&1
+
     # 执行 Docker 命令
     docker run -it --rm \
-        --name clamav_scan \
-        --mount source=$VOLUME_NAME,target=/var/lib/clamav \
+        --name clamav \
+        --mount source=clam_db,target=/var/lib/clamav \
         $MOUNT_PARAMS \
+        -v /home/clamav/log/:/var/log/clamav/ \
         clamav/clamav:latest \
-        clamscan -r $SCAN_PARAMS
+        clamscan -r --log=/var/log/clamav/scan.log $SCAN_PARAMS
+
+    echo -e "${lv}$@ 扫描完成，病毒报告存放在/home/docker/clamav/log/scan.log ${bai}"
+
+
 }
+
+
+
+
+
 
 
 clamav() {
@@ -4328,7 +4341,7 @@ linux_ldnmp() {
       ldnmp_install_status_two
       echo "请确认home目录中已经放置网站备份的gz压缩包，按任意键继续……"
       read -n 1 -s -r -p ""
-      echo "开始解压……"
+      echo -e "${huang}正在解压...${bai}"
       cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
       check_port
       install_dependency
