@@ -2122,7 +2122,7 @@ clamav_scan() {
         --name clamav \
         --mount source=clam_db,target=/var/lib/clamav \
         $MOUNT_PARAMS \
-        -v /home/clamav/log/:/var/log/clamav/ \
+        -v /home/docker/clamav/log/:/var/log/clamav/ \
         clamav/clamav:latest \
         clamscan -r --log=/var/log/clamav/scan.log $SCAN_PARAMS
 
