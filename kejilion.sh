@@ -278,20 +278,17 @@ kejilion() {
 }
 
 check_port() {
+
+    docker rm -f nginx >/dev/null 2>&1
+
     # 定义要检测的端口
     PORT=80
 
     # 检查端口占用情况
-    result=$(ss -tulpn | grep ":\b23\b")
+    result=$(ss -tulpn | grep ":\b$PORT\b")
 
     # 判断结果并输出相应信息
     if [ -n "$result" ]; then
-        is_nginx_container=$(docker ps --format '{{.Names}}' | grep 'nginx')
-
-        # 判断是否是Nginx容器占用端口
-        if [ -n "$is_nginx_container" ]; then
-            :
-        else
             clear
             echo -e "${hong}注意：${bai}端口 ${huang}$PORT${hong} 已被占用，无法安装环境，卸载以下程序后重试！"
             echo "$result"
@@ -299,7 +296,6 @@ check_port() {
             break_end
             linux_ldnmp
 
-        fi
     fi
 }
 
@@ -604,7 +600,6 @@ ldnmp_v() {
 install_ldnmp() {
 
       check_swap
-      docker rm -f nginx >/dev/null 2>&1
       cd /home/web && docker compose up -d
       clear
       echo "正在配置LDNMP环境，请耐心稍等……"
@@ -3962,7 +3957,6 @@ linux_ldnmp() {
       wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
       wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
       default_server_ssl
-      docker rm -f nginx >/dev/null 2>&1
       docker rmi nginx nginx:alpine >/dev/null 2>&1
       docker run -d --name nginx --restart always -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
 
