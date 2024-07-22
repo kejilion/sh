@@ -845,14 +845,14 @@ if [[ $yuming =~ $domain_regex ]]; then
   :
 else
   send_stats "域名格式不正确"
-  echo -e "${huang}注意：${bai}域名格式不正确，请重新输入"
+  echo -e "${huang}提示: ${bai}域名格式不正确，请重新输入"
   break_end
   linux_ldnmp
 fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
   send_stats "域名重复使用"
-  echo -e "${huang}注意：${bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
+  echo -e "${huang}提示: ${bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
   break_end
   linux_ldnmp
 fi
@@ -1125,7 +1125,7 @@ f2b_sshd() {
 
 server_reboot() {
 
-    read -p "$(echo -e "${huang}提示：${bai}现在重启服务器吗？(Y/N): ")" rboot
+    read -p "$(echo -e "${huang}提示: ${bai}现在重启服务器吗？(Y/N): ")" rboot
     case "$rboot" in
       [Yy])
         echo "已重启"
@@ -1198,7 +1198,7 @@ ldnmp_install_status() {
     echo "LDNMP环境已安装，开始部署 $webname"
    else
     send_stats "请先安装LDNMP环境"
-    echo -e "${huang}LDNMP环境未安装，请先安装LDNMP环境，再部署网站${bai}"
+    echo -e "${huang}提示: ${bai}LDNMP环境未安装，请先安装LDNMP环境，再部署网站"
     break_end
     linux_ldnmp
 
@@ -1213,7 +1213,7 @@ nginx_install_status() {
     echo "nginx环境已安装，开始部署 $webname"
    else
     send_stats "请先安装nginx环境"
-    echo -e "${huang}nginx未安装，请先安装nginx环境，再部署网站${bai}"
+    echo -e "${huang}提示: ${bai}nginx未安装，请先安装nginx环境，再部署网站"
     break_end
     linux_ldnmp
 
@@ -1535,7 +1535,7 @@ echo -e "${lv}ROOT登录设置完毕！${bai}"
 
 root_use() {
 clear
-[ "$EUID" -ne 0 ] && echo -e "${huang}注意：${bai}该功能需要root用户才能运行！" && break_end && kejilion
+[ "$EUID" -ne 0 ] && echo -e "${huang}提示: ${bai}该功能需要root用户才能运行！" && break_end && kejilion
 }
 
 
@@ -2146,7 +2146,7 @@ clamav() {
                 echo "------------------------"
                 echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
                 echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
-                echo -e "${huang}注意:${bai} 目前该工具仅支持x86架构系统，不支持ARM架构！"
+                echo -e "${huang}提示: ${bai} 目前该工具仅支持x86架构系统，不支持ARM架构！"
                 echo "------------------------"
                 echo -e "${lv}1. 全盘扫描 ${bai}             ${huang}2. 重要目录扫描 ${bai}            ${kjlan} 3. 自定义目录扫描 ${bai}"
                 echo "------------------------"
@@ -3111,7 +3111,7 @@ linux_docker() {
           7)
               clear
               send_stats "Docker清理"
-              read -p "$(echo -e "${huang}注意：${bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(Y/N): ")" choice
+              read -p "$(echo -e "${huang}提示: ${bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(Y/N): ")" choice
               case "$choice" in
                 [Yy])
                   docker system prune -af --volumes
@@ -4650,7 +4650,7 @@ linux_ldnmp() {
       root_use
       send_stats "更新LDNMP环境"
 
-        read -p "$(echo -e "${huang}注意：${bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
+        read -p "$(echo -e "${huang}提示: ${bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
         case "$choice" in
           [Yy])
             docker rm -f nginx php php74 mysql redis
@@ -5801,7 +5801,7 @@ linux_work() {
       echo "▶ 我的工作区"
       echo "系统将为你提供可以后台常驻运行的工作区，你可以用来执行长时间的任务"
       echo "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
-      echo -e "${huang}注意：${bai}进入工作区后使用Ctrl+b再单独按d，退出工作区！"
+      echo -e "${huang}提示: ${bai}进入工作区后使用Ctrl+b再单独按d，退出工作区！"
       echo "------------------------"
       echo "1. 1号工作区"
       echo "2. 2号工作区"
