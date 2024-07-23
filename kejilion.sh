@@ -785,6 +785,7 @@ add_ssl() {
 add_yuming
 install_certbot
 install_ssltls
+certs_status
 install_ssltls_text
 ssl_ps
 }
@@ -826,11 +827,11 @@ fi
 certs_status() {
 
     sleep 1
-    file_path="/home/web/certs/${yuming}_key.pem"
+    file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
     if [ -f "$file_path" ]; then
-        :
+        send_stats "域名证书申请成功"
     else
-        send_stats "域名申请失败"
+        send_stats "域名证书申请失败"
         echo -e "${hong}注意: ${bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
         break_end
         linux_ldnmp
@@ -4707,21 +4708,21 @@ linux_panel() {
       echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
       echo "------------------------"
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
-      echo "13. Cloudreve网盘                       14. 简单图床图片管理程序"
+      echo -e "13. Cloudreve网盘 ${huang}★${bai}                     14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "------------------------"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
-      echo "23. Memos网页备忘录                     24. Webtop远程桌面网页版"
+      echo -e "23. Memos网页备忘录                     24. Webtop远程桌面网页版 ${huang}★${bai}"
       echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
       echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
-      echo "29. searxng聚合搜索站                   30. PhotoPrism私有相册系统"
+      echo -e "29. searxng聚合搜索站 ${huang}★${bai}                 30. PhotoPrism私有相册系统"
       echo "------------------------"
-      echo "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件"
+      echo -e "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件 ${huang}★${bai}"
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
-      echo "37. MyIP工具箱                          38. 小雅alist全家桶"
+      echo -e "37. MyIP工具箱 ${huang}★${bai}                        38. 小雅alist全家桶"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
@@ -5983,7 +5984,7 @@ linux_Settings() {
       echo "1. 设置脚本启动快捷键                  2. 修改登录密码"
       echo "3. ROOT密码登录模式                    4. 安装Python指定版本"
       echo "5. 开放所有端口                        6. 修改SSH连接端口"
-      echo "7. 优化DNS地址                         8. 一键重装系统"
+      echo -e "7. 优化DNS地址                         8. 一键重装系统 ${huang}★${bai}"
       echo "9. 禁用ROOT账户创建新账户              10. 切换优先ipv4/ipv6"
       echo "------------------------"
       echo "11. 查看端口占用状态                   12. 修改虚拟内存大小"
@@ -5995,8 +5996,8 @@ linux_Settings() {
       echo "21. 本机host解析                       22. fail2banSSH防御程序"
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
       echo "25. TG-bot系统监控预警                 26. 修复OpenSSH高危漏洞（岫源）"
-      echo "27. 红帽系Linux内核升级                28. Linux系统内核参数优化"
-      echo "29. 病毒扫描工具"
+      echo -e "27. 红帽系Linux内核升级                28. Linux系统内核参数优化 ${huang}★${bai}"
+      echo -e "29. 病毒扫描工具 ${huang}★${bai}"
       echo "------------------------"
       echo -e "31. 留言板                             66. 一条龙系统调优 ${huang}★${bai}"
       echo "------------------------"
@@ -6716,7 +6717,7 @@ EOF
               ubuntu|debian)
                 initial_source=$(grep -E '^deb ' /etc/apt/sources.list | head -n 1 | awk '{print $2}')
                 ;;
-              centos|rhel|almalinux|rocky|fedora)
+              centos)
                 initial_source=$(awk -F= '/^baseurl=/ {print $2}' /etc/yum.repos.d/CentOS-Base.repo | head -n 1 | tr -d ' ')
                 ;;
               *) echo "不支持的系统"; exit 1 ;;
@@ -6731,7 +6732,7 @@ EOF
                 cp /etc/apt/sources.list /etc/apt/sources.list.bak
                 sed -i "s|$initial_source|$new_source|g" /etc/apt/sources.list
                 ;;
-              centos|rhel|almalinux|rocky|fedora)
+              centos)
                 cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
                 sed -i "s|^baseurl=.*$|baseurl=$new_source|g" /etc/yum.repos.d/CentOS-Base.repo
                 ;;
@@ -6743,7 +6744,7 @@ EOF
           restore_initial_source() {
             case "$ID" in
               ubuntu|debian) cp /etc/apt/sources.list.bak /etc/apt/sources.list ;;
-              centos|rhel|almalinux|rocky|fedora) cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo ;;
+              centos) cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo ;;
             esac
             echo "已还原初始源"
           }
