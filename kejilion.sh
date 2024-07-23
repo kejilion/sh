@@ -1431,7 +1431,7 @@ linux_clean() {
 bbr_on() {
 
 cat > /etc/sysctl.conf << EOF
-net.core.default_qdisc=fq_pie
+net.core.default_qdisc=fq_codel
 net.ipv4.tcp_congestion_control=bbr
 EOF
 sysctl -p
@@ -2718,7 +2718,7 @@ linux_bbr() {
                     send_stats "alpine开启bbr3"
                       ;;
                   2)
-                    sed -i '/net.core.default_qdisc=fq_pie/d' /etc/sysctl.conf
+                    sed -i '/net.core.default_qdisc=fq_codel/d' /etc/sysctl.conf
                     sed -i '/net.ipv4.tcp_congestion_control=bbr/d' /etc/sysctl.conf
                     sysctl -p
                     server_reboot
