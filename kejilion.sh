@@ -6715,7 +6715,7 @@ EOF
                   bash <(curl -sSL https://linuxmirrors.cn/main.sh) --edu
                   ;;
               3)
-                  send_stats "海外源源"
+                  send_stats "海外源"
                   bash <(curl -sSL https://linuxmirrors.cn/main.sh) --abroad
                   ;;
               *)
