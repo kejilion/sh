@@ -1431,7 +1431,6 @@ linux_clean() {
 bbr_on() {
 
 cat > /etc/sysctl.conf << EOF
-net.core.default_qdisc=fq_pie
 net.ipv4.tcp_congestion_control=bbr
 EOF
 sysctl -p
@@ -2204,7 +2203,6 @@ optimize_high_performance() {
     sysctl -w net.ipv4.tcp_rmem='4096 87380 16777216' 2>/dev/null
     sysctl -w net.ipv4.tcp_wmem='4096 65536 16777216' 2>/dev/null
     sysctl -w net.ipv4.tcp_congestion_control=bbr 2>/dev/null
-    sysctl -w net.core.default_qdisc=fq_codel 2>/dev/null
     sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
@@ -2246,7 +2244,6 @@ optimize_balanced() {
     sysctl -w net.ipv4.tcp_rmem='4096 87380 8388608' 2>/dev/null
     sysctl -w net.ipv4.tcp_wmem='4096 32768 8388608' 2>/dev/null
     sysctl -w net.ipv4.tcp_congestion_control=cubic 2>/dev/null
-    sysctl -w net.core.default_qdisc=fq_codel 2>/dev/null
     sysctl -w net.ipv4.tcp_max_syn_backlog=4096 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 49151' 2>/dev/null
@@ -2288,7 +2285,6 @@ restore_defaults() {
     sysctl -w net.ipv4.tcp_rmem='4096 87380 6291456' 2>/dev/null
     sysctl -w net.ipv4.tcp_wmem='4096 16384 4194304' 2>/dev/null
     sysctl -w net.ipv4.tcp_congestion_control=cubic 2>/dev/null
-    sysctl -w net.core.default_qdisc=fq_codel 2>/dev/null
     sysctl -w net.ipv4.tcp_max_syn_backlog=2048 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=0 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='32768 60999' 2>/dev/null
@@ -2331,7 +2327,6 @@ optimize_web_server() {
     sysctl -w net.ipv4.tcp_rmem='4096 87380 16777216' 2>/dev/null
     sysctl -w net.ipv4.tcp_wmem='4096 65536 16777216' 2>/dev/null
     sysctl -w net.ipv4.tcp_congestion_control=bbr 2>/dev/null
-    sysctl -w net.core.default_qdisc=fq_codel 2>/dev/null
     sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
@@ -2718,7 +2713,6 @@ linux_bbr() {
                     send_stats "alpine开启bbr3"
                       ;;
                   2)
-                    sed -i '/net.core.default_qdisc=fq_pie/d' /etc/sysctl.conf
                     sed -i '/net.ipv4.tcp_congestion_control=bbr/d' /etc/sysctl.conf
                     sysctl -p
                     server_reboot
