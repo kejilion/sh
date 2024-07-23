@@ -6720,7 +6720,6 @@ EOF
                   ;;
               *)
                   echo "已取消"
-                  break
                   ;;
 
           esac
