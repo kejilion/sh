@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.2"
+sh_v="2.8.3"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -2115,7 +2115,7 @@ clamav_scan() {
         clamav/clamav:latest \
         clamscan -r --log=/var/log/clamav/scan.log $SCAN_PARAMS
 
-    echo -e "${lv}$@ 扫描完成，病毒报告存放在${huang}/home/docker/clamav/log/scan.log 如果有病毒请搜索FOUND关键字 ${bai}"
+    echo -e "${lv}$@ 扫描完成，病毒报告存放在${huang}/home/docker/clamav/log/scan.log${bai}"
     echo -e "${lv}如果有病毒请在${huang}scan.log${lv}文件中搜索FOUND关键字确认病毒位置 ${bai}"
 
 }
@@ -2203,7 +2203,8 @@ optimize_high_performance() {
     sysctl -w net.core.somaxconn=4096 2>/dev/null
     sysctl -w net.ipv4.tcp_rmem='4096 87380 16777216' 2>/dev/null
     sysctl -w net.ipv4.tcp_wmem='4096 65536 16777216' 2>/dev/null
-    sysctl -w net.ipv4.tcp_congestion_control=htcp 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=bbr 2>/dev/null
+    sysctl -w net.core.default_qdisc=fq_codel 2>/dev/null
     sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
@@ -2245,6 +2246,7 @@ optimize_balanced() {
     sysctl -w net.ipv4.tcp_rmem='4096 87380 8388608' 2>/dev/null
     sysctl -w net.ipv4.tcp_wmem='4096 32768 8388608' 2>/dev/null
     sysctl -w net.ipv4.tcp_congestion_control=cubic 2>/dev/null
+    sysctl -w net.core.default_qdisc=fq_codel 2>/dev/null
     sysctl -w net.ipv4.tcp_max_syn_backlog=4096 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 49151' 2>/dev/null
@@ -2286,6 +2288,7 @@ restore_defaults() {
     sysctl -w net.ipv4.tcp_rmem='4096 87380 6291456' 2>/dev/null
     sysctl -w net.ipv4.tcp_wmem='4096 16384 4194304' 2>/dev/null
     sysctl -w net.ipv4.tcp_congestion_control=cubic 2>/dev/null
+    sysctl -w net.core.default_qdisc=fq_codel 2>/dev/null
     sysctl -w net.ipv4.tcp_max_syn_backlog=2048 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=0 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='32768 60999' 2>/dev/null
@@ -2327,7 +2330,8 @@ optimize_web_server() {
     sysctl -w net.core.somaxconn=4096 2>/dev/null
     sysctl -w net.ipv4.tcp_rmem='4096 87380 16777216' 2>/dev/null
     sysctl -w net.ipv4.tcp_wmem='4096 65536 16777216' 2>/dev/null
-    sysctl -w net.ipv4.tcp_congestion_control=htcp 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=bbr 2>/dev/null
+    sysctl -w net.core.default_qdisc=fq_codel 2>/dev/null
     sysctl -w net.ipv4.tcp_max_syn_backlog=8192 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 65535' 2>/dev/null
@@ -4872,8 +4876,25 @@ linux_panel() {
           7)
             clear
             send_stats "搭建哪吒"
-            curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
-            ./nezha.sh
+            clear
+            echo "安装提示"
+            echo "哪吒监控是一款开源、轻量、易用的服务器监控与运维工具"
+            echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
+            echo ""
+            # 提示用户确认安装
+            read -p "确定使用吗？(Y/N): " choice
+            case "$choice" in
+                [Yy])
+                    clear
+                    curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
+                    ./nezha.sh
+                    ;;
+                [Nn])
+                    ;;
+                *)
+                    ;;
+            esac
+
               ;;
 
           8)
@@ -4980,7 +5001,7 @@ linux_panel() {
 
                 echo "安装提示"
                 echo "poste.io一个邮件服务器，确保80和443端口没被占用，确保25端口开放"
-                echo "官网介绍: https://hub.docker.com/r/analogic/poste.io"
+                echo "视频介绍: https://www.bilibili.com/video/BV1LW421P7eB?t=0.1"
                 echo ""
 
                 # 提示用户确认安装
@@ -5257,7 +5278,7 @@ linux_panel() {
                 clear
                 echo "安装提示"
                 echo "cloudreve是一个支持多家云存储的网盘系统"
-                echo "官网介绍: https://cloudreve.org/"
+                echo "视频介绍: https://www.bilibili.com/video/BV13F4m1c7h7?t=0.1"
                 echo ""
 
                 # 提示用户确认安装
@@ -5431,7 +5452,7 @@ linux_panel() {
                 echo "安装提示"
                 echo "雷池是长亭科技开发的WAF站点防火墙程序面板，可以反代站点进行自动化防御"
                 echo "80和443端口不能被占用，无法与宝塔，1panel，npm，ldnmp建站共存"
-                echo "官网介绍: https://github.com/chaitin/safeline"
+                echo "视频介绍: https://www.bilibili.com/video/BV1xx4y1k7Xc?t=0.1"
                 echo ""
 
                 # 提示用户确认安装
