@@ -785,6 +785,7 @@ add_ssl() {
 add_yuming
 install_certbot
 install_ssltls
+certs_status
 install_ssltls_text
 ssl_ps
 }
@@ -826,11 +827,11 @@ fi
 certs_status() {
 
     sleep 1
-    file_path="/home/web/certs/${yuming}_key.pem"
+    file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
     if [ -f "$file_path" ]; then
-        :
+        send_stats "域名证书申请成功"
     else
-        send_stats "域名申请失败"
+        send_stats "域名证书申请失败"
         echo -e "${hong}注意: ${bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
         break_end
         linux_ldnmp
@@ -4707,21 +4708,21 @@ linux_panel() {
       echo "9. Poste.io邮件服务器程序               10. RocketChat多人在线聊天系统"
       echo "------------------------"
       echo "11. 禅道项目管理软件                    12. 青龙面板定时任务管理平台"
-      echo "13. Cloudreve网盘                       14. 简单图床图片管理程序"
+      echo -e "13. Cloudreve网盘 ${huang}★${bai}                     14. 简单图床图片管理程序"
       echo "15. emby多媒体管理系统                  16. Speedtest测速面板"
       echo "17. AdGuardHome去广告软件               18. onlyoffice在线办公OFFICE"
       echo "19. 雷池WAF防火墙面板                   20. portainer容器管理面板"
       echo "------------------------"
       echo "21. VScode网页版                        22. UptimeKuma监控工具"
-      echo "23. Memos网页备忘录                     24. Webtop远程桌面网页版"
+      echo -e "23. Memos网页备忘录                     24. Webtop远程桌面网页版 ${huang}★${bai}"
       echo "25. Nextcloud网盘                       26. QD-Today定时任务管理框架"
       echo "27. Dockge容器堆栈管理面板              28. LibreSpeed测速工具"
-      echo "29. searxng聚合搜索站                   30. PhotoPrism私有相册系统"
+      echo -e "29. searxng聚合搜索站 ${huang}★${bai}                 30. PhotoPrism私有相册系统"
       echo "------------------------"
-      echo "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件"
+      echo -e "31. StirlingPDF工具大全                 32. drawio免费的在线图表软件 ${huang}★${bai}"
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
-      echo "37. MyIP工具箱                          38. 小雅alist全家桶"
+      echo -e "37. MyIP工具箱 ${huang}★${bai}                        38. 小雅alist全家桶"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
@@ -4847,24 +4848,31 @@ linux_panel() {
               ;;
 
           6)
-            docker_name="ubuntu-novnc"
-            docker_img="fredblgr/ubuntu-novnc:20.04"
-            docker_port=6080
-            rootpasswd=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16)
-            docker_rum="docker run -d \
-                                --name ubuntu-novnc \
-                                -p 6080:80 \
-                                -v /home/docker/ubuntu-novnc:/workspace:rw \
-                                -e HTTP_PASSWORD=$rootpasswd \
-                                -e RESOLUTION=1280x720 \
-                                --restart=always \
-                                fredblgr/ubuntu-novnc:20.04"
-            docker_describe="一个网页版Ubuntu远程桌面，挺好用的！"
-            docker_url="官网介绍: https://hub.docker.com/r/fredblgr/ubuntu-novnc"
-            docker_use="echo \"用户名: root\""
-            docker_passwd="echo \"密码: $rootpasswd\""
 
+            docker_name="webtop-ubuntu"
+            docker_img="lscr.io/linuxserver/webtop:ubuntu-kde"
+            docker_port=3006
+            docker_rum="docker run -d \
+                          --name=webtop-ubuntu \
+                          --security-opt seccomp=unconfined \
+                          -e PUID=1000 \
+                          -e PGID=1000 \
+                          -e TZ=Etc/UTC \
+                          -e SUBFOLDER=/ \
+                          -e TITLE=Webtop \
+                          -p 3006:3000 \
+                          -v /home/docker/webtop/data:/config \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          --shm-size="1gb" \
+                          --restart unless-stopped \
+                          lscr.io/linuxserver/webtop:ubuntu-kde"
+
+            docker_describe="webtop基于Ubuntu的容器，包含官方支持的完整桌面环境，可通过任何现代 Web 浏览器访问"
+            docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
+            docker_use=""
+            docker_passwd=""
             docker_app
+
 
               ;;
           7)
@@ -5976,7 +5984,7 @@ linux_Settings() {
       echo "1. 设置脚本启动快捷键                  2. 修改登录密码"
       echo "3. ROOT密码登录模式                    4. 安装Python指定版本"
       echo "5. 开放所有端口                        6. 修改SSH连接端口"
-      echo "7. 优化DNS地址                         8. 一键重装系统"
+      echo -e "7. 优化DNS地址                         8. 一键重装系统 ${huang}★${bai}"
       echo "9. 禁用ROOT账户创建新账户              10. 切换优先ipv4/ipv6"
       echo "------------------------"
       echo "11. 查看端口占用状态                   12. 修改虚拟内存大小"
@@ -5988,8 +5996,8 @@ linux_Settings() {
       echo "21. 本机host解析                       22. fail2banSSH防御程序"
       echo "23. 限流自动关机                       24. ROOT私钥登录模式"
       echo "25. TG-bot系统监控预警                 26. 修复OpenSSH高危漏洞（岫源）"
-      echo "27. 红帽系Linux内核升级                28. Linux系统内核参数优化"
-      echo "29. 病毒扫描工具"
+      echo -e "27. 红帽系Linux内核升级                28. Linux系统内核参数优化 ${huang}★${bai}"
+      echo -e "29. 病毒扫描工具 ${huang}★${bai}"
       echo "------------------------"
       echo -e "31. 留言板                             66. 一条龙系统调优 ${huang}★${bai}"
       echo "------------------------"
@@ -6687,207 +6695,90 @@ EOF
           19)
           root_use
           send_stats "换系统更新源"
-          # 获取系统信息
-          source /etc/os-release
 
-          # 定义 Ubuntu 更新源
-          aliyun_ubuntu_source="http://mirrors.aliyun.com/ubuntu/"
-          official_ubuntu_source="http://archive.ubuntu.com/ubuntu/"
-          initial_ubuntu_source=""
+          # 系统和源信息
+          declare -A sources
+          sources=(
+            [ubuntu_aliyun]="http://mirrors.aliyun.com/ubuntu/"
+            [ubuntu_official]="http://archive.ubuntu.com/ubuntu/"
+            [ubuntu_tsinghua]="https://mirrors.tuna.tsinghua.edu.cn/ubuntu/"
+            [debian_aliyun]="http://mirrors.aliyun.com/debian/"
+            [debian_official]="http://deb.debian.org/debian/"
+            [debian_tsinghua]="https://mirrors.tuna.tsinghua.edu.cn/debian/"
+            [centos_aliyun]="http://mirrors.aliyun.com/centos/"
+            [centos_official]="http://mirror.centos.org/centos/"
+            [centos_tsinghua]="https://mirrors.tuna.tsinghua.edu.cn/centos/"
+          )
 
-          # 定义 Debian 更新源
-          aliyun_debian_source="http://mirrors.aliyun.com/debian/"
-          official_debian_source="http://deb.debian.org/debian/"
-          initial_debian_source=""
-
-          # 定义 CentOS 更新源
-          aliyun_centos_source="http://mirrors.aliyun.com/centos/"
-          official_centos_source="http://mirror.centos.org/centos/"
-          initial_centos_source=""
-
-          # 获取当前更新源并设置初始源
-          case "$ID" in
-              ubuntu)
-                  initial_ubuntu_source=$(grep -E '^deb ' /etc/apt/sources.list | head -n 1 | awk '{print $2}')
-                  ;;
-              debian)
-                  initial_debian_source=$(grep -E '^deb ' /etc/apt/sources.list | head -n 1 | awk '{print $2}')
-                  ;;
-              centos|rhel|almalinux|rocky|fedora)
-                  initial_centos_source=$(awk -F= '/^baseurl=/ {print $2}' /etc/yum.repos.d/CentOS-Base.repo | head -n 1 | tr -d ' ')
-                  ;;
-              *)
-                  echo "未知系统，无法执行切换源脚本"
-                  exit 1
-                  ;;
-          esac
-
-          # 备份当前源
-          backup_sources() {
-              case "$ID" in
-                  ubuntu)
-                      cp /etc/apt/sources.list /etc/apt/sources.list.bak
-                      ;;
-                  debian)
-                      cp /etc/apt/sources.list /etc/apt/sources.list.bak
-                      ;;
-                  centos|rhel|almalinux|rocky|fedora)
-                      if [ ! -f /etc/yum.repos.d/CentOS-Base.repo.bak ]; then
-                          cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
-                      else
-                          echo "备份已存在，无需重复备份"
-                      fi
-                      ;;
-                  *)
-                      echo "未知系统，无法执行备份操作"
-                      exit 1
-                      ;;
-              esac
-              echo "已备份当前更新源为 /etc/apt/sources.list.bak 或 /etc/yum.repos.d/CentOS-Base.repo.bak"
+          # 获取系统信息和初始源
+          get_system_info() {
+            source /etc/os-release
+            case "$ID" in
+              ubuntu|debian)
+                initial_source=$(grep -E '^deb ' /etc/apt/sources.list | head -n 1 | awk '{print $2}')
+                ;;
+              centos)
+                initial_source=$(awk -F= '/^baseurl=/ {print $2}' /etc/yum.repos.d/CentOS-Base.repo | head -n 1 | tr -d ' ')
+                ;;
+              *) echo "不支持的系统"; exit 1 ;;
+            esac
           }
 
-          # 还原初始更新源
+          # 备份和切换源
+          backup_and_switch_source() {
+            local new_source=$1
+            case "$ID" in
+              ubuntu|debian)
+                cp /etc/apt/sources.list /etc/apt/sources.list.bak
+                sed -i "s|$initial_source|$new_source|g" /etc/apt/sources.list
+                ;;
+              centos)
+                cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
+                sed -i "s|^baseurl=.*$|baseurl=$new_source|g" /etc/yum.repos.d/CentOS-Base.repo
+                ;;
+            esac
+            echo "已切换到新源并备份原有源"
+          }
+
+          # 还原初始源
           restore_initial_source() {
-              case "$ID" in
-                  ubuntu)
-                      cp /etc/apt/sources.list.bak /etc/apt/sources.list
-                      ;;
-                  debian)
-                      cp /etc/apt/sources.list.bak /etc/apt/sources.list
-                      ;;
-                  centos|rhel|almalinux|rocky|fedora)
-                      cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo
-                      ;;
-                  *)
-                      echo "未知系统，无法执行还原操作"
-                      exit 1
-                      ;;
-              esac
-              echo "已还原初始更新源"
+            case "$ID" in
+              ubuntu|debian) cp /etc/apt/sources.list.bak /etc/apt/sources.list ;;
+              centos) cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo ;;
+            esac
+            echo "已还原初始源"
           }
 
-          # 函数：切换更新源
-          switch_source() {
-              case "$ID" in
-                  ubuntu)
-                      sed -i 's|'"$initial_ubuntu_source"'|'"$1"'|g' /etc/apt/sources.list
-                      ;;
-                  debian)
-                      sed -i 's|'"$initial_debian_source"'|'"$1"'|g' /etc/apt/sources.list
-                      ;;
-                  centos|rhel|almalinux|rocky|fedora)
-                      sed -i "s|^baseurl=.*$|baseurl=$1|g" /etc/yum.repos.d/CentOS-Base.repo
-                      ;;
-                  *)
-                      echo "未知系统，无法执行切换操作"
-                      exit 1
-                      ;;
-              esac
-          }
-
-          # 主菜单
-          while true; do
-              case "$ID" in
-                  ubuntu)
-                      echo "Ubuntu 更新源切换脚本"
-                      echo "------------------------"
-                      ;;
-                  debian)
-                      echo "Debian 更新源切换脚本"
-                      echo "------------------------"
-                      ;;
-                  centos|rhel|almalinux|rocky|fedora)
-                      echo "CentOS 更新源切换脚本"
-                      echo "------------------------"
-                      ;;
-                  *)
-                      echo "未知系统，无法执行脚本"
-                      exit 1
-                      ;;
-              esac
-
-              echo "1. 切换到阿里云源"
-              echo "2. 切换到官方源"
+          # 显示菜单并处理选择
+          show_menu_and_process() {
+            while true; do
+              clear
+              echo "更新源切换脚本"
               echo "------------------------"
-              echo "3. 备份当前更新源"
-              echo "4. 还原初始更新源"
+              echo "1. 切换到官方源"
+              echo "2. 切换到阿里云源"
+              echo "3. 切换到清华大学源"
+              echo "4. 还原初始源"
               echo "------------------------"
               echo "0. 返回上一级"
               echo "------------------------"
               read -p "请选择操作: " choice
 
               case $choice in
-                  1)
-                      backup_sources
-                      case "$ID" in
-                          ubuntu)
-                              switch_source $aliyun_ubuntu_source
-                              ;;
-                          debian)
-                              switch_source $aliyun_debian_source
-                              ;;
-                          centos|rhel|almalinux|rocky|fedora)
-                              switch_source $aliyun_centos_source
-                              ;;
-                          *)
-                              echo "未知系统，无法执行切换操作"
-                              exit 1
-                              ;;
-                      esac
-                      echo "已切换到阿里云源"
-                      ;;
-                  2)
-                      backup_sources
-                      case "$ID" in
-                          ubuntu)
-                              switch_source $official_ubuntu_source
-                              ;;
-                          debian)
-                              switch_source $official_debian_source
-                              ;;
-                          centos|rhel|almalinux|rocky|fedora)
-                              switch_source $official_centos_source
-                              ;;
-                          *)
-                              echo "未知系统，无法执行切换操作"
-                              exit 1
-                              ;;
-                      esac
-                      echo "已切换到官方源"
-                      ;;
-                  3)
-                      backup_sources
-                      case "$ID" in
-                          ubuntu)
-                              switch_source $initial_ubuntu_source
-                              ;;
-                          debian)
-                              switch_source $initial_debian_source
-                              ;;
-                          centos|rhel|almalinux|rocky|fedora)
-                              switch_source $initial_centos_source
-                              ;;
-                          *)
-                              echo "未知系统，无法执行切换操作"
-                              exit 1
-                              ;;
-                      esac
-                      echo "已切换到初始更新源"
-                      ;;
-                  4)
-                      restore_initial_source
-                      ;;
-                  0)
-                      break
-                      ;;
-                  *)
-                      echo "无效的选择，请重新输入"
-                      ;;
+                1) backup_and_switch_source "${sources[${ID}_official]}" ;;
+                2) backup_and_switch_source "${sources[${ID}_aliyun]}" ;;
+                3) backup_and_switch_source "${sources[${ID}_tsinghua]}" ;;
+                4) restore_initial_source ;;
+                0) break ;;
+                *) echo "无效选择，请重试" ;;
               esac
               break_end
+            done
+          }
 
-          done
-
+          # 主程序
+          get_system_info
+          show_menu_and_process
               ;;
 
           20)
@@ -7766,6 +7657,7 @@ kejilion_update() {
 
     if [ "$sh_v" = "$sh_v_new" ]; then
         echo -e "${lv}你已经是最新版本！${huang}v$sh_v${bai}"
+        send_stats "脚本已经最新了，无需更新"
     else
         echo "发现新版本！"
         echo -e "当前版本 v$sh_v        最新版本 ${huang}v$sh_v_new${bai}"
@@ -7784,7 +7676,7 @@ kejilion_update() {
                 yinsiyuanquan2
                 cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
                 echo -e "${lv}脚本已更新到最新版本！${huang}v$sh_v_new${bai}"
-                send_stats "脚本已经最新了"
+                send_stats "脚本已经最新$sh_v_new"
                 break_end
                 kejilion
                 ;;
