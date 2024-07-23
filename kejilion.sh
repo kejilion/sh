@@ -4723,6 +4723,7 @@ linux_panel() {
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
       echo -e "37. MyIP工具箱 ${huang}★${bai}                        38. 小雅alist全家桶"
+      echo "39. Bililive直播录制工具"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
@@ -5787,6 +5788,25 @@ linux_panel() {
             bash -c "$(curl --insecure -fsSL https://ddsrem.com/xiaoya_install.sh)"
               ;;
 
+          39)
+
+            if [ ! -d /home/docker/bililive-go/ ]; then
+                mkdir -p /home/docker/bililive-go/ > /dev/null 2>&1
+                wget -O /home/docker/bililive-go/config.yml https://raw.githubusercontent.com/hr3lxphr6j/bililive-go/master/config.yml > /dev/null 2>&1
+            fi
+
+            docker_name="bililive-go"
+            docker_img="chigusa/bililive-go"
+            docker_port=8039
+            docker_rum="docker run --restart=always --name bililive-go -v /home/docker/bililive-go/config.yml:/etc/bililive-go/config.yml -v /home/docker/bililive-go/Videos:/srv/bililive -p 8039:8080 -d chigusa/bililive-go"
+            docker_describe="Bililive-go是一个支持多种直播平台的直播录制工具"
+            docker_url="官网介绍: https://github.com/hr3lxphr6j/bililive-go"
+            docker_use=""
+            docker_passwd=""
+            docker_app
+              ;;
+
+
           51)
             clear
             send_stats "PVE开小鸡"
@@ -6205,7 +6225,7 @@ EOF
             passwd "$new_username"
 
             # 赋予新用户sudo权限
-            echo "$new_username ALL=(ALL:ALL) ALL" | sudo tee -a /etc/sudoers
+            echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
             # 禁用ROOT用户登录
             passwd -l root
@@ -6720,6 +6740,7 @@ EOF
                   ;;
               *)
                   echo "已取消"
+                  break
                   ;;
 
           esac
