@@ -6695,90 +6695,36 @@ EOF
           19)
           root_use
           send_stats "换系统更新源"
+          clear
+          echo "选择更新源区域"
+          echo "接入LinuxMirrors切换系统更新源"
+          echo "------------------------"
+          echo "1. 中国大陆【默认】          2. 中国大陆【教育网】          3. 海外地区"
+          echo "------------------------"
+          echo "0. 返回上一级"
+          echo "------------------------"
+          read -p "输入你的选择: " choice
 
-          # 系统和源信息
-          declare -A sources
-          sources=(
-            [ubuntu_aliyun]="http://mirrors.aliyun.com/ubuntu/"
-            [ubuntu_official]="http://archive.ubuntu.com/ubuntu/"
-            [ubuntu_tsinghua]="https://mirrors.tuna.tsinghua.edu.cn/ubuntu/"
-            [debian_aliyun]="http://mirrors.aliyun.com/debian/"
-            [debian_official]="http://deb.debian.org/debian/"
-            [debian_tsinghua]="https://mirrors.tuna.tsinghua.edu.cn/debian/"
-            [centos_aliyun]="http://mirrors.aliyun.com/centos/"
-            [centos_official]="http://mirror.centos.org/centos/"
-            [centos_tsinghua]="https://mirrors.tuna.tsinghua.edu.cn/centos/"
-          )
+          case $choice in
+              1)
+                  send_stats "中国大陆默认源"
+                  bash <(curl -sSL https://linuxmirrors.cn/main.sh)
+                  ;;
+              2)
+                  send_stats "中国大陆教育源"
+                  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --edu
+                  ;;
+              3)
+                  send_stats "海外源源"
+                  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --abroad
+                  ;;
+              *)
+                  echo "已取消"
+                  break
+                  ;;
 
-          # 获取系统信息和初始源
-          get_system_info() {
-            source /etc/os-release
-            case "$ID" in
-              ubuntu|debian)
-                initial_source=$(grep -E '^deb ' /etc/apt/sources.list | head -n 1 | awk '{print $2}')
-                ;;
-              centos)
-                initial_source=$(awk -F= '/^baseurl=/ {print $2}' /etc/yum.repos.d/CentOS-Base.repo | head -n 1 | tr -d ' ')
-                ;;
-              *) echo "不支持的系统"; exit 1 ;;
-            esac
-          }
+          esac
 
-          # 备份和切换源
-          backup_and_switch_source() {
-            local new_source=$1
-            case "$ID" in
-              ubuntu|debian)
-                cp /etc/apt/sources.list /etc/apt/sources.list.bak
-                sed -i "s|$initial_source|$new_source|g" /etc/apt/sources.list
-                ;;
-              centos)
-                cp /etc/yum.repos.d/CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo.bak
-                sed -i "s|^baseurl=.*$|baseurl=$new_source|g" /etc/yum.repos.d/CentOS-Base.repo
-                ;;
-            esac
-            echo "已切换到新源并备份原有源"
-          }
-
-          # 还原初始源
-          restore_initial_source() {
-            case "$ID" in
-              ubuntu|debian) cp /etc/apt/sources.list.bak /etc/apt/sources.list ;;
-              centos) cp /etc/yum.repos.d/CentOS-Base.repo.bak /etc/yum.repos.d/CentOS-Base.repo ;;
-            esac
-            echo "已还原初始源"
-          }
-
-          # 显示菜单并处理选择
-          show_menu_and_process() {
-            while true; do
-              clear
-              echo "更新源切换脚本"
-              echo "------------------------"
-              echo "1. 切换到官方源"
-              echo "2. 切换到阿里云源"
-              echo "3. 切换到清华大学源"
-              echo "4. 还原初始源"
-              echo "------------------------"
-              echo "0. 返回上一级"
-              echo "------------------------"
-              read -p "请选择操作: " choice
-
-              case $choice in
-                1) backup_and_switch_source "${sources[${ID}_official]}" ;;
-                2) backup_and_switch_source "${sources[${ID}_aliyun]}" ;;
-                3) backup_and_switch_source "${sources[${ID}_tsinghua]}" ;;
-                4) restore_initial_source ;;
-                0) break ;;
-                *) echo "无效选择，请重试" ;;
-              esac
-              break_end
-            done
-          }
-
-          # 主程序
-          get_system_info
-          show_menu_and_process
               ;;
 
           20)
