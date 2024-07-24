@@ -5797,6 +5797,7 @@ linux_panel() {
 
           38)
             send_stats "小雅全家桶"
+            clear
             install_docker
             bash -c "$(curl --insecure -fsSL https://ddsrem.com/xiaoya_install.sh)"
               ;;
