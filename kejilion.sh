@@ -2257,7 +2257,7 @@ optimize_balanced() {
     sysctl -w net.core.somaxconn=2048 2>/dev/null
     sysctl -w net.ipv4.tcp_rmem='4096 87380 8388608' 2>/dev/null
     sysctl -w net.ipv4.tcp_wmem='4096 32768 8388608' 2>/dev/null
-    sysctl -w net.ipv4.tcp_congestion_control=cubic 2>/dev/null
+    sysctl -w net.ipv4.tcp_congestion_control=bbr 2>/dev/null
     sysctl -w net.ipv4.tcp_max_syn_backlog=4096 2>/dev/null
     sysctl -w net.ipv4.tcp_tw_reuse=1 2>/dev/null
     sysctl -w net.ipv4.ip_local_port_range='1024 49151' 2>/dev/null
