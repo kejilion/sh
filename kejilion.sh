@@ -469,6 +469,7 @@ install_crontab() {
                 zypper install -y cron
                 systemctl enable cron
                 systemctl start cron
+                ;;
             *)
                 echo "不支持的发行版: $ID"
                 exit 1
