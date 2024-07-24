@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.3"
+sh_v="2.8.4"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -292,7 +292,7 @@ check_port() {
             clear
             echo -e "${hong}注意: ${bai}端口 ${huang}$PORT${bai} 已被占用，无法安装环境，卸载以下程序后重试！"
             echo "$result"
-            send_stats "端口冲突无法安装LDNMP环境"
+            send_stats "端口冲突无法安装建站环境"
             break_end
             linux_ldnmp
 
@@ -5499,6 +5499,7 @@ linux_panel() {
                         ;;
                 esac
             fi
+
               ;;
 
           20)
@@ -7319,7 +7320,7 @@ EOF
                   echo -e "[${lv}OK${bai}] 8/10. 自动优化DNS地址${huang}${bai}"
 
                   echo "------------------------------------------------"
-                  install_add_docker
+                  install_docker
                   install wget sudo tar unzip socat btop nano vim
                   echo -e "[${lv}OK${bai}] 9/10. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
                   echo "------------------------------------------------"
