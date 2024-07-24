@@ -300,6 +300,14 @@ check_port() {
 }
 
 
+install_add_docker_cn() {
+    cat > /etc/docker/daemon.json << EOF
+{
+    "registry-mirrors": ["https://docker.kejilion.pro"]
+}
+EOF
+}
+
 
 install_add_docker_guanfang() {
 country=$(curl -s ipinfo.io/country)
@@ -308,11 +316,7 @@ if [ "$country" = "CN" ]; then
     curl -sS -O https://raw.githubusercontent.com/kejilion/docker/main/install && chmod +x install
     sh install --mirror Aliyun
     rm -f install
-    cat > /etc/docker/daemon.json << EOF
-{
-    "registry-mirrors": ["https://docker.kejilion.pro"]
-}
-EOF
+    install_add_docker_cn
 
 else
     curl -fsSL https://get.docker.com | sh
@@ -340,6 +344,7 @@ install_add_docker() {
             elif [ "$arch" = "aarch64" ]; then
                 curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/centos/arm64/docker-ce.repo | tee /etc/yum.repos.d/docker-ce.repo > /dev/null
             fi
+            install_add_docker_cn
         else
             if [ "$arch" = "x86_64" ]; then
                 yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo > /dev/null
@@ -370,6 +375,7 @@ install_add_docker() {
                 curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg > /dev/null
                 echo "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://mirrors.aliyun.com/docker-ce/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
             fi
+            install_add_docker_cn
         else
             if [ "$arch" = "x86_64" ]; then
                 sed -i '/^deb \[arch=amd64 signed-by=\/usr\/share\/keyrings\/docker-archive-keyring.gpg\] https:\/\/download.docker.com\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
@@ -385,6 +391,7 @@ install_add_docker() {
         fi
         apt update
         apt install -y docker-ce docker-ce-cli containerd.io
+
         k enable docker
         k start docker
 
