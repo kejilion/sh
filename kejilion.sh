@@ -465,7 +465,7 @@ install_crontab() {
                 systemctl enable cronie
                 systemctl start cronie
                 ;;
-            opensuse|suse)
+            opensuse|suse|opensuse-tumbleweed)
                 zypper install -y cron
                 systemctl enable cron
                 systemctl start cron
