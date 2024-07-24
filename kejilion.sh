@@ -5438,7 +5438,7 @@ linux_panel() {
 
                     echo "应用操作"
                     echo "------------------------"
-                    echo "1. 更新应用             2. 卸载应用"
+                    echo "1. 更新应用             2. 重置用户名密码             3. 卸载应用"
                     echo "------------------------"
                     echo "0. 返回上一级选单"
                     echo "------------------------"
@@ -5447,11 +5447,16 @@ linux_panel() {
                     case $sub_choice in
                         1)
                             clear
-                            echo "暂不支持"
+                            bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
+                            docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
                             echo ""
                             ;;
                         2)
+                            clear
+                            docker exec safeline-mgt resetadmin
+                            ;;
 
+                        3)
                             clear
                             echo "cd命令到安装目录下执行: docker compose down"
                             echo ""
@@ -5478,13 +5483,13 @@ linux_panel() {
                     clear
                     install_docker
                     bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
-
                     clear
                     echo "雷池WAF面板已经安装完成"
                     echo "------------------------"
                     echo "您可以使用以下地址访问:"
                     ip_address
                     echo "http:$ipv4_address:9443"
+                    docker exec safeline-mgt resetadmin
                     echo ""
 
                         ;;
@@ -7315,7 +7320,7 @@ EOF
                   echo -e "[${lv}OK${bai}] 8/10. 自动优化DNS地址${huang}${bai}"
 
                   echo "------------------------------------------------"
-                  install_add_docker
+                  install_docker
                   install wget sudo tar unzip socat btop nano vim
                   echo -e "[${lv}OK${bai}] 9/10. 安装常用工具${huang}docker wget sudo tar unzip socat btop${bai}"
                   echo "------------------------------------------------"
