@@ -3150,7 +3150,7 @@ linux_docker() {
               case "$choice" in
                 [Yy])
                   docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
-                  k remove docker docker-compose
+                  k remove docker docker-compose docker-ce docker-ce-cli containerd.io
 
                   ;;
                 [Nn])
