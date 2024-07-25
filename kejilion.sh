@@ -6320,32 +6320,45 @@ EOF
             ;;
 
           12)
-
-
             root_use
             send_stats "设置虚拟内存"
-            # 获取当前交换空间信息
-            swap_used=$(free -m | awk 'NR==3{print $3}')
-            swap_total=$(free -m | awk 'NR==3{print $2}')
+            while true; do
+                clear
+                echo "设置虚拟内存"
+                swap_used=$(free -m | awk 'NR==3{print $3}')
+                swap_total=$(free -m | awk 'NR==3{print $2}')
+                swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dMB/%dMB (%d%%)", used, total, percentage}')
 
+                echo -e "当前虚拟内存: ${huang}$swap_info${bai}"
+                echo "------------------------"
+                echo "1. 分配1024MB         2. 分配2048MB         3. 自定义大小         0. 退出"
+                echo "------------------------"
+                read -p "请输入你的选择: " choice
 
-            swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dMB/%dMB (%d%%)", used, total, percentage}')
+                case "$choice" in
+                  1)
+                    send_stats "已设置1G虚拟内存"
+                    new_swap=1024
+                    add_swap
 
-            echo "当前虚拟内存: $swap_info"
+                    ;;
+                  2)
+                    send_stats "已设置2G虚拟内存"
+                    new_swap=2048
+                    add_swap
 
-            read -p "是否调整大小?(Y/N): " choice
+                    ;;
+                  3)
+                    read -p "请输入虚拟内存大小MB: " new_swap
+                    add_swap
+                    send_stats "已设置自定义虚拟内存"
+                    ;;
 
-            case "$choice" in
-              [Yy])
-                # 输入新的虚拟内存大小
-                read -p "请输入虚拟内存大小MB: " new_swap
-                add_swap
-                send_stats "虚拟内存已设置"
-                ;;
-              *)
-                echo "已取消"
-                ;;
-            esac
+                  *)
+                    break
+                    ;;
+                esac
+            done
             ;;
 
           13)
