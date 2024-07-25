@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.5"
+sh_v="2.8.6"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -1153,11 +1153,8 @@ server_reboot() {
         echo "已重启"
         reboot
         ;;
-      [Nn])
-        echo "已取消"
-        ;;
       *)
-        echo "无效的选择，请输入 Y 或 N。"
+        echo "已取消"
         ;;
     esac
 
@@ -6212,43 +6209,46 @@ EOF
           7)
             root_use
             send_stats "优化DNS"
-            echo "优化DNS地址"
-            echo "------------------------"
-            echo "当前DNS地址"
-            cat /etc/resolv.conf
-            echo "------------------------"
-            echo -e "${huang}1. 国外DNS优化: ${bai}"
-            echo " v4: 1.1.1.1 8.8.8.8"
-            echo " v6: 2606:4700:4700::1111 2001:4860:4860::8888"
-            echo -e "${huang}2. 国内DNS优化: ${bai}"
-            echo " v4: 223.5.5.5 183.60.83.19"
-            echo " v6: 2400:3200::1 2400:da00::6666"
-            echo "------------------------"
-            echo "0. 返回上一级"
-            echo "------------------------"
-            read -p "请输入你的选择: " Limiting
-            case "$Limiting" in
-              1)
-                dns1_ipv4="1.1.1.1"
-                dns2_ipv4="8.8.8.8"
-                dns1_ipv6="2606:4700:4700::1111"
-                dns2_ipv6="2001:4860:4860::8888"
-                set_dns
-                send_stats "国外DNS优化"
-                ;;
-              2)
-                dns1_ipv4="223.5.5.5"
-                dns2_ipv4="183.60.83.19"
-                dns1_ipv6="2400:3200::1"
-                dns2_ipv6="2400:da00::6666"
-                set_dns
-                send_stats "国内DNS优化"
-                ;;
-              *)
-                echo "已取消"
-                ;;
-            esac
 
+            while true; do
+                clear
+                echo "优化DNS地址"
+                echo "------------------------"
+                echo "当前DNS地址"
+                cat /etc/resolv.conf
+                echo "------------------------"
+                echo -e "${huang}1. 国外DNS优化: ${bai}"
+                echo " v4: 1.1.1.1 8.8.8.8"
+                echo " v6: 2606:4700:4700::1111 2001:4860:4860::8888"
+                echo -e "${huang}2. 国内DNS优化: ${bai}"
+                echo " v4: 223.5.5.5 183.60.83.19"
+                echo " v6: 2400:3200::1 2400:da00::6666"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "请输入你的选择: " Limiting
+                case "$Limiting" in
+                  1)
+                    dns1_ipv4="1.1.1.1"
+                    dns2_ipv4="8.8.8.8"
+                    dns1_ipv6="2606:4700:4700::1111"
+                    dns2_ipv6="2001:4860:4860::8888"
+                    set_dns
+                    send_stats "国外DNS优化"
+                    ;;
+                  2)
+                    dns1_ipv4="223.5.5.5"
+                    dns2_ipv4="183.60.83.19"
+                    dns1_ipv6="2400:3200::1"
+                    dns2_ipv6="2400:da00::6666"
+                    set_dns
+                    send_stats "国内DNS优化"
+                    ;;
+                  *)
+                    break
+                    ;;
+                esac
+            done
               ;;
 
           8)
@@ -6278,37 +6278,40 @@ EOF
           10)
             root_use
             send_stats "设置v4/v6优先级"
-            echo "设置v4/v6优先级"
-            echo "------------------------"
-            ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
+            while true; do
+                clear
+                echo "设置v4/v6优先级"
+                echo "------------------------"
+                ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
-            if [ "$ipv6_disabled" -eq 1 ]; then
-                echo "当前网络优先级设置: IPv4 优先"
-            else
-                echo "当前网络优先级设置: IPv6 优先"
-            fi
-            echo ""
-            echo "------------------------"
-            echo "1. IPv4 优先          2. IPv6 优先          0. 退出"
-            echo "------------------------"
-            read -p "选择优先的网络: " choice
+                if [ "$ipv6_disabled" -eq 1 ]; then
+                    echo "当前网络优先级设置: IPv4 优先"
+                else
+                    echo "当前网络优先级设置: IPv6 优先"
+                fi
+                echo ""
+                echo "------------------------"
+                echo "1. IPv4 优先          2. IPv6 优先          0. 退出"
+                echo "------------------------"
+                read -p "选择优先的网络: " choice
 
-            case $choice in
-                1)
-                    sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null 2>&1
-                    echo "已切换为 IPv4 优先"
-                    send_stats "已切换为 IPv4 优先"
-                    ;;
-                2)
-                    sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
-                    echo "已切换为 IPv6 优先"
-                    send_stats "已切换为 IPv6 优先"
-                    ;;
-                *)
-                    echo "已取消"
-                    ;;
+                case $choice in
+                    1)
+                        sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null 2>&1
+                        echo "已切换为 IPv4 优先"
+                        send_stats "已切换为 IPv4 优先"
+                        ;;
+                    2)
+                        sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
+                        echo "已切换为 IPv6 优先"
+                        send_stats "已切换为 IPv6 优先"
+                        ;;
+                    *)
+                        break
+                        ;;
 
-            esac
+                esac
+            done
             ;;
 
           11)
@@ -6338,13 +6341,9 @@ EOF
                 read -p "请输入虚拟内存大小MB: " new_swap
                 add_swap
                 send_stats "虚拟内存已设置"
-
-                ;;
-              [Nn])
-                echo "已取消"
                 ;;
               *)
-                echo "无效的选择，请输入 Y 或 N。"
+                echo "已取消"
                 ;;
             esac
             ;;
