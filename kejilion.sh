@@ -1625,6 +1625,7 @@ dd_xitong() {
             echo "------------------------"
             echo "31. Alpine Linux              32. Arch Linux"
             echo "33. Kali Linux                34. openEuler"
+            echo "35. openSUSE Tumbleweed"
             echo "------------------------"
             echo "41. Windows 11                42. Windows 10"
             echo "43. Windows 7                 44. Windows Server 2022"
@@ -1792,6 +1793,14 @@ dd_xitong() {
                 send_stats "重装openeuler"
                 dd_xitong_3
                 bash reinstall.sh openeuler
+                reboot
+                exit
+                ;;
+
+              35)
+                send_stats "重装opensuse"
+                dd_xitong_3
+                bash reinstall.sh opensuse
                 reboot
                 exit
                 ;;
