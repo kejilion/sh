@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.4"
+sh_v="2.8.5"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -147,6 +147,9 @@ install() {
             elif command -v pacman &>/dev/null; then
                 pacman -Syu --noconfirm
                 pacman -S --noconfirm "$package"
+            elif command -v zypper &>/dev/null; then
+                zypper refresh
+                zypper install -y "$package"
             else
                 echo "未知的包管理器!"
                 return 1
@@ -185,6 +188,8 @@ remove() {
             apk del "${package}*"
         elif command -v pacman &>/dev/null; then
             pacman -Rns --noconfirm "${package}"
+        elif command -v zypper &>/dev/null; then
+            zypper remove -y "${package}"
         else
             echo "未知的包管理器!"
             return 1
@@ -260,8 +265,6 @@ enable() {
     echo "$SERVICE_NAME 已设置为开机自启。"
 }
 
-# 使用示例
-# enable <service_name>
 
 
 break_end() {
@@ -461,6 +464,11 @@ install_crontab() {
                 pacman -S --noconfirm cronie
                 systemctl enable cronie
                 systemctl start cronie
+                ;;
+            opensuse|suse|opensuse-tumbleweed)
+                zypper install -y cron
+                systemctl enable cron
+                systemctl start cron
                 ;;
             *)
                 echo "不支持的发行版: $ID"
@@ -1378,6 +1386,9 @@ linux_update() {
         apk update && apk upgrade
     elif command -v pacman &>/dev/null; then
         pacman -Syu --noconfirm
+    elif command -v zypper &>/dev/null; then
+        zypper refresh
+        zypper update
     else
         echo "未知的包管理器!"
         return 1
@@ -1393,8 +1404,7 @@ linux_clean() {
         dnf makecache
         journalctl --rotate
         journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        dnf remove $(dnf repoquery --installonly --latest-limit=-1 -q) -y
+        journalctl --vacuum-size=500M
 
     elif command -v yum &>/dev/null; then
         yum autoremove -y
@@ -1402,8 +1412,7 @@ linux_clean() {
         yum makecache
         journalctl --rotate
         journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        yum remove $(rpm -q kernel | grep -v $(uname -r)) -y
+        journalctl --vacuum-size=500M
 
     elif command -v apt &>/dev/null; then
         wait_for_lock
@@ -1411,14 +1420,11 @@ linux_clean() {
         apt autoremove --purge -y
         apt clean -y
         apt autoclean -y
-        apt remove --purge $(dpkg -l | awk '/^rc/ {print $2}') -y
         journalctl --rotate
         journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
-        apt remove --purge $(dpkg -l | awk '/^ii linux-(image|headers)-[^ ]+/{print $2}' | grep -v $(uname -r | sed 's/-.*//') | xargs) -y
+        journalctl --vacuum-size=500M
 
     elif command -v apk &>/dev/null; then
-        apk del --purge $(apk info --installed | awk '{print $1}' | grep -v $(apk info --available | awk '{print $1}'))
         apk autoremove
         apk cache clean
         rm -rf /var/log/*
@@ -1429,7 +1435,14 @@ linux_clean() {
         pacman -Scc --noconfirm
         journalctl --rotate
         journalctl --vacuum-time=1s
-        journalctl --vacuum-size=50M
+        journalctl --vacuum-size=500M
+
+   elif command -v zypper &>/dev/null; then
+        zypper clean --all
+        zypper refresh
+        journalctl --rotate
+        journalctl --vacuum-time=1s
+        journalctl --vacuum-size=500M
 
     else
         echo "未知的包管理器!"
@@ -1612,6 +1625,7 @@ dd_xitong() {
             echo "------------------------"
             echo "31. Alpine Linux              32. Arch Linux"
             echo "33. Kali Linux                34. openEuler"
+            echo "35. openSUSE Tumbleweed"
             echo "------------------------"
             echo "41. Windows 11                42. Windows 10"
             echo "43. Windows 7                 44. Windows Server 2022"
@@ -1779,6 +1793,14 @@ dd_xitong() {
                 send_stats "重装openeuler"
                 dd_xitong_3
                 bash reinstall.sh openeuler
+                reboot
+                exit
+                ;;
+
+              35)
+                send_stats "重装opensuse"
+                dd_xitong_3
+                bash reinstall.sh opensuse
                 reboot
                 exit
                 ;;
