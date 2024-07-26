@@ -2471,7 +2471,7 @@ linux_tools() {
 
   while true; do
       clear
-      send_stats "常用工具"
+      # send_stats "常用工具"
       echo "▶ 安装常用工具"
       echo "------------------------"
       echo "1. curl 下载工具"
