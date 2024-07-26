@@ -1514,6 +1514,8 @@ new_ssh_port() {
 
   echo "SSH 端口已修改为: $new_port"
 
+  sleep 1
+
 }
 
 
