@@ -6198,8 +6198,8 @@ EOF
                 # 判断端口号是否在有效范围内
                 if [[ $new_port =~ ^[0-9]+$ ]]; then  # 检查输入是否为数字
                     if [[ $new_port -ge 1 && $new_port -le 65535 ]]; then
-                        new_ssh_port
                         send_stats "SSH端口已修改"
+                        new_ssh_port
                     elif [[ $new_port -eq 0 ]]; then
                         send_stats "退出SSH端口修改"
                         break
