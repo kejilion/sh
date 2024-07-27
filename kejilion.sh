@@ -6187,10 +6187,10 @@ EOF
                 current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
     
                 # 打印当前的 SSH 端口号
-                echo "当前的 SSH 端口号是: $current_port"
+                echo -e "当前的 SSH 端口号是:  ${huang}$current_port ${bai}"
     
                 echo "------------------------"
-                echo "端口号范围1到65535之间的数字。输入0退出。"
+                echo "端口号范围1到65535之间的数字。(输入0退出)"
     
                 # 提示用户输入新的 SSH 端口号
                 read -p "请输入新的 SSH 端口号: " new_port
@@ -6751,13 +6751,14 @@ EOF
           18)
           root_use
           send_stats "修改主机名"
-          current_hostname=$(hostname)
-          echo "当前主机名: $current_hostname"
-          read -p "是否要更改主机名？(y/n): " answer
-          if [[ "${answer,,}" == "y" ]]; then
-              # 获取新的主机名
-              read -p "请输入新的主机名: " new_hostname
-              if [ -n "$new_hostname" ]; then
+          
+          while true; do  
+              clear
+              current_hostname=$(hostname)
+              echo -e "当前主机名: ${huang}$current_hostname${bai}"
+              echo "------------------------"
+              read -p "请输入新的主机名 (输入0退出): " new_hostname
+              if [ -n "$new_hostname" ] && [ "$new_hostname" != "0" ]; then
                   if [ -f /etc/alpine-release ]; then
                       # Alpine
                       echo "$new_hostname" > /etc/hostname
@@ -6770,15 +6771,14 @@ EOF
                   fi
                   echo "主机名已更改为: $new_hostname"
                   send_stats "主机名已更改"
+                  sleep 1
               else
-                  echo "无效的主机名。未更改主机名。"
-                  exit 1
+                  echo "已退出，未更改主机名。"
+                  break
               fi
-          else
-              echo "未更改主机名。"
-          fi
+          done
               ;;
-
+          
           19)
           root_use
           send_stats "换系统更新源"
