@@ -4758,7 +4758,7 @@ linux_panel() {
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
       echo -e "37. MyIP工具箱 ${huang}★${bai}                        38. 小雅alist全家桶"
-      echo "39. Bililive直播录制工具                40. 远程Windows"
+      echo "39. Bililive直播录制工具                40. 远程WindowsServer"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
