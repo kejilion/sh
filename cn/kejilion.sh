@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.6"
+sh_v="2.8.7"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -1508,10 +1508,13 @@ new_ssh_port() {
 
   # 重启 SSH 服务
   restart_ssh
-  echo "SSH 端口已修改为: $new_port"
 
   iptables_open
   remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
+
+  echo "SSH 端口已修改为: $new_port"
+
+  sleep 1
 
 }
 
@@ -6173,35 +6176,45 @@ EOF
 
               ;;
           6)
-              root_use
-              send_stats "修改SSH端口"
-              # 去掉 #Port 的注释
-              sed -i 's/#Port/Port/' /etc/ssh/sshd_config
+            root_use
+            send_stats "修改SSH端口"
 
-              # 读取当前的 SSH 端口号
-              current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
+            while true; do
+                clear              
+                sed -i 's/#Port/Port/' /etc/ssh/sshd_config
+    
+                # 读取当前的 SSH 端口号
+                current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
+    
+                # 打印当前的 SSH 端口号
+                echo -e "当前的 SSH 端口号是:  ${huang}$current_port ${bai}"
+    
+                echo "------------------------"
+                echo "端口号范围1到65535之间的数字。(输入0退出)"
+    
+                # 提示用户输入新的 SSH 端口号
+                read -p "请输入新的 SSH 端口号: " new_port
+    
+                # 判断端口号是否在有效范围内
+                if [[ $new_port =~ ^[0-9]+$ ]]; then  # 检查输入是否为数字
+                    if [[ $new_port -ge 1 && $new_port -le 65535 ]]; then
+                        send_stats "SSH端口已修改"
+                        new_ssh_port
+                    elif [[ $new_port -eq 0 ]]; then
+                        send_stats "退出SSH端口修改"
+                        break
+                    else
+                        echo "端口号无效，请输入1到65535之间的数字。"
+                        send_stats "输入无效SSH端口"
+                        break_end
+                    fi
+                else
+                    echo "输入无效，请输入数字。"
+                    send_stats "输入无效SSH端口"
+                    break_end
+                fi
+            done
 
-              # 打印当前的 SSH 端口号
-              echo "当前的 SSH 端口号是: $current_port"
-
-              echo "------------------------"
-
-              # 提示用户输入新的 SSH 端口号
-              read -p "请输入新的 SSH 端口号: " new_port
-
-              # 判断端口号是否在有效范围内
-              if [[ $new_port -ge 1 && $new_port -le 65535 ]]; then
-                  :
-              else
-                  echo "端口号无效，请输入1到65535之间的数字。"
-                  send_stats "输入无效SSH端口"
-                  break_end
-                  linux_Settings
-              fi
-
-              new_ssh_port
-
-              send_stats "SSH端口已修改"
 
               ;;
 
@@ -6738,13 +6751,14 @@ EOF
           18)
           root_use
           send_stats "修改主机名"
-          current_hostname=$(hostname)
-          echo "当前主机名: $current_hostname"
-          read -p "是否要更改主机名？(y/n): " answer
-          if [[ "${answer,,}" == "y" ]]; then
-              # 获取新的主机名
-              read -p "请输入新的主机名: " new_hostname
-              if [ -n "$new_hostname" ]; then
+          
+          while true; do  
+              clear
+              current_hostname=$(hostname)
+              echo -e "当前主机名: ${huang}$current_hostname${bai}"
+              echo "------------------------"
+              read -p "请输入新的主机名 (输入0退出): " new_hostname
+              if [ -n "$new_hostname" ] && [ "$new_hostname" != "0" ]; then
                   if [ -f /etc/alpine-release ]; then
                       # Alpine
                       echo "$new_hostname" > /etc/hostname
@@ -6757,15 +6771,14 @@ EOF
                   fi
                   echo "主机名已更改为: $new_hostname"
                   send_stats "主机名已更改"
+                  sleep 1
               else
-                  echo "无效的主机名。未更改主机名。"
-                  exit 1
+                  echo "已退出，未更改主机名。"
+                  break
               fi
-          else
-              echo "未更改主机名。"
-          fi
+          done
               ;;
-
+          
           19)
           root_use
           send_stats "换系统更新源"
@@ -7170,7 +7183,7 @@ EOF
             while true; do
               clear
               send_stats "Linux内核调优管理"
-              echo -e "Linux系统内核参数优化 ${huang}测试版${bai}"
+              echo "Linux系统内核参数优化"
               echo "视频介绍: https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1"
               echo "------------------------------------------------"
               echo "提供多种系统参数调优模式，用户可以根据自身使用场景进行选择切换。"
