@@ -6127,7 +6127,15 @@ linux_Settings() {
             echo "推荐版本:  3.12    3.11    3.10    3.9    3.8    2.7"
             echo "查询更多版本: https://www.python.org/downloads/"
             echo "------------"
-            read -p "输入你要安装的python版本号: " py_new_v
+            read -p "输入你要安装的python版本号 (输入0退出): " py_new_v
+
+
+            if [[ "$py_new_v" == "0" ]]; then
+                send_stats "脚本PY管理"
+                break_end
+                linux_Settings
+            fi
+
 
             if ! grep -q 'export PYENV_ROOT="\$HOME/.pyenv"' ~/.bashrc; then
                 if command -v yum &>/dev/null; then
@@ -6186,6 +6194,7 @@ EOF
 
             VERSION=$(python -V 2>&1 | awk '{print $2}')
             echo -e "当前python版本号: ${huang}$VERSION${bai}"
+            send_stats "脚本PY版本切换"
 
               ;;
 
