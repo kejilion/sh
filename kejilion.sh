@@ -6090,12 +6090,25 @@ linux_Settings() {
 
       case $sub_choice in
           1)
-              clear
-              read -p "请输入你的快捷按键: " kuaijiejian
-              echo "alias $kuaijiejian='~/kejilion.sh'" >> ~/.bashrc
-              source ~/.bashrc
-              echo "快捷键已设置"
-              send_stats "脚本快捷键已设置"
+              while true; do
+                  clear
+                  read -p "请输入你的快捷按键（输入0退出）: " kuaijiejian
+                  if [ "$kuaijiejian" == "0" ]; then
+                       break_end
+                       linux_Settings
+                  fi
+
+                  sed -i '/alias .*='\''k'\''$/d' ~/.bashrc
+
+                  echo "alias $kuaijiejian='k'" >> ~/.bashrc
+                  sleep 1
+                  source ~/.bashrc
+
+                  echo "快捷键已设置"
+                  send_stats "脚本快捷键已设置"
+                  break_end
+                  linux_Settings
+              done
               ;;
 
           2)
@@ -6123,7 +6136,7 @@ linux_Settings() {
             echo "推荐版本:  3.12    3.11    3.10    3.9    3.8    2.7"
             echo "查询更多版本: https://www.python.org/downloads/"
             echo "------------"
-            read -p "输入你要安装的python版本号 (输入0退出): " py_new_v
+            read -p "输入你要安装的python版本号（输入0退出）: " py_new_v
 
 
             if [[ "$py_new_v" == "0" ]]; then
@@ -6217,7 +6230,7 @@ EOF
                 echo -e "当前的 SSH 端口号是:  ${huang}$current_port ${bai}"
 
                 echo "------------------------"
-                echo "端口号范围1到65535之间的数字。(输入0退出)"
+                echo "端口号范围1到65535之间的数字。（输入0退出）"
 
                 # 提示用户输入新的 SSH 端口号
                 read -p "请输入新的 SSH 端口号: " new_port
@@ -6784,7 +6797,7 @@ EOF
               current_hostname=$(hostname)
               echo -e "当前主机名: ${huang}$current_hostname${bai}"
               echo "------------------------"
-              read -p "请输入新的主机名 (输入0退出): " new_hostname
+              read -p "请输入新的主机名（输入0退出）: " new_hostname
               if [ -n "$new_hostname" ] && [ "$new_hostname" != "0" ]; then
                   if [ -f /etc/alpine-release ]; then
                       # Alpine
