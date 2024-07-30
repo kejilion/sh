@@ -6312,17 +6312,17 @@ EOF
           9)
             root_use
             send_stats "新用户禁用root"
-            # 提示用户输入新用户名
-            read -p "请输入新用户名: " new_username
+            read -p "请输入新用户名（输入0退出）: " new_username
+            if [ "$new_username" == "0" ]; then
+                break_end
+                linux_Settings
+            fi
 
-            # 创建新用户并设置密码
             useradd -m -s /bin/bash "$new_username"
             passwd "$new_username"
 
-            # 赋予新用户sudo权限
             echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
-            # 禁用ROOT用户登录
             passwd -l root
 
             echo "操作已完成。"
@@ -6419,7 +6419,6 @@ EOF
               while true; do
                 root_use
                 send_stats "用户管理"
-                # 显示所有用户、用户权限、用户组和是否在sudoers中
                 echo "用户列表"
                 echo "----------------------------------------------------------------------------"
                 printf "%-24s %-34s %-20s %-10s\n" "用户名" "用户权限" "用户组" "sudo权限"
