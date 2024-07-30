@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.8"
+sh_v="2.8.9"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -2475,37 +2475,25 @@ linux_tools() {
   while true; do
       clear
       # send_stats "常用工具"
-      echo "▶ 安装常用工具"
+      echo "▶ 常用工具"
       echo "------------------------"
-      echo "1. curl 下载工具"
-      echo "2. wget 下载工具"
-      echo "3. sudo 超级管理权限工具"
-      echo "4. socat 通信连接工具 （申请域名证书必备）"
-      echo "5. htop 系统监控工具"
-      echo "6. iftop 网络流量监控工具"
-      echo "7. unzip ZIP压缩解压工具"
-      echo "8. tar GZ压缩解压工具"
-      echo "9. tmux 多路后台运行工具"
-      echo "10. ffmpeg 视频编码直播推流工具"
-      echo "11. btop 现代化监控工具"
-      echo "12. ranger 文件管理工具"
-      echo "13. gdu 磁盘占用查看工具"
-      echo "14. fzf 全局搜索工具"
-      echo "15. vim 文本编辑器"
-      echo "16. nano 文本编辑器"
+      echo -e "1. curl 下载工具 ${huang}★${bai}                    2. wget 下载工具 ${huang}★${bai}"
+      echo "3. sudo 超级管理权限工具              4. socat 通信连接工具"
+      echo "5. htop 系统监控工具                  6. iftop 网络流量监控工具"
+      echo "7. unzip ZIP压缩解压工具              8. tar GZ压缩解压工具"
+      echo "9. tmux 多路后台运行工具              10. ffmpeg 视频编码直播推流工具"
       echo "------------------------"
-      echo "21. cmatrix 黑客帝国屏保"
-      echo "22. sl 跑火车屏保"
+      echo -e "11. btop 现代化监控工具 ${huang}★${bai}             12. ranger 文件管理工具"
+      echo "13. gdu 磁盘占用查看工具              14. fzf 全局搜索工具"
+      echo -e "15. vim 文本编辑器                    16. nano 文本编辑器 ${huang}★${bai}"
       echo "------------------------"
-      echo "26. 俄罗斯方块小游戏"
-      echo "27. 贪吃蛇小游戏"
+      echo "21. cmatrix 黑客帝国屏保              22. sl 跑火车屏保"
       echo "28. 太空入侵者小游戏"
       echo "------------------------"
-      echo "31. 全部安装"
-      echo "32. 全部卸载"
+      echo -e "31. 全部安装                          32. 全部安装（不含屏保和游戏）${huang}★${bai}"
+      echo "33. 全部卸载"
       echo "------------------------"
-      echo "41. 安装指定工具"
-      echo "42. 卸载指定工具"
+      echo "41. 安装指定工具                      42. 卸载指定工具"
       echo "------------------------"
       echo "0. 返回主菜单"
       echo "------------------------"
@@ -2688,6 +2676,13 @@ linux_tools() {
               ;;
 
           32)
+              clear
+              send_stats "全部安装（不含游戏和屏保）"
+              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf vim nano
+              ;;
+
+
+          33)
               clear
               send_stats "全部卸载"
               remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders vim nano
@@ -4758,7 +4753,7 @@ linux_panel() {
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
       echo -e "37. MyIP工具箱 ${huang}★${bai}                        38. 小雅alist全家桶"
-      echo "39. Bililive直播录制工具                40. 远程WindowsServer"
+      echo "39. Bililive直播录制工具                40. 远程Windows7"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
@@ -5855,14 +5850,14 @@ linux_panel() {
             docker_rum="docker run -d \
                             --name windows \
                             --cap-add=NET_ADMIN \
-                            -e VERSION=2022 \
+                            -e VERSION=win7 \
                             -e KVM=N \
                             -p 8040:8006 \
                             -p 3389:3389/tcp \
                             -p 3389:3389/udp \
                             --restart unless-stopped \
                             dockurr/windows"
-            docker_describe="一款虚拟化远程Windows Server 2022 要求4核心4G内存及以上"
+            docker_describe="一款虚拟化远程Windows7 要求2核心2G内存及以上"
             docker_url="官网介绍: https://github.com/dockur/windows"
             docker_use=""
             docker_passwd=""
@@ -6211,21 +6206,21 @@ EOF
             send_stats "修改SSH端口"
 
             while true; do
-                clear              
+                clear
                 sed -i 's/#Port/Port/' /etc/ssh/sshd_config
-    
+
                 # 读取当前的 SSH 端口号
                 current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
-    
+
                 # 打印当前的 SSH 端口号
                 echo -e "当前的 SSH 端口号是:  ${huang}$current_port ${bai}"
-    
+
                 echo "------------------------"
                 echo "端口号范围1到65535之间的数字。(输入0退出)"
-    
+
                 # 提示用户输入新的 SSH 端口号
                 read -p "请输入新的 SSH 端口号: " new_port
-    
+
                 # 判断端口号是否在有效范围内
                 if [[ $new_port =~ ^[0-9]+$ ]]; then  # 检查输入是否为数字
                     if [[ $new_port -ge 1 && $new_port -le 65535 ]]; then
@@ -6782,8 +6777,8 @@ EOF
           18)
           root_use
           send_stats "修改主机名"
-          
-          while true; do  
+
+          while true; do
               clear
               current_hostname=$(hostname)
               echo -e "当前主机名: ${huang}$current_hostname${bai}"
@@ -6809,7 +6804,7 @@ EOF
               fi
           done
               ;;
-          
+
           19)
           root_use
           send_stats "换系统更新源"
