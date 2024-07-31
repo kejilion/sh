@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.9"
+sh_v="2.8.10"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -7078,7 +7078,7 @@ EOF
 
             echo
             echo "------------------------------------------------"
-            echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！每月1日重置流量重启服务器。"
+            echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！"
             read -p "1. 开启限流关机功能    2. 停用限流关机功能    0. 退出  : " Limiting
 
             case "$Limiting" in
@@ -7087,6 +7087,9 @@ EOF
                 echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
                 read -p "请输入进站流量阈值（单位为GB）: " rx_threshold_gb
                 read -p "请输入出站流量阈值（单位为GB）: " tx_threshold_gb
+                read -p "请输入流量重置日期（默认每月1日重置）: " cz_day
+                cz_day=${cz_day:-1}
+
                 cd ~
                 curl -Ss -o ~/Limiting_Shut_down.sh https://raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh
                 chmod +x ~/Limiting_Shut_down.sh
@@ -7096,7 +7099,7 @@ EOF
                 crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
                 (crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
                 crontab -l | grep -v 'reboot' | crontab -
-                (crontab -l ; echo "0 1 1 * * reboot") | crontab - > /dev/null 2>&1
+                (crontab -l ; echo "0 1 $cz_day * * reboot") | crontab - > /dev/null 2>&1
                 echo "限流关机已设置"
                 send_stats "限流关机已设置"
                 ;;
