@@ -7043,67 +7043,74 @@ EOF
               ;;
 
 
-          23)
+           23)
             root_use
             send_stats "限流关机功能"
-            echo "限流关机功能"
-            echo "视频介绍: https://www.bilibili.com/video/BV1mC411j7Qd?t=0.1"
-            echo "------------------------------------------------"
-            echo "当前流量使用情况，重启服务器流量计算会清零！"
-            output_status
-            echo "$output"
+            while true; do
+                clear
+                echo "限流关机功能"
+                echo "视频介绍: https://www.bilibili.com/video/BV1mC411j7Qd?t=0.1"
+                echo "------------------------------------------------"
+                echo "当前流量使用情况，重启服务器流量计算会清零！"
+                output_status
+                echo "$output"
 
-            # 检查是否存在 Limiting_Shut_down.sh 文件
-            if [ -f ~/Limiting_Shut_down.sh ]; then
-                # 获取 threshold_gb 的值
-                rx_threshold_gb=$(grep -oP 'rx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
-                tx_threshold_gb=$(grep -oP 'tx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
-                echo -e "当前设置的进站限流阈值为 ${hang}${rx_threshold_gb}${bai}GB"
-                echo -e "当前设置的出站限流阈值为 ${hang}${tx_threshold_gb}${bai}GB"
-            else
-                echo -e "${hui}前未启用限流关机功能${bai}"
-            fi
+                # 检查是否存在 Limiting_Shut_down.sh 文件
+                if [ -f ~/Limiting_Shut_down.sh ]; then
+                    # 获取 threshold_gb 的值
+                    rx_threshold_gb=$(grep -oP 'rx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+                    tx_threshold_gb=$(grep -oP 'tx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
+                    echo -e "当前设置的进站限流阈值为 ${hang}${rx_threshold_gb}${bai}GB"
+                    echo -e "当前设置的出站限流阈值为 ${hang}${tx_threshold_gb}${bai}GB"
+                else
+                    echo -e "${hui}前未启用限流关机功能${bai}"
+                fi
 
-            echo
-            echo "------------------------------------------------"
-            echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！每月1日重置流量重启服务器。"
-            read -p "1. 开启限流关机功能    2. 停用限流关机功能    0. 退出  : " Limiting
+                echo
+                echo "------------------------------------------------"
+                echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！"
+                read -p "1. 开启限流关机功能    2. 停用限流关机功能    0. 退出  : " Limiting
 
-            case "$Limiting" in
-              1)
-                # 输入新的虚拟内存大小
-                echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
-                read -p "请输入进站流量阈值（单位为GB）: " rx_threshold_gb
-                read -p "请输入出站流量阈值（单位为GB）: " tx_threshold_gb
-                cd ~
-                curl -Ss -o ~/Limiting_Shut_down.sh https://raw.gitmirror.com/kejilion/sh/main/Limiting_Shut_down1.sh
-                chmod +x ~/Limiting_Shut_down.sh
-                sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
-                sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
-                check_crontab_installed
-                crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
-                (crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
-                crontab -l | grep -v 'reboot' | crontab -
-                (crontab -l ; echo "0 1 1 * * reboot") | crontab - > /dev/null 2>&1
-                echo "限流关机已设置"
-                send_stats "限流关机已设置"
-                ;;
-              0)
-                echo "已取消"
-                ;;
-              2)
-                check_crontab_installed
-                crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
-                crontab -l | grep -v 'reboot' | crontab -
-                rm ~/Limiting_Shut_down.sh
-                echo "已关闭限流关机功能"
-                ;;
-              *)
-                echo "无效的选择，请输入 Y 或 N。"
-                ;;
-            esac
+                case "$Limiting" in
+                  1)
+                    # 输入新的虚拟内存大小
+                    echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
+                    read -p "请输入进站流量阈值（单位为GB）: " rx_threshold_gb
+                    read -p "请输入出站流量阈值（单位为GB）: " tx_threshold_gb
+                    read -p "请输入流量重置日期（默认每月1日重置）: " cz_day
+                    cz_day=${cz_day:-1}
 
+                    cd ~
+                    curl -Ss -o ~/Limiting_Shut_down.sh https://raw.gitmirror.com/kejilion/sh/main/Limiting_Shut_down1.sh
+                    chmod +x ~/Limiting_Shut_down.sh
+                    sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
+                    sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
+                    check_crontab_installed
+                    crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
+                    (crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
+                    crontab -l | grep -v 'reboot' | crontab -
+                    (crontab -l ; echo "0 1 $cz_day * * reboot") | crontab - > /dev/null 2>&1
+                    echo "限流关机已设置"
+                    send_stats "限流关机已设置"
+                    ;;
+                  0)
+                    echo "已取消"
+                    ;;
+                  2)
+                    check_crontab_installed
+                    crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
+                    crontab -l | grep -v 'reboot' | crontab -
+                    rm ~/Limiting_Shut_down.sh
+                    echo "已关闭限流关机功能"
+                    ;;
+                  *)
+                    echo "无效的选择，请输入 Y 或 N。"
+                    break
+                    ;;
+                esac
+            done
               ;;
+
 
 
           24)
