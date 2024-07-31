@@ -7063,7 +7063,7 @@ EOF
                     echo -e "当前设置的进站限流阈值为 ${hang}${rx_threshold_gb}${bai}GB"
                     echo -e "当前设置的出站限流阈值为 ${hang}${tx_threshold_gb}${bai}GB"
                 else
-                    echo -e "${hui}前未启用限流关机功能${bai}"
+                    echo -e "${hui}当前未启用限流关机功能${bai}"
                 fi
 
                 echo
