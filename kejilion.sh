@@ -7072,8 +7072,8 @@ EOF
                     # 获取 threshold_gb 的值
                     rx_threshold_gb=$(grep -oP 'rx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
                     tx_threshold_gb=$(grep -oP 'tx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
-                    echo -e "当前设置的进站限流阈值为 ${hang}${rx_threshold_gb}${bai}GB"
-                    echo -e "当前设置的出站限流阈值为 ${hang}${tx_threshold_gb}${bai}GB"
+                    echo -e "${lv}当前设置的进站限流阈值为 ${huang}${rx_threshold_gb}${lv}GB${bai}"
+                    echo -e "${lv}当前设置的出站限流阈值为 ${huang}${tx_threshold_gb}${lv}GB${bai}"
                 else
                     echo -e "${hui}当前未启用限流关机功能${bai}"
                 fi
