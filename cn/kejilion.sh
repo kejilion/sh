@@ -7093,9 +7093,6 @@ EOF
                     echo "限流关机已设置"
                     send_stats "限流关机已设置"
                     ;;
-                  0)
-                    echo "已取消"
-                    ;;
                   2)
                     check_crontab_installed
                     crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
@@ -7104,7 +7101,6 @@ EOF
                     echo "已关闭限流关机功能"
                     ;;
                   *)
-                    echo "无效的选择，请输入 Y 或 N。"
                     break
                     ;;
                 esac
