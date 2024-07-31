@@ -7059,6 +7059,7 @@ EOF
             root_use
             send_stats "限流关机功能"
             while true; do
+                clear
                 echo "限流关机功能"
                 echo "视频介绍: https://www.bilibili.com/video/BV1mC411j7Qd?t=0.1"
                 echo "------------------------------------------------"
