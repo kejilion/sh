@@ -6619,11 +6619,10 @@ EOF
 
           17)
           root_use
-          send_stats "高级防火墙管理"
           if dpkg -l | grep -q iptables-persistent; then
             while true; do
-                  echo "防火墙已安装"
-                  send_stats "高级防火墙已安装"
+                  echo "高级防火墙管理"
+                  send_stats "高级防火墙管理"
                   echo "------------------------"
                   iptables -L INPUT
 
@@ -6648,12 +6647,14 @@ EOF
                       sed -i "/COMMIT/i -A INPUT -p tcp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
                       sed -i "/COMMIT/i -A INPUT -p udp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
+                      send_stats "开放指定端口"
 
                           ;;
                       2)
                       read -p "请输入关闭的端口号: " c_port
                       sed -i "/--dport $c_port/d" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
+                      send_stats "关闭指定端口"
                         ;;
 
                       3)
@@ -6672,7 +6673,7 @@ EOF
 COMMIT
 EOF
                       iptables-restore < /etc/iptables/rules.v4
-
+                      send_stats "开放所有端口"
                           ;;
                       4)
                       current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
@@ -6690,31 +6691,34 @@ EOF
 COMMIT
 EOF
                       iptables-restore < /etc/iptables/rules.v4
-
+                      send_stats "关闭所有端口"
                           ;;
 
                       5)
                       read -p "请输入放行的IP: " o_ip
                       sed -i "/COMMIT/i -A INPUT -s $o_ip -j ACCEPT" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
-
+                      send_stats "IP白名单"
                           ;;
 
                       6)
                       read -p "请输入封锁的IP: " c_ip
                       sed -i "/COMMIT/i -A INPUT -s $c_ip -j DROP" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
+                      send_stats "IP黑名单"
                           ;;
 
                       7)
-                     read -p "请输入清除的IP: " d_ip
-                     sed -i "/-A INPUT -s $d_ip/d" /etc/iptables/rules.v4
-                     iptables-restore < /etc/iptables/rules.v4
+                      read -p "请输入清除的IP: " d_ip
+                      sed -i "/-A INPUT -s $d_ip/d" /etc/iptables/rules.v4
+                      iptables-restore < /etc/iptables/rules.v4
+                      send_stats "清除指定IP"
                           ;;
 
                       9)
                       remove iptables-persistent
                       rm /etc/iptables/rules.v4
+                      send_stats "卸载防火墙"
                       break
                           ;;
 
