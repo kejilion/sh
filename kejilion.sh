@@ -4693,7 +4693,7 @@ linux_ldnmp() {
               send_stats "更新$ldnmp_pods"
               cd /home/web/
               docker compose up -d --force-recreate $ldnmp_pods
-              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
               docker exec $ldnmp_pods chmod -R 777 /var/www/html
               docker restart $ldnmp_pods > /dev/null 2>&1
               echo "更新${ldnmp_pods}完成"
@@ -4710,7 +4710,7 @@ linux_ldnmp() {
               cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
               sed -i "s/image: mysql/image: mysql:${version}/" /home/web/docker-compose.yml
               docker rm -f $ldnmp_pods
-              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
               docker compose up -d --force-recreate $ldnmp_pods
               docker restart $ldnmp_pods
               cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
@@ -4726,7 +4726,7 @@ linux_ldnmp() {
               cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
               sed -i "s/image: php:fpm-alpine/image: php:${version}-fpm-alpine/" /home/web/docker-compose.yml
               docker rm -f $ldnmp_pods
-              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
               docker compose up -d --force-recreate $ldnmp_pods
               docker exec $ldnmp_pods chmod -R 777 /var/www/html
 
@@ -4755,7 +4755,7 @@ linux_ldnmp() {
               send_stats "更新$ldnmp_pods"
               cd /home/web/
               docker compose up -d --force-recreate $ldnmp_pods
-              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
               docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
               docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
               docker restart $ldnmp_pods > /dev/null 2>&1
