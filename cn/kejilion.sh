@@ -4767,6 +4767,7 @@ linux_ldnmp() {
                 case "$choice" in
                   [Yy])
                     send_stats "完整更新LDNMP环境"
+                    cd /home/web/
                     docker compose down
                     docker compose down --rmi all
 
