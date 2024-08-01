@@ -424,6 +424,185 @@ install_docker() {
 }
 
 
+docker_ps() {
+while true; do
+    clear
+    send_stats "Docker容器管理"
+    echo "Docker容器列表"
+    docker ps -a
+    echo ""
+    echo "容器操作"
+    echo "------------------------"
+    echo "1. 创建新的容器"
+    echo "------------------------"
+    echo "2. 启动指定容器             6. 启动所有容器"
+    echo "3. 停止指定容器             7. 暂停所有容器"
+    echo "4. 删除指定容器             8. 删除所有容器"
+    echo "5. 重启指定容器             9. 重启所有容器"
+    echo "------------------------"
+    echo "11. 进入指定容器           12. 查看容器日志           13. 查看容器网络"
+    echo "------------------------"
+    echo "0. 返回上一级选单"
+    echo "------------------------"
+    read -p "请输入你的选择: " sub_choice
+    case $sub_choice in
+        1)
+            send_stats "新建容器"
+            read -p "请输入创建命令: " dockername
+            $dockername
+            ;;
+        2)
+            send_stats "启动指定容器"
+            read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
+            docker start $dockername
+            ;;
+        3)
+            send_stats "停止指定容器"
+            read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
+            docker stop $dockername
+            ;;
+        4)
+            send_stats "删除指定容器"
+            read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
+            docker rm -f $dockername
+            ;;
+        5)
+            send_stats "重启指定容器"
+            read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
+            docker restart $dockername
+            ;;
+        6)
+            send_stats "启动所有容器"
+            docker start $(docker ps -a -q)
+            ;;
+        7)
+            send_stats "停止所有容器"
+            docker stop $(docker ps -q)
+            ;;
+        8)
+            send_stats "删除所有容器"
+            read -p "$(echo -e "${hong}注意: ${bai}确定删除所有容器吗？(Y/N): ")" choice
+            case "$choice" in
+              [Yy])
+                docker rm -f $(docker ps -a -q)
+                ;;
+              [Nn])
+                ;;
+              *)
+                echo "无效的选择，请输入 Y 或 N。"
+                ;;
+            esac
+            ;;
+        9)
+            send_stats "重启所有容器"
+            docker restart $(docker ps -q)
+            ;;
+        11)
+            send_stats "进入容器"
+            read -p "请输入容器名: " dockername
+            docker exec -it $dockername /bin/sh
+            break_end
+            ;;
+        12)
+            send_stats "查看容器日志"
+            read -p "请输入容器名: " dockername
+            docker logs $dockername
+            break_end
+            ;;
+        13)
+            send_stats "查看容器网络"
+            echo ""
+            container_ids=$(docker ps -q)
+            echo "------------------------------------------------------------"
+            printf "%-25s %-25s %-25s\n" "容器名称" "网络名称" "IP地址"
+            for container_id in $container_ids; do
+                container_info=$(docker inspect --format '{{ .Name }}{{ range $network, $config := .NetworkSettings.Networks }} {{ $network }} {{ $config.IPAddress }}{{ end }}' "$container_id")
+                container_name=$(echo "$container_info" | awk '{print $1}')
+                network_info=$(echo "$container_info" | cut -d' ' -f2-)
+                while IFS= read -r line; do
+                    network_name=$(echo "$line" | awk '{print $1}')
+                    ip_address=$(echo "$line" | awk '{print $2}')
+                    printf "%-20s %-20s %-15s\n" "$container_name" "$network_name" "$ip_address"
+                done <<< "$network_info"
+            done
+            break_end
+            ;;
+        0)
+            break  # 跳出循环，退出菜单
+            ;;
+        *)
+            break  # 跳出循环，退出菜单
+            ;;
+    esac
+done
+}
+
+
+docker_image() {
+while true; do
+    clear
+    send_stats "Docker镜像管理"
+    echo "Docker镜像列表"
+    docker image ls
+    echo ""
+    echo "镜像操作"
+    echo "------------------------"
+    echo "1. 获取指定镜像             3. 删除指定镜像"
+    echo "2. 更新指定镜像             4. 删除所有镜像"
+    echo "------------------------"
+    echo "0. 返回上一级选单"
+    echo "------------------------"
+    read -p "请输入你的选择: " sub_choice
+    case $sub_choice in
+        1)
+            send_stats "拉取镜像"
+            read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
+            for name in $imagenames; do
+                echo -e "${huang}正在获取镜像: $name${bai}"
+                docker pull $name
+            done
+            ;;
+        2)
+            send_stats "更新镜像"
+            read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
+            for name in $imagenames; do
+                echo -e "${huang}正在更新镜像: $name${bai}"
+                docker pull $name
+            done
+            ;;
+        3)
+            read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
+            for name in $imagenames; do
+                docker rmi -f $name
+            done
+            ;;
+        4)
+            send_stats "删除所有镜像"
+            read -p "$(echo -e "${hong}注意: ${bai}确定删除所有镜像吗？(Y/N): ")" choice
+            case "$choice" in
+              [Yy])
+                docker rmi -f $(docker images -q)
+                ;;
+              [Nn])
+                ;;
+              *)
+                echo "无效的选择，请输入 Y 或 N。"
+                ;;
+            esac
+            ;;
+        0)
+            break  # 跳出循环，退出菜单
+            ;;
+        *)
+            break  # 跳出循环，退出菜单
+            ;;
+    esac
+done
+
+
+}
+
+
 
 
 
@@ -2833,190 +3012,10 @@ linux_docker() {
 
               ;;
           3)
-              while true; do
-                  clear
-                  send_stats "Docker容器管理"
-                  echo "Docker容器列表"
-                  docker ps -a
-                  echo ""
-                  echo "容器操作"
-                  echo "------------------------"
-                  echo "1. 创建新的容器"
-                  echo "------------------------"
-                  echo "2. 启动指定容器             6. 启动所有容器"
-                  echo "3. 停止指定容器             7. 暂停所有容器"
-                  echo "4. 删除指定容器             8. 删除所有容器"
-                  echo "5. 重启指定容器             9. 重启所有容器"
-                  echo "------------------------"
-                  echo "11. 进入指定容器           12. 查看容器日志           13. 查看容器网络"
-                  echo "------------------------"
-                  echo "0. 返回上一级选单"
-                  echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
-
-                  case $sub_choice in
-                      1)
-                          send_stats "新建容器"
-                          read -p "请输入创建命令: " dockername
-                          $dockername
-                          ;;
-
-                      2)
-                          send_stats "启动指定容器"
-                          read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
-                          docker start $dockername
-                          ;;
-                      3)
-                          send_stats "停止指定容器"
-                          read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
-                          docker stop $dockername
-                          ;;
-                      4)
-                          send_stats "删除指定容器"
-                          read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
-                          docker rm -f $dockername
-                          ;;
-                      5)
-                          send_stats "重启指定容器"
-                          read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
-                          docker restart $dockername
-                          ;;
-                      6)
-                          send_stats "启动所有容器"
-                          docker start $(docker ps -a -q)
-                          ;;
-                      7)
-                          send_stats "停止所有容器"
-                          docker stop $(docker ps -q)
-                          ;;
-                      8)
-                          send_stats "删除所有容器"
-                          read -p "$(echo -e "${hong}注意: ${bai}确定删除所有容器吗？(Y/N): ")" choice
-                          case "$choice" in
-                            [Yy])
-                              docker rm -f $(docker ps -a -q)
-                              ;;
-                            [Nn])
-                              ;;
-                            *)
-                              echo "无效的选择，请输入 Y 或 N。"
-                              ;;
-                          esac
-                          ;;
-                      9)
-                          send_stats "重启所有容器"
-                          docker restart $(docker ps -q)
-                          ;;
-                      11)
-                          send_stats "进入容器"
-                          read -p "请输入容器名: " dockername
-                          docker exec -it $dockername /bin/sh
-                          break_end
-                          ;;
-                      12)
-                          send_stats "查看容器日志"
-                          read -p "请输入容器名: " dockername
-                          docker logs $dockername
-                          break_end
-                          ;;
-                      13)
-                          send_stats "查看容器网络"
-                          echo ""
-                          container_ids=$(docker ps -q)
-
-                          echo "------------------------------------------------------------"
-                          printf "%-25s %-25s %-25s\n" "容器名称" "网络名称" "IP地址"
-
-                          for container_id in $container_ids; do
-                              container_info=$(docker inspect --format '{{ .Name }}{{ range $network, $config := .NetworkSettings.Networks }} {{ $network }} {{ $config.IPAddress }}{{ end }}' "$container_id")
-
-                              container_name=$(echo "$container_info" | awk '{print $1}')
-                              network_info=$(echo "$container_info" | cut -d' ' -f2-)
-
-                              while IFS= read -r line; do
-                                  network_name=$(echo "$line" | awk '{print $1}')
-                                  ip_address=$(echo "$line" | awk '{print $2}')
-
-                                  printf "%-20s %-20s %-15s\n" "$container_name" "$network_name" "$ip_address"
-                              done <<< "$network_info"
-                          done
-
-                          break_end
-                          ;;
-
-                      0)
-                          break  # 跳出循环，退出菜单
-                          ;;
-
-                      *)
-                          break  # 跳出循环，退出菜单
-                          ;;
-                  esac
-              done
+              docker_ps
               ;;
           4)
-              while true; do
-                  clear
-                  send_stats "Docker镜像管理"
-                  echo "Docker镜像列表"
-                  docker image ls
-                  echo ""
-                  echo "镜像操作"
-                  echo "------------------------"
-                  echo "1. 获取指定镜像             3. 删除指定镜像"
-                  echo "2. 更新指定镜像             4. 删除所有镜像"
-                  echo "------------------------"
-                  echo "0. 返回上一级选单"
-                  echo "------------------------"
-                  read -p "请输入你的选择: " sub_choice
-
-                  case $sub_choice in
-                      1)
-                          send_stats "拉取镜像"
-                          read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
-                          for name in $imagenames; do
-                              echo -e "${huang}正在获取镜像: $name${bai}"
-                              docker pull $name
-                          done
-                          ;;
-                      2)
-                          send_stats "更新镜像"
-                          read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
-                          for name in $imagenames; do
-                              echo -e "${huang}正在更新镜像: $name${bai}"
-                              docker pull $name
-                          done
-                          ;;
-                      3)
-                          read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
-                          for name in $imagenames; do
-                              docker rmi -f $name
-                          done
-                          ;;
-                      4)
-                          send_stats "删除所有镜像"
-                          read -p "$(echo -e "${hong}注意: ${bai}确定删除所有镜像吗？(Y/N): ")" choice
-                          case "$choice" in
-                            [Yy])
-                              docker rmi -f $(docker images -q)
-                              ;;
-                            [Nn])
-
-                              ;;
-                            *)
-                              echo "无效的选择，请输入 Y 或 N。"
-                              ;;
-                          esac
-                          ;;
-                      0)
-                          break  # 跳出循环，退出菜单
-                          ;;
-
-                      *)
-                          break  # 跳出循环，退出菜单
-                          ;;
-                  esac
-              done
+              docker_image
               ;;
 
           5)
@@ -8003,6 +8002,36 @@ done
 }
 
 
+k_info() {
+
+send_stats "k命令参考用例"
+echo "无效参数"
+echo "-------------------"
+echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
+echo "以下是k命令参考用例："
+echo "启动脚本            k"
+echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
+echo "卸载软件包          k remove nano wget | k del nano wget | k uninstall nano wget | k 卸载 nano wget"
+echo "更新系统            k update | k 更新"
+echo "清理系统垃圾        k clean | k 清理"
+echo "打开重装系统面板    k dd | k 重装"
+echo "打开bbr3控制面板    k bbr3 | k bbrv3"
+echo "软件启动            k start sshd | k 启动 sshd "
+echo "软件停止            k stop sshd | k 停止 sshd "
+echo "软件重启            k restart sshd | k 重启 sshd "
+echo "软件状态查看        k status sshd | k 状态 sshd "
+echo "软件开机启动        k enable docker | k autostart docke | k 开机启动 docker "
+echo "域名证书申请        k ssl"
+echo "域名证书到期查询    k ssl ps"
+echo "docker容器管理      k docker ps |k docker 容器"
+echo "docker镜像管理      k docker img |k docker 镜像"
+
+}
+
+
+
+
+
 
 
 if [ "$#" -eq 0 ]; then
@@ -8061,35 +8090,37 @@ else
             ;;
 
         ssl)
-            send_stats "快捷证书申请"
-            add_ssl
+           shift
+            if [ "$1" = "ps" ]; then
+                send_stats "查看证书状态"
+                ssl_ps
+            elif [ -z "$1" ]; then
+                add_ssl
+                send_stats "快速申请证书"
+            else
+                k_info
+            fi
             ;;
 
-        sslps)
-            send_stats "查看证书到期情况"
-            ssl_ps
+        docker)
+            shift
+            case $1 in
+                ps|容器)
+                    send_stats "快捷容器管理"
+                    docker_ps
+                    ;;
+                img|镜像)
+                    send_stats "快捷镜像管理"
+                    docker_image
+                    ;;
+                *)
+                    k_info
+                    ;;                    
+            esac
             ;;
 
         *)
-            send_stats "k命令参考用例"
-            echo "无效参数"
-            echo "-------------------"
-            echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
-            echo "以下是k命令参考用例："
-            echo "启动脚本            k"
-            echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
-            echo "卸载软件包          k remove nano wget | k del nano wget | k uninstall nano wget | k 卸载 nano wget"
-            echo "更新系统            k update | k 更新"
-            echo "清理系统垃圾        k clean | k 清理"
-            echo "打开重装系统面板    k dd | k 重装"
-            echo "打开bbr3控制面板    k bbr3 | k bbrv3"
-            echo "软件启动            k start sshd | k 启动 sshd "
-            echo "软件停止            k stop sshd | k 停止 sshd "
-            echo "软件重启            k restart sshd | k 重启 sshd "
-            echo "软件状态查看        k status sshd | k 状态 sshd "
-            echo "软件开机启动        k enable docker | k autostart docke | k 开机启动 docker "
-            echo "域名证书申请        k ssl"
-            echo "域名证书到期查询    k sslps"
+            k_info
             ;;
     esac
 fi
