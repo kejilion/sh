@@ -8002,6 +8002,36 @@ done
 }
 
 
+k_info() {
+
+send_stats "k命令参考用例"
+echo "无效参数"
+echo "-------------------"
+echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
+echo "以下是k命令参考用例："
+echo "启动脚本            k"
+echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
+echo "卸载软件包          k remove nano wget | k del nano wget | k uninstall nano wget | k 卸载 nano wget"
+echo "更新系统            k update | k 更新"
+echo "清理系统垃圾        k clean | k 清理"
+echo "打开重装系统面板    k dd | k 重装"
+echo "打开bbr3控制面板    k bbr3 | k bbrv3"
+echo "软件启动            k start sshd | k 启动 sshd "
+echo "软件停止            k stop sshd | k 停止 sshd "
+echo "软件重启            k restart sshd | k 重启 sshd "
+echo "软件状态查看        k status sshd | k 状态 sshd "
+echo "软件开机启动        k enable docker | k autostart docke | k 开机启动 docker "
+echo "域名证书申请        k ssl"
+echo "域名证书到期查询    k ssl ps"
+echo "docker容器管理      k docker ps |k docker 容器"
+echo "docker镜像管理      k docker img |k docker 镜像"
+
+}
+
+
+
+
+
 
 
 if [ "$#" -eq 0 ]; then
@@ -8060,47 +8090,37 @@ else
             ;;
 
         ssl)
-            send_stats "快捷证书申请"
-            add_ssl
+           shift
+            if [ "$1" = "ps" ]; then
+                send_stats "查看证书状态"
+                ssl_ps
+            elif [ -z "$1" ]; then
+                add_ssl
+                send_stats "快速申请证书"
+            else
+                k_info
+            fi
             ;;
 
-        ssl-ps)
-            send_stats "查看证书到期情况"
-            ssl_ps
-            ;;
-
-        docker-ps|docker-容器)
-            send_stats "快捷容器管理"
-            docker_ps
-            ;;
-
-        docker-img|docker-镜像)
-            send_stats "快捷镜像管理"
-            docker_image
+        docker)
+            shift
+            case $1 in
+                ps|容器)
+                    send_stats "快捷容器管理"
+                    docker_ps
+                    ;;
+                img|镜像)
+                    send_stats "快捷镜像管理"
+                    docker_image
+                    ;;
+                *)
+                    k_info
+                    ;;                    
+            esac
             ;;
 
         *)
-            send_stats "k命令参考用例"
-            echo "无效参数"
-            echo "-------------------"
-            echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
-            echo "以下是k命令参考用例："
-            echo "启动脚本            k"
-            echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
-            echo "卸载软件包          k remove nano wget | k del nano wget | k uninstall nano wget | k 卸载 nano wget"
-            echo "更新系统            k update | k 更新"
-            echo "清理系统垃圾        k clean | k 清理"
-            echo "打开重装系统面板    k dd | k 重装"
-            echo "打开bbr3控制面板    k bbr3 | k bbrv3"
-            echo "软件启动            k start sshd | k 启动 sshd "
-            echo "软件停止            k stop sshd | k 停止 sshd "
-            echo "软件重启            k restart sshd | k 重启 sshd "
-            echo "软件状态查看        k status sshd | k 状态 sshd "
-            echo "软件开机启动        k enable docker | k autostart docke | k 开机启动 docker "
-            echo "域名证书申请        k ssl"
-            echo "域名证书到期查询    k ssl-ps"
-            echo "docker容器管理      k docker-ps | docker-容器"
-            echo "docker镜像管理      k docker-img | docker-镜像"
+            k_info
             ;;
     esac
 fi
