@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.10"
+sh_v="2.9.0"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -4674,27 +4674,121 @@ linux_ldnmp() {
 
     37)
       root_use
-      send_stats "更新LDNMP环境"
+      while true; do
+          clear
+          send_stats "更新LDNMP环境"
+          echo "更新LDNMP环境"
+          echo "------------------------"
+          ldnmp_v
+          echo "1. 更新nginx               2. 更新mysql              3. 更新php              4. 更新redis"
+          echo "------------------------"
+          echo "5. 更新完整环境"
+          echo "------------------------"
+          echo "0. 返回上一级"
+          echo "------------------------"
+          read -p "请输入你的选择: " sub_choice
+          case $sub_choice in
+              1)
+              ldnmp_pods="nginx"
+              send_stats "更新$ldnmp_pods"
+              cd /home/web/
+              docker compose up -d --force-recreate $ldnmp_pods
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker exec $ldnmp_pods chmod -R 777 /var/www/html
+              docker restart $ldnmp_pods > /dev/null 2>&1
+              echo "更新${ldnmp_pods}完成"
 
-        read -p "$(echo -e "${huang}提示: ${bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
-        case "$choice" in
-          [Yy])
-            docker rm -f nginx php php74 mysql redis
-            docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine
+                  ;;
 
-            check_port
-            install_dependency
-            install_docker
-            install_certbot
-            install_ldnmp
+              2)
+              read -p "请输入版本号 （如: 8.0 8.3 8.4 9.0）（回车获取最新版）: " version
+              version=${version:-latest}
+              ldnmp_pods="mysql"
+              send_stats "更新$ldnmp_pods"
+              cd /home/web/
+              cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
+              sed -i "s/image: mysql/image: mysql:${version}/" /home/web/docker-compose.yml
+              docker rm -f $ldnmp_pods
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker compose up -d --force-recreate $ldnmp_pods
+              docker restart $ldnmp_pods
+              cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
+              echo "更新${ldnmp_pods}完成"
 
-            ;;
-          [Nn])
-            ;;
-          *)
-            echo "无效的选择，请输入 Y 或 N。"
-            ;;
-        esac
+                  ;;
+              3)
+              read -p "请输入版本号 （如: 7.4 8.0 8.1 8.2 8.3）（回车获取最新版）: " version
+              version=${version:-8.3}
+              ldnmp_pods="php"
+              send_stats "更新$ldnmp_pods"
+              cd /home/web/
+              cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
+              sed -i "s/image: php:fpm-alpine/image: php:${version}-fpm-alpine/" /home/web/docker-compose.yml
+              docker rm -f $ldnmp_pods
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker compose up -d --force-recreate $ldnmp_pods
+              docker exec $ldnmp_pods chmod -R 777 /var/www/html
+
+              # docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1
+
+              docker exec php apk update
+              curl -sL https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions
+              docker exec php mkdir -p /usr/local/bin/
+              docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
+              docker exec php chmod +x /usr/local/bin/install-php-extensions
+              docker exec php install-php-extensions imagick mysqli pdo_mysql gd intl zip exif bcmath opcache redis
+
+              docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
+              docker exec php sh -c 'echo "post_max_size=50M " > /usr/local/etc/php/conf.d/post.ini' > /dev/null 2>&1
+              docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1
+              docker exec php sh -c 'echo "max_execution_time=1200" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1
+              docker exec php sh -c 'echo "max_input_time=600" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1
+
+              docker restart $ldnmp_pods > /dev/null 2>&1
+              cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
+              echo "更新${ldnmp_pods}完成"
+
+                  ;;
+              4)
+              ldnmp_pods="redis"
+              send_stats "更新$ldnmp_pods"
+              cd /home/web/
+              docker compose up -d --force-recreate $ldnmp_pods
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
+              docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+              docker restart $ldnmp_pods > /dev/null 2>&1
+              echo "更新${ldnmp_pods}完成"
+
+                  ;;
+              5)
+                read -p "$(echo -e "${huang}提示: ${bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
+                case "$choice" in
+                  [Yy])
+                    docker compose down
+                    docker compose down --rmi all
+
+                    check_port
+                    install_dependency
+                    install_docker
+                    install_certbot
+                    install_ldnmp
+                    ;;
+                  *)
+                    ;;
+                esac
+                  ;;
+              0)
+                  break
+                  ;;
+              *)
+                  echo "无效的选择，请重新输入。"
+                  ;;
+          esac
+          break_end
+      done
+
+
       ;;
 
     38)
