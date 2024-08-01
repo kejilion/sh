@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.8.10"
+sh_v="2.9.0"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -2863,22 +2863,22 @@ linux_docker() {
 
                       2)
                           send_stats "启动指定容器"
-                          read -p "请输入容器名: " dockername
+                          read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
                           docker start $dockername
                           ;;
                       3)
                           send_stats "停止指定容器"
-                          read -p "请输入容器名: " dockername
+                          read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
                           docker stop $dockername
                           ;;
                       4)
                           send_stats "删除指定容器"
-                          read -p "请输入容器名: " dockername
+                          read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
                           docker rm -f $dockername
                           ;;
                       5)
                           send_stats "重启指定容器"
-                          read -p "请输入容器名: " dockername
+                          read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
                           docker restart $dockername
                           ;;
                       6)
@@ -2973,18 +2973,25 @@ linux_docker() {
                   case $sub_choice in
                       1)
                           send_stats "拉取镜像"
-                          read -p "请输入镜像名: " dockername
-                          docker pull $dockername
+                          read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
+                          for name in $imagenames; do
+                              echo -e "${huang}正在获取镜像: $name${bai}"
+                              docker pull $name
+                          done
                           ;;
                       2)
                           send_stats "更新镜像"
-                          read -p "请输入镜像名: " dockername
-                          docker pull $dockername
+                          read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
+                          for name in $imagenames; do
+                              echo -e "${huang}正在更新镜像: $name${bai}"
+                              docker pull $name
+                          done
                           ;;
                       3)
-                          send_stats "删除镜像"
-                          read -p "请输入镜像名: " dockername
-                          docker rmi -f $dockername
+                          read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
+                          for name in $imagenames; do
+                              docker rmi -f $name
+                          done
                           ;;
                       4)
                           send_stats "删除所有镜像"
@@ -4667,27 +4674,123 @@ linux_ldnmp() {
 
     37)
       root_use
-      send_stats "更新LDNMP环境"
+      while true; do
+          clear
+          send_stats "更新LDNMP环境"
+          echo "更新LDNMP环境"
+          echo "------------------------"
+          ldnmp_v
+          echo "1. 更新nginx               2. 更新mysql              3. 更新php              4. 更新redis"
+          echo "------------------------"
+          echo "5. 更新完整环境"
+          echo "------------------------"
+          echo "0. 返回上一级"
+          echo "------------------------"
+          read -p "请输入你的选择: " sub_choice
+          case $sub_choice in
+              1)
+              ldnmp_pods="nginx"
+              send_stats "更新$ldnmp_pods"
+              cd /home/web/
+              docker compose up -d --force-recreate $ldnmp_pods
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker exec $ldnmp_pods chmod -R 777 /var/www/html
+              docker restart $ldnmp_pods > /dev/null 2>&1
+              echo "更新${ldnmp_pods}完成"
 
-        read -p "$(echo -e "${huang}提示: ${bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
-        case "$choice" in
-          [Yy])
-            docker rm -f nginx php php74 mysql redis
-            docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine
+                  ;;
 
-            check_port
-            install_dependency
-            install_docker
-            install_certbot
-            install_ldnmp
+              2)
+              ldnmp_pods="mysql"
+              read -p "请输入${ldnmp_pods}版本号 （如: 8.0 8.3 8.4 9.0）（回车获取最新版）: " version
+              version=${version:-latest}
 
-            ;;
-          [Nn])
-            ;;
-          *)
-            echo "无效的选择，请输入 Y 或 N。"
-            ;;
-        esac
+              send_stats "更新$ldnmp_pods"
+              cd /home/web/
+              cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
+              sed -i "s/image: mysql/image: mysql:${version}/" /home/web/docker-compose.yml
+              docker rm -f $ldnmp_pods
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker compose up -d --force-recreate $ldnmp_pods
+              docker restart $ldnmp_pods
+              cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
+              echo "更新${ldnmp_pods}完成"
+
+                  ;;
+              3)
+              ldnmp_pods="php"
+              read -p "请输入${ldnmp_pods}版本号 （如: 7.4 8.0 8.1 8.2 8.3）（回车获取最新版）: " version
+              version=${version:-8.3}
+              send_stats "更新$ldnmp_pods"
+              cd /home/web/
+              cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
+              sed -i "s/image: php:fpm-alpine/image: php:${version}-fpm-alpine/" /home/web/docker-compose.yml
+              docker rm -f $ldnmp_pods
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker compose up -d --force-recreate $ldnmp_pods
+              docker exec $ldnmp_pods chmod -R 777 /var/www/html
+
+              docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1
+
+              docker exec php apk update
+              curl -sL https://hub.gitmirror.com/https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions
+              docker exec php mkdir -p /usr/local/bin/
+              docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
+              docker exec php chmod +x /usr/local/bin/install-php-extensions
+              docker exec php install-php-extensions imagick mysqli pdo_mysql gd intl zip exif bcmath opcache redis
+
+              docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
+              docker exec php sh -c 'echo "post_max_size=50M " > /usr/local/etc/php/conf.d/post.ini' > /dev/null 2>&1
+              docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1
+              docker exec php sh -c 'echo "max_execution_time=1200" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1
+              docker exec php sh -c 'echo "max_input_time=600" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1
+
+              docker restart $ldnmp_pods > /dev/null 2>&1
+              cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
+              echo "更新${ldnmp_pods}完成"
+
+                  ;;
+              4)
+              ldnmp_pods="redis"
+              send_stats "更新$ldnmp_pods"
+              cd /home/web/
+              docker compose up -d --force-recreate $ldnmp_pods
+              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi
+              docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
+              docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+              docker restart $ldnmp_pods > /dev/null 2>&1
+              echo "更新${ldnmp_pods}完成"
+
+                  ;;
+              5)
+                read -p "$(echo -e "${huang}提示: ${bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
+                case "$choice" in
+                  [Yy])
+                    send_stats "完整更新LDNMP环境"
+                    docker compose down
+                    docker compose down --rmi all
+
+                    check_port
+                    install_dependency
+                    install_docker
+                    install_certbot
+                    install_ldnmp
+                    ;;
+                  *)
+                    ;;
+                esac
+                  ;;
+              0)
+                  break
+                  ;;
+              *)
+                  echo "无效的选择，请重新输入。"
+                  ;;
+          esac
+          break_end
+      done
+
+
       ;;
 
     38)
@@ -6090,12 +6193,25 @@ linux_Settings() {
 
       case $sub_choice in
           1)
-              clear
-              read -p "请输入你的快捷按键: " kuaijiejian
-              echo "alias $kuaijiejian='~/kejilion.sh'" >> ~/.bashrc
-              source ~/.bashrc
-              echo "快捷键已设置"
-              send_stats "脚本快捷键已设置"
+              while true; do
+                  clear
+                  read -p "请输入你的快捷按键（输入0退出）: " kuaijiejian
+                  if [ "$kuaijiejian" == "0" ]; then
+                       break_end
+                       linux_Settings
+                  fi
+
+                  sed -i '/alias .*='\''k'\''$/d' ~/.bashrc
+
+                  echo "alias $kuaijiejian='k'" >> ~/.bashrc
+                  sleep 1
+                  source ~/.bashrc
+
+                  echo "快捷键已设置"
+                  send_stats "脚本快捷键已设置"
+                  break_end
+                  linux_Settings
+              done
               ;;
 
           2)
@@ -6123,7 +6239,7 @@ linux_Settings() {
             echo "推荐版本:  3.12    3.11    3.10    3.9    3.8    2.7"
             echo "查询更多版本: https://www.python.org/downloads/"
             echo "------------"
-            read -p "输入你要安装的python版本号 (输入0退出): " py_new_v
+            read -p "输入你要安装的python版本号（输入0退出）: " py_new_v
 
 
             if [[ "$py_new_v" == "0" ]]; then
@@ -6217,7 +6333,7 @@ EOF
                 echo -e "当前的 SSH 端口号是:  ${huang}$current_port ${bai}"
 
                 echo "------------------------"
-                echo "端口号范围1到65535之间的数字。(输入0退出)"
+                echo "端口号范围1到65535之间的数字。（输入0退出）"
 
                 # 提示用户输入新的 SSH 端口号
                 read -p "请输入新的 SSH 端口号: " new_port
@@ -6299,17 +6415,17 @@ EOF
           9)
             root_use
             send_stats "新用户禁用root"
-            # 提示用户输入新用户名
-            read -p "请输入新用户名: " new_username
+            read -p "请输入新用户名（输入0退出）: " new_username
+            if [ "$new_username" == "0" ]; then
+                break_end
+                linux_Settings
+            fi
 
-            # 创建新用户并设置密码
             useradd -m -s /bin/bash "$new_username"
             passwd "$new_username"
 
-            # 赋予新用户sudo权限
             echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
-            # 禁用ROOT用户登录
             passwd -l root
 
             echo "操作已完成。"
@@ -6406,7 +6522,6 @@ EOF
               while true; do
                 root_use
                 send_stats "用户管理"
-                # 显示所有用户、用户权限、用户组和是否在sudoers中
                 echo "用户列表"
                 echo "----------------------------------------------------------------------------"
                 printf "%-24s %-34s %-20s %-10s\n" "用户名" "用户权限" "用户组" "sudo权限"
@@ -6607,11 +6722,10 @@ EOF
 
           17)
           root_use
-          send_stats "高级防火墙管理"
           if dpkg -l | grep -q iptables-persistent; then
             while true; do
-                  echo "防火墙已安装"
-                  send_stats "高级防火墙已安装"
+                  echo "高级防火墙管理"
+                  send_stats "高级防火墙管理"
                   echo "------------------------"
                   iptables -L INPUT
 
@@ -6636,12 +6750,14 @@ EOF
                       sed -i "/COMMIT/i -A INPUT -p tcp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
                       sed -i "/COMMIT/i -A INPUT -p udp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
+                      send_stats "开放指定端口"
 
                           ;;
                       2)
                       read -p "请输入关闭的端口号: " c_port
                       sed -i "/--dport $c_port/d" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
+                      send_stats "关闭指定端口"
                         ;;
 
                       3)
@@ -6660,7 +6776,7 @@ EOF
 COMMIT
 EOF
                       iptables-restore < /etc/iptables/rules.v4
-
+                      send_stats "开放所有端口"
                           ;;
                       4)
                       current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
@@ -6678,31 +6794,34 @@ EOF
 COMMIT
 EOF
                       iptables-restore < /etc/iptables/rules.v4
-
+                      send_stats "关闭所有端口"
                           ;;
 
                       5)
                       read -p "请输入放行的IP: " o_ip
                       sed -i "/COMMIT/i -A INPUT -s $o_ip -j ACCEPT" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
-
+                      send_stats "IP白名单"
                           ;;
 
                       6)
                       read -p "请输入封锁的IP: " c_ip
                       sed -i "/COMMIT/i -A INPUT -s $c_ip -j DROP" /etc/iptables/rules.v4
                       iptables-restore < /etc/iptables/rules.v4
+                      send_stats "IP黑名单"
                           ;;
 
                       7)
-                     read -p "请输入清除的IP: " d_ip
-                     sed -i "/-A INPUT -s $d_ip/d" /etc/iptables/rules.v4
-                     iptables-restore < /etc/iptables/rules.v4
+                      read -p "请输入清除的IP: " d_ip
+                      sed -i "/-A INPUT -s $d_ip/d" /etc/iptables/rules.v4
+                      iptables-restore < /etc/iptables/rules.v4
+                      send_stats "清除指定IP"
                           ;;
 
                       9)
                       remove iptables-persistent
                       rm /etc/iptables/rules.v4
+                      send_stats "卸载防火墙"
                       break
                           ;;
 
@@ -6725,28 +6844,28 @@ EOF
 
           case "$choice" in
             [Yy])
-            if [ -r /etc/os-release ]; then
-                . /etc/os-release
-                if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
-                    echo "当前环境不支持，仅支持Debian和Ubuntu系统"
-                    break_end
-                    linux_Settings
-                fi
-            else
-                echo "无法确定操作系统类型"
-                break
-            fi
+              if [ -r /etc/os-release ]; then
+                  . /etc/os-release
+                  if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
+                      echo "当前环境不支持，仅支持Debian和Ubuntu系统"
+                      break_end
+                      linux_Settings
+                  fi
+              else
+                  echo "无法确定操作系统类型"
+                  break
+              fi
 
-          clear
-          iptables_open
-          remove iptables-persistent ufw
-          rm /etc/iptables/rules.v4
+              clear
+              iptables_open
+              remove iptables-persistent ufw
+              rm /etc/iptables/rules.v4
 
-          apt update -y && apt install -y iptables-persistent
+              apt update -y && apt install -y iptables-persistent
 
-          current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
+              current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
 
-          cat > /etc/iptables/rules.v4 << EOF
+              cat > /etc/iptables/rules.v4 << EOF
 *filter
 :INPUT DROP [0:0]
 :FORWARD DROP [0:0]
@@ -6759,9 +6878,9 @@ EOF
 COMMIT
 EOF
 
-          iptables-restore < /etc/iptables/rules.v4
-          systemctl enable netfilter-persistent
-          echo "防火墙安装完成"
+              iptables-restore < /etc/iptables/rules.v4
+              systemctl enable netfilter-persistent
+              echo "防火墙安装完成"
 
 
               ;;
@@ -6784,7 +6903,7 @@ EOF
               current_hostname=$(hostname)
               echo -e "当前主机名: ${huang}$current_hostname${bai}"
               echo "------------------------"
-              read -p "请输入新的主机名 (输入0退出): " new_hostname
+              read -p "请输入新的主机名（输入0退出）: " new_hostname
               if [ -n "$new_hostname" ] && [ "$new_hostname" != "0" ]; then
                   if [ -f /etc/alpine-release ]; then
                       # Alpine
@@ -7043,7 +7162,7 @@ EOF
               ;;
 
 
-           23)
+          23)
             root_use
             send_stats "限流关机功能"
             while true; do
@@ -7106,7 +7225,6 @@ EOF
                 esac
             done
               ;;
-
 
 
           24)
@@ -7763,7 +7881,7 @@ echo -e "${kjlan}_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
 echo "                                "
-echo -e "${kjlan}科技lion脚本工具箱 v${sh_v} 只为更简单的Linux的使用！"
+echo -e "${kjlan}科技lion脚本工具箱 v$sh_v 只为更简单的Linux的使用！"
 echo -e "适配Ubuntu/Debian/CentOS/Alpine/Kali/Arch/RedHat/Fedora/Alma/Rocky系统"
 echo -e "-输入${huang}k${kjlan}可快速启动此脚本-${bai}"
 echo "------------------------"
