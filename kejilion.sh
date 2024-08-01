@@ -4701,9 +4701,10 @@ linux_ldnmp() {
                   ;;
 
               2)
-              read -p "请输入版本号 （如: 8.0 8.3 8.4 9.0）（回车获取最新版）: " version
-              version=${version:-latest}
               ldnmp_pods="mysql"
+              read -p "请输入${ldnmp_pods}版本号 （如: 8.0 8.3 8.4 9.0）（回车获取最新版）: " version
+              version=${version:-latest}
+
               send_stats "更新$ldnmp_pods"
               cd /home/web/
               cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
@@ -4717,9 +4718,9 @@ linux_ldnmp() {
 
                   ;;
               3)
-              read -p "请输入版本号 （如: 7.4 8.0 8.1 8.2 8.3）（回车获取最新版）: " version
-              version=${version:-8.3}
               ldnmp_pods="php"
+              read -p "请输入${ldnmp_pods}版本号 （如: 7.4 8.0 8.1 8.2 8.3）（回车获取最新版）: " version
+              version=${version:-8.3}
               send_stats "更新$ldnmp_pods"
               cd /home/web/
               cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
