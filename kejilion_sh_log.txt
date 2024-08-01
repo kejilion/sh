@@ -650,5 +650,5 @@ docker管理优化了体验，支持同时操作多个容器和镜像。更方�
 2024-08-01   v2.9.0
 LDNMP建站更新环境模块改版，可以单独为nginx，mysql，php，redis组件更新了。
 LDNMP建站更新环境模块可以切换php，mysql版本了！
-docker管理增加了快捷键  k docker-ps | k docker-img 可以快速打开容器管理和镜像管理。
+docker管理增加了快捷键  k docker ps | k docker img 可以快速打开容器管理和镜像管理。
 ------------------------
