@@ -4766,6 +4766,7 @@ linux_ldnmp() {
                 read -p "$(echo -e "${huang}提示: ${bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
                 case "$choice" in
                   [Yy])
+                    send_stats "完整更新LDNMP环境"
                     docker compose down
                     docker compose down --rmi all
 
