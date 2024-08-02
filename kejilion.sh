@@ -1121,107 +1121,129 @@ fi
 
 }
 
-docker_app() {
-send_stats "搭建$docker_name"
-has_ipv4_has_ipv6
+
+
+check_docker_app() {
+
 if docker inspect "$docker_name" &>/dev/null; then
-    clear
-    echo "$docker_name 已安装，访问地址: "
-    if $has_ipv4; then
-        echo "http:$ipv4_address:$docker_port"
-    fi
-    if $has_ipv6; then
-        echo "http:[$ipv6_address]:$docker_port"
-    fi
-    echo ""
-    echo "应用操作"
-    echo "------------------------"
-    echo "1. 更新应用             2. 卸载应用"
-    echo "------------------------"
-    echo "0. 返回上一级选单"
-    echo "------------------------"
-    read -p "请输入你的选择: " sub_choice
-
-    case $sub_choice in
-        1)
-            clear
-            docker rm -f "$docker_name"
-            docker rmi -f "$docker_img"
-
-            $docker_rum
-            clear
-            echo "$docker_name 已经安装完成"
-            echo "------------------------"
-            echo "您可以使用以下地址访问:"
-            if $has_ipv4; then
-                echo "http:$ipv4_address:$docker_port"
-            fi
-            if $has_ipv6; then
-                echo "http:[$ipv6_address]:$docker_port"
-            fi
-            echo ""
-            $docker_use
-            $docker_passwd
-            ;;
-        2)
-            clear
-            docker rm -f "$docker_name"
-            docker rmi -f "$docker_img"
-            rm -rf "/home/docker/$docker_name"
-            echo "应用已卸载"
-            ;;
-        0)
-            # 跳出循环，退出菜单
-            ;;
-        *)
-            # 跳出循环，退出菜单
-            ;;
-    esac
+    check_docker="${lv}已安装${bai}"
 else
+    check_docker="${hui}未安装${bai}"
+fi
+
+}
+
+
+check_docker_app_install() {
+
+if docker inspect "$docker_name" &>/dev/null; then
+    echo -e "${huang}提示:${bai} 应用已安装，无法再次安装"
+    break_end
+    docker_app
+fi
+
+}
+
+
+check_docker_app_uninstall() {
+
+if docker inspect "$docker_name" &>/dev/null; then
+    :
+else
+    echo -e "${huang}提示:${bai} 应用未安装，无需此操作"
+    break_end
+    docker_app
+fi
+
+}
+
+
+check_docker_app_ip() {
+echo "------------------------"
+echo "访问地址:"
+if $has_ipv4; then
+    echo "http:$ipv4_address:$docker_port"
+fi
+if $has_ipv6; then
+    echo "http:[$ipv6_address]:$docker_port"
+fi
+
+}
+
+
+
+docker_app() {
+send_stats "${docker_name}管理"
+has_ipv4_has_ipv6
+while true; do
     clear
-    echo "安装提示"
+    check_docker_app
+    echo -e "$docker_name $check_docker"
     echo "$docker_describe"
     echo "$docker_url"
+    if docker inspect "$docker_name" &>/dev/null; then
+        check_docker_app_ip
+    fi
     echo ""
-
-    # 提示用户确认安装
-    read -p "确定安装吗？(Y/N): " choice
-    case "$choice" in
-        [Yy])
-            clear
-            # 安装 Docker（请确保有 install_docker 函数）
+    echo "------------------------"
+    echo "1. 安装            2. 更新            3. 卸载"
+    echo "------------------------"
+    echo "0. 返回上一级"
+    echo "------------------------"
+    read -p "请输入你的选择: " choice
+     case $choice in
+        1)
+            check_docker_app_install
             install_docker
             $docker_rum
             clear
             echo "$docker_name 已经安装完成"
-            echo "------------------------"
-            echo "您可以使用以下地址访问:"
-            if $has_ipv4; then
-                echo "http:$ipv4_address:$docker_port"
-            fi
-            if $has_ipv6; then
-                echo "http:[$ipv6_address]:$docker_port"
-            fi
+            check_docker_app_ip
             echo ""
             $docker_use
             $docker_passwd
+            send_stats "安装$docker_name"
             ;;
-        [Nn])
-            # 用户选择不安装
+        2)
+            check_docker_app_uninstall
+            docker rm -f "$docker_name"
+            docker rmi -f "$docker_img"
+
+            $docker_rum
+            clear
+            echo "$docker_name 已经安装完成"
+            check_docker_app_ip
+            echo ""
+            $docker_use
+            $docker_passwd
+            send_stats "更新$docker_name"
+            ;;
+        3)
+            check_docker_app_uninstall
+            docker rm -f "$docker_name"
+            docker rmi -f "$docker_img"
+            rm -rf "/home/docker/$docker_name"
+            echo "应用已卸载"
+            send_stats "卸载$docker_name"
             ;;
         *)
-            # 无效输入
+            break
             ;;
-    esac
-fi
+     esac
+     break_end
+done
+
 
 }
+
+
 
 cluster_python3() {
     cd ~/cluster/
     curl -sS -O https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
     python3 ~/cluster/$py_task
 }
+
 
 tmux_run() {
     # Check if the session already exists
@@ -1438,74 +1460,106 @@ nginx_web_on() {
 
 
 
+
+
+
+
+
+
+
+
+
+check_panel_app() {
+
+if $lujing ; then
+    check_panel="${lv}已安装${bai}"
+else
+    check_panel="${hui}未安装${bai}"
+fi
+
+}
+
+
+check_panel_app_install() {
+
+if $lujing ; then
+    echo -e "${huang}提示:${bai} 应用已安装，无法再次安装"
+    break_end
+    install_panel
+fi
+
+}
+
+
+check_panel_app_uninstall() {
+
+if $lujing ; then
+    :
+else
+    echo -e "${huang}提示:${bai} 应用未安装，无需此操作"
+    break_end
+    install_panel
+fi
+
+}
+
+
+
 install_panel() {
-            send_stats "搭建$panelname "
-            if $lujing ; then
-                clear
-                echo "$panelname 已安装，应用操作"
-                echo ""
-                echo "------------------------"
-                echo "1. 管理$panelname          2. 卸载$panelname"
-                echo "------------------------"
-                echo "0. 返回上一级选单"
-                echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
 
-                case $sub_choice in
-                    1)
-                        clear
-                        $gongneng1
-                        $gongneng1_1
-                        ;;
-                    2)
-                        clear
-                        $gongneng2
-                        $gongneng2_1
-                        $gongneng2_2
-                        ;;
-                    0)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                    *)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                esac
+while true; do
+    clear
+    check_panel_app
+    echo -e "$panelname $check_panel"
+    echo "${panelname}是一款时下流行且强大的运维管理面板。"
+    echo "官网介绍: $panelurl "
+
+    echo ""
+    echo "------------------------"
+    echo "1. 安装            2. 管理            3. 卸载"
+    echo "------------------------"
+    echo "0. 返回上一级"
+    echo "------------------------"
+    read -p "请输入你的选择: " choice
+     case $choice in
+        1)
+            check_panel_app_install
+            iptables_open
+            install wget
+            if grep -q 'Alpine' /etc/issue; then
+                $ubuntu_mingling
+                $ubuntu_mingling2
+            elif command -v dnf &>/dev/null; then
+                $centos_mingling
+                $centos_mingling2
+            elif grep -qi 'Ubuntu' /etc/os-release; then
+                $ubuntu_mingling
+                $ubuntu_mingling2
+            elif grep -qi 'Debian' /etc/os-release; then
+                $ubuntu_mingling
+                $ubuntu_mingling2
             else
-                clear
-                echo "安装提示"
-                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装 $panelname！"
-                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍: $panelurl "
-                echo ""
-
-                read -p "确定安装 $panelname 吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                        iptables_open
-                        install wget
-                        if grep -q 'Alpine' /etc/issue; then
-                            $ubuntu_mingling
-                            $ubuntu_mingling2
-                        elif command -v dnf &>/dev/null; then
-                            $centos_mingling
-                            $centos_mingling2
-                        elif grep -qi 'Ubuntu' /etc/os-release; then
-                            $ubuntu_mingling
-                            $ubuntu_mingling2
-                        elif grep -qi 'Debian' /etc/os-release; then
-                            $ubuntu_mingling
-                            $ubuntu_mingling2
-                        else
-                            echo "Unsupported OS"
-                        fi
-                                                    ;;
-                    [Nn])
-                        ;;
-                    *)
-                        ;;
-                esac
-
+                echo "不支持的系统"
             fi
+
+            ;;
+        2)
+            check_panel_app_uninstall
+            $gongneng1
+            $gongneng1_1
+            ;;
+        3)
+            check_panel_app_uninstall
+            $gongneng2
+            $gongneng2_1
+            $gongneng2_2
+            ;;
+        *)
+            break
+            ;;
+     esac
+     break_end
+done
 
 }
 
@@ -5015,25 +5069,28 @@ linux_panel() {
           7)
             clear
             send_stats "搭建哪吒"
-            clear
-            echo "安装提示"
-            echo "哪吒监控是一款开源、轻量、易用的服务器监控与运维工具"
-            echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
-            echo ""
-            # 提示用户确认安装
-            read -p "确定使用吗？(Y/N): " choice
-            case "$choice" in
-                [Yy])
-                    clear
-                    curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
-                    ./nezha.sh
-                    ;;
-                [Nn])
-                    ;;
-                *)
-                    ;;
-            esac
+            while true; do
+                clear
+                echo "哪吒监控管理"
+                echo "开源、轻量、易用的服务器监控与运维工具"
+                echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
+                echo "------------------------"
+                echo "1. 使用           0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
 
+                case $choice in
+                    1)
+                        curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
+                        ./nezha.sh
+                        ;;
+                    *)
+                        break
+                        ;;
+
+                esac
+                break_end
+            done
               ;;
 
           8)
@@ -5065,133 +5122,115 @@ linux_panel() {
 
           9)
             send_stats "搭建邮局"
-            if docker inspect mailserver &>/dev/null; then
-
-                    clear
-                    echo "poste.io已安装，访问地址: "
-                    yuming=$(cat /home/docker/mail.txt)
-                    echo "https://$yuming"
-                    echo ""
-
-                    echo "应用操作"
-                    echo "------------------------"
-                    echo "1. 更新应用             2. 卸载应用"
-                    echo "------------------------"
-                    echo "0. 返回上一级选单"
-                    echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
-
-                    case $sub_choice in
-                        1)
-                            clear
-                            docker rm -f mailserver
-                            docker rmi -f analogic/poste.io
-
-                            yuming=$(cat /home/docker/mail.txt)
-                            docker run \
-                                --net=host \
-                                -e TZ=Europe/Prague \
-                                -v /home/docker/mail:/data \
-                                --name "mailserver" \
-                                -h "$yuming" \
-                                --restart=always \
-                                -d analogic/poste.io
-
-                            clear
-                            echo "poste.io已经安装完成"
-                            echo "------------------------"
-                            echo "您可以使用以下地址访问poste.io:"
-                            echo "https://$yuming"
-                            echo ""
-                            ;;
-                        2)
-                            clear
-                            docker rm -f mailserver
-                            docker rmi -f analogic/poste.io
-                            rm /home/docker/mail.txt
-                            rm -rf /home/docker/mail
-                            echo "应用已卸载"
-                            ;;
-                        0)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                        *)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                    esac
-            else
-                clear
-                install telnet
+            install telnet
+            docker_name=“mailserver”
+            while true; do
+                check_docker_app
 
                 clear
+                echo -e "邮局服务 $check_docker"
+                echo "poste.io 是一个开源的邮件服务器解决方案，"
+                echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
+
                 echo ""
                 echo "端口检测"
                 port=25
                 timeout=3
-
                 if echo "quit" | timeout $timeout telnet smtp.qq.com $port | grep 'Connected'; then
                   echo -e "${lv}端口 $port 当前可用${bai}"
                 else
                   echo -e "${hong}端口 $port 当前不可用${bai}"
                 fi
-                echo "------------------------"
                 echo ""
 
-
-                echo "安装提示"
-                echo "poste.io一个邮件服务器，确保80和443端口没被占用，确保25端口开放"
-                echo "视频介绍: https://www.bilibili.com/video/BV1LW421P7eB?t=0.1"
-                echo ""
-
-                # 提示用户确认安装
-                read -p "确定安装poste.io吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                    clear
-
-                    read -p "请设置邮箱域名 例如 mail.yuming.com : " yuming
-                    mkdir -p /home/docker      # 递归创建目录
-                    echo "$yuming" > /home/docker/mail.txt  # 写入文件
-                    echo "------------------------"
-                    ip_address
-                    echo "先解析这些DNS记录"
-                    echo "A           mail            $ipv4_address"
-                    echo "CNAME       imap            $yuming"
-                    echo "CNAME       pop             $yuming"
-                    echo "CNAME       smtp            $yuming"
-                    echo "MX          @               $yuming"
-                    echo "TXT         @               v=spf1 mx ~all"
-                    echo "TXT         ?               ?"
-                    echo ""
-                    echo "------------------------"
-                    echo "按任意键继续..."
-                    read -n 1 -s -r -p ""
-
-                    install_docker
-
-                    docker run \
-                        --net=host \
-                        -e TZ=Europe/Prague \
-                        -v /home/docker/mail:/data \
-                        --name "mailserver" \
-                        -h "$yuming" \
-                        --restart=always \
-                        -d analogic/poste.io
-
-                    clear
-                    echo "poste.io已经安装完成"
-                    echo "------------------------"
-                    echo "您可以使用以下地址访问poste.io:"
+                if docker inspect "$docker_name" &>/dev/null; then
+                    yuming=$(cat /home/docker/mail.txt)
+                    echo "访问地址: "
                     echo "https://$yuming"
-                    echo ""
+                fi
+
+                echo "------------------------"
+                echo "1. 安装           2. 更新           3. 卸载"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
+
+                case $choice in
+                    1)
+                        read -p "请设置邮箱域名 例如 mail.yuming.com : " yuming
+                        mkdir -p /home/docker
+                        echo "$yuming" > /home/docker/mail.txt
+                        echo "------------------------"
+                        ip_address
+                        echo "先解析这些DNS记录"
+                        echo "A           mail            $ipv4_address"
+                        echo "CNAME       imap            $yuming"
+                        echo "CNAME       pop             $yuming"
+                        echo "CNAME       smtp            $yuming"
+                        echo "MX          @               $yuming"
+                        echo "TXT         @               v=spf1 mx ~all"
+                        echo "TXT         ?               ?"
+                        echo ""
+                        echo "------------------------"
+                        echo "按任意键继续..."
+                        read -n 1 -s -r -p ""
+
+                        install_docker
+
+                        docker run \
+                            --net=host \
+                            -e TZ=Europe/Prague \
+                            -v /home/docker/mail:/data \
+                            --name "mailserver" \
+                            -h "$yuming" \
+                            --restart=always \
+                            -d analogic/poste.io
+
+                        clear
+                        echo "poste.io已经安装完成"
+                        echo "------------------------"
+                        echo "您可以使用以下地址访问poste.io:"
+                        echo "https://$yuming"
+                        echo ""
 
                         ;;
-                    [Nn])
+
+                    2)
+                        docker rm -f mailserver
+                        docker rmi -f analogic/poste.i
+                        yuming=$(cat /home/docker/mail.txt)
+                        docker run \
+                            --net=host \
+                            -e TZ=Europe/Prague \
+                            -v /home/docker/mail:/data \
+                            --name "mailserver" \
+                            -h "$yuming" \
+                            --restart=always \
+                            -d analogic/poste.i
+                        clear
+                        echo "poste.io已经安装完成"
+                        echo "------------------------"
+                        echo "您可以使用以下地址访问poste.io:"
+                        echo "https://$yuming"
+                        echo ""
                         ;;
+                    3)
+                        docker rm -f mailserver
+                        docker rmi -f analogic/poste.io
+                        rm /home/docker/mail.txt
+                        rm -rf /home/docker/mail
+                        echo "应用已卸载"
+                        ;;
+
                     *)
+                        break
                         ;;
+
                 esac
-            fi
+                break_end
+            done
+
               ;;
 
           10)
@@ -5978,7 +6017,7 @@ linux_panel() {
                 echo "使用 Golang + Vue 开发的开源轻量 Linux 服务器运维管理面板。"
                 echo "官方地址: https://github.com/TheTNB/panel"
                 echo "------------------------"
-                echo "1. 安装          2. 管理         3. 卸载"
+                echo "1. 安装            2. 管理            3. 卸载"
                 echo "------------------------"
                 echo "0. 返回上一级"
                 echo "------------------------"
@@ -5986,15 +6025,12 @@ linux_panel() {
 
                 case $choice in
                     1)
-                        clear
                         HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/install_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/install_panel.sh.checksum.txt && sha256sum -c install_panel.sh.checksum.txt && bash install_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
                         ;;
                     2)
-                        clear
                         panel
                         ;;
                     3)
-                        clear
                         HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh.checksum.txt && sha256sum -c uninstall_panel.sh.checksum.txt && bash uninstall_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
                         ;;
                     *)
