@@ -1162,10 +1162,10 @@ check_docker_app_ip() {
 echo "------------------------"
 echo "访问地址:"
 if $has_ipv4; then
-    echo "http:$ipv4_address:$docker_port"
+    echo "http://$ipv4_address:$docker_port"
 fi
 if $has_ipv6; then
-    echo "http:[$ipv6_address]:$docker_port"
+    echo "http://[$ipv6_address]:$docker_port"
 fi
 
 }
@@ -5243,10 +5243,10 @@ linux_panel() {
                     clear
                     echo "rocket.chat已安装，访问地址: "
                     if $has_ipv4; then
-                        echo "http:$ipv4_address:3897"
+                        echo "http://$ipv4_address:3897"
                     fi
                     if $has_ipv6; then
-                        echo "http:[$ipv6_address]:3897"
+                        echo "http://[$ipv6_address]:3897"
                     fi
                     echo ""
 
@@ -5273,10 +5273,10 @@ linux_panel() {
                             echo "------------------------"
                             echo "多等一会，您可以使用以下地址访问rocket.chat:"
                             if $has_ipv4; then
-                                echo "http:$ipv4_address:3897"
+                                echo "http://$ipv4_address:3897"
                             fi
                             if $has_ipv6; then
-                                echo "http:[$ipv6_address]:3897"
+                                echo "http://[$ipv6_address]:3897"
                             fi
                             echo ""
                             ;;
@@ -5326,10 +5326,10 @@ linux_panel() {
                     echo "------------------------"
                     echo "多等一会，您可以使用以下地址访问rocket.chat:"
                     if $has_ipv4; then
-                        echo "http:$ipv4_address:3897"
+                        echo "http://$ipv4_address:3897"
                     fi
                     if $has_ipv6; then
-                        echo "http:[$ipv6_address]:3897"
+                        echo "http://[$ipv6_address]:3897"
                     fi
                     echo ""
 
@@ -5392,10 +5392,10 @@ linux_panel() {
                     echo "cloudreve已安装，访问地址: "
 
                     if $has_ipv4; then
-                        echo "http:$ipv4_address:5212"
+                        echo "http://$ipv4_address:5212"
                     fi
                     if $has_ipv6; then
-                        echo "http:[$ipv6_address]:5212"
+                        echo "http://[$ipv6_address]:5212"
                     fi
 
                     echo ""
@@ -5427,10 +5427,10 @@ linux_panel() {
                             echo "您可以使用以下地址访问cloudreve:"
 
                             if $has_ipv4; then
-                                echo "http:$ipv4_address:5212"
+                                echo "http://$ipv4_address:5212"
                             fi
                             if $has_ipv6; then
-                                echo "http:[$ipv6_address]:5212"
+                                echo "http://[$ipv6_address]:5212"
                             fi
 
                             sleep 3
@@ -5476,10 +5476,10 @@ linux_panel() {
                     echo "------------------------"
                     echo "您可以使用以下地址访问cloudreve:"
                     if $has_ipv4; then
-                        echo "http:$ipv4_address:5212"
+                        echo "http://$ipv4_address:5212"
                     fi
                     if $has_ipv6; then
-                        echo "http:[$ipv6_address]:5212"
+                        echo "http://[$ipv6_address]:5212"
                     fi
                     sleep 3
                     docker logs cloudreve
@@ -5596,7 +5596,7 @@ linux_panel() {
                     clear
                     echo "雷池已安装，访问地址: "
                     ip_address
-                    echo "http:$ipv4_address:9443"
+                    echo "http://$ipv4_address:9443"
                     echo ""
 
                     echo "应用操作"
@@ -5651,7 +5651,7 @@ linux_panel() {
                     echo "------------------------"
                     echo "您可以使用以下地址访问:"
                     ip_address
-                    echo "http:$ipv4_address:9443"
+                    echo "http://$ipv4_address:9443"
                     docker exec safeline-mgt resetadmin
                     echo ""
 
