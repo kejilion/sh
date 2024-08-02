@@ -1134,30 +1134,6 @@ fi
 }
 
 
-check_docker_app_install() {
-
-if docker inspect "$docker_name" &>/dev/null; then
-    echo -e "${huang}提示:${bai} 应用已安装，无法再次安装"
-    break_end
-    linux_panel
-fi
-
-}
-
-
-check_docker_app_uninstall() {
-
-if docker inspect "$docker_name" &>/dev/null; then
-    :
-else
-    echo -e "${huang}提示:${bai} 应用未安装，无需此操作"
-    break_end
-    linux_panel
-fi
-
-}
-
-
 check_docker_app_ip() {
 echo "------------------------"
 echo "访问地址:"
@@ -1193,7 +1169,6 @@ while true; do
     read -p "请输入你的选择: " choice
      case $choice in
         1)
-            check_docker_app_install
             install_docker
             $docker_rum
             clear
@@ -1205,7 +1180,6 @@ while true; do
             send_stats "安装$docker_name"
             ;;
         2)
-            check_docker_app_uninstall
             docker rm -f "$docker_name"
             docker rmi -f "$docker_img"
 
@@ -1219,7 +1193,6 @@ while true; do
             send_stats "更新$docker_name"
             ;;
         3)
-            check_docker_app_uninstall
             docker rm -f "$docker_name"
             docker rmi -f "$docker_img"
             rm -rf "/home/docker/$docker_name"
@@ -1483,30 +1456,6 @@ fi
 }
 
 
-check_panel_app_install() {
-
-if $lujing ; then
-    echo -e "${huang}提示:${bai} 应用已安装，无法再次安装"
-    break_end
-    install_panel
-fi
-
-}
-
-
-check_panel_app_uninstall() {
-
-if $lujing ; then
-    :
-else
-    echo -e "${huang}提示:${bai} 应用未安装，无需此操作"
-    break_end
-    install_panel
-fi
-
-}
-
-
 
 install_panel() {
 
@@ -1526,7 +1475,6 @@ while true; do
     read -p "请输入你的选择: " choice
      case $choice in
         1)
-            check_panel_app_install
             iptables_open
             install wget
             if grep -q 'Alpine' /etc/issue; then
@@ -1547,12 +1495,10 @@ while true; do
 
             ;;
         2)
-            check_panel_app_uninstall
             $gongneng1
             $gongneng1_1
             ;;
         3)
-            check_panel_app_uninstall
             $gongneng2
             $gongneng2_1
             $gongneng2_2
