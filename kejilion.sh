@@ -1226,6 +1226,9 @@ while true; do
             echo "应用已卸载"
             send_stats "卸载$docker_name"
             ;;
+        0)
+            break
+            ;;
         *)
             break
             ;;
@@ -1553,6 +1556,9 @@ while true; do
             $gongneng2
             $gongneng2_1
             $gongneng2_2
+            ;;
+        0)
+            break
             ;;
         *)
             break
@@ -5084,6 +5090,9 @@ linux_panel() {
                         curl -L https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
                         ./nezha.sh
                         ;;
+                    0)
+                        break
+                        ;;
                     *)
                         break
                         ;;
@@ -5224,6 +5233,9 @@ linux_panel() {
                         echo "应用已卸载"
                         ;;
 
+                    0)
+                        break
+                        ;;
                     *)
                         break
                         ;;
@@ -6033,6 +6045,9 @@ linux_panel() {
                         ;;
                     3)
                         HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh.checksum.txt && sha256sum -c uninstall_panel.sh.checksum.txt && bash uninstall_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
+                        ;;
+                    0)
+                        break
                         ;;
                     *)
                         break
