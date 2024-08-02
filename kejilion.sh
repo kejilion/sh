@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.0"
+sh_v="2.9.1"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -4857,7 +4857,9 @@ linux_panel() {
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
       echo -e "37. MyIP工具箱 ${huang}★${bai}                        38. 小雅alist全家桶"
-      echo "39. Bililive直播录制工具                40. 远程Windows7"
+      echo "39. Bililive直播录制工具                40. 远程Windows10"
+      echo "------------------------"
+      echo "41. 耗子管理面板"
       echo "------------------------"
       echo "51. PVE开小鸡面板"
       echo "------------------------"
@@ -5954,7 +5956,7 @@ linux_panel() {
             docker_rum="docker run -d \
                             --name windows \
                             --cap-add=NET_ADMIN \
-                            -e VERSION=win7 \
+                            -e VERSION=win10 \
                             -e KVM=N \
                             -p 8040:8006 \
                             -p 3389:3389/tcp \
@@ -5966,6 +5968,43 @@ linux_panel() {
             docker_use=""
             docker_passwd=""
             docker_app
+              ;;
+
+          41)
+            send_stats "耗子面板"
+            while true; do
+                clear
+                echo "耗子管理面板"
+                echo "官方地址: https://github.com/TheTNB/panel"
+                echo "------------------------"
+                echo "使用 Golang + Vue 开发的开源轻量 Linux 服务器运维管理面板。"
+                echo "------------------------"
+                echo "1. 安装          2. 管理         3. 卸载"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
+
+                case $choice in
+                    1)
+                        clear
+                        HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/install_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/install_panel.sh.checksum.txt && sha256sum -c install_panel.sh.checksum.txt && bash install_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
+                        ;;
+                    2)
+                        clear
+                        panel
+                        ;;
+                    3)
+                        clear
+                        HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh.checksum.txt && sha256sum -c uninstall_panel.sh.checksum.txt && bash uninstall_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
+                        ;;
+                    *)
+                        break
+                        ;;
+
+                esac
+                break_end
+            done
               ;;
 
 
@@ -8115,7 +8154,7 @@ else
                     ;;
                 *)
                     k_info
-                    ;;                    
+                    ;;
             esac
             ;;
 
