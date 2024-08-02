@@ -5975,9 +5975,8 @@ linux_panel() {
             while true; do
                 clear
                 echo "耗子管理面板"
-                echo "官方地址: https://github.com/TheTNB/panel"
-                echo "------------------------"
                 echo "使用 Golang + Vue 开发的开源轻量 Linux 服务器运维管理面板。"
+                echo "官方地址: https://github.com/TheTNB/panel"
                 echo "------------------------"
                 echo "1. 安装          2. 管理         3. 卸载"
                 echo "------------------------"
