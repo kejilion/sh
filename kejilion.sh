@@ -5122,6 +5122,7 @@ linux_panel() {
 
           9)
             send_stats "搭建邮局"
+            clear
             install telnet
             docker_name=“mailserver”
             while true; do
