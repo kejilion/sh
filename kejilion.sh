@@ -1139,7 +1139,7 @@ check_docker_app_install() {
 if docker inspect "$docker_name" &>/dev/null; then
     echo -e "${huang}提示:${bai} 应用已安装，无法再次安装"
     break_end
-    docker_app
+    linux_panel
 fi
 
 }
@@ -1152,7 +1152,7 @@ if docker inspect "$docker_name" &>/dev/null; then
 else
     echo -e "${huang}提示:${bai} 应用未安装，无需此操作"
     break_end
-    docker_app
+    linux_panel
 fi
 
 }
