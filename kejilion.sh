@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.1"
+sh_v="2.9.2"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -5195,109 +5195,76 @@ linux_panel() {
           10)
             send_stats "搭建聊天"
             has_ipv4_has_ipv6
-
-            if docker inspect rocketchat &>/dev/null; then
-
-                    clear
-                    echo "rocket.chat已安装，访问地址: "
-                    if $has_ipv4; then
-                        echo "http://$ipv4_address:3897"
-                    fi
-                    if $has_ipv6; then
-                        echo "http://[$ipv6_address]:3897"
-                    fi
-                    echo ""
-
-                    echo "应用操作"
-                    echo "------------------------"
-                    echo "1. 更新应用             2. 卸载应用"
-                    echo "------------------------"
-                    echo "0. 返回上一级选单"
-                    echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
-
-                    case $sub_choice in
-                        1)
-                            clear
-                            docker rm -f rocketchat
-                            docker rmi -f rocket.chat:6.3
-
-
-                            docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
-
-                            clear
-                            ip_address
-                            echo "rocket.chat已经安装完成"
-                            echo "------------------------"
-                            echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                            if $has_ipv4; then
-                                echo "http://$ipv4_address:3897"
-                            fi
-                            if $has_ipv6; then
-                                echo "http://[$ipv6_address]:3897"
-                            fi
-                            echo ""
-                            ;;
-                        2)
-                            clear
-                            docker rm -f rocketchat
-                            docker rmi -f rocket.chat
-                            docker rmi -f rocket.chat:6.3
-                            docker rm -f db
-                            docker rmi -f mongo:latest
-                            # docker rmi -f mongo:6
-                            rm -rf /home/docker/mongo
-                            echo "应用已卸载"
-                            ;;
-                        0)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                        *)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                    esac
-            else
+            docker_name=rocketchat
+            docker_port=3897
+            while true; do
+                check_docker_app
                 clear
-                echo "安装提示"
-                echo "rocket.chat国外知名开源多人聊天系统"
+                echo -e "聊天服务 $check_docker"
+                echo "Rocket.Chat 是一个开源的团队通讯平台，支持实时聊天、音视频通话、文件共享等多种功能，"
                 echo "官网介绍: https://www.rocket.chat"
+                if docker inspect "$docker_name" &>/dev/null; then
+                    check_docker_app_ip
+                fi
                 echo ""
 
-                # 提示用户确认安装
-                read -p "确定安装rocket.chat吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                    clear
-                    install_docker
-                    docker run --name db -d --restart=always \
-                        -v /home/docker/mongo/dump:/dump \
-                        mongo:latest --replSet rs5 --oplogSize 256
-                    sleep 1
-                    docker exec -it db mongosh --eval "printjson(rs.initiate())"
-                    sleep 5
-                    docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+                echo "------------------------"
+                echo "1. 安装           2. 更新           3. 卸载"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
 
-                    clear
+                case $choice in
+                    1)
+                        install_docker
+                        docker run --name db -d --restart=always \
+                            -v /home/docker/mongo/dump:/dump \
+                            mongo:latest --replSet rs5 --oplogSize 256
+                        sleep 1
+                        docker exec -it db mongosh --eval "printjson(rs.initiate())"
+                        sleep 5
+                        docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
-                    ip_address
-                    echo "rocket.chat已经安装完成"
-                    echo "------------------------"
-                    echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                    if $has_ipv4; then
-                        echo "http://$ipv4_address:3897"
-                    fi
-                    if $has_ipv6; then
-                        echo "http://[$ipv6_address]:3897"
-                    fi
-                    echo ""
+                        clear
+
+                        ip_address
+                        echo "rocket.chat已经安装完成"
+                        check_docker_app_ip
+                        echo ""
 
                         ;;
-                    [Nn])
+
+                    2)
+                        docker rm -f rocketchat
+                        docker rmi -f rocket.chat:6.3
+                        docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+                        clear
+                        ip_address
+                        echo "rocket.chat已经安装完成"
+                        check_docker_app_ip
+                        echo ""
+                        ;;
+                    3)
+                        docker rm -f rocketchat
+                        docker rmi -f rocket.chat
+                        docker rm -f db
+                        docker rmi -f mongo:latest
+                        rm -rf /home/docker/mongo
+                        echo "应用已卸载"
+
+                        ;;
+
+                    0)
+                        break
                         ;;
                     *)
+                        break
                         ;;
+
                 esac
-            fi
+                break_end
+            done
               ;;
 
 
@@ -5344,113 +5311,79 @@ linux_panel() {
             send_stats "搭建网盘"
             has_ipv4_has_ipv6
 
-            if docker inspect cloudreve &>/dev/null; then
-
-                    clear
-                    echo "cloudreve已安装，访问地址: "
-
-                    if $has_ipv4; then
-                        echo "http://$ipv4_address:5212"
-                    fi
-                    if $has_ipv6; then
-                        echo "http://[$ipv6_address]:5212"
-                    fi
-
-                    echo ""
-
-                    echo "应用操作"
-                    echo "------------------------"
-                    echo "1. 更新应用             2. 卸载应用"
-                    echo "------------------------"
-                    echo "0. 返回上一级选单"
-                    echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
-
-                    case $sub_choice in
-                        1)
-                            clear
-                            docker rm -f cloudreve
-                            docker rmi -f cloudreve/cloudreve:latest
-                            docker rm -f aria2
-                            docker rmi -f p3terx/aria2-pro
-
-                            cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-                            curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
-                            cd /home/docker/cloud/ && docker compose up -d
-
-
-                            clear
-                            echo "cloudreve已经安装完成"
-                            echo "------------------------"
-                            echo "您可以使用以下地址访问cloudreve:"
-
-                            if $has_ipv4; then
-                                echo "http://$ipv4_address:5212"
-                            fi
-                            if $has_ipv6; then
-                                echo "http://[$ipv6_address]:5212"
-                            fi
-
-                            sleep 3
-                            docker logs cloudreve
-                            echo ""
-                            ;;
-                        2)
-                            clear
-                            docker rm -f cloudreve
-                            docker rmi -f cloudreve/cloudreve:latest
-                            docker rm -f aria2
-                            docker rmi -f p3terx/aria2-pro
-                            rm -rf /home/docker/cloud
-                            echo "应用已卸载"
-                            ;;
-                        0)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                        *)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                    esac
-            else
+            docker_name=cloudreve
+            docker_port=5212
+            while true; do
+                check_docker_app
                 clear
-                echo "安装提示"
+                echo -e "网盘服务 $check_docker"
                 echo "cloudreve是一个支持多家云存储的网盘系统"
                 echo "视频介绍: https://www.bilibili.com/video/BV13F4m1c7h7?t=0.1"
+                if docker inspect "$docker_name" &>/dev/null; then
+                    check_docker_app_ip
+                fi
                 echo ""
 
-                # 提示用户确认安装
-                read -p "确定安装cloudreve吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                    clear
-                    install_docker
-                    cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-                    curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
-                    cd /home/docker/cloud/ && docker compose up -d
+                echo "------------------------"
+                echo "1. 安装           2. 更新           3. 卸载"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
 
+                case $choice in
+                    1)
+                        install_docker
+                        cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
+                        curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
+                        cd /home/docker/cloud/ && docker compose up -d
 
-                    clear
-                    echo "cloudreve已经安装完成"
-                    echo "------------------------"
-                    echo "您可以使用以下地址访问cloudreve:"
-                    if $has_ipv4; then
-                        echo "http://$ipv4_address:5212"
-                    fi
-                    if $has_ipv6; then
-                        echo "http://[$ipv6_address]:5212"
-                    fi
-                    sleep 3
-                    docker logs cloudreve
-                    echo ""
+                        clear
+                        echo "cloudreve已经安装完成"
+                        check_docker_app_ip
+                        sleep 3
+                        docker logs cloudreve
+                        echo ""
+
 
                         ;;
-                    [Nn])
+
+                    2)
+                        docker rm -f cloudreve
+                        docker rmi -f cloudreve/cloudreve:latest
+                        docker rm -f aria2
+                        docker rmi -f p3terx/aria2-pro
+                        cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
+                        curl -o /home/docker/cloud/docker-compose.yml https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
+                        cd /home/docker/cloud/ && docker compose up -d
+                        clear
+                        echo "cloudreve已经安装完成"
+                        check_docker_app_ip
+                        sleep 3
+                        docker logs cloudreve
+                        echo ""
+                        ;;
+                    3)
+
+                        docker rm -f cloudreve
+                        docker rmi -f cloudreve/cloudreve:latest
+                        docker rm -f aria2
+                        docker rmi -f p3terx/aria2-pro
+                        rm -rf /home/docker/cloud
+                        echo "应用已卸载"
+
+                        ;;
+
+                    0)
+                        break
                         ;;
                     *)
+                        break
                         ;;
-                esac
-            fi
 
+                esac
+                break_end
+            done
               ;;
 
           14)
@@ -5549,77 +5482,68 @@ linux_panel() {
 
           19)
             send_stats "搭建雷池"
-            if docker inspect safeline-tengine &>/dev/null; then
 
-                    clear
-                    echo "雷池已安装，访问地址: "
-                    ip_address
-                    echo "http://$ipv4_address:9443"
-                    echo ""
-
-                    echo "应用操作"
-                    echo "------------------------"
-                    echo "1. 更新应用             2. 重置用户名密码             3. 卸载应用"
-                    echo "------------------------"
-                    echo "0. 返回上一级选单"
-                    echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
-
-                    case $sub_choice in
-                        1)
-                            clear
-                            bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
-                            docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
-                            echo ""
-                            ;;
-                        2)
-                            clear
-                            docker exec safeline-mgt resetadmin
-                            ;;
-
-                        3)
-                            clear
-                            echo "cd命令到安装目录下执行: docker compose down"
-                            echo ""
-                            ;;
-                        0)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                        *)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                    esac
-            else
+            has_ipv4_has_ipv6
+            docker_name=safeline-mgt
+            docker_port=9443
+            while true; do
+                check_docker_app
                 clear
-                echo "安装提示"
+                echo -e "雷池服务 $check_docker"
                 echo "雷池是长亭科技开发的WAF站点防火墙程序面板，可以反代站点进行自动化防御"
-                echo "80和443端口不能被占用，无法与宝塔，1panel，npm，ldnmp建站共存"
-                echo "视频介绍: https://www.bilibili.com/video/BV1xx4y1k7Xc?t=0.1"
+                echo "视频介绍: https://www.bilibili.com/video/BV1mZ421T74c?t=0.1"
+                if docker inspect "$docker_name" &>/dev/null; then
+                    check_docker_app_ip
+                fi
                 echo ""
 
-                # 提示用户确认安装
-                read -p "确定安装吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                    clear
-                    install_docker
-                    bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
-                    clear
-                    echo "雷池WAF面板已经安装完成"
-                    echo "------------------------"
-                    echo "您可以使用以下地址访问:"
-                    ip_address
-                    echo "http://$ipv4_address:9443"
-                    docker exec safeline-mgt resetadmin
-                    echo ""
+                echo "------------------------"
+                echo "1. 安装           2. 更新           3. 重置密码           4. 卸载"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
+
+                case $choice in
+                    1)
+                        install_docker
+                        bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
+                        clear
+                        echo "雷池WAF面板已经安装完成"
+                        check_docker_app_ip
+                        docker exec safeline-mgt resetadmin
 
                         ;;
-                    [Nn])
+
+                    2)
+                        bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
+                        docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
+                        echo ""
+                        clear
+                        echo "雷池WAF面板已经更新完成"
+                        check_docker_app_ip
+                        ;;
+                    3)
+                        docker exec safeline-mgt resetadmin
+                        ;;
+                    4)
+                        cd /data/safeline 
+                        docker compose down
+                        docker compose down --rmi all
+                        echo "如果你是默认安装目录那现在项目已经卸载。如果你是自定义安装目录你需要到安装目录下自行执行:"
+                        echo "docker compose down && docker compose down --rmi all"
+                        ;;
+
+                    0)
+                        break
                         ;;
                     *)
+                        break
                         ;;
+
                 esac
-            fi
+                break_end
+            done
 
               ;;
 
@@ -6003,7 +5927,6 @@ linux_panel() {
                 break_end
             done
               ;;
-
 
           51)
             clear
