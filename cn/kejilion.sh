@@ -3074,16 +3074,21 @@ linux_docker() {
                       2)
                           send_stats "加入网络"
                           read -p "加入网络名: " dockernetwork
-                          read -p "那些容器加入该网络: " dockername
-                          docker network connect $dockernetwork $dockername
-                          echo ""
+                          read -p "那些容器加入该网络（多个容器名请用空格分隔）: " dockernames
+                          
+                          for dockername in $dockernames; do
+                              docker network connect $dockernetwork $dockername
+                          done                  
                           ;;
                       3)
-                          send_stats "退出网络"
+                          send_stats "加入网络"
                           read -p "退出网络名: " dockernetwork
-                          read -p "那些容器退出该网络: " dockername
-                          docker network disconnect $dockernetwork $dockername
-                          echo ""
+                          read -p "那些容器退出该网络（多个容器名请用空格分隔）: " dockernames
+                          
+                          for dockername in $dockernames; do
+                              docker network disconnect $dockernetwork $dockername
+                          done
+
                           ;;
 
                       4)
@@ -3126,9 +3131,11 @@ linux_docker() {
 
                           ;;
                       2)
-                          send_stats "删除卷"
-                          read -p "输入删除卷名: " dockerjuan
-                          docker volume rm $dockerjuan
+                          read -p "输入删除卷名（多个卷名请用空格分隔）: " dockerjuans
+                          
+                          for dockerjuan in $dockerjuans; do
+                              docker volume rm $dockerjuan
+                          done
 
                           ;;
                       0)
@@ -3141,6 +3148,7 @@ linux_docker() {
                   esac
               done
               ;;
+
           7)
               clear
               send_stats "Docker清理"
