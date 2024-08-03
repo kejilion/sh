@@ -1458,7 +1458,7 @@ fi
 
 
 install_panel() {
-
+send_stats "${panelname}管理"
 while true; do
     clear
     check_panel_app
@@ -1492,16 +1492,18 @@ while true; do
             else
                 echo "不支持的系统"
             fi
-
+            send_stats "${panelname}安装"
             ;;
         2)
             $gongneng1
             $gongneng1_1
+            send_stats "${panelname}管理"
             ;;
         3)
             $gongneng2
             $gongneng2_1
             $gongneng2_2
+            send_stats "${panelname}卸载"
             ;;
         0)
             break
