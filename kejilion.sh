@@ -4815,10 +4815,10 @@ linux_ldnmp() {
         read -p "$(echo -e "${hong}强烈建议：${bai}先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ")" choice
         case "$choice" in
           [Yy])
-            docker rm -f nginx php php74 mysql redis
-            docker rmi nginx nginx:alpine php:fpm php:fpm-alpine php:7.4.33-fpm php:7.4-fpm-alpine mysql redis redis:alpine
+            cd /home/web/
+            docker compose down
+            docker compose down --rmi all
             rm -rf /home/web
-
             ;;
           [Nn])
 
