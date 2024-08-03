@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.1"
+sh_v="2.9.2"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -1121,107 +1121,105 @@ fi
 
 }
 
-docker_app() {
-send_stats "搭建$docker_name"
-has_ipv4_has_ipv6
+
+
+check_docker_app() {
+
 if docker inspect "$docker_name" &>/dev/null; then
-    clear
-    echo "$docker_name 已安装，访问地址: "
-    if $has_ipv4; then
-        echo "http:$ipv4_address:$docker_port"
-    fi
-    if $has_ipv6; then
-        echo "http:[$ipv6_address]:$docker_port"
-    fi
-    echo ""
-    echo "应用操作"
-    echo "------------------------"
-    echo "1. 更新应用             2. 卸载应用"
-    echo "------------------------"
-    echo "0. 返回上一级选单"
-    echo "------------------------"
-    read -p "请输入你的选择: " sub_choice
-
-    case $sub_choice in
-        1)
-            clear
-            docker rm -f "$docker_name"
-            docker rmi -f "$docker_img"
-
-            $docker_rum
-            clear
-            echo "$docker_name 已经安装完成"
-            echo "------------------------"
-            echo "您可以使用以下地址访问:"
-            if $has_ipv4; then
-                echo "http:$ipv4_address:$docker_port"
-            fi
-            if $has_ipv6; then
-                echo "http:[$ipv6_address]:$docker_port"
-            fi
-            echo ""
-            $docker_use
-            $docker_passwd
-            ;;
-        2)
-            clear
-            docker rm -f "$docker_name"
-            docker rmi -f "$docker_img"
-            rm -rf "/home/docker/$docker_name"
-            echo "应用已卸载"
-            ;;
-        0)
-            # 跳出循环，退出菜单
-            ;;
-        *)
-            # 跳出循环，退出菜单
-            ;;
-    esac
+    check_docker="${lv}已安装${bai}"
 else
+    check_docker="${hui}未安装${bai}"
+fi
+
+}
+
+
+check_docker_app_ip() {
+echo "------------------------"
+echo "访问地址:"
+if $has_ipv4; then
+    echo "http://$ipv4_address:$docker_port"
+fi
+if $has_ipv6; then
+    echo "http://[$ipv6_address]:$docker_port"
+fi
+
+}
+
+
+
+docker_app() {
+send_stats "${docker_name}管理"
+has_ipv4_has_ipv6
+while true; do
     clear
-    echo "安装提示"
+    check_docker_app
+    echo -e "$docker_name $check_docker"
     echo "$docker_describe"
     echo "$docker_url"
+    if docker inspect "$docker_name" &>/dev/null; then
+        check_docker_app_ip
+    fi
     echo ""
-
-    # 提示用户确认安装
-    read -p "确定安装吗？(Y/N): " choice
-    case "$choice" in
-        [Yy])
-            clear
-            # 安装 Docker（请确保有 install_docker 函数）
+    echo "------------------------"
+    echo "1. 安装            2. 更新            3. 卸载"
+    echo "------------------------"
+    echo "0. 返回上一级"
+    echo "------------------------"
+    read -p "请输入你的选择: " choice
+     case $choice in
+        1)
             install_docker
             $docker_rum
             clear
             echo "$docker_name 已经安装完成"
-            echo "------------------------"
-            echo "您可以使用以下地址访问:"
-            if $has_ipv4; then
-                echo "http:$ipv4_address:$docker_port"
-            fi
-            if $has_ipv6; then
-                echo "http:[$ipv6_address]:$docker_port"
-            fi
+            check_docker_app_ip
             echo ""
             $docker_use
             $docker_passwd
+            send_stats "安装$docker_name"
             ;;
-        [Nn])
-            # 用户选择不安装
+        2)
+            docker rm -f "$docker_name"
+            docker rmi -f "$docker_img"
+
+            $docker_rum
+            clear
+            echo "$docker_name 已经安装完成"
+            check_docker_app_ip
+            echo ""
+            $docker_use
+            $docker_passwd
+            send_stats "更新$docker_name"
+            ;;
+        3)
+            docker rm -f "$docker_name"
+            docker rmi -f "$docker_img"
+            rm -rf "/home/docker/$docker_name"
+            echo "应用已卸载"
+            send_stats "卸载$docker_name"
+            ;;
+        0)
+            break
             ;;
         *)
-            # 无效输入
+            break
             ;;
-    esac
-fi
+     esac
+     break_end
+done
+
 
 }
+
+
 
 cluster_python3() {
     cd ~/cluster/
     curl -sS -O https://raw.gitmirror.com/kejilion/python-for-vps/main/cluster/$py_task
     python3 ~/cluster/$py_task
 }
+
 
 tmux_run() {
     # Check if the session already exists
@@ -1438,74 +1436,82 @@ nginx_web_on() {
 
 
 
+
+
+
+
+
+
+
+
+
+check_panel_app() {
+
+if $lujing ; then
+    check_panel="${lv}已安装${bai}"
+else
+    check_panel="${hui}未安装${bai}"
+fi
+
+}
+
+
+
 install_panel() {
-            send_stats "搭建$panelname "
-            if $lujing ; then
-                clear
-                echo "$panelname 已安装，应用操作"
-                echo ""
-                echo "------------------------"
-                echo "1. 管理$panelname          2. 卸载$panelname"
-                echo "------------------------"
-                echo "0. 返回上一级选单"
-                echo "------------------------"
-                read -p "请输入你的选择: " sub_choice
 
-                case $sub_choice in
-                    1)
-                        clear
-                        $gongneng1
-                        $gongneng1_1
-                        ;;
-                    2)
-                        clear
-                        $gongneng2
-                        $gongneng2_1
-                        $gongneng2_2
-                        ;;
-                    0)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                    *)
-                        break  # 跳出循环，退出菜单
-                        ;;
-                esac
+while true; do
+    clear
+    check_panel_app
+    echo -e "$panelname $check_panel"
+    echo "${panelname}是一款时下流行且强大的运维管理面板。"
+    echo "官网介绍: $panelurl "
+
+    echo ""
+    echo "------------------------"
+    echo "1. 安装            2. 管理            3. 卸载"
+    echo "------------------------"
+    echo "0. 返回上一级"
+    echo "------------------------"
+    read -p "请输入你的选择: " choice
+     case $choice in
+        1)
+            iptables_open
+            install wget
+            if grep -q 'Alpine' /etc/issue; then
+                $ubuntu_mingling
+                $ubuntu_mingling2
+            elif command -v dnf &>/dev/null; then
+                $centos_mingling
+                $centos_mingling2
+            elif grep -qi 'Ubuntu' /etc/os-release; then
+                $ubuntu_mingling
+                $ubuntu_mingling2
+            elif grep -qi 'Debian' /etc/os-release; then
+                $ubuntu_mingling
+                $ubuntu_mingling2
             else
-                clear
-                echo "安装提示"
-                echo "如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装 $panelname！"
-                echo "会根据系统自动安装，支持Debian，Ubuntu，Centos"
-                echo "官网介绍: $panelurl "
-                echo ""
-
-                read -p "确定安装 $panelname 吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                        iptables_open
-                        install wget
-                        if grep -q 'Alpine' /etc/issue; then
-                            $ubuntu_mingling
-                            $ubuntu_mingling2
-                        elif command -v dnf &>/dev/null; then
-                            $centos_mingling
-                            $centos_mingling2
-                        elif grep -qi 'Ubuntu' /etc/os-release; then
-                            $ubuntu_mingling
-                            $ubuntu_mingling2
-                        elif grep -qi 'Debian' /etc/os-release; then
-                            $ubuntu_mingling
-                            $ubuntu_mingling2
-                        else
-                            echo "Unsupported OS"
-                        fi
-                                                    ;;
-                    [Nn])
-                        ;;
-                    *)
-                        ;;
-                esac
-
+                echo "不支持的系统"
             fi
+
+            ;;
+        2)
+            $gongneng1
+            $gongneng1_1
+            ;;
+        3)
+            $gongneng2
+            $gongneng2_1
+            $gongneng2_2
+            ;;
+        0)
+            break
+            ;;
+        *)
+            break
+            ;;
+     esac
+     break_end
+done
 
 }
 
@@ -5015,25 +5021,31 @@ linux_panel() {
           7)
             clear
             send_stats "搭建哪吒"
-            clear
-            echo "安装提示"
-            echo "哪吒监控是一款开源、轻量、易用的服务器监控与运维工具"
-            echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
-            echo ""
-            # 提示用户确认安装
-            read -p "确定使用吗？(Y/N): " choice
-            case "$choice" in
-                [Yy])
-                    clear
-                    curl -L https://raw.gitmirror.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
-                    ./nezha.sh
-                    ;;
-                [Nn])
-                    ;;
-                *)
-                    ;;
-            esac
+            while true; do
+                clear
+                echo "哪吒监控管理"
+                echo "开源、轻量、易用的服务器监控与运维工具"
+                echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
+                echo "------------------------"
+                echo "1. 使用           0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
 
+                case $choice in
+                    1)
+                        curl -L https://raw.gitmirror.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
+                        ./nezha.sh
+                        ;;
+                    0)
+                        break
+                        ;;
+                    *)
+                        break
+                        ;;
+
+                esac
+                break_end
+            done
               ;;
 
           8)
@@ -5065,241 +5077,194 @@ linux_panel() {
 
           9)
             send_stats "搭建邮局"
-            if docker inspect mailserver &>/dev/null; then
-
-                    clear
-                    echo "poste.io已安装，访问地址: "
-                    yuming=$(cat /home/docker/mail.txt)
-                    echo "https://$yuming"
-                    echo ""
-
-                    echo "应用操作"
-                    echo "------------------------"
-                    echo "1. 更新应用             2. 卸载应用"
-                    echo "------------------------"
-                    echo "0. 返回上一级选单"
-                    echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
-
-                    case $sub_choice in
-                        1)
-                            clear
-                            docker rm -f mailserver
-                            docker rmi -f analogic/poste.io
-
-                            yuming=$(cat /home/docker/mail.txt)
-                            docker run \
-                                --net=host \
-                                -e TZ=Europe/Prague \
-                                -v /home/docker/mail:/data \
-                                --name "mailserver" \
-                                -h "$yuming" \
-                                --restart=always \
-                                -d analogic/poste.io
-
-                            clear
-                            echo "poste.io已经安装完成"
-                            echo "------------------------"
-                            echo "您可以使用以下地址访问poste.io:"
-                            echo "https://$yuming"
-                            echo ""
-                            ;;
-                        2)
-                            clear
-                            docker rm -f mailserver
-                            docker rmi -f analogic/poste.io
-                            rm /home/docker/mail.txt
-                            rm -rf /home/docker/mail
-                            echo "应用已卸载"
-                            ;;
-                        0)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                        *)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                    esac
-            else
-                clear
-                install telnet
+            clear
+            install telnet
+            docker_name=“mailserver”
+            while true; do
+                check_docker_app
 
                 clear
+                echo -e "邮局服务 $check_docker"
+                echo "poste.io 是一个开源的邮件服务器解决方案，"
+                echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
+
                 echo ""
                 echo "端口检测"
                 port=25
                 timeout=3
-
                 if echo "quit" | timeout $timeout telnet smtp.qq.com $port | grep 'Connected'; then
                   echo -e "${lv}端口 $port 当前可用${bai}"
                 else
                   echo -e "${hong}端口 $port 当前不可用${bai}"
                 fi
-                echo "------------------------"
                 echo ""
 
-
-                echo "安装提示"
-                echo "poste.io一个邮件服务器，确保80和443端口没被占用，确保25端口开放"
-                echo "视频介绍: https://www.bilibili.com/video/BV1LW421P7eB?t=0.1"
-                echo ""
-
-                # 提示用户确认安装
-                read -p "确定安装poste.io吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                    clear
-
-                    read -p "请设置邮箱域名 例如 mail.yuming.com : " yuming
-                    mkdir -p /home/docker      # 递归创建目录
-                    echo "$yuming" > /home/docker/mail.txt  # 写入文件
-                    echo "------------------------"
-                    ip_address
-                    echo "先解析这些DNS记录"
-                    echo "A           mail            $ipv4_address"
-                    echo "CNAME       imap            $yuming"
-                    echo "CNAME       pop             $yuming"
-                    echo "CNAME       smtp            $yuming"
-                    echo "MX          @               $yuming"
-                    echo "TXT         @               v=spf1 mx ~all"
-                    echo "TXT         ?               ?"
-                    echo ""
-                    echo "------------------------"
-                    echo "按任意键继续..."
-                    read -n 1 -s -r -p ""
-
-                    install_docker
-
-                    docker run \
-                        --net=host \
-                        -e TZ=Europe/Prague \
-                        -v /home/docker/mail:/data \
-                        --name "mailserver" \
-                        -h "$yuming" \
-                        --restart=always \
-                        -d analogic/poste.io
-
-                    clear
-                    echo "poste.io已经安装完成"
-                    echo "------------------------"
-                    echo "您可以使用以下地址访问poste.io:"
+                if docker inspect "$docker_name" &>/dev/null; then
+                    yuming=$(cat /home/docker/mail.txt)
+                    echo "访问地址: "
                     echo "https://$yuming"
-                    echo ""
+                fi
+
+                echo "------------------------"
+                echo "1. 安装           2. 更新           3. 卸载"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
+
+                case $choice in
+                    1)
+                        read -p "请设置邮箱域名 例如 mail.yuming.com : " yuming
+                        mkdir -p /home/docker
+                        echo "$yuming" > /home/docker/mail.txt
+                        echo "------------------------"
+                        ip_address
+                        echo "先解析这些DNS记录"
+                        echo "A           mail            $ipv4_address"
+                        echo "CNAME       imap            $yuming"
+                        echo "CNAME       pop             $yuming"
+                        echo "CNAME       smtp            $yuming"
+                        echo "MX          @               $yuming"
+                        echo "TXT         @               v=spf1 mx ~all"
+                        echo "TXT         ?               ?"
+                        echo ""
+                        echo "------------------------"
+                        echo "按任意键继续..."
+                        read -n 1 -s -r -p ""
+
+                        install_docker
+
+                        docker run \
+                            --net=host \
+                            -e TZ=Europe/Prague \
+                            -v /home/docker/mail:/data \
+                            --name "mailserver" \
+                            -h "$yuming" \
+                            --restart=always \
+                            -d analogic/poste.io
+
+                        clear
+                        echo "poste.io已经安装完成"
+                        echo "------------------------"
+                        echo "您可以使用以下地址访问poste.io:"
+                        echo "https://$yuming"
+                        echo ""
 
                         ;;
-                    [Nn])
+
+                    2)
+                        docker rm -f mailserver
+                        docker rmi -f analogic/poste.i
+                        yuming=$(cat /home/docker/mail.txt)
+                        docker run \
+                            --net=host \
+                            -e TZ=Europe/Prague \
+                            -v /home/docker/mail:/data \
+                            --name "mailserver" \
+                            -h "$yuming" \
+                            --restart=always \
+                            -d analogic/poste.i
+                        clear
+                        echo "poste.io已经安装完成"
+                        echo "------------------------"
+                        echo "您可以使用以下地址访问poste.io:"
+                        echo "https://$yuming"
+                        echo ""
+                        ;;
+                    3)
+                        docker rm -f mailserver
+                        docker rmi -f analogic/poste.io
+                        rm /home/docker/mail.txt
+                        rm -rf /home/docker/mail
+                        echo "应用已卸载"
+                        ;;
+
+                    0)
+                        break
                         ;;
                     *)
+                        break
                         ;;
+
                 esac
-            fi
+                break_end
+            done
+
               ;;
 
           10)
             send_stats "搭建聊天"
             has_ipv4_has_ipv6
-
-            if docker inspect rocketchat &>/dev/null; then
-
-                    clear
-                    echo "rocket.chat已安装，访问地址: "
-                    if $has_ipv4; then
-                        echo "http:$ipv4_address:3897"
-                    fi
-                    if $has_ipv6; then
-                        echo "http:[$ipv6_address]:3897"
-                    fi
-                    echo ""
-
-                    echo "应用操作"
-                    echo "------------------------"
-                    echo "1. 更新应用             2. 卸载应用"
-                    echo "------------------------"
-                    echo "0. 返回上一级选单"
-                    echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
-
-                    case $sub_choice in
-                        1)
-                            clear
-                            docker rm -f rocketchat
-                            docker rmi -f rocket.chat:6.3
-
-
-                            docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
-
-                            clear
-                            ip_address
-                            echo "rocket.chat已经安装完成"
-                            echo "------------------------"
-                            echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                            if $has_ipv4; then
-                                echo "http:$ipv4_address:3897"
-                            fi
-                            if $has_ipv6; then
-                                echo "http:[$ipv6_address]:3897"
-                            fi
-                            echo ""
-                            ;;
-                        2)
-                            clear
-                            docker rm -f rocketchat
-                            docker rmi -f rocket.chat
-                            docker rmi -f rocket.chat:6.3
-                            docker rm -f db
-                            docker rmi -f mongo:latest
-                            # docker rmi -f mongo:6
-                            rm -rf /home/docker/mongo
-                            echo "应用已卸载"
-                            ;;
-                        0)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                        *)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                    esac
-            else
+            docker_name=rocketchat
+            docker_port=3897
+            while true; do
+                check_docker_app
                 clear
-                echo "安装提示"
-                echo "rocket.chat国外知名开源多人聊天系统"
+                echo -e "聊天服务 $check_docker"
+                echo "Rocket.Chat 是一个开源的团队通讯平台，支持实时聊天、音视频通话、文件共享等多种功能，"
                 echo "官网介绍: https://www.rocket.chat"
+                if docker inspect "$docker_name" &>/dev/null; then
+                    check_docker_app_ip
+                fi
                 echo ""
 
-                # 提示用户确认安装
-                read -p "确定安装rocket.chat吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                    clear
-                    install_docker
-                    docker run --name db -d --restart=always \
-                        -v /home/docker/mongo/dump:/dump \
-                        mongo:latest --replSet rs5 --oplogSize 256
-                    sleep 1
-                    docker exec -it db mongosh --eval "printjson(rs.initiate())"
-                    sleep 5
-                    docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+                echo "------------------------"
+                echo "1. 安装           2. 更新           3. 卸载"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
 
-                    clear
+                case $choice in
+                    1)
+                        install_docker
+                        docker run --name db -d --restart=always \
+                            -v /home/docker/mongo/dump:/dump \
+                            mongo:latest --replSet rs5 --oplogSize 256
+                        sleep 1
+                        docker exec -it db mongosh --eval "printjson(rs.initiate())"
+                        sleep 5
+                        docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
-                    ip_address
-                    echo "rocket.chat已经安装完成"
-                    echo "------------------------"
-                    echo "多等一会，您可以使用以下地址访问rocket.chat:"
-                    if $has_ipv4; then
-                        echo "http:$ipv4_address:3897"
-                    fi
-                    if $has_ipv6; then
-                        echo "http:[$ipv6_address]:3897"
-                    fi
-                    echo ""
+                        clear
+
+                        ip_address
+                        echo "rocket.chat已经安装完成"
+                        check_docker_app_ip
+                        echo ""
 
                         ;;
-                    [Nn])
+
+                    2)
+                        docker rm -f rocketchat
+                        docker rmi -f rocket.chat:6.3
+                        docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+                        clear
+                        ip_address
+                        echo "rocket.chat已经安装完成"
+                        check_docker_app_ip
+                        echo ""
+                        ;;
+                    3)
+                        docker rm -f rocketchat
+                        docker rmi -f rocket.chat
+                        docker rm -f db
+                        docker rmi -f mongo:latest
+                        rm -rf /home/docker/mongo
+                        echo "应用已卸载"
+
+                        ;;
+
+                    0)
+                        break
                         ;;
                     *)
+                        break
                         ;;
+
                 esac
-            fi
+                break_end
+            done
               ;;
 
 
@@ -5346,113 +5311,79 @@ linux_panel() {
             send_stats "搭建网盘"
             has_ipv4_has_ipv6
 
-            if docker inspect cloudreve &>/dev/null; then
-
-                    clear
-                    echo "cloudreve已安装，访问地址: "
-
-                    if $has_ipv4; then
-                        echo "http:$ipv4_address:5212"
-                    fi
-                    if $has_ipv6; then
-                        echo "http:[$ipv6_address]:5212"
-                    fi
-
-                    echo ""
-
-                    echo "应用操作"
-                    echo "------------------------"
-                    echo "1. 更新应用             2. 卸载应用"
-                    echo "------------------------"
-                    echo "0. 返回上一级选单"
-                    echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
-
-                    case $sub_choice in
-                        1)
-                            clear
-                            docker rm -f cloudreve
-                            docker rmi -f cloudreve/cloudreve:latest
-                            docker rm -f aria2
-                            docker rmi -f p3terx/aria2-pro
-
-                            cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-                            curl -o /home/docker/cloud/docker-compose.yml https://raw.gitmirror.com/kejilion/docker/main/cloudreve-docker-compose.yml
-                            cd /home/docker/cloud/ && docker compose up -d
-
-
-                            clear
-                            echo "cloudreve已经安装完成"
-                            echo "------------------------"
-                            echo "您可以使用以下地址访问cloudreve:"
-
-                            if $has_ipv4; then
-                                echo "http:$ipv4_address:5212"
-                            fi
-                            if $has_ipv6; then
-                                echo "http:[$ipv6_address]:5212"
-                            fi
-
-                            sleep 3
-                            docker logs cloudreve
-                            echo ""
-                            ;;
-                        2)
-                            clear
-                            docker rm -f cloudreve
-                            docker rmi -f cloudreve/cloudreve:latest
-                            docker rm -f aria2
-                            docker rmi -f p3terx/aria2-pro
-                            rm -rf /home/docker/cloud
-                            echo "应用已卸载"
-                            ;;
-                        0)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                        *)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                    esac
-            else
+            docker_name=cloudreve
+            docker_port=5212
+            while true; do
+                check_docker_app
                 clear
-                echo "安装提示"
+                echo -e "网盘服务 $check_docker"
                 echo "cloudreve是一个支持多家云存储的网盘系统"
                 echo "视频介绍: https://www.bilibili.com/video/BV13F4m1c7h7?t=0.1"
+                if docker inspect "$docker_name" &>/dev/null; then
+                    check_docker_app_ip
+                fi
                 echo ""
 
-                # 提示用户确认安装
-                read -p "确定安装cloudreve吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                    clear
-                    install_docker
-                    cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-                    curl -o /home/docker/cloud/docker-compose.yml https://raw.gitmirror.com/kejilion/docker/main/cloudreve-docker-compose.yml
-                    cd /home/docker/cloud/ && docker compose up -d
+                echo "------------------------"
+                echo "1. 安装           2. 更新           3. 卸载"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
 
+                case $choice in
+                    1)
+                        install_docker
+                        cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
+                        curl -o /home/docker/cloud/docker-compose.yml https://raw.gitmirror.com/kejilion/docker/main/cloudreve-docker-compose.yml
+                        cd /home/docker/cloud/ && docker compose up -d
 
-                    clear
-                    echo "cloudreve已经安装完成"
-                    echo "------------------------"
-                    echo "您可以使用以下地址访问cloudreve:"
-                    if $has_ipv4; then
-                        echo "http:$ipv4_address:5212"
-                    fi
-                    if $has_ipv6; then
-                        echo "http:[$ipv6_address]:5212"
-                    fi
-                    sleep 3
-                    docker logs cloudreve
-                    echo ""
+                        clear
+                        echo "cloudreve已经安装完成"
+                        check_docker_app_ip
+                        sleep 3
+                        docker logs cloudreve
+                        echo ""
+
 
                         ;;
-                    [Nn])
+
+                    2)
+                        docker rm -f cloudreve
+                        docker rmi -f cloudreve/cloudreve:latest
+                        docker rm -f aria2
+                        docker rmi -f p3terx/aria2-pro
+                        cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
+                        curl -o /home/docker/cloud/docker-compose.yml https://raw.gitmirror.com/kejilion/docker/main/cloudreve-docker-compose.yml
+                        cd /home/docker/cloud/ && docker compose up -d
+                        clear
+                        echo "cloudreve已经安装完成"
+                        check_docker_app_ip
+                        sleep 3
+                        docker logs cloudreve
+                        echo ""
+                        ;;
+                    3)
+
+                        docker rm -f cloudreve
+                        docker rmi -f cloudreve/cloudreve:latest
+                        docker rm -f aria2
+                        docker rmi -f p3terx/aria2-pro
+                        rm -rf /home/docker/cloud
+                        echo "应用已卸载"
+
+                        ;;
+
+                    0)
+                        break
                         ;;
                     *)
+                        break
                         ;;
-                esac
-            fi
 
+                esac
+                break_end
+            done
               ;;
 
           14)
@@ -5551,77 +5482,68 @@ linux_panel() {
 
           19)
             send_stats "搭建雷池"
-            if docker inspect safeline-tengine &>/dev/null; then
 
-                    clear
-                    echo "雷池已安装，访问地址: "
-                    ip_address
-                    echo "http:$ipv4_address:9443"
-                    echo ""
-
-                    echo "应用操作"
-                    echo "------------------------"
-                    echo "1. 更新应用             2. 重置用户名密码             3. 卸载应用"
-                    echo "------------------------"
-                    echo "0. 返回上一级选单"
-                    echo "------------------------"
-                    read -p "请输入你的选择: " sub_choice
-
-                    case $sub_choice in
-                        1)
-                            clear
-                            bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
-                            docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
-                            echo ""
-                            ;;
-                        2)
-                            clear
-                            docker exec safeline-mgt resetadmin
-                            ;;
-
-                        3)
-                            clear
-                            echo "cd命令到安装目录下执行: docker compose down"
-                            echo ""
-                            ;;
-                        0)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                        *)
-                            break  # 跳出循环，退出菜单
-                            ;;
-                    esac
-            else
+            has_ipv4_has_ipv6
+            docker_name=safeline-mgt
+            docker_port=9443
+            while true; do
+                check_docker_app
                 clear
-                echo "安装提示"
+                echo -e "雷池服务 $check_docker"
                 echo "雷池是长亭科技开发的WAF站点防火墙程序面板，可以反代站点进行自动化防御"
-                echo "80和443端口不能被占用，无法与宝塔，1panel，npm，ldnmp建站共存"
-                echo "视频介绍: https://www.bilibili.com/video/BV1xx4y1k7Xc?t=0.1"
+                echo "视频介绍: https://www.bilibili.com/video/BV1mZ421T74c?t=0.1"
+                if docker inspect "$docker_name" &>/dev/null; then
+                    check_docker_app_ip
+                fi
                 echo ""
 
-                # 提示用户确认安装
-                read -p "确定安装吗？(Y/N): " choice
-                case "$choice" in
-                    [Yy])
-                    clear
-                    install_docker
-                    bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
-                    clear
-                    echo "雷池WAF面板已经安装完成"
-                    echo "------------------------"
-                    echo "您可以使用以下地址访问:"
-                    ip_address
-                    echo "http:$ipv4_address:9443"
-                    docker exec safeline-mgt resetadmin
-                    echo ""
+                echo "------------------------"
+                echo "1. 安装           2. 更新           3. 重置密码           4. 卸载"
+                echo "------------------------"
+                echo "0. 返回上一级"
+                echo "------------------------"
+                read -p "输入你的选择: " choice
+
+                case $choice in
+                    1)
+                        install_docker
+                        bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
+                        clear
+                        echo "雷池WAF面板已经安装完成"
+                        check_docker_app_ip
+                        docker exec safeline-mgt resetadmin
 
                         ;;
-                    [Nn])
+
+                    2)
+                        bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
+                        docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
+                        echo ""
+                        clear
+                        echo "雷池WAF面板已经更新完成"
+                        check_docker_app_ip
+                        ;;
+                    3)
+                        docker exec safeline-mgt resetadmin
+                        ;;
+                    4)
+                        cd /data/safeline 
+                        docker compose down
+                        docker compose down --rmi all
+                        echo "如果你是默认安装目录那现在项目已经卸载。如果你是自定义安装目录你需要到安装目录下自行执行:"
+                        echo "docker compose down && docker compose down --rmi all"
+                        ;;
+
+                    0)
+                        break
                         ;;
                     *)
+                        break
                         ;;
+
                 esac
-            fi
+                break_end
+            done
 
               ;;
 
@@ -5978,7 +5900,7 @@ linux_panel() {
                 echo "使用 Golang + Vue 开发的开源轻量 Linux 服务器运维管理面板。"
                 echo "官方地址: https://hub.gitmirror.com/https://github.com/TheTNB/panel"
                 echo "------------------------"
-                echo "1. 安装          2. 管理         3. 卸载"
+                echo "1. 安装            2. 管理            3. 卸载"
                 echo "------------------------"
                 echo "0. 返回上一级"
                 echo "------------------------"
@@ -5986,16 +5908,16 @@ linux_panel() {
 
                 case $choice in
                     1)
-                        clear
                         HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/install_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/install_panel.sh.checksum.txt && sha256sum -c install_panel.sh.checksum.txt && bash install_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
                         ;;
                     2)
-                        clear
                         panel
                         ;;
                     3)
-                        clear
                         HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh.checksum.txt && sha256sum -c uninstall_panel.sh.checksum.txt && bash uninstall_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
+                        ;;
+                    0)
+                        break
                         ;;
                     *)
                         break
@@ -6005,7 +5927,6 @@ linux_panel() {
                 break_end
             done
               ;;
-
 
           51)
             clear
