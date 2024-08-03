@@ -1498,7 +1498,7 @@ while true; do
         2)
             $gongneng1
             $gongneng1_1
-            send_stats "${panelname}管理"
+            send_stats "${panelname}控制"
             ;;
         3)
             $gongneng2
