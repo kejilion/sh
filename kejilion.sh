@@ -6411,9 +6411,9 @@ EOF
                 ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
                 if [ "$ipv6_disabled" -eq 1 ]; then
-                    echo "当前网络优先级设置: IPv4 优先"
+                    echo -e "当前网络优先级设置: ${huang}IPv4${bai} 优先"
                 else
-                    echo "当前网络优先级设置: IPv6 优先"
+                    echo -e "当前网络优先级设置: ${huang}IPv6${bai} 优先"
                 fi
                 echo ""
                 echo "------------------------"
