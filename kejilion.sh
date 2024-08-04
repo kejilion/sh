@@ -1796,7 +1796,9 @@ dd_xitong() {
 
           while true; do
             root_use
-            echo "请备份数据，将为你重装系统，预计花费15分钟。"
+            echo "重装系统"
+            echo "--------------------------------"
+            echo -e "${hong}注意: ${bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
             echo -e "${hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${bai} "
             echo "------------------------"
             echo "1. Debian 12                  2. Debian 11"
@@ -3460,7 +3462,9 @@ linux_Oracle() {
 
           3)
           clear
-          echo "请备份数据，将为你重装系统，预计花费15分钟。"
+          echo "重装系统"
+          echo "--------------------------------"
+          echo -e "${hong}注意: ${bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
