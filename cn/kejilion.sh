@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.2"
+sh_v="2.9.3"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -436,7 +436,7 @@ while true; do
     echo "1. 创建新的容器"
     echo "------------------------"
     echo "2. 启动指定容器             6. 启动所有容器"
-    echo "3. 停止指定容器             7. 暂停所有容器"
+    echo "3. 停止指定容器             7. 停止所有容器"
     echo "4. 删除指定容器             8. 删除所有容器"
     echo "5. 重启指定容器             9. 重启所有容器"
     echo "------------------------"
@@ -571,6 +571,7 @@ while true; do
             done
             ;;
         3)
+            send_stats "删除镜像"
             read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
             for name in $imagenames; do
                 docker rmi -f $name
@@ -2675,7 +2676,7 @@ linux_tools() {
       echo -e "15. vim 文本编辑器                    16. nano 文本编辑器 ${huang}★${bai}"
       echo "------------------------"
       echo "21. 黑客帝国屏保                      22. 跑火车屏保"
-      echo "27. 贪吃蛇小游戏                      28. 太空入侵者小游戏"
+      echo "26. 俄罗斯方块小游戏                  27. 贪吃蛇小游戏"
       echo "28. 太空入侵者小游戏"
       echo "------------------------"
       echo -e "31. 全部安装                          32. 全部安装（不含屏保和游戏）${huang}★${bai}"
@@ -3148,7 +3149,6 @@ linux_docker() {
                   esac
               done
               ;;
-
           7)
               clear
               send_stats "Docker清理"
@@ -4819,7 +4819,6 @@ linux_ldnmp() {
             docker compose down
             docker compose down --rmi all
             rm -rf /home/web
-
             ;;
           [Nn])
 
@@ -4874,7 +4873,7 @@ linux_panel() {
       echo "33. Sun-Panel导航面板                   34. Pingvin-Share文件分享平台"
       echo "35. 极简朋友圈                          36. LobeChatAI聊天聚合网站"
       echo -e "37. MyIP工具箱 ${huang}★${bai}                        38. 小雅alist全家桶"
-      echo "39. Bililive直播录制工具                40. 远程Windows10"
+      echo "39. Bililive直播录制工具                40. 远程Windows11"
       echo "------------------------"
       echo "41. 耗子管理面板"
       echo "------------------------"
@@ -5889,14 +5888,14 @@ linux_panel() {
             docker_rum="docker run -d \
                             --name windows \
                             --cap-add=NET_ADMIN \
-                            -e VERSION=win10 \
+                            -e VERSION=win11 \
                             -e KVM=N \
                             -p 8040:8006 \
                             -p 3389:3389/tcp \
                             -p 3389:3389/udp \
                             --restart unless-stopped \
                             dockurr/windows"
-            docker_describe="一款虚拟化远程Windows7 要求2核心2G内存及以上"
+            docker_describe="一款虚拟化远程Windows11 要求2核心2G内存及以上"
             docker_url="官网介绍: https://hub.gitmirror.com/https://github.com/dockur/windows"
             docker_use=""
             docker_passwd=""
