@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.3"
+sh_v="2.9.4"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -945,6 +945,8 @@ install_ssltls() {
       iptables_open > /dev/null 2>&1
       cd ~
 
+      yes | certbot delete --cert-name $yuming > /dev/null 2>&1
+
       certbot_version=$(certbot --version 2>&1 | grep -oP "\d+\.\d+\.\d+")
 
       version_ge() {
@@ -1796,7 +1798,9 @@ dd_xitong() {
 
           while true; do
             root_use
-            echo "请备份数据，将为你重装系统，预计花费15分钟。"
+            echo "重装系统"
+            echo "--------------------------------"
+            echo -e "${hong}注意: ${bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
             echo -e "${hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${bai} "
             echo "------------------------"
             echo "1. Debian 12                  2. Debian 11"
@@ -2674,6 +2678,7 @@ linux_tools() {
       echo -e "11. btop 现代化监控工具 ${huang}★${bai}             12. ranger 文件管理工具"
       echo "13. gdu 磁盘占用查看工具              14. fzf 全局搜索工具"
       echo -e "15. vim 文本编辑器                    16. nano 文本编辑器 ${huang}★${bai}"
+      echo "13. git 版本控制系统"
       echo "------------------------"
       echo "21. 黑客帝国屏保                      22. 跑火车屏保"
       echo "26. 俄罗斯方块小游戏                  27. 贪吃蛇小游戏"
@@ -2821,6 +2826,17 @@ linux_tools() {
               send_stats "安装nano"
               ;;
 
+
+            17)
+              clear
+              install git
+              cd /
+              clear
+              git --help
+              cd ~
+              send_stats "安装git"
+              ;;
+
             21)
               clear
               install cmatrix
@@ -2855,26 +2871,25 @@ linux_tools() {
               clear
               ninvaders
               send_stats "安装ninvaders"
-
               ;;
 
           31)
               clear
               send_stats "全部安装"
-              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders vim nano
+              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
               ;;
 
           32)
               clear
               send_stats "全部安装（不含游戏和屏保）"
-              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf vim nano
+              install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger gdu fzf vim nano git
               ;;
 
 
           33)
               clear
               send_stats "全部卸载"
-              remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders vim nano
+              remove htop iftop unzip tmux ffmpeg btop ranger gdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
               ;;
 
           41)
@@ -3460,7 +3475,9 @@ linux_Oracle() {
 
           3)
           clear
-          echo "请备份数据，将为你重装系统，预计花费15分钟。"
+          echo "重装系统"
+          echo "--------------------------------"
+          echo -e "${hong}注意: ${bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
           read -p "确定继续吗？(Y/N): " choice
 
           case "$choice" in
@@ -6411,9 +6428,9 @@ EOF
                 ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
                 if [ "$ipv6_disabled" -eq 1 ]; then
-                    echo "当前网络优先级设置: IPv4 优先"
+                    echo -e "当前网络优先级设置: ${huang}IPv4${bai} 优先"
                 else
-                    echo "当前网络优先级设置: IPv6 优先"
+                    echo -e "当前网络优先级设置: ${huang}IPv6${bai} 优先"
                 fi
                 echo ""
                 echo "------------------------"
