@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.4"
+sh_v="2.9.5"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -2359,6 +2359,7 @@ clamav() {
           while true; do
                 clear
                 echo "clamav病毒扫描工具"
+                echo "视频介绍: https://www.bilibili.com/video/BV1TqvZe4EQm?t=0.1"
                 echo "------------------------"
                 echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
                 echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
@@ -3133,7 +3134,8 @@ linux_docker() {
                   echo "卷操作"
                   echo "------------------------"
                   echo "1. 创建新卷"
-                  echo "2. 删除卷"
+                  echo "2. 删除指定卷"
+                  echo "3. 删除所有卷"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
@@ -3153,6 +3155,21 @@ linux_docker() {
                               docker volume rm $dockerjuan
                           done
 
+                          ;;
+ 
+                       3)
+                          send_stats "删除所有卷"
+                          read -p "$(echo -e "${hong}注意: ${bai}确定删除所有未使用的卷吗？(Y/N): ")" choice
+                          case "$choice" in
+                            [Yy])
+                              docker volume prune -f
+                              ;;
+                            [Nn])
+                              ;;
+                            *)
+                              echo "无效的选择，请输入 Y 或 N。"
+                              ;;
+                          esac
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
