@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.4"
+sh_v="2.9.6"
 
 huang='\033[33m'
 bai='\033[0m'
@@ -10,7 +10,13 @@ hong='\033[31m'
 kjlan='\033[96m'
 hui='\e[37m'
 
-
+gl_hong='\033[1;31m'
+gl_lv='\033[1;32m'
+gl_huang='\033[1;33m'
+gl_lan='\033[1;34m'
+gl_bai='\033[1;37m'
+gl_zi='\033[1;35m'
+gl_kjlan='\033[1;96m'
 
 permission_granted="false"
 
@@ -2359,6 +2365,7 @@ clamav() {
           while true; do
                 clear
                 echo "clamav病毒扫描工具"
+                echo "视频介绍: https://www.bilibili.com/video/BV1TqvZe4EQm?t=0.1"
                 echo "------------------------"
                 echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
                 echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
@@ -3091,16 +3098,16 @@ linux_docker() {
                           send_stats "加入网络"
                           read -p "加入网络名: " dockernetwork
                           read -p "那些容器加入该网络（多个容器名请用空格分隔）: " dockernames
-                          
+
                           for dockername in $dockernames; do
                               docker network connect $dockernetwork $dockername
-                          done                  
+                          done
                           ;;
                       3)
                           send_stats "加入网络"
                           read -p "退出网络名: " dockernetwork
                           read -p "那些容器退出该网络（多个容器名请用空格分隔）: " dockernames
-                          
+
                           for dockername in $dockernames; do
                               docker network disconnect $dockernetwork $dockername
                           done
@@ -3133,7 +3140,8 @@ linux_docker() {
                   echo "卷操作"
                   echo "------------------------"
                   echo "1. 创建新卷"
-                  echo "2. 删除卷"
+                  echo "2. 删除指定卷"
+                  echo "3. 删除所有卷"
                   echo "------------------------"
                   echo "0. 返回上一级选单"
                   echo "------------------------"
@@ -3148,11 +3156,26 @@ linux_docker() {
                           ;;
                       2)
                           read -p "输入删除卷名（多个卷名请用空格分隔）: " dockerjuans
-                          
+
                           for dockerjuan in $dockerjuans; do
                               docker volume rm $dockerjuan
                           done
 
+                          ;;
+
+                       3)
+                          send_stats "删除所有卷"
+                          read -p "$(echo -e "${hong}注意: ${bai}确定删除所有未使用的卷吗？(Y/N): ")" choice
+                          case "$choice" in
+                            [Yy])
+                              docker volume prune -f
+                              ;;
+                            [Nn])
+                              ;;
+                            *)
+                              echo "无效的选择，请输入 Y 或 N。"
+                              ;;
+                          esac
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
@@ -5554,7 +5577,7 @@ linux_panel() {
                         docker exec safeline-mgt resetadmin
                         ;;
                     4)
-                        cd /data/safeline 
+                        cd /data/safeline
                         docker compose down
                         docker compose down --rmi all
                         echo "如果你是默认安装目录那现在项目已经卸载。如果你是自定义安装目录你需要到安装目录下自行执行:"
@@ -7859,6 +7882,51 @@ kejilion_update() {
 
 
 
+kejilion_Affiliates() {
+
+clear
+send_stats "广告专栏"
+echo "广告专栏"
+echo "------------------------"
+echo "将为用户提供更简单优雅的推广与购买体验！"
+echo ""
+echo -e "服务器优惠"
+echo "------------------------"
+echo -e "${gl_lan}RackNerd 10.18刀每年 美国 1核心 768M内存 15G硬盘 1T流量每月${bai}"
+echo -e "${gl_bai}网址: https://my.racknerd.com/aff.php?aff=5501&pid=792${bai}"
+echo "------------------------"
+echo -e "${gl_lv}Cloudcone 10刀每年 美国 1核心 768M内存 5G硬盘 3T流量每月${bai}"
+echo -e "${gl_bai}网址: https://app.cloudcone.com.cn/vps/261/create?ref=8355&token=cloudcone.cc-24-vps-2${bai}"
+echo "------------------------"
+echo -e "${gl_huang}搬瓦工 49刀每季 美国CN2GIA 日本软银 2核心 1G内存 20G硬盘 1T流量每月${bai}"
+echo -e "${gl_bai}网址: https://bandwagonhost.com/aff.php?aff=69004&pid=87${bai}"
+echo "------------------------"
+echo -e "${gl_lan}DMIT 28刀每季 美国CN2GIA 1核心 2G内存 20G硬盘 800G流量每月${bai}"
+echo -e "${gl_bai}网址: https://bandwagonhost.com/aff.php?aff=69004&pid=87${bai}"
+echo "------------------------"
+echo -e "${gl_zi}V.PS 6.9刀每年 东京软银 2核心 1G内存 20G硬盘 1T流量每月${bai}"
+echo -e "${gl_bai}网址: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${bai}"
+echo "------------------------"
+echo -e "${gl_kjlan}VPS更多热门优惠${bai}"
+echo -e "${gl_bai}网址: https://kejilion.pro/topvps/${bai}"
+echo "------------------------"
+echo ""
+echo -e "域名优惠"
+echo "------------------------"
+echo -e "${gl_lan}GNAME 8.8刀首年COM域名 6.68刀首年CC域名${bai}"
+echo -e "${gl_bai}网址: https://www.gname.com/register?tt=86836&ttcode=KEJILION86836&ttbj=sh${bai}"
+echo "------------------------"
+echo ""
+echo -e "科技lion周边"
+echo "------------------------"
+echo -e "${gl_kjlan}B站:   ${gl_bai}https://b23.tv/2mqnQyh              ${gl_kjlan}油管:     ${gl_bai}https://www.youtube.com/@kejilion${bai}"
+echo -e "${gl_kjlan}官网:  ${gl_bai}https://kejilion.pro/               ${gl_kjlan}导航:     ${gl_bai}https://dh.kejilion.pro/${bai}"
+echo -e "${gl_kjlan}博客:  ${gl_bai}https://blog.kejilion.pro/          ${gl_kjlan}软件中心: ${gl_bai}https://app.kejilion.pro/${bai}"
+echo "------------------------"
+echo ""
+}
+
+
 kejilion_sh() {
 while true; do
 clear
@@ -7885,6 +7953,7 @@ echo "11. 面板工具 ▶ "
 echo "12. 我的工作区 ▶ "
 echo "13. 系统工具 ▶ "
 echo "14. 服务器集群控制 ▶ "
+echo "15. 广告专栏"
 echo "------------------------"
 echo "p. 幻兽帕鲁开服脚本 ▶"
 echo "------------------------"
@@ -7959,6 +8028,10 @@ case $choice in
 
   14)
     linux_cluster
+    ;;
+
+  15)
+    kejilion_Affiliates
     ;;
 
   p)
