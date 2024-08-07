@@ -15,17 +15,6 @@ gl_kjlan='\033[96m'
 
 
 
-cleanup() {
-    echo
-    echo -e "${gl_huang}科技lion工具箱已被终止!${gl_bai}"
-    pkill -x 'k' > /dev/null 2>&1
-    exit 0
-}
-
-trap cleanup SIGINT
-
-
-
 
 permission_granted="false"
 
@@ -61,6 +50,18 @@ send_stats() {
          -H "Content-Type: application/json" \
          -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"cpu_arch\":\"$cpu_arch\",\"version\":\"$sh_v\"}" &>/dev/null &
 }
+
+
+
+cleanup() {
+    echo
+    echo -e "${gl_huang}科技lion工具箱已被终止!${gl_bai}"
+    send_stats "非法退出脚本"
+    pkill -x 'k' > /dev/null 2>&1
+    exit 0
+}
+
+trap cleanup SIGINT
 
 
 
