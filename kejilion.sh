@@ -3266,27 +3266,27 @@ linux_test() {
       echo -e "▶ 测试脚本合集"
       echo -e ""
       echo -e "${gl_kjlan}IP及解锁状态检测"
-      echo -e "${gl_kjlan}1.   ${gl_bai}ChatGPT解锁状态检测"
-      echo -e "${gl_kjlan}2.   ${gl_bai}Region流媒体解锁测试"
-      echo -e "${gl_kjlan}3.   ${gl_bai}yeahwu流媒体解锁检测"
-      echo -e "${gl_kjlan}4.   ${gl_bai}xykt_IP质量体检脚本 ${gl_huang}★${gl_bai}"
+      echo -e "${gl_kjlan}1.   ${gl_bai}ChatGPT 解锁状态检测"
+      echo -e "${gl_kjlan}2.   ${gl_bai}Region 流媒体解锁测试"
+      echo -e "${gl_kjlan}3.   ${gl_bai}yeahwu 流媒体解锁检测"
+      echo -e "${gl_kjlan}4.   ${gl_bai}xykt IP质量体检脚本 ${gl_huang}★${gl_bai}"
       echo -e "${gl_kjlan}"
       echo -e "${gl_kjlan}网络线路测速"
-      echo -e "${gl_kjlan}11.  ${gl_bai}besttrace三网回程延迟路由测试"
-      echo -e "${gl_kjlan}12.  ${gl_bai}mtr_trace三网回程线路测试"
-      echo -e "${gl_kjlan}13.  ${gl_bai}Superspeed三网测速"
-      echo -e "${gl_kjlan}14.  ${gl_bai}nxtrace快速回程测试脚本"
-      echo -e "${gl_kjlan}15.  ${gl_bai}nxtrace指定IP回程测试脚本"
-      echo -e "${gl_kjlan}16.  ${gl_bai}ludashi2020三网线路测试"
-      echo -e "${gl_kjlan}17.  ${gl_bai}i-abc多功能测速脚本"
+      echo -e "${gl_kjlan}11.  ${gl_bai}besttrace 三网回程延迟路由测试"
+      echo -e "${gl_kjlan}12.  ${gl_bai}mtr_trace 三网回程线路测试"
+      echo -e "${gl_kjlan}13.  ${gl_bai}Superspeed 三网测速"
+      echo -e "${gl_kjlan}14.  ${gl_bai}nxtrace 快速回程测试脚本"
+      echo -e "${gl_kjlan}15.  ${gl_bai}nxtrace 指定IP回程测试脚本"
+      echo -e "${gl_kjlan}16.  ${gl_bai}ludashi2020 三网线路测试"
+      echo -e "${gl_kjlan}17.  ${gl_bai}i-abc 多功能测速脚本"
       echo -e "${gl_kjlan}"
       echo -e "${gl_kjlan}硬件性能测试"
-      echo -e "${gl_kjlan}21.  ${gl_bai}yabs性能测试"
+      echo -e "${gl_kjlan}21.  ${gl_bai}yabs 性能测试"
       echo -e "${gl_kjlan}22.  ${gl_bai}icu/gb5 CPU性能测试脚本"
       echo -e "${gl_kjlan}"
       echo -e "${gl_kjlan}综合性测试"
-      echo -e "${gl_kjlan}31.  ${gl_bai}bench性能测试"
-      echo -e "${gl_kjlan}32.  ${gl_bai}spiritysdx融合怪测评 ${gl_huang}★${gl_bai}"
+      echo -e "${gl_kjlan}31.  ${gl_bai}bench 性能测试"
+      echo -e "${gl_kjlan}32.  ${gl_bai}spiritysdx 融合怪测评 ${gl_huang}★${gl_bai}"
       echo -e "${gl_kjlan}"
       echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
@@ -7358,21 +7358,21 @@ EOF
                       tiaoyou_moshi="高性能优化模式"
                       optimize_high_performance
                       send_stats "高性能模式优化"
-                      break_end
+
                       ;;
                   2)
                       cd ~
                       clear
                       optimize_balanced
                       send_stats "均衡模式优化"
-                      break_end
+
                       ;;
                   3)
                       cd ~
                       clear
                       optimize_web_server
                       send_stats "网站优化模式"
-                      break_end
+
                       ;;
                   4)
                       cd ~
@@ -7380,7 +7380,7 @@ EOF
                       tiaoyou_moshi="直播优化模式"
                       optimize_high_performance
                       send_stats "直播推流优化"
-                      break_end
+
                       ;;
                   5)
                       cd ~
@@ -7388,14 +7388,14 @@ EOF
                       tiaoyou_moshi="游戏服优化模式"
                       optimize_high_performance
                       send_stats "游戏服优化"
-                      break_end
+
                       ;;
                   6)
                       cd ~
                       clear
                       restore_defaults
                       send_stats "还原默认设置"
-                      break_end
+
                       ;;
                   0)
                       break
@@ -7404,6 +7404,7 @@ EOF
                       echo "无效的选择，请重新输入。"
                       ;;
               esac
+              break_end
             done
               ;;
 
@@ -7415,39 +7416,38 @@ EOF
             clear
             send_stats "留言板"
             install sshpass
+            while true; do
+              remote_ip="66.42.61.110"
+              remote_user="liaotian123"
+              remote_file="/home/liaotian123/liaotian.txt"
+              password="kejilionYYDS"  # 替换为您的密码
 
-            remote_ip="66.42.61.110"
-            remote_user="liaotian123"
-            remote_file="/home/liaotian123/liaotian.txt"
-            password="kejilionYYDS"  # 替换为您的密码
+              clear
+              echo "科技lion留言板"
+              echo "------------------------"
+              # 显示已有的留言内容
+              sshpass -p "${password}" ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_ip}" "cat '${remote_file}'"
+              echo ""
+              echo "------------------------"
 
-            clear
-            echo "科技lion留言板"
-            echo "------------------------"
-            # 显示已有的留言内容
-            sshpass -p "${password}" ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_ip}" "cat '${remote_file}'"
-            echo ""
-            echo "------------------------"
+              # 判断是否要留言
+              read -p "是否要留言？(y/n): " leave_message
 
-            # 判断是否要留言
-            read -p "是否要留言？(y/n): " leave_message
+              if [ "$leave_message" == "y" ] || [ "$leave_message" == "Y" ]; then
+                  # 输入新的留言内容
+                  read -p "输入你的昵称: " nicheng
+                  read -p "输入你的聊天内容: " neirong
 
-            if [ "$leave_message" == "y" ] || [ "$leave_message" == "Y" ]; then
-                # 输入新的留言内容
-                read -p "输入你的昵称: " nicheng
-                read -p "输入你的聊天内容: " neirong
-
-                # 添加新留言到远程文件
-                sshpass -p "${password}" ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_ip}" "echo -e '${nicheng}: ${neirong}' >> '${remote_file}'"
-                echo "已添加留言: "
-                echo "${nicheng}: ${neirong}"
-                echo ""
-            else
-                echo "您选择了不留言。"
-            fi
-
-            echo "留言板操作完成。"
-
+                  # 添加新留言到远程文件
+                  sshpass -p "${password}" ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_ip}" "echo -e '${nicheng}: ${neirong}' >> '${remote_file}'"
+                  echo "已添加留言: "
+                  echo "${nicheng}: ${neirong}"
+              else
+                  echo "退出留言板"
+                  break
+              fi
+            break_end
+            done
               ;;
 
           66)
