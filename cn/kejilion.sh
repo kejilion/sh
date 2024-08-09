@@ -55,7 +55,6 @@ cleanup() {
     echo
     echo -e "${gl_huang}科技lion工具箱已被终止!${gl_bai}"
     send_stats "非法退出脚本"
-    pkill -x 'k' > /dev/null 2>&1
     exit 0
 }
 
