@@ -7858,7 +7858,7 @@ linux_file() {
         echo "11. 创建文件           12. 编辑文件             13. 修改文件权限         14. 重命名文件"
         echo "15. 删除文件"
         echo "------------------------"
-        echo "21. 压缩文件目录       22. 解压文件目录"
+        echo "21. 压缩文件目录       22. 解压文件目录         23. 传文件至其他服务器"
         echo "------------------------"
         echo "0.  返回上一级"
         echo "------------------------"
@@ -7936,6 +7936,58 @@ linux_file() {
                 tar -xzvf "$filename" && echo "已解压 $filename" || echo "解压失败"
                 send_stats "解压文件/目录"
                 ;;
+
+             23) # 传送文件至远端服务器
+                read -p "请输入要传送的文件路径: " file_to_transfer
+                if [ ! -f "$file_to_transfer" ]; then
+                    echo "错误: 文件不存在。"
+                    send_stats "传送文件失败: 文件不存在"
+                    continue
+                fi
+
+                read -p "请输入远端服务器IP: " remote_ip
+                if [ -z "$remote_ip" ]; then
+                    echo "错误: 请输入远端服务器IP。"
+                    send_stats "传送文件失败: 未输入远端服务器IP"
+                    continue
+                fi
+
+                read -p "请输入远端服务器用户名 (默认root): " remote_user
+                remote_user=${remote_user:-root}
+
+                read -p "请输入远端服务器密码: " -s remote_password
+                echo
+                if [ -z "$remote_password" ]; then
+                    echo "错误: 请输入远端服务器密码。"
+                    send_stats "传送文件失败: 未输入远端服务器密码"
+                    continue
+                fi
+
+                read -p "请输入登录端口 (默认22): " remote_port
+                remote_port=${remote_port:-22}
+
+                # 清除已知主机的旧条目
+                ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
+                sleep 2  # 等待时间
+
+                # 使用scp传输文件
+                scp -P "$remote_port" -o StrictHostKeyChecking=no "$file_to_transfer" "$remote_user@$remote_ip:/home/" <<EOF
+$remote_password
+EOF
+
+                if [ $? -eq 0 ]; then
+                    echo "文件已传送至远程服务器home目录。"
+                    send_stats "文件传送成功"
+                else
+                    echo "文件传送失败。"
+                    send_stats "文件传送失败"
+                fi
+
+                break_end
+                ;;
+
+
+
             0)  # 返回上一级
                 send_stats "返回上一级菜单"
                 break
