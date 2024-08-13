@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.8"
+sh_v="2.9.9"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -6196,7 +6196,7 @@ linux_Settings() {
       echo -e "${gl_kjlan}23.  ${gl_bai}限流自动关机                       ${gl_kjlan}24.  ${gl_bai}ROOT私钥登录模式"
       echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot系统监控预警                 ${gl_kjlan}26.  ${gl_bai}修复OpenSSH高危漏洞（岫源）"
       echo -e "${gl_kjlan}27.  ${gl_bai}红帽系Linux内核升级                ${gl_kjlan}28.  ${gl_bai}Linux系统内核参数优化 ${gl_huang}★${gl_bai}"
-      echo -e "${gl_kjlan}29.  ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}"
+      echo -e "${gl_kjlan}29.  ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}文件管理器"
       echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}31.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
       echo -e "${gl_kjlan}------------------------"
@@ -7420,6 +7420,10 @@ EOF
               clamav
               ;;
 
+          30)
+              linux_file
+              ;;
+
           31)
             clear
             send_stats "留言板"
@@ -7832,6 +7836,118 @@ EOF
 
 
 }
+
+
+
+
+linux_file() {
+    root_use
+    send_stats "文件管理器"
+    while true; do
+        clear
+        echo "文件管理器"
+        echo "------------------------"
+        echo "当前路径"
+        pwd
+        echo "------------------------"
+        ls -x
+        echo "------------------------"
+        echo ""
+        echo "1.  进入目录           2.  创建目录             3.  修改目录权限         4.  重命名目录"
+        echo "5.  删除目录           6.  返回上一级目录"
+        echo ""
+        echo "11. 创建文件           12. 编辑文件             13. 修改文件权限         14. 重命名文件"
+        echo "15. 删除文件"
+        echo ""
+        echo "21. 压缩文件目录       22. 解压文件目录"
+        echo "------------------------"
+        echo "0.  返回上一级"
+        echo "------------------------"
+        read -p "请输入你的选择: " Limiting
+
+        case "$Limiting" in
+            1)  # 进入目录
+                read -p "请输入目录名: " dirname
+                cd "$dirname" 2>/dev/null || echo "无法进入目录"
+                send_stats "进入目录"
+                ;;
+            2)  # 创建目录
+                read -p "请输入要创建的目录名: " dirname
+                mkdir -p "$dirname" && echo "目录已创建" || echo "创建失败"
+                send_stats "创建目录"
+                ;;
+            3)  # 修改目录权限
+                read -p "请输入目录名: " dirname
+                read -p "请输入权限 (如 755): " perm
+                chmod "$perm" "$dirname" && echo "权限已修改" || echo "修改失败"
+                send_stats "修改目录权限"
+                ;;
+            4)  # 重命名目录
+                read -p "请输入当前目录名: " current_name
+                read -p "请输入新目录名: " new_name
+                mv "$current_name" "$new_name" && echo "目录已重命名" || echo "重命名失败"
+                send_stats "重命名目录"
+                ;;
+            5)  # 删除目录
+                read -p "请输入要删除的目录名: " dirname
+                rm -rf "$dirname" && echo "目录已删除" || echo "删除失败"
+                send_stats "删除目录"
+                ;;
+            6)  # 返回上一级目录
+                cd ..
+                send_stats "返回上一级目录"
+                ;;
+            11) # 创建文件
+                read -p "请输入要创建的文件名: " filename
+                touch "$filename" && echo "文件已创建" || echo "创建失败"
+                send_stats "创建文件"
+                ;;
+            12) # 编辑文件
+                read -p "请输入要编辑的文件名: " filename
+                nano "$filename"
+                send_stats "编辑文件"
+                ;;
+            13) # 修改文件权限
+                read -p "请输入文件名: " filename
+                read -p "请输入权限 (如 755): " perm
+                chmod "$perm" "$filename" && echo "权限已修改" || echo "修改失败"
+                send_stats "修改文件权限"
+                ;;
+            14) # 重命名文件
+                read -p "请输入当前文件名: " current_name
+                read -p "请输入新文件名: " new_name
+                mv "$current_name" "$new_name" && echo "文件已重命名" || echo "重命名失败"
+                send_stats "重命名文件"
+                ;;
+            15) # 删除文件
+                read -p "请输入要删除的文件名: " filename
+                rm -f "$filename" && echo "文件已删除" || echo "删除失败"
+                send_stats "删除文件"
+                ;;
+            21) # 压缩文件/目录
+                read -p "请输入要压缩的文件/目录名: " name
+                tar -czvf "$name.tar.gz" "$name" && echo "已压缩为 $name.tar.gz" || echo "压缩失败"
+                send_stats "压缩文件/目录"
+                ;;
+            22) # 解压文件/目录
+                read -p "请输入要解压的文件名 (.tar.gz): " filename
+                tar -xzvf "$filename" && echo "已解压 $filename" || echo "解压失败"
+                send_stats "解压文件/目录"
+                ;;
+            0)  # 返回上一级
+                send_stats "返回上一级菜单"
+                break
+                ;;
+            *)  # 处理无效输入
+                echo "无效的选择，请重新输入"
+                send_stats "无效选择"
+                ;;
+        esac
+    done
+}
+
+
+
 
 
 
