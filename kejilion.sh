@@ -7858,7 +7858,8 @@ linux_file() {
         echo "11. 创建文件           12. 编辑文件             13. 修改文件权限         14. 重命名文件"
         echo "15. 删除文件"
         echo "------------------------"
-        echo "21. 压缩文件目录       22. 解压文件目录         23. 移动文件目录         24. 传文件至其他服务器"
+        echo "21. 压缩文件目录       22. 解压文件目录         23. 移动文件目录         24. 移动文件目录"
+        echo "25. 传文件至其他服务器"
         echo "------------------------"
         echo "0.  返回上一级"
         echo "------------------------"
@@ -7956,7 +7957,29 @@ linux_file() {
                 send_stats "移动文件或目录"
                 ;;
 
-             24) # 传送文件至远端服务器
+
+           24) # 复制文件目录
+                read -p "请输入要复制的文件或目录路径: " src_path
+                if [ ! -e "$src_path" ]; then
+                    echo "错误: 文件或目录不存在。"
+                    send_stats "复制文件或目录失败: 文件或目录不存在"
+                    continue
+                fi
+
+                read -p "请输入目标路径 (包括新文件名或目录名): " dest_path
+                if [ -z "$dest_path" ]; then
+                    echo "错误: 请输入目标路径。"
+                    send_stats "复制文件或目录失败: 目标路径未指定"
+                    continue
+                fi
+
+                # 使用 -r 选项以递归方式复制目录
+                cp -r "$src_path" "$dest_path" && echo "文件或目录已复制到 $dest_path" || echo "复制文件或目录失败"
+                send_stats "复制文件或目录"
+                ;;
+
+
+             25) # 传送文件至远端服务器
                 read -p "请输入要传送的文件路径: " file_to_transfer
                 if [ ! -f "$file_to_transfer" ]; then
                     echo "错误: 文件不存在。"
