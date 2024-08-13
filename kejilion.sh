@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.7"
+sh_v="2.9.8"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -1626,10 +1626,10 @@ linux_clean() {
         journalctl --vacuum-size=500M
 
     elif command -v apk &>/dev/null; then
-        apk autoremove
         apk cache clean
         rm -rf /var/log/*
         rm -rf /var/cache/apk/*
+        rm -rf /tmp/*
 
     elif command -v pacman &>/dev/null; then
         pacman -Rns $(pacman -Qdtq) --noconfirm
@@ -2693,7 +2693,7 @@ linux_tools() {
       echo -e "${gl_kjlan}11.  ${gl_bai}btop 现代化监控工具 ${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}ranger 文件管理工具"
       echo -e "${gl_kjlan}13.  ${gl_bai}gdu 磁盘占用查看工具              ${gl_kjlan}14.  ${gl_bai}fzf 全局搜索工具"
       echo -e "${gl_kjlan}15.  ${gl_bai}vim 文本编辑器                    ${gl_kjlan}16.  ${gl_bai}nano 文本编辑器 ${gl_huang}★${gl_bai}"
-      echo -e "${gl_kjlan}13.  ${gl_bai}git 版本控制系统"
+      echo -e "${gl_kjlan}17.  ${gl_bai}git 版本控制系统"
       echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}21.  ${gl_bai}黑客帝国屏保                      ${gl_kjlan}22.  ${gl_bai}跑火车屏保"
       echo -e "${gl_kjlan}26.  ${gl_bai}俄罗斯方块小游戏                  ${gl_kjlan}27.  ${gl_bai}贪吃蛇小游戏"
