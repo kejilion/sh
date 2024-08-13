@@ -7904,6 +7904,7 @@ linux_file() {
                 ;;
             12) # 编辑文件
                 read -p "请输入要编辑的文件名: " filename
+                install nano
                 nano "$filename"
                 send_stats "编辑文件"
                 ;;
@@ -7926,11 +7927,13 @@ linux_file() {
                 ;;
             21) # 压缩文件/目录
                 read -p "请输入要压缩的文件/目录名: " name
+                install tar
                 tar -czvf "$name.tar.gz" "$name" && echo "已压缩为 $name.tar.gz" || echo "压缩失败"
                 send_stats "压缩文件/目录"
                 ;;
             22) # 解压文件/目录
                 read -p "请输入要解压的文件名 (.tar.gz): " filename
+                install tar
                 tar -xzvf "$filename" && echo "已解压 $filename" || echo "解压失败"
                 send_stats "解压文件/目录"
                 ;;
