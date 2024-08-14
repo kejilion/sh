@@ -1632,9 +1632,13 @@ linux_clean() {
         journalctl --vacuum-size=500M
 
     elif command -v apk &>/dev/null; then
+        echo "清理包管理器缓存..."
         apk cache clean
+        echo "删除系统日志..."
         rm -rf /var/log/*
+        echo "删除APK缓存..."
         rm -rf /var/cache/apk/*
+        echo "删除临时文件..."
         rm -rf /tmp/*
 
     elif command -v pacman &>/dev/null; then
