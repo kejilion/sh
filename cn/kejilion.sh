@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.9"
+sh_v="2.9.10"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -454,7 +454,8 @@ while true; do
     echo "4. 删除指定容器             8. 删除所有容器"
     echo "5. 重启指定容器             9. 重启所有容器"
     echo "------------------------"
-    echo "11. 进入指定容器           12. 查看容器日志           13. 查看容器网络"
+    echo "11. 进入指定容器           12. 查看容器日志"
+    echo "13. 查看容器网络           14. 查看容器占用"
     echo "------------------------"
     echo "0. 返回上一级选单"
     echo "------------------------"
@@ -539,6 +540,11 @@ while true; do
                     printf "%-20s %-20s %-15s\n" "$container_name" "$network_name" "$ip_address"
                 done <<< "$network_info"
             done
+            break_end
+            ;;
+        14)
+            send_stats "查看容器占用"
+            docker stats --no-stream
             break_end
             ;;
         0)
@@ -6397,6 +6403,7 @@ EOF
                 echo "2. 国内DNS优化: "
                 echo " v4: 223.5.5.5 183.60.83.19"
                 echo " v6: 2400:3200::1 2400:da00::6666"
+                echo "3. 手动编辑DNS配置"
                 echo "------------------------"
                 echo "0. 返回上一级"
                 echo "------------------------"
@@ -6417,6 +6424,11 @@ EOF
                     dns2_ipv6="2400:da00::6666"
                     set_dns
                     send_stats "国内DNS优化"
+                    ;;
+                  3)
+                    install nano
+                    nano /etc/resolv.conf
+                    send_stats "手动编辑DNS配置"
                     ;;
                   *)
                     break
