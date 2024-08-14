@@ -6428,7 +6428,7 @@ EOF
                   3)
                     install nano
                     nano /etc/resolv.conf
-                    send_stats "国内DNS优化"
+                    send_stats "手动编辑DNS配置"
                     ;;
                   *)
                     break
