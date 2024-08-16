@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="2.9.10"
+sh_v="3.0.0"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -54,8 +54,6 @@ send_stats() {
 
 
 cleanup() {
-    echo
-    echo -e "${gl_huang}科技lion工具箱已被终止!${gl_bai}"
     send_stats "非法退出脚本"
     exit 0
 }
@@ -290,6 +288,7 @@ break_end() {
 }
 
 kejilion() {
+            cd ~
             k
             exit
 }
@@ -4277,6 +4276,7 @@ linux_ldnmp() {
             1)
                 send_stats "申请域名证书"
                 read -p "请输入你的域名: " yuming
+                install_certbot
                 install_ssltls
                 certs_status
 
@@ -4285,6 +4285,7 @@ linux_ldnmp() {
             2)
                 read -p "请输入旧域名: " oddyuming
                 read -p "请输入新域名: " yuming
+                install_certbot
                 install_ssltls
                 certs_status
                 mv /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
