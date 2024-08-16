@@ -4767,8 +4767,9 @@ linux_ldnmp() {
               ldnmp_pods="nginx"
               send_stats "更新$ldnmp_pods"
               cd /home/web/
-              docker compose up -d --force-recreate $ldnmp_pods
+              docker rm -f $ldnmp_pods
               docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
+              docker compose up -d --force-recreate $ldnmp_pods
               docker exec $ldnmp_pods chmod -R 777 /var/www/html
               docker restart $ldnmp_pods > /dev/null 2>&1
               echo "更新${ldnmp_pods}完成"
@@ -4829,8 +4830,9 @@ linux_ldnmp() {
               ldnmp_pods="redis"
               send_stats "更新$ldnmp_pods"
               cd /home/web/
-              docker compose up -d --force-recreate $ldnmp_pods
+              docker rm -f $ldnmp_pods
               docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
+              docker compose up -d --force-recreate $ldnmp_pods
               docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
               docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
               docker restart $ldnmp_pods > /dev/null 2>&1
@@ -7037,13 +7039,16 @@ EOF
                                   break  # 跳出
                                   ;;
                           esac
+                          send_stats "添加定时任务"
                           ;;
                       2)
                           read -p "请输入需要删除任务的关键字: " kquest
                           crontab -l | grep -v "$kquest" | crontab -
+                          send_stats "删除定时任务"
                           ;;
                       3)
                           crontab -e
+                          send_stats "编辑定时任务"
                           ;;
                       0)
                           break  # 跳出循环，退出菜单
