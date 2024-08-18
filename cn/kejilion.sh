@@ -4812,8 +4812,9 @@ linux_ldnmp() {
               docker exec php mkdir -p /usr/local/bin/
               docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
               docker exec php chmod +x /usr/local/bin/install-php-extensions
-              docker exec php install-php-extensions imagick mysqli pdo_mysql gd intl zip exif bcmath opcache redis
-
+              docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis
+              docker exec php install-php-extensions imagick
+              
               docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
               docker exec php sh -c 'echo "post_max_size=50M " > /usr/local/etc/php/conf.d/post.ini' > /dev/null 2>&1
               docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1
