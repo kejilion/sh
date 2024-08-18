@@ -845,9 +845,21 @@ install_ldnmp() {
           "docker exec php chmod +x /usr/local/bin/install-php-extensions > /dev/null 2>&1"
           "docker exec php74 chmod +x /usr/local/bin/install-php-extensions > /dev/null 2>&1"
 
-          "sleep 1"
-
           # php安装扩展
+          "docker exec php sh -c '\
+                    apk add --no-cache imagemagick imagemagick-dev \
+                    && apk add --no-cache git autoconf gcc g++ make pkgconfig \
+                    && rm -rf /tmp/imagick \
+                    && git clone https://github.com/Imagick/imagick /tmp/imagick \
+                    && cd /tmp/imagick \
+                    && phpize \
+                    && ./configure \
+                    && make \
+                    && make install \
+                    && echo 'extension=imagick.so' > /usr/local/etc/php/conf.d/imagick.ini \
+                    && rm -rf /tmp/imagick' > /dev/null 2>&1"
+
+
           "docker exec php install-php-extensions imagick > /dev/null 2>&1"
           "docker exec php install-php-extensions mysqli > /dev/null 2>&1"
           "docker exec php install-php-extensions pdo_mysql > /dev/null 2>&1"
@@ -4815,9 +4827,23 @@ linux_ldnmp() {
               docker exec php mkdir -p /usr/local/bin/
               docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
               docker exec php chmod +x /usr/local/bin/install-php-extensions
-              sleep 3
+
+              docker exec php sh -c "\
+                            apk add --no-cache imagemagick imagemagick-dev \
+                            && apk add --no-cache git autoconf gcc g++ make pkgconfig \
+                            && rm -rf /tmp/imagick \
+                            && git clone https://github.com/Imagick/imagick /tmp/imagick \
+                            && cd /tmp/imagick \
+                            && phpize \
+                            && ./configure \
+                            && make \
+                            && make install \
+                            && echo 'extension=imagick.so' > /usr/local/etc/php/conf.d/imagick.ini \
+                            && rm -rf /tmp/imagick"
+
+
               docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis
-              docker exec php install-php-extensions imagick
+
 
               docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
               docker exec php sh -c 'echo "post_max_size=50M " > /usr/local/etc/php/conf.d/post.ini' > /dev/null 2>&1
