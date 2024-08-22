@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.0"
+sh_v="3.0.1"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -56,10 +56,11 @@ send_stats() {
 cleanup() {
     send_stats "非法退出脚本"
     echo
-    exit 0
+    exit
 }
 
 trap cleanup SIGINT
+
 
 
 
@@ -88,9 +89,7 @@ fi
 
 
 yinsiyuanquan2
-cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
-
-
+cp -f ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
 
 
@@ -117,7 +116,7 @@ UserLicenseAgreement() {
     else
         send_stats "许可拒绝"
         clear
-        exit 1
+        exit
     fi
 }
 
@@ -672,12 +671,12 @@ install_crontab() {
                 ;;
             *)
                 echo "不支持的发行版: $ID"
-                exit 1
+                exit
                 ;;
         esac
     else
         echo "无法确定操作系统。"
-        exit 1
+        exit
     fi
 
     echo -e "${gl_lv}crontab 已安装且 cron 服务正在运行。${gl_bai}"
@@ -4470,9 +4469,10 @@ linux_ldnmp() {
       ;;
 
     35)
-        send_stats "LDNMP环境防御"
+      send_stats "LDNMP环境防御"
+      while true; do
         if docker inspect fail2ban &>/dev/null ; then
-          while true; do
+
               clear
               echo "服务器防御程序已启动"
               echo "------------------------"
@@ -4627,52 +4627,50 @@ linux_ldnmp() {
                       echo "无效的选择，请重新输入。"
                       ;;
               esac
-              break_end
+        elif [ -x "$(command -v fail2ban-client)" ] ; then
+            clear
+            echo "卸载旧版fail2ban"
+            read -p "确定继续吗？(Y/N): " choice
+            case "$choice" in
+              [Yy])
+                remove fail2ban
+                rm -rf /etc/fail2ban
+                echo "Fail2Ban防御程序已卸载"
+                ;;
+              [Nn])
+                echo "已取消"
+                ;;
+              *)
+                echo "无效的选择，请输入 Y 或 N。"
+                ;;
+            esac
 
-          done
+        else
+            clear
+            install_docker
 
-      elif [ -x "$(command -v fail2ban-client)" ] ; then
-          clear
-          echo "卸载旧版fail2ban"
-          read -p "确定继续吗？(Y/N): " choice
-          case "$choice" in
-            [Yy])
-              remove fail2ban
-              rm -rf /etc/fail2ban
-              echo "Fail2Ban防御程序已卸载"
-              ;;
-            [Nn])
-              echo "已取消"
-              ;;
-            *)
-              echo "无效的选择，请输入 Y 或 N。"
-              ;;
-          esac
+            docker rm -f nginx
+            wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
+            wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
+            default_server_ssl
+            docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
+            docker exec -it nginx chmod -R 777 /var/www/html
 
-      else
-          clear
-          install_docker
+            f2b_install_sshd
 
-          docker rm -f nginx
-          wget -O /home/web/nginx.conf https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
-          wget -O /home/web/conf.d/default.conf https://raw.githubusercontent.com/kejilion/nginx/main/default10.conf
-          default_server_ssl
-          docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
-          docker exec -it nginx chmod -R 777 /var/www/html
+            cd /path/to/fail2ban/config/fail2ban/filter.d
+            curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
+            cd /path/to/fail2ban/config/fail2ban/jail.d/
+            curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+            sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
 
-          f2b_install_sshd
+            cd ~
+            f2b_status
 
-          cd /path/to/fail2ban/config/fail2ban/filter.d
-          curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
-          cd /path/to/fail2ban/config/fail2ban/jail.d/
-          curl -sS -O https://raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
-          sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
-
-          cd ~
-          f2b_status
-
-          echo "防御程序已开启"
-      fi
+            echo "防御程序已开启"
+        fi
+      break_end
+      done
 
         ;;
 
@@ -6945,8 +6943,7 @@ EOF
                     iptables-restore < /etc/iptables/rules.v4
                     systemctl enable netfilter-persistent
                     echo "防火墙安装完成"
-
-
+                    break_end
                     ;;
                   *)
                     echo "已取消"
@@ -7133,10 +7130,10 @@ EOF
               ;;
 
           22)
-            root_use
-            send_stats "ssh防御"
+          root_use
+          send_stats "ssh防御"
+          while true; do
             if docker inspect fail2ban &>/dev/null ; then
-                while true; do
                     clear
                     echo "SSH防御程序已启动"
                     echo "------------------------"
@@ -7154,6 +7151,7 @@ EOF
                             echo "------------------------"
                             f2b_sshd
                             echo "------------------------"
+                            break_end
                             ;;
                         2)
                             tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
@@ -7163,19 +7161,13 @@ EOF
                             docker rm -f fail2ban
                             rm -rf /path/to/fail2ban
                             echo "Fail2Ban防御程序已卸载"
-
-                            break
-                            ;;
-                        0)
                             break
                             ;;
                         *)
-                            echo "无效的选择，请重新输入。"
+                            echo "已取消"
+                            break
                             ;;
                     esac
-                    break_end
-
-                done
 
             elif [ -x "$(command -v fail2ban-client)" ] ; then
                 clear
@@ -7186,12 +7178,11 @@ EOF
                     remove fail2ban
                     rm -rf /etc/fail2ban
                     echo "Fail2Ban防御程序已卸载"
-                    ;;
-                  [Nn])
-                    echo "已取消"
+                    break_end
                     ;;
                   *)
-                    echo "无效的选择，请输入 Y 或 N。"
+                    echo "已取消"
+                    break
                     ;;
                 esac
 
@@ -7214,17 +7205,16 @@ EOF
                   cd ~
                   f2b_status
                   echo "Fail2Ban防御程序已开启"
-                  send_stats "Fail2Ban防御程序已开启"
-
-                  ;;
-                [Nn])
-                  echo "已取消"
+                  send_stats "ssh防御安装完成"
+                  break_end
                   ;;
                 *)
-                  echo "无效的选择，请输入 Y 或 N。"
+                  echo "已取消"
+                  break
                   ;;
               esac
             fi
+          done
               ;;
 
 
@@ -8132,7 +8122,7 @@ kejilion_update() {
                 fi
                 CheckFirstRun_true
                 yinsiyuanquan2
-                cp ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+                cp -f ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
                 echo -e "${gl_lv}脚本已更新到最新版本！${gl_huang}v$sh_v_new${gl_bai}"
                 send_stats "脚本已经最新$sh_v_new"
                 break_end
