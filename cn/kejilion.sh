@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.1"
+sh_v="3.0.2"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -136,7 +136,7 @@ ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
 install() {
     if [ $# -eq 0 ]; then
         echo "未提供软件包参数!"
-        return 1
+        return
     fi
 
     for package in "$@"; do
@@ -164,14 +164,14 @@ install() {
                 zypper install -y "$package"
             else
                 echo "未知的包管理器!"
-                return 1
+                return
             fi
         else
             echo -e "${gl_lv}$package 已经安装${gl_bai}"
         fi
     done
 
-    return 0
+    return
 }
 
 
@@ -185,7 +185,7 @@ install_dependency() {
 remove() {
     if [ $# -eq 0 ]; then
         echo "未提供软件包参数!"
-        return 1
+        return
     fi
 
     for package in "$@"; do
@@ -204,11 +204,11 @@ remove() {
             zypper remove -y "${package}"
         else
             echo "未知的包管理器!"
-            return 1
+            return
         fi
     done
 
-    return 0
+    return
 }
 
 
@@ -630,10 +630,10 @@ done
 check_crontab_installed() {
     if command -v crontab >/dev/null 2>&1; then
         echo -e "${gl_lv}crontab 已经安装${gl_bai}"
-        return 1
+        return
     else
         install_crontab
-        return 0
+        return
     fi
 }
 
@@ -672,12 +672,12 @@ install_crontab() {
                 ;;
             *)
                 echo "不支持的发行版: $ID"
-                exit
+                return
                 ;;
         esac
     else
         echo "无法确定操作系统。"
-        exit
+        return
     fi
 
     echo -e "${gl_lv}crontab 已安装且 cron 服务正在运行。${gl_bai}"
@@ -816,6 +816,31 @@ ldnmp_v() {
       echo ""
 
 }
+
+
+
+install_ldnmp_conf() {
+
+  # 创建必要的目录和文件
+  cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
+  wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
+  wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
+
+  default_server_ssl
+
+  # 下载 docker-compose.yml 文件并进行替换
+  wget -O /home/web/docker-compose.yml https://raw.gitmirror.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+  dbrootpasswd=$(openssl rand -base64 16) && dbuse=$(openssl rand -hex 4) && dbusepasswd=$(openssl rand -base64 8)
+
+  # 在 docker-compose.yml 文件中进行替换
+  sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
+  sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
+  sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
+
+}
+
+
+
 
 
 install_ldnmp() {
@@ -1137,6 +1162,20 @@ restart_ldnmp() {
 
 }
 
+nginx_upgrade() {
+
+  ldnmp_pods="nginx"
+  cd /home/web/
+  docker rm -f $ldnmp_pods > /dev/null 2>&1
+  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
+  docker compose up -d --force-recreate $ldnmp_pods
+  docker exec $ldnmp_pods chmod -R 777 /var/www/html
+  docker restart $ldnmp_pods > /dev/null 2>&1
+
+}
+
+
+
 
 
 
@@ -1399,7 +1438,7 @@ ldnmp_install_status_one() {
 
    if docker inspect "php" &>/dev/null; then
     send_stats "无法再次安装LDNMP环境"
-    echo -e "${gl_huang}提示: ${gl_bai}LDNMP环境已安装。无法再次安装。可以使用37. 更新LDNMP环境。"
+    echo -e "${gl_huang}提示: ${gl_bai}完整LDNMP环境已安装。无需再次安装环境。"
     break_end
     linux_ldnmp
    else
@@ -1612,7 +1651,7 @@ linux_update() {
         zypper update
     else
         echo "未知的包管理器!"
-        return 1
+        return
     fi
 }
 
@@ -1671,10 +1710,9 @@ linux_clean() {
 
     else
         echo "未知的包管理器!"
-        return 1
+        return
     fi
-
-    return 0
+    return
 }
 
 
@@ -2351,7 +2389,7 @@ clamav_freshclam() {
 clamav_scan() {
     if [ $# -eq 0 ]; then
         echo "请指定要扫描的目录。"
-        return 1
+        return
     fi
 
     echo -e "${gl_huang}正在扫描目录$@... ${gl_bai}"
@@ -3650,23 +3688,7 @@ linux_ldnmp() {
       install_docker
       install_certbot
 
-      # 创建必要的目录和文件
-      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
-
-      wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
-      wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
-      default_server_ssl
-
-      # 下载 docker-compose.yml 文件并进行替换
-      wget -O /home/web/docker-compose.yml https://raw.gitmirror.com/kejilion/docker/main/LNMP-docker-compose-10.yml
-
-      dbrootpasswd=$(openssl rand -base64 16) && dbuse=$(openssl rand -hex 4) && dbusepasswd=$(openssl rand -base64 8)
-
-      # 在 docker-compose.yml 文件中进行替换
-      sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
-      sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
-      sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
-
+      install_ldnmp_conf
       install_ldnmp
 
         ;;
@@ -4060,18 +4082,14 @@ linux_ldnmp() {
       21)
       send_stats "安装nginx环境"
       root_use
+      ldnmp_install_status_one
       check_port
       install_dependency
       install_docker
       install_certbot
 
-      cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
-
-      wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
-      wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
-      default_server_ssl
-      docker rmi nginx nginx:alpine >/dev/null 2>&1
-      docker run -d --name nginx --restart always -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
+      install_ldnmp_conf
+      nginx_upgrade
 
       clear
       nginx_version=$(docker exec nginx nginx -v 2>&1)
@@ -4650,23 +4668,21 @@ linux_ldnmp() {
             clear
             install_docker
 
-            docker rm -f nginx
+
             wget -O /home/web/nginx.conf https://raw.gitmirror.com/kejilion/nginx/main/nginx10.conf
             wget -O /home/web/conf.d/default.conf https://raw.gitmirror.com/kejilion/nginx/main/default10.conf
             default_server_ssl
-            docker run -d --name nginx --restart always --network web_default -p 80:80 -p 443:443 -p 443:443/udp -v /home/web/nginx.conf:/etc/nginx/nginx.conf -v /home/web/conf.d:/etc/nginx/conf.d -v /home/web/certs:/etc/nginx/certs -v /home/web/html:/var/www/html -v /home/web/log/nginx:/var/log/nginx nginx:alpine
-            docker exec -it nginx chmod -R 777 /var/www/html
+            nginx_upgrade
 
             f2b_install_sshd
-
             cd /path/to/fail2ban/config/fail2ban/filter.d
             curl -sS -O https://raw.gitmirror.com/kejilion/sh/main/fail2ban-nginx-cc.conf
             cd /path/to/fail2ban/config/fail2ban/jail.d/
             curl -sS -O https://raw.gitmirror.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
             sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
 
-            cd ~
             f2b_status
+            cd ~
 
             echo "防御程序已开启"
         fi
@@ -4777,14 +4793,8 @@ linux_ldnmp() {
           read -p "请输入你的选择: " sub_choice
           case $sub_choice in
               1)
-              ldnmp_pods="nginx"
+              nginx_upgrade
               send_stats "更新$ldnmp_pods"
-              cd /home/web/
-              docker rm -f $ldnmp_pods
-              docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
-              docker compose up -d --force-recreate $ldnmp_pods
-              docker exec $ldnmp_pods chmod -R 777 /var/www/html
-              docker restart $ldnmp_pods > /dev/null 2>&1
               echo "更新${ldnmp_pods}完成"
 
                   ;;
@@ -4794,7 +4804,6 @@ linux_ldnmp() {
               read -p "请输入${ldnmp_pods}版本号 （如: 8.0 8.3 8.4 9.0）（回车获取最新版）: " version
               version=${version:-latest}
 
-              send_stats "更新$ldnmp_pods"
               cd /home/web/
               cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
               sed -i "s/image: mysql/image: mysql:${version}/" /home/web/docker-compose.yml
@@ -4803,6 +4812,7 @@ linux_ldnmp() {
               docker compose up -d --force-recreate $ldnmp_pods
               docker restart $ldnmp_pods
               cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
+              send_stats "更新$ldnmp_pods"
               echo "更新${ldnmp_pods}完成"
 
                   ;;
@@ -4810,7 +4820,6 @@ linux_ldnmp() {
               ldnmp_pods="php"
               read -p "请输入${ldnmp_pods}版本号 （如: 7.4 8.0 8.1 8.2 8.3）（回车获取最新版）: " version
               version=${version:-8.3}
-              send_stats "更新$ldnmp_pods"
               cd /home/web/
               cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
               sed -i "s/image: php:fpm-alpine/image: php:${version}-fpm-alpine/" /home/web/docker-compose.yml
@@ -4852,12 +4861,12 @@ linux_ldnmp() {
 
               docker restart $ldnmp_pods > /dev/null 2>&1
               cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
+              send_stats "更新$ldnmp_pods"
               echo "更新${ldnmp_pods}完成"
 
                   ;;
               4)
               ldnmp_pods="redis"
-              send_stats "更新$ldnmp_pods"
               cd /home/web/
               docker rm -f $ldnmp_pods
               docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
@@ -4865,6 +4874,7 @@ linux_ldnmp() {
               docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
               docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
               docker restart $ldnmp_pods > /dev/null 2>&1
+              send_stats "更新$ldnmp_pods"
               echo "更新${ldnmp_pods}完成"
 
                   ;;
@@ -6337,7 +6347,7 @@ linux_Settings() {
                     apk add --no-cache bash gcc musl-dev libffi-dev openssl-dev bzip2-dev zlib-dev readline-dev sqlite-dev libc6-compat linux-headers make xz-dev build-base  ncurses-dev
                 else
                     echo "未知的包管理器!"
-                    return 1
+                    return
                 fi
 
                 curl https://pyenv.run | bash
