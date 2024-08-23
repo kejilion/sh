@@ -4332,11 +4332,10 @@ linux_ldnmp() {
                 # docker exec -it nginx rm -rf /var/cache/nginx
                 docker exec php php -r 'opcache_reset();'
                 docker exec php74 php -r 'opcache_reset();'
-                cd /home/web && docker compose restart
+                docker restart nginx php php74 redis
                 docker exec redis redis-cli FLUSHALL
                 docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
                 docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
-                sleep 1
 
                 ;;
             4)
