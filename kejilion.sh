@@ -289,9 +289,10 @@ break_end() {
 
 kejilion() {
             cd ~
-            k
-            exit
+            kejilion_sh
 }
+
+
 
 check_port() {
 
@@ -8126,7 +8127,8 @@ kejilion_update() {
                 echo -e "${gl_lv}脚本已更新到最新版本！${gl_huang}v$sh_v_new${gl_bai}"
                 send_stats "脚本已经最新$sh_v_new"
                 break_end
-                kejilion
+                ./kejilion.sh
+                exit
                 ;;
             [Nn])
                 echo "已取消"
@@ -8307,7 +8309,6 @@ case $choice in
 
   0)
     clear
-    echo -e "${bai}"
     exit
     ;;
 
