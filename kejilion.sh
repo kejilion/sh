@@ -935,11 +935,6 @@ install_ldnmp() {
           "docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1"
           "docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1"
 
-          # 最后一次php重启
-          "docker restart php > /dev/null 2>&1"
-          "docker restart php74 > /dev/null 2>&1"
-
-
       )
 
       total_commands=${#commands[@]}  # 计算总命令数
@@ -1156,9 +1151,7 @@ restart_ldnmp() {
       docker exec php chmod -R 777 /var/www/html
       docker exec php74 chmod -R 777 /var/www/html
 
-      docker restart nginx
-      docker restart php
-      docker restart php74
+      cd /home/web && docker compose restart
 
 }
 
@@ -4337,12 +4330,9 @@ linux_ldnmp() {
             3)
                 send_stats "清理站点缓存"
                 # docker exec -it nginx rm -rf /var/cache/nginx
-                docker restart nginx
                 docker exec php php -r 'opcache_reset();'
-                docker restart php
                 docker exec php74 php -r 'opcache_reset();'
-                docker restart php74
-                docker restart redis
+                cd /home/web && docker compose restart
                 docker exec redis redis-cli FLUSHALL
                 docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
                 docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
@@ -4725,13 +4715,10 @@ linux_ldnmp() {
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
 
+
+                  cd /home/web && docker compose restart
                   docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
                   docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
-
-                  docker restart nginx
-                  docker restart php
-                  docker restart php74
-                  docker restart mysql
 
                   echo "LDNMP环境已设置成 标准模式"
 
@@ -4752,13 +4739,10 @@ linux_ldnmp() {
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
 
+                  cd /home/web && docker compose restart
+
                   docker exec -it redis redis-cli CONFIG SET maxmemory 1024mb
                   docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
-
-                  docker restart nginx
-                  docker restart php
-                  docker restart php74
-                  docker restart mysql
 
                   echo "LDNMP环境已设置成 高性能模式"
 
