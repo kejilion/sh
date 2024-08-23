@@ -4336,6 +4336,7 @@ linux_ldnmp() {
                 docker exec redis redis-cli FLUSHALL
                 docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
                 docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+                sleep 1
 
                 ;;
             4)
