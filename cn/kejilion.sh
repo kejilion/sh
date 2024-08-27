@@ -3338,7 +3338,7 @@ linux_test() {
       clear
       # send_stats "测试脚本合集"
       echo -e "▶ 测试脚本合集"
-      echo -e ""
+      echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}IP及解锁状态检测"
       echo -e "${gl_kjlan}1.   ${gl_bai}ChatGPT 解锁状态检测"
       echo -e "${gl_kjlan}2.   ${gl_bai}Region 流媒体解锁测试"
