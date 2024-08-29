@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.2"
+sh_v="3.0.3"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -162,6 +162,9 @@ install() {
             elif command -v zypper &>/dev/null; then
                 zypper refresh
                 zypper install -y "$package"
+            elif command -v opkg &>/dev/null; then
+                opkg update
+                opkg install "$package"
             else
                 echo "未知的包管理器!"
                 return
@@ -173,7 +176,6 @@ install() {
 
     return
 }
-
 
 
 install_dependency() {
@@ -202,6 +204,8 @@ remove() {
             pacman -Rns --noconfirm "${package}"
         elif command -v zypper &>/dev/null; then
             zypper remove -y "${package}"
+        elif command -v opkg &>/dev/null; then
+            opkg remove "${package}"
         else
             echo "未知的包管理器!"
             return
@@ -669,6 +673,12 @@ install_crontab() {
                 zypper install -y cron
                 systemctl enable cron
                 systemctl start cron
+                ;;
+            openwrt|lede)
+                opkg update
+                opkg install cron
+                /etc/init.d/cron enable
+                /etc/init.d/cron start
                 ;;
             *)
                 echo "不支持的发行版: $ID"
@@ -1642,11 +1652,14 @@ linux_update() {
     elif command -v zypper &>/dev/null; then
         zypper refresh
         zypper update
+    elif command -v opkg &>/dev/null; then
+        opkg update
     else
         echo "未知的包管理器!"
         return
     fi
 }
+
 
 
 linux_clean() {
@@ -1694,12 +1707,18 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=500M
 
-   elif command -v zypper &>/dev/null; then
+    elif command -v zypper &>/dev/null; then
         zypper clean --all
         zypper refresh
         journalctl --rotate
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=500M
+
+    elif command -v opkg &>/dev/null; then
+        echo "删除系统日志..."
+        rm -rf /var/log/*
+        echo "删除临时文件..."
+        rm -rf /tmp/*
 
     else
         echo "未知的包管理器!"
@@ -1707,7 +1726,6 @@ linux_clean() {
     fi
     return
 }
-
 
 
 
