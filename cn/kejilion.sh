@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.2"
+sh_v="3.0.3"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -103,7 +103,7 @@ CheckFirstRun_false() {
 UserLicenseAgreement() {
     clear
     echo -e "${gl_kjlan}欢迎使用科技lion脚本工具箱${gl_bai}"
-    echo "首次使用脚本，请先阅读并同意用户许可协议:"
+    echo "首次使用脚本，请先阅读并同意用户许可协议。"
     echo "用户许可协议: https://blog.kejilion.pro/user-license-agreement/"
     echo -e "----------------------"
     read -r -p "是否同意以上条款？(y/n): " user_input
@@ -162,6 +162,9 @@ install() {
             elif command -v zypper &>/dev/null; then
                 zypper refresh
                 zypper install -y "$package"
+            elif command -v opkg &>/dev/null; then
+                opkg update
+                opkg install "$package"
             else
                 echo "未知的包管理器!"
                 return
@@ -173,7 +176,6 @@ install() {
 
     return
 }
-
 
 
 install_dependency() {
@@ -202,6 +204,8 @@ remove() {
             pacman -Rns --noconfirm "${package}"
         elif command -v zypper &>/dev/null; then
             zypper remove -y "${package}"
+        elif command -v opkg &>/dev/null; then
+            opkg remove "${package}"
         else
             echo "未知的包管理器!"
             return
@@ -670,6 +674,12 @@ install_crontab() {
                 systemctl enable cron
                 systemctl start cron
                 ;;
+            openwrt|lede)
+                opkg update
+                opkg install cron
+                /etc/init.d/cron enable
+                /etc/init.d/cron start
+                ;;
             *)
                 echo "不支持的发行版: $ID"
                 return
@@ -935,11 +945,6 @@ install_ldnmp() {
           "docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1"
           "docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1"
 
-          # 最后一次php重启
-          "docker restart php > /dev/null 2>&1"
-          "docker restart php74 > /dev/null 2>&1"
-
-
       )
 
       total_commands=${#commands[@]}  # 计算总命令数
@@ -1156,9 +1161,7 @@ restart_ldnmp() {
       docker exec php chmod -R 777 /var/www/html
       docker exec php74 chmod -R 777 /var/www/html
 
-      docker restart nginx
-      docker restart php
-      docker restart php74
+      cd /home/web && docker compose restart
 
 }
 
@@ -1649,11 +1652,14 @@ linux_update() {
     elif command -v zypper &>/dev/null; then
         zypper refresh
         zypper update
+    elif command -v opkg &>/dev/null; then
+        opkg update
     else
         echo "未知的包管理器!"
         return
     fi
 }
+
 
 
 linux_clean() {
@@ -1701,12 +1707,18 @@ linux_clean() {
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=500M
 
-   elif command -v zypper &>/dev/null; then
+    elif command -v zypper &>/dev/null; then
         zypper clean --all
         zypper refresh
         journalctl --rotate
         journalctl --vacuum-time=1s
         journalctl --vacuum-size=500M
+
+    elif command -v opkg &>/dev/null; then
+        echo "删除系统日志..."
+        rm -rf /var/log/*
+        echo "删除临时文件..."
+        rm -rf /tmp/*
 
     else
         echo "未知的包管理器!"
@@ -1714,7 +1726,6 @@ linux_clean() {
     fi
     return
 }
-
 
 
 
@@ -3344,7 +3355,7 @@ linux_test() {
       echo -e "${gl_kjlan}2.   ${gl_bai}Region 流媒体解锁测试"
       echo -e "${gl_kjlan}3.   ${gl_bai}yeahwu 流媒体解锁检测"
       echo -e "${gl_kjlan}4.   ${gl_bai}xykt IP质量体检脚本 ${gl_huang}★${gl_bai}"
-      echo -e "${gl_kjlan}------------------------"      
+      echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}网络线路测速"
       echo -e "${gl_kjlan}11.  ${gl_bai}besttrace 三网回程延迟路由测试"
       echo -e "${gl_kjlan}12.  ${gl_bai}mtr_trace 三网回程线路测试"
@@ -3353,11 +3364,11 @@ linux_test() {
       echo -e "${gl_kjlan}15.  ${gl_bai}nxtrace 指定IP回程测试脚本"
       echo -e "${gl_kjlan}16.  ${gl_bai}ludashi2020 三网线路测试"
       echo -e "${gl_kjlan}17.  ${gl_bai}i-abc 多功能测速脚本"
-      echo -e "${gl_kjlan}------------------------"           
+      echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}硬件性能测试"
       echo -e "${gl_kjlan}21.  ${gl_bai}yabs 性能测试"
       echo -e "${gl_kjlan}22.  ${gl_bai}icu/gb5 CPU性能测试脚本"
-      echo -e "${gl_kjlan}------------------------"           
+      echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}综合性测试"
       echo -e "${gl_kjlan}31.  ${gl_bai}bench 性能测试"
       echo -e "${gl_kjlan}32.  ${gl_bai}spiritysdx 融合怪测评 ${gl_huang}★${gl_bai}"
@@ -4336,12 +4347,9 @@ linux_ldnmp() {
             3)
                 send_stats "清理站点缓存"
                 # docker exec -it nginx rm -rf /var/cache/nginx
-                docker restart nginx
                 docker exec php php -r 'opcache_reset();'
-                docker restart php
                 docker exec php74 php -r 'opcache_reset();'
-                docker restart php74
-                docker restart redis
+                docker restart nginx php php74 redis
                 docker exec redis redis-cli FLUSHALL
                 docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
                 docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
@@ -4724,13 +4732,10 @@ linux_ldnmp() {
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
 
+
+                  cd /home/web && docker compose restart
                   docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
                   docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
-
-                  docker restart nginx
-                  docker restart php
-                  docker restart php74
-                  docker restart mysql
 
                   echo "LDNMP环境已设置成 标准模式"
 
@@ -4751,13 +4756,10 @@ linux_ldnmp() {
                   docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
                   rm -rf /home/custom_mysql_config.cnf
 
+                  cd /home/web && docker compose restart
+
                   docker exec -it redis redis-cli CONFIG SET maxmemory 1024mb
                   docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
-
-                  docker restart nginx
-                  docker restart php
-                  docker restart php74
-                  docker restart mysql
 
                   echo "LDNMP环境已设置成 高性能模式"
 
