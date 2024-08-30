@@ -103,7 +103,7 @@ CheckFirstRun_false() {
 UserLicenseAgreement() {
     clear
     echo -e "${gl_kjlan}欢迎使用科技lion脚本工具箱${gl_bai}"
-    echo "首次使用脚本，请先阅读并同意用户许可协议:"
+    echo "首次使用脚本，请先阅读并同意用户许可协议。"
     echo "用户许可协议: https://blog.kejilion.pro/user-license-agreement/"
     echo -e "----------------------"
     read -r -p "是否同意以上条款？(y/n): " user_input
