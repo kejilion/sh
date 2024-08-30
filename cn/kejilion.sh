@@ -2764,7 +2764,7 @@ linux_tools() {
       echo -e "${gl_kjlan}9.   ${gl_bai}tmux 多路后台运行工具             ${gl_kjlan}10.  ${gl_bai}ffmpeg 视频编码直播推流工具"
       echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}11.  ${gl_bai}btop 现代化监控工具 ${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}ranger 文件管理工具"
-      echo -e "${gl_kjlan}13.  ${gl_bai}ncdu 磁盘占用查看工具              ${gl_kjlan}14.  ${gl_bai}fzf 全局搜索工具"
+      echo -e "${gl_kjlan}13.  ${gl_bai}ncdu 磁盘占用查看工具             ${gl_kjlan}14.  ${gl_bai}fzf 全局搜索工具"
       echo -e "${gl_kjlan}15.  ${gl_bai}vim 文本编辑器                    ${gl_kjlan}16.  ${gl_bai}nano 文本编辑器 ${gl_huang}★${gl_bai}"
       echo -e "${gl_kjlan}17.  ${gl_bai}git 版本控制系统"
       echo -e "${gl_kjlan}------------------------"
