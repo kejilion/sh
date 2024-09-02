@@ -18,7 +18,7 @@ apt update -y  && apt install -y curl
 ```
 ### CentOS 安装下载工具
 ```bash
-apt update -y  && apt install -y curl
+yum update -y  && yum install -y curl
 ```
 ***
 ### 一键脚本
