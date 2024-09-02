@@ -2692,7 +2692,7 @@ linux_ps() {
 
     cpu_arch=$(uname -m)
 
-    hostname=$(hostname)
+    hostname=$(uname -n)
 
     kernel_version=$(uname -r)
 
@@ -6979,7 +6979,7 @@ EOF
 
           while true; do
               clear
-              current_hostname=$(hostname)
+              current_hostname=$(uname -n)
               echo -e "当前主机名: ${gl_huang}$current_hostname${gl_bai}"
               echo "------------------------"
               read -p "请输入新的主机名（输入0退出）: " new_hostname
