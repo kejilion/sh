@@ -6754,6 +6754,7 @@ EOF
                 echo "3.  日本东京时间             4.  韩国首尔时间"
                 echo "5.  新加坡时间               6.  印度加尔各答时间"
                 echo "7.  阿联酋迪拜时间           8.  澳大利亚悉尼时间"
+                echo "9.  泰国曼谷时间"
                 echo "------------------------"
                 echo "欧洲"
                 echo "11. 英国伦敦时间             12. 法国巴黎时间"
@@ -6779,6 +6780,7 @@ EOF
                     6) set_timedate Asia/Kolkata ;;
                     7) set_timedate Asia/Dubai ;;
                     8) set_timedate Australia/Sydney ;;
+                    9) set_timedate Asia/Bangkok ;;
                     11) set_timedate Europe/London ;;
                     12) set_timedate Europe/Paris ;;
                     13) set_timedate Europe/Berlin ;;
