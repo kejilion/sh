@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.3"
+sh_v="3.0.4"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -1740,6 +1740,8 @@ sysctl -p
 
 
 set_dns() {
+
+rm /etc/resolv.conf
 
 # 检查机器是否有IPv6地址
 ipv6_available=0
