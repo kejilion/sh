@@ -7001,8 +7001,8 @@ EOF
                       echo "127.0.0.1      $new_hostname localhost localhost.localdomain" >> /etc/hosts
                   fi
 
-                  if grep -q "::1" /etc/hosts; then
-                      sed -i "s/::1 .*/::1      $new_hostname localhost localhost.localdomain ipv6-localhost ipv6-loopback/g" /etc/hosts
+                  if grep -q "^::1" /etc/hosts; then
+                      sed -i "s/^::1 .*/::1      $new_hostname localhost localhost.localdomain ipv6-localhost ipv6-loopback/g" /etc/hosts
                   else
                       echo "::1      $new_hostname localhost localhost.localdomain ipv6-localhost ipv6-loopback" >> /etc/hosts
                   fi
