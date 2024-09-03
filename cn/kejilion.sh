@@ -6995,10 +6995,10 @@ EOF
 
                   if grep -q "127.0.0.1" /etc/hosts; then
                       # 如果已有 127.0.0.1 的记录，替换其中的主机名
-                      sed -i "s/127.0.0.1 .*/127.0.0.1 localhost $new_hostname/g" /etc/hosts
+                      sed -i "s/127.0.0.1 .*/127.0.0.1     localhost localhost.localdomain $new_hostname/g" /etc/hosts
                   else
                       # 如果没有 127.0.0.1 的记录，新增一行
-                      echo "127.0.0.1 localhost $new_hostname" >> /etc/hosts
+                      echo "127.0.0.1     localhost localhost.localdomain $new_hostname" >> /etc/hosts
                   fi                  
                   
                   echo "主机名已更改为: $new_hostname"
