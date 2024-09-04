@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.4"
+sh_v="3.0.5"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -2485,11 +2485,8 @@ clamav() {
                       clamav_scan $directories
                       break_end
                         ;;
-                    0)
-                        break
-                        ;;
                     *)
-                        break  # 跳出循环，退出菜单
+                      break  # 跳出循环，退出菜单
                         ;;
                 esac
           done
@@ -2662,6 +2659,78 @@ optimize_web_server() {
     sysctl -w kernel.numa_balancing=0 2>/dev/null
 
 
+}
+
+
+
+update_locale() {
+    local lang=$1
+    local locale_file=$2
+
+    if [ -f /etc/os-release ]; then
+        . /etc/os-release
+        case $ID in
+            debian|ubuntu|kali)
+                install locales
+                sed -i "s/^\s*#\?\s*${locale_file}/${locale_file}/" /etc/locale.gen
+                locale-gen
+                echo "LANG=${lang}" > /etc/default/locale
+                export LANG=${lang}
+                echo -e "${gl_lv}系统语言已经修改为: $lang 重新连接SSH生效。${gl_bai}"
+                break_end
+                ;;
+            centos|rhel|almalinux|rocky|fedora)
+                install glibc-langpack-zh
+                localectl set-locale LANG=${lang}
+                echo "LANG=${lang}" | tee /etc/locale.conf
+                echo -e "${gl_lv}系统语言已经修改为: $lang 重新连接SSH生效。${gl_bai}"
+                break_end
+                ;;
+            *)
+                echo "不支持的系统: $ID"
+                break_end
+                ;;
+        esac
+    else
+        echo "不支持的系统，无法识别系统类型。"
+        break_end
+    fi
+}
+
+
+
+
+linux_language() {
+root_use
+send_stats "切换系统语言"
+while true; do
+  clear
+  echo "当前系统语言: $LANG"
+  echo "------------------------"
+  echo "1. 英文          2. 简体中文          3. 繁体中文"
+  echo "------------------------"
+  echo "0. 返回上一级"
+  echo "------------------------"
+  read -p "输入你的选择: " choice
+
+  case $choice in
+      1)
+          update_locale "en_US.UTF-8" "en_US.UTF-8"
+          send_stats "切换到英文"
+          ;;
+      2)
+          update_locale "zh_CN.UTF-8" "zh_CN.UTF-8"
+          send_stats "切换到简体中文"
+          ;;
+      3)
+          update_locale "zh_TW.UTF-8" "zh_TW.UTF-8"
+          send_stats "切换到繁体中文"
+          ;;
+      *)
+          break
+          ;;
+  esac
+done
 }
 
 
@@ -6254,7 +6323,9 @@ linux_Settings() {
       echo -e "${gl_kjlan}27.  ${gl_bai}红帽系Linux内核升级                ${gl_kjlan}28.  ${gl_bai}Linux系统内核参数优化 ${gl_huang}★${gl_bai}"
       echo -e "${gl_kjlan}29.  ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}文件管理器"
       echo -e "${gl_kjlan}------------------------"
-      echo -e "${gl_kjlan}31.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
+      echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言"
+      echo -e "${gl_kjlan}------------------------"
+      echo -e "${gl_kjlan}41.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
       echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}99.  ${gl_bai}重启服务器                         ${gl_kjlan}100. ${gl_bai}隐私与安全"
       echo -e "${gl_kjlan}------------------------"
@@ -7500,6 +7571,10 @@ EOF
               ;;
 
           31)
+              linux_language
+              ;;
+
+          41)
             clear
             send_stats "留言板"
             install sshpass
