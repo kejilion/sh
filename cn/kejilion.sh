@@ -4234,7 +4234,7 @@ linux_ldnmp() {
       nginx_install_status
       ip_address
       add_yuming
-      echo -e "域名格式: ${gl_huang}http://www.google.com${gl_bai}"
+      echo -e "域名格式: ${gl_huang}google.com${gl_bai}"
       read -p "请输入你的反代域名: " fandai_yuming
 
       install_ssltls
