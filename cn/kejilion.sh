@@ -3585,8 +3585,8 @@ linux_Oracle() {
       echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}3.   ${gl_bai}DD重装系统脚本"
       echo -e "${gl_kjlan}4.   ${gl_bai}R探长开机脚本"
-      echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}5.   ${gl_bai}开启ROOT密码登录模式"
+      echo -e "${gl_kjlan}6.   ${gl_bai}IPV6恢复工具"      
       echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
       echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -3697,6 +3697,11 @@ linux_Oracle() {
               add_sshpasswd
 
               ;;
+          6)
+              clear
+              bash <(curl -L -s jhb.ovh/jb/v6.sh)
+              echo "该功能由jhb大神提供，感谢他！"
+              ;;              
           0)
               kejilion
 
