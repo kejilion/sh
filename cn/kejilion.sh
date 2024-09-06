@@ -6604,7 +6604,7 @@ EOF
                 fi
                 echo ""
                 echo "------------------------"
-                echo "1. IPv4 优先          2. IPv6 优先          0. 退出"
+                echo "1. IPv4 优先          2. IPv6 优先          3. IPv6 修复工具          0. 退出"
                 echo "------------------------"
                 read -p "选择优先的网络: " choice
 
@@ -6618,6 +6618,12 @@ EOF
                         sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
                         echo "已切换为 IPv6 优先"
                         send_stats "已切换为 IPv6 优先"
+                        ;;
+                    3)
+                        clear
+                        bash <(curl -L -s jhb.ovh/jb/v6.sh)
+                        echo "该功能由jhb大神提供，感谢他！"
+                        send_stats "ipv6修复"
                         ;;
                     *)
                         break
