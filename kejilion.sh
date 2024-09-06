@@ -3701,6 +3701,7 @@ linux_Oracle() {
               clear
               bash <(curl -L -s jhb.ovh/jb/v6.sh)
               echo "该功能由jhb大神提供，感谢他！"
+              send_stats "ipv6修复"              
               ;;
           0)
               kejilion
