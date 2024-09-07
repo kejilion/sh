@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.6"
+sh_v="3.0.7"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -2395,7 +2395,7 @@ clamav_freshclam() {
     docker run --rm \
         --name clamav \
         --mount source=clam_db,target=/var/lib/clamav \
-        clamav/clamav:latest \
+        clamav/clamav-debian:latest \
         freshclam
 }
 
@@ -2428,7 +2428,7 @@ clamav_scan() {
         --mount source=clam_db,target=/var/lib/clamav \
         $MOUNT_PARAMS \
         -v /home/docker/clamav/log/:/var/log/clamav/ \
-        clamav/clamav:latest \
+        clamav/clamav-debian:latest \
         clamscan -r --log=/var/log/clamav/scan.log $SCAN_PARAMS
 
     echo -e "${gl_lv}$@ 扫描完成，病毒报告存放在${gl_huang}/home/docker/clamav/log/scan.log${gl_bai}"
@@ -2452,7 +2452,6 @@ clamav() {
                 echo "------------------------"
                 echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
                 echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
-                echo -e "${gl_huang}提示: ${gl_bai} 目前该工具仅支持x86架构系统，不支持ARM架构！"
                 echo "------------------------"
                 echo -e "${gl_lv}1. 全盘扫描 ${gl_bai}             ${gl_huang}2. 重要目录扫描 ${gl_bai}            ${gl_kjlan} 3. 自定义目录扫描 ${gl_bai}"
                 echo "------------------------"
