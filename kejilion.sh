@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.7"
+sh_v="3.0.8"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -862,7 +862,11 @@ install_ldnmp() {
 
       # 定义要执行的命令
       commands=(
-          "docker exec nginx chmod -R 777 /var/www/html"
+          "docker exec nginx chmod -R 777 /var/www/html > /dev/null 2>&1"
+          "docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1"
+          "docker exec nginx chmod 777 /var/cache/nginx/proxy > /dev/null 2>&1"
+          "docker exec nginx mkdir -p /var/cache/nginx/fastcgi > /dev/null 2>&1"
+          "docker exec nginx chmod 777 /var/cache/nginx/fastcgi > /dev/null 2>&1"
           "docker restart nginx > /dev/null 2>&1"
 
           # "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
@@ -1173,6 +1177,10 @@ nginx_upgrade() {
   docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
   docker compose up -d --force-recreate $ldnmp_pods
   docker exec $ldnmp_pods chmod -R 777 /var/www/html
+  docker exec nginx mkdir -p /var/cache/nginx/proxy
+  docker exec nginx chmod 777 /var/cache/nginx/proxy
+  docker exec nginx mkdir -p /var/cache/nginx/fastcgi
+  docker exec nginx chmod 777 /var/cache/nginx/fastcgi
   docker restart $ldnmp_pods > /dev/null 2>&1
 
 }
