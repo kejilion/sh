@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.7"
+sh_v="3.0.8"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -862,7 +862,11 @@ install_ldnmp() {
 
       # 定义要执行的命令
       commands=(
-          "docker exec nginx chmod -R 777 /var/www/html"
+          "docker exec nginx chmod -R 777 /var/www/html > /dev/null 2>&1"
+          "docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1"
+          "docker exec nginx chmod 777 /var/cache/nginx/proxy > /dev/null 2>&1"
+          "docker exec nginx mkdir -p /var/cache/nginx/fastcgi > /dev/null 2>&1"
+          "docker exec nginx chmod 777 /var/cache/nginx/fastcgi > /dev/null 2>&1"
           "docker restart nginx > /dev/null 2>&1"
 
           "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
@@ -1173,6 +1177,10 @@ nginx_upgrade() {
   docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
   docker compose up -d --force-recreate $ldnmp_pods
   docker exec $ldnmp_pods chmod -R 777 /var/www/html
+  docker exec nginx mkdir -p /var/cache/nginx/proxy
+  docker exec nginx chmod 777 /var/cache/nginx/proxy
+  docker exec nginx mkdir -p /var/cache/nginx/fastcgi
+  docker exec nginx chmod 777 /var/cache/nginx/fastcgi
   docker restart $ldnmp_pods > /dev/null 2>&1
 
 }
@@ -3585,7 +3593,7 @@ linux_Oracle() {
       echo -e "${gl_kjlan}3.   ${gl_bai}DD重装系统脚本"
       echo -e "${gl_kjlan}4.   ${gl_bai}R探长开机脚本"
       echo -e "${gl_kjlan}5.   ${gl_bai}开启ROOT密码登录模式"
-      echo -e "${gl_kjlan}6.   ${gl_bai}IPV6恢复工具"      
+      echo -e "${gl_kjlan}6.   ${gl_bai}IPV6恢复工具"
       echo -e "${gl_kjlan}------------------------"
       echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
       echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -3700,8 +3708,8 @@ linux_Oracle() {
               clear
               bash <(curl -L -s jhb.ovh/jb/v6.sh)
               echo "该功能由jhb大神提供，感谢他！"
-              send_stats "ipv6修复"              
-              ;;              
+              send_stats "ipv6修复"
+              ;;
           0)
               kejilion
 
@@ -6618,12 +6626,14 @@ EOF
                         echo "已切换为 IPv6 优先"
                         send_stats "已切换为 IPv6 优先"
                         ;;
+
                     3)
                         clear
                         bash <(curl -L -s jhb.ovh/jb/v6.sh)
                         echo "该功能由jhb大神提供，感谢他！"
                         send_stats "ipv6修复"
                         ;;
+
                     *)
                         break
                         ;;
