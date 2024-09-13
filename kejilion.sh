@@ -1870,7 +1870,8 @@ clear
 dd_xitong() {
         send_stats "重装系统"
         dd_xitong_MollyLau() {
-            wget --no-check-certificate -qO InstallNET.sh '${gh_proxy}https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh' && chmod a+x InstallNET.sh
+            wget --no-check-certificate -qO InstallNET.sh "${gh_proxy}https://raw.githubusercontent.com/leitbogioro/Tools/master/Linux_reinstall/InstallNET.sh" && chmod a+x InstallNET.sh
+
         }
 
         dd_xitong_bin456789() {
@@ -3697,7 +3698,7 @@ linux_Oracle() {
 
               read -p "请输入你重装后的密码: " vpspasswd
               install wget
-              bash <(wget --no-check-certificate -qO- '${gh_proxy}https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh') $xitong -v 64 -p $vpspasswd -port 22
+              bash <(wget --no-check-certificate -qO- "${gh_proxy}https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh") $xitong -v 64 -p $vpspasswd -port 22
               send_stats "甲骨文云重装系统脚本"
               ;;
             [Nn])
