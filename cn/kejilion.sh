@@ -4519,6 +4519,7 @@ linux_ldnmp() {
       send_stats "LDNMP环境备份"
 
       backup_filename="web_$(date +"%Y%m%d%H%M%S").tar.gz"
+      echo -e "${gl_huang}正在备份 $backup_filename ...${gl_bai}"
       cd /home/ && tar czvf "$backup_filename" web
 
       while true; do
