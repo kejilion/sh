@@ -13,7 +13,7 @@ gl_bai='\033[0m'
 gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
-# gh_proxy=""
+
 gh_proxy="https://gh.kejilion.pro/"
 
 zhushi=0  # 0 表示执行，1 表示不执行
@@ -880,8 +880,8 @@ install_ldnmp() {
           "docker exec nginx chmod 777 /var/cache/nginx/fastcgi > /dev/null 2>&1"
           "docker restart nginx > /dev/null 2>&1"
 
-          'run_command "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"'
-          'run_command "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"'
+          "run_command docker exec php sed -i \"s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g\" /etc/apk/repositories > /dev/null 2>&1"
+          "run_command docker exec php74 sed -i \"s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g\" /etc/apk/repositories > /dev/null 2>&1"
 
           # "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
           # "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
