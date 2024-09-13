@@ -1462,19 +1462,6 @@ ldnmp_install_status_one() {
 
 }
 
-ldnmp_install_status_two() {
-
-   if docker inspect "php" &>/dev/null; then
-    send_stats "还原失败原因已安装LDNMP环境"
-    echo -e "${gl_huang}提示: ${gl_bai}LDNMP环境已安装。无法还原LDNMP环境，请先卸载现有环境再次尝试还原。"
-    break_end
-    linux_ldnmp
-   else
-    :
-   fi
-
-}
-
 
 
 
@@ -4606,17 +4593,33 @@ linux_ldnmp() {
     34)
       root_use
       send_stats "LDNMP环境还原"
-      ldnmp_install_status_two
-      echo "请确认home目录中已经放置网站备份的gz压缩包，按任意键继续……"
-      read -n 1 -s -r -p ""
-      echo -e "${gl_huang}正在解压...${gl_bai}"
-      cd /home/ && ls -t /home/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
-      check_port
-      install_dependency
-      install_docker
-      install_certbot
+      echo "可用的站点备份"
+      echo "-------------------------"
+      ls -lt /home/*.gz | awk '{print $NF}'
+      echo ""
+      read -p  "按回车键还原最新的备份，输入备份文件名还原指定的备份：" filename
 
-      install_ldnmp
+      # 如果用户没有输入文件名，使用最新的压缩包
+      if [ -z "$filename" ]; then
+          filename=$(ls -t /home/*.tar.gz | head -1)
+      fi
+
+      if [ -n "$filename" ]; then
+          cd /home/web/ > /dev/null 2>&1
+          docker compose down > /dev/null 2>&1
+          rm -rf /home/web > /dev/null 2>&1
+
+          echo -e "${gl_huang}正在解压 $filename ...${gl_bai}"
+          cd /home/ && tar -xzf "$filename"
+
+          check_port
+          install_dependency
+          install_docker
+          install_certbot
+          install_ldnmp
+      else
+          echo "没有找到压缩包。"
+      fi
 
       ;;
 
