@@ -15,8 +15,8 @@ gl_kjlan='\033[96m'
 
 
 
+country="default"
 cn_yuan() {
-country=$(curl -s ipinfo.io/country)
 if [ "$country" = "CN" ]; then
     zhushi=0 
     gh_proxy="https://gh.kejilion.pro/"
