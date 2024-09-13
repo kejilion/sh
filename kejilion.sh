@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sh_v="3.0.8"
+sh_v="3.0.9"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -4390,7 +4390,7 @@ linux_ldnmp() {
         echo ""
         echo "操作"
         echo "------------------------"
-        echo "1. 申请/更新域名证书"
+        echo "1. 申请/更新域名证书               2. 更换站点域名"
         echo "3. 清理站点缓存                    4. 查看站点分析报告"
         echo "5. 编辑全局配置                    6. 编辑站点配置"
         echo "------------------------"
@@ -4410,20 +4410,55 @@ linux_ldnmp() {
                 ;;
 
             2)
+                send_stats "更换站点域名"
+                echo -e "${gl_hong}强烈建议: ${gl_bai}先备份好全站数据再更换站点域名！"
                 read -p "请输入旧域名: " oddyuming
                 read -p "请输入新域名: " yuming
                 install_certbot
                 install_ssltls
                 certs_status
+
+                # mysql替换
+                add_db
+
+                odd_dbname=$(echo "$oddyuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+                odd_dbname="${odd_dbname}"
+
+                docker exec mysql mysqldump -u root -p"$dbrootpasswd" $odd_dbname | docker exec -i mysql mysql -u root -p"$dbrootpasswd" $dbname
+                docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $odd_dbname;"
+
+
+                tables=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -D $dbname -e "SHOW TABLES;" | awk '{ if (NR>1) print $1 }')
+                for table in $tables; do
+                    columns=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -D $dbname -e "SHOW COLUMNS FROM $table;" | awk '{ if (NR>1) print $1 }')
+                    for column in $columns; do
+                        docker exec mysql mysql -u root -p"$dbrootpasswd" -D $dbname -e "UPDATE $table SET $column = REPLACE($column, '$oddyuming', '$yuming') WHERE $column LIKE '%$oddyuming%';"
+                    done
+                done
+
+                # docker exec mysql mysql -u root -p"$dbrootpasswd" -D $dbname -e "
+                # UPDATE wp_options SET option_value = replace(option_value, '$oddyuming', '$yuming') WHERE option_name = 'home' OR option_name = 'siteurl';
+                # UPDATE wp_posts SET guid = replace(guid, '$oddyuming', '$yuming');
+                # UPDATE wp_posts SET post_content = replace(post_content, '$oddyuming', '$yuming');
+                # UPDATE wp_postmeta SET meta_value = replace(meta_value,'$oddyuming', '$yuming');
+                # "
+
+
+                # 网站目录替换
+                mv /home/web/html/$oddyuming /home/web/html/$yuming
+                # sed -i "s/$odd_dbname/$dbname/g" /home/web/html/$yuming/wordpress/wp-config.php
+                # sed -i "s/$oddyuming/$yuming/g" /home/web/html/$yuming/wordpress/wp-config.php
+
+                find /home/web/html/$yuming -type f -exec sed -i "s/$odd_dbname/$dbname/g" {} +
+                find /home/web/html/$yuming -type f -exec sed -i "s/$oddyuming/$yuming/g" {} +
+
                 mv /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
                 sed -i "s/$oddyuming/$yuming/g" /home/web/conf.d/$yuming.conf
-                mv /home/web/html/$oddyuming /home/web/html/$yuming
 
                 rm /home/web/certs/${oddyuming}_key.pem
                 rm /home/web/certs/${oddyuming}_cert.pem
 
                 docker restart nginx
-
 
                 ;;
 
