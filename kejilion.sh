@@ -4536,7 +4536,7 @@ linux_ldnmp() {
 
       while true; do
         clear
-        echo "备份文件已创建: $backup_filename"
+        echo "备份文件已创建: /home/$backup_filename"
         read -p "要传送备份数据到远程服务器吗？(Y/N): " choice
         case "$choice" in
           [Yy])
