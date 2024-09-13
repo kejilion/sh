@@ -4597,7 +4597,12 @@ linux_ldnmp() {
       echo "-------------------------"
       ls -lt /home/*.gz | awk '{print $NF}'
       echo ""
-      read -p  "按回车键还原最新的备份，输入备份文件名还原指定的备份：" filename
+      read -p  "回车键还原最新的备份，输入备份文件名还原指定的备份，输入0退出：" filename
+
+      if [ "$filename" == "0" ]; then
+          break_end
+          linux_ldnmp
+      fi
 
       # 如果用户没有输入文件名，使用最新的压缩包
       if [ -z "$filename" ]; then
