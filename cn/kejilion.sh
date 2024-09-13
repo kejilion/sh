@@ -13,10 +13,17 @@ gl_bai='\033[0m'
 gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
-gh_proxy="https://gh-proxy.com/"
+# gh_proxy=""
+gh_proxy="https://gh.kejilion.pro/"
 
+zhushi=0  # 0 表示执行，1 表示不执行
 
-
+# 定义一个函数来执行命令
+run_command() {
+    if [ "$zhushi" -eq 0 ]; then
+        "$@"
+    fi
+}
 
 
 
@@ -873,8 +880,11 @@ install_ldnmp() {
           "docker exec nginx chmod 777 /var/cache/nginx/fastcgi > /dev/null 2>&1"
           "docker restart nginx > /dev/null 2>&1"
 
-          "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
-          "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
+          'run_command "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"'
+          'run_command "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"'
+
+          # "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
+          # "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
 
           "docker exec php apk update > /dev/null 2>&1"
           "docker exec php74 apk update > /dev/null 2>&1"
@@ -4964,7 +4974,7 @@ linux_ldnmp() {
               docker compose up -d --force-recreate $ldnmp_pods
               docker exec $ldnmp_pods chmod -R 777 /var/www/html
 
-              docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1
+              run_command docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1
 
               docker exec php apk update
               curl -sL ${gh_proxy}https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions
