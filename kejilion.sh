@@ -13,10 +13,23 @@ gl_bai='\033[0m'
 gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
-gh_proxy=""
-# gh_proxy="https://gh.kejilion.pro/"
 
-zhushi=1  # 0 表示执行，1 表示不执行
+
+cn_yuan() {
+country=$(curl -s ipinfo.io/country)
+if [ "$country" = "CN" ]; then
+    zhushi=0 
+    gh_proxy="https://gh.kejilion.pro/"
+else
+    zhushi=1  # 0 表示执行，1 表示不执行
+    gh_proxy=""
+fi
+
+}
+
+cn_yuan
+
+
 
 # 定义一个函数来执行命令
 run_command() {
