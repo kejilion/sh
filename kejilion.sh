@@ -4533,11 +4533,10 @@ linux_ldnmp() {
 
       backup_filename="web_$(date +"%Y%m%d%H%M%S").tar.gz"
       cd /home/ && tar czvf "$backup_filename" web
-      echo "备份文件已创建: $backup_filename"
 
       while true; do
         clear
-        echo "备份已完成，备份数据保存在home目录下，是以tar.gz结尾的压缩包。"
+        echo "备份文件已创建: $backup_filename"
         read -p "要传送备份数据到远程服务器吗？(Y/N): " choice
         case "$choice" in
           [Yy])
