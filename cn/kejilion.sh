@@ -1,6 +1,5 @@
 #!/bin/bash
-
-sh_v="3.0.9"
+sh_v="3.0.10"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -15,7 +14,7 @@ gl_kjlan='\033[96m'
 
 
 
-country="CN"
+country="default"
 cn_yuan() {
 if [ "$country" = "CN" ]; then
 	zhushi=0
@@ -2757,6 +2756,90 @@ done
 
 
 
+shell_bianse_profile() {
+
+if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+	sed -i '/^PS1=/d' ~/.bashrc
+	echo "${bianse}" >> ~/.bashrc
+	# source ~/.bashrc
+else
+	sed -i '/^PS1=/d' ~/.profile
+	echo "${bianse}" >> ~/.profile
+	# source ~/.profile
+fi
+echo -e "${lv}变更完成。重新连接SSH后可查看变化！${bai}"
+
+break_end
+
+}
+
+
+
+shell_bianse() {
+  root_use
+  send_stats "命令行主题管理"
+  while true; do
+	clear
+	echo "命令行主题管理"
+	echo "------------------------"
+	echo -e "1. \033[1;32mroot \033[1;34mlocalhost \033[1;31m~ \033[0m${bai}#"
+	echo -e "2. \033[1;35mroot \033[1;36mlocalhost \033[1;33m~ \033[0m${bai}#"
+	echo -e "3. \033[1;31mroot \033[1;32mlocalhost \033[1;34m~ \033[0m${bai}#"
+	echo -e "4. \033[1;36mroot \033[1;33mlocalhost \033[1;37m~ \033[0m${bai}#"
+	echo -e "5. \033[1;37mroot \033[1;31mlocalhost \033[1;32m~ \033[0m${bai}#"
+	echo -e "6. \033[1;33mroot \033[1;34mlocalhost \033[1;35m~ \033[0m${bai}#"
+	echo -e "7. root localhost ~ #"
+	echo "------------------------"
+	echo "0. 返回上一级"
+	echo "------------------------"
+	read -p "输入你的选择: " choice
+
+	case $choice in
+	  1)
+		bianse="PS1='\[\033[1;32m\]\u\[\033[0m\]@\[\033[1;34m\]\h\[\033[0m\] \[\033[1;31m\]\w\[\033[0m\] # '"
+		shell_bianse_profile
+
+		;;
+	  2)
+		bianse="PS1='\[\033[1;35m\]\u\[\033[0m\]@\[\033[1;36m\]\h\[\033[0m\] \[\033[1;33m\]\w\[\033[0m\] # '"
+		shell_bianse_profile
+		;;
+	  3)
+		bianse="PS1='\[\033[1;31m\]\u\[\033[0m\]@\[\033[1;32m\]\h\[\033[0m\] \[\033[1;34m\]\w\[\033[0m\] # '"
+		shell_bianse_profile
+		;;
+	  4)
+		bianse="PS1='\[\033[1;36m\]\u\[\033[0m\]@\[\033[1;33m\]\h\[\033[0m\] \[\033[1;37m\]\w\[\033[0m\] # '"
+		shell_bianse_profile
+		;;
+	  5)
+		bianse="PS1='\[\033[1;37m\]\u\[\033[0m\]@\[\033[1;31m\]\h\[\033[0m\] \[\033[1;32m\]\w\[\033[0m\] # '"
+		shell_bianse_profile
+		;;
+	  6)
+		bianse="PS1='\[\033[1;33m\]\u\[\033[0m\]@\[\033[1;34m\]\h\[\033[0m\] \[\033[1;35m\]\w\[\033[0m\] # '"
+		shell_bianse_profile
+		;;
+	  7)
+		bianse=""
+		shell_bianse_profile
+		;;
+	  *)
+		break
+		;;
+	esac
+
+  done
+}
+
+
+
+
+
+
+
+
+
 linux_ps() {
 
 	clear
@@ -5194,7 +5277,7 @@ linux_panel() {
 			  ;;
 		  3)
 
-			lujing="command -v 1pctl &> /dev/null"
+			lujing="command -v 1pctl > /dev/null 2>&1 "
 			panelname="1Panel"
 
 			gongneng1="1pctl user-info"
@@ -6411,7 +6494,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}27.  ${gl_bai}红帽系Linux内核升级                ${gl_kjlan}28.  ${gl_bai}Linux系统内核参数优化 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}文件管理器"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言"
+	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行主题管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
@@ -7668,6 +7751,10 @@ EOF
 
 		  31)
 			  linux_language
+			  ;;
+
+		  32)
+			  shell_bianse
 			  ;;
 
 		  41)
