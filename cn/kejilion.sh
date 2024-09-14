@@ -486,31 +486,31 @@ while true; do
 	echo "------------------------"
 	echo "0. 返回上一级选单"
 	echo "------------------------"
-	read -p "请输入你的选择: " sub_choice
+	read -e -p "请输入你的选择: " sub_choice
 	case $sub_choice in
 		1)
 			send_stats "新建容器"
-			read -p "请输入创建命令: " dockername
+			read -e -p "请输入创建命令: " dockername
 			$dockername
 			;;
 		2)
 			send_stats "启动指定容器"
-			read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
+			read -e -p "请输入容器名（多个容器名请用空格分隔）: " dockername
 			docker start $dockername
 			;;
 		3)
 			send_stats "停止指定容器"
-			read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
+			read -e -p "请输入容器名（多个容器名请用空格分隔）: " dockername
 			docker stop $dockername
 			;;
 		4)
 			send_stats "删除指定容器"
-			read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
+			read -e -p "请输入容器名（多个容器名请用空格分隔）: " dockername
 			docker rm -f $dockername
 			;;
 		5)
 			send_stats "重启指定容器"
-			read -p "请输入容器名（多个容器名请用空格分隔）: " dockername
+			read -e -p "请输入容器名（多个容器名请用空格分隔）: " dockername
 			docker restart $dockername
 			;;
 		6)
@@ -523,7 +523,7 @@ while true; do
 			;;
 		8)
 			send_stats "删除所有容器"
-			read -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有容器吗？(Y/N): ")" choice
+			read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有容器吗？(Y/N): ")" choice
 			case "$choice" in
 			  [Yy])
 				docker rm -f $(docker ps -a -q)
@@ -541,13 +541,13 @@ while true; do
 			;;
 		11)
 			send_stats "进入容器"
-			read -p "请输入容器名: " dockername
+			read -e -p "请输入容器名: " dockername
 			docker exec -it $dockername /bin/sh
 			break_end
 			;;
 		12)
 			send_stats "查看容器日志"
-			read -p "请输入容器名: " dockername
+			read -e -p "请输入容器名: " dockername
 			docker logs $dockername
 			break_end
 			;;
@@ -599,11 +599,11 @@ while true; do
 	echo "------------------------"
 	echo "0. 返回上一级选单"
 	echo "------------------------"
-	read -p "请输入你的选择: " sub_choice
+	read -e -p "请输入你的选择: " sub_choice
 	case $sub_choice in
 		1)
 			send_stats "拉取镜像"
-			read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
+			read -e -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
 			for name in $imagenames; do
 				echo -e "${gl_huang}正在获取镜像: $name${gl_bai}"
 				docker pull $name
@@ -611,7 +611,7 @@ while true; do
 			;;
 		2)
 			send_stats "更新镜像"
-			read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
+			read -e -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
 			for name in $imagenames; do
 				echo -e "${gl_huang}正在更新镜像: $name${gl_bai}"
 				docker pull $name
@@ -619,14 +619,14 @@ while true; do
 			;;
 		3)
 			send_stats "删除镜像"
-			read -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
+			read -e -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
 			for name in $imagenames; do
 				docker rmi -f $name
 			done
 			;;
 		4)
 			send_stats "删除所有镜像"
-			read -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有镜像吗？(Y/N): ")" choice
+			read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有镜像吗？(Y/N): ")" choice
 			case "$choice" in
 			  [Yy])
 				docker rmi -f $(docker images -q)
@@ -1161,7 +1161,7 @@ fi
 add_yuming() {
 	  ip_address
 	  echo -e "先将域名解析到本机IP: ${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
-	  read -p "请输入你解析的域名: " yuming
+	  read -e -p "请输入你解析的域名: " yuming
 	  repeat_add_yuming
 
 }
@@ -1279,7 +1279,7 @@ while true; do
 	echo "------------------------"
 	echo "0. 返回上一级"
 	echo "------------------------"
-	read -p "请输入你的选择: " choice
+	read -e -p "请输入你的选择: " choice
 	 case $choice in
 		1)
 			install_docker
@@ -1437,7 +1437,7 @@ f2b_sshd() {
 
 server_reboot() {
 
-	read -p "$(echo -e "${gl_huang}提示: ${gl_bai}现在重启服务器吗？(Y/N): ")" rboot
+	read -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}现在重启服务器吗？(Y/N): ")" rboot
 	case "$rboot" in
 	  [Yy])
 		echo "已重启"
@@ -1572,7 +1572,7 @@ while true; do
 	echo "------------------------"
 	echo "0. 返回上一级"
 	echo "------------------------"
-	read -p "请输入你的选择: " choice
+	read -e -p "请输入你的选择: " choice
 	 case $choice in
 		1)
 			iptables_open
@@ -1936,7 +1936,7 @@ dd_xitong() {
 			echo "------------------------"
 			echo "0. 返回上一级选单"
 			echo "------------------------"
-			read -p "请选择要重装的系统: " sys_choice
+			read -e -p "请选择要重装的系统: " sys_choice
 			case "$sys_choice" in
 			  1)
 				send_stats "重装debian 12"
@@ -2187,7 +2187,7 @@ bbrv3() {
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -p "请输入你的选择: " sub_choice
+				  read -e -p "请输入你的选择: " sub_choice
 
 				  case $sub_choice in
 					  1)
@@ -2238,7 +2238,7 @@ bbrv3() {
 		  echo "仅支持Debian/Ubuntu 仅支持x86_64架构"
 		  echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"
 		  echo "------------------------------------------------"
-		  read -p "确定继续吗？(Y/N): " choice
+		  read -e -p "确定继续吗？(Y/N): " choice
 
 		  case "$choice" in
 			[Yy])
@@ -2351,7 +2351,7 @@ elrepo() {
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -p "请输入你的选择: " sub_choice
+				  read -e -p "请输入你的选择: " sub_choice
 
 				  case $sub_choice in
 					  1)
@@ -2389,7 +2389,7 @@ elrepo() {
 		  echo "仅支持红帽系列发行版 CentOS/RedHat/Alma/Rocky/oracle "
 		  echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"
 		  echo "------------------------------------------------"
-		  read -p "确定继续吗？(Y/N): " choice
+		  read -e -p "确定继续吗？(Y/N): " choice
 
 		  case "$choice" in
 			[Yy])
@@ -2479,7 +2479,7 @@ clamav() {
 				echo "------------------------"
 				echo "0. 返回上一级选单"
 				echo "------------------------"
-				read -p "请输入你的选择: " sub_choice
+				read -e -p "请输入你的选择: " sub_choice
 				case $sub_choice in
 					1)
 					  send_stats "全盘扫描"
@@ -2500,7 +2500,7 @@ clamav() {
 						;;
 					3)
 					  send_stats "自定义目录扫描"
-					  read -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
+					  read -e -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
 					  install_docker
 					  clamav_freshclam
 					  clamav_scan $directories
@@ -2732,7 +2732,7 @@ while true; do
   echo "------------------------"
   echo "0. 返回上一级"
   echo "------------------------"
-  read -p "输入你的选择: " choice
+  read -e -p "输入你的选择: " choice
 
   case $choice in
 	  1)
@@ -2792,7 +2792,7 @@ shell_bianse() {
 	echo "------------------------"
 	echo "0. 返回上一级"
 	echo "------------------------"
-	read -p "输入你的选择: " choice
+	read -e -p "输入你的选择: " choice
 
 	case $choice in
 	  1)
@@ -2955,7 +2955,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  read -p "请输入你的选择: " sub_choice
+	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
 		  1)
@@ -3158,13 +3158,13 @@ linux_tools() {
 
 		  41)
 			  clear
-			  read -p "请输入安装的工具名（wget curl sudo htop）: " installname
+			  read -e -p "请输入安装的工具名（wget curl sudo htop）: " installname
 			  install $installname
 			  send_stats "安装指定软件"
 			  ;;
 		  42)
 			  clear
-			  read -p "请输入卸载的工具名（htop ufw tmux cmatrix）: " removename
+			  read -e -p "请输入卸载的工具名（htop ufw tmux cmatrix）: " removename
 			  remove $removename
 			  send_stats "卸载指定软件"
 			  ;;
@@ -3204,7 +3204,7 @@ linux_bbr() {
 			  echo "------------------------"
 			  echo "0. 返回上一级选单"
 			  echo "------------------------"
-			  read -p "请输入你的选择: " sub_choice
+			  read -e -p "请输入你的选择: " sub_choice
 
 			  case $sub_choice in
 				  1)
@@ -3268,7 +3268,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  read -p "请输入你的选择: " sub_choice
+	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
 		  1)
@@ -3343,18 +3343,18 @@ linux_docker() {
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -p "请输入你的选择: " sub_choice
+				  read -e -p "请输入你的选择: " sub_choice
 
 				  case $sub_choice in
 					  1)
 						  send_stats "创建网络"
-						  read -p "设置新网络名: " dockernetwork
+						  read -e -p "设置新网络名: " dockernetwork
 						  docker network create $dockernetwork
 						  ;;
 					  2)
 						  send_stats "加入网络"
-						  read -p "加入网络名: " dockernetwork
-						  read -p "那些容器加入该网络（多个容器名请用空格分隔）: " dockernames
+						  read -e -p "加入网络名: " dockernetwork
+						  read -e -p "那些容器加入该网络（多个容器名请用空格分隔）: " dockernames
 
 						  for dockername in $dockernames; do
 							  docker network connect $dockernetwork $dockername
@@ -3362,8 +3362,8 @@ linux_docker() {
 						  ;;
 					  3)
 						  send_stats "加入网络"
-						  read -p "退出网络名: " dockernetwork
-						  read -p "那些容器退出该网络（多个容器名请用空格分隔）: " dockernames
+						  read -e -p "退出网络名: " dockernetwork
+						  read -e -p "那些容器退出该网络（多个容器名请用空格分隔）: " dockernames
 
 						  for dockername in $dockernames; do
 							  docker network disconnect $dockernetwork $dockername
@@ -3373,7 +3373,7 @@ linux_docker() {
 
 					  4)
 						  send_stats "删除网络"
-						  read -p "请输入要删除的网络名: " dockernetwork
+						  read -e -p "请输入要删除的网络名: " dockernetwork
 						  docker network rm $dockernetwork
 						  ;;
 					  0)
@@ -3402,17 +3402,17 @@ linux_docker() {
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -p "请输入你的选择: " sub_choice
+				  read -e -p "请输入你的选择: " sub_choice
 
 				  case $sub_choice in
 					  1)
 						  send_stats "新建卷"
-						  read -p "设置新卷名: " dockerjuan
+						  read -e -p "设置新卷名: " dockerjuan
 						  docker volume create $dockerjuan
 
 						  ;;
 					  2)
-						  read -p "输入删除卷名（多个卷名请用空格分隔）: " dockerjuans
+						  read -e -p "输入删除卷名（多个卷名请用空格分隔）: " dockerjuans
 
 						  for dockerjuan in $dockerjuans; do
 							  docker volume rm $dockerjuan
@@ -3422,7 +3422,7 @@ linux_docker() {
 
 					   3)
 						  send_stats "删除所有卷"
-						  read -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有未使用的卷吗？(Y/N): ")" choice
+						  read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有未使用的卷吗？(Y/N): ")" choice
 						  case "$choice" in
 							[Yy])
 							  docker volume prune -f
@@ -3447,7 +3447,7 @@ linux_docker() {
 		  7)
 			  clear
 			  send_stats "Docker清理"
-			  read -p "$(echo -e "${gl_huang}提示: ${gl_bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(Y/N): ")" choice
+			  read -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(Y/N): ")" choice
 			  case "$choice" in
 				[Yy])
 				  docker system prune -af --volumes
@@ -3487,7 +3487,7 @@ linux_docker() {
 		  20)
 			  clear
 			  send_stats "Docker卸载"
-			  read -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定卸载docker环境吗？(Y/N): ")" choice
+			  read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定卸载docker环境吗？(Y/N): ")" choice
 			  case "$choice" in
 				[Yy])
 				  docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
@@ -3551,7 +3551,7 @@ linux_test() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  read -p "请输入你的选择: " sub_choice
+	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
 		  1)
@@ -3619,7 +3619,7 @@ linux_test() {
 			  echo "湖南移动: 39.134.254.6"
 			  echo "------------------------"
 
-			  read -p "输入一个指定IP: " testip
+			  read -e -p "输入一个指定IP: " testip
 			  curl nxtrace.org/nt |bash
 			  nexttrace $testip
 			  ;;
@@ -3695,13 +3695,13 @@ linux_Oracle() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  read -p "请输入你的选择: " sub_choice
+	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
 		  1)
 			  clear
 			  echo "活跃脚本: CPU占用10-20% 内存占用20% "
-			  read -p "确定安装吗？(Y/N): " choice
+			  read -e -p "确定安装吗？(Y/N): " choice
 			  case "$choice" in
 				[Yy])
 
@@ -3714,16 +3714,16 @@ linux_Oracle() {
 				  DEFAULT_SPEEDTEST_INTERVAL=120
 
 				  # 提示用户输入CPU核心数和占用百分比，如果回车则使用默认值
-				  read -p "请输入CPU核心数 [默认: $DEFAULT_CPU_CORE]: " cpu_core
+				  read -e -p "请输入CPU核心数 [默认: $DEFAULT_CPU_CORE]: " cpu_core
 				  cpu_core=${cpu_core:-$DEFAULT_CPU_CORE}
 
-				  read -p "请输入CPU占用百分比范围（例如10-20） [默认: $DEFAULT_CPU_UTIL]: " cpu_util
+				  read -e -p "请输入CPU占用百分比范围（例如10-20） [默认: $DEFAULT_CPU_UTIL]: " cpu_util
 				  cpu_util=${cpu_util:-$DEFAULT_CPU_UTIL}
 
-				  read -p "请输入内存占用百分比 [默认: $DEFAULT_MEM_UTIL]: " mem_util
+				  read -e -p "请输入内存占用百分比 [默认: $DEFAULT_MEM_UTIL]: " mem_util
 				  mem_util=${mem_util:-$DEFAULT_MEM_UTIL}
 
-				  read -p "请输入Speedtest间隔时间（秒） [默认: $DEFAULT_SPEEDTEST_INTERVAL]: " speedtest_interval
+				  read -e -p "请输入Speedtest间隔时间（秒） [默认: $DEFAULT_SPEEDTEST_INTERVAL]: " speedtest_interval
 				  speedtest_interval=${speedtest_interval:-$DEFAULT_SPEEDTEST_INTERVAL}
 
 				  # 运行Docker容器
@@ -3757,12 +3757,12 @@ linux_Oracle() {
 		  echo "重装系统"
 		  echo "--------------------------------"
 		  echo -e "${gl_hong}注意: ${gl_bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
-		  read -p "确定继续吗？(Y/N): " choice
+		  read -e -p "确定继续吗？(Y/N): " choice
 
 		  case "$choice" in
 			[Yy])
 			  while true; do
-				read -p "请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : " sys_choice
+				read -e -p "请选择要重装的系统:  1. Debian12 | 2. Ubuntu20.04 : " sys_choice
 
 				case "$sys_choice" in
 				  1)
@@ -3779,7 +3779,7 @@ linux_Oracle() {
 				esac
 			  done
 
-			  read -p "请输入你重装后的密码: " vpspasswd
+			  read -e -p "请输入你重装后的密码: " vpspasswd
 			  install wget
 			  bash <(wget --no-check-certificate -qO- "${gh_proxy}https://raw.githubusercontent.com/MoeClub/Note/master/InstallNET.sh") $xitong -v 64 -p $vpspasswd -port 22
 			  send_stats "甲骨文云重装系统脚本"
@@ -3867,7 +3867,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}0.   ${gl_bai}返回主菜单"
 	echo -e "${gl_huang}------------------------${gl_bai}"
-	read -p "请输入你的选择: " sub_choice
+	read -e -p "请输入你的选择: " sub_choice
 
 
 	case $sub_choice in
@@ -4168,7 +4168,7 @@ linux_ldnmp() {
 	  echo -e "[${gl_huang}1/6${gl_bai}] 上传PHP源码"
 	  echo "-------------"
 	  echo "目前只允许上传zip格式的源码包，请将源码包放到/home/web/html/${yuming}目录下"
-	  read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
+	  read -e -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
 
 	  if [ -n "$url_download" ]; then
 		  wget "$url_download"
@@ -4182,7 +4182,7 @@ linux_ldnmp() {
 	  echo "-------------"
 	  find "$(realpath .)" -name "index.php" -print
 
-	  read -p "请输入index.php的路径，类似（/home/web/html/$yuming/wordpress/）： " index_lujing
+	  read -e -p "请输入index.php的路径，类似（/home/web/html/$yuming/wordpress/）： " index_lujing
 
 	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
 	  sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
@@ -4190,7 +4190,7 @@ linux_ldnmp() {
 	  clear
 	  echo -e "[${gl_huang}3/6${gl_bai}] 请选择PHP版本"
 	  echo "-------------"
-	  read -p "1. php最新版 | 2. php7.4 : " pho_v
+	  read -e -p "1. php最新版 | 2. php7.4 : " pho_v
 	  case "$pho_v" in
 		1)
 		  sed -i "s#php:9000#php:9000#g" /home/web/conf.d/$yuming.conf
@@ -4212,7 +4212,7 @@ linux_ldnmp() {
 	  echo "已经安装的扩展"
 	  docker exec php php -m
 
-	  read -p "$(echo -e "输入需要安装的扩展名称，如 ${gl_huang}SourceGuardian imap ftp${gl_bai} 等等。直接回车将跳过安装 ： ")" php_extensions
+	  read -e -p "$(echo -e "输入需要安装的扩展名称，如 ${gl_huang}SourceGuardian imap ftp${gl_bai} 等等。直接回车将跳过安装 ： ")" php_extensions
 	  if [ -n "$php_extensions" ]; then
 		  docker exec $PHP_Version install-php-extensions $php_extensions
 	  fi
@@ -4230,14 +4230,14 @@ linux_ldnmp() {
 	  clear
 	  echo -e "[${gl_huang}6/6${gl_bai}] 数据库管理"
 	  echo "-------------"
-	  read -p "1. 我搭建新站        2. 我搭建老站有数据库备份： " use_db
+	  read -e -p "1. 我搭建新站        2. 我搭建老站有数据库备份： " use_db
 	  case $use_db in
 		  1)
 			  echo
 			  ;;
 		  2)
 			  echo "数据库备份必须是.gz结尾的压缩包。请放到/home/目录下，支持宝塔/1panel备份数据导入。"
-			  read -p "也可以输入下载链接，远程下载备份数据，直接回车将跳过远程下载： " url_download_db
+			  read -e -p "也可以输入下载链接，远程下载备份数据，直接回车将跳过远程下载： " url_download_db
 
 			  cd /home/
 			  if [ -n "$url_download_db" ]; then
@@ -4298,7 +4298,7 @@ linux_ldnmp() {
 	  nginx_install_status
 	  ip_address
 	  add_yuming
-	  read -p "请输入跳转域名: " reverseproxy
+	  read -e -p "请输入跳转域名: " reverseproxy
 
 	  install_ssltls
 	  certs_status
@@ -4321,8 +4321,8 @@ linux_ldnmp() {
 	  nginx_install_status
 	  ip_address
 	  add_yuming
-	  read -p "请输入你的反代IP: " reverseproxy
-	  read -p "请输入你的反代端口: " port
+	  read -e -p "请输入你的反代IP: " reverseproxy
+	  read -e -p "请输入你的反代端口: " port
 
 	  install_ssltls
 	  certs_status
@@ -4346,7 +4346,7 @@ linux_ldnmp() {
 	  ip_address
 	  add_yuming
 	  echo -e "域名格式: ${gl_huang}google.com${gl_bai}"
-	  read -p "请输入你的反代域名: " fandai_yuming
+	  read -e -p "请输入你的反代域名: " fandai_yuming
 
 	  install_ssltls
 	  certs_status
@@ -4383,7 +4383,7 @@ linux_ldnmp() {
 	  echo -e "[${gl_huang}1/2${gl_bai}] 上传静态源码"
 	  echo "-------------"
 	  echo "目前只允许上传zip格式的源码包，请将源码包放到/home/web/html/${yuming}目录下"
-	  read -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
+	  read -e -p "也可以输入下载链接，远程下载源码包，直接回车将跳过远程下载： " url_download
 
 	  if [ -n "$url_download" ]; then
 		  wget "$url_download"
@@ -4397,7 +4397,7 @@ linux_ldnmp() {
 	  echo "-------------"
 	  find "$(realpath .)" -name "index.html" -print
 
-	  read -p "请输入index.html的路径，类似（/home/web/html/$yuming/index/）： " index_lujing
+	  read -e -p "请输入index.html的路径，类似（/home/web/html/$yuming/index/）： " index_lujing
 
 	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
 	  sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
@@ -4496,11 +4496,11 @@ linux_ldnmp() {
 		echo "------------------------"
 		echo "0. 返回上一级选单"
 		echo "------------------------"
-		read -p "请输入你的选择: " sub_choice
+		read -e -p "请输入你的选择: " sub_choice
 		case $sub_choice in
 			1)
 				send_stats "申请域名证书"
-				read -p "请输入你的域名: " yuming
+				read -e -p "请输入你的域名: " yuming
 				install_certbot
 				install_ssltls
 				certs_status
@@ -4510,8 +4510,8 @@ linux_ldnmp() {
 			2)
 				send_stats "更换站点域名"
 				echo -e "${gl_hong}强烈建议: ${gl_bai}先备份好全站数据再更换站点域名！"
-				read -p "请输入旧域名: " oddyuming
-				read -p "请输入新域名: " yuming
+				read -e -p "请输入旧域名: " oddyuming
+				read -e -p "请输入新域名: " yuming
 				install_certbot
 				install_ssltls
 				certs_status
@@ -4588,7 +4588,7 @@ linux_ldnmp() {
 
 			6)
 				send_stats "编辑站点配置"
-				read -p "编辑站点配置，请输入你要编辑的域名: " yuming
+				read -e -p "编辑站点配置，请输入你要编辑的域名: " yuming
 				install nano
 				nano /home/web/conf.d/$yuming.conf
 				docker restart nginx
@@ -4596,7 +4596,7 @@ linux_ldnmp() {
 
 			7)
 				send_stats "删除站点数据目录"
-				read -p "删除站点数据目录，请输入你的域名: " yuming
+				read -e -p "删除站点数据目录，请输入你的域名: " yuming
 				rm -r /home/web/html/$yuming
 				rm /home/web/conf.d/$yuming.conf
 				rm /home/web/certs/${yuming}_key.pem
@@ -4605,7 +4605,7 @@ linux_ldnmp() {
 				;;
 			8)
 				send_stats "删除站点数据库"
-				read -p "删除站点数据库，请输入数据库名: " shujuku
+				read -e -p "删除站点数据库，请输入数据库名: " shujuku
 				dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 				docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $shujuku;" 2> /dev/null
 				;;
@@ -4632,10 +4632,10 @@ linux_ldnmp() {
 	  while true; do
 		clear
 		echo "备份文件已创建: /home/$backup_filename"
-		read -p "要传送备份数据到远程服务器吗？(Y/N): " choice
+		read -e -p "要传送备份数据到远程服务器吗？(Y/N): " choice
 		case "$choice" in
 		  [Yy])
-			read -p "请输入远端服务器IP:  " remote_ip
+			read -e -p "请输入远端服务器IP:  " remote_ip
 			if [ -z "$remote_ip" ]; then
 			  echo "错误: 请输入远端服务器IP。"
 			  continue
@@ -4664,8 +4664,8 @@ linux_ldnmp() {
 	33)
 	  clear
 	  send_stats "定时远程备份"
-	  read -p "输入远程服务器IP: " useip
-	  read -p "输入远程服务器密码: " usepasswd
+	  read -e -p "输入远程服务器IP: " useip
+	  read -e -p "输入远程服务器密码: " usepasswd
 
 	  cd ~
 	  wget -O ${useip}_beifen.sh ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/beifen.sh > /dev/null 2>&1
@@ -4676,17 +4676,17 @@ linux_ldnmp() {
 
 	  echo "------------------------"
 	  echo "1. 每周备份                 2. 每天备份"
-	  read -p "请输入你的选择: " dingshi
+	  read -e -p "请输入你的选择: " dingshi
 
 	  case $dingshi in
 		  1)
 			  check_crontab_installed
-			  read -p "选择每周备份的星期几 (0-6，0代表星期日): " weekday
+			  read -e -p "选择每周备份的星期几 (0-6，0代表星期日): " weekday
 			  (crontab -l ; echo "0 0 * * $weekday ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
 		  2)
 			  check_crontab_installed
-			  read -p "选择每天备份的时间（小时，0-23）: " hour
+			  read -e -p "选择每天备份的时间（小时，0-23）: " hour
 			  (crontab -l ; echo "0 $hour * * * ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
 		  *)
@@ -4705,7 +4705,7 @@ linux_ldnmp() {
 	  echo "-------------------------"
 	  ls -lt /home/*.gz | awk '{print $NF}'
 	  echo ""
-	  read -p  "回车键还原最新的备份，输入备份文件名还原指定的备份，输入0退出：" filename
+	  read -e -p  "回车键还原最新的备份，输入备份文件名还原指定的备份，输入0退出：" filename
 
 	  if [ "$filename" == "0" ]; then
 		  break_end
@@ -4758,7 +4758,7 @@ linux_ldnmp() {
 			  echo "------------------------"
 			  echo "0. 退出"
 			  echo "------------------------"
-			  read -p "请输入你的选择: " sub_choice
+			  read -e -p "请输入你的选择: " sub_choice
 			  case $sub_choice in
 				  1)
 					  sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/alpine-ssh.conf
@@ -4835,8 +4835,8 @@ linux_ldnmp() {
 					  send_stats "cloudflare模式"
 					  echo "到cf后台右上角我的个人资料，选择左侧API令牌，获取Global API Key"
 					  echo "https://dash.cloudflare.com/login"
-					  read -p "输入CF的账号: " cfuser
-					  read -p "输入CF的Global API Key: " cftoken
+					  read -e -p "输入CF的账号: " cfuser
+					  read -e -p "输入CF的Global API Key: " cftoken
 
 					  wget -O /home/web/conf.d/default.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/default11.conf
 					  docker restart nginx
@@ -4863,9 +4863,9 @@ linux_ldnmp() {
 					  echo -e "到cf后台域名概要页面右下方获取${gl_huang}区域ID${gl_bai}"
 					  echo "https://dash.cloudflare.com/login"
 					  echo "--------------"
-					  read -p "输入CF的账号: " cfuser
-					  read -p "输入CF的Global API Key: " cftoken
-					  read -p "输入CF中域名的区域ID: " cfzonID
+					  read -e -p "输入CF的账号: " cfuser
+					  read -e -p "输入CF的Global API Key: " cftoken
+					  read -e -p "输入CF中域名的区域ID: " cfzonID
 
 					  cd ~
 					  install jq bc
@@ -4898,7 +4898,7 @@ linux_ldnmp() {
 		elif [ -x "$(command -v fail2ban-client)" ] ; then
 			clear
 			echo "卸载旧版fail2ban"
-			read -p "确定继续吗？(Y/N): " choice
+			read -e -p "确定继续吗？(Y/N): " choice
 			case "$choice" in
 			  [Yy])
 				remove fail2ban
@@ -4950,7 +4950,7 @@ linux_ldnmp() {
 			  echo "------------------------"
 			  echo "0. 退出"
 			  echo "------------------------"
-			  read -p "请输入你的选择: " sub_choice
+			  read -e -p "请输入你的选择: " sub_choice
 			  case $sub_choice in
 				  1)
 				  send_stats "站点标准模式"
@@ -5033,7 +5033,7 @@ linux_ldnmp() {
 		  echo "------------------------"
 		  echo "0. 返回上一级"
 		  echo "------------------------"
-		  read -p "请输入你的选择: " sub_choice
+		  read -e -p "请输入你的选择: " sub_choice
 		  case $sub_choice in
 			  1)
 			  nginx_upgrade
@@ -5044,7 +5044,7 @@ linux_ldnmp() {
 
 			  2)
 			  ldnmp_pods="mysql"
-			  read -p "请输入${ldnmp_pods}版本号 （如: 8.0 8.3 8.4 9.0）（回车获取最新版）: " version
+			  read -e -p "请输入${ldnmp_pods}版本号 （如: 8.0 8.3 8.4 9.0）（回车获取最新版）: " version
 			  version=${version:-latest}
 
 			  cd /home/web/
@@ -5061,7 +5061,7 @@ linux_ldnmp() {
 				  ;;
 			  3)
 			  ldnmp_pods="php"
-			  read -p "请输入${ldnmp_pods}版本号 （如: 7.4 8.0 8.1 8.2 8.3）（回车获取最新版）: " version
+			  read -e -p "请输入${ldnmp_pods}版本号 （如: 7.4 8.0 8.1 8.2 8.3）（回车获取最新版）: " version
 			  version=${version:-8.3}
 			  cd /home/web/
 			  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
@@ -5122,7 +5122,7 @@ linux_ldnmp() {
 
 				  ;;
 			  5)
-				read -p "$(echo -e "${gl_huang}提示: ${gl_bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
+				read -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
 				case "$choice" in
 				  [Yy])
 					send_stats "完整更新LDNMP环境"
@@ -5156,7 +5156,7 @@ linux_ldnmp() {
 	38)
 		root_use
 		send_stats "卸载LDNMP环境"
-		read -p "$(echo -e "${gl_hong}强烈建议：${gl_bai}先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ")" choice
+		read -e -p "$(echo -e "${gl_hong}强烈建议：${gl_bai}先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ")" choice
 		case "$choice" in
 		  [Yy])
 			cd /home/web/
@@ -5225,7 +5225,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  read -p "请输入你的选择: " sub_choice
+	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
 		  1)
@@ -5383,7 +5383,7 @@ linux_panel() {
 				echo "------------------------"
 				echo "1. 使用           0. 返回上一级"
 				echo "------------------------"
-				read -p "输入你的选择: " choice
+				read -e -p "输入你的选择: " choice
 
 				case $choice in
 					1)
@@ -5464,11 +5464,11 @@ linux_panel() {
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
-				read -p "输入你的选择: " choice
+				read -e -p "输入你的选择: " choice
 
 				case $choice in
 					1)
-						read -p "请设置邮箱域名 例如 mail.yuming.com : " yuming
+						read -e -p "请设置邮箱域名 例如 mail.yuming.com : " yuming
 						mkdir -p /home/docker
 						echo "$yuming" > /home/docker/mail.txt
 						echo "------------------------"
@@ -5567,7 +5567,7 @@ linux_panel() {
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
-				read -p "输入你的选择: " choice
+				read -e -p "输入你的选择: " choice
 
 				case $choice in
 					1)
@@ -5683,7 +5683,7 @@ linux_panel() {
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
-				read -p "输入你的选择: " choice
+				read -e -p "输入你的选择: " choice
 
 				case $choice in
 					1)
@@ -5856,7 +5856,7 @@ linux_panel() {
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
-				read -p "输入你的选择: " choice
+				read -e -p "输入你的选择: " choice
 
 				case $choice in
 					1)
@@ -6258,7 +6258,7 @@ linux_panel() {
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
-				read -p "输入你的选择: " choice
+				read -e -p "输入你的选择: " choice
 
 				case $choice in
 					1)
@@ -6325,7 +6325,7 @@ linux_work() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  read -p "请输入你的选择: " sub_choice
+	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
 
@@ -6415,22 +6415,22 @@ linux_work() {
 			  echo "------------------------"
 			  echo "0. 返回上一级"
 			  echo "------------------------"
-			  read -p "请输入你的选择: " gongzuoqu_del
+			  read -e -p "请输入你的选择: " gongzuoqu_del
 			  case "$gongzuoqu_del" in
 				1)
-				  read -p "请输入你创建或进入的工作区名称，如1001 kj001 work1: " SESSION_NAME
+				  read -e -p "请输入你创建或进入的工作区名称，如1001 kj001 work1: " SESSION_NAME
 				  tmux_run
 				  send_stats "自定义工作区"
 				  ;;
 
 				2)
-				  read -p "请输入你要后台执行的命令，如:curl -fsSL https://get.docker.com | sh: " tmuxd
+				  read -e -p "请输入你要后台执行的命令，如:curl -fsSL https://get.docker.com | sh: " tmuxd
 				  tmux_run_d
 				  send_stats "注入命令到后台工作区"
 				  ;;
 
 				3)
-				  read -p "请输入要删除的工作区名称: " gongzuoqu_name
+				  read -e -p "请输入要删除的工作区名称: " gongzuoqu_name
 				  tmux kill-window -t $gongzuoqu_name
 				  send_stats "删除工作区"
 				  ;;
@@ -6504,13 +6504,13 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  read -p "请输入你的选择: " sub_choice
+	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
 		  1)
 			  while true; do
 				  clear
-				  read -p "请输入你的快捷按键（输入0退出）: " kuaijiejian
+				  read -e -p "请输入你的快捷按键（输入0退出）: " kuaijiejian
 				  if [ "$kuaijiejian" == "0" ]; then
 					   break_end
 					   linux_Settings
@@ -6554,7 +6554,7 @@ linux_Settings() {
 			echo "推荐版本:  3.12    3.11    3.10    3.9    3.8    2.7"
 			echo "查询更多版本: https://www.python.org/downloads/"
 			echo "------------"
-			read -p "输入你要安装的python版本号（输入0退出）: " py_new_v
+			read -e -p "输入你要安装的python版本号（输入0退出）: " py_new_v
 
 
 			if [[ "$py_new_v" == "0" ]]; then
@@ -6651,7 +6651,7 @@ EOF
 				echo "端口号范围1到65535之间的数字。（输入0退出）"
 
 				# 提示用户输入新的 SSH 端口号
-				read -p "请输入新的 SSH 端口号: " new_port
+				read -e -p "请输入新的 SSH 端口号: " new_port
 
 				# 判断端口号是否在有效范围内
 				if [[ $new_port =~ ^[0-9]+$ ]]; then  # 检查输入是否为数字
@@ -6699,7 +6699,7 @@ EOF
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
-				read -p "请输入你的选择: " Limiting
+				read -e -p "请输入你的选择: " Limiting
 				case "$Limiting" in
 				  1)
 					dns1_ipv4="1.1.1.1"
@@ -6736,7 +6736,7 @@ EOF
 		  9)
 			root_use
 			send_stats "新用户禁用root"
-			read -p "请输入新用户名（输入0退出）: " new_username
+			read -e -p "请输入新用户名（输入0退出）: " new_username
 			if [ "$new_username" == "0" ]; then
 				break_end
 				linux_Settings
@@ -6771,7 +6771,7 @@ EOF
 				echo "------------------------"
 				echo "1. IPv4 优先          2. IPv6 优先          3. IPv6 修复工具          0. 退出"
 				echo "------------------------"
-				read -p "选择优先的网络: " choice
+				read -e -p "选择优先的网络: " choice
 
 				case $choice in
 					1)
@@ -6819,7 +6819,7 @@ EOF
 				echo "------------------------"
 				echo "1. 分配1024MB         2. 分配2048MB         3. 自定义大小         0. 退出"
 				echo "------------------------"
-				read -p "请输入你的选择: " choice
+				read -e -p "请输入你的选择: " choice
 
 				case "$choice" in
 				  1)
@@ -6835,7 +6835,7 @@ EOF
 
 					;;
 				  3)
-					read -p "请输入虚拟内存大小MB: " new_swap
+					read -e -p "请输入虚拟内存大小MB: " new_swap
 					add_swap
 					send_stats "已设置自定义虚拟内存"
 					;;
@@ -6872,12 +6872,12 @@ EOF
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -p "请输入你的选择: " sub_choice
+				  read -e -p "请输入你的选择: " sub_choice
 
 				  case $sub_choice in
 					  1)
 					   # 提示用户输入新用户名
-					   read -p "请输入新用户名: " new_username
+					   read -e -p "请输入新用户名: " new_username
 
 					   # 创建新用户并设置密码
 					   useradd -m -s /bin/bash "$new_username"
@@ -6888,7 +6888,7 @@ EOF
 
 					  2)
 					   # 提示用户输入新用户名
-					   read -p "请输入新用户名: " new_username
+					   read -e -p "请输入新用户名: " new_username
 
 					   # 创建新用户并设置密码
 					   useradd -m -s /bin/bash "$new_username"
@@ -6901,18 +6901,18 @@ EOF
 
 						  ;;
 					  3)
-					   read -p "请输入用户名: " username
+					   read -e -p "请输入用户名: " username
 					   # 赋予新用户sudo权限
 					   echo "$username ALL=(ALL:ALL) ALL" | sudo tee -a /etc/sudoers
 						  ;;
 					  4)
-					   read -p "请输入用户名: " username
+					   read -e -p "请输入用户名: " username
 					   # 从sudoers文件中移除用户的sudo权限
 					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
 						  ;;
 					  5)
-					   read -p "请输入要删除的用户名: " username
+					   read -e -p "请输入要删除的用户名: " username
 					   # 删除用户及其主目录
 					   userdel -r "$username"
 						  ;;
@@ -7018,7 +7018,7 @@ EOF
 				echo "------------------------"
 				echo "0. 返回上一级选单"
 				echo "------------------------"
-				read -p "请输入你的选择: " sub_choice
+				read -e -p "请输入你的选择: " sub_choice
 
 
 				case $sub_choice in
@@ -7077,11 +7077,11 @@ EOF
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -p "请输入你的选择: " sub_choice
+				  read -e -p "请输入你的选择: " sub_choice
 
 				  case $sub_choice in
 					  1)
-						   read -p "请输入开放的端口号: " o_port
+						   read -e -p "请输入开放的端口号: " o_port
 						   sed -i "/COMMIT/i -A INPUT -p tcp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
 						   sed -i "/COMMIT/i -A INPUT -p udp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
 						   iptables-restore < /etc/iptables/rules.v4
@@ -7089,7 +7089,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -p "请输入关闭的端口号: " c_port
+						  read -e -p "请输入关闭的端口号: " c_port
 						  sed -i "/--dport $c_port/d" /etc/iptables/rules.v4
 						  iptables-restore < /etc/iptables/rules.v4
 						  send_stats "关闭指定端口"
@@ -7133,21 +7133,21 @@ EOF
 						  ;;
 
 					  5)
-						  read -p "请输入放行的IP: " o_ip
+						  read -e -p "请输入放行的IP: " o_ip
 						  sed -i "/COMMIT/i -A INPUT -s $o_ip -j ACCEPT" /etc/iptables/rules.v4
 						  iptables-restore < /etc/iptables/rules.v4
 						  send_stats "IP白名单"
 						  ;;
 
 					  6)
-						  read -p "请输入封锁的IP: " c_ip
+						  read -e -p "请输入封锁的IP: " c_ip
 						  sed -i "/COMMIT/i -A INPUT -s $c_ip -j DROP" /etc/iptables/rules.v4
 						  iptables-restore < /etc/iptables/rules.v4
 						  send_stats "IP黑名单"
 						  ;;
 
 					  7)
-						  read -p "请输入清除的IP: " d_ip
+						  read -e -p "请输入清除的IP: " d_ip
 						  sed -i "/-A INPUT -s $d_ip/d" /etc/iptables/rules.v4
 						  iptables-restore < /etc/iptables/rules.v4
 						  send_stats "清除指定IP"
@@ -7171,7 +7171,7 @@ EOF
 				clear
 				echo "将为你安装防火墙，该防火墙仅支持Debian/Ubuntu"
 				echo "------------------------------------------------"
-				read -p "确定继续吗？(Y/N): " choice
+				read -e -p "确定继续吗？(Y/N): " choice
 
 				case "$choice" in
 				  [Yy])
@@ -7232,7 +7232,7 @@ EOF
 			  current_hostname=$(uname -n)
 			  echo -e "当前主机名: ${gl_huang}$current_hostname${gl_bai}"
 			  echo "------------------------"
-			  read -p "请输入新的主机名（输入0退出）: " new_hostname
+			  read -e -p "请输入新的主机名（输入0退出）: " new_hostname
 			  if [ -n "$new_hostname" ] && [ "$new_hostname" != "0" ]; then
 				  if [ -f /etc/alpine-release ]; then
 					  # Alpine
@@ -7278,7 +7278,7 @@ EOF
 		  echo "------------------------"
 		  echo "0. 返回上一级"
 		  echo "------------------------"
-		  read -p "输入你的选择: " choice
+		  read -e -p "输入你的选择: " choice
 
 		  case $choice in
 			  1)
@@ -7316,32 +7316,32 @@ EOF
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -p "请输入你的选择: " sub_choice
+				  read -e -p "请输入你的选择: " sub_choice
 
 				  case $sub_choice in
 					  1)
-						  read -p "请输入新任务的执行命令: " newquest
+						  read -e -p "请输入新任务的执行命令: " newquest
 						  echo "------------------------"
 						  echo "1. 每月任务                 2. 每周任务"
 						  echo "3. 每天任务                 4. 每小时任务"
 						  echo "------------------------"
-						  read -p "请输入你的选择: " dingshi
+						  read -e -p "请输入你的选择: " dingshi
 
 						  case $dingshi in
 							  1)
-								  read -p "选择每月的几号执行任务？ (1-30): " day
+								  read -e -p "选择每月的几号执行任务？ (1-30): " day
 								  (crontab -l ; echo "0 0 $day * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  2)
-								  read -p "选择周几执行任务？ (0-6，0代表星期日): " weekday
+								  read -e -p "选择周几执行任务？ (0-6，0代表星期日): " weekday
 								  (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  3)
-								  read -p "选择每天几点执行任务？（小时，0-23）: " hour
+								  read -e -p "选择每天几点执行任务？（小时，0-23）: " hour
 								  (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  4)
-								  read -p "输入每小时的第几分钟执行任务？（分钟，0-60）: " minute
+								  read -e -p "输入每小时的第几分钟执行任务？（分钟，0-60）: " minute
 								  (crontab -l ; echo "$minute * * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  *)
@@ -7351,7 +7351,7 @@ EOF
 						  send_stats "添加定时任务"
 						  ;;
 					  2)
-						  read -p "请输入需要删除任务的关键字: " kquest
+						  read -e -p "请输入需要删除任务的关键字: " kquest
 						  crontab -l | grep -v "$kquest" | crontab -
 						  send_stats "删除定时任务"
 						  ;;
@@ -7386,17 +7386,17 @@ EOF
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -p "请输入你的选择: " host_dns
+				  read -e -p "请输入你的选择: " host_dns
 
 				  case $host_dns in
 					  1)
-						  read -p "请输入新的解析记录 格式: 110.25.5.33 kejilion.pro : " addhost
+						  read -e -p "请输入新的解析记录 格式: 110.25.5.33 kejilion.pro : " addhost
 						  echo "$addhost" >> /etc/hosts
 						  send_stats "本地host解析新增"
 
 						  ;;
 					  2)
-						  read -p "请输入需要删除的解析内容关键字: " delhost
+						  read -e -p "请输入需要删除的解析内容关键字: " delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "本地host解析删除"
 						  ;;
@@ -7426,7 +7426,7 @@ EOF
 					echo "------------------------"
 					echo "0. 退出"
 					echo "------------------------"
-					read -p "请输入你的选择: " sub_choice
+					read -e -p "请输入你的选择: " sub_choice
 					case $sub_choice in
 
 						1)
@@ -7454,7 +7454,7 @@ EOF
 			elif [ -x "$(command -v fail2ban-client)" ] ; then
 				clear
 				echo "卸载旧版fail2ban"
-				read -p "确定继续吗？(Y/N): " choice
+				read -e -p "确定继续吗？(Y/N): " choice
 				case "$choice" in
 				  [Yy])
 					remove fail2ban
@@ -7476,7 +7476,7 @@ EOF
 			  echo "------------------------------------------------"
 			  echo "工作原理：研判非法IP恶意高频访问SSH端口，自动进行IP封锁"
 			  echo "------------------------------------------------"
-			  read -p "确定继续吗？(Y/N): " choice
+			  read -e -p "确定继续吗？(Y/N): " choice
 
 			  case "$choice" in
 				[Yy])
@@ -7526,15 +7526,15 @@ EOF
 				echo
 				echo "------------------------------------------------"
 				echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！"
-				read -p "1. 开启限流关机功能    2. 停用限流关机功能    0. 退出  : " Limiting
+				read -e -p "1. 开启限流关机功能    2. 停用限流关机功能    0. 退出  : " Limiting
 
 				case "$Limiting" in
 				  1)
 					# 输入新的虚拟内存大小
 					echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
-					read -p "请输入进站流量阈值（单位为GB）: " rx_threshold_gb
-					read -p "请输入出站流量阈值（单位为GB）: " tx_threshold_gb
-					read -p "请输入流量重置日期（默认每月1日重置）: " cz_day
+					read -e -p "请输入进站流量阈值（单位为GB）: " rx_threshold_gb
+					read -e -p "请输入出站流量阈值（单位为GB）: " tx_threshold_gb
+					read -e -p "请输入流量重置日期（默认每月1日重置）: " cz_day
 					cz_day=${cz_day:-1}
 
 					cd ~
@@ -7572,7 +7572,7 @@ EOF
 			  echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
 			  echo "------------------------------------------------"
 			  echo "将会生成密钥对，更安全的方式SSH登录"
-			  read -p "确定继续吗？(Y/N): " choice
+			  read -e -p "确定继续吗？(Y/N): " choice
 
 			  case "$choice" in
 				[Yy])
@@ -7599,7 +7599,7 @@ EOF
 			  echo "您需要配置tg机器人API和接收预警的用户ID，即可实现本机CPU，内存，硬盘，流量，SSH登录的实时监控预警"
 			  echo "到达阈值后会向用户发预警消息"
 			  echo -e "${hui}-关于流量，重启服务器将重新计算-${gl_bai}"
-			  read -p "确定继续吗？(Y/N): " choice
+			  read -e -p "确定继续吗？(Y/N): " choice
 
 			  case "$choice" in
 				[Yy])
@@ -7683,7 +7683,7 @@ EOF
 			  echo "--------------------"
 			  echo "0. 返回上一级"
 			  echo "--------------------"
-			  read -p "请输入你的选择: " sub_choice
+			  read -e -p "请输入你的选择: " sub_choice
 			  case $sub_choice in
 				  1)
 					  cd ~
@@ -7776,12 +7776,12 @@ EOF
 			  echo "------------------------"
 
 			  # 判断是否要留言
-			  read -p "是否要留言？(y/n): " leave_message
+			  read -e -p "是否要留言？(y/n): " leave_message
 
 			  if [ "$leave_message" == "y" ] || [ "$leave_message" == "Y" ]; then
 				  # 输入新的留言内容
-				  read -p "输入你的昵称: " nicheng
-				  read -p "输入你的聊天内容: " neirong
+				  read -e -p "输入你的昵称: " nicheng
+				  read -e -p "输入你的聊天内容: " neirong
 
 				  # 添加新留言到远程文件
 				  sshpass -p "${password}" ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_ip}" "echo -e '${nicheng}: ${neirong}' >> '${remote_file}'"
@@ -7813,7 +7813,7 @@ EOF
 			  echo -e "9. 安装常用工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 			  echo -e "10. Linux系统内核参数优化切换到${gl_huang}均衡优化模式${gl_bai}"
 			  echo "------------------------------------------------"
-			  read -p "确定一键保养吗？(Y/N): " choice
+			  read -e -p "确定一键保养吗？(Y/N): " choice
 
 			  case "$choice" in
 				[Yy])
@@ -7908,7 +7908,7 @@ EOF
 			  echo "--------------------"
 			  echo "0. 返回上一级"
 			  echo "--------------------"
-			  read -p "请输入你的选择: " sub_choice
+			  read -e -p "请输入你的选择: " sub_choice
 			  case $sub_choice in
 				  1)
 					  cd ~
@@ -7940,7 +7940,7 @@ EOF
 			  echo "卸载科技lion脚本"
 			  echo "------------------------------------------------"
 			  echo "将彻底卸载kejilion脚本，不影响你其他功能"
-			  read -p "确定继续吗？(Y/N): " choice
+			  read -e -p "确定继续吗？(Y/N): " choice
 
 			  case "$choice" in
 				[Yy])
@@ -7998,7 +7998,7 @@ linux_cluster() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  read -p "请输入你的选择: " sub_choice
+	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
 		  1)
@@ -8036,25 +8036,25 @@ EOF
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -p "请输入你的选择: " sub_choice
+				  read -e -p "请输入你的选择: " sub_choice
 
 				  case $sub_choice in
 					  1)
 						  send_stats "添加集群服务器"
-						  read -p "服务器名称: " server_name
-						  read -p "服务器IP: " server_ip
-						  read -p "服务器端口（22）: " server_port
+						  read -e -p "服务器名称: " server_name
+						  read -e -p "服务器IP: " server_ip
+						  read -e -p "服务器端口（22）: " server_port
 						  server_port=${server_port:-22}
-						  read -p "服务器用户名（root）: " server_username
+						  read -e -p "服务器用户名（root）: " server_username
 						  server_username=${server_username:-root}
-						  read -p "服务器用户密码: " server_password
+						  read -e -p "服务器用户密码: " server_password
 
 						  sed -i "/servers = \[/a\    {\"name\": \"$server_name\", \"hostname\": \"$server_ip\", \"port\": $server_port, \"username\": \"$server_username\", \"password\": \"$server_password\", \"remote_path\": \"/home/\"}," ~/cluster/servers.py
 
 						  ;;
 					  2)
 						  send_stats "删除集群服务器"
-						  read -p "请输入需要删除的关键字: " rmserver
+						  read -e -p "请输入需要删除的关键字: " rmserver
 						  sed -i "/$rmserver/d" ~/cluster/servers.py
 						  ;;
 					  3)
@@ -8096,7 +8096,7 @@ EOF
 						  ;;
 					  51)
 						  send_stats "自定义执行命令"
-						  read -p "请输入批量执行的命令: " mingling
+						  read -e -p "请输入批量执行的命令: " mingling
 						  py_task=custom_tasks.py
 						  cd ~/cluster/
 						  curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
@@ -8139,7 +8139,7 @@ EOF
 
 			clear
 			send_stats "卸载集群"
-			read -p "请先备份环境，确定要卸载集群控制环境吗？(Y/N): " choice
+			read -e -p "请先备份环境，确定要卸载集群控制环境吗？(Y/N): " choice
 			case "$choice" in
 			  [Yy])
 				remove python3-paramiko speedtest-cli lrzsz
@@ -8196,33 +8196,33 @@ linux_file() {
 		echo "------------------------"
 		echo "0.  返回上一级"
 		echo "------------------------"
-		read -p "请输入你的选择: " Limiting
+		read -e -p "请输入你的选择: " Limiting
 
 		case "$Limiting" in
 			1)  # 进入目录
-				read -p "请输入目录名: " dirname
+				read -e -p "请输入目录名: " dirname
 				cd "$dirname" 2>/dev/null || echo "无法进入目录"
 				send_stats "进入目录"
 				;;
 			2)  # 创建目录
-				read -p "请输入要创建的目录名: " dirname
+				read -e -p "请输入要创建的目录名: " dirname
 				mkdir -p "$dirname" && echo "目录已创建" || echo "创建失败"
 				send_stats "创建目录"
 				;;
 			3)  # 修改目录权限
-				read -p "请输入目录名: " dirname
-				read -p "请输入权限 (如 755): " perm
+				read -e -p "请输入目录名: " dirname
+				read -e -p "请输入权限 (如 755): " perm
 				chmod "$perm" "$dirname" && echo "权限已修改" || echo "修改失败"
 				send_stats "修改目录权限"
 				;;
 			4)  # 重命名目录
-				read -p "请输入当前目录名: " current_name
-				read -p "请输入新目录名: " new_name
+				read -e -p "请输入当前目录名: " current_name
+				read -e -p "请输入新目录名: " new_name
 				mv "$current_name" "$new_name" && echo "目录已重命名" || echo "重命名失败"
 				send_stats "重命名目录"
 				;;
 			5)  # 删除目录
-				read -p "请输入要删除的目录名: " dirname
+				read -e -p "请输入要删除的目录名: " dirname
 				rm -rf "$dirname" && echo "目录已删除" || echo "删除失败"
 				send_stats "删除目录"
 				;;
@@ -8231,55 +8231,55 @@ linux_file() {
 				send_stats "返回上一级目录"
 				;;
 			11) # 创建文件
-				read -p "请输入要创建的文件名: " filename
+				read -e -p "请输入要创建的文件名: " filename
 				touch "$filename" && echo "文件已创建" || echo "创建失败"
 				send_stats "创建文件"
 				;;
 			12) # 编辑文件
-				read -p "请输入要编辑的文件名: " filename
+				read -e -p "请输入要编辑的文件名: " filename
 				install nano
 				nano "$filename"
 				send_stats "编辑文件"
 				;;
 			13) # 修改文件权限
-				read -p "请输入文件名: " filename
-				read -p "请输入权限 (如 755): " perm
+				read -e -p "请输入文件名: " filename
+				read -e -p "请输入权限 (如 755): " perm
 				chmod "$perm" "$filename" && echo "权限已修改" || echo "修改失败"
 				send_stats "修改文件权限"
 				;;
 			14) # 重命名文件
-				read -p "请输入当前文件名: " current_name
-				read -p "请输入新文件名: " new_name
+				read -e -p "请输入当前文件名: " current_name
+				read -e -p "请输入新文件名: " new_name
 				mv "$current_name" "$new_name" && echo "文件已重命名" || echo "重命名失败"
 				send_stats "重命名文件"
 				;;
 			15) # 删除文件
-				read -p "请输入要删除的文件名: " filename
+				read -e -p "请输入要删除的文件名: " filename
 				rm -f "$filename" && echo "文件已删除" || echo "删除失败"
 				send_stats "删除文件"
 				;;
 			21) # 压缩文件/目录
-				read -p "请输入要压缩的文件/目录名: " name
+				read -e -p "请输入要压缩的文件/目录名: " name
 				install tar
 				tar -czvf "$name.tar.gz" "$name" && echo "已压缩为 $name.tar.gz" || echo "压缩失败"
 				send_stats "压缩文件/目录"
 				;;
 			22) # 解压文件/目录
-				read -p "请输入要解压的文件名 (.tar.gz): " filename
+				read -e -p "请输入要解压的文件名 (.tar.gz): " filename
 				install tar
 				tar -xzvf "$filename" && echo "已解压 $filename" || echo "解压失败"
 				send_stats "解压文件/目录"
 				;;
 
 			23) # 移动文件或目录
-				read -p "请输入要移动的文件或目录路径: " src_path
+				read -e -p "请输入要移动的文件或目录路径: " src_path
 				if [ ! -e "$src_path" ]; then
 					echo "错误: 文件或目录不存在。"
 					send_stats "移动文件或目录失败: 文件或目录不存在"
 					continue
 				fi
 
-				read -p "请输入目标路径 (包括新文件名或目录名): " dest_path
+				read -e -p "请输入目标路径 (包括新文件名或目录名): " dest_path
 				if [ -z "$dest_path" ]; then
 					echo "错误: 请输入目标路径。"
 					send_stats "移动文件或目录失败: 目标路径未指定"
@@ -8292,14 +8292,14 @@ linux_file() {
 
 
 		   24) # 复制文件目录
-				read -p "请输入要复制的文件或目录路径: " src_path
+				read -e -p "请输入要复制的文件或目录路径: " src_path
 				if [ ! -e "$src_path" ]; then
 					echo "错误: 文件或目录不存在。"
 					send_stats "复制文件或目录失败: 文件或目录不存在"
 					continue
 				fi
 
-				read -p "请输入目标路径 (包括新文件名或目录名): " dest_path
+				read -e -p "请输入目标路径 (包括新文件名或目录名): " dest_path
 				if [ -z "$dest_path" ]; then
 					echo "错误: 请输入目标路径。"
 					send_stats "复制文件或目录失败: 目标路径未指定"
@@ -8313,24 +8313,24 @@ linux_file() {
 
 
 			 25) # 传送文件至远端服务器
-				read -p "请输入要传送的文件路径: " file_to_transfer
+				read -e -p "请输入要传送的文件路径: " file_to_transfer
 				if [ ! -f "$file_to_transfer" ]; then
 					echo "错误: 文件不存在。"
 					send_stats "传送文件失败: 文件不存在"
 					continue
 				fi
 
-				read -p "请输入远端服务器IP: " remote_ip
+				read -e -p "请输入远端服务器IP: " remote_ip
 				if [ -z "$remote_ip" ]; then
 					echo "错误: 请输入远端服务器IP。"
 					send_stats "传送文件失败: 未输入远端服务器IP"
 					continue
 				fi
 
-				read -p "请输入远端服务器用户名 (默认root): " remote_user
+				read -e -p "请输入远端服务器用户名 (默认root): " remote_user
 				remote_user=${remote_user:-root}
 
-				read -p "请输入远端服务器密码: " -s remote_password
+				read -e -p "请输入远端服务器密码: " -s remote_password
 				echo
 				if [ -z "$remote_password" ]; then
 					echo "错误: 请输入远端服务器密码。"
@@ -8338,7 +8338,7 @@ linux_file() {
 					continue
 				fi
 
-				read -p "请输入登录端口 (默认22): " remote_port
+				read -e -p "请输入登录端口 (默认22): " remote_port
 				remote_port=${remote_port:-22}
 
 				# 清除已知主机的旧条目
@@ -8400,7 +8400,7 @@ kejilion_update() {
 		echo "发现新版本！"
 		echo -e "当前版本 v$sh_v        最新版本 ${gl_huang}v$sh_v_new${gl_bai}"
 		echo "------------------------"
-		read -p "确定更新脚本吗？(Y/N): " choice
+		read -e -p "确定更新脚本吗？(Y/N): " choice
 		case "$choice" in
 			[Yy])
 				clear
@@ -8510,7 +8510,7 @@ echo -e "${gl_kjlan}00.  ${gl_bai}脚本更新"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}0.   ${gl_bai}退出脚本"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-read -p "请输入你的选择: " choice
+read -e -p "请输入你的选择: " choice
 
 case $choice in
   1) linux_ps ;;
