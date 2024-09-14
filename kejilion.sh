@@ -2767,7 +2767,7 @@ else
 	echo "${bianse}" >> ~/.profile
 	# source ~/.profile
 fi
-echo -e "${lv}变更完成。重新连接SSH后可查看变化！${bai}"
+echo -e "${gl_lv}变更完成。重新连接SSH后可查看变化！${bai}"
 
 break_end
 
