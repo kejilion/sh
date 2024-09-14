@@ -76,16 +76,6 @@ send_stats() {
 
 
 
-cleanup() {
-	send_stats "非法退出脚本"
-	echo
-	exit
-}
-
-trap cleanup SIGINT
-
-
-
 
 yinsiyuanquan1() {
 
