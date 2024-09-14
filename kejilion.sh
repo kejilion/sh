@@ -18,7 +18,7 @@ gl_kjlan='\033[96m'
 country="default"
 cn_yuan() {
 if [ "$country" = "CN" ]; then
-	zhushi=0 
+	zhushi=0
 	gh_proxy="https://gh.kejilion.pro/"
 else
 	zhushi=1  # 0 表示执行，1 表示不执行
@@ -864,7 +864,7 @@ install_ldnmp_conf() {
 
   # 下载 docker-compose.yml 文件并进行替换
   wget -O /home/web/docker-compose.yml ${gh_proxy}https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
-  dbrootpasswd=$(openssl rand -base64 16) && dbuse=$(openssl rand -hex 4) && dbusepasswd=$(openssl rand -base64 8)
+  dbrootpasswd=$(openssl rand -base64 16) ; dbuse=$(openssl rand -hex 4) ; dbusepasswd=$(openssl rand -base64 8)
 
   # 在 docker-compose.yml 文件中进行替换
   sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
@@ -3550,7 +3550,7 @@ linux_test() {
 		  17)
 			  clear
 			  send_stats "i-abc多功能测速脚本"
-			  bash <(curl -sL bash.icu/speedtest)
+			  bash <(curl -sL ${gh_proxy}https://raw.githubusercontent.com/i-abc/Speedtest/main/speedtest.sh)
 			  ;;
 
 
@@ -8393,7 +8393,6 @@ echo ""
 kejilion_sh() {
 while true; do
 clear
-
 echo -e "${gl_kjlan}_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
@@ -8427,105 +8426,37 @@ echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -p "请输入你的选择: " choice
 
 case $choice in
-  1)
-	linux_ps
+  1) linux_ps ;;
+  2) clear ; send_stats "系统更新" ; linux_update ;;
+  3) clear ; send_stats "系统清理" ; linux_clean ;;
+  4) linux_tools ;;
+  5) linux_bbr ;;
+  6) linux_docker ;;
+  7) clear ; send_stats "warp管理" ; install wget
+	wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh ; bash menu.sh [option] [lisence/url/token]
 	;;
-
-  2)
-	clear
-	send_stats "系统更新"
-	linux_update
-	;;
-
-  3)
-	clear
-	send_stats "系统清理"
-	linux_clean
-	;;
-
-  4)
-
-	linux_tools
-	;;
-
-  5)
-	linux_bbr
-	;;
-
-  6)
-	linux_docker
-	;;
-
-
-  7)
-	clear
-	send_stats "warp管理"
-	install wget
-	wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh && bash menu.sh [option] [lisence/url/token]
-	;;
-
-  8)
-	linux_test
-	;;
-
-  9)
-	linux_Oracle
-	;;
-
-
-  10)
-	linux_ldnmp
-	  ;;
-
-  11)
-	linux_panel
-	;;
-
-  12)
-	linux_work
-	;;
-
-  13)
-	linux_Settings
-	;;
-
-  14)
-	linux_cluster
-	;;
-
-  15)
-	kejilion_Affiliates
-	;;
-
-  p)
-	send_stats "幻兽帕鲁开服脚本"
-	cd ~
-	curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh && chmod +x palworld.sh && ./palworld.sh
-	exit
-	;;
-
-
-  00)
-	kejilion_update
-	;;
-
-  0)
-	clear
-	exit
-	;;
-
-  *)
-	echo "无效的输入!"
-	;;
+  8) linux_test ;;
+  9) linux_Oracle ;;
+  10) linux_ldnmp ;;
+  11) linux_panel ;;
+  12) linux_work ;;
+  13) linux_Settings ;;
+  14) linux_cluster ;;
+  15) kejilion_Affiliates ;;
+  p) send_stats "幻兽帕鲁开服脚本" ; cd ~
+	 curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh
+	 exit
+	 ;;
+  00) kejilion_update ;;
+  0) clear ; exit ;;
+  *) echo "无效的输入!" ;;
 esac
 	break_end
 done
-
 }
 
 
 k_info() {
-
 send_stats "k命令参考用例"
 echo "无效参数"
 echo "-------------------"
