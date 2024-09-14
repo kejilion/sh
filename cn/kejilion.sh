@@ -2163,6 +2163,14 @@ dd_xitong() {
 bbrv3() {
 		  root_use
 		  send_stats "bbrv3管理"
+
+		  cpu_arch=$(uname -m)
+		  if [ "$cpu_arch" = "aarch64" ]; then
+			bash <(curl -sL jhb.ovh/jb/bbrv3arm.sh)
+			break_end
+			linux_Settings			
+		  fi
+
 		  if dpkg -l | grep -q 'linux-xanmod'; then
 			while true; do
 				  clear
@@ -2222,10 +2230,11 @@ bbrv3() {
 		else
 
 		  clear
-		  echo "请备份数据，将为你升级Linux内核开启BBR3"
+		  echo "设置BBR3加速"
 		  echo "视频介绍: https://www.bilibili.com/video/BV14K421x7BS?t=0.1"
 		  echo "------------------------------------------------"
-		  echo "仅支持Debian/Ubuntu 仅支持x86_64架构"
+		  echo "仅支持Debian/Ubuntu"
+		  echo "请备份数据，将为你升级Linux内核开启BBR3"
 		  echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"
 		  echo "------------------------------------------------"
 		  read -e -p "确定继续吗？(Y/N): " choice
@@ -2243,14 +2252,6 @@ bbrv3() {
 				echo "无法确定操作系统类型"
 				break_end
 				linux_Settings
-			fi
-
-			# 检查系统架构
-			arch=$(dpkg --print-architecture)
-			if [ "$arch" != "amd64" ]; then
-			  echo "当前环境不支持，仅支持x86_64架构"
-			  break_end
-			  linux_Settings
 			fi
 
 			check_swap
