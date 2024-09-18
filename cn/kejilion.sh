@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.0.10"
+sh_v="3.1.0"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -1109,6 +1109,8 @@ else
 	openssl req -x509 -key /home/web/certs/default_server.key -out /home/web/certs/default_server.crt -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
 fi
 
+openssl rand -out /home/web/certs/ticket12.key 48
+openssl rand -out /home/web/certs/ticket13.key 80
 
 }
 
@@ -2170,7 +2172,7 @@ bbrv3() {
 		  if [ "$cpu_arch" = "aarch64" ]; then
 			bash <(curl -sL jhb.ovh/jb/bbrv3arm.sh)
 			break_end
-			linux_Settings			
+			linux_Settings
 		  fi
 
 		  if dpkg -l | grep -q 'linux-xanmod'; then
