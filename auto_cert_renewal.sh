@@ -65,6 +65,8 @@ for cert_dir in $certs_directory*; do
         cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
         cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
 
+        openssl rand -out /home/web/certs/ticket12.key 48
+        openssl rand -out /home/web/certs/ticket13.key 80
         
         docker start nginx > /dev/null 2>&1
 
