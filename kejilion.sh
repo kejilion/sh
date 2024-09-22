@@ -1227,6 +1227,7 @@ cf_purge_cache() {
 	fi
 
 	# 提示用户输入 API_TOKEN 和 zone_id
+	echo "CF信息保存在$CONFIG_FILE，可以后期修改CF信息"
 	read -p "请输入你的 API_TOKEN: " API_TOKEN
 	read -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
 
