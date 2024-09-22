@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.1.0"
+sh_v="3.1.1"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -1207,6 +1207,45 @@ nginx_upgrade() {
 
 
 
+cf_purge_cache() {
+  local CONFIG_FILE="/home/web/config/cf-purge-cache.txt"
+  local API_TOKEN
+  local ZONE_IDS
+
+  # 检查配置文件是否存在
+  if [ -f "$CONFIG_FILE" ]; then
+	# 从配置文件读取 API_TOKEN 和 zone_id
+	read API_TOKEN ZONE_IDS < "$CONFIG_FILE"
+	# 将 ZONE_IDS 转换为数组
+	ZONE_IDS=($ZONE_IDS)
+  else
+	# 提示用户是否清理缓存
+	read -p "需要清理 Cloudflare 的缓存吗？（y/n）: " answer
+	if [[ "$answer" == "n" ]]; then
+	  echo "跳过缓存清理。"
+	  return
+	fi
+
+	# 提示用户输入 API_TOKEN 和 zone_id
+	read -p "请输入你的 API_TOKEN: " API_TOKEN
+	read -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
+
+	# 保存到配置文件
+	mkdir -p /home/web/config/
+	echo "$API_TOKEN ${ZONE_IDS[*]}" > "$CONFIG_FILE"
+  fi
+
+  # 循环遍历每个 zone_id 并执行清除缓存命令
+  for ZONE_ID in "${ZONE_IDS[@]}"; do
+	echo "正在清除缓存 for zone_id: $ZONE_ID"
+	curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
+	-H "Authorization: Bearer $API_TOKEN" \
+	-H "Content-Type: application/json" \
+	--data '{"purge_everything":true}'
+  done
+
+  echo "缓存清除请求已发送完毕。"
+}
 
 
 
@@ -4559,13 +4598,13 @@ linux_ldnmp() {
 			3)
 				send_stats "清理站点缓存"
 				# docker exec -it nginx rm -rf /var/cache/nginx
+				cf_purge_cache
 				docker exec php php -r 'opcache_reset();'
 				docker exec php74 php -r 'opcache_reset();'
 				docker restart nginx php php74 redis
 				docker exec redis redis-cli FLUSHALL
 				docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
 				docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
-
 				;;
 			4)
 				send_stats "查看站点数据"
