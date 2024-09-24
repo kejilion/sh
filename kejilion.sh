@@ -1215,36 +1215,52 @@ cf_purge_cache() {
 
   # 检查配置文件是否存在
   if [ -f "$CONFIG_FILE" ]; then
-    # 从配置文件读取 API_TOKEN 和 zone_id
-    read API_TOKEN EMAIL ZONE_IDS < "$CONFIG_FILE"
-    # 将 ZONE_IDS 转换为数组
-    ZONE_IDS=($ZONE_IDS)
+	# 从配置文件读取 API_TOKEN 和 zone_id
+	read API_TOKEN EMAIL ZONE_IDS < "$CONFIG_FILE"
+	# 将 ZONE_IDS 转换为数组
+	ZONE_IDS=($ZONE_IDS)
   else
-    # 提示用户是否清理缓存
-    read -p "需要清理 Cloudflare 的缓存吗？（y/n）: " answer
-    if [[ "$answer" == "y" ]]; then
-      echo "CF信息保存在$CONFIG_FILE，可以后期修改CF信息"
-      read -p "请输入你的 API_TOKEN: " API_TOKEN
-      read -p "请输入你的CF用户名: " EMAIL
-      read -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
+	# 提示用户是否清理缓存
+	read -p "需要清理 Cloudflare 的缓存吗？（y/n）: " answer
+	if [[ "$answer" == "y" ]]; then
+	  echo "CF信息保存在$CONFIG_FILE，可以后期修改CF信息"
+	  read -p "请输入你的 API_TOKEN: " API_TOKEN
+	  read -p "请输入你的CF用户名: " EMAIL
+	  read -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
 
-      mkdir -p /home/web/config/
-      echo "$API_TOKEN $EMAIL ${ZONE_IDS[*]}" > "$CONFIG_FILE"
-    fi
+	  mkdir -p /home/web/config/
+	  echo "$API_TOKEN $EMAIL ${ZONE_IDS[*]}" > "$CONFIG_FILE"
+	fi
   fi
 
   # 循环遍历每个 zone_id 并执行清除缓存命令
   for ZONE_ID in "${ZONE_IDS[@]}"; do
-    echo "正在清除缓存 for zone_id: $ZONE_ID"
-    curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
-    -H "X-Auth-Email: $EMAIL" \
-    -H "X-Auth-Key: $API_TOKEN" \
-    -H "Content-Type: application/json" \
-    --data '{"purge_everything":true}'
+	echo "正在清除缓存 for zone_id: $ZONE_ID"
+	curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
+	-H "X-Auth-Email: $EMAIL" \
+	-H "X-Auth-Key: $API_TOKEN" \
+	-H "Content-Type: application/json" \
+	--data '{"purge_everything":true}'
   done
 
   echo "缓存清除请求已发送完毕。"
 }
+
+
+
+web_cache() {
+  send_stats "清理站点缓存"
+  # docker exec -it nginx rm -rf /var/cache/nginx
+  cf_purge_cache
+  docker exec php php -r 'opcache_reset();'
+  docker exec php74 php -r 'opcache_reset();'
+  docker restart nginx php php74 redis
+  docker exec redis redis-cli FLUSHALL
+  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
+  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru  
+
+}
+
 
 
 
@@ -4595,15 +4611,7 @@ linux_ldnmp() {
 
 
 			3)
-				send_stats "清理站点缓存"
-				# docker exec -it nginx rm -rf /var/cache/nginx
-				cf_purge_cache
-				docker exec php php -r 'opcache_reset();'
-				docker exec php74 php -r 'opcache_reset();'
-				docker restart nginx php php74 redis
-				docker exec redis redis-cli FLUSHALL
-				docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
-				docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+				web_cache
 				;;
 			4)
 				send_stats "查看站点数据"
@@ -8606,6 +8614,7 @@ echo "域名证书申请        k ssl"
 echo "域名证书到期查询    k ssl ps"
 echo "docker容器管理      k docker ps |k docker 容器"
 echo "docker镜像管理      k docker img |k docker 镜像"
+echo "LDNMP缓存清理       k web cache"
 
 }
 
@@ -8700,8 +8709,16 @@ else
 			esac
 			;;
 
+		web)
+			shift
+			case $1 in
+				cache) web_cache ;;					
+				*) k_info ;;
+			esac
+			;;
 		*)
 			k_info
 			;;
 	esac
 fi
+
