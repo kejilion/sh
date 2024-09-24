@@ -1210,39 +1210,37 @@ nginx_upgrade() {
 cf_purge_cache() {
   local CONFIG_FILE="/home/web/config/cf-purge-cache.txt"
   local API_TOKEN
+  local EMAIL
   local ZONE_IDS
 
   # 检查配置文件是否存在
   if [ -f "$CONFIG_FILE" ]; then
-	# 从配置文件读取 API_TOKEN 和 zone_id
-	read API_TOKEN ZONE_IDS < "$CONFIG_FILE"
-	# 将 ZONE_IDS 转换为数组
-	ZONE_IDS=($ZONE_IDS)
+    # 从配置文件读取 API_TOKEN 和 zone_id
+    read API_TOKEN EMAIL ZONE_IDS < "$CONFIG_FILE"
+    # 将 ZONE_IDS 转换为数组
+    ZONE_IDS=($ZONE_IDS)
   else
-	# 提示用户是否清理缓存
-	read -p "需要清理 Cloudflare 的缓存吗？（y/n）: " answer
-	if [[ "$answer" == "y" ]]; then
-	  echo "CF信息保存在$CONFIG_FILE，可以后期修改CF信息"
-	  read -p "请输入你的 API_TOKEN: " API_TOKEN
-	  read -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
+    # 提示用户是否清理缓存
+    read -p "需要清理 Cloudflare 的缓存吗？（y/n）: " answer
+    if [[ "$answer" == "y" ]]; then
+      echo "CF信息保存在$CONFIG_FILE，可以后期修改CF信息"
+      read -p "请输入你的 API_TOKEN: " API_TOKEN
+      read -p "请输入你的CF用户名: " EMAIL
+      read -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
 
-	  mkdir -p /home/web/config/
-	  echo "$API_TOKEN ${ZONE_IDS[*]}" > "$CONFIG_FILE"
-
-	fi
-
-	echo "跳过CF缓存清理。"
-	return
-
+      mkdir -p /home/web/config/
+      echo "$API_TOKEN $EMAIL ${ZONE_IDS[*]}" > "$CONFIG_FILE"
+    fi
   fi
 
   # 循环遍历每个 zone_id 并执行清除缓存命令
   for ZONE_ID in "${ZONE_IDS[@]}"; do
-	echo "正在清除缓存 for zone_id: $ZONE_ID"
-	curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
-	-H "Authorization: Bearer $API_TOKEN" \
-	-H "Content-Type: application/json" \
-	--data '{"purge_everything":true}'
+    echo "正在清除缓存 for zone_id: $ZONE_ID"
+    curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
+    -H "X-Auth-Email: $EMAIL" \
+    -H "X-Auth-Key: $API_TOKEN" \
+    -H "Content-Type: application/json" \
+    --data '{"purge_everything":true}'
   done
 
   echo "缓存清除请求已发送完毕。"
