@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.1.1"
+sh_v="3.1.2"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -1221,19 +1221,19 @@ cf_purge_cache() {
   else
 	# 提示用户是否清理缓存
 	read -p "需要清理 Cloudflare 的缓存吗？（y/n）: " answer
-	if [[ "$answer" == "n" ]]; then
-	  echo "跳过缓存清理。"
-	  return
+	if [[ "$answer" == "y" ]]; then
+	  echo "CF信息保存在$CONFIG_FILE，可以后期修改CF信息"
+	  read -p "请输入你的 API_TOKEN: " API_TOKEN
+	  read -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
+
+	  mkdir -p /home/web/config/
+	  echo "$API_TOKEN ${ZONE_IDS[*]}" > "$CONFIG_FILE"
+
 	fi
 
-	# 提示用户输入 API_TOKEN 和 zone_id
-	echo "CF信息保存在$CONFIG_FILE，可以后期修改CF信息"
-	read -p "请输入你的 API_TOKEN: " API_TOKEN
-	read -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
+	echo "跳过CF缓存清理。"
+	return
 
-	# 保存到配置文件
-	mkdir -p /home/web/config/
-	echo "$API_TOKEN ${ZONE_IDS[*]}" > "$CONFIG_FILE"
   fi
 
   # 循环遍历每个 zone_id 并执行清除缓存命令
@@ -1957,7 +1957,7 @@ dd_xitong() {
 			echo "21. Rocky Linux 9             22. Rocky Linux 8"
 			echo "23. Alma Linux 9              24. Alma Linux 8"
 			echo "25. oracle Linux 9            26. oracle Linux 8"
-			echo "27. Fedora Linux 40           28. Fedora Linux 39"
+			echo "27. Fedora Linux 41           28. Fedora Linux 40"
 			echo "29. CentOS 7"
 			echo "------------------------"
 			echo "31. Alpine Linux              32. Arch Linux"
@@ -2089,7 +2089,7 @@ dd_xitong() {
 			  28)
 				send_stats "重装fedora39"
 				dd_xitong_3
-				bash reinstall.sh fedora 39
+				bash reinstall.sh fedora 40
 				reboot
 				exit
 				;;
