@@ -1266,7 +1266,10 @@ preheat_cache() {
     # 遍历每个 URL 并进行缓存预热
     for url in "${urls[@]}"; do
         echo "预热缓存: $url"
-        curl -s -o /dev/null "$url"  # 使用 -s 静默模式，-o /dev/null 忽略输出
+        curl -s -o /dev/null \
+    		-H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" \
+    		-H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
+    		"$url"
     done
 
     echo "缓存预热完成！"
@@ -8747,4 +8750,3 @@ else
 			;;
 	esac
 fi
-
