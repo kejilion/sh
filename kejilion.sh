@@ -1248,6 +1248,32 @@ cf_purge_cache() {
 
 
 
+# 定义缓存预热函数
+preheat_cache() {
+    local url_file="/home/web/config/urls.txt"
+
+    # 检查文件是否存在
+    if [[ ! -f "$url_file" ]]; then
+        return
+    fi
+
+    # 从文件读取 URL 列表
+    urls=()
+    while IFS= read -r url; do
+        urls+=("$url")
+    done < "$url_file"
+
+    # 遍历每个 URL 并进行缓存预热
+    for url in "${urls[@]}"; do
+        echo "预热缓存: $url"
+        curl -s -o /dev/null "$url"  # 使用 -s 静默模式，-o /dev/null 忽略输出
+    done
+
+    echo "缓存预热完成！"
+}
+
+
+
 web_cache() {
   send_stats "清理站点缓存"
   # docker exec -it nginx rm -rf /var/cache/nginx
@@ -1257,8 +1283,8 @@ web_cache() {
   docker restart nginx php php74 redis
   docker exec redis redis-cli FLUSHALL
   docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
-  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru  
-
+  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+  preheat_cache
 }
 
 
@@ -8712,7 +8738,7 @@ else
 		web)
 			shift
 			case $1 in
-				cache) web_cache ;;					
+				cache) web_cache ;;
 				*) k_info ;;
 			esac
 			;;
