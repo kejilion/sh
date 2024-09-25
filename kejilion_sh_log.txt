@@ -762,4 +762,5 @@ LDNMP站点管理清除缓存支持清理cf站点缓存。
 dd系统功能支持重装Fedora 41系统。
 LDNMP清理cf站点缓存进行优化，提升兼容性。
 k快捷键增加了LDNMP站点缓存清理功能 k web cache
+LDNMP清理缓存后支持自动缓存预热url，可创建/home/web/config/urls.txt文件启用预热。
 ------------------------
