@@ -764,3 +764,6 @@ LDNMP清理cf站点缓存进行优化，提升兼容性。
 k快捷键增加了LDNMP站点缓存清理功能 k web cache
 LDNMP清理缓存后支持自动缓存预热url，可创建/home/web/config/urls.txt文件启用预热。
 ------------------------
+2024-09-25   v3.1.3
+k快捷键增加一键安装docker k docker install
+------------------------
