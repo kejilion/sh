@@ -2761,6 +2761,81 @@ optimize_web_server() {
 }
 
 
+Kernel_optimize() {
+	root_use
+	while true; do
+	  clear
+	  send_stats "Linux内核调优管理"
+	  echo "Linux系统内核参数优化"
+	  echo "视频介绍: https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1"
+	  echo "------------------------------------------------"
+	  echo "提供多种系统参数调优模式，用户可以根据自身使用场景进行选择切换。"
+	  echo -e "${gl_huang}提示: ${gl_bai}生产环境请谨慎使用！"
+	  echo "--------------------"
+	  echo "1. 高性能优化模式：     最大化系统性能，优化文件描述符、虚拟内存、网络设置、缓存管理和CPU设置。"
+	  echo "2. 均衡优化模式：       在性能与资源消耗之间取得平衡，适合日常使用。"
+	  echo "3. 网站优化模式：       针对网站服务器进行优化，提高并发连接处理能力、响应速度和整体性能。"
+	  echo "4. 直播优化模式：       针对直播推流的特殊需求进行优化，减少延迟，提高传输性能。"
+	  echo "5. 游戏服优化模式：     针对游戏服务器进行优化，提高并发处理能力和响应速度。"
+	  echo "6. 还原默认设置：       将系统设置还原为默认配置。"
+	  echo "--------------------"
+	  echo "0. 返回上一级"
+	  echo "--------------------"
+	  read -e -p "请输入你的选择: " sub_choice
+	  case $sub_choice in
+		  1)
+			  cd ~
+			  clear
+			  tiaoyou_moshi="高性能优化模式"
+			  optimize_high_performance
+			  send_stats "高性能模式优化"
+			  ;;
+		  2)
+			  cd ~
+			  clear
+			  optimize_balanced
+			  send_stats "均衡模式优化"
+			  ;;
+		  3)
+			  cd ~
+			  clear
+			  optimize_web_server
+			  send_stats "网站优化模式"
+			  ;;
+		  4)
+			  cd ~
+			  clear
+			  tiaoyou_moshi="直播优化模式"
+			  optimize_high_performance
+			  send_stats "直播推流优化"
+			  ;;
+		  5)
+			  cd ~
+			  clear
+			  tiaoyou_moshi="游戏服优化模式"
+			  optimize_high_performance
+			  send_stats "游戏服优化"
+			  ;;
+		  6)
+			  cd ~
+			  clear
+			  restore_defaults
+			  send_stats "还原默认设置"
+			  ;;
+		  0)
+			  break
+			  ;;
+		  *)
+			  echo "无效的选择，请重新输入。"
+			  ;;
+	  esac
+	  break_end
+	done
+}
+
+
+
+
 
 update_locale() {
 	local lang=$1
@@ -7742,81 +7817,7 @@ EOF
 
 
 		  28)
-			root_use
-			while true; do
-			  clear
-			  send_stats "Linux内核调优管理"
-			  echo "Linux系统内核参数优化"
-			  echo "视频介绍: https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1"
-			  echo "------------------------------------------------"
-			  echo "提供多种系统参数调优模式，用户可以根据自身使用场景进行选择切换。"
-			  echo -e "${gl_huang}提示: ${gl_bai}生产环境请谨慎使用！"
-			  echo "--------------------"
-			  echo "1. 高性能优化模式：     最大化系统性能，优化文件描述符、虚拟内存、网络设置、缓存管理和CPU设置。"
-			  echo "2. 均衡优化模式：       在性能与资源消耗之间取得平衡，适合日常使用。"
-			  echo "3. 网站优化模式：       针对网站服务器进行优化，提高并发连接处理能力、响应速度和整体性能。"
-			  echo "4. 直播优化模式：       针对直播推流的特殊需求进行优化，减少延迟，提高传输性能。"
-			  echo "5. 游戏服优化模式：     针对游戏服务器进行优化，提高并发处理能力和响应速度。"
-			  echo "6. 还原默认设置：       将系统设置还原为默认配置。"
-			  echo "--------------------"
-			  echo "0. 返回上一级"
-			  echo "--------------------"
-			  read -e -p "请输入你的选择: " sub_choice
-			  case $sub_choice in
-				  1)
-					  cd ~
-					  clear
-					  tiaoyou_moshi="高性能优化模式"
-					  optimize_high_performance
-					  send_stats "高性能模式优化"
-
-					  ;;
-				  2)
-					  cd ~
-					  clear
-					  optimize_balanced
-					  send_stats "均衡模式优化"
-
-					  ;;
-				  3)
-					  cd ~
-					  clear
-					  optimize_web_server
-					  send_stats "网站优化模式"
-
-					  ;;
-				  4)
-					  cd ~
-					  clear
-					  tiaoyou_moshi="直播优化模式"
-					  optimize_high_performance
-					  send_stats "直播推流优化"
-
-					  ;;
-				  5)
-					  cd ~
-					  clear
-					  tiaoyou_moshi="游戏服优化模式"
-					  optimize_high_performance
-					  send_stats "游戏服优化"
-
-					  ;;
-				  6)
-					  cd ~
-					  clear
-					  restore_defaults
-					  send_stats "还原默认设置"
-
-					  ;;
-				  0)
-					  break
-					  ;;
-				  *)
-					  echo "无效的选择，请重新输入。"
-					  ;;
-			  esac
-			  break_end
-			done
+		      Kernel_optimize
 			  ;;
 
 		  29)
@@ -8681,6 +8682,9 @@ else
 			;;
 		bbr3|bbrv3)
 			bbrv3
+			;;
+		nhyh|内核优化)
+			Kernel_optimize
 			;;
 		status|状态)
 			shift
