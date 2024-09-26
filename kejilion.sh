@@ -3005,9 +3005,9 @@ linux_trash() {
 
 	local trash_status
 	if ! grep -q "trash-put" "$bashrc_profile"; then
-	    trash_status="${gl_lv}已启用${gl_bai}"
-	else
 	    trash_status="${hui}未启用${gl_bai}"
+	else
+	    trash_status="${gl_lv}已启用${gl_bai}"
 	fi
 
 	clear
