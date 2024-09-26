@@ -3003,7 +3003,7 @@ linux_trash() {
   while true; do
 
 	local trash_status
-	if alias rm 2>/dev/null | grep -q "trash"; then
+	if alias rm 2>/dev/null | grep -q "trash-put"; then
 	  trash_status="${gl_lv}已启用${gl_bai}"
 	else
 	  trash_status="${hui}未启用${gl_bai}"
