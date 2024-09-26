@@ -2989,6 +2989,7 @@ shell_bianse() {
 
 
 linux_trash() {
+  root_use
   send_stats "系统回收站"
   local bashrc_profile
   if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
