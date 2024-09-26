@@ -3039,7 +3039,6 @@ linux_trash() {
 		;;
 	  3)
 		echo "当前回收站内容:"
-		ls "$TRASH_DIR" 2>/dev/null || echo "回收站为空"
 		read -e -p "输入要还原的文件名: " file_to_restore
 		if [ -e "$TRASH_DIR/$file_to_restore" ]; then
 		  mv "$TRASH_DIR/$file_to_restore" "$HOME/"
@@ -8708,6 +8707,8 @@ echo "更新系统            k update | k 更新"
 echo "清理系统垃圾        k clean | k 清理"
 echo "打开重装系统面板    k dd | k 重装"
 echo "打开bbr3控制面板    k bbr3 | k bbrv3"
+echo "打开内核调优面膜    k nhyh | k 内核优化"
+echo "打开系统回收站      k trash | k 回收站"
 echo "软件启动            k start sshd | k 启动 sshd "
 echo "软件停止            k stop sshd | k 停止 sshd "
 echo "软件重启            k restart sshd | k 重启 sshd "
@@ -8758,6 +8759,9 @@ else
 			;;
 		nhyh|内核优化)
 			Kernel_optimize
+			;;
+		trash|回收站)
+			linux_trash
 			;;
 		status|状态)
 			shift
@@ -8834,3 +8838,4 @@ else
 fi
 
 
+linux_trash
