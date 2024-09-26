@@ -3010,7 +3010,7 @@ linux_trash() {
 	fi
 
 	clear
-	echo "当前回收站 ${trash_status}"
+	echo -e "当前回收站 ${trash_status}"
 	ls "$TRASH_DIR" 2>/dev/null || echo "回收站为空"
 	echo "------------------------"
 	echo "1. 启用回收站          2. 关闭回收站"
