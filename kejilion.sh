@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.1.3"
+sh_v="3.1.4"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -2988,7 +2988,78 @@ shell_bianse() {
 
 
 
+linux_trash() {
+  send_stats "系统回收站"
+  local bashrc_profile
+  if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+    bashrc_profile="/root/.bashrc"
+  else
+    bashrc_profile="/root/.profile"
+  fi
 
+  local TRASH_DIR="$HOME/.local/share/Trash/files"
+
+  while true; do
+
+    local trash_status
+    if alias rm 2>/dev/null | grep -q "trash"; then
+      trash_status="${gl_lv}已启用${gl_bai}"
+    else
+      trash_status="${gl_lv}未启用${gl_bai}"
+    fi
+
+    clear
+    echo "当前回收站 ${trash_status}"
+    ls "$TRASH_DIR" 2>/dev/null || echo "回收站为空"
+    echo "------------------------"
+    echo "1. 启用回收站          2. 关闭回收站"
+    echo "3. 还原内容            4. 清空回收站"
+    echo "------------------------"
+    echo "0. 返回上一级"
+    echo "------------------------"
+    read -e -p "输入你的选择: " choice
+
+    case $choice in
+      1)
+        k add trash-cli
+        sed -i '/alias rm/d' "$bashrc_profile"
+        echo "alias rm='trash'" >> "$bashrc_profile"
+        source "$bashrc_profile"
+        echo "回收站已启用，删除的文件将移至回收站。"
+        sleep 2
+        ;;
+      2)
+        k del trash-cli
+        sed -i '/alias rm/d' "$bashrc_profile"
+        echo "alias rm='rm -i'" >> "$bashrc_profile"
+        source "$bashrc_profile"
+        echo "回收站已关闭，文件将直接删除。"
+        sleep 2
+        ;;
+      3)
+        echo "当前回收站内容:"
+        ls "$TRASH_DIR" 2>/dev/null || echo "回收站为空"
+        read -e -p "输入要还原的文件名: " file_to_restore
+        if [ -e "$TRASH_DIR/$file_to_restore" ]; then
+          mv "$TRASH_DIR/$file_to_restore" "$HOME/"
+          echo "$file_to_restore 已还原到主目录。"
+        else
+          echo "文件不存在。"
+        fi
+        ;;
+      4)
+        read -e -p "确认清空回收站？[y/n]: " confirm
+        if [[ "$confirm" == "y" ]]; then
+          trash-empty
+          echo "回收站已清空。"
+        fi
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+}
 
 
 
@@ -6648,6 +6719,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}29.  ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}文件管理器"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行美化工具"
+	  echo -e "${gl_kjlan}31.  ${gl_bai}设置系统回收站"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
@@ -7814,8 +7886,6 @@ EOF
 		  27)
 			  elrepo
 			  ;;
-
-
 		  28)
 		      Kernel_optimize
 			  ;;
@@ -7835,7 +7905,9 @@ EOF
 		  32)
 			  shell_bianse
 			  ;;
-
+		  33)
+			  linux_trash
+			  ;;
 		  41)
 			clear
 			send_stats "留言板"
