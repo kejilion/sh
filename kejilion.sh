@@ -3035,7 +3035,6 @@ linux_trash() {
 		sleep 2
 		;;
 	  3)
-		echo "当前回收站内容:"
 		read -e -p "输入要还原的文件名: " file_to_restore
 		if [ -e "$TRASH_DIR/$file_to_restore" ]; then
 		  mv "$TRASH_DIR/$file_to_restore" "$HOME/"
