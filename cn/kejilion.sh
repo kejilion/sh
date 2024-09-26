@@ -2992,7 +2992,7 @@ linux_trash() {
   root_use
   send_stats "系统回收站"
   local bashrc_profile
-  if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+  if command -v dnf &>/dev/null || command -v yum &>/dev/null || command -v apt &>/dev/null; then
 	bashrc_profile="/root/.bashrc"
   else
 	bashrc_profile="/root/.profile"
@@ -3012,6 +3012,7 @@ linux_trash() {
 	clear
 	echo -e "当前回收站 ${trash_status}"
 	echo -e "启用后rm删除的文件先进入回收站，防止误删重要文件！"
+	echo "------------------------------------------------"
 	ls "$TRASH_DIR" 2>/dev/null || echo "回收站为空"
 	echo "------------------------"
 	echo "1. 启用回收站          2. 关闭回收站"
