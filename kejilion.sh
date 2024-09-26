@@ -2991,22 +2991,20 @@ shell_bianse() {
 linux_trash() {
   root_use
   send_stats "系统回收站"
-  local bashrc_profile
   if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
-	bashrc_profile="/root/.bashrc"
+	    bashrc_profile="/root/.bashrc"
   else
-	bashrc_profile="/root/.profile"
+	    bashrc_profile="/root/.profile"
   fi
 
   local TRASH_DIR="$HOME/.local/share/Trash/files"
 
   while true; do
 
-	local trash_status
 	if alias rm 2>/dev/null | grep -q "trash-put"; then
-	  trash_status="${gl_lv}已启用${gl_bai}"
+	    trash_status="${gl_lv}已启用${gl_bai}"
 	else
-	  trash_status="${hui}未启用${gl_bai}"
+	    trash_status="${hui}未启用${gl_bai}"
 	fi
 
 	clear
