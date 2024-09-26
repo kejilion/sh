@@ -3006,11 +3006,12 @@ linux_trash() {
 	if alias rm 2>/dev/null | grep -q "trash"; then
 	  trash_status="${gl_lv}已启用${gl_bai}"
 	else
-	  trash_status="${gl_lv}未启用${gl_bai}"
+	  trash_status="${hui}未启用${gl_bai}"
 	fi
 
 	clear
 	echo -e "当前回收站 ${trash_status}"
+	echo -e "启用后rm删除的文件先进入回收站，防止误删重要文件！"
 	ls "$TRASH_DIR" 2>/dev/null || echo "回收站为空"
 	echo "------------------------"
 	echo "1. 启用回收站          2. 关闭回收站"
