@@ -2992,7 +2992,7 @@ linux_trash() {
   root_use
   send_stats "系统回收站"
   local bashrc_profile
-  if command -v dnf &>/dev/null || command -v yum &>/dev/null || command -v apt &>/dev/null; then
+  if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
 	bashrc_profile="/root/.bashrc"
   else
 	bashrc_profile="/root/.profile"
@@ -3026,7 +3026,7 @@ linux_trash() {
 	  1)
 		k add trash-cli
 		sed -i '/alias rm/d' "$bashrc_profile"
-		echo "alias rm='trash'" >> "$bashrc_profile"
+		echo "alias rm='trash-put'" >> "$bashrc_profile"
 		source "$bashrc_profile"
 		echo "回收站已启用，删除的文件将移至回收站。"
 		sleep 2
