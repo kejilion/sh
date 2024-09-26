@@ -8837,6 +8837,3 @@ else
 			;;
 	esac
 fi
-
-
-linux_trash
