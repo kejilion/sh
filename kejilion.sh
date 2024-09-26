@@ -39,7 +39,7 @@ run_command() {
 
 
 
-permission_granted="false"
+permission_granted="true"
 
 CheckFirstRun_true() {
 	if grep -q '^permission_granted="true"' /usr/local/bin/k > /dev/null 2>&1; then
@@ -2991,6 +2991,8 @@ shell_bianse() {
 linux_trash() {
   root_use
   send_stats "系统回收站"
+
+  local bashrc_profile
   if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
 	    bashrc_profile="/root/.bashrc"
   else
@@ -3001,7 +3003,8 @@ linux_trash() {
 
   while true; do
 
-	if alias rm 2>/dev/null | grep -q "trash-put"; then
+	local trash_status
+	if ! grep -q "trash-put" "$bashrc_profile"; then
 	    trash_status="${gl_lv}已启用${gl_bai}"
 	else
 	    trash_status="${hui}未启用${gl_bai}"
