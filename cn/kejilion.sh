@@ -1216,7 +1216,9 @@ phpmyadmin_upgrade() {
   docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
   curl -sS -O https://raw.githubusercontent.com/kejilion/docker/refs/heads/main/docker-compose.phpmyadmin.yml
   docker compose -f docker-compose.phpmyadmin.yml up -d
+  clear
   ip_address
+  has_ipv4_has_ipv6
   check_docker_app_ip
   echo "登录信息: "
   echo "用户名: $dbuse"
