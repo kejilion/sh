@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.1.4"
+sh_v="3.1.5"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -1205,6 +1205,26 @@ nginx_upgrade() {
 
 }
 
+phpmyadmin_upgrade() {
+  local ldnmp_pods="phpmyadmin"
+  local docker_port=8877
+  local dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+  local dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+
+  cd /home/web/
+  docker rm -f $ldnmp_pods > /dev/null 2>&1
+  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
+  curl -sL https://raw.githubusercontent.com/kejilion/docker/refs/heads/main/docker-compose.phpmyadmin.yml
+  docker compose -f docker-compose.phpmyadmin.yml up -d
+  ip_address
+  check_docker_app_ip
+  echo "登录信息: "
+  echo "用户名: $dbuse"
+  echo "密码: $dbusepasswd"
+  echo
+  send_stats "安装$ldnmp_pods"
+  echo "安装${ldnmp_pods}完成"
+}
 
 
 cf_purge_cache() {
@@ -5247,7 +5267,7 @@ linux_ldnmp() {
 		  ldnmp_v
 		  echo "1. 更新nginx               2. 更新mysql              3. 更新php              4. 更新redis"
 		  echo "------------------------"
-		  echo "5. 更新完整环境"
+		  echo "5. 更新完整环境			   6. 安装phpmyadmin"
 		  echo "------------------------"
 		  echo "0. 返回上一级"
 		  echo "------------------------"
@@ -5360,6 +5380,11 @@ linux_ldnmp() {
 					;;
 				esac
 				  ;;
+
+			  6)
+			  phpmyadmin_upgrade
+				  ;;
+
 			  0)
 				  break
 				  ;;
@@ -8704,7 +8729,7 @@ echo "清理系统垃圾        k clean | k 清理"
 echo "打开重装系统面板    k dd | k 重装"
 echo "打开bbr3控制面板    k bbr3 | k bbrv3"
 echo "打开内核调优面膜    k nhyh | k 内核优化"
-echo "打开系统回收站      k trash | k 回收站"
+echo "打开系统回收站      k trash | k hsz | k 回收站"
 echo "软件启动            k start sshd | k 启动 sshd "
 echo "软件停止            k stop sshd | k 停止 sshd "
 echo "软件重启            k restart sshd | k 重启 sshd "
@@ -8756,7 +8781,7 @@ else
 		nhyh|内核优化)
 			Kernel_optimize
 			;;
-		trash|回收站)
+		trash|hsz|回收站)
 			linux_trash
 			;;
 		status|状态)
