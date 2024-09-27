@@ -1222,8 +1222,8 @@ phpmyadmin_upgrade() {
   echo "用户名: $dbuse"
   echo "密码: $dbusepasswd"
   echo
-  send_stats "安装$ldnmp_pods"
-  echo "安装${ldnmp_pods}完成"
+  send_stats "更新$ldnmp_pods"
+  echo "更新${ldnmp_pods}完成"
 }
 
 
@@ -5267,7 +5267,7 @@ linux_ldnmp() {
 		  ldnmp_v
 		  echo "1. 更新nginx               2. 更新mysql              3. 更新php              4. 更新redis"
 		  echo "------------------------"
-		  echo "5. 更新完整环境			   6. 安装phpmyadmin"
+		  echo "5. 更新完整环境            6. 更新phpmyadmin"
 		  echo "------------------------"
 		  echo "0. 返回上一级"
 		  echo "------------------------"
