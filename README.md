@@ -5,33 +5,25 @@
 [视频介绍](https://www.youtube.com/watch?v=0o7oH3Dit70&t=211s)
 ***
 
-### 科技lion一键脚本工具 的支持列表：
->Debian
+### 科技lion一键脚本工具 的支持系统：
 >Ubuntu
->Cent OS
+>Debian
+>CentOS
+>Alpine
+>Kali
+>Arch
+>RedHat
+>Fedora
+>Alma
+>Rocky
 ***
 
-## 使用方法
-### Debian / Ubuntu 安装下载工具
-```bash
-apt update -y  && apt install -y curl
-```
-### CentOS 安装下载工具
-```bash
-yum update -y  && yum install -y curl
-```
-***
 ### 一键脚本
 ```bash
-curl -sS -O https://kejilion.pro/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
+bash <(curl -sL kejilion.sh)
 ```
-or
-```bash
-curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
-```
-
-
 ***
+
 ### 觉得脚本还可以USTD TRC20打赏
 ![Snipaste_2024-01-17_18-01-52](https://github.com/kejilion/sh/assets/131984541/98cf2762-1bfb-4c33-af10-af0eda29fc20)
 
