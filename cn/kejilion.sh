@@ -5407,6 +5407,8 @@ linux_ldnmp() {
 			cd /home/web/
 			docker compose down
 			docker compose down --rmi all
+			docker compose -f docker-compose.phpmyadmin.yml down > /dev/null 2>&1
+			docker compose -f docker-compose.phpmyadmin.yml down --rmi all > /dev/null 2>&1
 			rm -rf /home/web
 			;;
 		  [Nn])
