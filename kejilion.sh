@@ -1701,6 +1701,42 @@ ldnmp_wp() {
 
 }
 
+ldnmp_Proxy() {
+	clear
+	webname="反向代理-IP+端口"
+	send_stats "安装$webname"
+	nginx_install_status
+	ip_address
+	add_yuming
+	read -e -p "请输入你的反代IP: " reverseproxy
+	read -e -p "请输入你的反代端口: " port
+	install_ssltls
+	certs_status
+	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
+	sed -i "s/0000/$port/g" /home/web/conf.d/$yuming.conf
+	docker restart nginx
+	nginx_web_on
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ldnmp_web_status() {
 	root_use
 	while true; do
@@ -4755,27 +4791,7 @@ linux_ldnmp() {
 		;;
 
 	  23)
-	  clear
-	  webname="反向代理-IP+端口"
-	  send_stats "安装$webname"
-	  nginx_install_status
-	  ip_address
-	  add_yuming
-	  read -e -p "请输入你的反代IP: " reverseproxy
-	  read -e -p "请输入你的反代端口: " port
-
-	  install_ssltls
-	  certs_status
-
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s/0000/$port/g" /home/web/conf.d/$yuming.conf
-
-	  docker restart nginx
-
-	  nginx_web_on
-
+	  ldnmp_Proxy
 		;;
 
 	  24)
@@ -8789,12 +8805,9 @@ echo "docker镜像管理      k docker img |k docker 镜像"
 echo "LDNMP站点管理       k web"
 echo "LDNMP缓存清理       k web cache"
 echo "安装WordPress       k wp |k wordpress"
+echo "安装反向代理        k fd |k rp |k 反代"
 
 }
-
-
-
-
 
 
 
@@ -8834,6 +8847,9 @@ else
 			;;
 		wp|wordpress)
 			ldnmp_wp
+			;;
+		fd|rp|反代)
+			ldnmp_Proxy
 			;;
 		status|状态)
 			shift
