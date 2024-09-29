@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.1.5"
+sh_v="3.1.6"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -1584,6 +1584,39 @@ ldnmp_install_status_one() {
 }
 
 
+ldnmp_install_all() {
+send_stats "安装LDNMP环境"
+root_use
+ldnmp_install_status_one
+check_port
+install_dependency
+install_docker
+install_certbot
+install_ldnmp_conf
+install_ldnmp
+
+}
+
+
+nginx_install_all() {
+send_stats "安装nginx环境"
+root_use
+ldnmp_install_status_one
+check_port
+install_dependency
+install_docker
+install_certbot
+install_ldnmp_conf
+nginx_upgrade
+clear
+nginx_version=$(docker exec nginx nginx -v 2>&1)
+nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
+echo "nginx已安装完成"
+echo -e "当前版本: ${gl_huang}v$nginx_version${gl_bai}"
+echo ""
+
+}
+
 
 
 
@@ -1593,10 +1626,11 @@ ldnmp_install_status() {
 	echo "LDNMP环境已安装，开始部署 $webname"
    else
 	send_stats "请先安装LDNMP环境"
-	echo -e "${gl_huang}提示: ${gl_bai}LDNMP环境未安装，请先安装LDNMP环境，再部署网站"
+	echo -e "${gl_huang}提示: ${gl_bai}LDNMP环境未安装，开始安装LDNMP环境..."
+	ldnmp_install_all
 	break_end
-	linux_ldnmp
-
+	clear
+	echo "LDNMP环境已安装，开始部署 $webname"
    fi
 
 }
@@ -1608,13 +1642,16 @@ nginx_install_status() {
 	echo "nginx环境已安装，开始部署 $webname"
    else
 	send_stats "请先安装nginx环境"
-	echo -e "${gl_huang}提示: ${gl_bai}nginx未安装，请先安装nginx环境，再部署网站"
+	echo -e "${gl_huang}提示: ${gl_bai}nginx未安装，开始安装nginx环境..."
+	nginx_install_all
 	break_end
-	linux_ldnmp
-
+	clear
+	echo "nginx环境已安装，开始部署 $webname"
    fi
 
 }
+
+
 
 
 ldnmp_web_on() {
@@ -4114,17 +4151,7 @@ linux_ldnmp() {
 
 	case $sub_choice in
 	  1)
-	  send_stats "安装LDNMP环境"
-	  root_use
-	  ldnmp_install_status_one
-	  check_port
-	  install_dependency
-	  install_docker
-	  install_certbot
-
-	  install_ldnmp_conf
-	  install_ldnmp
-
+	  ldnmp_install_all
 		;;
 	  2)
 	  clear
@@ -4500,7 +4527,6 @@ linux_ldnmp() {
 	  esac
 
 	  restart_ldnmp
-
 	  ldnmp_web_on
 	  prefix="web$(shuf -i 10-99 -n 1)_"
 	  echo "数据库地址: mysql"
@@ -4514,23 +4540,7 @@ linux_ldnmp() {
 
 
 	  21)
-	  send_stats "安装nginx环境"
-	  root_use
-	  ldnmp_install_status_one
-	  check_port
-	  install_dependency
-	  install_docker
-	  install_certbot
-
-	  install_ldnmp_conf
-	  nginx_upgrade
-
-	  clear
-	  nginx_version=$(docker exec nginx nginx -v 2>&1)
-	  nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
-	  echo "nginx已安装完成"
-	  echo -e "当前版本: ${gl_huang}v$nginx_version${gl_bai}"
-	  echo ""
+	  nginx_install_all
 		;;
 
 	  22)
@@ -5305,6 +5315,7 @@ linux_ldnmp() {
 			  version=${version:-8.3}
 			  cd /home/web/
 			  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
+			  sed -i "s/kjlion\///g" /home/web/docker-compose.yml > /dev/null 2>&1
 			  sed -i "s/image: php:fpm-alpine/image: php:${version}-fpm-alpine/" /home/web/docker-compose.yml
 			  docker rm -f $ldnmp_pods
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
