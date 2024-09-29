@@ -1027,6 +1027,7 @@ install_certbot() {
 
 
 install_ssltls() {
+	  repeat_add_yuming
 	  docker stop nginx > /dev/null 2>&1
 	  iptables_open > /dev/null 2>&1
 	  cd ~
@@ -1156,7 +1157,6 @@ add_yuming() {
 	  ip_address
 	  echo -e "先将域名解析到本机IP: ${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "请输入你解析的域名: " yuming
-	  repeat_add_yuming
 
 }
 
@@ -1676,9 +1676,12 @@ ldnmp_wp() {
   clear
   # wordpress
   webname="WordPress"
+  yuming="${1:-}"
   send_stats "安装$webname"
   ldnmp_install_status
-  add_yuming
+  if [ -z "$yuming" ]; then
+    add_yuming
+  fi
   install_ssltls
   certs_status
   add_db
@@ -1704,10 +1707,12 @@ ldnmp_wp() {
 ldnmp_Proxy() {
 	clear
 	webname="反向代理-IP+端口"
+  	yuming="${1:-}"
 	send_stats "安装$webname"
 	nginx_install_status
-	ip_address
-	add_yuming
+  	if [ -z "$yuming" ]; then
+  	  add_yuming
+  	fi
 	read -e -p "请输入你的反代IP: " reverseproxy
 	read -e -p "请输入你的反代端口: " port
 	install_ssltls
@@ -2405,7 +2410,7 @@ dd_xitong() {
 				;;
 
 			  27)
-				send_stats "重装fedora40"
+				send_stats "重装fedora41"
 				dd_xitong_3
 				bash reinstall.sh fedora
 				reboot
@@ -2413,7 +2418,7 @@ dd_xitong() {
 				;;
 
 			  28)
-				send_stats "重装fedora39"
+				send_stats "重装fedora40"
 				dd_xitong_3
 				bash reinstall.sh fedora 40
 				reboot
@@ -4772,7 +4777,6 @@ linux_ldnmp() {
 	  webname="站点重定向"
 	  send_stats "安装$webname"
 	  nginx_install_status
-	  ip_address
 	  add_yuming
 	  read -e -p "请输入跳转域名: " reverseproxy
 
@@ -4799,7 +4803,6 @@ linux_ldnmp() {
 	  webname="反向代理-域名"
 	  send_stats "安装$webname"
 	  nginx_install_status
-	  ip_address
 	  add_yuming
 	  echo -e "域名格式: ${gl_huang}google.com${gl_bai}"
 	  read -e -p "请输入你的反代域名: " fandai_yuming
@@ -8804,8 +8807,8 @@ echo "docker容器管理      k docker ps |k docker 容器"
 echo "docker镜像管理      k docker img |k docker 镜像"
 echo "LDNMP站点管理       k web"
 echo "LDNMP缓存清理       k web cache"
-echo "安装WordPress       k wp |k wordpress"
-echo "安装反向代理        k fd |k rp |k 反代"
+echo "安装WordPress       k wp |k wordpress |k wp xxx.com"
+echo "安装反向代理        k fd |k rp |k 反代 |k fd xxx.com"
 
 }
 
@@ -8846,10 +8849,13 @@ else
 			linux_trash
 			;;
 		wp|wordpress)
-			ldnmp_wp
+			shift
+			ldnmp_wp "$@"
+
 			;;
 		fd|rp|反代)
-			ldnmp_Proxy
+			shift
+			ldnmp_Proxy "$@"
 			;;
 		status|状态)
 			shift
