@@ -1672,7 +1672,34 @@ nginx_web_on() {
 
 
 
+ldnmp_wp() {
+  clear
+  # wordpress
+  webname="WordPress"
+  send_stats "安装$webname"
+  ldnmp_install_status
+  add_yuming
+  install_ssltls
+  certs_status
+  add_db
+  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
+  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+  cd /home/web/html
+  mkdir $yuming
+  cd $yuming
+  wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
+  unzip latest.zip
+  rm latest.zip
+  echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
+  restart_ldnmp
+  ldnmp_web_on
+  echo "数据库名: $dbname"
+  echo "用户名: $dbuse"
+  echo "密码: $dbusepasswd"
+  echo "数据库地址: mysql"
+  echo "表前缀: wp_"
 
+}
 
 
 
@@ -8756,6 +8783,7 @@ echo "docker环境安装      k docker install |k docker 安装"
 echo "docker容器管理      k docker ps |k docker 容器"
 echo "docker镜像管理      k docker img |k docker 镜像"
 echo "LDNMP缓存清理       k web cache"
+echo "安装WordPress       k wp |k wordpress"
 
 }
 
@@ -8798,6 +8826,9 @@ else
 			;;
 		trash|hsz|回收站)
 			linux_trash
+			;;
+		wp|wordpress)
+			ldnmp_wp
 			;;
 		status|状态)
 			shift
@@ -8872,3 +8903,5 @@ else
 			;;
 	esac
 fi
+
+
