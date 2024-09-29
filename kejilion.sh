@@ -39,7 +39,7 @@ run_command() {
 
 
 
-permission_granted="true"
+permission_granted="false"
 
 CheckFirstRun_true() {
 	if grep -q '^permission_granted="true"' /usr/local/bin/k > /dev/null 2>&1; then
@@ -1706,35 +1706,35 @@ ldnmp_wp() {
 
 
 ldnmp_Proxy() {
-    clear
-    webname="反向代理-IP+端口"
-    yuming="${1:-}"
-    reverseproxy="${2:-}"
-    port="${3:-}"
+	clear
+	webname="反向代理-IP+端口"
+	yuming="${1:-}"
+	reverseproxy="${2:-}"
+	port="${3:-}"
 
-    send_stats "安装$webname"
-    nginx_install_status
+	send_stats "安装$webname"
+	nginx_install_status
 
-    if [ -z "$yuming" ]; then
-        add_yuming
-    fi
+	if [ -z "$yuming" ]; then
+		add_yuming
+	fi
 
-    if [ -z "$reverseproxy" ]; then
-        read -e -p "请输入你的反代IP: " reverseproxy
-    fi
+	if [ -z "$reverseproxy" ]; then
+		read -e -p "请输入你的反代IP: " reverseproxy
+	fi
 
-    if [ -z "$port" ]; then
-        read -e -p "请输入你的反代端口: " port
-    fi
+	if [ -z "$port" ]; then
+		read -e -p "请输入你的反代端口: " port
+	fi
 
-    install_ssltls
-    certs_status
-    wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
-    sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-    sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
-    sed -i "s/0000/$port/g" /home/web/conf.d/$yuming.conf
-    docker restart nginx
-    nginx_web_on
+	install_ssltls
+	certs_status
+	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
+	sed -i "s/0000/$port/g" /home/web/conf.d/$yuming.conf
+	docker restart nginx
+	nginx_web_on
 }
 
 
