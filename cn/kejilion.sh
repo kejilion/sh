@@ -1319,16 +1319,29 @@ web_cache() {
 
 
 web_del() {
-send_stats "删除站点数据目录"
-read -e -p "删除站点数据目录，请输入你的域名: " yuming
-if [[ -z "$yuming" ]]; then
-	return
-fi
-rm -r /home/web/html/$yuming
-rm /home/web/conf.d/$yuming.conf
-rm /home/web/certs/${yuming}_key.pem
-rm /home/web/certs/${yuming}_cert.pem
-docker restart nginx
+	send_stats "删除站点数据"
+	read -e -p "删除站点数据，请输入你的域名（多个域名用空格隔开）: " yuming_list
+	if [[ -z "$yuming_list" ]]; then
+		return
+	fi
+	
+	for yuming in $yuming_list; do
+		echo "正在删除域名: $yuming"
+		rm -r /home/web/html/$yuming
+		rm /home/web/conf.d/$yuming.conf
+		rm /home/web/certs/${yuming}_key.pem
+		rm /home/web/certs/${yuming}_cert.pem
+
+		# 将域名转换为数据库名
+		dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+		dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+		
+		# 删除数据库前检查是否存在，避免报错
+		echo "正在删除数据库: $dbname"
+		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE IF EXISTS \`$dbname\`;" 2> /dev/null
+	done
+
+	docker restart nginx
 }
 
 
@@ -1812,7 +1825,7 @@ ldnmp_web_status() {
 		echo "3. 清理站点缓存                    4. 查看站点分析报告"
 		echo "5. 编辑全局配置                    6. 编辑站点配置"
 		echo "------------------------"
-		echo "7. 删除指定站点                    8. 删除指定数据库"
+		echo "7. 删除指定站点数据"
 		echo "------------------------"
 		echo "0. 返回上一级选单"
 		echo "------------------------"
@@ -1905,15 +1918,8 @@ ldnmp_web_status() {
 				nano /home/web/conf.d/$yuming.conf
 				docker restart nginx
 				;;
-
 			7)
 				web_del
-				;;
-			8)
-				send_stats "删除站点数据库"
-				read -e -p "删除站点数据库，请输入数据库名: " shujuku
-				dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-				docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $shujuku;" 2> /dev/null
 				;;
 			0)
 				break  # 跳出循环，退出菜单
