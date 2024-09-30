@@ -1620,7 +1620,8 @@ send_stats "安装LDNMP环境"
 root_use
 ldnmp_install_status_one
 check_port
-echo -e "${gl_huang}提示: ${gl_bai}LDNMP环境未安装，开始安装LDNMP环境..."
+echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境...${gl_bai}"
+sleep 3
 install_dependency
 install_docker
 install_certbot
@@ -1635,7 +1636,8 @@ send_stats "安装nginx环境"
 root_use
 ldnmp_install_status_one
 check_port
-echo -e "${gl_huang}提示: ${gl_bai}nginx未安装，开始安装nginx环境..."
+echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
+sleep 3
 install_dependency
 install_docker
 install_certbot
