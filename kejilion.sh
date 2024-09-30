@@ -1318,6 +1318,20 @@ web_cache() {
 
 
 
+web_del() {
+send_stats "删除站点数据目录"
+read -e -p "删除站点数据目录，请输入你的域名: " yuming
+if [[ -z "$yuming" ]]; then
+	return
+fi
+rm -r /home/web/html/$yuming
+rm /home/web/conf.d/$yuming.conf
+rm /home/web/certs/${yuming}_key.pem
+rm /home/web/certs/${yuming}_cert.pem
+docker restart nginx
+}
+
+
 
 has_ipv4_has_ipv6() {
 
@@ -1893,16 +1907,7 @@ ldnmp_web_status() {
 				;;
 
 			7)
-				send_stats "删除站点数据目录"
-				read -e -p "删除站点数据目录，请输入你的域名: " yuming
-				if [[ -z "$yuming" ]]; then
-					ldnmp_web_status
-				fi
-				rm -r /home/web/html/$yuming
-				rm /home/web/conf.d/$yuming.conf
-				rm /home/web/certs/${yuming}_key.pem
-				rm /home/web/certs/${yuming}_cert.pem
-				docker restart nginx
+				web_del
 				;;
 			8)
 				send_stats "删除站点数据库"
