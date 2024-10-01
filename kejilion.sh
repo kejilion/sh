@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.1.7"
+sh_v="3.1.8"
 
 bai='\033[0m'
 hui='\e[37m'
@@ -1148,9 +1148,7 @@ fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
   send_stats "域名重复使用"
-  echo -e "${gl_huang}提示: ${gl_bai}当前 ${yuming} 域名已被使用，请前往31站点管理，删除站点，再部署 ${webname} ！"
-  break_end
-  linux_ldnmp
+  web_del "${yuming}"
 fi
 
 }
@@ -1318,12 +1316,16 @@ web_cache() {
 
 
 web_del() {
+
 	send_stats "删除站点数据"
-	read -e -p "删除站点数据，请输入你的域名（多个域名用空格隔开）: " yuming_list
-	if [[ -z "$yuming_list" ]]; then
-		return
-	fi
-	
+    yuming_list="${1:-}"
+    if [ -z "$yuming_list" ]; then
+		read -e -p "删除站点数据，请输入你的域名（多个域名用空格隔开）: " yuming_list
+		if [[ -z "$yuming_list" ]]; then
+			return
+		fi
+    fi
+
 	for yuming in $yuming_list; do
 		echo "正在删除域名: $yuming"
 		rm -r /home/web/html/$yuming
@@ -1723,16 +1725,23 @@ ldnmp_wp() {
   mkdir $yuming
   cd $yuming
   wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
+  # wget -O latest.zip https://wordpress.org/latest.zip
   unzip latest.zip
   rm latest.zip
   echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
+  sed -i "s/database_name_here/$dbname/g" /home/web/html/$yuming/wordpress/wp-config-sample.php
+  sed -i "s/username_here/$dbuse/g" /home/web/html/$yuming/wordpress/wp-config-sample.php
+  sed -i "s/password_here/$dbusepasswd/g" /home/web/html/$yuming/wordpress/wp-config-sample.php
+  sed -i "s/localhost/mysql/g" /home/web/html/$yuming/wordpress/wp-config-sample.php
+  cp /home/web/html/$yuming/wordpress/wp-config-sample.php /home/web/html/$yuming/wordpress/wp-config.php
+
   restart_ldnmp
-  ldnmp_web_on
-  echo "数据库名: $dbname"
-  echo "用户名: $dbuse"
-  echo "密码: $dbusepasswd"
-  echo "数据库地址: mysql"
-  echo "表前缀: wp_"
+  nginx_web_on
+#   echo "数据库名: $dbname"
+#   echo "用户名: $dbuse"
+#   echo "密码: $dbusepasswd"
+#   echo "数据库地址: mysql"
+#   echo "表前缀: wp_"
 
 }
 
