@@ -1,9 +1,8 @@
 #!/bin/bash
-sh_v="3.1.8"
+sh_v="3.1.9"
 
-bai='\033[0m'
-hui='\e[37m'
 
+gl_hui='\e[37m'
 gl_hong='\033[31m'
 gl_lv='\033[32m'
 gl_huang='\033[33m'
@@ -82,7 +81,7 @@ yinsiyuanquan1() {
 if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k > /dev/null 2>&1; then
 	status_message="${gl_lv}正在采集数据${gl_bai}"
 elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null 2>&1; then
-	status_message="${hui}采集已关闭${gl_bai}"
+	status_message="${gl_hui}采集已关闭${gl_bai}"
 else
 	status_message="无法确定的状态"
 fi
@@ -1030,7 +1029,7 @@ install_ssltls() {
 	  docker stop nginx > /dev/null 2>&1
 	  iptables_open > /dev/null 2>&1
 	  cd ~
-
+	  echo -e "${gl_huang}正在申请域名证书...${gl_bai}"
 	  yes | certbot delete --cert-name $yuming > /dev/null 2>&1
 
 	  certbot_version=$(certbot --version 2>&1 | grep -oP "\d+\.\d+\.\d+")
@@ -1148,7 +1147,7 @@ fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
   send_stats "域名重复使用"
-  web_del "${yuming}"
+  web_del "${yuming}" > /dev/null 2>&1
 fi
 
 }
@@ -1195,7 +1194,8 @@ nginx_upgrade() {
   ldnmp_pods="nginx"
   cd /home/web/
   docker rm -f $ldnmp_pods > /dev/null 2>&1
-  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
+  docker images --filter=reference="kjlion/${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
+  docker images --filter=reference="${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
   docker compose up -d --force-recreate $ldnmp_pods
   docker exec $ldnmp_pods chmod -R 777 /var/www/html
   docker exec nginx mkdir -p /var/cache/nginx/proxy
@@ -1372,7 +1372,7 @@ check_docker_app() {
 if docker inspect "$docker_name" &>/dev/null; then
 	check_docker="${gl_lv}已安装${gl_bai}"
 else
-	check_docker="${hui}未安装${gl_bai}"
+	check_docker="${gl_hui}未安装${gl_bai}"
 fi
 
 }
@@ -1826,7 +1826,7 @@ ldnmp_web_status() {
 		echo ""
 		echo "站点目录"
 		echo "------------------------"
-		echo -e "数据 ${hui}/home/web/html${gl_bai}     证书 ${hui}/home/web/certs${gl_bai}     配置 ${hui}/home/web/conf.d${gl_bai}"
+		echo -e "数据 ${gl_hui}/home/web/html${gl_bai}     证书 ${gl_hui}/home/web/certs${gl_bai}     配置 ${gl_hui}/home/web/conf.d${gl_bai}"
 		echo "------------------------"
 		echo ""
 		echo "操作"
@@ -1929,7 +1929,7 @@ ldnmp_web_status() {
 				docker restart nginx
 				;;
 			7)
-				web_del
+				web_del > /dev/null 2>&1
 				;;
 			0)
 				break  # 跳出循环，退出菜单
@@ -1954,7 +1954,7 @@ check_panel_app() {
 if $lujing ; then
 	check_panel="${gl_lv}已安装${gl_bai}"
 else
-	check_panel="${hui}未安装${gl_bai}"
+	check_panel="${gl_hui}未安装${gl_bai}"
 fi
 
 }
@@ -2316,7 +2316,7 @@ dd_xitong() {
 			echo "重装系统"
 			echo "--------------------------------"
 			echo -e "${gl_hong}注意: ${gl_bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
-			echo -e "${hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${gl_bai} "
+			echo -e "${gl_hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${gl_bai} "
 			echo "------------------------"
 			echo "1. Debian 12                  2. Debian 11"
 			echo "3. Debian 10                  4. Debian 9"
@@ -3247,7 +3247,7 @@ else
 	echo "${bianse}" >> ~/.profile
 	# source ~/.profile
 fi
-echo -e "${gl_lv}变更完成。重新连接SSH后可查看变化！${bai}"
+echo -e "${gl_lv}变更完成。重新连接SSH后可查看变化！${gl_bai}"
 
 break_end
 
@@ -3262,12 +3262,12 @@ shell_bianse() {
 	clear
 	echo "命令行美化工具"
 	echo "------------------------"
-	echo -e "1. \033[1;32mroot \033[1;34mlocalhost \033[1;31m~ \033[0m${bai}#"
-	echo -e "2. \033[1;35mroot \033[1;36mlocalhost \033[1;33m~ \033[0m${bai}#"
-	echo -e "3. \033[1;31mroot \033[1;32mlocalhost \033[1;34m~ \033[0m${bai}#"
-	echo -e "4. \033[1;36mroot \033[1;33mlocalhost \033[1;37m~ \033[0m${bai}#"
-	echo -e "5. \033[1;37mroot \033[1;31mlocalhost \033[1;32m~ \033[0m${bai}#"
-	echo -e "6. \033[1;33mroot \033[1;34mlocalhost \033[1;35m~ \033[0m${bai}#"
+	echo -e "1. \033[1;32mroot \033[1;34mlocalhost \033[1;31m~ \033[0m${gl_bai}#"
+	echo -e "2. \033[1;35mroot \033[1;36mlocalhost \033[1;33m~ \033[0m${gl_bai}#"
+	echo -e "3. \033[1;31mroot \033[1;32mlocalhost \033[1;34m~ \033[0m${gl_bai}#"
+	echo -e "4. \033[1;36mroot \033[1;33mlocalhost \033[1;37m~ \033[0m${gl_bai}#"
+	echo -e "5. \033[1;37mroot \033[1;31mlocalhost \033[1;32m~ \033[0m${gl_bai}#"
+	echo -e "6. \033[1;33mroot \033[1;34mlocalhost \033[1;35m~ \033[0m${gl_bai}#"
 	echo -e "7. root localhost ~ #"
 	echo "------------------------"
 	echo "0. 返回上一级"
@@ -3326,7 +3326,7 @@ linux_trash() {
 
 	local trash_status
 	if ! grep -q "trash-put" "$bashrc_profile"; then
-		trash_status="${hui}未启用${gl_bai}"
+		trash_status="${gl_hui}未启用${gl_bai}"
 	else
 		trash_status="${gl_lv}已启用${gl_bai}"
 	fi
@@ -4422,38 +4422,7 @@ linux_ldnmp() {
 	  ldnmp_install_all
 		;;
 	  2)
-	  clear
-	  # wordpress
-	  webname="WordPress"
-	  send_stats "安装$webname"
-
-	  ldnmp_install_status
-	  add_yuming
-	  install_ssltls
-	  certs_status
-	  add_db
-
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-
-	  cd /home/web/html
-	  mkdir $yuming
-	  cd $yuming
-	  wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
-	  unzip latest.zip
-	  rm latest.zip
-
-	  echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
-
-	  restart_ldnmp
-
-	  ldnmp_web_on
-	  echo "数据库名: $dbname"
-	  echo "用户名: $dbuse"
-	  echo "密码: $dbusepasswd"
-	  echo "数据库地址: mysql"
-	  echo "表前缀: wp_"
-
+	  ldnmp_wp
 		;;
 
 	  3)
@@ -5408,6 +5377,7 @@ linux_ldnmp() {
 			  sed -i "s/image: php:fpm-alpine/image: php:${version}-fpm-alpine/" /home/web/docker-compose.yml
 			  docker rm -f $ldnmp_pods
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
+  			  docker images --filter=reference="kjlion/${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
 			  docker exec $ldnmp_pods chmod -R 777 /var/www/html
 
@@ -5673,7 +5643,7 @@ linux_panel() {
 		  5)
 
 			docker_name="alist"
-			docker_img="xhofe/alist:latest"
+			docker_img="xhofe/alist-aria2:latest"
 			docker_port=5244
 			docker_rum="docker run -d \
 								--restart=always \
@@ -5683,7 +5653,7 @@ linux_panel() {
 								-e PGID=0 \
 								-e UMASK=022 \
 								--name="alist" \
-								xhofe/alist:latest"
+								xhofe/alist-aria2:latest"
 			docker_describe="一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"
 			docker_url="官网介绍: https://alist.nn.ci/zh/"
 			docker_use="docker exec -it alist ./alist admin random"
@@ -7870,7 +7840,7 @@ EOF
 					echo -e "${gl_lv}当前设置的进站限流阈值为: ${gl_huang}${rx_threshold_gb}${gl_lv}GB${gl_bai}"
 					echo -e "${gl_lv}当前设置的出站限流阈值为: ${gl_huang}${tx_threshold_gb}${gl_lv}GB${gl_bai}"
 				else
-					echo -e "${hui}当前未启用限流关机功能${gl_bai}"
+					echo -e "${gl_hui}当前未启用限流关机功能${gl_bai}"
 				fi
 
 				echo
@@ -7948,7 +7918,7 @@ EOF
 			  echo "------------------------------------------------"
 			  echo "您需要配置tg机器人API和接收预警的用户ID，即可实现本机CPU，内存，硬盘，流量，SSH登录的实时监控预警"
 			  echo "到达阈值后会向用户发预警消息"
-			  echo -e "${hui}-关于流量，重启服务器将重新计算-${gl_bai}"
+			  echo -e "${gl_hui}-关于流量，重启服务器将重新计算-${gl_bai}"
 			  read -e -p "确定继续吗？(Y/N): " choice
 
 			  case "$choice" in
@@ -7987,7 +7957,7 @@ EOF
 
 				  clear
 				  echo "TG-bot预警系统已启动"
-				  echo -e "${hui}你还可以将root目录中的TG-check-notify.sh预警文件放到其他机器上直接使用！${gl_bai}"
+				  echo -e "${gl_hui}你还可以将root目录中的TG-check-notify.sh预警文件放到其他机器上直接使用！${gl_bai}"
 				  ;;
 				[Nn])
 				  echo "已取消"
