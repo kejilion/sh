@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.1.9"
+sh_v="3.1.10"
 
 
 gl_hui='\e[37m'
@@ -317,6 +317,7 @@ check_port() {
 	PORT=80
 
 	# 检查端口占用情况
+	install iproute2
 	result=$(ss -tulpn | grep ":\b$PORT\b")
 
 	# 判断结果并输出相应信息
@@ -1318,13 +1319,13 @@ web_cache() {
 web_del() {
 
 	send_stats "删除站点数据"
-    yuming_list="${1:-}"
-    if [ -z "$yuming_list" ]; then
+	yuming_list="${1:-}"
+	if [ -z "$yuming_list" ]; then
 		read -e -p "删除站点数据，请输入你的域名（多个域名用空格隔开）: " yuming_list
 		if [[ -z "$yuming_list" ]]; then
 			return
 		fi
-    fi
+	fi
 
 	for yuming in $yuming_list; do
 		echo "正在删除域名: $yuming"
@@ -1335,7 +1336,7 @@ web_del() {
 
 		# 将域名转换为数据库名
 		dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-		dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+		dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]' > /dev/null 2>&1)
 		
 		# 删除数据库前检查是否存在，避免报错
 		echo "正在删除数据库: $dbname"
@@ -1929,7 +1930,7 @@ ldnmp_web_status() {
 				docker restart nginx
 				;;
 			7)
-				web_del > /dev/null 2>&1
+				web_del
 				;;
 			0)
 				break  # 跳出循环，退出菜单
