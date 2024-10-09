@@ -1916,11 +1916,11 @@ ldnmp_web_status() {
 				;;
 			5)
 				send_stats "查看访问日志"
-				tail -f /home/web/log/nginx/access.log
+				tail -n 200 /home/web/log/nginx/access.log
 				;;
 			6)
 				send_stats "查看错误日志"
-				tail -f /home/web/log/nginx/error.log
+				tail -n 200 /home/web/log/nginx/error.log
 				;;
 			7)
 				send_stats "编辑全局配置"
