@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.1.10"
+sh_v="3.2.0"
 
 
 gl_hui='\e[37m'
@@ -1337,7 +1337,7 @@ web_del() {
 		# 将域名转换为数据库名
 		dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
 		dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]' > /dev/null 2>&1)
-		
+
 		# 删除数据库前检查是否存在，避免报错
 		echo "正在删除数据库: $dbname"
 		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE IF EXISTS \`$dbname\`;" 2> /dev/null
@@ -1834,9 +1834,10 @@ ldnmp_web_status() {
 		echo "------------------------"
 		echo "1. 申请/更新域名证书               2. 更换站点域名"
 		echo "3. 清理站点缓存                    4. 查看站点分析报告"
-		echo "5. 编辑全局配置                    6. 编辑站点配置"
+		echo "5. 查看访问日志                    6. 查看错误日志"
+		echo "7. 编辑全局配置                    8. 编辑站点配置"
 		echo "------------------------"
-		echo "7. 删除指定站点数据"
+		echo "9. 删除指定站点数据"
 		echo "------------------------"
 		echo "0. 返回上一级选单"
 		echo "------------------------"
@@ -1912,24 +1913,30 @@ ldnmp_web_status() {
 				send_stats "查看站点数据"
 				install goaccess
 				goaccess --log-format=COMBINED /home/web/log/nginx/access.log
-
 				;;
-
 			5)
+				send_stats "查看访问日志"
+				tail -f /home/web/log/nginx/access.log
+				;;
+			6)
+				send_stats "查看错误日志"
+				tail -f /home/web/log/nginx/error.log
+				;;
+			7)
 				send_stats "编辑全局配置"
 				install nano
 				nano /home/web/nginx.conf
 				docker restart nginx
 				;;
 
-			6)
+			8)
 				send_stats "编辑站点配置"
 				read -e -p "编辑站点配置，请输入你要编辑的域名: " yuming
 				install nano
 				nano /home/web/conf.d/$yuming.conf
 				docker restart nginx
 				;;
-			7)
+			9)
 				web_del
 				;;
 			0)
