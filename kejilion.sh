@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 
-country="CN"
+country="default"
 cn_yuan() {
 if [ "$country" = "CN" ]; then
 	zhushi=0
@@ -1030,21 +1030,24 @@ install_ssltls() {
 	  docker stop nginx > /dev/null 2>&1
 	  iptables_open > /dev/null 2>&1
 	  cd ~
-	  echo -e "${gl_huang}正在申请域名证书...${gl_bai}"
-	  certbot_version=$(certbot --version 2>&1 | grep -oP "\d+\.\d+\.\d+")
+	  file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
+	  if [ ! -f "$file_path" ]; then
+	    echo -e "${gl_huang}正在申请域名证书...${gl_bai}"
+	    certbot_version=$(certbot --version 2>&1 | grep -oP "\d+\.\d+\.\d+")
 
-	  version_ge() {
-		  [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$1" ]
-	  }
+	    version_ge() {
+	  	  [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$1" ]
+	    }
 
-	  if version_ge "$certbot_version" "1.17.0"; then
-		  certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
-	  else
-		  certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
+	    if version_ge "$certbot_version" "1.17.0"; then
+	  	  certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
+	    else
+	  	  certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
+	    fi
+
+	    cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
+	    cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
 	  fi
-
-	  cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
-	  cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
 	  docker start nginx > /dev/null 2>&1
 }
 
