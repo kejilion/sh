@@ -1045,9 +1045,11 @@ install_ssltls() {
 	  	  certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
 		fi
 
-		cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
-		cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
 	  fi
+
+	  cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
+	  cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
+
 	  docker start nginx > /dev/null 2>&1
 }
 
