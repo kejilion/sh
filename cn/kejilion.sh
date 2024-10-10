@@ -1340,7 +1340,7 @@ web_del() {
 
 		# 删除数据库前检查是否存在，避免报错
 		echo "正在删除数据库: $dbname"
-		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE ${dbname};"
+		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE ${dbname};" > /dev/null 2>&1
 	done
 
 	docker restart nginx
