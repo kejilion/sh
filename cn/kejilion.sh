@@ -1336,6 +1336,7 @@ web_del() {
 
 		# 将域名转换为数据库名
 		dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
+		dbname="${dbname}"
 		dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]' > /dev/null 2>&1)
 
 		# 删除数据库前检查是否存在，避免报错
