@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.1"
+sh_v="3.2.2"
 
 
 gl_hui='\e[37m'
@@ -1080,6 +1080,7 @@ if [ -z "$yuming" ]; then
 fi
 
 install_certbot
+yes | certbot delete --cert-name $yuming > /dev/null 2>&1
 install_ssltls
 certs_status
 install_ssltls_text
@@ -1732,10 +1733,10 @@ ldnmp_wp() {
   unzip latest.zip
   rm latest.zip
   echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
-  sed -i "s/database_name_here/$dbname/g" /home/web/html/$yuming/wordpress/wp-config-sample.php
-  sed -i "s/username_here/$dbuse/g" /home/web/html/$yuming/wordpress/wp-config-sample.php
-  sed -i "s/password_here/$dbusepasswd/g" /home/web/html/$yuming/wordpress/wp-config-sample.php
-  sed -i "s/localhost/mysql/g" /home/web/html/$yuming/wordpress/wp-config-sample.php
+  sed -i "s|database_name_here|$dbname|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
+  sed -i "s|username_here|$dbuse|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
+  sed -i "s|password_here|$dbusepasswd|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
+  sed -i "s|localhost|mysql|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   cp /home/web/html/$yuming/wordpress/wp-config-sample.php /home/web/html/$yuming/wordpress/wp-config.php
 
   restart_ldnmp
@@ -3719,7 +3720,7 @@ linux_tools() {
 		  33)
 			  clear
 			  send_stats "全部卸载"
-			  remove htop iftop unzip tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
+			  remove htop iftop tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
 			  ;;
 
 		  41)
