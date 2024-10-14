@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.2"
+sh_v="3.2.3"
 
 
 gl_hui='\e[37m'
@@ -874,11 +874,11 @@ install_ldnmp() {
 
 	  # 定义要执行的命令
 	  commands=(
-		  "docker exec nginx chmod -R 777 /var/www/html > /dev/null 2>&1"
+		  "docker exec nginx chown -R nginx:nginx /var/www/html > /dev/null 2>&1"
 		  "docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1"
-		  "docker exec nginx chmod 777 /var/cache/nginx/proxy > /dev/null 2>&1"
+		  "docker exec nginx chmod -R nginx:nginx /var/cache/nginx/proxy > /dev/null 2>&1"
 		  "docker exec nginx mkdir -p /var/cache/nginx/fastcgi > /dev/null 2>&1"
-		  "docker exec nginx chmod 777 /var/cache/nginx/fastcgi > /dev/null 2>&1"
+		  "docker exec nginx chmod -R nginx:nginx /var/cache/nginx/fastcgi > /dev/null 2>&1"
 		  "docker restart nginx > /dev/null 2>&1"
 
 		  "run_command docker exec php sed -i \"s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g\" /etc/apk/repositories > /dev/null 2>&1"
@@ -935,7 +935,7 @@ install_ldnmp() {
 		  "docker exec php sh -c 'echo \"max_input_vars=3000\" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1"
 
 		  # php重启
-		  "docker exec php chmod -R 777 /var/www/html"
+		  "docker exec php chown -R www-data:www-data /var/www/html"
 		  "docker restart php > /dev/null 2>&1"
 
 		  # php7.4安装扩展
@@ -959,7 +959,7 @@ install_ldnmp() {
 		  "docker exec php74 sh -c 'echo \"max_input_vars=3000\" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1"
 
 		  # php7.4重启
-		  "docker exec php74 chmod -R 777 /var/www/html"
+		  "docker exec php74 chown -R www-data:www-data /var/www/html"
 		  "docker restart php74 > /dev/null 2>&1"
 
 		  # redis调优
@@ -1186,12 +1186,10 @@ reverse_proxy() {
 }
 
 restart_ldnmp() {
-	  docker exec nginx chmod -R 777 /var/www/html
-	  docker exec php chmod -R 777 /var/www/html
-	  docker exec php74 chmod -R 777 /var/www/html
-
+	  docker exec nginx chown -R nginx:nginx /var/www/html
+	  docker exec php chown -R www-data:www-data /var/www/html
+	  docker exec php74 chown -R www-data:www-data /var/www/html
 	  cd /home/web && docker compose restart
-
 }
 
 nginx_upgrade() {
@@ -1202,11 +1200,11 @@ nginx_upgrade() {
   docker images --filter=reference="kjlion/${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
   docker images --filter=reference="${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
   docker compose up -d --force-recreate $ldnmp_pods
-  docker exec $ldnmp_pods chmod -R 777 /var/www/html
+  docker exec nginx chown -R nginx:nginx /var/www/html
   docker exec nginx mkdir -p /var/cache/nginx/proxy
-  docker exec nginx chmod 777 /var/cache/nginx/proxy
+  docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy
   docker exec nginx mkdir -p /var/cache/nginx/fastcgi
-  docker exec nginx chmod 777 /var/cache/nginx/fastcgi
+  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi
   docker restart $ldnmp_pods > /dev/null 2>&1
 
 }
@@ -4889,7 +4887,7 @@ linux_ldnmp() {
 	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
 	  sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
-	  docker exec nginx chmod -R 777 /var/www/html
+	  docker exec nginx chmod -R nginx:nginx /var/www/html
 	  docker restart nginx
 
 	  nginx_web_on
@@ -5389,7 +5387,7 @@ linux_ldnmp() {
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
   			  docker images --filter=reference="kjlion/${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
-			  docker exec $ldnmp_pods chmod -R 777 /var/www/html
+			  docker exec php chown -R www-data:www-data /var/www/html
 
 			  run_command docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1
 
