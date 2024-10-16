@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.3"
+sh_v="3.2.4"
 
 
 gl_hui='\e[37m'
@@ -7390,13 +7390,15 @@ EOF
 				  echo ""
 				  echo "防火墙管理"
 				  echo "------------------------"
-				  echo "1. 开放指定端口              2. 关闭指定端口"
-				  echo "3. 开放所有端口              4. 关闭所有端口"
+				  echo "1.  开放指定端口                 2.  关闭指定端口"
+				  echo "3.  开放所有端口                 4.  关闭所有端口"
 				  echo "------------------------"
-				  echo "5. IP白名单                  6. IP黑名单"
-				  echo "7. 清除指定IP"
+				  echo "5.  IP白名单                  	 6.  IP黑名单"
+				  echo "7.  清除指定IP"
 				  echo "------------------------"
-				  echo "9. 卸载防火墙"
+				  echo "11. 允许PING                  	 12. 禁止PING"
+				  echo "------------------------"
+				  echo "99. 卸载防火墙"
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
@@ -7476,7 +7478,20 @@ EOF
 						  send_stats "清除指定IP"
 						  ;;
 
-					  9)
+					  11)
+						  sed -i '$i -A INPUT -p icmp --icmp-type echo-request -j ACCEPT' /etc/iptables/rules.v4
+						  sed -i '$i -A OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT' /etc/iptables/rules.v4
+						  iptables-restore < /etc/iptables/rules.v4
+						  send_stats "允许ping"
+						  ;;
+
+					  12)
+						  sed -i "/icmp/d" /etc/iptables/rules.v4
+						  iptables-restore < /etc/iptables/rules.v4
+						  send_stats "禁用ping"
+						  ;;
+
+					  99)
 						  remove iptables-persistent
 						  rm /etc/iptables/rules.v4
 						  send_stats "卸载防火墙"
