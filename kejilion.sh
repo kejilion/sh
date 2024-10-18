@@ -5347,6 +5347,8 @@ linux_ldnmp() {
 				  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
 				  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
 
+				  optimize_balanced
+
 				  echo "LDNMP环境已设置成 标准模式"
 
 					  ;;
@@ -5376,6 +5378,8 @@ linux_ldnmp() {
 
 				  docker exec -it redis redis-cli CONFIG SET maxmemory 1024mb
 				  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+
+				  optimize_web_server
 
 				  echo "LDNMP环境已设置成 高性能模式"
 
