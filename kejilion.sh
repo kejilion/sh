@@ -1385,18 +1385,25 @@ nginx_waf() {
 }
 
 check_waf_status() {
-    # 检查 modsecurity 是否被注释
-    if grep -q "^\s*#\s*modsecurity on;" /home/web/nginx.conf; then
-        waf_status=""
-    elif grep -q "modsecurity on;" /home/web/nginx.conf; then
-        waf_status="WAF已开启"
-    else
-        waf_status=""
-    fi
+	# 检查 modsecurity 是否被注释
+	if grep -q "^\s*#\s*modsecurity on;" /home/web/nginx.conf; then
+		waf_status=""
+	elif grep -q "modsecurity on;" /home/web/nginx.conf; then
+		waf_status="WAF已开启"
+	else
+		waf_status=""
+	fi
 }
 
 
-
+check_cf_mode() {
+	local message  # 定义局部变量 message
+	if [ -f "/path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf" ]; then
+		CFmessage="cf模式已开启"
+	else
+		CFmessage=""
+	fi
+}
 
 
 
@@ -5114,9 +5121,10 @@ linux_ldnmp() {
 	  send_stats "LDNMP环境防御"
 	  while true; do
 		check_waf_status
+		check_cf_mode
 		if docker inspect fail2ban &>/dev/null ; then
 			  clear
-			  echo -e "服务器防御程序已启动 ${gl_lv}${waf_status}${gl_bai}"
+			  echo -e "服务器防御程序已启动 ${gl_lv}${CFmessage} ${waf_status}${gl_bai}"
 			  echo "------------------------"
 			  echo "1. 开启SSH防暴力破解              2. 关闭SSH防暴力破解"
 			  echo "3. 开启网站保护                   4. 关闭网站保护"
