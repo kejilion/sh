@@ -1354,8 +1354,9 @@ web_del() {
 nginx_waf() {
 	mode=$1
 
-	# 下载新的 nginx.conf
-	wget -O /home/web/nginx.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
+	if ! grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+	    wget -O /home/web/nginx.conf "${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
+	fi
 
 	# 根据 mode 参数来决定开启或关闭 WAF
 	if [ "$mode" == "on" ]; then
