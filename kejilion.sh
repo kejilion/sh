@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.4"
+sh_v="3.2.5"
 
 
 gl_hui='\e[37m'
@@ -5539,7 +5539,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}33.  ${gl_bai}Sun-Panel导航面板                   ${gl_kjlan}34.  ${gl_bai}Pingvin-Share文件分享平台"
 	  echo -e "${gl_kjlan}35.  ${gl_bai}极简朋友圈                          ${gl_kjlan}36.  ${gl_bai}LobeChatAI聊天聚合网站"
 	  echo -e "${gl_kjlan}37.  ${gl_bai}MyIP工具箱 ${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${gl_bai}小雅alist全家桶"
-	  echo -e "${gl_kjlan}39.  ${gl_bai}Bililive直播录制工具                ${gl_kjlan}40.  ${gl_bai}远程Windows11"
+	  echo -e "${gl_kjlan}39.  ${gl_bai}Bililive直播录制工具                ${gl_kjlan}40.  ${gl_bai}webssh网页版SSH连接工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板"
 	  echo -e "${gl_kjlan}------------------------"
@@ -6547,22 +6547,12 @@ linux_panel() {
 			  ;;
 
 		  40)
-
-			docker_name="windows"
-			docker_img="dockurr/windows"
+			docker_name="webssh"
+			docker_img="jrohy/webssh"
 			docker_port=8040
-			docker_rum="docker run -d \
-							--name windows \
-							--cap-add=NET_ADMIN \
-							-e VERSION=win11 \
-							-e KVM=N \
-							-p 8040:8006 \
-							-p 3389:3389/tcp \
-							-p 3389:3389/udp \
-							--restart unless-stopped \
-							dockurr/windows"
-			docker_describe="一款虚拟化远程Windows11 要求2核心2G内存及以上"
-			docker_url="官网介绍: ${gh_proxy}https://github.com/dockur/windows"
+			docker_rum="docker run -d -p 8040:5032 --restart always --name webssh -e TZ=Asia/Shanghai jrohy/webssh"
+			docker_describe="简易在线ssh连接工具和sftp工具"
+			docker_url="官网介绍: ${gh_proxy}https://github.com/Jrohy/webssh"
 			docker_use=""
 			docker_passwd=""
 			docker_app
