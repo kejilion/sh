@@ -1349,6 +1349,46 @@ web_del() {
 
 
 
+#!/bin/bash
+
+nginx_waf() {
+	mode=$1
+
+	# 下载新的 nginx.conf
+	wget -O /home/web/nginx.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
+
+	# 根据 mode 参数来决定开启或关闭 WAF
+	if [ "$mode" == "on" ]; then
+		# 开启 WAF：去掉注释
+		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# modsecurity on;|\1modsecurity on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|\1modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|' /home/web/nginx.conf > /dev/null 2>&1
+	elif [ "$mode" == "off" ]; then
+		# 关闭 WAF：加上注释
+		sed -i 's|^load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)modsecurity on;|\1# modsecurity on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|\1# modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|' /home/web/nginx.conf > /dev/null 2>&1
+	else
+		echo "无效的参数：使用 'on' 或 'off'"
+		return 1
+	fi
+
+	# 检查 nginx 镜像并根据情况处理
+	if grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+		docker restart nginx
+	else
+		sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml
+		nginx_upgrade
+	fi
+
+}
+
+
+
+
+
+
+
 has_ipv4_has_ipv6() {
 
 ip_address
@@ -1623,6 +1663,7 @@ send_stats "安装LDNMP环境"
 root_use
 ldnmp_install_status_one
 check_port
+clear
 echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境...${gl_bai}"
 sleep 3
 install_dependency
@@ -1639,6 +1680,7 @@ send_stats "安装nginx环境"
 root_use
 ldnmp_install_status_one
 check_port
+clear
 echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
 sleep 3
 install_dependency
@@ -5074,6 +5116,8 @@ linux_ldnmp() {
 			  echo "------------------------"
 			  echo "21. cloudflare模式                22. 高负载开启5秒盾"
 			  echo "------------------------"
+			  echo "31. 开启WAF                       32. 关闭WAF"
+			  echo "------------------------"
 			  echo "9. 卸载防御程序"
 			  echo "------------------------"
 			  echo "0. 退出"
@@ -5208,6 +5252,19 @@ linux_ldnmp() {
 					  fi
 
 					  ;;
+
+				  31)
+					  nginx_waf on
+					  echo "站点WAF已开启"
+					  send_stats "站点WAF已开启"
+					  ;;
+
+				  32)
+				  	  nginx_waf off
+					  echo "站点WAF已关闭"
+					  send_stats "站点WAF已关闭"
+					  ;;
+
 				  0)
 					  break
 					  ;;
