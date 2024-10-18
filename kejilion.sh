@@ -1355,7 +1355,7 @@ nginx_waf() {
 	mode=$1
 
 	if ! grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
-	    wget -O /home/web/nginx.conf "${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
+		wget -O /home/web/nginx.conf "${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
 	# 根据 mode 参数来决定开启或关闭 WAF
@@ -1382,6 +1382,17 @@ nginx_waf() {
 		nginx_upgrade
 	fi
 
+}
+
+check_waf_status() {
+    # 检查 modsecurity 是否被注释
+    if grep -q "^\s*#\s*modsecurity on;" /home/web/nginx.conf; then
+        waf_status=""
+    elif grep -q "modsecurity on;" /home/web/nginx.conf; then
+        waf_status="WAF已开启"
+    else
+        waf_status=""
+    fi
 }
 
 
@@ -5102,10 +5113,10 @@ linux_ldnmp() {
 	35)
 	  send_stats "LDNMP环境防御"
 	  while true; do
+		check_waf_status
 		if docker inspect fail2ban &>/dev/null ; then
-
 			  clear
-			  echo "服务器防御程序已启动"
+			  echo -e "服务器防御程序已启动 ${gl_lv}${waf_status}${gl_bai}"
 			  echo "------------------------"
 			  echo "1. 开启SSH防暴力破解              2. 关闭SSH防暴力破解"
 			  echo "3. 开启网站保护                   4. 关闭网站保护"
