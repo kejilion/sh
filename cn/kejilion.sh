@@ -3130,7 +3130,7 @@ optimize_web_server() {
 	echo -e "${gl_lv}切换到网站搭建优化模式...${gl_bai}"
 
 	echo -e "${gl_lv}优化文件描述符...${gl_bai}"
-	ulimit -n 65536
+	ulimit -n 65535
 
 	echo -e "${gl_lv}优化虚拟内存...${gl_bai}"
 	sysctl -w vm.swappiness=10 2>/dev/null
@@ -5342,7 +5342,8 @@ linux_ldnmp() {
 				  1)
 				  send_stats "站点标准模式"
 				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 1024;/' /home/web/nginx.conf
+				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
+				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
 
 				  # php调优
 				  wget -O /home/optimized_php.ini ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -5374,7 +5375,8 @@ linux_ldnmp() {
 				  2)
 				  send_stats "站点高性能模式"
 				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
+				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
+				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
 
 				  # php调优
 				  wget -O /home/optimized_php.ini ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
