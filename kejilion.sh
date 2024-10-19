@@ -3313,6 +3313,7 @@ else
 fi
 echo -e "${gl_lv}变更完成。重新连接SSH后可查看变化！${gl_bai}"
 
+hash -r
 break_end
 
 }
@@ -3857,6 +3858,7 @@ linux_docker() {
 	  clear
 	  # send_stats "docker管理"
 	  echo -e "▶ Docker管理"
+	  docker_tato
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}安装更新Docker环境 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
@@ -3890,22 +3892,27 @@ linux_docker() {
 			  ;;
 		  2)
 			  clear
+			  local container_count=$(docker ps -a -q 2>/dev/null | wc -l)
+			  local image_count=$(docker images -q 2>/dev/null | wc -l)
+			  local network_count=$(docker network ls -q 2>/dev/null | wc -l)
+			  local volume_count=$(docker volume ls -q 2>/dev/null | wc -l)
+		  
 			  send_stats "docker全局状态"
 			  echo "Docker版本"
 			  docker -v
 			  docker compose version
 
 			  echo ""
-			  echo "Docker镜像列表"
+			  echo -e "Docker镜像: ${gl_lv}$image_count${gl_bai} "
 			  docker image ls
 			  echo ""
-			  echo "Docker容器列表"
+			  echo -e "Docker容器: ${gl_lv}$container_count${gl_bai}"
 			  docker ps -a
 			  echo ""
-			  echo "Docker卷列表"
+			  echo -e "Docker卷: ${gl_lv}$volume_count${gl_bai}"
 			  docker volume ls
 			  echo ""
-			  echo "Docker网络列表"
+			  echo -e "Docker网络: ${gl_lv}$network_count${gl_bai}"
 			  docker network ls
 			  echo ""
 
@@ -4103,7 +4110,7 @@ linux_docker() {
 				[Yy])
 				  docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
 				  k remove docker docker-compose docker-ce docker-ce-cli containerd.io
-
+				  hash -r
 				  ;;
 				[Nn])
 				  ;;
@@ -4434,6 +4441,21 @@ linux_Oracle() {
 
 
 }
+
+
+docker_tato() {
+	
+	local container_count=$(docker ps -a -q 2>/dev/null | wc -l)
+	local image_count=$(docker images -q 2>/dev/null | wc -l)
+	local network_count=$(docker network ls -q 2>/dev/null | wc -l)
+	local volume_count=$(docker volume ls -q 2>/dev/null | wc -l)
+
+	if command -v docker &> /dev/null; then
+		echo -e "${gl_kjlan}------------------------"
+		echo -e "${gl_lv}环境已经安装${gl_bai}  容器: ${gl_lv}$container_count${gl_bai}  镜像: ${gl_lv}$image_count${gl_bai}  网络: ${gl_lv}$network_count${gl_bai}  卷: ${gl_lv}$volume_count${gl_bai}"
+	fi
+}
+
 
 
 ldnmp_tato() {
