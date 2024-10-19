@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.5"
+sh_v="3.2.6"
 
 
 gl_hui='\e[37m'
@@ -378,17 +378,9 @@ install_add_docker() {
 		country=$(curl -s ipinfo.io/country)
 		arch=$(uname -m)
 		if [ "$country" = "CN" ]; then
-			if [ "$arch" = "x86_64" ]; then
-				curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo | tee /etc/yum.repos.d/docker-ce.repo > /dev/null
-			elif [ "$arch" = "aarch64" ]; then
-				curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/centos/arm64/docker-ce.repo | tee /etc/yum.repos.d/docker-ce.repo > /dev/null
-			fi
+			curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo | tee /etc/yum.repos.d/docker-ce.repo > /dev/null
 		else
-			if [ "$arch" = "x86_64" ]; then
-				yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo > /dev/null
-			elif [ "$arch" = "aarch64" ]; then
-				yum-config-manager --add-repo https://download.docker.com/linux/centos/arm64/docker-ce.repo > /dev/null
-			fi
+			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo > /dev/null
 		fi
 		dnf install -y docker-ce docker-ce-cli containerd.io
 		install_add_docker_cn
@@ -1843,23 +1835,16 @@ ldnmp_Proxy() {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ldnmp_web_status() {
 	root_use
 	while true; do
+		local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
+		local output="站点: ${gl_lv}${cert_count}${gl_bai}"
+	
+		local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+		local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)	
+		local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
+
 		clear
 		send_stats "LDNMP站点管理"
 		echo "LDNMP环境"
@@ -1867,8 +1852,8 @@ ldnmp_web_status() {
 		ldnmp_v
 
 		# ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
-		echo "站点信息                      证书到期时间"
-		echo "------------------------"
+		echo -e "${output}                      证书到期时间"
+		echo -e "------------------------"
 		for cert_file in /home/web/certs/*_cert.pem; do
 		  domain=$(basename "$cert_file" | sed 's/_cert.pem//')
 		  if [ -n "$domain" ]; then
@@ -1880,8 +1865,8 @@ ldnmp_web_status() {
 
 		echo "------------------------"
 		echo ""
-		echo "数据库信息"
-		echo "------------------------"
+		echo -e "${db_output}"
+		echo -e "------------------------"
 		dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys"
 
@@ -4451,16 +4436,31 @@ linux_Oracle() {
 }
 
 
+ldnmp_tato() {
+local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
+local output="站点: ${gl_lv}${cert_count}${gl_bai}"
 
+local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml 2>/dev/null | tr -d '[:space:]')
+if [ -n "$dbrootpasswd" ]; then
+	local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2>/dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)
+fi
 
+local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
+if docker ps --filter "name=nginx" --filter "status=running" | grep -q nginx; then
+	echo -e "${gl_huang}------------------------"
+	echo -e "${gl_lv}环境已安装${gl_bai}  $output  $db_output"
+fi
+
+}
 
 
 linux_ldnmp() {
-
   while true; do
+
 	clear
 	# send_stats "LDNMP建站"
 	echo -e "${gl_huang}▶ LDNMP建站"
+	ldnmp_tato
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}1.   ${gl_bai}安装LDNMP环境 ${gl_huang}★${gl_bai}"
 	echo -e "${gl_huang}2.   ${gl_bai}安装WordPress ${gl_huang}★${gl_bai}"
