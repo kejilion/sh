@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 
-country="CN"
+country="default"
 cn_yuan() {
 if [ "$country" = "CN" ]; then
 	zhushi=0
@@ -5646,7 +5646,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}37.  ${gl_bai}MyIP工具箱 ${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${gl_bai}小雅alist全家桶"
 	  echo -e "${gl_kjlan}39.  ${gl_bai}Bililive直播录制工具                ${gl_kjlan}40.  ${gl_bai}webssh网页版SSH连接工具"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板						${gl_kjlan}42.  ${gl_bai}Nexterm远程连接工具"
+	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板                	 ${gl_kjlan}42.  ${gl_bai}Nexterm远程连接工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板"
 	  echo -e "${gl_kjlan}------------------------"
