@@ -5646,7 +5646,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}37.  ${gl_bai}MyIP工具箱 ${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${gl_bai}小雅alist全家桶"
 	  echo -e "${gl_kjlan}39.  ${gl_bai}Bililive直播录制工具                ${gl_kjlan}40.  ${gl_bai}webssh网页版SSH连接工具"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板"
+	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板						${gl_kjlan}42.  ${gl_bai}Nexterm远程连接工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板"
 	  echo -e "${gl_kjlan}------------------------"
@@ -6698,6 +6698,25 @@ linux_panel() {
 				break_end
 			done
 			  ;;
+
+
+		  42)
+			docker_name="nexterm"
+			docker_img="germannewsmaker/nexterm:latest"
+			docker_port=8042
+			docker_rum="docker run -d \
+						  --name nexterm \
+						  -p 8042:6989 \
+						  -v /home/docker/nexterm:/app/data \
+						  --restart unless-stopped \
+						  germannewsmaker/nexterm:latest"
+			docker_describe="nexterm是一款强大的在线SSH/VNC/RDP连接工具。"
+			docker_url="官网介绍: ${gh_proxy}https://github.com/gnmyt/Nexterm"
+			docker_use=""
+			docker_passwd=""
+			docker_app
+			  ;;
+
 
 		  51)
 			clear
