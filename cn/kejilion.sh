@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.6"
+sh_v="3.2.7"
 
 
 gl_hui='\e[37m'
@@ -317,7 +317,7 @@ check_port() {
 	PORT=80
 
 	# 检查端口占用情况
-	install iproute2
+	install iproute2 >/dev/null 2>&1
 	result=$(ss -tulpn | grep ":\b$PORT\b")
 
 	# 判断结果并输出相应信息
@@ -331,6 +331,8 @@ check_port() {
 
 	fi
 }
+
+
 
 
 install_add_docker_cn() {
@@ -1673,10 +1675,9 @@ ldnmp_install_all() {
 send_stats "安装LDNMP环境"
 root_use
 ldnmp_install_status_one
-check_port
 clear
 echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境...${gl_bai}"
-sleep 3
+check_port
 install_dependency
 install_docker
 install_certbot
@@ -1690,10 +1691,9 @@ nginx_install_all() {
 send_stats "安装nginx环境"
 root_use
 ldnmp_install_status_one
-check_port
 clear
 echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
-sleep 3
+check_port
 install_dependency
 install_docker
 install_certbot
@@ -1718,8 +1718,6 @@ ldnmp_install_status() {
    else
 	send_stats "请先安装LDNMP环境"
 	ldnmp_install_all
-	break_end
-	clear
 	echo "LDNMP环境已安装，开始部署 $webname"
    fi
 
@@ -1733,8 +1731,6 @@ nginx_install_status() {
    else
 	send_stats "请先安装nginx环境"
 	nginx_install_all
-	break_end
-	clear
 	echo "nginx环境已安装，开始部署 $webname"
    fi
 
@@ -1840,9 +1836,9 @@ ldnmp_web_status() {
 	while true; do
 		local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
 		local output="站点: ${gl_lv}${cert_count}${gl_bai}"
-	
+
 		local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-		local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)	
+		local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)
 		local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
 
 		clear
@@ -3896,7 +3892,7 @@ linux_docker() {
 			  local image_count=$(docker images -q 2>/dev/null | wc -l)
 			  local network_count=$(docker network ls -q 2>/dev/null | wc -l)
 			  local volume_count=$(docker volume ls -q 2>/dev/null | wc -l)
-		  
+
 			  send_stats "docker全局状态"
 			  echo "Docker版本"
 			  docker -v
@@ -4444,7 +4440,7 @@ linux_Oracle() {
 
 
 docker_tato() {
-	
+
 	local container_count=$(docker ps -a -q 2>/dev/null | wc -l)
 	local image_count=$(docker images -q 2>/dev/null | wc -l)
 	local network_count=$(docker network ls -q 2>/dev/null | wc -l)
@@ -4787,7 +4783,8 @@ linux_ldnmp() {
 	  clear
 	  echo -e "[${gl_huang}2/6${gl_bai}] index.php所在路径"
 	  echo "-------------"
-	  find "$(realpath .)" -name "index.php" -print
+	  # find "$(realpath .)" -name "index.php" -print
+	  find "$(realpath .)" -name "index.php" -print | xargs -I {} dirname {}
 
 	  read -e -p "请输入index.php的路径，类似（/home/web/html/$yuming/wordpress/）： " index_lujing
 
@@ -4963,7 +4960,8 @@ linux_ldnmp() {
 	  clear
 	  echo -e "[${gl_huang}2/2${gl_bai}] index.html所在路径"
 	  echo "-------------"
-	  find "$(realpath .)" -name "index.html" -print
+	  # find "$(realpath .)" -name "index.html" -print
+	  find "$(realpath .)" -name "index.html" -print | xargs -I {} dirname {}
 
 	  read -e -p "请输入index.html的路径，类似（/home/web/html/$yuming/index/）： " index_lujing
 
