@@ -6799,6 +6799,7 @@ linux_work() {
 	  echo -e "${gl_kjlan}9.   ${gl_bai}9号工作区"
 	  echo -e "${gl_kjlan}10.  ${gl_bai}10号工作区"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}98.  ${gl_bai}SSH常驻模式 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}99.  ${gl_bai}工作区管理 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
@@ -6877,6 +6878,43 @@ linux_work() {
 			  SESSION_NAME="work10"
 			  send_stats "启动工作区$SESSION_NAME"
 			  tmux_run
+			  ;;
+
+		  98)
+			while true; do
+			  clear
+			  if grep -q 'tmux attach-session -t sshd || tmux new-session -s sshd' ~/.bashrc; then
+				  tmux_sshd_status="${gl_lv}开启${gl_bai}"
+			  else
+				  tmux_sshd_status="${gl_hui}关闭${gl_bai}"
+			  fi
+			  send_stats "SSH常驻模式 "
+			  echo -e "SSH常驻模式 ${tmux_sshd_status}"
+			  echo "开启后SSH连接后会直接进入常驻模式，直接回到之前的工作状态。"
+			  echo "------------------------"
+			  echo "1. 开启            2. 关闭"
+			  echo "------------------------"
+			  echo "0. 返回上一级"
+			  echo "------------------------"
+			  read -e -p "请输入你的选择: " gongzuoqu_del
+			  case "$gongzuoqu_del" in
+				1)
+			  	  install tmux
+			  	  SESSION_NAME="sshd"
+			  	  send_stats "启动工作区$SESSION_NAME"
+				  grep -q "tmux attach-session -t sshd" ~/.bashrc || echo -e "\n# 自动进入 tmux 会话\nif [[ -z \"\$TMUX\" ]]; then\n    tmux attach-session -t sshd || tmux new-session -s sshd\nfi" >> ~/.bashrc
+				  source ~/.bashrc
+			  	  tmux_run
+				  ;;
+				2)
+				  sed -i '/# 自动进入 tmux 会话/,+4d' ~/.bashrc
+				  tmux kill-window -t sshd
+				  ;;
+				*)
+				  break
+				  ;;
+			  esac
+			done
 			  ;;
 
 		  99)
