@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.7"
+sh_v="3.2.8"
 
 
 gl_hui='\e[37m'
@@ -4488,6 +4488,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}6.   ${gl_bai}安装独角数发卡网"
 	echo -e "${gl_huang}7.   ${gl_bai}安装flarum论坛网站"
 	echo -e "${gl_huang}8.   ${gl_bai}安装typecho轻量博客网站"
+	echo -e "${gl_huang}9.   ${gl_bai}安装LinkStack共享链接平台"
 	echo -e "${gl_huang}20.  ${gl_bai}自定义动态站点"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}21.  ${gl_bai}仅安装nginx ${gl_huang}★${gl_bai}"
@@ -4748,6 +4749,41 @@ linux_ldnmp() {
 	  echo "密码: $dbusepasswd"
 	  echo "数据库名: $dbname"
 
+		;;
+
+
+	  9)
+	  clear
+	  # LinkStack
+	  webname="LinkStack"
+	  send_stats "安装$webname"
+	  ldnmp_install_status
+	  add_yuming
+	  install_ssltls
+	  certs_status
+	  add_db
+
+	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/refs/heads/main/index_php.conf
+	  sed -i "s|/var/www/html/yuming.com/|/var/www/html/yuming.com/linkstack|g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
+
+	  cd /home/web/html
+	  mkdir $yuming
+	  cd $yuming
+	  wget -O latest.zip ${gh_proxy}https://github.com/linkstackorg/linkstack/releases/latest/download/linkstack.zip
+	  unzip latest.zip
+	  rm latest.zip
+
+	  restart_ldnmp
+
+
+	  clear
+	  ldnmp_web_on
+	  echo "数据库地址: mysql"
+	  echo "数据库端口: 3306"
+	  echo "数据库名: $dbname"
+	  echo "用户名: $dbuse"
+	  echo "密码: $dbusepasswd"
 		;;
 
 	  20)
