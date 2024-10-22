@@ -1651,7 +1651,7 @@ output_status() {
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
 
-			printf("总接收: %.2f %s\n总发送: %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
+			printf("总接收:          %.2f %s\n总发送:          %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
 		}' /proc/net/dev)
 
 }
@@ -3462,6 +3462,8 @@ linux_ps() {
 
 	cpu_cores=$(nproc)
 
+	cpu_freq=$(cat /proc/cpuinfo | grep "MHz" | head -n 1 | awk '{printf "%.1f GHz\n", $4/1000}')
+
 	mem_info=$(free -b | awk 'NR==2{printf "%.2f/%.2f MB (%.2f%%)", $3/1024/1024, $2/1024/1024, $3*100/$2}')
 
 	disk_info=$(df -h | awk '$NF=="/"{printf "%s/%s (%s)", $3, $2, $5}')
@@ -3470,6 +3472,9 @@ linux_ps() {
 	country=$(echo "$ipinfo" | grep 'country' | awk -F': ' '{print $2}' | tr -d '",')
 	city=$(echo "$ipinfo" | grep 'city' | awk -F': ' '{print $2}' | tr -d '",')
 	isp_info=$(echo "$ipinfo" | grep 'org' | awk -F': ' '{print $2}' | tr -d '",')
+
+	load=$(uptime | awk '{print $(NF-2), $(NF-1), $NF}')
+	dns_addresses=$(awk '/^nameserver/{printf "%s ", $2} END {print ""}' /etc/resolv.conf)
 
 
 	cpu_arch=$(uname -m)
@@ -3499,33 +3504,36 @@ linux_ps() {
 	echo ""
 	echo -e "系统信息查询"
 	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}主机名: ${gl_bai}$hostname"
-	echo -e "${gl_kjlan}运营商: ${gl_bai}$isp_info"
+	echo -e "${gl_kjlan}主机名:          ${gl_bai}$hostname"
+	echo -e "${gl_kjlan}运营商:          ${gl_bai}$isp_info"
 	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}系统版本: ${gl_bai}$os_info"
-	echo -e "${gl_kjlan}Linux版本: ${gl_bai}$kernel_version"
+	echo -e "${gl_kjlan}系统版本:        ${gl_bai}$os_info"
+	echo -e "${gl_kjlan}Linux版本:       ${gl_bai}$kernel_version"
 	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}CPU架构: ${gl_bai}$cpu_arch"
-	echo -e "${gl_kjlan}CPU型号: ${gl_bai}$cpu_info"
-	echo -e "${gl_kjlan}CPU核心数: ${gl_bai}$cpu_cores"
+	echo -e "${gl_kjlan}CPU架构:         ${gl_bai}$cpu_arch"
+	echo -e "${gl_kjlan}CPU型号:         ${gl_bai}$cpu_info"
+	echo -e "${gl_kjlan}CPU核心数:       ${gl_bai}$cpu_cores"
+	echo -e "${gl_kjlan}CPU频率:         ${gl_bai}$cpu_freq"
 	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}CPU占用: ${gl_bai}$cpu_usage_percent%"
-	echo -e "${gl_kjlan}物理内存: ${gl_bai}$mem_info"
-	echo -e "${gl_kjlan}虚拟内存: ${gl_bai}$swap_info"
-	echo -e "${gl_kjlan}硬盘占用: ${gl_bai}$disk_info"
+	echo -e "${gl_kjlan}CPU占用:         ${gl_bai}$cpu_usage_percent%"
+	echo -e "${gl_kjlan}系统负载:        ${gl_bai}$load"
+	echo -e "${gl_kjlan}物理内存:        ${gl_bai}$mem_info"
+	echo -e "${gl_kjlan}虚拟内存:        ${gl_bai}$swap_info"
+	echo -e "${gl_kjlan}硬盘占用:        ${gl_bai}$disk_info"
 	echo -e "${gl_kjlan}------------------------"
 	echo -e "${gl_kjlan}$output"
 	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}网络拥堵算法: ${gl_bai}$congestion_algorithm $queue_algorithm"
+	echo -e "${gl_kjlan}网络拥堵算法:    ${gl_bai}$congestion_algorithm $queue_algorithm"
 	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}公网IPv4地址: ${gl_bai}$ipv4_address"
-	echo -e "${gl_kjlan}公网IPv6地址: ${gl_bai}$ipv6_address"
+	echo -e "${gl_kjlan}IPv4地址:        ${gl_bai}$ipv4_address"
+	echo -e "${gl_kjlan}IPv6地址:        ${gl_bai}$ipv6_address"
+	echo -e "${gl_kjlan}DNS地址:         ${gl_bai}$dns_addresses"
 	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}地理位置: ${gl_bai}$country $city"
-	echo -e "${gl_kjlan}系统时区: ${gl_bai}$timezone"
-	echo -e "${gl_kjlan}系统时间: ${gl_bai}$current_time"
+	echo -e "${gl_kjlan}地理位置:        ${gl_bai}$country $city"
+	echo -e "${gl_kjlan}系统时区:        ${gl_bai}$timezone"
+	echo -e "${gl_kjlan}系统时间:        ${gl_bai}$current_time"
 	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}系统运行时长: ${gl_bai}$runtime"
+	echo -e "${gl_kjlan}系统运行时长:    ${gl_bai}$runtime"
 	echo
 
 
