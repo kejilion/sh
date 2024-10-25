@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.8"
+sh_v="3.2.9"
 
 
 gl_hui='\e[37m'
@@ -1876,12 +1876,12 @@ ldnmp_web_status() {
 		echo "操作"
 		echo "------------------------"
 		echo "1.  申请/更新域名证书               2.  更换站点域名"
-		echo "3.  清理站点缓存                    4.  查看站点分析报告"
+		echo "3.  清理站点缓存                    4.  创建关联站点"
 		echo "5.  查看访问日志                    6.  查看错误日志"
 		echo "7.  编辑全局配置                    8.  编辑站点配置"
-		echo "9.  管理站点数据库"
+		echo "9.  管理站点数据库		    10. 查看站点分析报告"
 		echo "------------------------"
-		echo "10. 删除指定站点数据"
+		echo "20. 删除指定站点数据"
 		echo "------------------------"
 		echo "0. 返回上一级选单"
 		echo "------------------------"
@@ -1955,9 +1955,21 @@ ldnmp_web_status() {
 				web_cache
 				;;
 			4)
-				send_stats "查看站点数据"
-				install goaccess
-				goaccess --log-format=COMBINED /home/web/log/nginx/access.log
+				send_stats "创建关联站点"
+				echo -e "为现有的站点再关联一个新域名用于访问"
+				read -e -p "请输入现有的域名: " oddyuming
+				read -e -p "请输入新域名: " yuming
+				install_certbot
+				install_ssltls
+				certs_status
+
+				cp /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
+				sed -i "s|server_name $oddyuming|server_name $yuming|g" /home/web/conf.d/$yuming.conf
+				sed -i "s|/etc/nginx/certs/${oddyuming}_cert.pem|/etc/nginx/certs/${yuming}_cert.pem|g" /home/web/conf.d/$yuming.conf
+				sed -i "s|/etc/nginx/certs/${oddyuming}_key.pem|/etc/nginx/certs/${yuming}_key.pem|g" /home/web/conf.d/$yuming.conf
+
+				docker restart nginx
+
 				;;
 			5)
 				send_stats "查看访问日志"
@@ -1988,6 +2000,12 @@ ldnmp_web_status() {
 				break_end
 				;;
 			10)
+				send_stats "查看站点数据"
+				install goaccess
+				goaccess --log-format=COMBINED /home/web/log/nginx/access.log
+				;;
+
+			20)
 				web_del
 
 				;;
