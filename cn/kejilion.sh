@@ -3263,13 +3263,16 @@ update_locale() {
 				echo "LANG=${lang}" > /etc/default/locale
 				export LANG=${lang}
 				echo -e "${gl_lv}系统语言已经修改为: $lang 重新连接SSH生效。${gl_bai}"
+				hash -r
 				break_end
+
 				;;
 			centos|rhel|almalinux|rocky|fedora)
 				install glibc-langpack-zh
 				localectl set-locale LANG=${lang}
 				echo "LANG=${lang}" | tee /etc/locale.conf
 				echo -e "${gl_lv}系统语言已经修改为: $lang 重新连接SSH生效。${gl_bai}"
+				hash -r
 				break_end
 				;;
 			*)
