@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.9"
+sh_v="3.2.10"
 
 
 gl_hui='\e[37m'
@@ -1127,7 +1127,11 @@ certs_status() {
 		send_stats "域名证书申请失败"
 		echo -e "${gl_hong}注意: ${gl_bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
 		break_end
-		linux_ldnmp
+		clear
+		echo "请再次尝试"
+		add_yuming
+		install_ssltls
+		certs_status
 	fi
 
 }
@@ -1141,7 +1145,10 @@ else
   send_stats "域名格式不正确"
   echo -e "${gl_huang}提示: ${gl_bai}域名格式不正确，请重新输入"
   break_end
-  linux_ldnmp
+  clear
+  echo "请再次尝试"
+  add_yuming
+  repeat_add_yuming
 fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
