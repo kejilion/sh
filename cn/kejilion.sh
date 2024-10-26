@@ -5717,6 +5717,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}39.  ${gl_bai}Bililive直播录制工具                ${gl_kjlan}40.  ${gl_bai}webssh网页版SSH连接工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板                	 ${gl_kjlan}42.  ${gl_bai}Nexterm远程连接工具"
+	  echo -e "${gl_kjlan}43.  ${gl_bai}RustDesk远程桌面(服务端)            ${gl_kjlan}44.  ${gl_bai}RustDesk远程桌面(中继端)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板"
 	  echo -e "${gl_kjlan}------------------------"
@@ -6787,6 +6788,29 @@ linux_panel() {
 			docker_app
 			  ;;
 
+		  43)
+			docker_name="hbbs"
+			docker_img="rustdesk/rustdesk-server"
+			docker_port=""
+			docker_rum="docker run --name hbbs -v /home/docker/hbbs/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbs"
+			docker_describe="rustdesk开源的远程桌面(服务端)，类似自己的向日葵私服。"
+			docker_url="官网介绍: https://rustdesk.com/zh-cn/"
+			docker_use="docker logs hbbs"
+			docker_passwd=""
+			docker_app
+			  ;;
+
+		  44)
+			docker_name="hbbr"
+			docker_img="rustdesk/rustdesk-server"
+			docker_port=""
+			docker_rum="docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbr"
+			docker_describe="rustdesk开源的远程桌面(中继端)，类似自己的向日葵私服。"
+			docker_url="官网介绍: https://rustdesk.com/zh-cn/"
+			docker_use=""
+			docker_passwd=""
+			docker_app
+			  ;;
 
 		  51)
 			clear
