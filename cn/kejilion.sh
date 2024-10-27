@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.2.10"
+sh_v="3.3.0"
 
 
 gl_hui='\e[37m'
@@ -1450,6 +1450,16 @@ if $has_ipv6; then
 	echo "http://[$ipv6_address]:$docker_port"
 fi
 
+search_pattern="$ipv4_address:$docker_port"
+
+for file in /home/web/conf.d/*; do
+    if [ -f "$file" ]; then
+        if grep -q "$search_pattern" "$file" 2>/dev/null; then
+            echo "https://$(basename "$file" | sed 's/\.conf$//')"
+        fi
+    fi
+done
+
 }
 
 
@@ -1469,6 +1479,8 @@ while true; do
 	echo ""
 	echo "------------------------"
 	echo "1. 安装            2. 更新            3. 卸载"
+	echo "------------------------"
+	echo "5. 域名访问"
 	echo "------------------------"
 	echo "0. 返回上一级"
 	echo "------------------------"
@@ -1505,8 +1517,12 @@ while true; do
 			echo "应用已卸载"
 			send_stats "卸载$docker_name"
 			;;
-		0)
-			break
+
+		5)
+			echo "${docker_name}域名访问设置"
+			send_stats "${docker_name}域名访问设置"
+			add_yuming
+			k fd ${yuming} ${ipv4_address} ${docker_port}
 			;;
 		*)
 			break
@@ -1514,7 +1530,6 @@ while true; do
 	 esac
 	 break_end
 done
-
 
 }
 
