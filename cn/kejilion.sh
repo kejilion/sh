@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 
-country="CN"
+country="default"
 cn_yuan() {
 if [ "$country" = "CN" ]; then
 	zhushi=0
@@ -310,12 +310,13 @@ kejilion() {
 
 
 check_port() {
+	k add lsof
 	docker rm -f nginx >/dev/null 2>&1
-	containers=$(docker ps --filter "publish=80" --filter "publish=443" --format "{{.ID}}")
+	containers=$(docker ps --filter "publish=443" --format "{{.ID}}")
 	if [ -n "$containers" ]; then
 		docker stop $containers
 	else
-		for pid in $(lsof -t -i:80); do
+		for pid in $(lsof -t -i:443); do
 			kill -9 $pid
 		done
 	fi
