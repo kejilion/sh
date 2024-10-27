@@ -6807,7 +6807,7 @@ linux_panel() {
 		  43)
 			docker_name="hbbs"
 			docker_img="rustdesk/rustdesk-server"
-			docker_port=""
+			docker_port=21116
 			docker_rum="docker run --name hbbs -v /home/docker/hbbs/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbs"
 			docker_describe="rustdesk开源的远程桌面(服务端)，类似自己的向日葵私服。"
 			docker_url="官网介绍: https://rustdesk.com/zh-cn/"
@@ -6819,7 +6819,7 @@ linux_panel() {
 		  44)
 			docker_name="hbbr"
 			docker_img="rustdesk/rustdesk-server"
-			docker_port=""
+			docker_port=21116
 			docker_rum="docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbr"
 			docker_describe="rustdesk开源的远程桌面(中继端)，类似自己的向日葵私服。"
 			docker_url="官网介绍: https://rustdesk.com/zh-cn/"
