@@ -310,28 +310,11 @@ kejilion() {
 
 
 check_port() {
-
 	docker rm -f nginx >/dev/null 2>&1
-
-	# 定义要检测的端口
-	PORT=80
-
-	# 检查端口占用情况
-	install iproute2 >/dev/null 2>&1
-	result=$(ss -tulpn | grep ":\b$PORT\b")
-
-	# 判断结果并输出相应信息
-	if [ -n "$result" ]; then
-			clear
-			echo -e "${gl_hong}注意: ${gl_bai}端口 ${gl_huang}$PORT${gl_bai} 已被占用，无法安装环境，卸载以下程序后重试！"
-			echo "$result"
-			send_stats "端口冲突无法安装建站环境"
-			break_end
-			linux_ldnmp
-
-	fi
+	for pid in $(lsof -t -i:80); do
+		kill -9 $pid
+	done
 }
-
 
 
 
