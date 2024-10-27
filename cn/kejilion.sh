@@ -1453,11 +1453,11 @@ fi
 search_pattern="$ipv4_address:$docker_port"
 
 for file in /home/web/conf.d/*; do
-    if [ -f "$file" ]; then
-        if grep -q "$search_pattern" "$file" 2>/dev/null; then
-            echo "https://$(basename "$file" | sed 's/\.conf$//')"
-        fi
-    fi
+	if [ -f "$file" ]; then
+		if grep -q "$search_pattern" "$file" 2>/dev/null; then
+			echo "https://$(basename "$file" | sed 's/\.conf$//')"
+		fi
+	fi
 done
 
 }
@@ -6812,7 +6812,7 @@ linux_panel() {
 			docker_describe="rustdesk开源的远程桌面(服务端)，类似自己的向日葵私服。"
 			docker_url="官网介绍: https://rustdesk.com/zh-cn/"
 			docker_use="docker logs hbbs"
-			docker_passwd=""
+			docker_passwd="echo \"把你的IP和key记录下，会在远程桌面客户端中用到。去44选项装中继端吧！\""
 			docker_app
 			  ;;
 
@@ -6823,7 +6823,7 @@ linux_panel() {
 			docker_rum="docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbr"
 			docker_describe="rustdesk开源的远程桌面(中继端)，类似自己的向日葵私服。"
 			docker_url="官网介绍: https://rustdesk.com/zh-cn/"
-			docker_use=""
+			docker_use="echo \"前往官网下载远程桌面的客户端: https://rustdesk.com/zh-cn/\""
 			docker_passwd=""
 			docker_app
 			  ;;
