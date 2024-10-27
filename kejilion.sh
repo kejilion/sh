@@ -1020,7 +1020,6 @@ install_certbot() {
 
 
 install_ssltls() {
-	  repeat_add_yuming
 	  docker stop nginx > /dev/null 2>&1
 	  iptables_open > /dev/null 2>&1
 	  cd ~
@@ -1072,7 +1071,7 @@ yuming="${1:-}"
 if [ -z "$yuming" ]; then
 	add_yuming
 fi
-
+repeat_add_yuming
 install_certbot
 yes | certbot delete --cert-name $yuming > /dev/null 2>&1
 install_ssltls
@@ -1130,6 +1129,7 @@ certs_status() {
 		clear
 		echo "请再次尝试"
 		add_yuming
+		repeat_add_yuming
 		install_ssltls
 		certs_status
 	fi
@@ -1789,6 +1789,7 @@ ldnmp_wp() {
   if [ -z "$yuming" ]; then
 	add_yuming
   fi
+  repeat_add_yuming
   install_ssltls
   certs_status
   add_db
@@ -1832,7 +1833,6 @@ ldnmp_Proxy() {
 	if [ -z "$yuming" ]; then
 		add_yuming
 	fi
-
 	if [ -z "$reverseproxy" ]; then
 		read -e -p "请输入你的反代IP: " reverseproxy
 	fi
@@ -1840,7 +1840,7 @@ ldnmp_Proxy() {
 	if [ -z "$port" ]; then
 		read -e -p "请输入你的反代端口: " port
 	fi
-
+	repeat_add_yuming
 	install_ssltls
 	certs_status
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
@@ -4581,6 +4581,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  ldnmp_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4616,6 +4617,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  ldnmp_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4648,6 +4650,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  ldnmp_install_status
 	  add_yuming
+	  repeat_add_yuming	  
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4689,6 +4692,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  ldnmp_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4735,6 +4739,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  ldnmp_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4775,6 +4780,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  ldnmp_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4810,6 +4816,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  ldnmp_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4843,6 +4850,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  ldnmp_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4972,7 +4980,7 @@ linux_ldnmp() {
 	  nginx_install_status
 	  add_yuming
 	  read -e -p "请输入跳转域名: " reverseproxy
-
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 
@@ -4999,7 +5007,7 @@ linux_ldnmp() {
 	  add_yuming
 	  echo -e "域名格式: ${gl_huang}google.com${gl_bai}"
 	  read -e -p "请输入你的反代域名: " fandai_yuming
-
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 
@@ -5020,6 +5028,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  nginx_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 
@@ -5069,6 +5078,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  nginx_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 
@@ -5091,6 +5101,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  nginx_install_status
 	  add_yuming
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 
