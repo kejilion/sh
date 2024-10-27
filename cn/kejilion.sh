@@ -311,9 +311,14 @@ kejilion() {
 
 check_port() {
 	docker rm -f nginx >/dev/null 2>&1
-	for pid in $(lsof -t -i:80); do
-		kill -9 $pid
-	done
+	containers=$(docker ps --filter "publish=80" --filter "publish=443" --format "{{.ID}}")
+	if [ -n "$containers" ]; then
+		docker stop $containers
+	else
+		for pid in $(lsof -t -i:80); do
+			kill -9 $pid
+		done
+	fi
 }
 
 
