@@ -5733,6 +5733,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板                	 ${gl_kjlan}42.  ${gl_bai}Nexterm远程连接工具"
 	  echo -e "${gl_kjlan}43.  ${gl_bai}RustDesk远程桌面(服务端)            ${gl_kjlan}44.  ${gl_bai}RustDesk远程桌面(中继端)"
+	  echo -e "${gl_kjlan}45.  ${gl_bai}Docker加速站            		 ${gl_kjlan}46.  ${gl_bai}GitHub加速站"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板"
 	  echo -e "${gl_kjlan}------------------------"
@@ -6822,6 +6823,36 @@ linux_panel() {
 			docker_rum="docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbr"
 			docker_describe="rustdesk开源的远程桌面(中继端)，类似自己的向日葵私服。"
 			docker_url="官网介绍: https://rustdesk.com/zh-cn/"
+			docker_use=""
+			docker_passwd=""
+			docker_app
+			  ;;
+
+		  45)
+			docker_name="registry"
+			docker_img="registry:2"
+			docker_port=8045
+			docker_rum="docker run -d \
+							-p 8045:5000 \
+							--name registry \
+							-v /home/docker/registry:/var/lib/registry \
+							-e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+							--restart always \
+							registry:2"
+			docker_describe="Docker Registry 是一个用于存储和分发 Docker 镜像的服务。"
+			docker_url="官网介绍: https://hub.docker.com/_/registry"
+			docker_use=""
+			docker_passwd=""
+			docker_app
+			  ;;
+
+		  46)
+			docker_name="ghproxy"
+			docker_img="wjqserver/ghproxy:latest"
+			docker_port=8046
+			docker_rum="docker run -d --name ghproxy --restart always -p 8046:80 wjqserver/ghproxy:latest"
+			docker_describe="使用Go实现的GHProxy，用于加速部分地区Github仓库的拉取。"
+			docker_url="官网介绍: https://github.com/WJQSERVER-STUDIO/ghproxy"
 			docker_use=""
 			docker_passwd=""
 			docker_app
