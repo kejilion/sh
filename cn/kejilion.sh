@@ -4639,7 +4639,7 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  ldnmp_install_status
 	  add_yuming
-	  repeat_add_yuming	  
+	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -6079,6 +6079,8 @@ linux_panel() {
 				echo "------------------------"
 				echo "1. 安装           2. 更新           3. 卸载"
 				echo "------------------------"
+				echo "5. 域名访问"
+				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
 				read -e -p "输入你的选择: " choice
@@ -6121,6 +6123,12 @@ linux_panel() {
 						rm -rf /home/docker/mongo
 						echo "应用已卸载"
 
+						;;
+					5)
+						echo "${docker_name}域名访问设置"
+						send_stats "${docker_name}域名访问设置"
+						add_yuming
+						k fd ${yuming} ${ipv4_address} ${docker_port}
 						;;
 
 					0)
@@ -6195,6 +6203,8 @@ linux_panel() {
 				echo "------------------------"
 				echo "1. 安装           2. 更新           3. 卸载"
 				echo "------------------------"
+				echo "5. 域名访问"
+				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
 				read -e -p "输入你的选择: " choice
@@ -6240,6 +6250,12 @@ linux_panel() {
 						rm -rf /home/docker/cloud
 						echo "应用已卸载"
 
+						;;
+					5)
+						echo "${docker_name}域名访问设置"
+						send_stats "${docker_name}域名访问设置"
+						add_yuming
+						k fd ${yuming} ${ipv4_address} ${docker_port}
 						;;
 
 					0)
