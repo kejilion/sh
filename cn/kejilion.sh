@@ -1663,7 +1663,7 @@ output_status() {
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
 
-			printf("总接收:          %.2f %s\n总发送:          %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
+			printf("总接收:       %.2f %s\n总发送:       %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
 		}' /proc/net/dev)
 
 }
@@ -3546,37 +3546,34 @@ linux_ps() {
 
 	echo ""
 	echo -e "系统信息查询"
-	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}主机名:          ${gl_bai}$hostname"
-	echo -e "${gl_kjlan}运营商:          ${gl_bai}$isp_info"
-	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}系统版本:        ${gl_bai}$os_info"
-	echo -e "${gl_kjlan}Linux版本:       ${gl_bai}$kernel_version"
-	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}CPU架构:         ${gl_bai}$cpu_arch"
-	echo -e "${gl_kjlan}CPU型号:         ${gl_bai}$cpu_info"
-	echo -e "${gl_kjlan}CPU核心数:       ${gl_bai}$cpu_cores"
-	echo -e "${gl_kjlan}CPU频率:         ${gl_bai}$cpu_freq"
-	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}CPU占用:         ${gl_bai}$cpu_usage_percent%"
-	echo -e "${gl_kjlan}系统负载:        ${gl_bai}$load"
-	echo -e "${gl_kjlan}物理内存:        ${gl_bai}$mem_info"
-	echo -e "${gl_kjlan}虚拟内存:        ${gl_bai}$swap_info"
-	echo -e "${gl_kjlan}硬盘占用:        ${gl_bai}$disk_info"
-	echo -e "${gl_kjlan}------------------------"
+	echo -e "${gl_kjlan}-------------"
+	echo -e "${gl_kjlan}主机名:       ${gl_bai}$hostname"
+	echo -e "${gl_kjlan}系统版本:     ${gl_bai}$os_info"
+	echo -e "${gl_kjlan}Linux版本:    ${gl_bai}$kernel_version"
+	echo -e "${gl_kjlan}-------------"
+	echo -e "${gl_kjlan}CPU架构:      ${gl_bai}$cpu_arch"
+	echo -e "${gl_kjlan}CPU型号:      ${gl_bai}$cpu_info"
+	echo -e "${gl_kjlan}CPU核心数:    ${gl_bai}$cpu_cores"
+	echo -e "${gl_kjlan}CPU频率:      ${gl_bai}$cpu_freq"
+	echo -e "${gl_kjlan}-------------"
+	echo -e "${gl_kjlan}CPU占用:      ${gl_bai}$cpu_usage_percent%"
+	echo -e "${gl_kjlan}系统负载:     ${gl_bai}$load"
+	echo -e "${gl_kjlan}物理内存:     ${gl_bai}$mem_info"
+	echo -e "${gl_kjlan}虚拟内存:     ${gl_bai}$swap_info"
+	echo -e "${gl_kjlan}硬盘占用:     ${gl_bai}$disk_info"
+	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}$output"
-	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}网络拥堵算法:    ${gl_bai}$congestion_algorithm $queue_algorithm"
-	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}IPv4地址:        ${gl_bai}$ipv4_address"
-	echo -e "${gl_kjlan}IPv6地址:        ${gl_bai}$ipv6_address"
-	echo -e "${gl_kjlan}DNS地址:         ${gl_bai}$dns_addresses"
-	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}地理位置:        ${gl_bai}$country $city"
-	echo -e "${gl_kjlan}系统时区:        ${gl_bai}$timezone"
-	echo -e "${gl_kjlan}系统时间:        ${gl_bai}$current_time"
-	echo -e "${gl_kjlan}------------------------"
-	echo -e "${gl_kjlan}系统运行时长:    ${gl_bai}$runtime"
+	echo -e "${gl_kjlan}-------------"
+	echo -e "${gl_kjlan}网络算法:     ${gl_bai}$congestion_algorithm $queue_algorithm"	
+	echo -e "${gl_kjlan}-------------"
+	echo -e "${gl_kjlan}运营商:       ${gl_bai}$isp_info"
+	echo -e "${gl_kjlan}IPv4地址:     ${gl_bai}$ipv4_address"
+	echo -e "${gl_kjlan}IPv6地址:     ${gl_bai}$ipv6_address"
+	echo -e "${gl_kjlan}DNS地址:      ${gl_bai}$dns_addresses"
+	echo -e "${gl_kjlan}地理位置:     ${gl_bai}$country $city"
+	echo -e "${gl_kjlan}系统时间:     ${gl_bai}$timezone $current_time"
+	echo -e "${gl_kjlan}-------------"
+	echo -e "${gl_kjlan}运行时长:     ${gl_bai}$runtime"
 	echo
 
 
