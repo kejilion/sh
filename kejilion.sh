@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.3.0"
+sh_v="3.3.1"
 
 
 gl_hui='\e[37m'
@@ -2427,6 +2427,7 @@ dd_xitong() {
 			echo "41. Windows 11                42. Windows 10"
 			echo "43. Windows 7                 44. Windows Server 2022"
 			echo "45. Windows Server 2019       46. Windows Server 2016"
+			echo "47. Windows 11 ARM"
 			echo "------------------------"
 			echo "0. 返回上一级选单"
 			echo "------------------------"
@@ -2652,6 +2653,15 @@ dd_xitong() {
 				reboot
 				exit
 				;;
+
+			  47)
+				send_stats "重装windows11 ARM"
+				dd_xitong_4
+				bash reinstall.sh dd --img https://r2.hotdog.eu.org/win11-arm-with-pagefile-15g.xz
+				reboot
+				exit
+				;;
+
 			  0)
 				break
 				;;
