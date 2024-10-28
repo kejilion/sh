@@ -3589,8 +3589,8 @@ linux_tools() {
 
   while true; do
 	  clear
-	  # send_stats "常用工具"
-	  echo -e "▶ 常用工具"
+	  # send_stats "基础工具"
+	  echo -e "▶ 基础工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}curl 下载工具 ${gl_huang}★${gl_bai}                   ${gl_kjlan}2.   ${gl_bai}wget 下载工具 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}sudo 超级管理权限工具             ${gl_kjlan}4.   ${gl_bai}socat 通信连接工具"
@@ -5719,8 +5719,8 @@ linux_panel() {
 
 	while true; do
 	  clear
-	  # send_stats "面板工具"
-	  echo -e "▶ 面板工具"
+	  # send_stats "应用市场"
+	  echo -e "▶ 应用市场"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}宝塔面板官方版                      ${gl_kjlan}2.   ${gl_bai}aaPanel宝塔国际版"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}1Panel新一代管理面板                ${gl_kjlan}4.   ${gl_bai}NginxProxyManager可视化面板"
@@ -5841,7 +5841,7 @@ linux_panel() {
 						  -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
 						  --restart=always \
 						  $docker_img"
-			docker_describe="如果您已经安装了其他面板工具或者LDNMP建站环境，建议先卸载，再安装npm！"
+			docker_describe="如果您已经安装了其他面板或者LDNMP建站环境，建议先卸载，再安装npm！"
 			docker_url="官网介绍: https://nginxproxymanager.com/"
 			docker_use="echo \"初始用户名: admin@example.com\""
 			docker_passwd="echo \"初始密码: changeme\""
@@ -8397,7 +8397,7 @@ EOF
 			  echo -e "6. 开启${gl_huang}BBR${gl_bai}加速"
 			  echo -e "7. 设置时区到${gl_huang}上海${gl_bai}"
 			  echo -e "8. 自动优化DNS地址${gl_huang}海外: 1.1.1.1 8.8.8.8  国内: 223.5.5.5 ${gl_bai}"
-			  echo -e "9. 安装常用工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
+			  echo -e "9. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 			  echo -e "10. Linux系统内核参数优化切换到${gl_huang}均衡优化模式${gl_bai}"
 			  echo "------------------------------------------------"
 			  read -e -p "确定一键保养吗？(Y/N): " choice
@@ -8454,7 +8454,7 @@ EOF
 				  echo "------------------------------------------------"
 				  install_docker
 				  install wget sudo tar unzip socat btop nano vim
-				  echo -e "[${gl_lv}OK${gl_bai}] 9/10. 安装常用工具${gl_huang}docker wget sudo tar unzip socat btop${gl_bai}"
+				  echo -e "[${gl_lv}OK${gl_bai}] 9/10. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop${gl_bai}"
 				  echo "------------------------------------------------"
 
 				  echo "------------------------------------------------"
@@ -9078,14 +9078,14 @@ echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}1.   ${gl_bai}系统信息查询"
 echo -e "${gl_kjlan}2.   ${gl_bai}系统更新"
 echo -e "${gl_kjlan}3.   ${gl_bai}系统清理"
-echo -e "${gl_kjlan}4.   ${gl_bai}常用工具 ▶"
+echo -e "${gl_kjlan}4.   ${gl_bai}基础工具 ▶"
 echo -e "${gl_kjlan}5.   ${gl_bai}BBR管理 ▶"
 echo -e "${gl_kjlan}6.   ${gl_bai}Docker管理 ▶ "
 echo -e "${gl_kjlan}7.   ${gl_bai}WARP管理 ▶ "
 echo -e "${gl_kjlan}8.   ${gl_bai}测试脚本合集 ▶ "
 echo -e "${gl_kjlan}9.   ${gl_bai}甲骨文云脚本合集 ▶ "
 echo -e "${gl_huang}10.  ${gl_bai}LDNMP建站 ▶ "
-echo -e "${gl_kjlan}11.  ${gl_bai}面板工具 ▶ "
+echo -e "${gl_kjlan}11.  ${gl_bai}应用市场 ▶ "
 echo -e "${gl_kjlan}12.  ${gl_bai}我的工作区 ▶ "
 echo -e "${gl_kjlan}13.  ${gl_bai}系统工具 ▶ "
 echo -e "${gl_kjlan}14.  ${gl_bai}服务器集群控制 ▶ "
