@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 
-country="CN"
+country="default"
 cn_yuan() {
 if [ "$country" = "CN" ]; then
 	zhushi=0
