@@ -42,7 +42,7 @@ permission_granted="false"
 
 CheckFirstRun_true() {
 	if grep -q '^permission_granted="true"' /usr/local/bin/k > /dev/null 2>&1; then
-		sed -i 's/^permission_granted="false"/permission_granted="true"/' ./kejilion.sh
+		sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
 		sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
 	fi
 }
@@ -92,7 +92,7 @@ fi
 yinsiyuanquan2() {
 
 if grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null 2>&1; then
-	sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ./kejilion.sh
+	sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
 	sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 fi
 
@@ -101,7 +101,8 @@ fi
 
 
 yinsiyuanquan2
-cp -f ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+cp -f ./kejilion.sh ~/kejilion.sh > /dev/null 2>&1
+cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
 
 
@@ -123,7 +124,7 @@ UserLicenseAgreement() {
 
 	if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
 		send_stats "许可同意"
-		sed -i 's/^permission_granted="false"/permission_granted="true"/' ./kejilion.sh
+		sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
 		sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
 	else
 		send_stats "许可拒绝"
@@ -8489,14 +8490,14 @@ EOF
 				  1)
 					  cd ~
 					  sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' /usr/local/bin/k
-					  sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' ./kejilion.sh
+					  sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' ~/kejilion.sh
 					  echo "已开启采集"
 					  send_stats "隐私与安全已开启采集"
 					  ;;
 				  2)
 					  cd ~
 					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
-					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ./kejilion.sh
+					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
 					  echo "已关闭采集"
 					  send_stats "隐私与安全已关闭采集"
 					  ;;
@@ -8522,7 +8523,7 @@ EOF
 				[Yy])
 				  clear
 				  rm -f /usr/local/bin/k
-				  rm ./kejilion.sh
+				  rm ~/kejilion.sh
 				  echo "脚本已卸载，再见！"
 				  break_end
 				  clear
@@ -8988,11 +8989,11 @@ kejilion_update() {
 				fi
 				CheckFirstRun_true
 				yinsiyuanquan2
-				cp -f ./kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+				cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 				echo -e "${gl_lv}脚本已更新到最新版本！${gl_huang}v$sh_v_new${gl_bai}"
 				send_stats "脚本已经最新$sh_v_new"
 				break_end
-				./kejilion.sh
+				~/kejilion.sh
 				exit
 				;;
 			[Nn])
