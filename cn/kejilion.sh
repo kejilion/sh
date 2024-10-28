@@ -312,8 +312,8 @@ kejilion() {
 check_port() {
 	k add lsof
 	docker rm -f nginx >/dev/null 2>&1
-	containers=$(docker ps --filter "publish=443" --format "{{.ID}}")
-	if [ -n "$containers" ]; then
+	containers=$(docker ps --filter "publish=443" --format "{{.ID}} " 2>/dev/null)
+	if [ -n "$containers" ] ; then
 		docker stop $containers
 	else
 		for pid in $(lsof -t -i:443); do
@@ -4504,9 +4504,13 @@ if [ -n "$dbrootpasswd" ]; then
 fi
 
 local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
-if docker ps --filter "name=nginx" --filter "status=running" > /dev/null 2>&1; then
-	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_lv}环境已安装${gl_bai}  $output  $db_output"
+
+
+if command -v docker &>/dev/null; then
+	if docker ps --filter "name=nginx" --filter "status=running" | grep -q nginx; then
+		echo -e "${gl_huang}------------------------"
+		echo -e "${gl_lv}环境已安装${gl_bai}  $output  $db_output"
+	fi
 fi
 
 }
