@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.3.1"
+sh_v="3.3.2"
 
 
 gl_hui='\e[37m'
@@ -1061,7 +1061,6 @@ yuming="${1:-}"
 if [ -z "$yuming" ]; then
 	add_yuming
 fi
-repeat_add_yuming
 install_certbot
 yes | certbot delete --cert-name $yuming > /dev/null 2>&1
 install_ssltls
@@ -1127,19 +1126,6 @@ certs_status() {
 }
 
 repeat_add_yuming() {
-
-domain_regex="^([a-zA-Z0-9-]+\.)+[a-zA-Z]{2,}$"
-if [[ $yuming =~ $domain_regex ]]; then
-  :
-else
-  send_stats "域名格式不正确"
-  echo -e "${gl_huang}提示: ${gl_bai}域名格式不正确，请重新输入"
-  break_end
-  clear
-  echo "请再次尝试"
-  add_yuming
-  repeat_add_yuming
-fi
 
 if [ -e /home/web/conf.d/$yuming.conf ]; then
   send_stats "域名重复使用"
@@ -1830,7 +1816,6 @@ ldnmp_Proxy() {
 	if [ -z "$port" ]; then
 		read -e -p "请输入你的反代端口: " port
 	fi
-	repeat_add_yuming
 	install_ssltls
 	certs_status
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
@@ -2135,18 +2120,13 @@ set_timedate() {
 }
 
 
-wait_for_lock() {
-	while fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do
-		echo "等待dpkg锁释放..."
-		sleep 1
-	done
-}
 
 # 修复dpkg中断问题
 fix_dpkg() {
+	pkill -9 -f 'apt|dpkg'
+	rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock 
 	DEBIAN_FRONTEND=noninteractive dpkg --configure -a
 }
-
 
 
 linux_update() {
@@ -2156,7 +2136,6 @@ linux_update() {
 	elif command -v yum &>/dev/null; then
 		yum -y update
 	elif command -v apt &>/dev/null; then
-		wait_for_lock
 		fix_dpkg
 		DEBIAN_FRONTEND=noninteractive apt update -y
 		DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
@@ -2196,7 +2175,6 @@ linux_clean() {
 		journalctl --vacuum-size=500M
 
 	elif command -v apt &>/dev/null; then
-		wait_for_lock
 		fix_dpkg
 		apt autoremove --purge -y
 		apt clean -y
@@ -3564,7 +3542,7 @@ linux_ps() {
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}$output"
 	echo -e "${gl_kjlan}-------------"
-	echo -e "${gl_kjlan}网络算法:     ${gl_bai}$congestion_algorithm $queue_algorithm"	
+	echo -e "${gl_kjlan}网络算法:     ${gl_bai}$congestion_algorithm $queue_algorithm"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}运营商:       ${gl_bai}$isp_info"
 	echo -e "${gl_kjlan}IPv4地址:     ${gl_bai}$ipv4_address"
@@ -4981,7 +4959,6 @@ linux_ldnmp() {
 	  nginx_install_status
 	  add_yuming
 	  read -e -p "请输入跳转域名: " reverseproxy
-	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 
@@ -5008,7 +4985,6 @@ linux_ldnmp() {
 	  add_yuming
 	  echo -e "域名格式: ${gl_huang}google.com${gl_bai}"
 	  read -e -p "请输入你的反代域名: " fandai_yuming
-	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 
@@ -5079,7 +5055,6 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  nginx_install_status
 	  add_yuming
-	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 
@@ -5102,7 +5077,6 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  nginx_install_status
 	  add_yuming
-	  repeat_add_yuming
 	  install_ssltls
 	  certs_status
 
