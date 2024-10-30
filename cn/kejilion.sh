@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.3.3"
+sh_v="3.3.4"
 
 
 gl_hui='\e[37m'
@@ -852,129 +852,24 @@ install_ldnmp_conf() {
 install_ldnmp() {
 
 	  check_swap
+
+	  if ! grep -q "kjlion/php:fpm-alpine" /home/web/docker-compose.yml; then
+		  sed -i -e 's|php:fpm-alpine|kjlion/php:fpm-alpine|g' \
+				 -e 's|php:7.4-fpm-alpine|kjlion/php:7.4-fpm-alpine|g' /home/web/docker-compose.yml
+	  fi
+
 	  cd /home/web && docker compose up -d
+
 	  clear
-	  echo "正在配置LDNMP环境，请耐心稍等……"
-
-	  # 定义要执行的命令
-	  commands=(
-		  "docker exec nginx chown -R nginx:nginx /var/www/html > /dev/null 2>&1"
-		  "docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1"
-		  "docker exec nginx chmod -R nginx:nginx /var/cache/nginx/proxy > /dev/null 2>&1"
-		  "docker exec nginx mkdir -p /var/cache/nginx/fastcgi > /dev/null 2>&1"
-		  "docker exec nginx chmod -R nginx:nginx /var/cache/nginx/fastcgi > /dev/null 2>&1"
-		  "docker restart nginx > /dev/null 2>&1"
-
-		  "run_command docker exec php sed -i \"s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g\" /etc/apk/repositories > /dev/null 2>&1"
-		  "run_command docker exec php74 sed -i \"s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g\" /etc/apk/repositories > /dev/null 2>&1"
-
-		  # "docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
-		  # "docker exec php74 sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1"
-
-		  "docker exec php apk update > /dev/null 2>&1"
-		  "docker exec php74 apk update > /dev/null 2>&1"
-
-		  # php安装包管理
-		  "curl -sL ${gh_proxy}https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions > /dev/null 2>&1"
-		  "docker exec php mkdir -p /usr/local/bin/ > /dev/null 2>&1"
-		  "docker exec php74 mkdir -p /usr/local/bin/ > /dev/null 2>&1"
-		  "docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/ > /dev/null 2>&1"
-		  "docker cp /usr/local/bin/install-php-extensions php74:/usr/local/bin/ > /dev/null 2>&1"
-		  "docker exec php chmod +x /usr/local/bin/install-php-extensions > /dev/null 2>&1"
-		  "docker exec php74 chmod +x /usr/local/bin/install-php-extensions > /dev/null 2>&1"
-
-		  # php安装扩展
-		  "docker exec php sh -c '\
-					apk add --no-cache imagemagick imagemagick-dev \
-					&& apk add --no-cache git autoconf gcc g++ make pkgconfig \
-					&& rm -rf /tmp/imagick \
-					&& git clone ${gh_proxy}https://github.com/Imagick/imagick /tmp/imagick \
-					&& cd /tmp/imagick \
-					&& phpize \
-					&& ./configure \
-					&& make \
-					&& make install \
-					&& echo 'extension=imagick.so' > /usr/local/etc/php/conf.d/imagick.ini \
-					&& rm -rf /tmp/imagick' > /dev/null 2>&1"
-
-
-		  "docker exec php install-php-extensions imagick > /dev/null 2>&1"
-		  "docker exec php install-php-extensions mysqli > /dev/null 2>&1"
-		  "docker exec php install-php-extensions pdo_mysql > /dev/null 2>&1"
-		  "docker exec php install-php-extensions gd > /dev/null 2>&1"
-		  "docker exec php install-php-extensions intl > /dev/null 2>&1"
-		  "docker exec php install-php-extensions zip > /dev/null 2>&1"
-		  "docker exec php install-php-extensions exif > /dev/null 2>&1"
-		  "docker exec php install-php-extensions bcmath > /dev/null 2>&1"
-		  "docker exec php install-php-extensions opcache > /dev/null 2>&1"
-		  "docker exec php install-php-extensions redis > /dev/null 2>&1"
-
-
-		  # php配置参数
-		  "docker exec php sh -c 'echo \"upload_max_filesize=50M \" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
-		  "docker exec php sh -c 'echo \"post_max_size=50M \" > /usr/local/etc/php/conf.d/post.ini' > /dev/null 2>&1"
-		  "docker exec php sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
-		  "docker exec php sh -c 'echo \"max_execution_time=1200\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
-		  "docker exec php sh -c 'echo \"max_input_time=600\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
-		  "docker exec php sh -c 'echo \"max_input_vars=3000\" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1"
-
-		  # php重启
-		  "docker exec php chown -R www-data:www-data /var/www/html"
-		  "docker restart php > /dev/null 2>&1"
-
-		  # php7.4安装扩展
-		  "docker exec php74 install-php-extensions imagick > /dev/null 2>&1"
-		  "docker exec php74 install-php-extensions mysqli > /dev/null 2>&1"
-		  "docker exec php74 install-php-extensions pdo_mysql > /dev/null 2>&1"
-		  "docker exec php74 install-php-extensions gd > /dev/null 2>&1"
-		  "docker exec php74 install-php-extensions intl > /dev/null 2>&1"
-		  "docker exec php74 install-php-extensions zip > /dev/null 2>&1"
-		  "docker exec php74 install-php-extensions exif > /dev/null 2>&1"
-		  "docker exec php74 install-php-extensions bcmath > /dev/null 2>&1"
-		  "docker exec php74 install-php-extensions opcache > /dev/null 2>&1"
-		  "docker exec php74 install-php-extensions redis > /dev/null 2>&1"
-
-		  # php7.4配置参数
-		  "docker exec php74 sh -c 'echo \"upload_max_filesize=50M \" > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1"
-		  "docker exec php74 sh -c 'echo \"post_max_size=50M \" > /usr/local/etc/php/conf.d/post.ini' > /dev/null 2>&1"
-		  "docker exec php74 sh -c 'echo \"memory_limit=256M\" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1"
-		  "docker exec php74 sh -c 'echo \"max_execution_time=1200\" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1"
-		  "docker exec php74 sh -c 'echo \"max_input_time=600\" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1"
-		  "docker exec php74 sh -c 'echo \"max_input_vars=3000\" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1"
-
-		  # php7.4重启
-		  "docker exec php74 chown -R www-data:www-data /var/www/html"
-		  "docker restart php74 > /dev/null 2>&1"
-
-		  # redis调优
-		  "docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1"
-		  "docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1"
-
-	  )
-
-	  total_commands=${#commands[@]}  # 计算总命令数
-
-	  for ((i = 0; i < total_commands; i++)); do
-		  command="${commands[i]}"
-		  eval $command  # 执行命令
-
-		  # 打印百分比和进度条
-		  percentage=$(( (i + 1) * 100 / total_commands ))
-		  completed=$(( percentage / 2 ))
-		  remaining=$(( 50 - completed ))
-		  progressBar="["
-		  for ((j = 0; j < completed; j++)); do
-			  progressBar+="#"
-		  done
-		  for ((j = 0; j < remaining; j++)); do
-			  progressBar+="."
-		  done
-		  progressBar+="]"
-		  echo -ne "\r[${gl_lv}$percentage%${gl_bai}] $progressBar"
-	  done
-
-	  echo  # 打印换行，以便输出不被覆盖
-
+	  docker exec nginx chown -R nginx:nginx /var/www/html
+	  docker exec nginx mkdir -p /var/cache/nginx/proxy
+	  docker exec nginx chmod -R nginx:nginx /var/cache/nginx/proxy
+	  docker exec nginx mkdir -p /var/cache/nginx/fastcgi
+	  docker exec nginx chmod -R nginx:nginx /var/cache/nginx/fastcgi
+	  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
+	  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+	  docker restart nginx
+	  sleep 3
 
 	  clear
 	  echo "LDNMP环境安装完毕"
@@ -1306,9 +1201,6 @@ web_del() {
 	docker restart nginx
 }
 
-
-
-#!/bin/bash
 
 nginx_waf() {
 	mode=$1
