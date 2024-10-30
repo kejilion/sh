@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.3.2"
+sh_v="3.3.3"
 
 
 gl_hui='\e[37m'
@@ -986,22 +986,15 @@ install_ldnmp() {
 
 install_certbot() {
 
-	install certbot
-
 	cd ~
-
-	# 下载并使脚本可执行
 	curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
 	chmod +x auto_cert_renewal.sh
 
-	# 设置定时任务字符串
 	check_crontab_installed
 	cron_job="0 0 * * * ~/auto_cert_renewal.sh"
 
-	# 检查是否存在相同的定时任务
 	existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
 
-	# 如果不存在，则添加定时任务
 	if [ -z "$existing_cron" ]; then
 		(crontab -l 2>/dev/null; echo "$cron_job") | crontab -
 		echo "续签任务已添加"
@@ -1015,19 +1008,7 @@ install_ssltls() {
 	  cd ~
 	  file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
 	  if [ ! -f "$file_path" ]; then
-		echo -e "${gl_huang}正在申请域名证书...${gl_bai}"
-		certbot_version=$(certbot --version 2>&1 | grep -oP "\d+\.\d+\.\d+")
-
-		version_ge() {
-	  	  [ "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$1" ]
-		}
-
-		if version_ge "$certbot_version" "1.17.0"; then
-	  	  certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
-		else
-	  	  certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal
-		fi
-
+		docker run -it --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
 	  fi
 
 	  cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
@@ -1659,7 +1640,7 @@ ldnmp_install_status_one() {
 
    if docker inspect "php" &>/dev/null; then
 	send_stats "无法再次安装LDNMP环境"
-	echo -e "${gl_huang}提示: ${gl_bai}完整LDNMP环境已安装。无需再次安装环境。"
+	echo -e "${gl_huang}提示: ${gl_bai}建站环境已安装。无需再次安装！"
 	break_end
 	linux_ldnmp
    else
@@ -2124,7 +2105,7 @@ set_timedate() {
 # 修复dpkg中断问题
 fix_dpkg() {
 	pkill -9 -f 'apt|dpkg'
-	rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock 
+	rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock
 	DEBIAN_FRONTEND=noninteractive dpkg --configure -a
 }
 
