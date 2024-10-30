@@ -1042,6 +1042,7 @@ yuming="${1:-}"
 if [ -z "$yuming" ]; then
 	add_yuming
 fi
+install_docker
 install_certbot
 yes | certbot delete --cert-name $yuming > /dev/null 2>&1
 install_ssltls
