@@ -692,34 +692,71 @@ install_crontab() {
 
 
 docker_ipv6_on() {
-mkdir -p /etc/docker &>/dev/null
+	root_use
+	install jq
 
-cat > /etc/docker/daemon.json << EOF
+	local CONFIG_FILE="/etc/docker/daemon.json"
+	local REQUIRED_IPV6_CONFIG='{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64"}'
 
-{
-  "ipv6": true,
-  "fixed-cidr-v6": "2001:db8:1::/64"
-}
+	# 检查配置文件是否存在，如果不存在则创建文件并写入默认设置
+	if [ ! -f "$CONFIG_FILE" ]; then
+		echo "$REQUIRED_IPV6_CONFIG" | jq . > "$CONFIG_FILE"
+		k restart docker
+	else
+		# 使用jq处理配置文件的更新
+		local ORIGINAL_CONFIG=$(<"$CONFIG_FILE")
 
-EOF
+		# 检查当前配置是否已经有 ipv6 设置
+		local CURRENT_IPV6=$(echo "$ORIGINAL_CONFIG" | jq '.ipv6 // false')
 
-k restart docker
+		# 更新配置，开启 IPv6
+		if [[ "$CURRENT_IPV6" == "false" ]]; then
+			UPDATED_CONFIG=$(echo "$ORIGINAL_CONFIG" | jq '. + {ipv6: true, "fixed-cidr-v6": "2001:db8:1::/64"}')
+		else
+			UPDATED_CONFIG=$(echo "$ORIGINAL_CONFIG" | jq '. + {"fixed-cidr-v6": "2001:db8:1::/64"}')
+		fi
 
-echo "Docker已开启v6访问"
-
+		# 对比原始配置与新配置
+		if [[ "$ORIGINAL_CONFIG" == "$UPDATED_CONFIG" ]]; then
+			echo -e "${gl_huang}当前已开启ipv6访问${gl_bai}"
+		else
+			echo "$UPDATED_CONFIG" | jq . > "$CONFIG_FILE"
+			k restart docker
+		fi
+	fi
 }
 
 
 docker_ipv6_off() {
+	root_use
+	install jq
 
-rm -rf etc/docker/daemon.json &>/dev/null
+	local CONFIG_FILE="/etc/docker/daemon.json"
 
-k restart docker
+	# 检查配置文件是否存在
+	if [ ! -f "$CONFIG_FILE" ]; then
+		echo -e "${gl_hong}配置文件不存在${gl_bai}"
+		return
+	fi
 
-echo "Docker已关闭v6访问"
+	# 读取当前配置
+	local ORIGINAL_CONFIG=$(<"$CONFIG_FILE")
 
+	# 使用jq处理配置文件的更新
+	UPDATED_CONFIG=$(echo "$ORIGINAL_CONFIG" | jq 'del(.["fixed-cidr-v6"]) | .ipv6 = false')
+
+	# 检查当前的 ipv6 状态
+	local CURRENT_IPV6=$(echo "$ORIGINAL_CONFIG" | jq -r '.ipv6 // false')
+
+	# 对比原始配置与新配置
+	if [[ "$CURRENT_IPV6" == "false" ]]; then
+		echo -e "${gl_huang}当前已关闭ipv6访问${gl_bai}"
+	else
+		echo "$UPDATED_CONFIG" | jq . > "$CONFIG_FILE"
+		k restart docker
+		echo -e "${gl_huang}已成功关闭ipv6访问${gl_bai}"
+	fi
 }
-
 
 
 
@@ -859,8 +896,6 @@ install_ldnmp() {
 	  fi
 
 	  cd /home/web && docker compose up -d
-
-	  clear
 	  docker exec nginx chown -R nginx:nginx /var/www/html
 	  docker exec nginx mkdir -p /var/cache/nginx/proxy
 	  docker exec nginx chmod -R nginx:nginx /var/cache/nginx/proxy
@@ -869,7 +904,7 @@ install_ldnmp() {
 	  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
 	  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
 	  docker restart nginx
-	  sleep 3
+	  sleep 20
 
 	  clear
 	  echo "LDNMP环境安装完毕"
