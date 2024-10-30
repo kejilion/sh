@@ -27,3 +27,7 @@ bash <(curl -sL kejilion.sh)
 ### 觉得脚本还可以USTD TRC20打赏
 ![Snipaste_2024-01-17_18-01-52](https://github.com/kejilion/sh/assets/131984541/98cf2762-1bfb-4c33-af10-af0eda29fc20)
 
+***
+
+### Star History
+[![Star History Chart](https://api.star-history.com/svg?repos=kejilion/sh&type=Date)](https://star-history.com/#kejilion/sh&Date)
