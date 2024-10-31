@@ -1625,26 +1625,20 @@ echo ""
 
 ldnmp_install_status() {
 
-   if docker inspect "php" &>/dev/null; then
-	echo "LDNMP环境已安装，开始部署 $webname"
-   else
-	send_stats "请先安装LDNMP环境"
-	ldnmp_install_all
-	echo "LDNMP环境已安装，开始部署 $webname"
-   fi
+	if ! docker inspect "php" &>/dev/null; then
+		send_stats "请先安装LDNMP环境"
+		ldnmp_install_all
+	fi
 
 }
 
 
 nginx_install_status() {
 
-   if docker inspect "nginx" &>/dev/null; then
-	echo "nginx环境已安装，开始部署 $webname"
-   else
-	send_stats "请先安装nginx环境"
-	nginx_install_all
-	echo "nginx环境已安装，开始部署 $webname"
-   fi
+	if ! docker inspect "nginx" &>/dev/null; then
+		send_stats "请先安装nginx环境"
+		nginx_install_all
+	fi
 
 }
 
@@ -1675,11 +1669,12 @@ ldnmp_wp() {
   webname="WordPress"
   yuming="${1:-}"
   send_stats "安装$webname"
-  ldnmp_install_status
+  echo "开始部署 $webname"
   if [ -z "$yuming" ]; then
 	add_yuming
   fi
   repeat_add_yuming
+  ldnmp_install_status
   install_ssltls
   certs_status
   add_db
@@ -1718,8 +1713,7 @@ ldnmp_Proxy() {
 	port="${3:-}"
 
 	send_stats "安装$webname"
-	nginx_install_status
-
+	echo "开始部署 $webname"
 	if [ -z "$yuming" ]; then
 		add_yuming
 	fi
@@ -1730,6 +1724,7 @@ ldnmp_Proxy() {
 	if [ -z "$port" ]; then
 		read -e -p "请输入你的反代端口: " port
 	fi
+	nginx_install_status
 	install_ssltls
 	certs_status
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
@@ -4473,9 +4468,10 @@ linux_ldnmp() {
 	  # Discuz论坛
 	  webname="Discuz论坛"
 	  send_stats "安装$webname"
-	  ldnmp_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
+	  ldnmp_install_status
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4509,9 +4505,10 @@ linux_ldnmp() {
 	  # 可道云桌面
 	  webname="可道云桌面"
 	  send_stats "安装$webname"
-	  ldnmp_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
+	  ldnmp_install_status
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4542,9 +4539,10 @@ linux_ldnmp() {
 	  # 苹果CMS
 	  webname="苹果CMS"
 	  send_stats "安装$webname"
-	  ldnmp_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
+	  ldnmp_install_status
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4584,9 +4582,10 @@ linux_ldnmp() {
 	  # 独脚数卡
 	  webname="独脚数卡"
 	  send_stats "安装$webname"
-	  ldnmp_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
+	  ldnmp_install_status
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4631,9 +4630,10 @@ linux_ldnmp() {
 	  # flarum论坛
 	  webname="flarum论坛"
 	  send_stats "安装$webname"
-	  ldnmp_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
+	  ldnmp_install_status
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4672,9 +4672,10 @@ linux_ldnmp() {
 	  # typecho
 	  webname="typecho"
 	  send_stats "安装$webname"
-	  ldnmp_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
+	  ldnmp_install_status
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4708,9 +4709,10 @@ linux_ldnmp() {
 	  # LinkStack
 	  webname="LinkStack"
 	  send_stats "安装$webname"
-	  ldnmp_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
+	  ldnmp_install_status
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4742,9 +4744,10 @@ linux_ldnmp() {
 	  clear
 	  webname="PHP动态站点"
 	  send_stats "安装$webname"
-	  ldnmp_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
+	  ldnmp_install_status
 	  install_ssltls
 	  certs_status
 	  add_db
@@ -4871,9 +4874,10 @@ linux_ldnmp() {
 	  clear
 	  webname="站点重定向"
 	  send_stats "安装$webname"
-	  nginx_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  read -e -p "请输入跳转域名: " reverseproxy
+	  nginx_install_status
 	  install_ssltls
 	  certs_status
 
@@ -4896,10 +4900,11 @@ linux_ldnmp() {
 	  clear
 	  webname="反向代理-域名"
 	  send_stats "安装$webname"
-	  nginx_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  echo -e "域名格式: ${gl_huang}google.com${gl_bai}"
 	  read -e -p "请输入你的反代域名: " fandai_yuming
+	  nginx_install_status
 	  install_ssltls
 	  certs_status
 
@@ -4918,9 +4923,10 @@ linux_ldnmp() {
 	  clear
 	  webname="静态站点"
 	  send_stats "安装$webname"
-	  nginx_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
+	  nginx_install_status
 	  install_ssltls
 	  certs_status
 
@@ -4968,8 +4974,9 @@ linux_ldnmp() {
 	  clear
 	  webname="Bitwarden"
 	  send_stats "安装$webname"
-	  nginx_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
+	  nginx_install_status
 	  install_ssltls
 	  certs_status
 
@@ -4990,8 +4997,9 @@ linux_ldnmp() {
 	  clear
 	  webname="halo"
 	  send_stats "安装$webname"
-	  nginx_install_status
+	  echo "开始部署 $webname"
 	  add_yuming
+	  nginx_install_status
 	  install_ssltls
 	  certs_status
 
