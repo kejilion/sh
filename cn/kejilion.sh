@@ -896,14 +896,8 @@ install_ldnmp() {
 	  fi
 
 	  cd /home/web && docker compose up -d
-	  docker exec nginx chown -R nginx:nginx /var/www/html
-	  docker exec nginx mkdir -p /var/cache/nginx/proxy
-	  docker exec nginx mkdir -p /var/cache/nginx/fastcgi
-	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy
-	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi
-	  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1
-	  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
-	  docker restart nginx > /dev/null 2>&1
+
+	  restart_ldnmp
 
 	  for i in {20..1}; do
 		  echo -ne " 环境正在启动，倒计时${gl_lv}$i${gl_bai}秒...\r"
@@ -1081,9 +1075,16 @@ reverse_proxy() {
 
 restart_ldnmp() {
 	  docker exec nginx chown -R nginx:nginx /var/www/html
+	  docker exec nginx mkdir -p /var/cache/nginx/proxy
+	  docker exec nginx mkdir -p /var/cache/nginx/fastcgi
+	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy
+	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi
+	  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1
+	  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
 	  docker exec php chown -R www-data:www-data /var/www/html
 	  docker exec php74 chown -R www-data:www-data /var/www/html
-	  cd /home/web && docker compose restart
+	  cd /home/web && docker compose restart nginx php php74
+
 }
 
 nginx_upgrade() {
