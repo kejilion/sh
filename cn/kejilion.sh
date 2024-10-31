@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.3.4"
+sh_v="3.3.5"
 
 
 gl_hui='\e[37m'
@@ -898,13 +898,18 @@ install_ldnmp() {
 	  cd /home/web && docker compose up -d
 	  docker exec nginx chown -R nginx:nginx /var/www/html
 	  docker exec nginx mkdir -p /var/cache/nginx/proxy
-	  docker exec nginx chmod -R nginx:nginx /var/cache/nginx/proxy
 	  docker exec nginx mkdir -p /var/cache/nginx/fastcgi
-	  docker exec nginx chmod -R nginx:nginx /var/cache/nginx/fastcgi
-	  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
-	  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
-	  docker restart nginx
-	  sleep 20
+	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy
+	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi
+	  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1
+	  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
+	  docker restart nginx > /dev/null 2>&1
+
+	  for i in {20..1}; do
+		  echo -ne " 环境正在启动，倒计时${gl_lv}$i${gl_bai}秒...\r"
+		  sleep 1
+	  done
+	  echo -e "\n"
 
 	  clear
 	  echo "LDNMP环境安装完毕"
@@ -1091,8 +1096,8 @@ nginx_upgrade() {
   docker compose up -d --force-recreate $ldnmp_pods
   docker exec nginx chown -R nginx:nginx /var/www/html
   docker exec nginx mkdir -p /var/cache/nginx/proxy
-  docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy
   docker exec nginx mkdir -p /var/cache/nginx/fastcgi
+  docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy
   docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi
   docker restart $ldnmp_pods > /dev/null 2>&1
 
@@ -4039,8 +4044,9 @@ linux_docker() {
 			  read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定卸载docker环境吗？(Y/N): ")" choice
 			  case "$choice" in
 				[Yy])
-				  docker rm $(docker ps -a -q) && docker rmi $(docker images -q) && docker network prune
+				  docker ps -a -q | xargs -r docker rm -f && docker images -q | xargs -r docker rmi && docker network prune -f && docker volume prune -f
 				  k remove docker docker-compose docker-ce docker-ce-cli containerd.io
+				  rm -f /etc/docker/daemon.json
 				  hash -r
 				  ;;
 				[Nn])
