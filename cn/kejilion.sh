@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.3.5"
+sh_v="3.3.6"
 
 
 gl_hui='\e[37m'
@@ -777,14 +777,16 @@ iptables_open() {
 
 
 add_swap() {
+	local new_swap=$1  # 获取传入的参数
+
 	# 获取当前系统中所有的 swap 分区
-	swap_partitions=$(grep -E '^/dev/' /proc/swaps | awk '{print $1}')
+	local swap_partitions=$(grep -E '^/dev/' /proc/swaps | awk '{print $1}')
 
 	# 遍历并删除所有的 swap 分区
 	for partition in $swap_partitions; do
-	  swapoff "$partition"
-	  wipefs -a "$partition"  # 清除文件系统标识符
-	  mkswap -f "$partition"
+		swapoff "$partition"
+		wipefs -a "$partition"
+		mkswap -f "$partition"
 	done
 
 	# 确保 /swapfile 不再被使用
@@ -794,17 +796,23 @@ add_swap() {
 	rm -f /swapfile
 
 	# 创建新的 swap 分区
-	dd if=/dev/zero of=/swapfile bs=1M count=$new_swap
+	fallocate -l ${new_swap}M /swapfile
 	chmod 600 /swapfile
 	mkswap /swapfile
 	swapon /swapfile
 
 	if [ -f /etc/alpine-release ]; then
+		# 删除已有的 swap 条目
+		sed -i '/\/swapfile/d' /etc/fstab
 		echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
-		echo "nohup swapon /swapfile" >> /etc/local.d/swap.start
+
+		# 确保在 local.d 中启动 swap
+		echo "nohup swapon /swapfile" > /etc/local.d/swap.start
 		chmod +x /etc/local.d/swap.start
 		rc-update add local
 	else
+		# 删除已有的 swap 条目
+		sed -i '/\/swapfile/d' /etc/fstab
 		echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
 	fi
 
@@ -813,17 +821,14 @@ add_swap() {
 
 
 
+
 check_swap() {
 
 swap_total=$(free -m | awk 'NR==3{print $2}')
 
- # 判断是否需要创建虚拟内存
-if [ "$swap_total" -gt 0 ]; then
-	:
-else
-	new_swap=1024
-	add_swap
-fi
+# 判断是否需要创建虚拟内存
+[ "$swap_total" -gt 0 ] || add_swap 1024
+
 
 }
 
@@ -7365,19 +7370,17 @@ EOF
 				case "$choice" in
 				  1)
 					send_stats "已设置1G虚拟内存"
-					new_swap=1024
-					add_swap
+					add_swap 1024
 
 					;;
 				  2)
 					send_stats "已设置2G虚拟内存"
-					new_swap=2048
-					add_swap
+					add_swap 2048
 
 					;;
 				  3)
 					read -e -p "请输入虚拟内存大小MB: " new_swap
-					add_swap
+					add_swap "$new_swap"
 					send_stats "已设置自定义虚拟内存"
 					;;
 
@@ -8310,8 +8313,7 @@ EOF
 				  echo -e "[${gl_lv}OK${gl_bai}] 2/10. 清理系统垃圾文件"
 
 				  echo "------------------------------------------------"
-				  new_swap=1024
-				  add_swap
+				  add_swap 1024
 				  echo -e "[${gl_lv}OK${gl_bai}] 3/10. 设置虚拟内存${gl_huang}1G${gl_bai}"
 
 				  echo "------------------------------------------------"
