@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.3.6"
+sh_v="3.3.7"
 
 
 gl_hui='\e[37m'
@@ -1122,7 +1122,7 @@ phpmyadmin_upgrade() {
   docker compose -f docker-compose.phpmyadmin.yml up -d
   clear
   ip_address
-  has_ipv4_has_ipv6
+  
   check_docker_app_ip
   echo "登录信息: "
   echo "用户名: $dbuse"
@@ -1304,27 +1304,6 @@ check_cf_mode() {
 
 
 
-
-has_ipv4_has_ipv6() {
-
-ip_address
-if [ -z "$ipv4_address" ]; then
-	has_ipv4=false
-else
-	has_ipv4=true
-fi
-
-if [ -z "$ipv6_address" ]; then
-	has_ipv6=false
-else
-	has_ipv6=true
-fi
-
-
-}
-
-
-
 check_docker_app() {
 
 if docker inspect "$docker_name" &>/dev/null; then
@@ -1339,10 +1318,12 @@ fi
 check_docker_app_ip() {
 echo "------------------------"
 echo "访问地址:"
-if $has_ipv4; then
+ip_address
+if [ -n "$ipv4_address" ]; then
 	echo "http://$ipv4_address:$docker_port"
 fi
-if $has_ipv6; then
+
+if [ -n "$ipv6_address" ]; then
 	echo "http://[$ipv6_address]:$docker_port"
 fi
 
@@ -1362,7 +1343,7 @@ done
 
 docker_app() {
 send_stats "${docker_name}管理"
-has_ipv4_has_ipv6
+
 while true; do
 	clear
 	check_docker_app
@@ -3460,8 +3441,13 @@ linux_ps() {
 	echo -e "${gl_kjlan}网络算法:     ${gl_bai}$congestion_algorithm $queue_algorithm"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}运营商:       ${gl_bai}$isp_info"
-	echo -e "${gl_kjlan}IPv4地址:     ${gl_bai}$ipv4_address"
-	echo -e "${gl_kjlan}IPv6地址:     ${gl_bai}$ipv6_address"
+	if [ -n "$ipv4_address" ]; then
+		echo -e "${gl_kjlan}IPv4地址:     ${gl_bai}$ipv4_address"
+	fi
+	
+	if [ -n "$ipv6_address" ]; then
+		echo -e "${gl_kjlan}IPv6地址:     ${gl_bai}$ipv6_address"
+	fi
 	echo -e "${gl_kjlan}DNS地址:      ${gl_bai}$dns_addresses"
 	echo -e "${gl_kjlan}地理位置:     ${gl_bai}$country $city"
 	echo -e "${gl_kjlan}系统时间:     ${gl_bai}$timezone $current_time"
@@ -5977,7 +5963,7 @@ linux_panel() {
 
 		  10)
 			send_stats "搭建聊天"
-			has_ipv4_has_ipv6
+			
 			docker_name=rocketchat
 			docker_port=3897
 			while true; do
@@ -6100,7 +6086,7 @@ linux_panel() {
 			  ;;
 		  13)
 			send_stats "搭建网盘"
-			has_ipv4_has_ipv6
+			
 
 			docker_name=cloudreve
 			docker_port=5212
@@ -6282,7 +6268,7 @@ linux_panel() {
 		  19)
 			send_stats "搭建雷池"
 
-			has_ipv4_has_ipv6
+			
 			docker_name=safeline-mgt
 			docker_port=9443
 			while true; do
