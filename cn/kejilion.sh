@@ -1067,6 +1067,7 @@ reverse_proxy() {
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  sed -i "s/0.0.0.0/$ipv4_address/g" /home/web/conf.d/$yuming.conf
 	  sed -i "s/0000/$duankou/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 	  docker restart nginx
 }
 
@@ -1687,10 +1688,7 @@ ldnmp_wp() {
   add_db
   wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
   sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-
-
   nginx_http_on
-
 
   cd /home/web/html
   mkdir $yuming
@@ -1743,7 +1741,7 @@ ldnmp_Proxy() {
 	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
 	sed -i "s/0000/$port/g" /home/web/conf.d/$yuming.conf
-
+	nginx_http_on
 	docker restart nginx
 	nginx_web_on
 }
@@ -4541,8 +4539,8 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
-
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  cd /home/web/html
 	  mkdir $yuming
@@ -4579,6 +4577,7 @@ linux_ldnmp() {
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  cd /home/web/html
 	  mkdir $yuming
@@ -4612,8 +4611,8 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
-
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  cd /home/web/html
 	  mkdir $yuming
@@ -4655,8 +4654,8 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
-
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  cd /home/web/html
 	  mkdir $yuming
@@ -4704,6 +4703,7 @@ linux_ldnmp() {
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  cd /home/web/html
 	  mkdir $yuming
@@ -4746,6 +4746,7 @@ linux_ldnmp() {
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  cd /home/web/html
 	  mkdir $yuming
@@ -4784,6 +4785,7 @@ linux_ldnmp() {
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/refs/heads/main/index_php.conf
 	  sed -i "s|/var/www/html/yuming.com/|/var/www/html/yuming.com/linkstack|g" /home/web/conf.d/$yuming.conf
 	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  cd /home/web/html
 	  mkdir $yuming
@@ -4818,6 +4820,7 @@ linux_ldnmp() {
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  cd /home/web/html
 	  mkdir $yuming
@@ -4948,6 +4951,7 @@ linux_ldnmp() {
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  docker restart nginx
 
@@ -4975,6 +4979,7 @@ linux_ldnmp() {
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  sed -i "s|fandaicom|$fandai_yuming|g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  docker restart nginx
 
@@ -4996,6 +5001,7 @@ linux_ldnmp() {
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/html.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
 
 	  cd /home/web/html
 	  mkdir $yuming
