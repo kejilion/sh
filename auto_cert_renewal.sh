@@ -36,7 +36,7 @@ for cert_dir in $certs_directory*; do
     if [ $days_until_expiry -le $days_before_expiry ]; then
         echo "证书将在${days_before_expiry}天内过期，正在进行自动续签。"
         
-        docker run -it --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
+        docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
 
         docker stop nginx > /dev/null 2>&1
 
