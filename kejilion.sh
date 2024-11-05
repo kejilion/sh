@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.3.9"
+sh_v="3.3.10"
 
 
 gl_hui='\e[37m'
@@ -977,7 +977,7 @@ if [ -z "$yuming" ]; then
 fi
 install_docker
 install_certbot
-yes | certbot delete --cert-name $yuming > /dev/null 2>&1
+rm -rf /etc/letsencrypt/$yuming > /dev/null 2>&1
 install_ssltls
 certs_status
 install_ssltls_text
@@ -1106,6 +1106,9 @@ nginx_upgrade() {
   docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy
   docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi
   docker restart $ldnmp_pods > /dev/null 2>&1
+
+  send_stats "更新$ldnmp_pods"
+  echo "更新${ldnmp_pods}完成"
 
 }
 
@@ -1815,7 +1818,7 @@ ldnmp_web_status() {
 				send_stats "申请域名证书"
 				read -e -p "请输入你的域名: " yuming
 				install_certbot
-				yes | certbot delete --cert-name $yuming > /dev/null 2>&1
+				rm -rf /etc/letsencrypt/$yuming > /dev/null 2>&1
 				install_ssltls
 				certs_status
 
@@ -5529,8 +5532,6 @@ linux_ldnmp() {
 		  case $sub_choice in
 			  1)
 			  nginx_upgrade
-			  send_stats "更新$ldnmp_pods"
-			  echo "更新${ldnmp_pods}完成"
 
 				  ;;
 
