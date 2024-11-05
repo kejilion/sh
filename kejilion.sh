@@ -977,8 +977,7 @@ if [ -z "$yuming" ]; then
 fi
 install_docker
 install_certbot
-rm -rf /etc/letsencrypt/live/$yuming > /dev/null 2>&1
-
+docker run -it --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
 install_ssltls
 certs_status
 install_ssltls_text
@@ -1819,7 +1818,7 @@ ldnmp_web_status() {
 				send_stats "申请域名证书"
 				read -e -p "请输入你的域名: " yuming
 				install_certbot
-				rm -rf /etc/letsencrypt/live/$yuming > /dev/null 2>&1
+				docker run -it --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
 				install_ssltls
 				certs_status
 
