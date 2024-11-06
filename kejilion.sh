@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.3.10"
+sh_v="3.4.0"
 
 
 gl_hui='\e[37m'
@@ -1438,6 +1438,66 @@ while true; do
 done
 
 }
+
+
+
+prometheus_install() {
+
+local PROMETHEUS_DIR="/home/docker/monitoring/prometheus"
+local GRAFANA_DIR="/home/docker/monitoring/grafana"
+local NETWORK_NAME="monitoring"
+
+# Create necessary directories
+mkdir -p $PROMETHEUS_DIR
+mkdir -p $GRAFANA_DIR
+
+# Set correct ownership for Grafana directory
+chown -R 472:472 $GRAFANA_DIR
+
+# Create Prometheus configuration file
+cat <<EOF > $PROMETHEUS_DIR/prometheus.yml
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prometheus'
+	static_configs:
+	  - targets: ['localhost:9090']
+  - job_name: 'node-exporter'
+	static_configs:
+	  - targets: ['node-exporter:9100']
+EOF
+
+# Create Docker network for monitoring
+docker network create $NETWORK_NAME
+
+# Run Node Exporter container
+docker run -d \
+  --name=node-exporter \
+  --network $NETWORK_NAME \
+  --restart unless-stopped \
+  prom/node-exporter
+
+# Run Prometheus container
+docker run -d \
+  --name prometheus \
+  -v $PROMETHEUS_DIR/prometheus.yml:/etc/prometheus/prometheus.yml \
+  --network $NETWORK_NAME \
+  --restart unless-stopped \
+  prom/prometheus:latest
+
+# Run Grafana container
+docker run -d \
+  --name grafana \
+  -p 8047:3000 \
+  -e GF_SECURITY_ADMIN_PASSWORD=admin \
+  -v $GRAFANA_DIR:/var/lib/grafana \
+  --network $NETWORK_NAME \
+  --restart unless-stopped \
+  grafana/grafana:latest
+
+}
+
 
 
 
@@ -5721,6 +5781,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板                	 ${gl_kjlan}42.  ${gl_bai}Nexterm远程连接工具"
 	  echo -e "${gl_kjlan}43.  ${gl_bai}RustDesk远程桌面(服务端)            ${gl_kjlan}44.  ${gl_bai}RustDesk远程桌面(中继端)"
 	  echo -e "${gl_kjlan}45.  ${gl_bai}Docker加速站            		 ${gl_kjlan}46.  ${gl_bai}GitHub加速站"
+	  echo -e "${gl_kjlan}47.  ${gl_bai}普罗米修斯监控"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板"
 	  echo -e "${gl_kjlan}------------------------"
@@ -6859,6 +6920,85 @@ linux_panel() {
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
+			  ;;
+
+		  47)
+			send_stats "普罗米修斯监控"
+
+			local docker_name=prometheus
+			local docker_port=8047
+			while true; do
+				check_docker_app
+				clear
+				echo -e "普罗米修斯监控 $check_docker"
+				echo "Prometheus+Grafana企业级监控系统"
+				echo "官网介绍: https://prometheus.io"
+				if docker inspect "$docker_name" &>/dev/null; then
+					check_docker_app_ip
+				fi
+				echo ""
+
+				echo "------------------------"
+				echo "1. 安装           2. 更新           3. 卸载"
+				echo "------------------------"
+				echo "5. 域名访问"
+				echo "------------------------"
+				echo "0. 返回上一级"
+				echo "------------------------"
+				read -e -p "输入你的选择: " choice
+
+				case $choice in
+					1)
+						install_docker
+						prometheus_install
+
+						clear
+
+						ip_address
+						echo "普罗米修斯监控 已经安装完成"
+						check_docker_app_ip
+						echo "用户名密码均为: admin"
+
+						;;
+
+					2)
+						docker rm -f node-exporter prometheus grafana
+						docker rmi -f prom/node-exporter
+						docker rmi -f prom/prometheus:latest
+						docker rmi -f grafana/grafana:latest
+						prometheus_install
+
+						clear
+
+						ip_address
+						echo "普罗米修斯监控 已经安装完成"
+						check_docker_app_ip
+
+						;;
+					3)
+						docker rm -f node-exporter prometheus grafana
+						docker rmi -f prom/node-exporter
+						docker rmi -f prom/prometheus:latest
+						docker rmi -f grafana/grafana:latest
+
+						rm -rf /home/docker/monitoring/*
+						echo "应用已卸载"
+
+						;;
+					5)
+						echo "${docker_name}域名访问设置"
+						send_stats "${docker_name}域名访问设置"
+						add_yuming
+						k fd ${yuming} ${ipv4_address} ${docker_port}
+						;;
+
+					*)
+						break
+						;;
+
+				esac
+				break_end
+			done
 			  ;;
 
 		  51)
