@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.0"
+sh_v="3.4.1"
 
 
 gl_hui='\e[37m'
@@ -5781,7 +5781,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板                	 ${gl_kjlan}42.  ${gl_bai}Nexterm远程连接工具"
 	  echo -e "${gl_kjlan}43.  ${gl_bai}RustDesk远程桌面(服务端)            ${gl_kjlan}44.  ${gl_bai}RustDesk远程桌面(中继端)"
 	  echo -e "${gl_kjlan}45.  ${gl_bai}Docker加速站            		 ${gl_kjlan}46.  ${gl_bai}GitHub加速站"
-	  echo -e "${gl_kjlan}47.  ${gl_bai}普罗米修斯监控"
+	  echo -e "${gl_kjlan}47.  ${gl_bai}普罗米修斯监控			 ${gl_kjlan}48.  ${gl_bai}普罗米修斯监控(节点端)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板"
 	  echo -e "${gl_kjlan}------------------------"
@@ -7000,6 +7000,24 @@ linux_panel() {
 				break_end
 			done
 			  ;;
+
+		  48)
+			local docker_name="node-exporter"
+			local docker_img="prom/node-exporter"
+			local docker_port=8048
+			local docker_rum="docker run -d \
+  								--name=node-exporter \
+  								-p 8048:9100 \
+  								--restart unless-stopped \
+  								prom/node-exporter"
+			local docker_describe="这是一个普罗米修斯的主机数据采集组件，请部署在被监控主机上。"
+			local docker_url="官网介绍: https://github.com/prometheus/node_exporter"
+			local docker_use=""
+			local docker_passwd=""
+			docker_app
+			  ;;
+
+
 
 		  51)
 			clear
