@@ -1454,8 +1454,8 @@ mkdir -p $GRAFANA_DIR
 # Set correct ownership for Grafana directory
 chown -R 472:472 $GRAFANA_DIR
 
-# Create Prometheus configuration file
-cat <<EOF > $PROMETHEUS_DIR/prometheus.yml
+if [ ! -f "$PROMETHEUS_DIR/prometheus.yml" ]; then
+  cat <<EOF > $PROMETHEUS_DIR/prometheus.yml
 global:
   scrape_interval: 15s
 
@@ -1467,6 +1467,7 @@ scrape_configs:
 	static_configs:
 	  - targets: ['node-exporter:9100']
 EOF
+fi
 
 # Create Docker network for monitoring
 docker network create $NETWORK_NAME
@@ -1482,15 +1483,16 @@ docker run -d \
 docker run -d \
   --name prometheus \
   -v $PROMETHEUS_DIR/prometheus.yml:/etc/prometheus/prometheus.yml \
+  -v $PROMETHEUS_DIR/data:/prometheus \
   --network $NETWORK_NAME \
   --restart unless-stopped \
+  --user 0:0 \
   prom/prometheus:latest
 
 # Run Grafana container
 docker run -d \
   --name grafana \
   -p 8047:3000 \
-  -e GF_SECURITY_ADMIN_PASSWORD=admin \
   -v $GRAFANA_DIR:/var/lib/grafana \
   --network $NETWORK_NAME \
   --restart unless-stopped \
@@ -6981,7 +6983,7 @@ linux_panel() {
 						docker rmi -f prom/prometheus:latest
 						docker rmi -f grafana/grafana:latest
 
-						rm -rf /home/docker/monitoring/*
+						rm -rf /home/docker/monitoring
 						echo "应用已卸载"
 
 						;;
