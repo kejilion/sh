@@ -1455,18 +1455,7 @@ mkdir -p $GRAFANA_DIR
 chown -R 472:472 $GRAFANA_DIR
 
 if [ ! -f "$PROMETHEUS_DIR/prometheus.yml" ]; then
-  cat <<EOF > $PROMETHEUS_DIR/prometheus.yml
-global:
-  scrape_interval: 15s
-
-scrape_configs:
-  - job_name: 'prometheus'
-	static_configs:
-	  - targets: ['localhost:9090']
-  - job_name: 'node-exporter'
-	static_configs:
-	  - targets: ['node-exporter:9100']
-EOF
+	curl -o "$PROMETHEUS_DIR/prometheus.yml" ${gh_proxy}https://raw.githubusercontent.com/kejilion/config/refs/heads/main/prometheus/prometheus.yml
 fi
 
 # Create Docker network for monitoring
