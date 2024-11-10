@@ -925,6 +925,7 @@ install_certbot() {
 install_ssltls() {
 	  docker stop nginx > /dev/null 2>&1
 	  iptables_open > /dev/null 2>&1
+	  check_port > /dev/null 2>&1
 	  cd ~
 
 	  local file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
@@ -8423,7 +8424,7 @@ EOF
 			  local remote_ip="66.42.61.110"
 			  local remote_user="liaotian123"
 			  local remote_file="/home/liaotian123/liaotian.txt"
-			  local password="kejilionYYDS"  # 替换为您的密码
+			  local password="kejilionYYDSCC"  # 替换为您的密码
 
 			  clear
 			  echo "科技lion留言板"
