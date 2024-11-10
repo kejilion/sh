@@ -1640,6 +1640,7 @@ output_status() {
 ldnmp_install_status_one() {
 
    if docker inspect "php" &>/dev/null; then
+	clear
 	send_stats "无法再次安装LDNMP环境"
 	echo -e "${gl_huang}提示: ${gl_bai}建站环境已安装。无需再次安装！"
 	break_end
