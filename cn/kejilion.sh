@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.1"
+sh_v="3.4.2"
 
 
 gl_hui='\e[37m'
@@ -1655,7 +1655,6 @@ ldnmp_install_all() {
 cd ~
 send_stats "安装LDNMP环境"
 root_use
-ldnmp_install_status_one
 clear
 echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境...${gl_bai}"
 check_port
@@ -1672,7 +1671,6 @@ nginx_install_all() {
 cd ~
 send_stats "安装nginx环境"
 root_use
-ldnmp_install_status_one
 clear
 echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
 check_port
@@ -4581,6 +4579,7 @@ linux_ldnmp() {
 
 	case $sub_choice in
 	  1)
+	  ldnmp_install_status_one
 	  ldnmp_install_all
 		;;
 	  2)
@@ -4996,6 +4995,7 @@ linux_ldnmp() {
 
 
 	  21)
+	  ldnmp_install_status_one
 	  nginx_install_all
 		;;
 
@@ -5773,7 +5773,8 @@ linux_panel() {
 	  echo -e "${gl_kjlan}41.  ${gl_bai}耗子管理面板                	 ${gl_kjlan}42.  ${gl_bai}Nexterm远程连接工具"
 	  echo -e "${gl_kjlan}43.  ${gl_bai}RustDesk远程桌面(服务端)            ${gl_kjlan}44.  ${gl_bai}RustDesk远程桌面(中继端)"
 	  echo -e "${gl_kjlan}45.  ${gl_bai}Docker加速站            		 ${gl_kjlan}46.  ${gl_bai}GitHub加速站"
-	  echo -e "${gl_kjlan}47.  ${gl_bai}普罗米修斯监控			 ${gl_kjlan}48.  ${gl_bai}普罗米修斯监控(节点端)"
+	  echo -e "${gl_kjlan}47.  ${gl_bai}普罗米修斯监控			 ${gl_kjlan}48.  ${gl_bai}普罗米修斯(主机监控)"
+	  echo -e "${gl_kjlan}49.  ${gl_bai}普罗米修斯(容器监控)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板"
 	  echo -e "${gl_kjlan}------------------------"
@@ -7009,6 +7010,27 @@ linux_panel() {
 			docker_app
 			  ;;
 
+		  49)
+			local docker_name="cadvisor"
+			local docker_img="gcr.io/cadvisor/cadvisor:latest"
+			local docker_port=8049
+			local docker_rum="docker run -d \
+  								--name=cadvisor \
+  								--restart unless-stopped \
+  								-p 8049:8080 \
+  								--volume=/:/rootfs:ro \
+  								--volume=/var/run:/var/run:rw \
+  								--volume=/sys:/sys:ro \
+  								--volume=/var/lib/docker/:/var/lib/docker:ro \
+  								gcr.io/cadvisor/cadvisor:latest \
+  								-housekeeping_interval=10s \
+  								-docker_only=true"
+			local docker_describe="这是一个普罗米修斯的容器数据采集组件，请部署在被监控主机上。"
+			local docker_url="官网介绍: https://github.com/google/cadvisor"
+			local docker_use=""
+			local docker_passwd=""
+			docker_app
+			  ;;
 
 
 		  51)
