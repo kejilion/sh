@@ -43,6 +43,13 @@ run_command() {
 }
 
 
+canshu_v6() {
+	if grep -q '^canshu="V6"' /usr/local/bin/k > /dev/null 2>&1; then
+		sed -i 's/^canshu="default"/canshu="V6"/' ~/kejilion.sh
+		sed -i 's/^canshu="default"/canshu="V6"/' /usr/local/bin/k
+	fi
+}
+
 
 CheckFirstRun_true() {
 	if grep -q '^permission_granted="true"' /usr/local/bin/k > /dev/null 2>&1; then
@@ -51,7 +58,6 @@ CheckFirstRun_true() {
 	fi
 }
 
-CheckFirstRun_true
 
 
 # 收集功能埋点信息的函数，记录当前脚本版本号，使用时间，系统版本，CPU架构，机器所在国家和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
@@ -86,7 +92,10 @@ fi
 
 
 
+canshu_v6
+CheckFirstRun_true
 yinsiyuanquan2
+
 cp -f ./kejilion.sh ~/kejilion.sh > /dev/null 2>&1
 cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
@@ -9097,6 +9106,7 @@ kejilion_update() {
 				else
 					curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
 				fi
+				canshu_v6
 				CheckFirstRun_true
 				yinsiyuanquan2
 				cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
