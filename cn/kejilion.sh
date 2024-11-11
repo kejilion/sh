@@ -298,7 +298,6 @@ kejilion() {
 
 check_port() {
 	k add lsof
-	docker rm -f nginx >/dev/null 2>&1
 	local containers=$(docker ps --filter "publish=443" --format "{{.ID}} " 2>/dev/null)
 	if [ -n "$containers" ] ; then
 		docker stop $containers
