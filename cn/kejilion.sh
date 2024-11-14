@@ -331,6 +331,11 @@ EOF
 
 fi
 
+
+enable docker
+start docker
+restart docker
+
 }
 
 
@@ -341,14 +346,11 @@ if [ "$country" = "CN" ]; then
 	curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/docker/main/install && chmod +x install
 	sh install --mirror Aliyun
 	rm -f install
-
 else
 	curl -fsSL https://get.docker.com | sh
 fi
 install_add_docker_cn
-enable docker
-start docker
-restart docker
+
 
 }
 
@@ -371,9 +373,6 @@ install_add_docker() {
 		fi
 		dnf install -y docker-ce docker-ce-cli containerd.io
 		install_add_docker_cn
-		enable docker
-		start docker
-		restart docker
 
 	elif [ -f /etc/os-release ] && grep -q "Kali" /etc/os-release; then
 		apt update
@@ -410,18 +409,14 @@ install_add_docker() {
 		apt update
 		apt install -y docker-ce docker-ce-cli containerd.io
 		install_add_docker_cn
-		enable docker
-		start docker
-		restart docker
+
 
 	elif command -v apt &>/dev/null || command -v yum &>/dev/null; then
 		install_add_docker_guanfang
 	else
 		install docker docker-compose
 		install_add_docker_cn
-		enable docker
-		start docker
-		restart docker
+
 	fi
 	sleep 2
 }
