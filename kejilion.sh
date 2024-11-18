@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.3"
+sh_v="3.4.4"
 
 
 gl_hui='\e[37m'
@@ -305,18 +305,26 @@ kejilion() {
 
 
 
+
 check_port() {
 	install lsof
-	local containers=$(docker ps --filter "publish=443" --format "{{.ID}} " 2>/dev/null)
-	if [ -n "$containers" ] ; then
-		docker stop $containers
-	else
-		for pid in $(lsof -t -i:443); do
-			kill -9 $pid
-		done
-	fi
-}
 
+	stop_containers_or_kill_process() {
+		local port=$1
+		local containers=$(docker ps --filter "publish=$port" --format "{{.ID}}" 2>/dev/null)
+
+		if [ -n "$containers" ]; then
+			docker stop $containers
+		else
+			for pid in $(lsof -t -i:$port); do
+				kill -9 $pid
+			done
+		fi
+	}
+
+	stop_containers_or_kill_process 80
+	stop_containers_or_kill_process 443
+}
 
 
 install_add_docker_cn() {
@@ -6352,9 +6360,9 @@ linux_panel() {
 			local docker_img="linuxserver/emby:latest"
 			local docker_port=8096
 			local docker_rum="docker run -d --name=emby --restart=always \
-						-v /homeo/docker/emby/config:/config \
-						-v /homeo/docker/emby/share1:/mnt/share1 \
-						-v /homeo/docker/emby/share2:/mnt/share2 \
+						-v /home/docker/emby/config:/config \
+						-v /home/docker/emby/share1:/mnt/share1 \
+						-v /home/docker/emby/share2:/mnt/share2 \
 						-v /mnt/notify:/mnt/notify \
 						-p 8096:8096 -p 8920:8920 \
 						-e UID=1000 -e GID=100 -e GIDLIST=100 \
