@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.4"
+sh_v="3.4.5"
 
 
 gl_hui='\e[37m'
@@ -896,20 +896,23 @@ install_ldnmp() {
 
 	  check_swap
 
-	  if ! grep -q "kjlion/php:fpm-alpine" /home/web/docker-compose.yml; then
-		  sed -i -e 's|php:fpm-alpine|kjlion/php:fpm-alpine|g' \
-				 -e 's|php:7.4-fpm-alpine|kjlion/php:7.4-fpm-alpine|g' /home/web/docker-compose.yml
+	  if ! grep -q "healthcheck" /home/web/docker-compose.yml; then
+	  	cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
+		wget -O /home/web/docker-compose.yml ${gh_proxy}https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+
+	  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+	  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+	  	dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+
+  		sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
+  		sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
+  		sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
+
 	  fi
 
 	  cd /home/web && docker compose up -d
 
 	  restart_ldnmp
-
-	  for i in {20..1}; do
-		  echo -ne " 环境正在启动，倒计时${gl_lv}$i${gl_bai}秒...\r"
-		  sleep 1
-	  done
-	  echo -e "\n"
 
 	  clear
 	  echo "LDNMP环境安装完毕"
