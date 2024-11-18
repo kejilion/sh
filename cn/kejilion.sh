@@ -907,7 +907,10 @@ install_ldnmp() {
   		sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
   		sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
   		sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
+	  fi
 
+	  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
+	  	sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml
 	  fi
 
 	  cd /home/web && docker compose up -d
