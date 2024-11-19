@@ -187,7 +187,7 @@ install() {
 
 
 install_dependency() {
-	  install wget socat unzip tar
+	  install wget unzip tar
 }
 
 
@@ -896,10 +896,10 @@ install_ldnmp() {
 
 	  check_swap
 
-	  if ! grep -q "healthcheck" /home/web/docker-compose.yml; then
-	  	cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
-		wget -O /home/web/docker-compose.yml ${gh_proxy}https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+	  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
 
+	  if ! grep -q "healthcheck" /home/web/docker-compose.yml; then
+		wget -O /home/web/docker-compose.yml ${gh_proxy}https://raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
 	  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
 	  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
 	  	dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
@@ -999,7 +999,7 @@ if [ -z "$yuming" ]; then
 fi
 install_docker
 install_certbot
-docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
+docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
 install_ssltls
 certs_status
 install_ssltls_text
@@ -1890,7 +1890,7 @@ ldnmp_web_status() {
 				send_stats "申请域名证书"
 				read -e -p "请输入你的域名: " yuming
 				install_certbot
-				docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
+				docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
 				install_ssltls
 				certs_status
 
