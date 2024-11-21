@@ -4805,7 +4805,6 @@ linux_ldnmp() {
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/oauth"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/best-answer:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require v17development/flarum-seo"
-	  docker exec php sh -c "cd /var/www/html/$yuming && composer require rehiy/flarum-reply-to-see:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require clarkwinkelmann/flarum-ext-emojionearea"
 
 
@@ -9243,7 +9242,7 @@ echo "更新系统            k update | k 更新"
 echo "清理系统垃圾        k clean | k 清理"
 echo "打开重装系统面板    k dd | k 重装"
 echo "打开bbr3控制面板    k bbr3 | k bbrv3"
-echo "打开内核调优面膜    k nhyh | k 内核优化"
+echo "打开内核调优面板    k nhyh | k 内核优化"
 echo "打开系统回收站      k trash | k hsz | k 回收站"
 echo "软件启动            k start sshd | k 启动 sshd "
 echo "软件停止            k stop sshd | k 停止 sshd "
