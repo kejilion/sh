@@ -802,19 +802,13 @@ add_swap() {
 	mkswap /swapfile
 	swapon /swapfile
 
-	if [ -f /etc/alpine-release ]; then
-		# 删除已有的 swap 条目
-		sed -i '/\/swapfile/d' /etc/fstab
-		echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+	sed -i '/\/swapfile/d' /etc/fstab
+	echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
 
-		# 确保在 local.d 中启动 swap
+	if [ -f /etc/alpine-release ]; then
 		echo "nohup swapon /swapfile" > /etc/local.d/swap.start
 		chmod +x /etc/local.d/swap.start
 		rc-update add local
-	else
-		# 删除已有的 swap 条目
-		sed -i '/\/swapfile/d' /etc/fstab
-		echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
 	fi
 
 	echo -e "虚拟内存大小已调整为${gl_huang}${new_swap}${gl_bai}MB"
