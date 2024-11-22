@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.5"
+sh_v="3.4.6"
 
 
 gl_hui='\e[37m'
@@ -45,16 +45,16 @@ run_command() {
 
 canshu_v6() {
 	if grep -q '^canshu="V6"' /usr/local/bin/k > /dev/null 2>&1; then
-		sed -i 's/^canshu="default"/canshu="V6"/' ~/kejilion.sh
-		sed -i 's/^canshu="default"/canshu="V6"/' /usr/local/bin/k
+		sed -i 's|^canshu="default"|canshu="V6"|' ~/kejilion.sh
+		sed -i 's|^canshu="default"|canshu="V6"|' /usr/local/bin/k
 	fi
 }
 
 
 CheckFirstRun_true() {
 	if grep -q '^permission_granted="true"' /usr/local/bin/k > /dev/null 2>&1; then
-		sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
-		sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
+		sed -i 's|^permission_granted="false"|permission_granted="true"|' ~/kejilion.sh
+		sed -i 's|^permission_granted="false"|permission_granted="true"|' /usr/local/bin/k
 	fi
 }
 
@@ -84,8 +84,8 @@ send_stats() {
 yinsiyuanquan2() {
 
 if grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null 2>&1; then
-	sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
-	sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
+	sed -i 's|^ENABLE_STATS="true"|ENABLE_STATS="false"|' ~/kejilion.sh
+	sed -i 's|^ENABLE_STATS="true"|ENABLE_STATS="false"|' /usr/local/bin/k
 fi
 
 }
@@ -119,8 +119,8 @@ UserLicenseAgreement() {
 
 	if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
 		send_stats "许可同意"
-		sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
-		sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
+		sed -i 's|^permission_granted="false"|permission_granted="true"|' ~/kejilion.sh
+		sed -i 's|^permission_granted="false"|permission_granted="true"|' /usr/local/bin/k
 	else
 		send_stats "许可拒绝"
 		clear
@@ -802,19 +802,13 @@ add_swap() {
 	mkswap /swapfile
 	swapon /swapfile
 
-	if [ -f /etc/alpine-release ]; then
-		# 删除已有的 swap 条目
-		sed -i '/\/swapfile/d' /etc/fstab
-		echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+	sed -i '|/swapfile|d' /etc/fstab
+	echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
 
-		# 确保在 local.d 中启动 swap
+	if [ -f /etc/alpine-release ]; then
 		echo "nohup swapon /swapfile" > /etc/local.d/swap.start
 		chmod +x /etc/local.d/swap.start
 		rc-update add local
-	else
-		# 删除已有的 swap 条目
-		sed -i '/\/swapfile/d' /etc/fstab
-		echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
 	fi
 
 	echo -e "虚拟内存大小已调整为${gl_huang}${new_swap}${gl_bai}MB"
@@ -1094,9 +1088,9 @@ add_db() {
 reverse_proxy() {
 	  ip_address
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s/0.0.0.0/$ipv4_address/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s/0000/$duankou/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|0.0.0.0|$ipv4_address|g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|0000|$duankou|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 	  docker restart nginx
 }
@@ -1332,7 +1326,7 @@ nginx_http_on() {
 local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
 local ipv6_pattern='^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))))$'
 if [[ ($yuming =~ $ipv4_pattern || $yuming =~ $ipv6_pattern) ]]; then
-	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' /home/web/conf.d/${yuming}.conf
+	sed -i '|if (\$scheme = http) {|,|}|s|^|#|' /home/web/conf.d/${yuming}.conf
 fi
 
 }
@@ -1770,7 +1764,7 @@ ldnmp_wp() {
   certs_status
   add_db
   wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
-  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
   nginx_http_on
 
   cd /home/web/html
@@ -1821,9 +1815,9 @@ ldnmp_Proxy() {
 	install_ssltls
 	certs_status
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
-	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-	sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
-	sed -i "s/0000/$port/g" /home/web/conf.d/$yuming.conf
+	sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
+	sed -i "s|0.0.0.0|$reverseproxy|g" /home/web/conf.d/$yuming.conf
+	sed -i "s|0000|$port|g" /home/web/conf.d/$yuming.conf
 	nginx_http_on
 	docker restart nginx
 	nginx_web_on
@@ -1937,11 +1931,11 @@ ldnmp_web_status() {
 				# sed -i "s/$odd_dbname/$dbname/g" /home/web/html/$yuming/wordpress/wp-config.php
 				# sed -i "s/$oddyuming/$yuming/g" /home/web/html/$yuming/wordpress/wp-config.php
 
-				find /home/web/html/$yuming -type f -exec sed -i "s/$odd_dbname/$dbname/g" {} +
-				find /home/web/html/$yuming -type f -exec sed -i "s/$oddyuming/$yuming/g" {} +
+				find /home/web/html/$yuming -type f -exec sed -i "s|$odd_dbname|$dbname|g" {} +
+				find /home/web/html/$yuming -type f -exec sed -i "s|$oddyuming|$yuming|g" {} +
 
 				mv /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
-				sed -i "s/$oddyuming/$yuming/g" /home/web/conf.d/$yuming.conf
+				sed -i "s|$oddyuming|$yuming|g" /home/web/conf.d/$yuming.conf
 
 				rm /home/web/certs/${oddyuming}_key.pem
 				rm /home/web/certs/${oddyuming}_cert.pem
@@ -2321,10 +2315,8 @@ new_ssh_port() {
   # 备份 SSH 配置文件
   cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 
-  sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
-
-  # 替换 SSH 配置文件中的端口号
-  sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
+  sed -i 's|^\s*#\?\s*Port|Port|' /etc/ssh/sshd_config
+  sed -i "s|Port [0-9]\+|Port $new_port|g" /etc/ssh/sshd_config
 
   rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 
@@ -2358,10 +2350,11 @@ echo "--------------------------------"
 cat ~/.ssh/sshkey
 echo "--------------------------------"
 
-sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
-	   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
-	   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-	   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+sed -i -e 's|^\s*#\?\s*PermitRootLogin .*|PermitRootLogin prohibit-password|' \
+	   -e 's|^\s*#\?\s*PasswordAuthentication .*|PasswordAuthentication no|' \
+	   -e 's|^\s*#\?\s*PubkeyAuthentication .*|PubkeyAuthentication yes|' \
+	   -e 's|^\s*#\?\s*ChallengeResponseAuthentication .*|ChallengeResponseAuthentication no|' /etc/ssh/sshd_config
+
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 echo -e "${gl_lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
 
@@ -2372,8 +2365,8 @@ add_sshpasswd() {
 
 echo "设置你的ROOT密码"
 passwd
-sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
-sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
+sed -i 's|^\s*#\?\s*PermitRootLogin.*|PermitRootLogin yes|' /etc/ssh/sshd_config
+sed -i 's|^\s*#\?\s*PasswordAuthentication.*|PasswordAuthentication yes|' /etc/ssh/sshd_config
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
 echo -e "${gl_lv}ROOT登录设置完毕！${gl_bai}"
@@ -3301,7 +3294,7 @@ update_locale() {
 		case $ID in
 			debian|ubuntu|kali)
 				install locales
-				sed -i "s/^\s*#\?\s*${locale_file}/${locale_file}/" /etc/locale.gen
+				sed -i "s|^\s*#\?\s*${locale_file}|${locale_file}|" /etc/locale.gen
 				locale-gen
 				echo "LANG=${lang}" > /etc/default/locale
 				export LANG=${lang}
@@ -3370,11 +3363,11 @@ done
 shell_bianse_profile() {
 
 if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
-	sed -i '/^PS1=/d' ~/.bashrc
+	sed -i '|^PS1=|d' ~/.bashrc
 	echo "${bianse}" >> ~/.bashrc
 	# source ~/.bashrc
 else
-	sed -i '/^PS1=/d' ~/.profile
+	sed -i '|^PS1=|d' ~/.profile
 	echo "${bianse}" >> ~/.profile
 	# source ~/.profile
 fi
@@ -3479,7 +3472,7 @@ linux_trash() {
 	case $choice in
 	  1)
 		install trash-cli
-		sed -i '/alias rm/d' "$bashrc_profile"
+		sed -i '|alias rm|d' "$bashrc_profile"
 		echo "alias rm='trash-put'" >> "$bashrc_profile"
 		source "$bashrc_profile"
 		echo "回收站已启用，删除的文件将移至回收站。"
@@ -3487,7 +3480,7 @@ linux_trash() {
 		;;
 	  2)
 		remove trash-cli
-		sed -i '/alias rm/d' "$bashrc_profile"
+		sed -i '|alias rm|d' "$bashrc_profile"
 		echo "alias rm='rm -i'" >> "$bashrc_profile"
 		source "$bashrc_profile"
 		echo "回收站已关闭，文件将直接删除。"
@@ -3900,7 +3893,7 @@ linux_bbr() {
 					send_stats "alpine开启bbr3"
 					  ;;
 				  2)
-					sed -i '/net.ipv4.tcp_congestion_control=bbr/d' /etc/sysctl.conf
+					sed -i '|net.ipv4.tcp_congestion_control=bbr|d' /etc/sysctl.conf
 					sysctl -p
 					server_reboot
 					  ;;
@@ -4623,7 +4616,7 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -4660,7 +4653,7 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -4695,7 +4688,7 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -4738,7 +4731,7 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -4768,7 +4761,7 @@ linux_ldnmp() {
 	  echo "------------------------"
 	  echo "登录时右上角如果出现红色error0请使用如下命令: "
 	  echo "我也很气愤独角数卡为啥这么麻烦，会有这样的问题！"
-	  echo "sed -i 's/ADMIN_HTTPS=false/ADMIN_HTTPS=true/g' /home/web/html/$yuming/dujiaoka/.env"
+	  echo "sed -i 's|ADMIN_HTTPS=false|ADMIN_HTTPS=true|g' /home/web/html/$yuming/dujiaoka/.env"
 
 		;;
 
@@ -4786,7 +4779,7 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -4835,7 +4828,7 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -4909,7 +4902,7 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -5040,8 +5033,8 @@ linux_ldnmp() {
 	  certs_status
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|baidu.com|$reverseproxy|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
 	  docker restart nginx
@@ -5068,7 +5061,7 @@ linux_ldnmp() {
 	  certs_status
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
 	  sed -i "s|fandaicom|$fandai_yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
@@ -5091,7 +5084,7 @@ linux_ldnmp() {
 	  certs_status
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/html.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -5229,8 +5222,8 @@ linux_ldnmp() {
 	  wget -O ${useip}_beifen.sh ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/beifen.sh > /dev/null 2>&1
 	  chmod +x ${useip}_beifen.sh
 
-	  sed -i "s/0.0.0.0/$useip/g" ${useip}_beifen.sh
-	  sed -i "s/123456/$usepasswd/g" ${useip}_beifen.sh
+	  sed -i "s|0.0.0.0|$useip|g" ${useip}_beifen.sh
+	  sed -i "s|123456|$usepasswd|g" ${useip}_beifen.sh
 
 	  echo "------------------------"
 	  echo "1. 每周备份                 2. 每天备份"
@@ -5322,23 +5315,23 @@ linux_ldnmp() {
 			  read -e -p "请输入你的选择: " sub_choice
 			  case $sub_choice in
 				  1)
-					  sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/alpine-ssh.conf
-					  sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/linux-ssh.conf
-					  sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/centos-ssh.conf
+					  sed -i 's|false|true|g' /path/to/fail2ban/config/fail2ban/jail.d/alpine-ssh.conf
+					  sed -i 's|false|true|g' /path/to/fail2ban/config/fail2ban/jail.d/linux-ssh.conf
+					  sed -i 's|false|true|g' /path/to/fail2ban/config/fail2ban/jail.d/centos-ssh.conf
 					  f2b_status
 					  ;;
 				  2)
-					  sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/alpine-ssh.conf
-					  sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/linux-ssh.conf
-					  sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/centos-ssh.conf
+					  sed -i 's|true|false|g' /path/to/fail2ban/config/fail2ban/jail.d/alpine-ssh.conf
+					  sed -i 's|true|false|g' /path/to/fail2ban/config/fail2ban/jail.d/linux-ssh.conf
+					  sed -i 's|true|false|g' /path/to/fail2ban/config/fail2ban/jail.d/centos-ssh.conf
 					  f2b_status
 					  ;;
 				  3)
-					  sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+					  sed -i 's|false|true|g' /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
 					  f2b_status
 					  ;;
 				  4)
-					  sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+					  sed -i 's|true|false|g' /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
 					  f2b_status
 					  ;;
 				  5)
@@ -5408,8 +5401,8 @@ linux_ldnmp() {
 					  cd /path/to/fail2ban/config/fail2ban/action.d
 					  curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
 
-					  sed -i "s/kejilion@outlook.com/$cfuser/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
-					  sed -i "s/APIKEY00000/$cftoken/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
+					  sed -i "s|kejilion@outlook.com|$cfuser|g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
+					  sed -i "s|APIKEY00000|$cftoken|g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
 					  f2b_status
 
 					  echo "已配置cloudflare模式，可在cf后台，站点-安全性-事件中查看拦截记录"
@@ -5433,9 +5426,9 @@ linux_ldnmp() {
 					  check_crontab_installed
 					  curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
 					  chmod +x CF-Under-Attack.sh
-					  sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
-					  sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
-					  sed -i "s/CCCC/$cfzonID/g" ~/CF-Under-Attack.sh
+					  sed -i "s|AAAA|$cfuser|g" ~/CF-Under-Attack.sh
+					  sed -i "s|BBBB|$cftoken|g" ~/CF-Under-Attack.sh
+					  sed -i "s|CCCC|$cfzonID|g" ~/CF-Under-Attack.sh
 
 					  local cron_job="*/5 * * * * ~/CF-Under-Attack.sh"
 
@@ -5494,7 +5487,7 @@ linux_ldnmp() {
 			curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
 			cd /path/to/fail2ban/config/fail2ban/jail.d/
 			curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
-			sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+			sed -i "|cloudflare|d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
 			f2b_status
 			cd ~
 			echo "防御程序已开启"
@@ -5519,8 +5512,8 @@ linux_ldnmp() {
 				  1)
 				  send_stats "站点标准模式"
 				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
+				  sed -i 's|worker_connections.*|worker_connections 10240;|' /home/web/nginx.conf
+				  sed -i 's|worker_processes.*|worker_processes 4;|' /home/web/nginx.conf
 
 				  # php调优
 				  wget -O /home/optimized_php.ini ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -5552,8 +5545,8 @@ linux_ldnmp() {
 				  2)
 				  send_stats "站点高性能模式"
 				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
+				  sed -i 's|worker_connections.*|worker_connections 20480;|' /home/web/nginx.conf
+				  sed -i 's|worker_processes.*|worker_processes 8;|' /home/web/nginx.conf
 
 				  # php调优
 				  wget -O /home/optimized_php.ini ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -5623,7 +5616,7 @@ linux_ldnmp() {
 
 			  cd /home/web/
 			  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
-			  sed -i "s/image: mysql/image: mysql:${version}/" /home/web/docker-compose.yml
+			  sed -i "s|image: mysql|image: mysql:${version}|" /home/web/docker-compose.yml
 			  docker rm -f $ldnmp_pods
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
@@ -5639,15 +5632,15 @@ linux_ldnmp() {
 			  local version=${version:-8.3}
 			  cd /home/web/
 			  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
-			  sed -i "s/kjlion\///g" /home/web/docker-compose.yml > /dev/null 2>&1
-			  sed -i "s/image: php:fpm-alpine/image: php:${version}-fpm-alpine/" /home/web/docker-compose.yml
+			  sed -i -e "s|kjlion/||g" \
+					 -e "s|image: php:fpm-alpine|image: php:${version}-fpm-alpine|" /home/web/docker-compose.yml > /dev/null 2>&1
 			  docker rm -f $ldnmp_pods
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
   			  docker images --filter=reference="kjlion/${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
 			  docker exec php chown -R www-data:www-data /var/www/html
 
-			  run_command docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1
+			  run_command docker exec php sed -i "s|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g" /etc/apk/repositories > /dev/null 2>&1
 
 			  docker exec php apk update
 			  curl -sL ${gh_proxy}https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions
@@ -7209,7 +7202,7 @@ linux_work() {
 			  	  tmux_run
 				  ;;
 				2)
-				  sed -i '/# 自动进入 tmux 会话/,+4d' ~/.bashrc
+				  sed -i '|# 自动进入 tmux 会话|,+4d' ~/.bashrc
 				  tmux kill-window -t sshd
 				  ;;
 				*)
@@ -7335,7 +7328,7 @@ linux_Settings() {
 					   linux_Settings
 				  fi
 
-				  sed -i '/alias .*='\''k'\''$/d' ~/.bashrc
+				  sed -i '|alias .*='\''k'\''$|d' ~/.bashrc
 
 				  echo "alias $kuaijiejian='k'" >> ~/.bashrc
 				  sleep 1
@@ -7458,7 +7451,7 @@ EOF
 
 			while true; do
 				clear
-				sed -i 's/#Port/Port/' /etc/ssh/sshd_config
+				sed -i 's|#Port|Port|' /etc/ssh/sshd_config
 
 				# 读取当前的 SSH 端口号
 				local current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
@@ -7677,7 +7670,8 @@ EOF
 					  4)
 					   read -e -p "请输入用户名: " username
 					   # 从sudoers文件中移除用户的sudo权限
-					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
+					   sed -i "|^$username\sALL=(ALL:ALL)\sALL|d" /etc/sudoers
+
 
 						  ;;
 					  5)
@@ -7861,7 +7855,7 @@ EOF
 						  ;;
 					  2)
 						  read -e -p "请输入关闭的端口号: " c_port
-						  sed -i "/--dport $c_port/d" /etc/iptables/rules.v4
+						  sed -i "|--dport $c_port|d" /etc/iptables/rules.v4
 						  iptables-restore < /etc/iptables/rules.v4
 						  send_stats "关闭指定端口"
 						  ;;
@@ -7919,7 +7913,7 @@ EOF
 
 					  7)
 						  read -e -p "请输入清除的IP: " d_ip
-						  sed -i "/-A INPUT -s $d_ip/d" /etc/iptables/rules.v4
+						  sed -i "|-A INPUT -s $d_ip|d" /etc/iptables/rules.v4
 						  iptables-restore < /etc/iptables/rules.v4
 						  send_stats "清除指定IP"
 						  ;;
@@ -7932,7 +7926,7 @@ EOF
 						  ;;
 
 					  12)
-						  sed -i "/icmp/d" /etc/iptables/rules.v4
+						  sed -i "|icmp|d" /etc/iptables/rules.v4
 						  iptables-restore < /etc/iptables/rules.v4
 						  send_stats "禁用ping"
 						  ;;
@@ -8025,18 +8019,18 @@ EOF
 				  else
 					  # 其他系统，如 Debian, Ubuntu, CentOS 等
 					  hostnamectl set-hostname "$new_hostname"
-					  sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
+					  sed -i "s|$current_hostname|$new_hostname|g" /etc/hostname
 					  systemctl restart systemd-hostnamed
 				  fi
 
 				  if grep -q "127.0.0.1" /etc/hosts; then
-					  sed -i "s/127.0.0.1 .*/127.0.0.1       $new_hostname localhost localhost.localdomain/g" /etc/hosts
+					  sed -i "s|127.0.0.1 .*|127.0.0.1       $new_hostname localhost localhost.localdomain|g" /etc/hosts
 				  else
 					  echo "127.0.0.1       $new_hostname localhost localhost.localdomain" >> /etc/hosts
 				  fi
 
 				  if grep -q "^::1" /etc/hosts; then
-					  sed -i "s/^::1 .*/::1             $new_hostname localhost localhost.localdomain ipv6-localhost ipv6-loopback/g" /etc/hosts
+					  sed -i "s|^::1 .*|::1             $new_hostname localhost localhost.localdomain ipv6-localhost ipv6-loopback|g" /etc/hosts
 				  else
 					  echo "::1             $new_hostname localhost localhost.localdomain ipv6-localhost ipv6-loopback" >> /etc/hosts
 				  fi
@@ -8181,7 +8175,7 @@ EOF
 						  ;;
 					  2)
 						  read -e -p "请输入需要删除的解析内容关键字: " delhost
-						  sed -i "/$delhost/d" /etc/hosts
+						  sed -i "|$delhost|d" /etc/hosts
 						  send_stats "本地host解析删除"
 						  ;;
 					  0)
@@ -8324,8 +8318,8 @@ EOF
 					cd ~
 					curl -Ss -o ~/Limiting_Shut_down.sh ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh
 					chmod +x ~/Limiting_Shut_down.sh
-					sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
-					sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
+					sed -i "s|110|$rx_threshold_gb|g" ~/Limiting_Shut_down.sh
+					sed -i "s|120|$tx_threshold_gb|g" ~/Limiting_Shut_down.sh
 					check_crontab_installed
 					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
 					(crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
@@ -8597,15 +8591,15 @@ EOF
 			  case $sub_choice in
 				  1)
 					  cd ~
-					  sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' /usr/local/bin/k
-					  sed -i 's/^ENABLE_STATS="false"/ENABLE_STATS="true"/' ~/kejilion.sh
+					  sed -i 's|^ENABLE_STATS="false"|ENABLE_STATS="true"|' /usr/local/bin/k
+					  sed -i 's|^ENABLE_STATS="false"|ENABLE_STATS="true"|' ~/kejilion.sh
 					  echo "已开启采集"
 					  send_stats "隐私与安全已开启采集"
 					  ;;
 				  2)
 					  cd ~
-					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
-					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
+					  sed -i 's|^ENABLE_STATS="true"|ENABLE_STATS="false"|' /usr/local/bin/k
+					  sed -i 's|^ENABLE_STATS="true"|ENABLE_STATS="false"|' ~/kejilion.sh
 					  echo "已关闭采集"
 					  send_stats "隐私与安全已关闭采集"
 					  ;;
@@ -8740,7 +8734,7 @@ EOF
 					  2)
 						  send_stats "删除集群服务器"
 						  read -e -p "请输入需要删除的关键字: " rmserver
-						  sed -i "/$rmserver/d" ~/cluster/servers.py
+						  sed -i "|$rmserver|d" ~/cluster/servers.py
 						  ;;
 					  3)
 						  send_stats "编辑集群服务器"
