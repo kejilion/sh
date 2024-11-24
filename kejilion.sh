@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.6"
+sh_v="3.4.7"
 
 
 gl_hui='\e[37m'
@@ -1095,16 +1095,26 @@ reverse_proxy() {
 	  docker restart nginx
 }
 
+
+restart_redis() {
+  docker exec redis redis-cli FLUSHALL > /dev/null 2>&1
+  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1
+  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
+  docker exec -it redis redis-cli CONFIG SET save "" > /dev/null 2>&1
+  docker exec -it redis redis-cli CONFIG SET appendonly no > /dev/null 2>&1
+}
+
+
+
 restart_ldnmp() {
 	  docker exec nginx chown -R nginx:nginx /var/www/html
 	  docker exec nginx mkdir -p /var/cache/nginx/proxy
 	  docker exec nginx mkdir -p /var/cache/nginx/fastcgi
 	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy
 	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi
-	  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1
-	  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
 	  docker exec php chown -R www-data:www-data /var/www/html
 	  docker exec php74 chown -R www-data:www-data /var/www/html
+	  restart_redis
 	  cd /home/web && docker compose restart nginx php php74
 
 }
@@ -1193,35 +1203,6 @@ cf_purge_cache() {
 
 
 
-# 定义缓存预热函数
-preheat_cache() {
-	local url_file="/home/web/config/urls.txt"
-
-	# 检查文件是否存在
-	if [[ ! -f "$url_file" ]]; then
-		return
-	fi
-
-	# 从文件读取 URL 列表
-	urls=()
-	while IFS= read -r url; do
-		urls+=("$url")
-	done < "$url_file"
-
-	# 遍历每个 URL 并进行缓存预热
-	for url in "${urls[@]}"; do
-		echo "预热缓存: $url"
-		curl -s -o /dev/null \
-			-H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" \
-			-H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" \
-			"$url"
-	done
-
-	echo "缓存预热完成！"
-}
-
-
-
 web_cache() {
   send_stats "清理站点缓存"
   # docker exec -it nginx rm -rf /var/cache/nginx
@@ -1229,10 +1210,7 @@ web_cache() {
   docker exec php php -r 'opcache_reset();'
   docker exec php74 php -r 'opcache_reset();'
   docker restart nginx php php74 redis
-  docker exec redis redis-cli FLUSHALL
-  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
-  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
-  preheat_cache
+  restart_redis
 }
 
 
@@ -5535,9 +5513,8 @@ linux_ldnmp() {
 
 
 				  cd /home/web && docker compose restart
-				  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
-				  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
 
+				  restart_redis
 				  optimize_balanced
 
 				  echo "LDNMP环境已设置成 标准模式"
@@ -5568,9 +5545,7 @@ linux_ldnmp() {
 
 				  cd /home/web && docker compose restart
 
-				  docker exec -it redis redis-cli CONFIG SET maxmemory 1024mb
-				  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
-
+				  restart_redis
 				  optimize_web_server
 
 				  echo "LDNMP环境已设置成 高性能模式"
@@ -5686,8 +5661,7 @@ linux_ldnmp() {
 			  docker rm -f $ldnmp_pods
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
-			  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb
-			  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru
+			  restart_redis	  
 			  docker restart $ldnmp_pods > /dev/null 2>&1
 			  send_stats "更新$ldnmp_pods"
 			  echo "更新${ldnmp_pods}完成"
