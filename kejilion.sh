@@ -1748,7 +1748,8 @@ ldnmp_wp() {
   cd /home/web/html
   mkdir $yuming
   cd $yuming
-  wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
+  wget -O latest.zip ${gh_proxy}https://github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
+  # wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
   # wget -O latest.zip https://wordpress.org/latest.zip
   unzip latest.zip
   rm latest.zip
