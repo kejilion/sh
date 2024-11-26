@@ -909,7 +909,7 @@ install_ldnmp() {
 	  fi
 
 	  cd /home/web && docker compose up -d
-
+	  sleep 1
   	  docker exec nginx apk add logrotate > /dev/null 2>&1
   	  crontab -l | grep -v 'logrotate' | crontab - > /dev/null 2>&1
   	  (crontab -l ; echo "0 0 * * * docker exec nginx logrotate -f /etc/logrotate.conf") | crontab - > /dev/null 2>&1
@@ -1110,7 +1110,6 @@ restart_redis() {
 
 
 restart_ldnmp() {
-	  sleep 1
 	  restart_redis
 	  docker exec nginx chown -R nginx:nginx /var/www/html > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1
