@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.7"
+sh_v="3.4.8"
 
 
 gl_hui='\e[37m'
@@ -910,6 +910,9 @@ install_ldnmp() {
 
 	  cd /home/web && docker compose up -d
 
+  	  docker exec nginx apk add logrotate > /dev/null 2>&1
+  	  crontab -l | grep -v 'logrotate' | crontab - > /dev/null 2>&1
+  	  (crontab -l ; echo "0 0 * * * docker exec nginx logrotate -f /etc/logrotate.conf") | crontab - > /dev/null 2>&1
 	  restart_ldnmp
 
 	  clear
@@ -1127,6 +1130,9 @@ nginx_upgrade() {
   docker images --filter=reference="kjlion/${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
   docker images --filter=reference="${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
   docker compose up -d --force-recreate $ldnmp_pods
+  docker exec nginx apk add logrotate > /dev/null 2>&1
+  crontab -l | grep -v 'logrotate' | crontab - > /dev/null 2>&1
+  (crontab -l ; echo "0 0 * * * docker exec nginx logrotate -f /etc/logrotate.conf") | crontab - > /dev/null 2>&1
   docker exec nginx chown -R nginx:nginx /var/www/html
   docker exec nginx mkdir -p /var/cache/nginx/proxy
   docker exec nginx mkdir -p /var/cache/nginx/fastcgi
@@ -5662,7 +5668,7 @@ linux_ldnmp() {
 			  docker rm -f $ldnmp_pods
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
-			  restart_redis	  
+			  restart_redis
 			  docker restart $ldnmp_pods > /dev/null 2>&1
 			  send_stats "更新$ldnmp_pods"
 			  echo "更新${ldnmp_pods}完成"
