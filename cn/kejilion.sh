@@ -2515,7 +2515,7 @@ dd_xitong() {
 			  23)
 				send_stats "重装alma9"
 				dd_xitong_3
-				bash reinstall.sh alma
+				bash reinstall.sh almalinux
 				reboot
 				exit
 				;;
@@ -2523,7 +2523,7 @@ dd_xitong() {
 			  24)
 				send_stats "重装alma8"
 				dd_xitong_3
-				bash reinstall.sh alma 8
+				bash reinstall.sh almalinux 8
 				reboot
 				exit
 				;;
