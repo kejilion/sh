@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.8"
+sh_v="3.4.9"
 
 
 gl_hui='\e[37m'
@@ -5776,7 +5776,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}43.  ${gl_bai}RustDesk远程桌面(服务端)            ${gl_kjlan}44.  ${gl_bai}RustDesk远程桌面(中继端)"
 	  echo -e "${gl_kjlan}45.  ${gl_bai}Docker加速站            		 ${gl_kjlan}46.  ${gl_bai}GitHub加速站"
 	  echo -e "${gl_kjlan}47.  ${gl_bai}普罗米修斯监控			 ${gl_kjlan}48.  ${gl_bai}普罗米修斯(主机监控)"
-	  echo -e "${gl_kjlan}49.  ${gl_bai}普罗米修斯(容器监控)"
+	  echo -e "${gl_kjlan}49.  ${gl_bai}普罗米修斯(容器监控)		 ${gl_kjlan}50.  ${gl_bai}补货监控工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板"
 	  echo -e "${gl_kjlan}------------------------"
@@ -7029,6 +7029,21 @@ linux_panel() {
   								-docker_only=true"
 			local docker_describe="这是一个普罗米修斯的容器数据采集组件，请部署在被监控主机上。"
 			local docker_url="官网介绍: https://github.com/google/cadvisor"
+			local docker_use=""
+			local docker_passwd=""
+			docker_app
+			  ;;
+
+
+		  50)
+			local docker_name="changedetection"
+			local docker_img="dgtlmoon/changedetection.io:latest"
+			local docker_port=8050
+			local docker_rum="docker run -d --restart always -p 8050:5000 \
+								-v /home/docker/datastore:/datastore \
+								--name changedetection dgtlmoon/changedetection.io:latest"
+			local docker_describe="这是一款网站变化检测、补货监控和通知的小工具"
+			local docker_url="官网介绍: https://github.com/dgtlmoon/changedetection.io"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
