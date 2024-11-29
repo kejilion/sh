@@ -911,7 +911,7 @@ install_ldnmp() {
 	  cd /home/web && docker compose up -d
 	  sleep 1
   	  crontab -l 2>/dev/null | grep -v 'logrotate' | crontab -
-  	  (crontab -l 2>/dev/null; echo '0 0 * * * docker exec nginx sh -c "apk add logrotate && logrotate -f /etc/logrotate.conf"') | crontab -
+  	  (crontab -l 2>/dev/null; echo '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf') | crontab -
 	  restart_ldnmp
 
 	  clear
@@ -1130,7 +1130,7 @@ nginx_upgrade() {
   docker images --filter=reference="${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
   docker compose up -d --force-recreate $ldnmp_pods
   crontab -l 2>/dev/null | grep -v 'logrotate' | crontab -
-  (crontab -l 2>/dev/null; echo '0 0 * * * docker exec nginx sh -c "apk add logrotate && logrotate -f /etc/logrotate.conf"') | crontab -
+  (crontab -l 2>/dev/null; echo '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf') | crontab -
   docker exec nginx chown -R nginx:nginx /var/www/html
   docker exec nginx mkdir -p /var/cache/nginx/proxy
   docker exec nginx mkdir -p /var/cache/nginx/fastcgi
