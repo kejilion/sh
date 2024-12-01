@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.9"
+sh_v="3.4.10"
 
 
 gl_hui='\e[37m'
@@ -444,7 +444,7 @@ while true; do
 	clear
 	send_stats "Docker容器管理"
 	echo "Docker容器列表"
-	docker ps -a
+	docker ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
 	echo ""
 	echo "容器操作"
 	echo "------------------------"
@@ -548,9 +548,6 @@ while true; do
 			docker stats --no-stream
 			break_end
 			;;
-		0)
-			break  # 跳出循环，退出菜单
-			;;
 		*)
 			break  # 跳出循环，退出菜单
 			;;
@@ -611,9 +608,6 @@ while true; do
 				echo "无效的选择，请输入 Y 或 N。"
 				;;
 			esac
-			;;
-		0)
-			break  # 跳出循环，退出菜单
 			;;
 		*)
 			break  # 跳出循环，退出菜单
@@ -1986,9 +1980,6 @@ ldnmp_web_status() {
 				web_del
 
 				;;
-			0)
-				break  # 跳出循环，退出菜单
-				;;
 			*)
 				break  # 跳出循环，退出菜单
 				;;
@@ -2063,9 +2054,6 @@ while true; do
 			$gongneng2_1
 			$gongneng2_2
 			send_stats "${panelname}卸载"
-			;;
-		0)
-			break
 			;;
 		*)
 			break
@@ -2667,11 +2655,7 @@ dd_xitong() {
 				exit
 				;;
 
-			  0)
-				break
-				;;
 			  *)
-				echo "无效的选择，请重新输入。"
 				break
 				;;
 			esac
@@ -2735,9 +2719,6 @@ bbrv3() {
 						update-grub
 						echo "XanMod内核已卸载。重启后生效"
 						server_reboot
-						  ;;
-					  0)
-						  break  # 跳出循环，退出菜单
 						  ;;
 
 					  *)
@@ -2880,10 +2861,6 @@ elrepo() {
 						server_reboot
 
 						  ;;
-					  0)
-						  break  # 跳出循环，退出菜单
-						  ;;
-
 					  *)
 						  break  # 跳出循环，退出菜单
 						  ;;
@@ -3254,11 +3231,8 @@ Kernel_optimize() {
 			  restore_defaults
 			  send_stats "还原默认设置"
 			  ;;
-		  0)
-			  break
-			  ;;
 		  *)
-			  echo "无效的选择，请重新输入。"
+			  break
 			  ;;
 	  esac
 	  break_end
@@ -3836,7 +3810,6 @@ linux_tools() {
 
 		  0)
 			  kejilion
-
 			  ;;
 
 		  *)
@@ -3881,10 +3854,6 @@ linux_bbr() {
 					sysctl -p
 					server_reboot
 					  ;;
-				  0)
-					  break  # 跳出循环，退出菜单
-					  ;;
-
 				  *)
 					  break  # 跳出循环，退出菜单
 					  ;;
@@ -4047,9 +4016,6 @@ linux_docker() {
 						  read -e -p "请输入要删除的网络名: " dockernetwork
 						  docker network rm $dockernetwork
 						  ;;
-					  0)
-						  break  # 跳出循环，退出菜单
-						  ;;
 
 					  *)
 						  break  # 跳出循环，退出菜单
@@ -4104,9 +4070,6 @@ linux_docker() {
 							  echo "无效的选择，请输入 Y 或 N。"
 							  ;;
 						  esac
-						  ;;
-					  0)
-						  break  # 跳出循环，退出菜单
 						  ;;
 
 					  *)
@@ -5439,11 +5402,8 @@ linux_ldnmp() {
 					  send_stats "站点WAF已关闭"
 					  ;;
 
-				  0)
-					  break
-					  ;;
 				  *)
-					  echo "无效的选择，请重新输入。"
+					  break
 					  ;;
 			  esac
 		elif [ -x "$(command -v fail2ban-client)" ] ; then
@@ -5556,11 +5516,8 @@ linux_ldnmp() {
 				  echo "LDNMP环境已设置成 高性能模式"
 
 					  ;;
-				  0)
-					  break
-					  ;;
 				  *)
-					  echo "无效的选择，请重新输入。"
+					  break
 					  ;;
 			  esac
 			  break_end
@@ -5691,11 +5648,8 @@ linux_ldnmp() {
 					;;
 				esac
 				  ;;
-			  0)
-				  break
-				  ;;
 			  *)
-				  echo "无效的选择，请重新输入。"
+				  break
 				  ;;
 		  esac
 		  break_end
@@ -5947,9 +5901,6 @@ linux_panel() {
 						curl -L ${gh_proxy}https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
 						./nezha.sh
 						;;
-					0)
-						break
-						;;
 					*)
 						break
 						;;
@@ -6090,9 +6041,6 @@ linux_panel() {
 						echo "应用已卸载"
 						;;
 
-					0)
-						break
-						;;
 					*)
 						break
 						;;
@@ -6174,9 +6122,6 @@ linux_panel() {
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
 						;;
 
-					0)
-						break
-						;;
 					*)
 						break
 						;;
@@ -6301,9 +6246,6 @@ linux_panel() {
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
 						;;
 
-					0)
-						break
-						;;
 					*)
 						break
 						;;
@@ -6459,10 +6401,6 @@ linux_panel() {
 						docker compose down --rmi all
 						echo "如果你是默认安装目录那现在项目已经卸载。如果你是自定义安装目录你需要到安装目录下自行执行:"
 						echo "docker compose down && docker compose down --rmi all"
-						;;
-
-					0)
-						break
 						;;
 					*)
 						break
@@ -6832,9 +6770,6 @@ linux_panel() {
 						;;
 					3)
 						local HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh.checksum.txt && sha256sum -c uninstall_panel.sh.checksum.txt && bash uninstall_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
-						;;
-					0)
-						break
 						;;
 					*)
 						break
@@ -7240,11 +7175,8 @@ linux_work() {
 				  tmux kill-window -t $gongzuoqu_name
 				  send_stats "删除工作区"
 				  ;;
-				0)
-				  break
-				  ;;
 				*)
-				  echo "无效的选择，请输入 Y 或 N。"
+				  break
 				  ;;
 			  esac
 			done
@@ -7674,10 +7606,6 @@ EOF
 					   userdel -r "$username"
 						  ;;
 
-					  0)
-						  break  # 跳出循环，退出菜单
-						  ;;
-
 					  *)
 						  break  # 跳出循环，退出菜单
 						  ;;
@@ -7800,7 +7728,6 @@ EOF
 					24) set_timedate America/Mexico_City ;;
 					25) set_timedate America/Sao_Paulo ;;
 					26) set_timedate America/Argentina/Buenos_Aires ;;
-					0) break ;; # 跳出循环，退出菜单
 					*) break ;; # 跳出循环，退出菜单
 				esac
 			done
@@ -8131,10 +8058,6 @@ EOF
 						  crontab -e
 						  send_stats "编辑定时任务"
 						  ;;
-					  0)
-						  break  # 跳出循环，退出菜单
-						  ;;
-
 					  *)
 						  break  # 跳出循环，退出菜单
 						  ;;
@@ -8172,10 +8095,6 @@ EOF
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "本地host解析删除"
 						  ;;
-					  0)
-						  break  # 跳出循环，退出菜单
-						  ;;
-
 					  *)
 						  break  # 跳出循环，退出菜单
 						  ;;
@@ -8597,11 +8516,8 @@ EOF
 					  echo "已关闭采集"
 					  send_stats "隐私与安全已关闭采集"
 					  ;;
-				  0)
-					  break
-					  ;;
 				  *)
-					  echo "无效的选择，请重新输入。"
+					  break
 					  ;;
 			  esac
 			done
@@ -8776,13 +8692,6 @@ EOF
 						  sed -i "s#Customtasks#$mingling#g" ~/cluster/$py_task
 						  python3 ~/cluster/$py_task
 						  ;;
-					  0)
-						  break  # 跳出循环，退出菜单
-						  ;;
-					  0)
-						  break  # 跳出循环，退出菜单
-						  ;;
-
 					  *)
 						  break  # 跳出循环，退出菜单
 						  ;;
@@ -9231,6 +9140,7 @@ echo "清理系统垃圾        k clean | k 清理"
 echo "打开重装系统面板    k dd | k 重装"
 echo "打开bbr3控制面板    k bbr3 | k bbrv3"
 echo "打开内核调优面板    k nhyh | k 内核优化"
+echo "设置虚拟内存        k swap 2048"
 echo "打开系统回收站      k trash | k hsz | k 回收站"
 echo "软件启动            k start sshd | k 启动 sshd "
 echo "软件停止            k stop sshd | k 停止 sshd "
@@ -9294,6 +9204,14 @@ else
 			shift
 			ldnmp_Proxy "$@"
 			;;
+
+		swap)
+			shift
+			send_stats "设置虚拟内存"
+			add_swap "$@"
+			;;
+
+
 		status|状态)
 			shift
 			send_stats "软件状态查看"
