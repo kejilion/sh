@@ -5886,22 +5886,40 @@ linux_panel() {
 		  7)
 			clear
 			send_stats "搭建哪吒"
+			local docker_name="nezha-dashboard"
+			local docker_port=8008
 			while true; do
+				check_docker_app
 				clear
-				echo "哪吒监控管理"
+				echo -e "哪吒监控管理 $check_docker"
 				echo "开源、轻量、易用的服务器监控与运维工具"
 				echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
+				if docker inspect "$docker_name" &>/dev/null; then
+					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
+					check_docker_app_ip
+				fi
+				echo ""
+
 				echo "------------------------"
-				echo "1. 使用           0. 返回上一级"
+				echo "1. 使用           2. 域名访问           0. 返回上一级"
 				echo "------------------------"
 				read -e -p "输入你的选择: " choice
 
 				case $choice in
 					1)
-						install uzip
+						install unzip
 						install_docker
 						curl -sL ${gh_proxy}https://raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
+						local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
+						check_docker_app_ip
 						;;
+					2)
+						echo "${docker_name}域名访问设置"
+						send_stats "${docker_name}域名访问设置"
+						add_yuming
+						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}	
+						;;
+
 					*)
 						break
 						;;
