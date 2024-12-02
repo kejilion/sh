@@ -5898,7 +5898,9 @@ linux_panel() {
 
 				case $choice in
 					1)
-						curl -L ${gh_proxy}https://raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
+						install uzip
+						install_docker
+						curl -sL ${gh_proxy}https://raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
 						;;
 					*)
 						break
