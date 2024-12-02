@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.4.10"
+sh_v="3.5.0"
 
 
 gl_hui='\e[37m'
@@ -5898,8 +5898,7 @@ linux_panel() {
 
 				case $choice in
 					1)
-						curl -L ${gh_proxy}https://raw.githubusercontent.com/naiba/nezha/master/script/install.sh  -o nezha.sh && chmod +x nezha.sh
-						./nezha.sh
+						curl -L ${gh_proxy}https://raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
 						;;
 					*)
 						break
@@ -9207,7 +9206,7 @@ else
 
 		swap)
 			shift
-			send_stats "设置虚拟内存"
+			send_stats "快速设置虚拟内存"
 			add_swap "$@"
 			;;
 
