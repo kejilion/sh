@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.0"
+sh_v="3.5.1"
 
 
 gl_hui='\e[37m'
@@ -5732,7 +5732,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}47.  ${gl_bai}普罗米修斯监控			 ${gl_kjlan}48.  ${gl_bai}普罗米修斯(主机监控)"
 	  echo -e "${gl_kjlan}49.  ${gl_bai}普罗米修斯(容器监控)		 ${gl_kjlan}50.  ${gl_bai}补货监控工具"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板"
+	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板			 ${gl_kjlan}52.  ${gl_bai}DPanel容器管理面板"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -5891,7 +5891,7 @@ linux_panel() {
 			while true; do
 				check_docker_app
 				clear
-				echo -e "哪吒监控管理 $check_docker"
+				echo -e "哪吒监控 $check_docker"
 				echo "开源、轻量、易用的服务器监控与运维工具"
 				echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 				if docker inspect "$docker_name" &>/dev/null; then
@@ -5917,7 +5917,7 @@ linux_panel() {
 						echo "${docker_name}域名访问设置"
 						send_stats "${docker_name}域名访问设置"
 						add_yuming
-						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}	
+						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
 						;;
 
 					*)
@@ -7009,6 +7009,26 @@ linux_panel() {
 			send_stats "PVE开小鸡"
 			curl -L ${gh_proxy}https://raw.githubusercontent.com/oneclickvirt/pve/main/scripts/install_pve.sh -o install_pve.sh && chmod +x install_pve.sh && bash install_pve.sh
 			  ;;
+
+
+		  52)
+			local docker_name="dpanel"
+			local docker_img="dpanel/dpanel:lite"
+			local docker_port=8052
+			local docker_rum="docker run -it -d --name dpanel --restart=always \
+  								-p 8052:8080 -e APP_NAME=dpanel \
+  								-v /var/run/docker.sock:/var/run/docker.sock \
+  								-v /home/docker/dpanel:/dpanel \
+  								dpanel/dpanel:lite"
+			local docker_describe="Docker可视化面板系统，提供完善的docker管理功能。"
+			local docker_url="官网介绍: https://github.com/donknap/dpanel"
+			local docker_use=""
+			local docker_passwd=""
+			docker_app
+			  ;;
+
+
+
 		  0)
 			  kejilion
 			  ;;
