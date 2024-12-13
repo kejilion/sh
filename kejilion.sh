@@ -1364,47 +1364,47 @@ done
 
 check_docker_image_update() {
 
-    local container_name=$1
+	local container_name=$1
 
-    local country=$(curl -s ipinfo.io/country)
-    if [[ "$country" == "CN" ]]; then
-        update_status=""
+	local country=$(curl -s ipinfo.io/country)
+	if [[ "$country" == "CN" ]]; then
+		update_status=""
 		return
-    fi
+	fi
 
-    # 获取容器的创建时间和镜像名称
-    local container_info=$(docker inspect --format='{{.Created}},{{.Config.Image}}' "$container_name" 2>/dev/null)
-    local container_created=$(echo "$container_info" | cut -d',' -f1)
-    local image_name=$(echo "$container_info" | cut -d',' -f2)
+	# 获取容器的创建时间和镜像名称
+	local container_info=$(docker inspect --format='{{.Created}},{{.Config.Image}}' "$container_name" 2>/dev/null)
+	local container_created=$(echo "$container_info" | cut -d',' -f1)
+	local image_name=$(echo "$container_info" | cut -d',' -f2)
 
-    # 提取镜像仓库和标签
-    local image_repo=${image_name%%:*}
-    local image_tag=${image_name##*:}
+	# 提取镜像仓库和标签
+	local image_repo=${image_name%%:*}
+	local image_tag=${image_name##*:}
 
-    # 默认标签为 latest
-    [[ "$image_repo" == "$image_tag" ]] && image_tag="latest"
+	# 默认标签为 latest
+	[[ "$image_repo" == "$image_tag" ]] && image_tag="latest"
 
-    # 添加对官方镜像的支持
-    [[ "$image_repo" != */* ]] && image_repo="library/$image_repo"
+	# 添加对官方镜像的支持
+	[[ "$image_repo" != */* ]] && image_repo="library/$image_repo"
 
-    # 从 Docker Hub API 获取镜像发布时间
-    local hub_info=$(curl -s "https://hub.docker.com/v2/repositories/$image_repo/tags/$image_tag")
-    local last_updated=$(echo "$hub_info" | jq -r '.last_updated' 2>/dev/null)
+	# 从 Docker Hub API 获取镜像发布时间
+	local hub_info=$(curl -s "https://hub.docker.com/v2/repositories/$image_repo/tags/$image_tag")
+	local last_updated=$(echo "$hub_info" | jq -r '.last_updated' 2>/dev/null)
 
-    # 验证获取的时间
-    if [[ -n "$last_updated" && "$last_updated" != "null" ]]; then
-        local container_created_ts=$(date -d "$container_created" +%s 2>/dev/null)
-        local last_updated_ts=$(date -d "$last_updated" +%s 2>/dev/null)
+	# 验证获取的时间
+	if [[ -n "$last_updated" && "$last_updated" != "null" ]]; then
+		local container_created_ts=$(date -d "$container_created" +%s 2>/dev/null)
+		local last_updated_ts=$(date -d "$last_updated" +%s 2>/dev/null)
 
-        # 比较时间戳
-        if [[ $container_created_ts -lt $last_updated_ts ]]; then
-            update_status="${gl_huang}发现新版本!${gl_bai}"
-        else
-            update_status=""
-        fi
-    else
-        update_status=""
-    fi
+		# 比较时间戳
+		if [[ $container_created_ts -lt $last_updated_ts ]]; then
+			update_status="${gl_huang}发现新版本!${gl_bai}"
+		else
+			update_status=""
+		fi
+	else
+		update_status=""
+	fi
 
 }
 
@@ -5585,19 +5585,19 @@ linux_ldnmp() {
 		  echo "------------------------"
 		  check_docker_image_update nginx
 		  if [ -n "$update_status" ]; then
-		    echo -e "${gl_huang}nginx $update_status${gl_bai}"
+			echo -e "${gl_huang}nginx $update_status${gl_bai}"
 		  fi
 		  check_docker_image_update php
 		  if [ -n "$update_status" ]; then
-		    echo -e "${gl_huang}php $update_status${gl_bai}"
+			echo -e "${gl_huang}php $update_status${gl_bai}"
 		  fi
 		  check_docker_image_update mysql
 		  if [ -n "$update_status" ]; then
-		    echo -e "${gl_huang}mysql $update_status${gl_bai}"
+			echo -e "${gl_huang}mysql $update_status${gl_bai}"
 		  fi
 		  check_docker_image_update redis
 		  if [ -n "$update_status" ]; then
-		    echo -e "${gl_huang}redis $update_status${gl_bai}"
+			echo -e "${gl_huang}redis $update_status${gl_bai}"
 		  fi
 		  echo
 		  echo
