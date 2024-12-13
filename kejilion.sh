@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.1"
+sh_v="3.5.2"
 
 
 gl_hui='\e[37m'
@@ -187,7 +187,7 @@ install() {
 
 
 install_dependency() {
-	  install wget unzip tar
+	  install wget unzip tar jq
 }
 
 
@@ -1362,6 +1362,52 @@ done
 }
 
 
+check_docker_image_update() {
+
+    local container_name=$1
+
+    local country=$(curl -s ipinfo.io/country)
+    if [[ "$country" == "CN" ]]; then
+        update_status=""
+		return
+    fi
+
+    # 获取容器的创建时间和镜像名称
+    local container_info=$(docker inspect --format='{{.Created}},{{.Config.Image}}' "$container_name" 2>/dev/null)
+    local container_created=$(echo "$container_info" | cut -d',' -f1)
+    local image_name=$(echo "$container_info" | cut -d',' -f2)
+
+    # 提取镜像仓库和标签
+    local image_repo=${image_name%%:*}
+    local image_tag=${image_name##*:}
+
+    # 默认标签为 latest
+    [[ "$image_repo" == "$image_tag" ]] && image_tag="latest"
+
+    # 添加对官方镜像的支持
+    [[ "$image_repo" != */* ]] && image_repo="library/$image_repo"
+
+    # 从 Docker Hub API 获取镜像发布时间
+    local hub_info=$(curl -s "https://hub.docker.com/v2/repositories/$image_repo/tags/$image_tag")
+    local last_updated=$(echo "$hub_info" | jq -r '.last_updated' 2>/dev/null)
+
+    # 验证获取的时间
+    if [[ -n "$last_updated" && "$last_updated" != "null" ]]; then
+        local container_created_ts=$(date -d "$container_created" +%s 2>/dev/null)
+        local last_updated_ts=$(date -d "$last_updated" +%s 2>/dev/null)
+
+        # 比较时间戳
+        if [[ $container_created_ts -lt $last_updated_ts ]]; then
+            update_status="${gl_huang}发现新版本!${gl_bai}"
+        else
+            update_status=""
+        fi
+    else
+        update_status=""
+    fi
+
+}
+
 
 docker_app() {
 send_stats "${docker_name}管理"
@@ -1369,7 +1415,8 @@ send_stats "${docker_name}管理"
 while true; do
 	clear
 	check_docker_app
-	echo -e "$docker_name $check_docker"
+	check_docker_image_update $docker_name
+	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
 	if docker inspect "$docker_name" &>/dev/null; then
@@ -1386,6 +1433,7 @@ while true; do
 	read -e -p "请输入你的选择: " choice
 	 case $choice in
 		1)
+			install jq
 			install_docker
 			$docker_rum
 			clear
@@ -1399,7 +1447,6 @@ while true; do
 		2)
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
-
 			$docker_rum
 			clear
 			echo "$docker_name 已经安装完成"
@@ -5534,6 +5581,26 @@ linux_ldnmp() {
 		  echo "更新LDNMP环境"
 		  echo "------------------------"
 		  ldnmp_v
+		  echo "发现新版本的组件"
+		  echo "------------------------"
+		  check_docker_image_update nginx
+		  if [ -n "$update_status" ]; then
+		    echo -e "${gl_huang}nginx $update_status${gl_bai}"
+		  fi
+		  check_docker_image_update php
+		  if [ -n "$update_status" ]; then
+		    echo -e "${gl_huang}php $update_status${gl_bai}"
+		  fi
+		  check_docker_image_update mysql
+		  if [ -n "$update_status" ]; then
+		    echo -e "${gl_huang}mysql $update_status${gl_bai}"
+		  fi
+		  check_docker_image_update redis
+		  if [ -n "$update_status" ]; then
+		    echo -e "${gl_huang}redis $update_status${gl_bai}"
+		  fi
+		  echo
+		  echo
 		  echo "1. 更新nginx               2. 更新mysql              3. 更新php              4. 更新redis"
 		  echo "------------------------"
 		  echo "5. 更新完整环境"
@@ -5890,8 +5957,9 @@ linux_panel() {
 			local docker_port=8008
 			while true; do
 				check_docker_app
+				check_docker_image_update $docker_name
 				clear
-				echo -e "哪吒监控 $check_docker"
+				echo -e "哪吒监控 $check_docker $update_status"
 				echo "开源、轻量、易用的服务器监控与运维工具"
 				echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 				if docker inspect "$docker_name" &>/dev/null; then
@@ -5907,7 +5975,7 @@ linux_panel() {
 
 				case $choice in
 					1)
-						install unzip
+						install unzip jq
 						install_docker
 						curl -sL ${gh_proxy}https://raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
 						local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
@@ -5963,9 +6031,10 @@ linux_panel() {
 			local docker_name=“mailserver”
 			while true; do
 				check_docker_app
+				check_docker_image_update $docker_name
 
 				clear
-				echo -e "邮局服务 $check_docker"
+				echo -e "邮局服务 $check_docker $update_status"
 				echo "poste.io 是一个开源的邮件服务器解决方案，"
 				echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 
@@ -6013,6 +6082,7 @@ linux_panel() {
 						echo "按任意键继续..."
 						read -n 1 -s -r -p ""
 
+						install jq
 						install_docker
 
 						docker run \
@@ -6077,8 +6147,9 @@ linux_panel() {
 			local docker_port=3897
 			while true; do
 				check_docker_app
+				check_docker_image_update $docker_name
 				clear
-				echo -e "聊天服务 $check_docker"
+				echo -e "聊天服务 $check_docker $update_status"
 				echo "Rocket.Chat 是一个开源的团队通讯平台，支持实时聊天、音视频通话、文件共享等多种功能，"
 				echo "官网介绍: https://www.rocket.chat"
 				if docker inspect "$docker_name" &>/dev/null; then
@@ -6097,6 +6168,7 @@ linux_panel() {
 
 				case $choice in
 					1)
+						install jq
 						install_docker
 						docker run --name db -d --restart=always \
 							-v /home/docker/mongo/dump:/dump \
@@ -6198,8 +6270,9 @@ linux_panel() {
 			local docker_port=5212
 			while true; do
 				check_docker_app
+				check_docker_image_update $docker_name
 				clear
-				echo -e "网盘服务 $check_docker"
+				echo -e "网盘服务 $check_docker $update_status"
 				echo "cloudreve是一个支持多家云存储的网盘系统"
 				echo "视频介绍: https://www.bilibili.com/video/BV13F4m1c7h7?t=0.1"
 				if docker inspect "$docker_name" &>/dev/null; then
@@ -6218,6 +6291,7 @@ linux_panel() {
 
 				case $choice in
 					1)
+						install jq
 						install_docker
 						cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
 						curl -o /home/docker/cloud/docker-compose.yml ${gh_proxy}https://raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
