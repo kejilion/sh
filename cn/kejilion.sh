@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.2"
+sh_v="3.5.3"
 
 
 gl_hui='\e[37m'
@@ -5599,7 +5599,7 @@ linux_ldnmp() {
 		  if [ -n "$update_status" ]; then
 			echo -e "${gl_huang}redis $update_status${gl_bai}"
 		  fi
-		  echo
+		  echo "------------------------"
 		  echo
 		  echo "1. 更新nginx               2. 更新mysql              3. 更新php              4. 更新redis"
 		  echo "------------------------"
@@ -7126,6 +7126,10 @@ linux_work() {
 	  echo -e "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
 	  echo -e "${gl_huang}提示: ${gl_bai}进入工作区后使用Ctrl+b再单独按d，退出工作区！"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo "当前已存在的工作区列表"
+	  echo -e "${gl_kjlan}------------------------"
+	  tmux list-sessions
+	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}1号工作区"
 	  echo -e "${gl_kjlan}2.   ${gl_bai}2号工作区"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}3号工作区"
@@ -7137,8 +7141,10 @@ linux_work() {
 	  echo -e "${gl_kjlan}9.   ${gl_bai}9号工作区"
 	  echo -e "${gl_kjlan}10.  ${gl_bai}10号工作区"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}98.  ${gl_bai}SSH常驻模式 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}99.  ${gl_bai}工作区管理 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}SSH常驻模式 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}22.  ${gl_bai}创建/进入工作区"
+	  echo -e "${gl_kjlan}23.  ${gl_bai}注入命令到后台工作区"
+	  echo -e "${gl_kjlan}24.  ${gl_bai}删除指定工作区"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -7218,7 +7224,7 @@ linux_work() {
 			  tmux_run
 			  ;;
 
-		  98)
+		  21)
 			while true; do
 			  clear
 			  if grep -q 'tmux attach-session -t sshd || tmux new-session -s sshd' ~/.bashrc; then
@@ -7255,46 +7261,25 @@ linux_work() {
 			done
 			  ;;
 
-		  99)
-			while true; do
-			  clear
-			  send_stats "工作区管理"
-			  echo "当前已存在的工作区列表"
-			  echo "------------------------"
-			  tmux list-sessions
-			  echo "------------------------"
-			  echo "1. 创建/进入工作区"
-			  echo "2. 注入命令到后台工作区"
-			  echo "3. 删除指定工作区"
-			  echo "------------------------"
-			  echo "0. 返回上一级"
-			  echo "------------------------"
-			  read -e -p "请输入你的选择: " gongzuoqu_del
-			  case "$gongzuoqu_del" in
-				1)
-				  read -e -p "请输入你创建或进入的工作区名称，如1001 kj001 work1: " SESSION_NAME
-				  tmux_run
-				  send_stats "自定义工作区"
-				  ;;
-
-				2)
-				  read -e -p "请输入你要后台执行的命令，如:curl -fsSL https://get.docker.com | sh: " tmuxd
-				  tmux_run_d
-				  send_stats "注入命令到后台工作区"
-				  ;;
-
-				3)
-				  read -e -p "请输入要删除的工作区名称: " gongzuoqu_name
-				  tmux kill-window -t $gongzuoqu_name
-				  send_stats "删除工作区"
-				  ;;
-				*)
-				  break
-				  ;;
-			  esac
-			done
-
+		  22)
+			  read -e -p "请输入你创建或进入的工作区名称，如1001 kj001 work1: " SESSION_NAME
+			  tmux_run
+			  send_stats "自定义工作区"
 			  ;;
+
+
+		  23)
+			  read -e -p "请输入你要后台执行的命令，如:curl -fsSL https://get.docker.com | sh: " tmuxd
+			  tmux_run_d
+			  send_stats "注入命令到后台工作区"
+			  ;;
+
+		  24)
+			  read -e -p "请输入要删除的工作区名称: " gongzuoqu_name
+			  tmux kill-window -t $gongzuoqu_name
+			  send_stats "删除工作区"
+			  ;;
+
 		  0)
 			  kejilion
 			  ;;
