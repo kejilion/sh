@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.3"
+sh_v="3.5.4"
 
 
 gl_hui='\e[37m'
@@ -6631,14 +6631,9 @@ linux_panel() {
 
 		  28)
 			local docker_name="speedtest"
-			local docker_img="ghcr.io/librespeed/speedtest:latest"
-			local docker_port=6681
-			local docker_rum="docker run -d \
-							--name speedtest \
-							--restart always \
-							-e MODE=standalone \
-							-p 6681:80 \
-							ghcr.io/librespeed/speedtest:latest"
+			local docker_img="lscr.io/linuxserver/librespeed:latest"
+			local docker_port=8028
+			local docker_rum="docker run -d -p 8028:8080 --name speedtest --restart always ghcr.io/librespeed/speedtest"
 			local docker_describe="librespeed是用Javascript实现的轻量级速度测试工具，即开即用"
 			local docker_url="官网介绍: ${gh_proxy}https://github.com/librespeed/speedtest"
 			local docker_use=""
@@ -6856,13 +6851,15 @@ linux_panel() {
 
 				case $choice in
 					1)
-						local HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/install_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/install_panel.sh.checksum.txt && sha256sum -c install_panel.sh.checksum.txt && bash install_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
+						mkdir -p ~/haozi && cd ~/haozi && curl -fsLm 10 -o install.sh https://dl.cdn.haozi.net/panel/install.sh && bash install.sh
+						cd ~
 						;;
 					2)
-						panel
+						panel-cli
 						;;
 					3)
-						local HAOZI_DL_URL="https://dl.cdn.haozi.net/panel"; curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh && curl -sSL -O ${HAOZI_DL_URL}/uninstall_panel.sh.checksum.txt && sha256sum -c uninstall_panel.sh.checksum.txt && bash uninstall_panel.sh || echo "Checksum 验证失败，文件可能被篡改，已终止操作"
+						mkdir -p ~/haozi && cd ~/haozi && curl -fsLm 10 -o uninstall.sh https://dl.cdn.haozi.net/panel/uninstall.sh && bash uninstall.sh
+						cd ~
 						;;
 					*)
 						break
