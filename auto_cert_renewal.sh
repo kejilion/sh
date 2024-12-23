@@ -36,7 +36,7 @@ for cert_dir in $certs_directory*; do
     if [ $days_until_expiry -le $days_before_expiry ]; then
         echo "证书将在${days_before_expiry}天内过期，正在进行自动续签。"
         
-        docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
+        docker run --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
 
         docker stop nginx > /dev/null 2>&1
 
@@ -50,7 +50,7 @@ for cert_dir in $certs_directory*; do
         ip6tables -P OUTPUT ACCEPT
         ip6tables -F
 
-        docker run -it --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa  
+        docker run --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa  
 
         cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
         cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
