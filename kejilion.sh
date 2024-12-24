@@ -11,6 +11,15 @@ gl_bai='\033[0m'
 gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
+BOLD="\033[1m"
+RED="\033[1;31m"
+GREEN="\033[1;32m"
+YELLOW="\033[1;33m"
+BLUE="\033[1;34m"
+MAGENTA="\033[1;35m"
+CYAN="\033[1;36m"
+RESET="\033[0m"
+
 
 
 canshu="default"
@@ -9174,6 +9183,7 @@ echo ""
 kejilion_sh() {
 while true; do
 clear
+echo -e "${BOLD}${RED}科${GREEN}技${YELLOW}L${BLUE}I${MAGENTA}O${CYAN}N${RESET} ${GREEN}祝${YELLOW}大${BLUE}家${MAGENTA}圣${CYAN}诞${RED}快${GREEN}乐${RESET}！"
 echo -e "${gl_kjlan}_  _ ____  _ _ _    _ ____ _  _ "
 echo "|_/  |___  | | |    | |  | |\ | "
 echo "| \_ |___ _| | |___ | |__| | \| "
