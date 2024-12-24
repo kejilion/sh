@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.4"
+sh_v="3.5.5"
 
 
 gl_hui='\e[37m'
@@ -4552,35 +4552,22 @@ linux_ldnmp() {
 	echo -e "${gl_huang}▶ LDNMP建站"
 	ldnmp_tato
 	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}1.   ${gl_bai}安装LDNMP环境 ${gl_huang}★${gl_bai}"
-	echo -e "${gl_huang}2.   ${gl_bai}安装WordPress ${gl_huang}★${gl_bai}"
-	echo -e "${gl_huang}3.   ${gl_bai}安装Discuz论坛"
-	echo -e "${gl_huang}4.   ${gl_bai}安装可道云桌面"
-	echo -e "${gl_huang}5.   ${gl_bai}安装苹果CMS网站"
-	echo -e "${gl_huang}6.   ${gl_bai}安装独角数发卡网"
-	echo -e "${gl_huang}7.   ${gl_bai}安装flarum论坛网站"
-	echo -e "${gl_huang}8.   ${gl_bai}安装typecho轻量博客网站"
-	echo -e "${gl_huang}9.   ${gl_bai}安装LinkStack共享链接平台"
-	echo -e "${gl_huang}20.  ${gl_bai}自定义动态站点"
+	echo -e "${gl_huang}1.   ${gl_bai}安装LDNMP环境 ${gl_huang}★${gl_bai}                   ${gl_huang}2.   ${gl_bai}安装WordPress ${gl_huang}★${gl_bai}"
+	echo -e "${gl_huang}3.   ${gl_bai}安装Discuz论坛                    ${gl_huang}4.   ${gl_bai}安装可道云桌面"
+	echo -e "${gl_huang}5.   ${gl_bai}安装苹果CMS影视站                 ${gl_huang}6.   ${gl_bai}安装独角数发卡网"
+	echo -e "${gl_huang}7.   ${gl_bai}安装flarum论坛网站                ${gl_huang}8.   ${gl_bai}安装typecho轻量博客网站"
+	echo -e "${gl_huang}9.   ${gl_bai}安装LinkStack共享链接平台         ${gl_huang}20.  ${gl_bai}自定义动态站点"
 	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}21.  ${gl_bai}仅安装nginx ${gl_huang}★${gl_bai}"
-	echo -e "${gl_huang}22.  ${gl_bai}站点重定向"
-	echo -e "${gl_huang}23.  ${gl_bai}站点反向代理-IP+端口 ${gl_huang}★${gl_bai}"
-	echo -e "${gl_huang}24.  ${gl_bai}站点反向代理-域名"
-	echo -e "${gl_huang}25.  ${gl_bai}自定义静态站点"
-	echo -e "${gl_huang}26.  ${gl_bai}安装Bitwarden密码管理平台"
-	echo -e "${gl_huang}27.  ${gl_bai}安装Halo博客网站"
+	echo -e "${gl_huang}21.  ${gl_bai}仅安装nginx ${gl_huang}★${gl_bai}                     ${gl_huang}22.  ${gl_bai}站点重定向"
+	echo -e "${gl_huang}23.  ${gl_bai}站点反向代理-IP+端口 ${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}站点反向代理-域名"
+	echo -e "${gl_huang}25.  ${gl_bai}安装Bitwarden密码管理平台         ${gl_huang}26.  ${gl_bai}安装Halo博客网站"
+	echo -e "${gl_huang}27.  ${gl_bai}安装AI绘画提示词生成器            ${gl_huang}30.  ${gl_bai}自定义静态站点"
 	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}31.  ${gl_bai}站点数据管理 ${gl_huang}★${gl_bai}"
-	echo -e "${gl_huang}32.  ${gl_bai}备份全站数据"
-	echo -e "${gl_huang}33.  ${gl_bai}定时远程备份"
-	echo -e "${gl_huang}34.  ${gl_bai}还原全站数据"
+	echo -e "${gl_huang}31.  ${gl_bai}站点数据管理 ${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}备份全站数据"
+	echo -e "${gl_huang}33.  ${gl_bai}定时远程备份                      ${gl_huang}34.  ${gl_bai}还原全站数据"
 	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}35.  ${gl_bai}站点防御程序"
-	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}36.  ${gl_bai}优化LDNMP环境"
-	echo -e "${gl_huang}37.  ${gl_bai}更新LDNMP环境"
-	echo -e "${gl_huang}38.  ${gl_bai}卸载LDNMP环境"
+	echo -e "${gl_huang}35.  ${gl_bai}保护LDNMP环境                     ${gl_huang}36.  ${gl_bai}优化LDNMP环境"
+	echo -e "${gl_huang}37.  ${gl_bai}更新LDNMP环境                     ${gl_huang}38.  ${gl_bai}卸载LDNMP环境"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}0.   ${gl_bai}返回主菜单"
 	echo -e "${gl_huang}------------------------${gl_bai}"
@@ -5068,6 +5055,77 @@ linux_ldnmp() {
 
 	  25)
 	  clear
+	  webname="Bitwarden"
+	  send_stats "安装$webname"
+	  echo "开始部署 $webname"
+	  add_yuming
+	  nginx_install_status
+	  install_ssltls
+	  certs_status
+
+	  docker run -d \
+		--name bitwarden \
+		--restart always \
+		-p 3280:80 \
+		-v /home/web/html/$yuming/bitwarden/data:/data \
+		vaultwarden/server
+	  duankou=3280
+	  reverse_proxy
+
+	  nginx_web_on
+
+		;;
+
+	  26)
+	  clear
+	  webname="halo"
+	  send_stats "安装$webname"
+	  echo "开始部署 $webname"
+	  add_yuming
+	  nginx_install_status
+	  install_ssltls
+	  certs_status
+
+	  docker run -d --name halo --restart always -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
+	  duankou=8010
+	  reverse_proxy
+
+	  nginx_web_on
+
+		;;
+
+	  27)
+	  clear
+	  webname="AI绘画提示词生成器"
+	  send_stats "安装$webname"
+	  echo "开始部署 $webname"
+	  add_yuming
+	  nginx_install_status
+	  install_ssltls
+	  certs_status
+
+	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}https://raw.githubusercontent.com/kejilion/nginx/main/html.conf
+	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  nginx_http_on
+
+	  cd /home/web/html
+	  mkdir $yuming
+	  cd $yuming
+
+	  wget ${gh_proxy}https://github.com/kejilion/Website_source_code/raw/refs/heads/main/ai_prompt_generator.zip
+	  unzip $(ls -t *.zip | head -n 1)
+	  rm -f $(ls -t *.zip | head -n 1)
+
+	  docker exec nginx chmod -R nginx:nginx /var/www/html
+	  docker restart nginx
+
+	  nginx_web_on
+
+		;;
+
+
+	  30)
+	  clear
 	  webname="静态站点"
 	  send_stats "安装$webname"
 	  echo "开始部署 $webname"
@@ -5112,48 +5170,6 @@ linux_ldnmp() {
 
 	  docker exec nginx chmod -R nginx:nginx /var/www/html
 	  docker restart nginx
-
-	  nginx_web_on
-
-		;;
-
-
-	  26)
-	  clear
-	  webname="Bitwarden"
-	  send_stats "安装$webname"
-	  echo "开始部署 $webname"
-	  add_yuming
-	  nginx_install_status
-	  install_ssltls
-	  certs_status
-
-	  docker run -d \
-		--name bitwarden \
-		--restart always \
-		-p 3280:80 \
-		-v /home/web/html/$yuming/bitwarden/data:/data \
-		vaultwarden/server
-	  duankou=3280
-	  reverse_proxy
-
-	  nginx_web_on
-
-		;;
-
-	  27)
-	  clear
-	  webname="halo"
-	  send_stats "安装$webname"
-	  echo "开始部署 $webname"
-	  add_yuming
-	  nginx_install_status
-	  install_ssltls
-	  certs_status
-
-	  docker run -d --name halo --restart always -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
-	  duankou=8010
-	  reverse_proxy
 
 	  nginx_web_on
 
