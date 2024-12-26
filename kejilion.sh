@@ -9241,7 +9241,6 @@ done
 
 k_info() {
 send_stats "k命令参考用例"
-echo "无效参数"
 echo "-------------------"
 echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "以下是k命令参考用例："
