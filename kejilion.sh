@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.5"
+sh_v="3.5.6"
 
 
 gl_hui='\e[37m'
@@ -9174,13 +9174,12 @@ echo ""
 kejilion_sh() {
 while true; do
 clear
-echo -e "${gl_kjlan}_  _ ____  _ _ _    _ ____ _  _ "
-echo "|_/  |___  | | |    | |  | |\ | "
-echo "| \_ |___ _| | |___ | |__| | \| "
-echo "                                "
-echo -e "科技lion脚本工具箱 v$sh_v 只为更简单的Linux的使用！"
-echo -e "适配Ubuntu/Debian/CentOS/Alpine/Kali/Arch/RedHat/Fedora/Alma/Rocky系统"
-echo -e "-输入${gl_huang}k${gl_kjlan}可快速启动此脚本-${gl_bai}"
+echo -e "${gl_kjlan}"
+echo "╦╔═╔═╗ ╦╦╦  ╦╔═╗╔╗╔ ╔═╗╦ ╦"
+echo "╠╩╗║╣  ║║║  ║║ ║║║║ ╚═╗╠═╣"
+echo "╩ ╩╚═╝╚╝╩╩═╝╩╚═╝╝╚╝o╚═╝╩ ╩"
+echo -e "科技lion脚本工具箱 v$sh_v"
+echo -e "命令行输入${gl_huang}k${gl_kjlan}可快速启动脚本${gl_bai}"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}1.   ${gl_bai}系统信息查询"
 echo -e "${gl_kjlan}2.   ${gl_bai}系统更新"
