@@ -1045,7 +1045,7 @@ certs_status() {
 		echo -e "${gl_hong}注意: ${gl_bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
 		break_end
 		clear
-		echo "请再次尝试"
+		echo "请再次尝试部署 $webname"
 		add_yuming
 		repeat_add_yuming
 		install_ssltls
@@ -7361,13 +7361,9 @@ linux_Settings() {
 					   break_end
 					   linux_Settings
 				  fi
-
 				  sed -i '/alias .*='\''k'\''$/d' ~/.bashrc
-
-				  echo "alias $kuaijiejian='k'" >> ~/.bashrc
-				  sleep 1
-				  source ~/.bashrc
-
+				  find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/k" && rm -f {}' \;
+				  ln -s /usr/local/bin/k /usr/local/bin/$kuaijiejian
 				  echo "快捷键已设置"
 				  send_stats "脚本快捷键已设置"
 				  break_end
