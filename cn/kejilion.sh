@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.6"
+sh_v="3.5.7"
 
 
 gl_hui='\e[37m'
@@ -5479,11 +5479,9 @@ linux_ldnmp() {
 				rm -rf /etc/fail2ban
 				echo "Fail2Ban防御程序已卸载"
 				;;
-			  [Nn])
-				echo "已取消"
-				;;
 			  *)
-				echo "无效的选择，请输入 Y 或 N。"
+				echo "已取消"
+				break
 				;;
 			esac
 
@@ -8331,11 +8329,13 @@ EOF
 				case "$Limiting" in
 				  1)
 					# 输入新的虚拟内存大小
-					echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出."
-					read -e -p "请输入进站流量阈值（单位为GB）: " rx_threshold_gb
-					read -e -p "请输入出站流量阈值（单位为GB）: " tx_threshold_gb
+					echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出。"
+					read -e -p "请输入进站流量阈值（单位为GB，默认100G）: " rx_threshold_gb
+					rx_threshold_gb=${rx_threshold_gb:-100}
+					read -e -p "请输入出站流量阈值（单位为GB，默认100G）: " tx_threshold_gb
+					tx_threshold_gb=${tx_threshold_gb:-100}
 					read -e -p "请输入流量重置日期（默认每月1日重置）: " cz_day
-					local cz_day=${cz_day:-1}
+					cz_day=${cz_day:-1}
 
 					cd ~
 					curl -Ss -o ~/Limiting_Shut_down.sh ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh
