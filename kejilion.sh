@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.7"
+sh_v="3.5.8"
 
 
 gl_hui='\e[37m'
@@ -1530,13 +1530,6 @@ docker run -d \
 }
 
 
-
-
-cluster_python3() {
-	cd ~/cluster/
-	curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
-	python3 ~/cluster/$py_task
-}
 
 
 tmux_run() {
@@ -8677,191 +8670,152 @@ EOF
 }
 
 
+
+cluster_python3() {
+	install python3 python3-paramiko
+	cd ~/cluster/
+	curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
+	python3 ~/cluster/$py_task
+}
+
+
+run_commands_on_servers() {
+	
+	local SERVERS_FILE="$HOME/cluster/servers.py"
+	local SERVERS=$(grep -oP '{"name": "\K[^"]+|"hostname": "\K[^"]+|"port": \K[^,]+|"username": "\K[^"]+|"password": "\K[^"]+' "$SERVERS_FILE")
+
+	# 将提取的信息转换为数组
+	IFS=$'\n' read -r -d '' -a SERVER_ARRAY <<< "$SERVERS"
+
+	# 遍历服务器并执行命令
+	for ((i=0; i<${#SERVER_ARRAY[@]}; i+=5)); do
+		local name=${SERVER_ARRAY[i]}
+		local hostname=${SERVER_ARRAY[i+1]}
+		local port=${SERVER_ARRAY[i+2]}
+		local username=${SERVER_ARRAY[i+3]}
+		local password=${SERVER_ARRAY[i+4]}
+		echo
+		echo -e "${gl_huang}连接到 $name ($hostname)...${gl_bai}"
+		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
+		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
+	done
+	echo
+	break_end
+
+}
+
+
 linux_cluster() {
-
-	clear
-	send_stats "集群控制"
-	while true; do
-	  clear
-	  echo -e "▶ 服务器集群控制"
-	  echo -e "视频介绍: https://www.bilibili.com/video/BV1hH4y1j74M?t=0.1"
-	  echo -e "你可以远程操控多台VPS一起执行任务（仅支持Ubuntu/Debian）"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}安装集群环境"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}2.   ${gl_bai}集群控制中心 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}备份集群环境"
-	  echo -e "${gl_kjlan}8.   ${gl_bai}还原集群环境"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}卸载集群环境"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  read -e -p "请输入你的选择: " sub_choice
-
-	  case $sub_choice in
-		  1)
-			clear
-			send_stats "安装集群环境"
-			install python3 python3-paramiko speedtest-cli lrzsz
-			mkdir cluster && cd cluster
-			touch servers.py
-
-			cat > ./servers.py << EOF
+mkdir cluster
+if [ ! -f ~/cluster/servers.py ]; then
+	cat > ~/cluster/servers.py << EOF
 servers = [
 
 ]
 EOF
+fi
+
+while true; do
+	  clear
+	  send_stats "集群控制中心"
+	  echo "集群服务器列表"
+	  cat ~/cluster/servers.py
+
+	  echo ""
+	  echo "操作"
+	  echo "------------------------"
+	  echo "服务器列表管理"
+	  echo "1. 添加服务器                2. 删除服务器             3. 编辑服务器"
+	  echo "4. 备份集群                  5. 还原集群"
+	  echo "------------------------"
+	  echo "批量执行任务"
+	  echo "11. 安装科技lion脚本         12. 更新系统              13. 清理系统"
+	  echo "14. 安装docker               15. 安装BBR3              16. 设置1G虚拟内存"
+	  echo "17. 设置时区到上海           18. 开放所有端口	       51. 自定义指令"
+	  echo "------------------------"
+	  echo "0. 返回上一级选单"
+	  echo "------------------------"
+	  read -e -p "请输入你的选择: " sub_choice
+
+	  case $sub_choice in
+		  1)
+			  send_stats "添加集群服务器"
+			  read -e -p "服务器名称: " server_name
+			  read -e -p "服务器IP: " server_ip
+			  read -e -p "服务器端口（22）: " server_port
+			  local server_port=${server_port:-22}
+			  read -e -p "服务器用户名（root）: " server_username
+			  local server_username=${server_username:-root}
+			  read -e -p "服务器用户密码: " server_password
+
+			  sed -i "/servers = \[/a\    {\"name\": \"$server_name\", \"hostname\": \"$server_ip\", \"port\": $server_port, \"username\": \"$server_username\", \"password\": \"$server_password\", \"remote_path\": \"/home/\"}," ~/cluster/servers.py
 
 			  ;;
 		  2)
-
-			  while true; do
-				  clear
-				  send_stats "集群控制中心"
-				  echo "集群服务器列表"
-				  cat ~/cluster/servers.py
-
-				  echo ""
-				  echo "操作"
-				  echo "------------------------"
-				  echo "1. 添加服务器                2. 删除服务器             3. 编辑服务器"
-				  echo "------------------------"
-				  echo "11. 安装科技lion脚本         12. 更新系统              13. 清理系统"
-				  echo "14. 安装docker               15. 安装BBR3              16. 设置1G虚拟内存"
-				  echo "17. 设置时区到上海           18. 开放所有端口"
-				  echo "------------------------"
-				  echo "51. 自定义指令"
-				  echo "------------------------"
-				  echo "0. 返回上一级选单"
-				  echo "------------------------"
-				  read -e -p "请输入你的选择: " sub_choice
-
-				  case $sub_choice in
-					  1)
-						  send_stats "添加集群服务器"
-						  read -e -p "服务器名称: " server_name
-						  read -e -p "服务器IP: " server_ip
-						  read -e -p "服务器端口（22）: " server_port
-						  local server_port=${server_port:-22}
-						  read -e -p "服务器用户名（root）: " server_username
-						  local server_username=${server_username:-root}
-						  read -e -p "服务器用户密码: " server_password
-
-						  sed -i "/servers = \[/a\    {\"name\": \"$server_name\", \"hostname\": \"$server_ip\", \"port\": $server_port, \"username\": \"$server_username\", \"password\": \"$server_password\", \"remote_path\": \"/home/\"}," ~/cluster/servers.py
-
-						  ;;
-					  2)
-						  send_stats "删除集群服务器"
-						  read -e -p "请输入需要删除的关键字: " rmserver
-						  sed -i "/$rmserver/d" ~/cluster/servers.py
-						  ;;
-					  3)
-						  send_stats "编辑集群服务器"
-						  install nano
-						  nano ~/cluster/servers.py
-						  ;;
-					  11)
-						  local py_task="install_kejilion.py"
-						  cluster_python3
-						  ;;
-					  12)
-						  local py_task="update.py"
-						  cluster_python3
-						  ;;
-					  13)
-						  local py_task="clean.py"
-						  cluster_python3
-						  ;;
-					  14)
-						  local py_task="install_docker.py"
-						  cluster_python3
-						  ;;
-					  15)
-						  local py_task="install_bbr3.py"
-						  cluster_python3
-						  ;;
-					  16)
-						  local py_task="swap1024.py"
-						  cluster_python3
-						  ;;
-					  17)
-						  local py_task="time_shanghai.py"
-						  cluster_python3
-						  ;;
-					  18)
-						  local py_task="firewall_close.py"
-						  cluster_python3
-						  ;;
-					  51)
-						  send_stats "自定义执行命令"
-						  read -e -p "请输入批量执行的命令: " mingling
-						  local py_task="custom_tasks.py"
-						  cd ~/cluster/
-						  curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/python-for-vps/main/cluster/$py_task
-						  sed -i "s#Customtasks#$mingling#g" ~/cluster/$py_task
-						  python3 ~/cluster/$py_task
-						  ;;
-					  *)
-						  break  # 跳出循环，退出菜单
-						  ;;
-				  esac
-			  done
-
+			  send_stats "删除集群服务器"
+			  read -e -p "请输入需要删除的关键字: " rmserver
+			  sed -i "/$rmserver/d" ~/cluster/servers.py
 			  ;;
-		  7)
-			clear
-			send_stats "备份集群"
-			echo "将下载服务器列表数据，按任意键下载！"
-			read -n 1 -s -r -p ""
-			sz -y ~/cluster/servers.py
-
+		  3)
+			  send_stats "编辑集群服务器"
+			  install nano
+			  nano ~/cluster/servers.py
 			  ;;
 
-		  8)
-			clear
-			send_stats "还原集群"
-			echo "请上传您的servers.py，按任意键开始上传！"
-			read -n 1 -s -r -p ""
-			cd ~/cluster/
-			rz -y
+		  4)
+			  clear
+			  send_stats "备份集群"
+			  echo -e "请将 ${gl_huang}/root/cluster/servers.py${gl_bai} 文件下载，完成备份！"
+			  break_end
 			  ;;
 
-		  9)
-
-			clear
-			send_stats "卸载集群"
-			read -e -p "请先备份环境，确定要卸载集群控制环境吗？(Y/N): " choice
-			case "$choice" in
-			  [Yy])
-				remove python3-paramiko speedtest-cli lrzsz
-				rm -rf ~/cluster/
-				;;
-			  [Nn])
-				echo "已取消"
-				;;
-			  *)
-				echo "无效的选择，请输入 Y 或 N。"
-				;;
-			esac
-
+		  5)
+			  clear
+			  send_stats "还原集群"
+			  echo "请上传您的servers.py，按任意键开始上传！"
+			  echo -e "请上传您的 ${gl_huang}servers.py${gl_bai} 文件到 ${gl_huang}/root/cluster/${gl_bai} 完成还原！"
+			  break_end
 			  ;;
 
-		  0)
+		  11)
+			  local py_task="install_kejilion.py"
+			  cluster_python3
+			  ;;
+		  12)
+			  run_commands_on_servers "k update"
+			  ;;
+		  13)
+			  run_commands_on_servers "k clean"
+			  ;;
+		  14)
+			  run_commands_on_servers "k docker install"
+			  ;;
+		  15)
+			  run_commands_on_servers "k bbr3"
+			  ;;
+		  16)
+			  run_commands_on_servers "k swap 1024"
+			  ;;
+		  17)
+			  run_commands_on_servers "k time Asia/Shanghai"
+			  ;;
+		  18)
+			  run_commands_on_servers "k iptables_open"
+			  ;;
+
+		  51)
+			  send_stats "自定义执行命令"
+			  read -e -p "请输入批量执行的命令: " mingling
+			  run_commands_on_servers "${mingling}"
+			  ;;
+
+		  *)
 			  kejilion
 			  ;;
-		  *)
-			  echo "无效的输入!"
-			  ;;
 	  esac
-	  break_end
-
-	done
-
-
+done
 
 }
-
 
 
 
@@ -9249,6 +9203,7 @@ echo "打开重装系统面板    k dd | k 重装"
 echo "打开bbr3控制面板    k bbr3 | k bbrv3"
 echo "打开内核调优面板    k nhyh | k 内核优化"
 echo "设置虚拟内存        k swap 2048"
+echo "设置虚拟时区        k time Asia/Shanghai | k 时区 Asia/Shanghai"
 echo "打开系统回收站      k trash | k hsz | k 回收站"
 echo "软件启动            k start sshd | k 启动 sshd "
 echo "软件停止            k stop sshd | k 停止 sshd "
@@ -9319,6 +9274,16 @@ else
 			add_swap "$@"
 			;;
 
+		time|时区)
+			shift
+			send_stats "快速设置时区"
+			set_timedate "$@"			
+			;;
+
+
+		iptables_open)
+			iptables_open		
+			;;
 
 		status|状态)
 			shift
