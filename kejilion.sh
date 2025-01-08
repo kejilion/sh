@@ -9124,69 +9124,266 @@ echo ""
 }
 
 
-kejilion_sh() {
-while true; do
-clear
-echo -e "${gl_kjlan}"
-echo "╦╔═╔═╗ ╦╦╦  ╦╔═╗╔╗╔ ╔═╗╦ ╦"
-echo "╠╩╗║╣  ║║║  ║║ ║║║║ ╚═╗╠═╣"
-echo "╩ ╩╚═╝╚╝╩╩═╝╩╚═╝╝╚╝o╚═╝╩ ╩"
-echo -e "科技lion脚本工具箱 v$sh_v"
-echo -e "命令行输入${gl_huang}k${gl_kjlan}可快速启动脚本${gl_bai}"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}1.   ${gl_bai}系统信息查询"
-echo -e "${gl_kjlan}2.   ${gl_bai}系统更新"
-echo -e "${gl_kjlan}3.   ${gl_bai}系统清理"
-echo -e "${gl_kjlan}4.   ${gl_bai}基础工具 ▶"
-echo -e "${gl_kjlan}5.   ${gl_bai}BBR管理 ▶"
-echo -e "${gl_kjlan}6.   ${gl_bai}Docker管理 ▶ "
-echo -e "${gl_kjlan}7.   ${gl_bai}WARP管理 ▶ "
-echo -e "${gl_kjlan}8.   ${gl_bai}测试脚本合集 ▶ "
-echo -e "${gl_kjlan}9.   ${gl_bai}甲骨文云脚本合集 ▶ "
-echo -e "${gl_huang}10.  ${gl_bai}LDNMP建站 ▶ "
-echo -e "${gl_kjlan}11.  ${gl_bai}应用市场 ▶ "
-echo -e "${gl_kjlan}12.  ${gl_bai}我的工作区 ▶ "
-echo -e "${gl_kjlan}13.  ${gl_bai}系统工具 ▶ "
-echo -e "${gl_kjlan}14.  ${gl_bai}服务器集群控制 ▶ "
-echo -e "${gl_kjlan}15.  ${gl_bai}广告专栏"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}p.   ${gl_bai}幻兽帕鲁开服脚本 ▶"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}00.  ${gl_bai}脚本更新"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}0.   ${gl_bai}退出脚本"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-read -e -p "请输入你的选择: " choice
+# kejilion_sh() {
+# while true; do
+# clear
+# echo -e "${gl_kjlan}"
+# echo "╦╔═╔═╗ ╦╦╦  ╦╔═╗╔╗╔ ╔═╗╦ ╦"
+# echo "╠╩╗║╣  ║║║  ║║ ║║║║ ╚═╗╠═╣"
+# echo "╩ ╩╚═╝╚╝╩╩═╝╩╚═╝╝╚╝o╚═╝╩ ╩"
+# echo -e "科技lion脚本工具箱 v$sh_v"
+# echo -e "命令行输入${gl_huang}k${gl_kjlan}可快速启动脚本${gl_bai}"
+# echo -e "${gl_kjlan}------------------------${gl_bai}"
+# echo -e "${gl_kjlan}1.   ${gl_bai}系统信息查询"
+# echo -e "${gl_kjlan}2.   ${gl_bai}系统更新"
+# echo -e "${gl_kjlan}3.   ${gl_bai}系统清理"
+# echo -e "${gl_kjlan}4.   ${gl_bai}基础工具 ▶"
+# echo -e "${gl_kjlan}5.   ${gl_bai}BBR管理 ▶"
+# echo -e "${gl_kjlan}6.   ${gl_bai}Docker管理 ▶ "
+# echo -e "${gl_kjlan}7.   ${gl_bai}WARP管理 ▶ "
+# echo -e "${gl_kjlan}8.   ${gl_bai}测试脚本合集 ▶ "
+# echo -e "${gl_kjlan}9.   ${gl_bai}甲骨文云脚本合集 ▶ "
+# echo -e "${gl_huang}10.  ${gl_bai}LDNMP建站 ▶ "
+# echo -e "${gl_kjlan}11.  ${gl_bai}应用市场 ▶ "
+# echo -e "${gl_kjlan}12.  ${gl_bai}我的工作区 ▶ "
+# echo -e "${gl_kjlan}13.  ${gl_bai}系统工具 ▶ "
+# echo -e "${gl_kjlan}14.  ${gl_bai}服务器集群控制 ▶ "
+# echo -e "${gl_kjlan}15.  ${gl_bai}广告专栏"
+# echo -e "${gl_kjlan}------------------------${gl_bai}"
+# echo -e "${gl_kjlan}p.   ${gl_bai}幻兽帕鲁开服脚本 ▶"
+# echo -e "${gl_kjlan}------------------------${gl_bai}"
+# echo -e "${gl_kjlan}00.  ${gl_bai}脚本更新"
+# echo -e "${gl_kjlan}------------------------${gl_bai}"
+# echo -e "${gl_kjlan}0.   ${gl_bai}退出脚本"
+# echo -e "${gl_kjlan}------------------------${gl_bai}"
+# read -e -p "请输入你的选择: " choice
 
-case $choice in
-  1) linux_ps ;;
-  2) clear ; send_stats "系统更新" ; linux_update ;;
-  3) clear ; send_stats "系统清理" ; linux_clean ;;
-  4) linux_tools ;;
-  5) linux_bbr ;;
-  6) linux_docker ;;
-  7) clear ; send_stats "warp管理" ; install wget
-	wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh ; bash menu.sh [option] [lisence/url/token]
-	;;
-  8) linux_test ;;
-  9) linux_Oracle ;;
-  10) linux_ldnmp ;;
-  11) linux_panel ;;
-  12) linux_work ;;
-  13) linux_Settings ;;
-  14) linux_cluster ;;
-  15) kejilion_Affiliates ;;
-  p) send_stats "幻兽帕鲁开服脚本" ; cd ~
-	 curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh
-	 exit
-	 ;;
-  00) kejilion_update ;;
-  0) clear ; exit ;;
-  *) echo "无效的输入!" ;;
-esac
-	break_end
-done
+# case $choice in
+#   1) linux_ps ;;
+#   2) clear ; send_stats "系统更新" ; linux_update ;;
+#   3) clear ; send_stats "系统清理" ; linux_clean ;;
+#   4) linux_tools ;;
+#   5) linux_bbr ;;
+#   6) linux_docker ;;
+#   7) clear ; send_stats "warp管理" ; install wget
+# 	wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh ; bash menu.sh [option] [lisence/url/token]
+# 	;;
+#   8) linux_test ;;
+#   9) linux_Oracle ;;
+#   10) linux_ldnmp ;;
+#   11) linux_panel ;;
+#   12) linux_work ;;
+#   13) linux_Settings ;;
+#   14) linux_cluster ;;
+#   15) kejilion_Affiliates ;;
+#   p) send_stats "幻兽帕鲁开服脚本" ; cd ~
+# 	 curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh
+# 	 exit
+# 	 ;;
+#   00) kejilion_update ;;
+#   0) clear ; exit ;;
+#   *) echo "无效的输入!" ;;
+# esac
+# 	break_end
+# done
+# }
+
+
+
+
+kejilion_sh() {
+
+	# 最小高度要求
+    local min_height=30  # 最小高度需求，包含菜单和底部提示区域
+
+    # 检查终端高度
+    check_terminal_height() {
+        local current_height=$(tput lines)
+        if [ "$current_height" -lt "$min_height" ]; then
+            tput clear
+            echo -e "\033[1;31m当前终端高度不足！\033[0m"
+            echo -e "请调整终端窗口高度至少为 \033[1;32m$min_height\033[0m 行。"
+            echo -e "当前终端高度：\033[1;33m$current_height\033[0m 行。"
+            echo -e "请调整后重新运行脚本。"
+            exit 1
+        fi
+    }
+
+    # 检查终端高度
+    check_terminal_height
+
+
+    # 初始化选项
+    options=(
+        "1. 系统信息查询"
+        "2. 系统更新"
+        "3. 系统清理"
+        "4. 基础工具 ▶"
+        "5. BBR管理 ▶"
+        "6. Docker管理 ▶"
+        "7. WARP管理 ▶"
+        "8. 测试脚本合集 ▶"
+        "9. 甲骨文云脚本合集 ▶"
+        "a. LDNMP建站 ▶"
+        "y. 应用市场 ▶"
+        "w. 我的工作区 ▶"
+        "x. 系统工具 ▶"
+        "f. 服务器集群控制 ▶"
+        "g. 广告专栏"
+        "p. 幻兽帕鲁开服脚本 ▶"
+        "u. 脚本更新"
+        "0. 退出脚本"
+    )
+    actions=(
+        "linux_ps"
+        "clear ; send_stats '系统更新' ; linux_update"
+        "clear ; send_stats '系统清理' ; linux_clean"
+        "linux_tools"
+        "linux_bbr"
+        "linux_docker"
+        "clear ; send_stats 'warp管理' ; install wget; wget -N https://gitlab.com/fscarmen/warp/-/raw/main/menu.sh ; bash menu.sh [option] [lisence/url/token]"
+        "linux_test"
+        "linux_Oracle"
+        "linux_ldnmp"
+        "linux_panel"
+        "linux_work"
+        "linux_Settings"
+        "linux_cluster"
+        "kejilion_Affiliates"
+        "send_stats '幻兽帕鲁开服脚本' ; cd ~; curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh ; exit"
+        "kejilion_update"
+        "clear ; exit"
+    )
+
+    current_selection=0  # 当前选中的选项索引
+
+    # 绘制标题部分（固定不动）
+    draw_title() {
+        tput clear
+        echo -e "${gl_kjlan}"
+        echo "╦╔═╔═╗ ╦╦╦  ╦╔═╗╔╗╔ ╔═╗╦ ╦"
+        echo "╠╩╗║╣  ║║║  ║║ ║║║║ ╚═╗╠═╣"
+        echo "╩ ╩╚═╝╚╝╩╩═╝╩╚═╝╝╚╝o╚═╝╩ ╩"
+        echo -e "科技lion脚本工具箱 v3.5.8"
+        echo -e "命令行输入${gl_huang}k${gl_kjlan}可快速启动脚本${gl_bai}"
+        echo -e "${gl_kjlan}------------------------${gl_bai}"
+    }
+
+    # 绘制底部虚线和提示文本
+    draw_footer() {
+        local footer_text="${gl_kjlan}------------------------${gl_bai}"
+        local hint_color="${gl_kjlan}"  # 与虚线颜色一致
+        tput cup $((7 + ${#options[@]})) 0  # 定位到菜单最后一个选项的下一行
+        echo -e "$footer_text"
+
+        # 提示文本分为三行，使用与虚线相同的颜色
+        tput cup $((8 + ${#options[@]})) 0  # 定位到虚线下一行
+        echo -e "${hint_color}使用上下方向键选择${gl_bai}"
+        tput cup $((9 + ${#options[@]})) 0  # 定位到下一行
+        echo -e "${hint_color}或输入数字和字母选择${gl_bai}"
+        tput cup $((10 + ${#options[@]})) 0  # 定位到再下一行
+        echo -e "${hint_color}按 Enter 回车确认选择${gl_bai}"
+        #tput cup $((11 + ${#options[@]})) 0  # 定位到第四行
+        #echo -e "${hint_color}https://github.com/kejilion/sh${gl_bai}"
+    }
+
+
+	draw_menu() {
+		for i in "${!options[@]}"; do
+			tput cup $((7 + $i)) 0  # 从第7行开始绘制菜单
+			if [ "$i" -eq "$current_selection" ]; then
+				# 当前选项高亮
+				echo -e "\033[1;32m> ${options[$i]} \033[0m"
+			else
+				# 未选中选项，处理 "a. LDNMP建站 ▶"
+				if [[ "${options[$i]}" == "a. LDNMP建站 ▶" ]]; then
+					echo -e "  \033[38;5;214ma\033[0m${options[$i]:1}"  # 使用橙色的 ANSI 码
+				else
+					echo "  ${options[$i]}"
+				fi
+			fi
+		done
+		draw_footer  # 绘制底部虚线和提示文本
+	}
+
+	update_option() {
+		tput cup $((7 + $1)) 0
+		if [ "$1" -eq "$current_selection" ]; then
+			# 当前选项高亮
+			echo -e "\033[1;32m> ${options[$1]} \033[0m"
+		else
+			# 未选中选项，处理 "a. LDNMP建站 ▶"
+			if [[ "${options[$1]}" == "a. LDNMP建站 ▶" ]]; then
+				echo -e "  \033[38;5;214ma\033[0m${options[$1]:1}"  # 使用橙色的 ANSI 码
+			else
+				echo "  ${options[$1]}"
+			fi
+		fi
+	}
+
+
+
+
+
+
+    # 主逻辑
+    tput civis  # 隐藏光标
+    draw_title
+    draw_menu
+    while true; do
+        read -rsn1 input  # 读取用户输入
+
+        case "$input" in
+            $'\x1b')  # 方向键输入
+                read -rsn2 -t 0.1 input
+                case "$input" in
+                    "[A")  # 上方向键
+                        old_selection=$current_selection
+                        ((current_selection--))
+                        if [ "$current_selection" -lt 0 ]; then
+                            current_selection=$((${#options[@]} - 1))
+                        fi
+                        update_option "$old_selection"
+                        update_option "$current_selection"
+                        ;;
+                    "[B")  # 下方向键
+                        old_selection=$current_selection
+                        ((current_selection++))
+                        if [ "$current_selection" -ge "${#options[@]}" ]; then
+                            current_selection=0
+                        fi
+                        update_option "$old_selection"
+                        update_option "$current_selection"
+                        ;;
+                esac
+                ;;
+            "")  # Enter 键
+                tput cnorm  # 恢复光标
+                tput clear  # 清屏
+                eval "${actions[$current_selection]}"
+                break
+                ;;
+            [0-9a-z])  # 数字或字母选择
+                for i in "${!options[@]}"; do
+                    if [[ "${options[$i]}" == "$input"* ]]; then
+                        old_selection=$current_selection
+                        current_selection=$i
+                        update_option "$old_selection"
+                        update_option "$current_selection"
+                        break
+                    fi
+                done
+                ;;
+            *)
+                echo "无效的输入！"
+                sleep 1
+                ;;
+        esac
+    done
 }
+
+
+
 
 
 k_info() {
