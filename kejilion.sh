@@ -9191,10 +9191,12 @@ echo ""
 
 
 
-kejilion_sh() {
-
-	# 最小高度要求
+kejilion_sh() { 
+    # 最小高度要求
     local min_height=30  # 最小高度需求，包含菜单和底部提示区域
+
+    # 初始化 end_line
+    local end_line=0
 
     # 检查终端高度
     check_terminal_height() {
@@ -9211,7 +9213,6 @@ kejilion_sh() {
 
     # 检查终端高度
     check_terminal_height
-
 
     # 初始化选项
     options=(
@@ -9250,9 +9251,9 @@ kejilion_sh() {
         "linux_Settings"
         "linux_cluster"
         "kejilion_Affiliates"
-        "send_stats '幻兽帕鲁开服脚本' ; cd ~; curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh ; exit"
+        "send_stats '幻兽帕鲁开服脚本' ; cd ~; curl -sS -O ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh"
         "kejilion_update"
-        "clear ; exit"
+        "exit"  # 修改这里，从 "clear ; exit" 到 "exit"
     )
 
     current_selection=0  # 当前选中的选项索引
@@ -9283,48 +9284,47 @@ kejilion_sh() {
         echo -e "${hint_color}或输入数字和字母选择${gl_bai}"
         tput cup $((10 + ${#options[@]})) 0  # 定位到再下一行
         echo -e "${hint_color}按 Enter 回车确认选择${gl_bai}"
-        #tput cup $((11 + ${#options[@]})) 0  # 定位到第四行
-        #echo -e "${hint_color}https://github.com/kejilion/sh${gl_bai}"
+
+        # 设置 end_line
+        end_line=$((10 + ${#options[@]}))
     }
 
+    # 绘制选项部分
+    draw_menu() {
+        for i in "${!options[@]}"; do
+            tput cup $((7 + $i)) 0  # 从第7行开始绘制菜单
+            if [ "$i" -eq "$current_selection" ]; then
+                echo -e "\033[1;32m> ${options[$i]} \033[0m"
+            else
+                echo "  ${options[$i]}"
+            fi
+        done
+        draw_footer  # 绘制底部虚线和提示文本
+    }
 
-	draw_menu() {
-		for i in "${!options[@]}"; do
-			tput cup $((7 + $i)) 0  # 从第7行开始绘制菜单
-			if [ "$i" -eq "$current_selection" ]; then
-				# 当前选项高亮
-				echo -e "\033[1;32m> ${options[$i]} \033[0m"
-			else
-				# 未选中选项，处理 "a. LDNMP建站 ▶"
-				if [[ "${options[$i]}" == "a. LDNMP建站 ▶" ]]; then
-					echo -e "  \033[38;5;214ma\033[0m${options[$i]:1}"  # 使用橙色的 ANSI 码
-				else
-					echo "  ${options[$i]}"
-				fi
-			fi
-		done
-		draw_footer  # 绘制底部虚线和提示文本
-	}
+    # 更新选项部分
+    update_option() {
+        tput cup $((7 + $1)) 0
+        if [ "$1" -eq "$current_selection" ]; then
+            echo -e "\033[1;32m> ${options[$1]} \033[0m"  # 高亮
+        else
+            echo "  ${options[$1]}"  # 普通文本
+        fi
+    }
 
-	update_option() {
-		tput cup $((7 + $1)) 0
-		if [ "$1" -eq "$current_selection" ]; then
-			# 当前选项高亮
-			echo -e "\033[1;32m> ${options[$1]} \033[0m"
-		else
-			# 未选中选项，处理 "a. LDNMP建站 ▶"
-			if [[ "${options[$1]}" == "a. LDNMP建站 ▶" ]]; then
-				echo -e "  \033[38;5;214ma\033[0m${options[$1]:1}"  # 使用橙色的 ANSI 码
-			else
-				echo "  ${options[$1]}"
-			fi
-		fi
-	}
+    # 确保在退出时恢复光标并移动到菜单下方
+    cleanup() {
+        tput cnorm  # 恢复光标
+        if [ "$end_line" -gt 0 ]; then
+            tput cup $((end_line + 1)) 0  # 移动光标到菜单下方
+            echo  # 输出换行符
+        else
+            tput cup 0 0  # 默认移动到第一行
+            echo
+        fi
+    }
 
-
-
-
-
+    trap cleanup EXIT
 
     # 主逻辑
     tput civis  # 隐藏光标
@@ -9358,10 +9358,16 @@ kejilion_sh() {
                 esac
                 ;;
             "")  # Enter 键
-                tput cnorm  # 恢复光标
-                tput clear  # 清屏
+                # 执行对应功能
                 eval "${actions[$current_selection]}"
-                break
+
+                # 等待用户按任意键继续
+                echo -e "\n\033[1;32m操作完成，请按任意键返回菜单...\033[0m"
+                read -rsn1  # 等待按任意键
+
+                # 重新绘制菜单
+                draw_title
+                draw_menu
                 ;;
             [0-9a-z])  # 数字或字母选择
                 for i in "${!options[@]}"; do
@@ -9381,9 +9387,6 @@ kejilion_sh() {
         esac
     done
 }
-
-
-
 
 
 k_info() {
