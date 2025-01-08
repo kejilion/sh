@@ -6639,7 +6639,7 @@ linux_panel() {
 
 		  28)
 			local docker_name="speedtest"
-			local docker_img="lscr.io/linuxserver/librespeed:latest"
+			local docker_img="ghcr.io/librespeed/speedtest"
 			local docker_port=8028
 			local docker_rum="docker run -d -p 8028:8080 --name speedtest --restart always ghcr.io/librespeed/speedtest"
 			local docker_describe="librespeed是用Javascript实现的轻量级速度测试工具，即开即用"
