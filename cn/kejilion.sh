@@ -7108,12 +7108,12 @@ linux_panel() {
 
 		  53)
 			local docker_name="ollama"
-			local docker_img="ghcr.io/open-webui/open-webui:ollama"
+			local docker_img="ghcr.io/open-webui/open-webui"
 			local docker_port=8053
 			local docker_rum="docker run -d -p 8053:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama"
-			local docker_describe="OpenWebUI一款大预言模型网页框架，接入全新的llama3大语言模型"
+			local docker_describe="OpenWebUI一款大语言模型网页框架，接入全新的llama3大语言模型"
 			local docker_url="官网介绍: https://github.com/open-webui/open-webui"
-			local docker_use="docker exec open-webui ollama run llama3"
+			local docker_use="docker exec ollama ollama run llama3"
 			local docker_passwd=""
 			docker_app
 			  ;;
