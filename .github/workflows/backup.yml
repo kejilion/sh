@@ -1,0 +1,94 @@
+name: Auto Tag, Backup, and Release
+
+on:
+  push:
+    paths:
+      - "config/**"  # 仅监听 config 目录的文件变化
+
+jobs:
+  create_tag_and_release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Install yq
+      run: |
+        sudo apt-get update && sudo apt-get install -y jq
+        curl -sL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -o /usr/local/bin/yq
+        chmod +x /usr/local/bin/yq
+
+    - name: Load tag configuration
+      id: load_config
+      run: |
+        # 读取配置文件
+        config_file="config/tag-config.yml"
+        if [ ! -f "$config_file" ]; then
+          echo "Configuration file not found: $config_file"
+          exit 1
+        fi
+
+        # 提取版本信息
+        major=$(yq '.major' "$config_file")
+        minor=$(yq '.minor' "$config_file")
+        patch=$(yq '.patch' "$config_file")
+        update=$(yq '.update' "$config_file")
+        version_format=$(yq '.version_format' "$config_file")
+        release_notes=$(yq '.release_notes' "$config_file")
+
+        # 根据 update 类型更新版本号
+        case "$update" in
+          "major")
+            major=$((major + 1))
+            minor=0
+            patch=0
+            ;;
+          "minor")
+            minor=$((minor + 1))
+            patch=0
+            ;;
+          "patch")
+            patch=$((patch + 1))
+            ;;
+          *)
+            echo "Unknown update type: $update"
+            exit 1
+            ;;
+        esac
+
+        # 格式化新版本号
+        new_version=$(echo "$version_format" | sed "s/{major}/$major/" | sed "s/{minor}/$minor/" | sed "s/{patch}/$patch/")
+
+        # 输出新版本号和发布说明到环境变量
+        echo "New version: $new_version"
+        echo "Release notes: $release_notes"
+        echo "new_version=$new_version" >> $GITHUB_ENV
+        echo "release_notes=$release_notes" >> $GITHUB_ENV
+
+    - name: Create and push tag
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # 创建并推送新的标签
+        git tag ${{ env.new_version }}
+        git push origin ${{ env.new_version }}
+
+    - name: Create backup archive
+      id: backup
+      run: |
+        # 创建压缩包
+        archive_name="${{ env.new_version }}-backup.zip"
+        zip -r $archive_name . -x ".git/*"  # 排除 .git 文件夹
+        echo "archive_name=$archive_name" >> $GITHUB_ENV
+
+    - name: Create GitHub release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # 使用 GitHub CLI 创建 Release，并上传备份文件
+        gh release create ${{ env.new_version }} \
+          --title "${{ env.new_version }}" \
+          --notes "${{ env.release_notes }}" \
+          ${{ env.archive_name }}
+
