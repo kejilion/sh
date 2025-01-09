@@ -1,0 +1,10 @@
+# config/tag-config.yml
+version_format: "v{major}.{minor}.{patch}"  # 定义标签格式
+major: 1
+minor: 0
+patch: 0
+update: "patch"  # 可选值: major, minor, patch
+release_notes: |
+  - 修复了一些已知问题。
+  - 优化了性能表现。
+  - 新增功能 A 和功能 B。
