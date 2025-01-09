@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.9"
+sh_v="3.5.10"
 
 
 gl_hui='\e[37m'
@@ -2032,9 +2032,6 @@ ldnmp_web_status() {
 
 
 
-
-
-
 check_panel_app() {
 
 if $lujing ; then
@@ -2103,6 +2100,198 @@ while true; do
 done
 
 }
+
+
+
+
+
+donlond_frp() {
+	mkdir -p /home/frp/ && cd /home/frp/
+	curl -L ${gh_proxy}https://github.com/fatedier/frp/releases/download/v0.61.0/frp_0.61.0_linux_amd64.tar.gz -o frp_0.61.0_linux_amd64.tar.gz
+	tar -zxvf frp_*.tar.gz
+}
+
+generate_frps_config() {
+	# 生成随机端口和凭证
+	local bind_port=8055
+	local dashboard_port=8056
+	local token=$(openssl rand -hex 16)
+	local dashboard_user="user_$(openssl rand -hex 4)"
+	local dashboard_pwd=$(openssl rand -hex 8)
+
+	donlond_frp
+
+	# 创建 frps.toml 文件
+	cat <<EOF > /home/frp/frp_0.61.0_linux_amd64/frps.toml
+[common]
+bind_port = $bind_port
+authentication_method = token
+token = $token
+dashboard_port = $dashboard_port
+dashboard_user = $dashboard_user
+dashboard_pwd = $dashboard_pwd
+EOF
+
+	# 输出生成的信息
+	ip_address
+	echo "客户端部署时需要用的参数"
+	echo "服务IP: $ipv4_address"
+	echo "token: $token"
+	echo
+	echo "FRP面板信息"
+	echo "FRP面板地址: http://$ipv4_address:$dashboard_port"
+	echo "FRP面板用户名: $dashboard_user"
+	echo "FRP面板密码: $dashboard_pwd"
+	echo
+
+	install tmux
+	tmux kill-session -t frps >/dev/null 2>&1
+	tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
+
+}
+
+
+
+configure_frpc() {
+	# 提示用户输入外网服务器信息
+	read -e -p "请输入外网对接IP: " server_addr
+	read -e -p "请输入外网对接token: " token
+	echo
+
+	donlond_frp
+
+	cat <<EOF > /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+[common]
+server_addr = ${server_addr}
+server_port = 8055
+token = ${token}
+EOF
+
+	install tmux
+	tmux kill-session -t frpc >/dev/null 2>&1
+	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+
+
+}
+
+add_forwarding_service() {
+	# 提示用户输入服务名称和转发信息
+	read -e -p "请输入服务名称: " service_name
+	read -e -p "请输入转发类型 (tcp/udp): " service_type
+	read -e -p "请输入内网端口: " local_port
+	read -e -p "请输入外网端口: " remote_port
+
+	# 将用户输入写入配置文件
+	cat <<EOF >> /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+[$service_name]
+type = ${service_type}
+local_ip = 127.0.0.1
+local_port = ${local_port}
+remote_port = ${remote_port}
+EOF
+
+	# 输出生成的信息
+	echo "服务 \$service_name 已成功添加到 frpc.toml"
+
+	tmux kill-session -t frpc >/dev/null 2>&1
+	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+
+}
+
+
+
+delete_forwarding_service() {
+	# 提示用户输入需要删除的服务名称
+	read -e -p "请输入需要删除的服务名称: " service_name
+	# 使用 sed 删除该服务及其相关配置
+	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+	echo "服务 \$service_name 已成功从 frpc.toml 删除"
+
+	tmux kill-session -t frpc >/dev/null 2>&1
+	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+
+}
+
+
+list_forwarding_services() {
+	local config_file="$1"
+	
+	# 打印表头
+	printf "%-20s %-25s %-30s %-10s\n" "服务名称" "内网地址" "外网地址" "协议"
+	
+	awk '
+	BEGIN {
+		server_addr=""
+		server_port=""
+		current_service=""
+	}
+	
+	/^server_addr = / {
+		gsub(/"|'"'"'/, "", $3)
+		server_addr=$3
+	}
+	
+	/^server_port = / {
+		gsub(/"|'"'"'/, "", $3)
+		server_port=$3
+	}
+	
+	/^\[.*\]/ {
+		# 如果已有服务信息，在处理新服务之前打印当前服务
+		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
+			printf "%-16s %-21s %-26s %-10s\n", \
+				current_service, \
+				local_ip ":" local_port, \
+				server_addr ":" remote_port, \
+				type
+		}
+		
+		# 更新当前服务名称
+		if ($1 != "[common]") {
+			gsub(/[\[\]]/, "", $1)
+			current_service=$1
+			# 清除之前的值
+			local_ip=""
+			local_port=""
+			remote_port=""
+			type=""
+		}
+	}
+	
+	/^local_ip = / {
+		gsub(/"|'"'"'/, "", $3)
+		local_ip=$3
+	}
+	
+	/^local_port = / {
+		gsub(/"|'"'"'/, "", $3)
+		local_port=$3
+	}
+	
+	/^remote_port = / {
+		gsub(/"|'"'"'/, "", $3)
+		remote_port=$3
+	}
+	
+	/^type = / {
+		gsub(/"|'"'"'/, "", $3)
+		type=$3
+	}
+	
+	END {
+		# 打印最后一个服务的信息
+		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
+			printf "%-16s %-21s %-26s %-10s\n", \
+				current_service, \
+				local_ip ":" local_port, \
+				server_addr ":" remote_port, \
+				type
+		}
+	}' "$config_file"
+}
+
+
+
 
 
 
@@ -5808,6 +5997,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板			 ${gl_kjlan}52.  ${gl_bai}DPanel容器管理面板"
 	  echo -e "${gl_kjlan}53.  ${gl_bai}ollama聊天AI大模型"
+	  echo -e "${gl_kjlan}55.  ${gl_bai}FRP内网穿透(服务端)		 ${gl_kjlan}56.  ${gl_bai}FRP内网穿透(客户端)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -7117,6 +7307,116 @@ linux_panel() {
 			local docker_passwd=""
 			docker_app
 			  ;;
+
+		  55)
+			send_stats "FRP服务端"
+			local docker_port=8056
+			while true; do
+				clear
+				echo -e "FRP服务端"
+				echo "构建FRP内网穿透服务环境"
+				echo "官网介绍: https://github.com/fatedier/frp/"
+				if [ -d "/home/frp/" ]; then
+					check_docker_app_ip
+				fi
+				echo ""
+				echo "------------------------"
+				echo "1. 安装           2. 更新           3. 卸载"
+				echo "------------------------"
+				echo "5. 域名访问"
+				echo "------------------------"
+				echo "0. 返回上一级"
+				echo "------------------------"
+				read -e -p "输入你的选择: " choice
+				case $choice in
+					1)
+						generate_frps_config
+						echo "FRP服务端已经安装完成"
+						;;
+					2)
+						generate_frps_config
+						echo "FRP服务端已经更新完成"
+						;;
+					3)
+						tmux kill-session -t frps >/dev/null 2>&1
+						rm -rf /home/frp
+						echo "应用已卸载"
+						;;
+					5)
+						echo "${docker_name}域名访问设置"
+						send_stats "${docker_name}域名访问设置"
+						add_yuming
+						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+						;;
+					*)
+						break
+						;;
+				esac
+				break_end
+			done
+
+			  ;;
+
+		  56)
+			send_stats "FRP客户端"
+			local docker_port=8055
+			while true; do
+				clear
+				echo -e "FRP客户端"
+				echo "与服务端对接，对接后可创建内网穿透转发服务"
+				echo "官网介绍: https://github.com/fatedier/frp/"
+				echo "------------------------"
+				if [ -d "/home/frp/" ]; then
+					list_forwarding_services "/home/frp/frp_0.61.0_linux_amd64/frpc.toml"
+				fi
+				echo ""
+				echo "------------------------"
+				echo "1. 安装               2. 更新               3. 卸载"
+				echo "------------------------"
+				echo "4. 添加对外服务       5. 删除对外服务       6. 手动配置服务"
+				echo "------------------------"
+				echo "0. 返回上一级"
+				echo "------------------------"
+				read -e -p "输入你的选择: " choice
+				case $choice in
+					1)
+						configure_frpc
+						echo "FRP客户端已经安装完成"
+						;;
+					2)
+						configure_frpc
+						echo "FRP客户端已经更新完成"
+						;;
+
+
+					3)
+						tmux kill-session -t frpc >/dev/null 2>&1
+						rm -rf /home/frp
+						echo "应用已卸载"
+						;;
+
+					4)
+						add_forwarding_service
+						echo "对外服务已添加"
+						;;
+
+					5)
+						delete_forwarding_service
+						;;
+
+					6)
+						install nano
+						nano /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+						;;
+
+					*)
+						break
+						;;
+				esac
+				break_end
+			done
+			  ;;
+
 
 		  0)
 			  kejilion
