@@ -7397,7 +7397,6 @@ linux_panel() {
 
 					4)
 						add_forwarding_service
-						echo "对外服务已添加"
 						;;
 
 					5)
@@ -7407,6 +7406,8 @@ linux_panel() {
 					6)
 						install nano
 						nano /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+						tmux kill-session -t frpc >/dev/null 2>&1
+						tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
 						;;
 
 					*)
