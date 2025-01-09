@@ -62,9 +62,8 @@ jobs:
 
         # 输出新版本号和发布说明到环境变量
         echo "New version: $new_version"
-        echo "Release notes: $release_notes"
+        printf "release_notes<<EOF\n%s\nEOF\n" "$release_notes" >> $GITHUB_ENV
         echo "new_version=$new_version" >> $GITHUB_ENV
-        echo "release_notes=$release_notes" >> $GITHUB_ENV
 
     - name: Create and push tag
       env:
@@ -91,4 +90,3 @@ jobs:
           --title "${{ env.new_version }}" \
           --notes "${{ env.release_notes }}" \
           ${{ env.archive_name }}
-
