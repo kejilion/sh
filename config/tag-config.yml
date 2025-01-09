@@ -2,7 +2,7 @@
 version_format: "v{major}.{minor}.{patch}"  # 定义标签格式
 major: 1
 minor: 0
-patch: 1
+patch: 2
 update: "patch"  # 可选值: major, minor, patch
 release_notes: |
   - 修复了一些已知问题。
