@@ -2103,6 +2103,17 @@ done
 
 
 
+check_frp_app() {
+
+if [ -d "/home/frp/" ]; then
+	check_frp="${gl_lv}已安装${gl_bai}"
+else
+	check_frp="${gl_hui}未安装${gl_bai}"
+fi
+
+}
+
+
 
 
 donlond_frp() {
@@ -2215,27 +2226,27 @@ delete_forwarding_service() {
 
 list_forwarding_services() {
 	local config_file="$1"
-	
+
 	# 打印表头
 	printf "%-20s %-25s %-30s %-10s\n" "服务名称" "内网地址" "外网地址" "协议"
-	
+
 	awk '
 	BEGIN {
 		server_addr=""
 		server_port=""
 		current_service=""
 	}
-	
+
 	/^server_addr = / {
 		gsub(/"|'"'"'/, "", $3)
 		server_addr=$3
 	}
-	
+
 	/^server_port = / {
 		gsub(/"|'"'"'/, "", $3)
 		server_port=$3
 	}
-	
+
 	/^\[.*\]/ {
 		# 如果已有服务信息，在处理新服务之前打印当前服务
 		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
@@ -2245,7 +2256,7 @@ list_forwarding_services() {
 				server_addr ":" remote_port, \
 				type
 		}
-		
+
 		# 更新当前服务名称
 		if ($1 != "[common]") {
 			gsub(/[\[\]]/, "", $1)
@@ -2257,27 +2268,27 @@ list_forwarding_services() {
 			type=""
 		}
 	}
-	
+
 	/^local_ip = / {
 		gsub(/"|'"'"'/, "", $3)
 		local_ip=$3
 	}
-	
+
 	/^local_port = / {
 		gsub(/"|'"'"'/, "", $3)
 		local_port=$3
 	}
-	
+
 	/^remote_port = / {
 		gsub(/"|'"'"'/, "", $3)
 		remote_port=$3
 	}
-	
+
 	/^type = / {
 		gsub(/"|'"'"'/, "", $3)
 		type=$3
 	}
-	
+
 	END {
 		# 打印最后一个服务的信息
 		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
@@ -7313,7 +7324,8 @@ linux_panel() {
 			local docker_port=8056
 			while true; do
 				clear
-				echo -e "FRP服务端"
+				check_frp_app
+				echo -e "FRP服务端 $check_frp"
 				echo "构建FRP内网穿透服务环境"
 				echo "官网介绍: https://github.com/fatedier/frp/"
 				if [ -d "/home/frp/" ]; then
@@ -7362,7 +7374,8 @@ linux_panel() {
 			local docker_port=8055
 			while true; do
 				clear
-				echo -e "FRP客户端"
+				check_frp_app
+				echo -e "FRP客户端 $check_frp"
 				echo "与服务端对接，对接后可创建内网穿透转发服务"
 				echo "官网介绍: https://github.com/fatedier/frp/"
 				echo "------------------------"
