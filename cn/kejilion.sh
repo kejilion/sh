@@ -7362,7 +7362,7 @@ linux_panel() {
 						echo "FRP服务端已经更新完成"
 						;;
 					3)
-						crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
+						crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 						tmux kill-session -t frps >/dev/null 2>&1
 						rm -rf /home/frp
 						echo "应用已卸载"
