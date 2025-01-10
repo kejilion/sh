@@ -2158,6 +2158,8 @@ EOF
 	install tmux
 	tmux kill-session -t frps >/dev/null 2>&1
 	tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
+	crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
+	(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
 
 }
 
@@ -2182,7 +2184,8 @@ EOF
 	install tmux
 	tmux kill-session -t frpc >/dev/null 2>&1
 	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
-
+	crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
+	(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
 
 }
 
@@ -7349,10 +7352,17 @@ linux_panel() {
 						echo "FRP服务端已经安装完成"
 						;;
 					2)
-						generate_frps_config
+						cp -f /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
+						donlond_frp
+						cp -f /home/frp/frps.toml /home/frp/frp_0.61.0_linux_amd64/frps.toml
+						tmux kill-session -t frps >/dev/null 2>&1
+						tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
+						crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
+						(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
 						echo "FRP服务端已经更新完成"
 						;;
 					3)
+						crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 						tmux kill-session -t frps >/dev/null 2>&1
 						rm -rf /home/frp
 						echo "应用已卸载"
@@ -7400,12 +7410,18 @@ linux_panel() {
 						echo "FRP客户端已经安装完成"
 						;;
 					2)
-						configure_frpc
+						cp -f /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
+						donlond_frp
+						cp -f /home/frp/frpc.toml /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+						tmux kill-session -t frpc >/dev/null 2>&1
+						tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+						crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
+						(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
 						echo "FRP客户端已经更新完成"
 						;;
 
-
 					3)
+						crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 						tmux kill-session -t frpc >/dev/null 2>&1
 						rm -rf /home/frp
 						echo "应用已卸载"
