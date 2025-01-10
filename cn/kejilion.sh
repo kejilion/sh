@@ -2176,6 +2176,7 @@ configure_frpc() {
 server_addr = ${server_addr}
 server_port = 8055
 token = ${token}
+
 EOF
 
 	install tmux
@@ -2199,6 +2200,7 @@ type = ${service_type}
 local_ip = 127.0.0.1
 local_port = ${local_port}
 remote_port = ${remote_port}
+
 EOF
 
 	# 输出生成的信息
