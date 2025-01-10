@@ -2189,7 +2189,8 @@ EOF
 add_forwarding_service() {
 	# 提示用户输入服务名称和转发信息
 	read -e -p "请输入服务名称: " service_name
-	read -e -p "请输入转发类型 (tcp/udp): " service_type
+	read -e -p "请输入转发类型 (tcp/udp) [回车默认tcp]: " service_type
+	service_type=${service_type:-tcp}
 	read -e -p "请输入内网端口: " local_port
 	read -e -p "请输入外网端口: " remote_port
 
