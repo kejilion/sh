@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.5.10"
+sh_v="3.6.0"
 
 
 gl_hui='\e[37m'
@@ -3065,7 +3065,8 @@ elrepo_install() {
 	fi
 	# 启用 ELRepo 内核仓库并安装最新的主线内核
 	echo "启用 ELRepo 内核仓库并安装最新的主线内核..."
-	yum -y --enablerepo=elrepo-kernel install kernel-ml
+	# yum -y --enablerepo=elrepo-kernel install kernel-ml
+	yum --nogpgcheck -y --enablerepo=elrepo-kernel install kernel-ml
 	echo "已安装 ELRepo 仓库配置并更新到最新主线内核。"
 	server_reboot
 
