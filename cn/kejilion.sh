@@ -2674,28 +2674,52 @@ new_ssh_port() {
 
 add_sshkey() {
 
-# ssh-keygen -t rsa -b 4096 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
-ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
+	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
 
-cat ~/.ssh/sshkey.pub >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
+	cat ~/.ssh/sshkey.pub >> ~/.ssh/authorized_keys
+	chmod 600 ~/.ssh/authorized_keys
 
 
-ip_address
-echo -e "私钥信息已生成，务必复制保存，可保存成 ${gl_huang}${ipv4_address}_ssh.key${gl_bai} 文件，用于以后的SSH登录"
+	ip_address
+	echo -e "私钥信息已生成，务必复制保存，可保存成 ${gl_huang}${ipv4_address}_ssh.key${gl_bai} 文件，用于以后的SSH登录"
 
-echo "--------------------------------"
-cat ~/.ssh/sshkey
-echo "--------------------------------"
+	echo "--------------------------------"
+	cat ~/.ssh/sshkey
+	echo "--------------------------------"
 
-sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
-	   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
-	   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-	   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
-rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
-echo -e "${gl_lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
+	sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
+		   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
+		   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+	echo -e "${gl_lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
 
 }
+
+
+import_sshkey() {
+
+	read -e -p "请输入您的SSH公钥内容（通常以 'ssh-rsa' 或 'ssh-ed25519' 开头）: " public_key
+
+	if [[ -z "$public_key" ]]; then
+		echo -e "${gl_hong}错误：未输入公钥内容。${gl_bai}"
+		return 1
+	fi
+
+	echo "$public_key" >> ~/.ssh/authorized_keys
+	chmod 600 ~/.ssh/authorized_keys
+
+	sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
+		   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
+		   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+
+	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+	echo -e "${gl_lv}公钥已成功导入，ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
+
+}
+
+
 
 
 add_sshpasswd() {
@@ -8702,27 +8726,38 @@ EOF
 
 
 		  24)
+
 			  root_use
 			  send_stats "私钥登录"
-			  echo "ROOT私钥登录模式"
-			  echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
-			  echo "------------------------------------------------"
-			  echo "将会生成密钥对，更安全的方式SSH登录"
-			  read -e -p "确定继续吗？(Y/N): " choice
-
-			  case "$choice" in
-				[Yy])
+			  while true; do
 				  clear
-				  send_stats "私钥登录使用"
-				  add_sshkey
-				  ;;
-				[Nn])
-				  echo "已取消"
-				  ;;
-				*)
-				  echo "无效的选择，请输入 Y 或 N。"
-				  ;;
-			  esac
+			  	  echo "ROOT私钥登录模式"
+			  	  echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
+			  	  echo "------------------------------------------------"
+			  	  echo "将会生成密钥对，更安全的方式SSH登录"
+				  echo "------------------------"
+				  echo "1. 生成新密钥              2. 导入已有密钥"
+				  echo "------------------------"
+				  echo "0. 返回上一级选单"
+				  echo "------------------------"
+				  read -e -p "请输入你的选择: " host_dns
+
+				  case $host_dns in
+					  1)
+				  		send_stats "生成新密钥"
+				  		add_sshkey
+
+						  ;;
+					  2)
+						send_stats "导入已有公钥"
+						import_sshkey
+
+						  ;;
+					  *)
+						  break  # 跳出循环，退出菜单
+						  ;;
+				  esac
+			  done
 
 			  ;;
 
