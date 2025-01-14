@@ -158,9 +158,6 @@ install() {
 				yum -y update
 				yum install -y epel-release
 				yum install -y "$package"
-			elif command -v snap &>/dev/null; then
-				snap refresh
-				snap install "$package"
 			elif command -v apt &>/dev/null; then
 				apt update -y
 				apt install -y "$package"
@@ -202,8 +199,6 @@ remove() {
 			dnf remove -y "$package"
 		elif command -v yum &>/dev/null; then
 			yum remove -y "$package"
-		elif command -v snap &>/dev/null; then
-			snap remove "$package"
 		elif command -v apt &>/dev/null; then
 			apt purge -y "$package"
 		elif command -v apk &>/dev/null; then
