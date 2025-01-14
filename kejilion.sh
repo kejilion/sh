@@ -8746,11 +8746,13 @@ EOF
 					  1)
 				  		send_stats "生成新密钥"
 				  		add_sshkey
+						break_end
 
 						  ;;
 					  2)
 						send_stats "导入已有公钥"
 						import_sshkey
+						break_end
 
 						  ;;
 					  *)
