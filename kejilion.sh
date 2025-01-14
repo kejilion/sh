@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.0"
+sh_v="3.6.1"
 
 
 gl_hui='\e[37m'
@@ -144,7 +144,7 @@ ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
 install() {
 	if [ $# -eq 0 ]; then
 		echo "未提供软件包参数!"
-		return
+		return 1
 	fi
 
 	for package in "$@"; do
@@ -157,7 +157,10 @@ install() {
 			elif command -v yum &>/dev/null; then
 				yum -y update
 				yum install -y epel-release
-				yum -y install "$package"
+				yum install -y "$package"
+			elif command -v snap &>/dev/null; then
+				snap refresh
+				snap install "$package"
 			elif command -v apt &>/dev/null; then
 				apt update -y
 				apt install -y "$package"
@@ -175,51 +178,47 @@ install() {
 				opkg install "$package"
 			else
 				echo "未知的包管理器!"
-				return
+				return 1
 			fi
 		else
 			echo -e "${gl_lv}$package 已经安装${gl_bai}"
 		fi
 	done
-
-	return
 }
-
 
 install_dependency() {
-	  install wget unzip tar jq
+	install wget unzip tar jq
 }
-
 
 remove() {
 	if [ $# -eq 0 ]; then
 		echo "未提供软件包参数!"
-		return
+		return 1
 	fi
 
 	for package in "$@"; do
 		echo -e "${gl_huang}正在卸载 $package...${gl_bai}"
 		if command -v dnf &>/dev/null; then
-			dnf remove -y "${package}"*
+			dnf remove -y "$package"
 		elif command -v yum &>/dev/null; then
-			yum remove -y "${package}"*
+			yum remove -y "$package"
+		elif command -v snap &>/dev/null; then
+			snap remove "$package"
 		elif command -v apt &>/dev/null; then
-			apt purge -y "${package}"*
+			apt purge -y "$package"
 		elif command -v apk &>/dev/null; then
-			apk del "${package}*"
+			apk del "$package"
 		elif command -v pacman &>/dev/null; then
-			pacman -Rns --noconfirm "${package}"
+			pacman -Rns --noconfirm "$package"
 		elif command -v zypper &>/dev/null; then
-			zypper remove -y "${package}"
+			zypper remove -y "$package"
 		elif command -v opkg &>/dev/null; then
-			opkg remove "${package}"
+			opkg remove "$package"
 		else
 			echo "未知的包管理器!"
-			return
+			return 1
 		fi
 	done
-
-	return
 }
 
 
@@ -2353,10 +2352,9 @@ frps_panel() {
 				echo "应用已卸载"
 				;;
 			5)
-				echo "${docker_name}域名访问设置"
-				send_stats "${docker_name}域名访问设置"
-				add_yuming
-				ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+				echo "将内网穿透服务反代成域名访问"
+				send_stats "FRP对外域名访问"
+				ldnmp_Proxy
 				;;
 			*)
 				break
@@ -8904,7 +8902,7 @@ EOF
 				  echo "------------------------------------------------"
 				  install_docker
 				  install wget sudo tar unzip socat btop nano vim
-				  echo -e "[${gl_lv}OK${gl_bai}] 9/10. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop${gl_bai}"
+				  echo -e "[${gl_lv}OK${gl_bai}] 9/10. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 				  echo "------------------------------------------------"
 
 				  echo "------------------------------------------------"
