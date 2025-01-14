@@ -1041,7 +1041,6 @@ certs_status() {
 		clear
 		echo "请再次尝试部署 $webname"
 		add_yuming
-		repeat_add_yuming
 		install_ssltls
 		certs_status
 	fi
@@ -2318,7 +2317,7 @@ frps_panel() {
 		fi
 		echo ""
 		echo "------------------------"
-		echo "1. 安装           2. 更新           3. 卸载"
+		echo "1. 安装                  2. 更新                  3. 卸载"
 		echo "------------------------"
 		echo "5. 域名访问"
 		echo "------------------------"
