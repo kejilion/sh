@@ -9523,15 +9523,17 @@ kejilion_update() {
 				local ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
 
 				if [ "$country" = "CN" ]; then
-					SH_Update_task='curl -sS -O https://gh.kejilion.pro/https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && sed -i "s/canshu=\"default\"/canshu=\"CN\"/g" ./kejilion.sh && ./kejilion.sh'
+					SH_Update_task="curl -sS -O https://gh.kejilion.pro/https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && sed -i 's/canshu=\"default\"/canshu=\"CN\"/g' ./kejilion.sh && ./kejilion.sh"
 				elif [ -n "$ipv6_address" ]; then
-					SH_Update_task='curl -sS -O https://gh.kejilion.pro/https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && sed -i "s/canshu=\"default\"/canshu=\"V6\"/g" ./kejilion.sh && ./kejilion.sh'
+					SH_Update_task="curl -sS -O https://gh.kejilion.pro/https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && sed -i 's/canshu=\"default\"/canshu=\"V6\"/g' ./kejilion.sh && ./kejilion.sh"
 				else
-					SH_Update_task='curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh'
+					SH_Update_task="curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh"
 				fi
+
 				check_crontab_installed
 				(crontab -l | grep -v "kejilion.sh") | crontab -
-				(crontab -l 2>/dev/null; echo "0 2 * * * bash -c '${SH_Update_task}'") | crontab -
+				(crontab -l 2>/dev/null; echo "0 2 * * * /usr/bin/timeout 10 /bin/bash -c \"$SH_Update_task\"") | crontab -
+
 				echo -e "${gl_lv}自动更新已设置，每天凌晨2点脚本会自动更新！${gl_bai}"
 				send_stats "开启脚本自动更新"
 				break_end
