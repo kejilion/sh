@@ -285,7 +285,7 @@ enable() {
 
 
 break_end() {
-	  echo -e "${gl_lv}✔️  操作完成${gl_bai}"
+	  echo -e "${gl_lv}操作完成${gl_bai}"
 	  echo "按任意键继续..."
 	  read -n 1 -s -r -p ""
 	  echo ""
@@ -491,7 +491,7 @@ while true; do
 			;;
 		8)
 			send_stats "删除所有容器"
-			read -e -p "$(echo -e "${gl_hong}🚨  注意: ${gl_bai}确定删除所有容器吗？(Y/N): ")" choice
+			read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有容器吗？(Y/N): ")" choice
 			case "$choice" in
 			  [Yy])
 				docker rm -f $(docker ps -a -q)
@@ -591,7 +591,7 @@ while true; do
 			;;
 		4)
 			send_stats "删除所有镜像"
-			read -e -p "$(echo -e "${gl_hong}🚨  注意: ${gl_bai}确定删除所有镜像吗？(Y/N): ")" choice
+			read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有镜像吗？(Y/N): ")" choice
 			case "$choice" in
 			  [Yy])
 				docker rmi -f $(docker images -q)
@@ -1036,7 +1036,7 @@ certs_status() {
 		send_stats "域名证书申请成功"
 	else
 		send_stats "域名证书申请失败"
-		echo -e "${gl_hong}🚨  注意: ${gl_bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
+		echo -e "${gl_hong}注意: ${gl_bai}检测到域名证书申请失败，请检测域名是否正确解析或更换域名重新尝试！"
 		break_end
 		clear
 		echo "请再次尝试部署 $webname"
@@ -1628,7 +1628,7 @@ f2b_sshd() {
 
 server_reboot() {
 
-	read -e -p "$(echo -e "${gl_huang}⚠️  提示: ${gl_bai}现在重启服务器吗？(Y/N): ")" rboot
+	read -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}现在重启服务器吗？(Y/N): ")" rboot
 	case "$rboot" in
 	  [Yy])
 		echo "已重启"
@@ -1667,7 +1667,7 @@ ldnmp_install_status_one() {
    if docker inspect "php" &>/dev/null; then
 	clear
 	send_stats "无法再次安装LDNMP环境"
-	echo -e "${gl_huang}⚠️  提示: ${gl_bai}建站环境已安装。无需再次安装！"
+	echo -e "${gl_huang}提示: ${gl_bai}建站环境已安装。无需再次安装！"
 	break_end
 	linux_ldnmp
    else
@@ -1903,7 +1903,7 @@ ldnmp_web_status() {
 
 			2)
 				send_stats "更换站点域名"
-				echo -e "${gl_hong}🚨  强烈建议: ${gl_bai}先备份好全站数据再更换站点域名！"
+				echo -e "${gl_hong}强烈建议: ${gl_bai}先备份好全站数据再更换站点域名！"
 				read -e -p "请输入旧域名: " oddyuming
 				read -e -p "请输入新域名: " yuming
 				install_certbot
@@ -2464,7 +2464,7 @@ fix_dpkg() {
 
 
 linux_update() {
-	echo -e "${gl_huang}🔄 正在系统更新...${gl_bai}"
+	echo -e "${gl_huang}正在系统更新...${gl_bai}"
 	if command -v dnf &>/dev/null; then
 		dnf -y update
 	elif command -v yum &>/dev/null; then
@@ -2491,7 +2491,7 @@ linux_update() {
 
 
 linux_clean() {
-	echo -e "${gl_huang}🧹 正在系统清理...${gl_bai}"
+	echo -e "${gl_huang}正在系统清理...${gl_bai}"
 	if command -v dnf &>/dev/null; then
 		dnf autoremove -y
 		dnf clean all
@@ -2738,7 +2738,7 @@ echo -e "${gl_lv}ROOT登录设置完毕！${gl_bai}"
 
 root_use() {
 clear
-[ "$EUID" -ne 0 ] && echo -e "${gl_huang}⚠️  提示: ${gl_bai}该功能需要root用户才能运行！" && break_end && kejilion
+[ "$EUID" -ne 0 ] && echo -e "${gl_huang}提示: ${gl_bai}该功能需要root用户才能运行！" && break_end && kejilion
 }
 
 
@@ -2788,7 +2788,7 @@ dd_xitong() {
 			root_use
 			echo "重装系统"
 			echo "--------------------------------"
-			echo -e "${gl_hong}🚨  注意: ${gl_bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
+			echo -e "${gl_hong}注意: ${gl_bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
 			echo -e "${gl_hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${gl_bai} "
 			echo "------------------------"
 			echo "1. Debian 12                  2. Debian 11"
@@ -3570,7 +3570,7 @@ Kernel_optimize() {
 	  echo "视频介绍: https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1"
 	  echo "------------------------------------------------"
 	  echo "提供多种系统参数调优模式，用户可以根据自身使用场景进行选择切换。"
-	  echo -e "${gl_huang}⚠️  提示: ${gl_bai}生产环境请谨慎使用！"
+	  echo -e "${gl_huang}提示: ${gl_bai}生产环境请谨慎使用！"
 	  echo "--------------------"
 	  echo "1. 高性能优化模式：     最大化系统性能，优化文件描述符、虚拟内存、网络设置、缓存管理和CPU设置。"
 	  echo "2. 均衡优化模式：       在性能与资源消耗之间取得平衡，适合日常使用。"
@@ -3914,7 +3914,7 @@ linux_ps() {
 
 
 	echo ""
-	echo -e "💻 系统信息查询"
+	echo -e "系统信息查询"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}主机名:       ${gl_bai}$hostname"
 	echo -e "${gl_kjlan}系统版本:     ${gl_bai}$os_info"
@@ -3961,7 +3961,7 @@ linux_tools() {
   while true; do
 	  clear
 	  # send_stats "基础工具"
-	  echo -e "▶ 🛠️  基础工具"
+	  echo -e "▶ 基础工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}curl 下载工具 ${gl_huang}★${gl_bai}                   ${gl_kjlan}2.   ${gl_bai}wget 下载工具 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}sudo 超级管理权限工具             ${gl_kjlan}4.   ${gl_bai}socat 通信连接工具"
@@ -4270,7 +4270,7 @@ linux_docker() {
 	while true; do
 	  clear
 	  # send_stats "docker管理"
-	  echo -e "▶ 🐳 Docker管理"
+	  echo -e "▶ Docker管理"
 	  docker_tato
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}安装更新Docker环境 ${gl_huang}★${gl_bai}"
@@ -4450,7 +4450,7 @@ linux_docker() {
 
 					   3)
 						  send_stats "删除所有卷"
-						  read -e -p "$(echo -e "${gl_hong}🚨  注意: ${gl_bai}确定删除所有未使用的卷吗？(Y/N): ")" choice
+						  read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有未使用的卷吗？(Y/N): ")" choice
 						  case "$choice" in
 							[Yy])
 							  docker volume prune -f
@@ -4472,7 +4472,7 @@ linux_docker() {
 		  7)
 			  clear
 			  send_stats "Docker清理"
-			  read -e -p "$(echo -e "${gl_huang}⚠️  提示: ${gl_bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(Y/N): ")" choice
+			  read -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}将清理无用的镜像容器网络，包括停止的容器，确定清理吗？(Y/N): ")" choice
 			  case "$choice" in
 				[Yy])
 				  docker system prune -af --volumes
@@ -4512,7 +4512,7 @@ linux_docker() {
 		  20)
 			  clear
 			  send_stats "Docker卸载"
-			  read -e -p "$(echo -e "${gl_hong}🚨  注意: ${gl_bai}确定卸载docker环境吗？(Y/N): ")" choice
+			  read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定卸载docker环境吗？(Y/N): ")" choice
 			  case "$choice" in
 				[Yy])
 				  docker ps -a -q | xargs -r docker rm -f && docker images -q | xargs -r docker rmi && docker network prune -f && docker volume prune -f
@@ -4550,7 +4550,7 @@ linux_test() {
 	while true; do
 	  clear
 	  # send_stats "测试脚本合集"
-	  echo -e "▶ 🧪 测试脚本合集"
+	  echo -e "▶ 测试脚本合集"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}IP及解锁状态检测"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}ChatGPT 解锁状态检测"
@@ -4709,7 +4709,7 @@ linux_Oracle() {
 	 while true; do
 	  clear
 	  send_stats "甲骨文云脚本合集"
-	  echo -e "▶ 🏢 甲骨文云脚本合集"
+	  echo -e "▶ 甲骨文云脚本合集"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}安装闲置机器活跃脚本"
 	  echo -e "${gl_kjlan}2.   ${gl_bai}卸载闲置机器活跃脚本"
@@ -4782,7 +4782,7 @@ linux_Oracle() {
 		  clear
 		  echo "重装系统"
 		  echo "--------------------------------"
-		  echo -e "${gl_hong}🚨  注意: ${gl_bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
+		  echo -e "${gl_hong}注意: ${gl_bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
 		  read -e -p "确定继续吗？(Y/N): " choice
 
 		  case "$choice" in
@@ -4893,7 +4893,7 @@ linux_ldnmp() {
 
 	clear
 	# send_stats "LDNMP建站"
-	echo -e "${gl_huang}▶ 🌐 LDNMP建站"
+	echo -e "${gl_huang}▶ LDNMP建站"
 	ldnmp_tato
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}1.   ${gl_bai}安装LDNMP环境 ${gl_huang}★${gl_bai}                   ${gl_huang}2.   ${gl_bai}安装WordPress ${gl_huang}★${gl_bai}"
@@ -6057,7 +6057,7 @@ linux_ldnmp() {
 
 				  ;;
 			  5)
-				read -e -p "$(echo -e "${gl_huang}⚠️  提示: ${gl_bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
+				read -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
 				case "$choice" in
 				  [Yy])
 					send_stats "完整更新LDNMP环境"
@@ -6088,7 +6088,7 @@ linux_ldnmp() {
 	38)
 		root_use
 		send_stats "卸载LDNMP环境"
-		read -e -p "$(echo -e "${gl_hong}🚨  强烈建议：${gl_bai}先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ")" choice
+		read -e -p "$(echo -e "${gl_hong}强烈建议：${gl_bai}先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ")" choice
 		case "$choice" in
 		  [Yy])
 			cd /home/web/
@@ -6127,7 +6127,7 @@ linux_panel() {
 	while true; do
 	  clear
 	  # send_stats "应用市场"
-	  echo -e "▶ 🛒 应用市场"
+	  echo -e "▶ 应用市场"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}宝塔面板官方版                      ${gl_kjlan}2.   ${gl_bai}aaPanel宝塔国际版"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}1Panel新一代管理面板                ${gl_kjlan}4.   ${gl_bai}NginxProxyManager可视化面板"
@@ -7499,10 +7499,10 @@ linux_work() {
 	while true; do
 	  clear
 	  send_stats "我的工作区"
-	  echo -e "▶ 📁 我的工作区"
+	  echo -e "▶ 我的工作区"
 	  echo -e "系统将为你提供可以后台常驻运行的工作区，你可以用来执行长时间的任务"
 	  echo -e "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
-	  echo -e "${gl_huang}⚠️  提示: ${gl_bai}进入工作区后使用Ctrl+b再单独按d，退出工作区！"
+	  echo -e "${gl_huang}提示: ${gl_bai}进入工作区后使用Ctrl+b再单独按d，退出工作区！"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo "当前已存在的工作区列表"
 	  echo -e "${gl_kjlan}------------------------"
@@ -7688,7 +7688,7 @@ linux_Settings() {
 	while true; do
 	  clear
 	  # send_stats "系统工具"
-	  echo -e "▶ ⚙️  系统工具"
+	  echo -e "▶ 系统工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}设置脚本启动快捷键                 ${gl_kjlan}2.   ${gl_bai}修改登录密码"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}ROOT密码登录模式                   ${gl_kjlan}4.   ${gl_bai}安装Python指定版本"
@@ -9328,7 +9328,7 @@ fi
 while true; do
 	  clear
 	  send_stats "集群控制中心"
-	  echo "▶ 📡 服务器集群控制"
+	  echo "▶ 服务器集群控制"
 	  cat ~/cluster/servers.py
 	  echo
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9432,7 +9432,7 @@ kejilion_Affiliates() {
 
 clear
 send_stats "广告专栏"
-echo "💼 广告专栏"
+echo "广告专栏"
 echo "------------------------"
 echo "将为用户提供更简单优雅的推广与购买体验！"
 echo ""
@@ -9481,7 +9481,7 @@ kejilion_update() {
 	send_stats "脚本更新"
 	cd ~
 	clear
-	echo "🔃 更新日志"
+	echo "更新日志"
 	echo "------------------------"
 	echo "全部日志: ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt"
 	echo "------------------------"
@@ -9564,27 +9564,27 @@ echo "╩ ╩╚═╝╚╝╩╩═╝╩╚═╝╝╚╝o╚═╝╩ ╩"
 echo -e "科技lion脚本工具箱 v$sh_v"
 echo -e "命令行输入${gl_huang}k${gl_kjlan}可快速启动脚本${gl_bai}"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}1.   💻 ${gl_bai}系统信息查询"
-echo -e "${gl_kjlan}2.   🔄 ${gl_bai}系统更新"
-echo -e "${gl_kjlan}3.   🧹 ${gl_bai}系统清理"
-echo -e "${gl_kjlan}4.   🛠️  ${gl_bai}基础工具 ▶"
-echo -e "${gl_kjlan}5.   🚀 ${gl_bai}BBR管理 ▶"
-echo -e "${gl_kjlan}6.   🐳 ${gl_bai}Docker管理 ▶ "
-echo -e "${gl_kjlan}7.   🌍 ${gl_bai}WARP管理 ▶ "
-echo -e "${gl_kjlan}8.   🧪 ${gl_bai}测试脚本合集 ▶ "
-echo -e "${gl_kjlan}9.   🏢 ${gl_bai}甲骨文云脚本合集 ▶ "
-echo -e "${gl_huang}10.  🌐 ${gl_bai}LDNMP建站 ▶ "
-echo -e "${gl_kjlan}11.  🛒 ${gl_bai}应用市场 ▶ "
-echo -e "${gl_kjlan}12.  📁 ${gl_bai}我的工作区 ▶ "
-echo -e "${gl_kjlan}13.  ⚙️  ${gl_bai}系统工具 ▶ "
-echo -e "${gl_kjlan}14.  📡 ${gl_bai}服务器集群控制 ▶ "
-echo -e "${gl_kjlan}15.  💼 ${gl_bai}广告专栏"
+echo -e "${gl_kjlan}1.   ${gl_bai}系统信息查询"
+echo -e "${gl_kjlan}2.   ${gl_bai}系统更新"
+echo -e "${gl_kjlan}3.   ${gl_bai}系统清理"
+echo -e "${gl_kjlan}4.   ${gl_bai}基础工具 ▶"
+echo -e "${gl_kjlan}5.   ${gl_bai}BBR管理 ▶"
+echo -e "${gl_kjlan}6.   ${gl_bai}Docker管理 ▶ "
+echo -e "${gl_kjlan}7.   ${gl_bai}WARP管理 ▶ "
+echo -e "${gl_kjlan}8.   ${gl_bai}测试脚本合集 ▶ "
+echo -e "${gl_kjlan}9.   ${gl_bai}甲骨文云脚本合集 ▶ "
+echo -e "${gl_huang}10.  ${gl_bai}LDNMP建站 ▶ "
+echo -e "${gl_kjlan}11.  ${gl_bai}应用市场 ▶ "
+echo -e "${gl_kjlan}12.  ${gl_bai}我的工作区 ▶ "
+echo -e "${gl_kjlan}13.  ${gl_bai}系统工具 ▶ "
+echo -e "${gl_kjlan}14.  ${gl_bai}服务器集群控制 ▶ "
+echo -e "${gl_kjlan}15.  ${gl_bai}广告专栏"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}p.   🎮 ${gl_bai}幻兽帕鲁开服脚本 ▶"
+echo -e "${gl_kjlan}p.   ${gl_bai}幻兽帕鲁开服脚本 ▶"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}00.  🔃 ${gl_bai}脚本更新"
+echo -e "${gl_kjlan}00.  ${gl_bai}脚本更新"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}0.   ❌ ${gl_bai}退出脚本"
+echo -e "${gl_kjlan}0.   ${gl_bai}退出脚本"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -e -p "请输入你的选择: " choice
 
