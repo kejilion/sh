@@ -285,7 +285,7 @@ enable() {
 
 
 break_end() {
-	  echo -e "${gl_lv}操作完成${gl_bai}"
+	  echo -e "${gl_lv}✔️ 操作完成${gl_bai}"
 	  echo "按任意键继续..."
 	  read -n 1 -s -r -p ""
 	  echo ""
@@ -2491,7 +2491,7 @@ linux_update() {
 
 
 linux_clean() {
-	echo -e "${gl_huang}🧹正在系统清理...${gl_bai}"
+	echo -e "${gl_huang}🧹 正在系统清理...${gl_bai}"
 	if command -v dnf &>/dev/null; then
 		dnf autoremove -y
 		dnf clean all
@@ -7686,7 +7686,7 @@ linux_Settings() {
 	while true; do
 	  clear
 	  # send_stats "系统工具"
-	  echo -e "▶ 🔧 系统工具"
+	  echo -e "▶ ⚙️ 系统工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}设置脚本启动快捷键                 ${gl_kjlan}2.   ${gl_bai}修改登录密码"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}ROOT密码登录模式                   ${gl_kjlan}4.   ${gl_bai}安装Python指定版本"
@@ -9574,7 +9574,7 @@ echo -e "${gl_kjlan}9.   🏢 ${gl_bai}甲骨文云脚本合集 ▶ "
 echo -e "${gl_huang}10.  🌐 ${gl_bai}LDNMP建站 ▶ "
 echo -e "${gl_kjlan}11.  🛒 ${gl_bai}应用市场 ▶ "
 echo -e "${gl_kjlan}12.  📁 ${gl_bai}我的工作区 ▶ "
-echo -e "${gl_kjlan}13.  🔧 ${gl_bai}系统工具 ▶ "
+echo -e "${gl_kjlan}13.  ⚙️ ${gl_bai}系统工具 ▶ "
 echo -e "${gl_kjlan}14.  🌐 ${gl_bai}服务器集群控制 ▶ "
 echo -e "${gl_kjlan}15.  💼 ${gl_bai}广告专栏"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
