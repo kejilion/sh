@@ -3961,7 +3961,7 @@ linux_tools() {
   while true; do
 	  clear
 	  # send_stats "基础工具"
-	  echo -e "▶ 🔧 基础工具"
+	  echo -e "▶ 🛠️  基础工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}curl 下载工具 ${gl_huang}★${gl_bai}                   ${gl_kjlan}2.   ${gl_bai}wget 下载工具 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}sudo 超级管理权限工具             ${gl_kjlan}4.   ${gl_bai}socat 通信连接工具"
@@ -9326,7 +9326,7 @@ fi
 while true; do
 	  clear
 	  send_stats "集群控制中心"
-	  echo "▶ 🌐 服务器集群控制"
+	  echo "▶ 📡 服务器集群控制"
 	  cat ~/cluster/servers.py
 	  echo
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9479,7 +9479,7 @@ kejilion_update() {
 	send_stats "脚本更新"
 	cd ~
 	clear
-	echo "🔄 更新日志"
+	echo "🔃 更新日志"
 	echo "------------------------"
 	echo "全部日志: ${gh_proxy}https://raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt"
 	echo "------------------------"
@@ -9565,8 +9565,8 @@ echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}1.   💻 ${gl_bai}系统信息查询"
 echo -e "${gl_kjlan}2.   🔄 ${gl_bai}系统更新"
 echo -e "${gl_kjlan}3.   🧹 ${gl_bai}系统清理"
-echo -e "${gl_kjlan}4.   🔧 ${gl_bai}基础工具 ▶"
-echo -e "${gl_kjlan}5.   🌐 ${gl_bai}BBR管理 ▶"
+echo -e "${gl_kjlan}4.   🛠️  ${gl_bai}基础工具 ▶"
+echo -e "${gl_kjlan}5.   🚀 ${gl_bai}BBR管理 ▶"
 echo -e "${gl_kjlan}6.   🐳 ${gl_bai}Docker管理 ▶ "
 echo -e "${gl_kjlan}7.   🌍 ${gl_bai}WARP管理 ▶ "
 echo -e "${gl_kjlan}8.   🧪 ${gl_bai}测试脚本合集 ▶ "
@@ -9575,12 +9575,12 @@ echo -e "${gl_huang}10.  🌐 ${gl_bai}LDNMP建站 ▶ "
 echo -e "${gl_kjlan}11.  🛒 ${gl_bai}应用市场 ▶ "
 echo -e "${gl_kjlan}12.  📁 ${gl_bai}我的工作区 ▶ "
 echo -e "${gl_kjlan}13.  ⚙️  ${gl_bai}系统工具 ▶ "
-echo -e "${gl_kjlan}14.  🌐 ${gl_bai}服务器集群控制 ▶ "
+echo -e "${gl_kjlan}14.  📡 ${gl_bai}服务器集群控制 ▶ "
 echo -e "${gl_kjlan}15.  💼 ${gl_bai}广告专栏"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}p.   🎮 ${gl_bai}幻兽帕鲁开服脚本 ▶"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}00.  🔄 ${gl_bai}脚本更新"
+echo -e "${gl_kjlan}00.  🔃 ${gl_bai}脚本更新"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}0.   ❌ ${gl_bai}退出脚本"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
