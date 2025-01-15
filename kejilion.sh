@@ -5107,6 +5107,8 @@ linux_ldnmp() {
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
+	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
+
 	  cd /home/web/html
 	  mkdir $yuming
 	  cd $yuming
