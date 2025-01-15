@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.1"
+sh_v="3.6.2"
 
 
 gl_hui='\e[37m'
@@ -2152,6 +2152,7 @@ EOF
 	install tmux
 	tmux kill-session -t frps >/dev/null 2>&1
 	tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
+	check_crontab_installed
 	crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
 
@@ -2178,6 +2179,7 @@ EOF
 	install tmux
 	tmux kill-session -t frpc >/dev/null 2>&1
 	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+	check_crontab_installed
 	crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
 
@@ -9032,6 +9034,7 @@ EOF
 			  case "$choice" in
 				[Yy])
 				  clear
+				  (crontab -l | grep -v "kejilion.sh") | crontab -
 				  rm -f /usr/local/bin/k
 				  rm ~/kejilion.sh
 				  echo "脚本已卸载，再见！"
@@ -9491,9 +9494,12 @@ kejilion_update() {
 		echo "发现新版本！"
 		echo -e "当前版本 v$sh_v        最新版本 ${gl_huang}v$sh_v_new${gl_bai}"
 		echo "------------------------"
-		read -e -p "确定更新脚本吗？(Y/N): " choice
+		echo "1. 现在更新            2. 自动更新            0. 返回主菜单"
+		echo "------------------------"
+		read -e -p "请输入你的选择: " choice
+
 		case "$choice" in
-			[Yy])
+			1)
 				clear
 				local country=$(curl -s ipinfo.io/country)
 				if [ "$country" = "CN" ]; then
@@ -9511,10 +9517,18 @@ kejilion_update() {
 				~/kejilion.sh
 				exit
 				;;
-			[Nn])
-				echo "已取消"
+			2)
+				clear
+				check_crontab_installed
+				(crontab -l | grep -v "kejilion.sh") | crontab -
+				(crontab -l; echo "0 2 * * * bash <(curl -sL kejilion.sh)") | crontab -
+				echo -e "${gl_lv}自动更新已设置，每天凌晨2点脚本会自动更新！${gl_bai}"
+				send_stats "开启脚本自动更新"
+				break_end
+				kejilion_sh
 				;;
 			*)
+				kejilion_sh
 				;;
 		esac
 	fi
