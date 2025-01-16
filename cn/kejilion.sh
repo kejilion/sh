@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -9834,7 +9834,7 @@ else
 			linux_trash
 			;;
 		backup|bf|备份)
-			linux_trash
+			linux_backup
 			;;
 		wp|wordpress)
 			shift
