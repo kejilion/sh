@@ -1779,7 +1779,7 @@ ldnmp_wp() {
   cd /home/web/html
   mkdir $yuming
   cd $yuming
-  wget -O latest.zip ${gh_proxy}https://github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
+  wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
   # wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
   # wget -O latest.zip https://wordpress.org/latest.zip
   unzip latest.zip
@@ -2111,7 +2111,7 @@ fi
 
 donlond_frp() {
 	mkdir -p /home/frp/ && cd /home/frp/
-	curl -L ${gh_proxy}https://github.com/fatedier/frp/releases/download/v0.61.0/frp_0.61.0_linux_amd64.tar.gz -o frp_0.61.0_linux_amd64.tar.gz
+	curl -L ${gh_proxy}github.com/fatedier/frp/releases/download/v0.61.0/frp_0.61.0_linux_amd64.tar.gz -o frp_0.61.0_linux_amd64.tar.gz
 	tar -zxvf frp_*.tar.gz
 }
 
@@ -2493,7 +2493,6 @@ linux_update() {
 linux_clean() {
 	echo -e "${gl_huang}正在系统清理...${gl_bai}"
 	if command -v dnf &>/dev/null; then
-		rpm --rebuilddb
 		dnf autoremove -y
 		dnf clean all
 		dnf makecache
@@ -2502,7 +2501,6 @@ linux_clean() {
 		journalctl --vacuum-size=500M
 
 	elif command -v yum &>/dev/null; then
-		rpm --rebuilddb
 		yum autoremove -y
 		yum clean all
 		yum makecache
@@ -3862,143 +3860,6 @@ linux_trash() {
 
 
 
-# 创建备份
-create_backup() {
-	send_stats "创建备份"
-	local TIMESTAMP=$(date +"%Y%m%d%H%M%S")
-
-	# 提示用户输入备份目录
-	echo "创建备份示例："
-	echo "  - 备份单个目录: /var/www"
-	echo "  - 备份多个目录: /etc /home /var/log"
-	echo "  - 直接回车将使用默认目录 (/etc /usr /home)"
-	read -r -p "请输入要备份的目录（多个目录用空格分隔，直接回车则使用默认目录）：" input
-
-	# 如果用户没有输入目录，则使用默认目录
-	if [ -z "$input" ]; then
-		BACKUP_PATHS=(
-			"/etc"              # 配置文件和软件包配置
-			"/usr"              # 已安装的软件文件
-			"/home"             # 用户数据
-		)
-	else
-		# 将用户输入的目录按空格分隔成数组
-		IFS=' ' read -r -a BACKUP_PATHS <<< "$input"
-	fi
-
-	# 生成备份文件前缀
-	local PREFIX=""
-	for path in "${BACKUP_PATHS[@]}"; do
-		# 提取目录名称并去除斜杠
-		dir_name=$(basename "$path")
-		PREFIX+="${dir_name}_"
-	done
-
-	# 去除最后一个下划线
-	local PREFIX=${PREFIX%_}
-
-	# 生成备份文件名
-	local BACKUP_NAME="${PREFIX}_$TIMESTAMP.tar.gz"
-
-	# 打印用户选择的目录
-	echo "您选择的备份目录为："
-	for path in "${BACKUP_PATHS[@]}"; do
-		echo "- $path"
-	done
-
-	# 创建备份
-	echo "正在创建备份 $BACKUP_NAME..."
-	install tar
-	tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"
-
-	# 检查命令是否成功
-	if [ $? -eq 0 ]; then
-		echo "备份创建成功: $BACKUP_DIR/$BACKUP_NAME"
-	else
-		echo "备份创建失败！"
-		exit 1
-	fi
-}
-
-# 恢复备份
-restore_backup() {
-	send_stats "恢复备份"
-	# 选择要恢复的备份
-	read -p "请输入要恢复的备份文件名: " BACKUP_NAME
-
-	# 检查备份文件是否存在
-	if [ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]; then
-		echo "备份文件不存在！"
-		exit 1
-	fi
-
-	echo "正在恢复备份 $BACKUP_NAME..."
-	tar -xzvf "$BACKUP_DIR/$BACKUP_NAME" -C /
-
-	if [ $? -eq 0 ]; then
-		echo "备份恢复成功！"
-	else
-		echo "备份恢复失败！"
-		exit 1
-	fi
-}
-
-# 列出备份
-list_backups() {
-	echo "可用的备份："
-	ls -1 "$BACKUP_DIR"
-}
-
-# 删除备份
-delete_backup() {
-	send_stats "删除备份"
-
-	read -p "请输入要删除的备份文件名: " BACKUP_NAME
-
-	# 检查备份文件是否存在
-	if [ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]; then
-		echo "备份文件不存在！"
-		exit 1
-	fi
-
-	# 删除备份
-	rm -f "$BACKUP_DIR/$BACKUP_NAME"
-
-	if [ $? -eq 0 ]; then
-		echo "备份删除成功！"
-	else
-		echo "备份删除失败！"
-		exit 1
-	fi
-}
-
-# 备份主菜单
-linux_backup() {
-	BACKUP_DIR="/backups"
-	mkdir -p "$BACKUP_DIR"
-	while true; do
-		clear
-		send_stats "系统备份功能"
-		echo "系统备份功能"
-		echo "------------------------"
-		list_backups
-		echo "------------------------"
-		echo "1. 创建备份        2. 恢复备份        3. 删除备份"
-		echo "------------------------"
-		echo "0. 返回上一级"
-		echo "------------------------"
-		read -p "请输入你的选择: " choice
-		case $choice in
-			1) create_backup ;;
-			2) restore_backup ;;
-			3) delete_backup ;;
-			*) break ;;
-		esac
-		read -p "按回车键继续..."
-	done
-}
-
-
 
 linux_ps() {
 
@@ -4733,7 +4594,7 @@ linux_test() {
 			  clear
 			  send_stats "yeahwu流媒体解锁检测"
 			  install wget
-			  wget -qO- ${gh_proxy}https://github.com/yeahwu/check/raw/main/check.sh | bash
+			  wget -qO- ${gh_proxy}github.com/yeahwu/check/raw/main/check.sh | bash
 			  ;;
 		  4)
 			  clear
@@ -5086,7 +4947,7 @@ linux_ldnmp() {
 	  cd /home/web/html
 	  mkdir $yuming
 	  cd $yuming
-	  wget -O latest.zip ${gh_proxy}https://github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20240520.zip
+	  wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20240520.zip
 	  unzip latest.zip
 	  rm latest.zip
 
@@ -5123,7 +4984,7 @@ linux_ldnmp() {
 	  cd /home/web/html
 	  mkdir $yuming
 	  cd $yuming
-	  wget -O latest.zip ${gh_proxy}https://github.com/kalcaddle/kodbox/archive/refs/tags/1.50.02.zip
+	  wget -O latest.zip ${gh_proxy}github.com/kalcaddle/kodbox/archive/refs/tags/1.50.02.zip
 	  unzip -o latest.zip
 	  rm latest.zip
 	  mv /home/web/html/$yuming/kodbox* /home/web/html/$yuming/kodbox
@@ -5158,9 +5019,9 @@ linux_ldnmp() {
 	  cd /home/web/html
 	  mkdir $yuming
 	  cd $yuming
-	  # wget ${gh_proxy}https://github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && rm maccms10.zip
-	  wget ${gh_proxy}https://github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && mv maccms10-*/* . && rm -r maccms10-* && rm maccms10.zip
-	  cd /home/web/html/$yuming/template/ && wget ${gh_proxy}https://github.com/kejilion/Website_source_code/raw/main/DYXS2.zip && unzip DYXS2.zip && rm /home/web/html/$yuming/template/DYXS2.zip
+	  # wget ${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && rm maccms10.zip
+	  wget ${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && mv maccms10-*/* . && rm -r maccms10-* && rm maccms10.zip
+	  cd /home/web/html/$yuming/template/ && wget ${gh_proxy}github.com/kejilion/Website_source_code/raw/main/DYXS2.zip && unzip DYXS2.zip && rm /home/web/html/$yuming/template/DYXS2.zip
 	  cp /home/web/html/$yuming/template/DYXS2/asset/admin/Dyxs2.php /home/web/html/$yuming/application/admin/controller
 	  cp /home/web/html/$yuming/template/DYXS2/asset/admin/dycms.html /home/web/html/$yuming/application/admin/view/system
 	  mv /home/web/html/$yuming/admin.php /home/web/html/$yuming/vip.php && wget -O /home/web/html/$yuming/application/extra/maccms.php ${gh_proxy}https://raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php
@@ -5201,7 +5062,7 @@ linux_ldnmp() {
 	  cd /home/web/html
 	  mkdir $yuming
 	  cd $yuming
-	  wget ${gh_proxy}https://github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
+	  wget ${gh_proxy}github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
 	  restart_ldnmp
 
@@ -5300,7 +5161,7 @@ linux_ldnmp() {
 	  cd /home/web/html
 	  mkdir $yuming
 	  cd $yuming
-	  wget -O latest.zip ${gh_proxy}https://github.com/typecho/typecho/releases/latest/download/typecho.zip
+	  wget -O latest.zip ${gh_proxy}github.com/typecho/typecho/releases/latest/download/typecho.zip
 	  unzip latest.zip
 	  rm latest.zip
 
@@ -5339,7 +5200,7 @@ linux_ldnmp() {
 	  cd /home/web/html
 	  mkdir $yuming
 	  cd $yuming
-	  wget -O latest.zip ${gh_proxy}https://github.com/linkstackorg/linkstack/releases/latest/download/linkstack.zip
+	  wget -O latest.zip ${gh_proxy}github.com/linkstackorg/linkstack/releases/latest/download/linkstack.zip
 	  unzip latest.zip
 	  rm latest.zip
 
@@ -5597,7 +5458,7 @@ linux_ldnmp() {
 	  mkdir $yuming
 	  cd $yuming
 
-	  wget ${gh_proxy}https://github.com/kejilion/Website_source_code/raw/refs/heads/main/ai_prompt_generator.zip
+	  wget ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/ai_prompt_generator.zip
 	  unzip $(ls -t *.zip | head -n 1)
 	  rm -f $(ls -t *.zip | head -n 1)
 
@@ -6147,7 +6008,7 @@ linux_ldnmp() {
 			  run_command docker exec php sed -i "s/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g" /etc/apk/repositories > /dev/null 2>&1
 
 			  docker exec php apk update
-			  curl -sL ${gh_proxy}https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions
+			  curl -sL ${gh_proxy}github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions -o /usr/local/bin/install-php-extensions
 			  docker exec php mkdir -p /usr/local/bin/
 			  docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
 			  docker exec php chmod +x /usr/local/bin/install-php-extensions
@@ -6156,7 +6017,7 @@ linux_ldnmp() {
 							apk add --no-cache imagemagick imagemagick-dev \
 							&& apk add --no-cache git autoconf gcc g++ make pkgconfig \
 							&& rm -rf /tmp/imagick \
-							&& git clone ${gh_proxy}https://github.com/Imagick/imagick /tmp/imagick \
+							&& git clone ${gh_proxy}github.com/Imagick/imagick /tmp/imagick \
 							&& cd /tmp/imagick \
 							&& phpize \
 							&& ./configure \
@@ -6757,7 +6618,7 @@ linux_panel() {
 					  --restart unless-stopped \
 					  whyour/qinglong:latest"
 			local docker_describe="青龙面板是一个定时任务管理平台"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/whyour/qinglong"
+			local docker_url="官网介绍: ${gh_proxy}github.com/whyour/qinglong"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -6864,7 +6725,7 @@ linux_panel() {
 					  --restart unless-stopped \
 					  ddsderek/easyimage:latest"
 			local docker_describe="简单图床是一个简单的图床程序"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/icret/EasyImages2.0"
+			local docker_url="官网介绍: ${gh_proxy}github.com/icret/EasyImages2.0"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -6895,7 +6756,7 @@ linux_panel() {
 			local docker_port=89
 			local docker_rum="docker run -d --name looking-glass --restart always -p 89:80 wikihostinc/looking-glass-server"
 			local docker_describe="Speedtest测速面板是一个VPS网速测试工具，多项测试功能，还可以实时监控VPS进出站流量"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/wikihost-opensource/als"
+			local docker_url="官网介绍: ${gh_proxy}github.com/wikihost-opensource/als"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7031,7 +6892,7 @@ linux_panel() {
 			local docker_port=8180
 			local docker_rum="docker run -d -p 8180:8080 -v /home/docker/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart always codercom/code-server"
 			local docker_describe="VScode是一款强大的在线代码编写工具"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/coder/code-server"
+			local docker_url="官网介绍: ${gh_proxy}github.com/coder/code-server"
 			local docker_use="sleep 3"
 			local docker_passwd="docker exec vscode-web cat /home/coder/.config/code-server/config.yaml"
 			docker_app
@@ -7047,7 +6908,7 @@ linux_panel() {
 							--restart=always \
 							louislam/uptime-kuma:latest"
 			local docker_describe="Uptime Kuma 易于使用的自托管监控工具"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/louislam/uptime-kuma"
+			local docker_url="官网介绍: ${gh_proxy}github.com/louislam/uptime-kuma"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7059,7 +6920,7 @@ linux_panel() {
 			local docker_port=5230
 			local docker_rum="docker run -d --name memos -p 5230:5230 -v /home/docker/memos:/var/opt/memos --restart always ghcr.io/usememos/memos:latest"
 			local docker_describe="Memos是一款轻量级、自托管的备忘录中心"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/usememos/memos"
+			local docker_url="官网介绍: ${gh_proxy}github.com/usememos/memos"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7124,7 +6985,7 @@ linux_panel() {
 			local docker_port=5003
 			local docker_rum="docker run -d --name dockge --restart unless-stopped -p 5003:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/home/docker/dockge/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge"
 			local docker_describe="dockge是一个可视化的docker-compose容器管理面板"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/louislam/dockge"
+			local docker_url="官网介绍: ${gh_proxy}github.com/louislam/dockge"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7136,7 +6997,7 @@ linux_panel() {
 			local docker_port=8028
 			local docker_rum="docker run -d -p 8028:8080 --name speedtest --restart always ghcr.io/librespeed/speedtest"
 			local docker_describe="librespeed是用Javascript实现的轻量级速度测试工具，即开即用"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/librespeed/speedtest"
+			local docker_url="官网介绍: ${gh_proxy}github.com/librespeed/speedtest"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7199,7 +7060,7 @@ linux_panel() {
 							 -e DOCKER_ENABLE_SECURITY=false \
 							 frooodle/s-pdf:latest"
 			local docker_describe="这是一个强大的本地托管基于 Web 的 PDF 操作工具，使用 docker，允许您对 PDF 文件执行各种操作，例如拆分合并、转换、重新组织、添加图像、旋转、压缩等。"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/Stirling-Tools/Stirling-PDF"
+			local docker_url="官网介绍: ${gh_proxy}github.com/Stirling-Tools/Stirling-PDF"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7245,7 +7106,7 @@ linux_panel() {
 							-v /home/docker/pingvin-share/data:/opt/app/backend/data \
 							stonith404/pingvin-share"
 			local docker_describe="Pingvin Share 是一个可自建的文件分享平台，是 WeTransfer 的一个替代品"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/stonith404/pingvin-share"
+			local docker_url="官网介绍: ${gh_proxy}github.com/stonith404/pingvin-share"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7264,7 +7125,7 @@ linux_panel() {
 							--name moments \
 							kingwrcy/moments:latest"
 			local docker_describe="极简朋友圈，高仿微信朋友圈，记录你的美好生活"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/kingwrcy/moments?tab=readme-ov-file"
+			local docker_url="官网介绍: ${gh_proxy}github.com/kingwrcy/moments?tab=readme-ov-file"
 			local docker_use="echo \"账号: admin  密码: a123456\""
 			local docker_passwd=""
 			docker_app
@@ -7281,7 +7142,7 @@ linux_panel() {
 							--restart=always \
 							lobehub/lobe-chat"
 			local docker_describe="LobeChat聚合市面上主流的AI大模型，ChatGPT/Claude/Gemini/Groq/Ollama"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/lobehub/lobe-chat"
+			local docker_url="官网介绍: ${gh_proxy}github.com/lobehub/lobe-chat"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7293,7 +7154,7 @@ linux_panel() {
 			local docker_port=8037
 			local docker_rum="docker run -d -p 8037:18966 --name myip --restart always ghcr.io/jason5ng32/myip:latest"
 			local docker_describe="是一个多功能IP工具箱，可以查看自己IP信息及连通性，用网页面板呈现"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/jason5ng32/MyIP/blob/main/README_ZH.md"
+			local docker_url="官网介绍: ${gh_proxy}github.com/jason5ng32/MyIP/blob/main/README_ZH.md"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7318,7 +7179,7 @@ linux_panel() {
 			local docker_port=8039
 			local docker_rum="docker run --restart=always --name bililive-go -v /home/docker/bililive-go/config.yml:/etc/bililive-go/config.yml -v /home/docker/bililive-go/Videos:/srv/bililive -p 8039:8080 -d chigusa/bililive-go"
 			local docker_describe="Bililive-go是一个支持多种直播平台的直播录制工具"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/hr3lxphr6j/bililive-go"
+			local docker_url="官网介绍: ${gh_proxy}github.com/hr3lxphr6j/bililive-go"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7330,7 +7191,7 @@ linux_panel() {
 			local docker_port=8040
 			local docker_rum="docker run -d -p 8040:5032 --restart always --name webssh -e TZ=Asia/Shanghai jrohy/webssh"
 			local docker_describe="简易在线ssh连接工具和sftp工具"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/Jrohy/webssh"
+			local docker_url="官网介绍: ${gh_proxy}github.com/Jrohy/webssh"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7342,7 +7203,7 @@ linux_panel() {
 				clear
 				echo "耗子管理面板"
 				echo "使用 Golang + Vue 开发的开源轻量 Linux 服务器运维管理面板。"
-				echo "官方地址: ${gh_proxy}https://github.com/TheTNB/panel"
+				echo "官方地址: ${gh_proxy}github.com/TheTNB/panel"
 				echo "------------------------"
 				echo "1. 安装            2. 管理            3. 卸载"
 				echo "------------------------"
@@ -7383,7 +7244,7 @@ linux_panel() {
 						  --restart unless-stopped \
 						  germannewsmaker/nexterm:latest"
 			local docker_describe="nexterm是一款强大的在线SSH/VNC/RDP连接工具。"
-			local docker_url="官网介绍: ${gh_proxy}https://github.com/gnmyt/Nexterm"
+			local docker_url="官网介绍: ${gh_proxy}github.com/gnmyt/Nexterm"
 			local docker_use=""
 			local docker_passwd=""
 			docker_app
@@ -7847,8 +7708,8 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}27.  ${gl_bai}红帽系Linux内核升级                ${gl_kjlan}28.  ${gl_bai}Linux系统内核参数优化 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}文件管理器"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行美化工具 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}设置系统回收站                     ${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
+	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行美化工具"
+	  echo -e "${gl_kjlan}33.  ${gl_bai}设置系统回收站"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}99.  ${gl_bai}重启服务器                         ${gl_kjlan}100. ${gl_bai}隐私与安全"
@@ -8772,7 +8633,7 @@ EOF
 
 			  clear
 			  echo "fail2ban是一个SSH防止暴力破解工具"
-			  echo "官网介绍: ${gh_proxy}https://github.com/fail2ban/fail2ban"
+			  echo "官网介绍: ${gh_proxy}github.com/fail2ban/fail2ban"
 			  echo "------------------------------------------------"
 			  echo "工作原理：研判非法IP恶意高频访问SSH端口，自动进行IP封锁"
 			  echo "------------------------------------------------"
@@ -9009,9 +8870,6 @@ EOF
 			  ;;
 		  33)
 			  linux_trash
-			  ;;
-		  34)
-			  linux_backup
 			  ;;
 		  41)
 			clear
@@ -9771,13 +9629,12 @@ echo "安装软件包          k install nano wget | k add nano wget | k 安装 
 echo "卸载软件包          k remove nano wget | k del nano wget | k uninstall nano wget | k 卸载 nano wget"
 echo "更新系统            k update | k 更新"
 echo "清理系统垃圾        k clean | k 清理"
-echo "重装系统面板        k dd | k 重装"
-echo "bbr3控制面板        k bbr3 | k bbrv3"
-echo "内核调优面板        k nhyh | k 内核优化"
+echo "打开重装系统面板    k dd | k 重装"
+echo "打开bbr3控制面板    k bbr3 | k bbrv3"
+echo "打开内核调优面板    k nhyh | k 内核优化"
 echo "设置虚拟内存        k swap 2048"
 echo "设置虚拟时区        k time Asia/Shanghai | k 时区 Asia/Shanghai"
-echo "系统回收站          k trash | k hsz | k 回收站"
-echo "系统备份功能        k backup | k bf | k 备份"
+echo "打开系统回收站      k trash | k hsz | k 回收站"
 echo "内网穿透（服务端）  k frps"
 echo "内网穿透（客户端）  k frpc"
 echo "软件启动            k start sshd | k 启动 sshd "
@@ -9831,9 +9688,6 @@ else
 			Kernel_optimize
 			;;
 		trash|hsz|回收站)
-			linux_trash
-			;;
-		backup|bf|备份)
 			linux_trash
 			;;
 		wp|wordpress)
