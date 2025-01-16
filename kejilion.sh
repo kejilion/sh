@@ -3908,6 +3908,7 @@ create_backup() {
 
 	# 创建备份
 	echo "正在创建备份 $BACKUP_NAME..."
+	install tar
 	tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"
 
 	# 检查命令是否成功
