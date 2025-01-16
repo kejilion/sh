@@ -2493,6 +2493,7 @@ linux_update() {
 linux_clean() {
 	echo -e "${gl_huang}正在系统清理...${gl_bai}"
 	if command -v dnf &>/dev/null; then
+		rpm --rebuilddb
 		dnf autoremove -y
 		dnf clean all
 		dnf makecache
@@ -2501,6 +2502,7 @@ linux_clean() {
 		journalctl --vacuum-size=500M
 
 	elif command -v yum &>/dev/null; then
+		rpm --rebuilddb
 		yum autoremove -y
 		yum clean all
 		yum makecache
@@ -3858,6 +3860,143 @@ linux_trash() {
   done
 }
 
+
+
+# 创建备份
+create_backup() {
+	send_stats "创建备份"
+	local TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+
+	# 提示用户输入备份目录
+	echo "创建备份示例："
+	echo "  - 备份单个目录: /var/www"
+	echo "  - 备份多个目录: /etc /home /var/log"
+	echo "  - 直接回车将使用默认目录 (/etc /usr /home)"
+	read -r -p "请输入要备份的目录（多个目录用空格分隔，直接回车则使用默认目录）：" input
+
+	# 如果用户没有输入目录，则使用默认目录
+	if [ -z "$input" ]; then
+		BACKUP_PATHS=(
+			"/etc"              # 配置文件和软件包配置
+			"/usr"              # 已安装的软件文件
+			"/home"             # 用户数据
+		)
+	else
+		# 将用户输入的目录按空格分隔成数组
+		IFS=' ' read -r -a BACKUP_PATHS <<< "$input"
+	fi
+
+	# 生成备份文件前缀
+	local PREFIX=""
+	for path in "${BACKUP_PATHS[@]}"; do
+		# 提取目录名称并去除斜杠
+		dir_name=$(basename "$path")
+		PREFIX+="${dir_name}_"
+	done
+
+	# 去除最后一个下划线
+	local PREFIX=${PREFIX%_}
+
+	# 生成备份文件名
+	local BACKUP_NAME="${PREFIX}_$TIMESTAMP.tar.gz"
+
+	# 打印用户选择的目录
+	echo "您选择的备份目录为："
+	for path in "${BACKUP_PATHS[@]}"; do
+		echo "- $path"
+	done
+
+	# 创建备份
+	echo "正在创建备份 $BACKUP_NAME..."
+	install tar
+	tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"
+
+	# 检查命令是否成功
+	if [ $? -eq 0 ]; then
+		echo "备份创建成功: $BACKUP_DIR/$BACKUP_NAME"
+	else
+		echo "备份创建失败！"
+		exit 1
+	fi
+}
+
+# 恢复备份
+restore_backup() {
+	send_stats "恢复备份"
+	# 选择要恢复的备份
+	read -p "请输入要恢复的备份文件名: " BACKUP_NAME
+
+	# 检查备份文件是否存在
+	if [ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]; then
+		echo "备份文件不存在！"
+		exit 1
+	fi
+
+	echo "正在恢复备份 $BACKUP_NAME..."
+	tar -xzvf "$BACKUP_DIR/$BACKUP_NAME" -C /
+
+	if [ $? -eq 0 ]; then
+		echo "备份恢复成功！"
+	else
+		echo "备份恢复失败！"
+		exit 1
+	fi
+}
+
+# 列出备份
+list_backups() {
+	echo "可用的备份："
+	ls -1 "$BACKUP_DIR"
+}
+
+# 删除备份
+delete_backup() {
+	send_stats "删除备份"
+
+	read -p "请输入要删除的备份文件名: " BACKUP_NAME
+
+	# 检查备份文件是否存在
+	if [ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]; then
+		echo "备份文件不存在！"
+		exit 1
+	fi
+
+	# 删除备份
+	rm -f "$BACKUP_DIR/$BACKUP_NAME"
+
+	if [ $? -eq 0 ]; then
+		echo "备份删除成功！"
+	else
+		echo "备份删除失败！"
+		exit 1
+	fi
+}
+
+# 备份主菜单
+linux_backup() {
+	BACKUP_DIR="/backups"
+	mkdir -p "$BACKUP_DIR"
+	while true; do
+		clear
+		send_stats "系统备份功能"
+		echo "系统备份功能"
+		echo "------------------------"
+		list_backups
+		echo "------------------------"
+		echo "1. 创建备份        2. 恢复备份        3. 删除备份"
+		echo "------------------------"
+		echo "0. 返回上一级"
+		echo "------------------------"
+		read -p "请输入你的选择: " choice
+		case $choice in
+			1) create_backup ;;
+			2) restore_backup ;;
+			3) delete_backup ;;
+			*) break ;;
+		esac
+		read -p "按回车键继续..."
+	done
+}
 
 
 
@@ -7708,8 +7847,8 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}27.  ${gl_bai}红帽系Linux内核升级                ${gl_kjlan}28.  ${gl_bai}Linux系统内核参数优化 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}文件管理器"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行美化工具"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}设置系统回收站"
+	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行美化工具 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}33.  ${gl_bai}设置系统回收站                     ${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}99.  ${gl_bai}重启服务器                         ${gl_kjlan}100. ${gl_bai}隐私与安全"
@@ -8871,6 +9010,9 @@ EOF
 		  33)
 			  linux_trash
 			  ;;
+		  34)
+			  linux_backup
+			  ;;
 		  41)
 			clear
 			send_stats "留言板"
@@ -9629,12 +9771,13 @@ echo "安装软件包          k install nano wget | k add nano wget | k 安装 
 echo "卸载软件包          k remove nano wget | k del nano wget | k uninstall nano wget | k 卸载 nano wget"
 echo "更新系统            k update | k 更新"
 echo "清理系统垃圾        k clean | k 清理"
-echo "打开重装系统面板    k dd | k 重装"
-echo "打开bbr3控制面板    k bbr3 | k bbrv3"
-echo "打开内核调优面板    k nhyh | k 内核优化"
+echo "重装系统面板        k dd | k 重装"
+echo "bbr3控制面板        k bbr3 | k bbrv3"
+echo "内核调优面板        k nhyh | k 内核优化"
 echo "设置虚拟内存        k swap 2048"
 echo "设置虚拟时区        k time Asia/Shanghai | k 时区 Asia/Shanghai"
-echo "打开系统回收站      k trash | k hsz | k 回收站"
+echo "系统回收站          k trash | k hsz | k 回收站"
+echo "系统备份功能        k backup | k bf | k 备份"
 echo "内网穿透（服务端）  k frps"
 echo "内网穿透（客户端）  k frpc"
 echo "软件启动            k start sshd | k 启动 sshd "
@@ -9688,6 +9831,9 @@ else
 			Kernel_optimize
 			;;
 		trash|hsz|回收站)
+			linux_trash
+			;;
+		backup|bf|备份)
 			linux_trash
 			;;
 		wp|wordpress)
