@@ -9834,7 +9834,7 @@ else
 			linux_trash
 			;;
 		backup|bf|备份)
-			linux_trash
+			linux_backup
 			;;
 		wp|wordpress)
 			shift
