@@ -2395,7 +2395,9 @@ frps_panel() {
 			5)
 				echo "将内网穿透服务反代成域名访问"
 				send_stats "FRP对外域名访问"
-				ldnmp_Proxy
+				add_yuming
+				read -e -p "请输入你的内网穿透服务端口: " frps_port
+				ldnmp_Proxy ${yuming} ${ipv4_address} ${frps_port}
 				;;
 			*)
 				break
