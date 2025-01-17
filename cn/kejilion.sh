@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.3"
+sh_v="3.6.4"
 
 
 gl_hui='\e[37m'
@@ -6201,7 +6201,6 @@ linux_ldnmp() {
 				  [Yy])
 					send_stats "完整更新LDNMP环境"
 					cd /home/web/
-					docker compose down
 					docker compose down --rmi all
 
 					check_port
@@ -6231,7 +6230,6 @@ linux_ldnmp() {
 		case "$choice" in
 		  [Yy])
 			cd /home/web/
-			docker compose down
 			docker compose down --rmi all
 			docker compose -f docker-compose.phpmyadmin.yml down > /dev/null 2>&1
 			docker compose -f docker-compose.phpmyadmin.yml down --rmi all > /dev/null 2>&1
@@ -6991,7 +6989,6 @@ linux_panel() {
 						;;
 					4)
 						cd /data/safeline
-						docker compose down
 						docker compose down --rmi all
 						echo "如果你是默认安装目录那现在项目已经卸载。如果你是自定义安装目录你需要到安装目录下自行执行:"
 						echo "docker compose down && docker compose down --rmi all"
@@ -9637,57 +9634,64 @@ kejilion_update() {
 	else
 		echo "发现新版本！"
 		echo -e "当前版本 v$sh_v        最新版本 ${gl_huang}v$sh_v_new${gl_bai}"
-		echo "------------------------"
-		echo "1. 现在更新            2. 自动更新            0. 返回主菜单"
-		echo "------------------------"
-		read -e -p "请输入你的选择: " choice
-
-		case "$choice" in
-			1)
-				clear
-				local country=$(curl -s ipinfo.io/country)
-				if [ "$country" = "CN" ]; then
-					curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/cn/kejilion.sh && chmod +x kejilion.sh
-				else
-					curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
-				fi
-				canshu_v6
-				CheckFirstRun_true
-				yinsiyuanquan2
-				cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
-				echo -e "${gl_lv}脚本已更新到最新版本！${gl_huang}v$sh_v_new${gl_bai}"
-				send_stats "脚本已经最新$sh_v_new"
-				break_end
-				~/kejilion.sh
-				exit
-				;;
-			2)
-				clear
-				local country=$(curl -s ipinfo.io/country)
-				local ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
-
-				if [ "$country" = "CN" ]; then
-					SH_Update_task="curl -sS -O https://gh.kejilion.pro/https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && sed -i 's/canshu=\"default\"/canshu=\"CN\"/g' ./kejilion.sh && ./kejilion.sh"
-				elif [ -n "$ipv6_address" ]; then
-					SH_Update_task="curl -sS -O https://gh.kejilion.pro/https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && sed -i 's/canshu=\"default\"/canshu=\"V6\"/g' ./kejilion.sh && ./kejilion.sh"
-				else
-					SH_Update_task="curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh"
-				fi
-
-				check_crontab_installed
-				(crontab -l | grep -v "kejilion.sh") | crontab -
-				(crontab -l 2>/dev/null; echo "0 2 * * * /usr/bin/timeout 10 /bin/bash -c \"$SH_Update_task\"") | crontab -
-
-				echo -e "${gl_lv}自动更新已设置，每天凌晨2点脚本会自动更新！${gl_bai}"
-				send_stats "开启脚本自动更新"
-				break_end
-				kejilion_sh
-				;;
-			*)
-				kejilion_sh
-				;;
-		esac
 	fi
+
+	echo "------------------------"
+	echo "1. 现在更新            2. 开启自动更新            3. 关闭自动更新"
+	echo "------------------------"
+	echo "0. 返回主菜单"
+	echo "------------------------"
+	read -e -p "请输入你的选择: " choice
+	case "$choice" in
+		1)
+			clear
+			local country=$(curl -s ipinfo.io/country)
+			if [ "$country" = "CN" ]; then
+				curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/cn/kejilion.sh && chmod +x kejilion.sh
+			else
+				curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh
+			fi
+			canshu_v6
+			CheckFirstRun_true
+			yinsiyuanquan2
+			cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+			echo -e "${gl_lv}脚本已更新到最新版本！${gl_huang}v$sh_v_new${gl_bai}"
+			send_stats "脚本已经最新$sh_v_new"
+			break_end
+			~/kejilion.sh
+			exit
+			;;
+		2)
+			clear
+			local country=$(curl -s ipinfo.io/country)
+			local ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
+			if [ "$country" = "CN" ]; then
+				SH_Update_task="curl -sS -O https://gh.kejilion.pro/raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && sed -i 's/canshu=\"default\"/canshu=\"CN\"/g' ./kejilion.sh"
+			elif [ -n "$ipv6_address" ]; then
+				SH_Update_task="curl -sS -O https://gh.kejilion.pro/raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh && sed -i 's/canshu=\"default\"/canshu=\"V6\"/g' ./kejilion.sh"
+			else
+				SH_Update_task="curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh"
+			fi
+			check_crontab_installed
+			(crontab -l | grep -v "kejilion.sh") | crontab -
+			(crontab -l 2>/dev/null; echo "0 2 * * * bash -c \"$SH_Update_task\"") | crontab -
+			echo -e "${gl_lv}自动更新已设置，每天凌晨2点脚本会自动更新！${gl_bai}"
+			send_stats "开启脚本自动更新"
+			break_end
+			kejilion_sh
+			;;
+		2)
+			clear
+			(crontab -l | grep -v "kejilion.sh") | crontab -
+			echo -e "${gl_lv}自动更新已关闭${gl_bai}"
+			send_stats "关闭脚本自动更新"
+			break_end
+			kejilion_sh
+			;;
+		*)
+			kejilion_sh
+			;;
+	esac
 
 
 }
