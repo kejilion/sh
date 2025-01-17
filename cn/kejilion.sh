@@ -918,13 +918,9 @@ install_certbot() {
 
 	check_crontab_installed
 	local cron_job="0 0 * * * ~/auto_cert_renewal.sh"
-
-	local existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
-
-	if [ -z "$existing_cron" ]; then
-		(crontab -l 2>/dev/null; echo "$cron_job") | crontab -
-		echo "续签任务已添加"
-	fi
+	crontab -l 2>/dev/null | grep -vF "$cron_job" | crontab -
+	(crontab -l 2>/dev/null; echo "$cron_job") | crontab -
+	echo "续签任务已更新"
 }
 
 
@@ -9617,15 +9613,16 @@ echo ""
 
 kejilion_update() {
 
-	send_stats "脚本更新"
-	cd ~
+send_stats "脚本更新"
+cd ~
+while true; do
 	clear
 	echo "更新日志"
 	echo "------------------------"
 	echo "全部日志: ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt"
 	echo "------------------------"
 
-	curl -s ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt | tail -n 35
+	curl -s ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/kejilion_sh_log.txt | tail -n 30
 	local sh_v_new=$(curl -s ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/kejilion.sh | grep -o 'sh_v="[0-9.]*"' | cut -d '"' -f 2)
 
 	if [ "$sh_v" = "$sh_v_new" ]; then
@@ -9634,6 +9631,15 @@ kejilion_update() {
 	else
 		echo "发现新版本！"
 		echo -e "当前版本 v$sh_v        最新版本 ${gl_huang}v$sh_v_new${gl_bai}"
+	fi
+
+
+	local cron_job="kejilion.sh"
+	local existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
+
+	if [ -n "$existing_cron" ]; then
+		echo "------------------------"
+		echo -e "${gl_lv}自动更新已开启，每天凌晨2点脚本会自动更新！${gl_bai}"
 	fi
 
 	echo "------------------------"
@@ -9675,24 +9681,22 @@ kejilion_update() {
 			check_crontab_installed
 			(crontab -l | grep -v "kejilion.sh") | crontab -
 			(crontab -l 2>/dev/null; echo "0 2 * * * bash -c \"$SH_Update_task\"") | crontab -
-			echo -e "${gl_lv}自动更新已设置，每天凌晨2点脚本会自动更新！${gl_bai}"
+			echo -e "${gl_lv}自动更新已开启，每天凌晨2点脚本会自动更新！${gl_bai}"
 			send_stats "开启脚本自动更新"
 			break_end
-			kejilion_sh
 			;;
-		2)
+		3)
 			clear
 			(crontab -l | grep -v "kejilion.sh") | crontab -
 			echo -e "${gl_lv}自动更新已关闭${gl_bai}"
 			send_stats "关闭脚本自动更新"
 			break_end
-			kejilion_sh
 			;;
 		*)
 			kejilion_sh
 			;;
 	esac
-
+done
 
 }
 
