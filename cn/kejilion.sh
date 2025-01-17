@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.4"
+sh_v="3.6.5"
 
 
 gl_hui='\e[37m'
@@ -1163,12 +1163,12 @@ cf_purge_cache() {
 	ZONE_IDS=($ZONE_IDS)
   else
 	# 提示用户是否清理缓存
-	read -p "需要清理 Cloudflare 的缓存吗？（y/n）: " answer
+	read -e -p "需要清理 Cloudflare 的缓存吗？（y/n）: " answer
 	if [[ "$answer" == "y" ]]; then
 	  echo "CF信息保存在$CONFIG_FILE，可以后期修改CF信息"
-	  read -p "请输入你的 API_TOKEN: " API_TOKEN
-	  read -p "请输入你的CF用户名: " EMAIL
-	  read -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
+	  read -e -p "请输入你的 API_TOKEN: " API_TOKEN
+	  read -e -p "请输入你的CF用户名: " EMAIL
+	  read -e -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
 
 	  mkdir -p /home/web/config/
 	  echo "$API_TOKEN $EMAIL ${ZONE_IDS[*]}" > "$CONFIG_FILE"
@@ -3920,7 +3920,7 @@ create_backup() {
 restore_backup() {
 	send_stats "恢复备份"
 	# 选择要恢复的备份
-	read -p "请输入要恢复的备份文件名: " BACKUP_NAME
+	read -e -p "请输入要恢复的备份文件名: " BACKUP_NAME
 
 	# 检查备份文件是否存在
 	if [ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]; then
@@ -3949,7 +3949,7 @@ list_backups() {
 delete_backup() {
 	send_stats "删除备份"
 
-	read -p "请输入要删除的备份文件名: " BACKUP_NAME
+	read -e -p "请输入要删除的备份文件名: " BACKUP_NAME
 
 	# 检查备份文件是否存在
 	if [ ! -f "$BACKUP_DIR/$BACKUP_NAME" ]; then
@@ -3983,16 +3983,202 @@ linux_backup() {
 		echo "------------------------"
 		echo "0. 返回上一级"
 		echo "------------------------"
-		read -p "请输入你的选择: " choice
+		read -e -p "请输入你的选择: " choice
 		case $choice in
 			1) create_backup ;;
 			2) restore_backup ;;
 			3) delete_backup ;;
 			*) break ;;
 		esac
-		read -p "按回车键继续..."
+		read -e -p "按回车键继续..."
 	done
 }
+
+
+
+
+
+
+
+
+
+# 显示连接列表
+list_connections() {
+	echo "已保存的连接:"
+	echo "------------------------"
+	cat "$CONFIG_FILE" | awk -F'|' '{print NR " - " $1 " (" $2 ")"}'
+	echo "------------------------"
+}
+
+
+# 添加新连接
+add_connection() {
+	echo "创建新连接示例："
+	echo "  - 连接名称: my_server"
+	echo "  - IP地址: 192.168.1.100"
+	echo "  - 用户名: root"
+	echo "  - 端口: 22"
+	echo "------------------------"
+	read -e -p "请输入连接名称: " name
+	read -e -p "请输入IP地址: " ip
+	read -e -p "请输入用户名 (默认: root): " user
+	user=${user:-root}  # 如果用户未输入，则使用默认值 root
+	read -e -p "请输入端口号 (默认: 22): " port
+	port=${port:-22}  # 如果用户未输入，则使用默认值 22
+
+	echo "请选择身份验证方式:"
+	echo "1. 密码"
+	echo "2. 密钥"
+	read -e -p "请输入选择 (1/2): " auth_choice
+
+	case $auth_choice in
+		1)
+			read -s -p "请输入密码: " password_or_key
+			echo  # 换行
+			;;
+		2)
+			echo "请粘贴密钥内容 (粘贴完成后按两次回车)："
+			password_or_key=""
+			while IFS= read -r line; do
+				# 如果输入为空行且密钥内容已经包含了开头，则结束输入
+				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
+					break
+				fi
+				# 如果是第一行或已经开始输入密钥内容，则继续添加
+				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
+					password_or_key+="${line}"$'\n'
+				fi
+			done
+
+			# 检查是否是密钥内容
+			if [[ "$password_or_key" == *"-----BEGIN"* && "$password_or_key" == *"PRIVATE KEY-----"* ]]; then
+				key_file="$KEY_DIR/$name.key"
+				echo -n "$password_or_key" > "$key_file"
+				chmod 600 "$key_file"
+				password_or_key="$key_file"
+			fi
+			;;
+		*)
+			echo "无效的选择！"
+			return
+			;;
+	esac
+
+	echo "$name|$ip|$user|$port|$password_or_key" >> "$CONFIG_FILE"
+	echo "连接已保存!"
+}
+
+
+
+# 删除连接
+delete_connection() {
+	read -e -p "请输入要删除的连接编号: " num
+
+	connection=$(sed -n "${num}p" "$CONFIG_FILE")
+	if [[ -z "$connection" ]]; then
+		echo "错误：未找到对应的连接。"
+		return
+	fi
+
+	IFS='|' read -r name ip user port password_or_key <<< "$connection"
+
+	# 如果连接使用的是密钥文件，则删除该密钥文件
+	if [[ "$password_or_key" == "$KEY_DIR"* ]]; then
+		rm -f "$password_or_key"
+	fi
+
+	sed -i "${num}d" "$CONFIG_FILE"
+	echo "连接已删除!"
+}
+
+# 使用连接
+use_connection() {
+	read -e -p "请输入要使用的连接编号: " num
+
+	connection=$(sed -n "${num}p" "$CONFIG_FILE")
+	if [[ -z "$connection" ]]; then
+		echo "错误：未找到对应的连接。"
+		return
+	fi
+
+	IFS='|' read -r name ip user port password_or_key <<< "$connection"
+
+	echo "正在连接到 $name ($ip)..."
+	if [[ -f "$password_or_key" ]]; then
+		# 使用密钥连接
+		ssh -o StrictHostKeyChecking=no -i "$password_or_key" -p "$port" "$user@$ip"
+		if [[ $? -ne 0 ]]; then
+			echo "连接失败！请检查以下内容："
+			echo "1. 密钥文件路径是否正确：$password_or_key"
+			echo "2. 密钥文件权限是否正确（应为 600）。"
+			echo "3. 目标服务器是否允许使用密钥登录。"
+		fi
+	else
+		# 使用密码连接
+		if ! command -v sshpass &> /dev/null; then
+			echo "错误：未安装 sshpass，请先安装 sshpass。"
+			echo "安装方法："
+			echo "  - Ubuntu/Debian: sudo apt install sshpass"
+			echo "  - CentOS/RHEL: sudo yum install sshpass"
+			return
+		fi
+		sshpass -p "$password_or_key" ssh -o StrictHostKeyChecking=no -p "$port" "$user@$ip"
+		if [[ $? -ne 0 ]]; then
+			echo "连接失败！请检查以下内容："
+			echo "1. 用户名和密码是否正确。"
+			echo "2. 目标服务器是否允许密码登录。"
+			echo "3. 目标服务器的 SSH 服务是否正常运行。"
+		fi
+	fi
+}
+
+
+ssh_manager() {
+
+	CONFIG_FILE="$HOME/.ssh_connections"
+	KEY_DIR="$HOME/.ssh/ssh_manager_keys"
+
+	# 检查配置文件和密钥目录是否存在，如果不存在则创建
+	if [[ ! -f "$CONFIG_FILE" ]]; then
+		touch "$CONFIG_FILE"
+	fi
+
+	if [[ ! -d "$KEY_DIR" ]]; then
+		mkdir -p "$KEY_DIR"
+		chmod 700 "$KEY_DIR"
+	fi
+
+	while true; do
+		clear
+		echo "SSH 连接管理工具"
+		echo "------------------------"
+		list_connections
+		echo "1. 创建新连接        2. 使用连接        3. 删除连接"
+		echo "------------------------"
+		echo "0. 返回上一级"
+		echo "------------------------"
+		read -e -p "请输入你的选择: " choice
+		case $choice in
+			1) add_connection ;;
+			2) use_connection ;;
+			3) delete_connection ;;
+			0) break ;;
+			*) echo "无效的选择，请重试。" ;;
+		esac
+		read -e -p "按回车键继续..."
+	done
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -7842,6 +8028,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行美化工具 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${gl_bai}设置系统回收站                     ${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
+	  echo -e "${gl_kjlan}35.  ${gl_bai}ssh远程连接工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}99.  ${gl_bai}重启服务器                         ${gl_kjlan}100. ${gl_bai}隐私与安全"
@@ -9006,6 +9193,9 @@ EOF
 		  34)
 			  linux_backup
 			  ;;
+		  35)
+			  ssh_manager
+			  ;;
 		  41)
 			clear
 			send_stats "留言板"
@@ -9786,6 +9976,7 @@ echo "设置虚拟内存        k swap 2048"
 echo "设置虚拟时区        k time Asia/Shanghai | k 时区 Asia/Shanghai"
 echo "系统回收站          k trash | k hsz | k 回收站"
 echo "系统备份功能        k backup | k bf | k 备份"
+echo "ssh远程连接工具     k ssh | k 远程连接"
 echo "内网穿透（服务端）  k frps"
 echo "内网穿透（客户端）  k frpc"
 echo "软件启动            k start sshd | k 启动 sshd "
@@ -9843,6 +10034,9 @@ else
 			;;
 		backup|bf|备份)
 			linux_backup
+			;;
+		ssh|远程连接)
+			ssh_manager
 			;;
 		wp|wordpress)
 			shift
