@@ -4150,7 +4150,7 @@ ssh_manager() {
 
 	while true; do
 		clear
-		echo "SSH 连接管理工具"
+		echo "SSH 远程连接工具"
 		echo "------------------------"
 		list_connections
 		echo "1. 创建新连接        2. 使用连接        3. 删除连接"
