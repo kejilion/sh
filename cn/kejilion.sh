@@ -2301,48 +2301,64 @@ list_forwarding_services() {
 
 
 
-
 # 获取 FRP 服务端端口
 get_frp_ports() {
-	ports=$(ss -tulnape | grep frps | awk '{print $5}' | awk -F':' '{print $NF}')
+	mapfile -t ports < <(ss -tulnape | grep frps | awk '{print $5}' | awk -F':' '{print $NF}' | sort -u)
 }
 
-# 生成访问地址（隐藏 8055 和 8056 端口）
+# 生成访问地址
 generate_access_urls() {
+	# 首先获取所有端口
+	get_frp_ports
 	
-	for port in $ports; do
+	# 检查是否有非 8055/8056 的端口
+	local has_valid_ports=false
+	for port in "${ports[@]}"; do
 		if [[ $port != "8055" && $port != "8056" ]]; then
-			echo "FRP服务对外访问地址:"
-			echo "http://${ipv4_address}:${port}"
+			has_valid_ports=true
+			break
 		fi
 	done
 
-	if [ -n "$ipv6_address" ]; then
-		for port in $ports; do
+	# 只在有有效端口时显示标题和内容
+	if [ "$has_valid_ports" = true ]; then
+		echo "FRP服务对外访问地址:"
+		
+		# 处理 IPv4 地址
+		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
-				echo "http://[${ipv6_address}]:${port}"
+				echo "http://${ipv4_address}:${port}"
 			fi
 		done
-	fi
-	for port in $ports; do
-		if [[ $port != "8055" && $port != "8056" ]]; then
-			frps_search_pattern="${ipv4_address}:${port}"
-			for file in /home/web/conf.d/*.conf; do
-				if [ -f "$file" ]; then
-					if grep -q "$frps_search_pattern" "$file" 2>/dev/null; then
-						echo "https://$(basename "$file" .conf)"
-					fi
+
+		# 处理 IPv6 地址（如果存在）
+		if [ -n "$ipv6_address" ]; then
+			for port in "${ports[@]}"; do
+				if [[ $port != "8055" && $port != "8056" ]]; then
+					echo "http://[${ipv6_address}]:${port}"
 				fi
 			done
 		fi
-	done
+
+		# 处理 HTTPS 配置
+		for port in "${ports[@]}"; do
+			if [[ $port != "8055" && $port != "8056" ]]; then
+				frps_search_pattern="${ipv4_address}:${port}"
+				for file in /home/web/conf.d/*.conf; do
+					if [ -f "$file" ]; then
+						if grep -q "$frps_search_pattern" "$file" 2>/dev/null; then
+							echo "https://$(basename "$file" .conf)"
+						fi
+					fi
+				done
+			fi
+		done
+	fi
 }
 
 
-# 主函数
 frps_main_ports() {
 	ip_address
-	get_frp_ports
 	generate_access_urls
 }
 
