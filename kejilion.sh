@@ -4013,6 +4013,7 @@ list_connections() {
 
 # 添加新连接
 add_connection() {
+	send_stats "添加新连接"
 	echo "创建新连接示例："
 	echo "  - 连接名称: my_server"
 	echo "  - IP地址: 192.168.1.100"
@@ -4072,6 +4073,7 @@ add_connection() {
 
 # 删除连接
 delete_connection() {
+	send_stats "删除连接"
 	read -e -p "请输入要删除的连接编号: " num
 
 	connection=$(sed -n "${num}p" "$CONFIG_FILE")
@@ -4093,6 +4095,7 @@ delete_connection() {
 
 # 使用连接
 use_connection() {
+	send_stats "使用连接"
 	read -e -p "请输入要使用的连接编号: " num
 
 	connection=$(sed -n "${num}p" "$CONFIG_FILE")
@@ -4134,6 +4137,7 @@ use_connection() {
 
 
 ssh_manager() {
+	send_stats "ssh远程连接工具"
 
 	CONFIG_FILE="$HOME/.ssh_connections"
 	KEY_DIR="$HOME/.ssh/ssh_manager_keys"
