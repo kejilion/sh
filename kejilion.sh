@@ -4023,9 +4023,9 @@ add_connection() {
 	read -e -p "请输入连接名称: " name
 	read -e -p "请输入IP地址: " ip
 	read -e -p "请输入用户名 (默认: root): " user
-	user=${user:-root}  # 如果用户未输入，则使用默认值 root
+	local user=${user:-root}  # 如果用户未输入，则使用默认值 root
 	read -e -p "请输入端口号 (默认: 22): " port
-	port=${port:-22}  # 如果用户未输入，则使用默认值 22
+	local port=${port:-22}  # 如果用户未输入，则使用默认值 22
 
 	echo "请选择身份验证方式:"
 	echo "1. 密码"
@@ -4039,7 +4039,7 @@ add_connection() {
 			;;
 		2)
 			echo "请粘贴密钥内容 (粘贴完成后按两次回车)："
-			password_or_key=""
+			local password_or_key=""
 			while IFS= read -r line; do
 				# 如果输入为空行且密钥内容已经包含了开头，则结束输入
 				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
@@ -4047,16 +4047,16 @@ add_connection() {
 				fi
 				# 如果是第一行或已经开始输入密钥内容，则继续添加
 				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
-					password_or_key+="${line}"$'\n'
+					local password_or_key+="${line}"$'\n'
 				fi
 			done
 
 			# 检查是否是密钥内容
 			if [[ "$password_or_key" == *"-----BEGIN"* && "$password_or_key" == *"PRIVATE KEY-----"* ]]; then
-				key_file="$KEY_DIR/$name.key"
+				local key_file="$KEY_DIR/$name.key"
 				echo -n "$password_or_key" > "$key_file"
 				chmod 600 "$key_file"
-				password_or_key="$key_file"
+				local password_or_key="$key_file"
 			fi
 			;;
 		*)
@@ -4076,7 +4076,7 @@ delete_connection() {
 	send_stats "删除连接"
 	read -e -p "请输入要删除的连接编号: " num
 
-	connection=$(sed -n "${num}p" "$CONFIG_FILE")
+	local connection=$(sed -n "${num}p" "$CONFIG_FILE")
 	if [[ -z "$connection" ]]; then
 		echo "错误：未找到对应的连接。"
 		return
@@ -4098,7 +4098,7 @@ use_connection() {
 	send_stats "使用连接"
 	read -e -p "请输入要使用的连接编号: " num
 
-	connection=$(sed -n "${num}p" "$CONFIG_FILE")
+	local connection=$(sed -n "${num}p" "$CONFIG_FILE")
 	if [[ -z "$connection" ]]; then
 		echo "错误：未找到对应的连接。"
 		return
