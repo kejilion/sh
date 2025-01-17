@@ -4169,16 +4169,8 @@ ssh_manager() {
 			0) break ;;
 			*) echo "无效的选择，请重试。" ;;
 		esac
-		read -e -p "按回车键继续..."
 	done
 }
-
-
-
-
-
-
-
 
 
 
