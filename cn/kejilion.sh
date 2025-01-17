@@ -2301,6 +2301,54 @@ list_forwarding_services() {
 
 
 
+
+# 获取 FRP 服务端端口
+get_frp_ports() {
+	ports=$(ss -tulnape | grep frps | awk '{print $5}' | awk -F':' '{print $NF}')
+}
+
+# 生成访问地址（隐藏 8055 和 8056 端口）
+generate_access_urls() {
+	
+	for port in $ports; do
+		if [[ $port != "8055" && $port != "8056" ]]; then
+			echo "FRP服务对外访问地址:"
+			echo "http://${ipv4_address}:${port}"
+		fi
+	done
+
+	if [ -n "$ipv6_address" ]; then
+		for port in $ports; do
+			if [[ $port != "8055" && $port != "8056" ]]; then
+				echo "http://[${ipv6_address}]:${port}"
+			fi
+		done
+	fi
+	for port in $ports; do
+		if [[ $port != "8055" && $port != "8056" ]]; then
+			frps_search_pattern="${ipv4_address}:${port}"
+			for file in /home/web/conf.d/*.conf; do
+				if [ -f "$file" ]; then
+					if grep -q "$frps_search_pattern" "$file" 2>/dev/null; then
+						echo "https://$(basename "$file" .conf)"
+					fi
+				fi
+			done
+		fi
+	done
+}
+
+
+# 主函数
+frps_main_ports() {
+	ip_address
+	get_frp_ports
+	generate_access_urls
+}
+
+
+
+
 frps_panel() {
 	send_stats "FRP服务端"
 	local docker_port=8056
@@ -2312,6 +2360,7 @@ frps_panel() {
 		echo "官网介绍: https://github.com/fatedier/frp/"
 		if [ -d "/home/frp/" ]; then
 			check_docker_app_ip
+			frps_main_ports
 		fi
 		echo ""
 		echo "------------------------"
