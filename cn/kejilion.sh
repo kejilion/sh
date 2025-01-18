@@ -1461,6 +1461,8 @@ while true; do
 			;;
 
 		6)
+			echo "域名格式 example.com 不带https://"
+			
 			web_del
 			;;
 
@@ -2011,6 +2013,8 @@ ldnmp_web_status() {
 				;;
 
 			20)
+				echo "域名格式 example.com 不带https://"
+				
 				web_del
 
 				;;
@@ -2117,6 +2121,8 @@ donlond_frp() {
 }
 
 generate_frps_config() {
+
+	send_stats "安装frp服务端"
 	# 生成随机端口和凭证
 	local bind_port=8055
 	local dashboard_port=8056
@@ -2162,6 +2168,7 @@ EOF
 
 
 configure_frpc() {
+	send_stats "安装frp客户端"
 	# 提示用户输入外网服务器信息
 	read -e -p "请输入外网对接IP: " server_addr
 	read -e -p "请输入外网对接token: " token
@@ -2187,6 +2194,7 @@ EOF
 }
 
 add_forwarding_service() {
+	send_stats "添加frp内网服务"
 	# 提示用户输入服务名称和转发信息
 	read -e -p "请输入服务名称: " service_name
 	read -e -p "请输入转发类型 (tcp/udp) [回车默认tcp]: " service_type
@@ -2215,6 +2223,7 @@ EOF
 
 
 delete_forwarding_service() {
+	send_stats "删除frp内网服务"
 	# 提示用户输入需要删除的服务名称
 	read -e -p "请输入需要删除的服务名称: " service_name
 	# 使用 sed 删除该服务及其相关配置
@@ -2421,6 +2430,8 @@ frps_panel() {
 				ldnmp_Proxy ${yuming} ${ipv4_address} ${frps_port}
 				;;
 			6)
+				echo "域名格式 example.com 不带https://"
+				
 				web_del
 				;;
 
@@ -6749,6 +6760,8 @@ linux_panel() {
 						;;
 
 					3)
+						echo "域名格式 example.com 不带https://"
+						
 						web_del
 						;;
 
@@ -6979,6 +6992,8 @@ linux_panel() {
 
 
 					6)
+						echo "域名格式 example.com 不带https://"
+						
 						web_del
 						;;
 
@@ -7110,6 +7125,8 @@ linux_panel() {
 						;;
 
 					6)
+						echo "域名格式 example.com 不带https://"
+						
 						web_del
 						;;
 
@@ -7787,6 +7804,8 @@ linux_panel() {
 						;;
 
 					6)
+						echo "域名格式 example.com 不带https://"
+						
 						web_del
 						;;
 
