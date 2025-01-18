@@ -2118,7 +2118,7 @@ donlond_frp() {
 	rm -rf /home/frp/frp_0.61.0_linux_amd64
 
 	arch=$(uname -m)
-	frp_v=0.61.1
+	frp_v=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | grep -oP '"tag_name": "v\K.*?(?=")')
 
 	if [[ "$arch" == "x86_64" ]]; then
 		curl -L ${gh_proxy}github.com/fatedier/frp/releases/download/v${frp_v}/frp_${frp_v}_linux_amd64.tar.gz -o frp_${frp_v}_linux_amd64.tar.gz
@@ -2135,14 +2135,6 @@ donlond_frp() {
 	
 
 }
-
-
-# donlond_frp() {
-# 	mkdir -p /home/frp/ && cd /home/frp/
-# 	curl -L ${gh_proxy}github.com/fatedier/frp/releases/download/v0.61.0/frp_0.61.0_linux_amd64.tar.gz -o frp_0.61.0_linux_amd64.tar.gz
-# 	curl -L ${gh_proxy}github.com/fatedier/frp/releases/download/v0.61.0/frp_0.61.0_linux_arm.tar.gz -o frp_0.61.0_linux_amd64.tar.gz
-# 	tar -zxvf frp_*.tar.gz
-# }
 
 
 
