@@ -2115,7 +2115,7 @@ fi
 
 donlond_frp() {
 	mkdir -p /home/frp/ && cd /home/frp/
-	rm -rf /home/frp/*
+	rm -rf /home/frp/frp_0.61.0_linux_amd64
 
 	arch=$(uname -m)
 	frp_v=0.61.1
