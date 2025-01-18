@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.5"
+sh_v="3.6.6"
 
 
 gl_hui='\e[37m'
@@ -1415,7 +1415,7 @@ while true; do
 	echo "------------------------"
 	echo "1. 安装            2. 更新            3. 卸载"
 	echo "------------------------"
-	echo "5. 域名访问"
+	echo "5. 域名访问        6. 删除域名访问"
 	echo "------------------------"
 	echo "0. 返回上一级"
 	echo "------------------------"
@@ -1459,6 +1459,11 @@ while true; do
 			add_yuming
 			ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
 			;;
+
+		6)
+			web_del
+			;;
+
 		*)
 			break
 			;;
@@ -2382,9 +2387,9 @@ frps_panel() {
 		echo "------------------------"
 		echo "1. 安装                  2. 更新                  3. 卸载"
 		echo "------------------------"
-		echo "5. 内网服务域名访问"
+		echo "5. 内网服务域名访问      6. 删除域名访问"
 		echo "------------------------"
-		echo "0. 返回上一级"
+		echo "00. 刷新服务状态         0. 返回上一级"
 		echo "------------------------"
 		read -e -p "输入你的选择: " choice
 		case $choice in
@@ -2415,6 +2420,15 @@ frps_panel() {
 				read -e -p "请输入你的内网穿透服务端口: " frps_port
 				ldnmp_Proxy ${yuming} ${ipv4_address} ${frps_port}
 				;;
+			6)
+				web_del
+				;;
+
+			00)
+				echo "刷新FRP服务状态"
+				send_stats "刷新FRP服务状态"
+				;;
+
 			*)
 				break
 				;;
@@ -6713,7 +6727,9 @@ linux_panel() {
 				echo ""
 
 				echo "------------------------"
-				echo "1. 使用           2. 域名访问           0. 返回上一级"
+				echo "1. 使用           2. 域名访问           3. 删除域名访问"
+				echo "------------------------"
+				echo "0. 返回上一级"
 				echo "------------------------"
 				read -e -p "输入你的选择: " choice
 
@@ -6730,6 +6746,10 @@ linux_panel() {
 						send_stats "${docker_name}域名访问设置"
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+						;;
+
+					3)
+						web_del
 						;;
 
 					*)
@@ -6904,7 +6924,7 @@ linux_panel() {
 				echo "------------------------"
 				echo "1. 安装           2. 更新           3. 卸载"
 				echo "------------------------"
-				echo "5. 域名访问"
+				echo "5. 域名访问       6. 删除域名访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -6956,6 +6976,12 @@ linux_panel() {
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
 						;;
+
+
+					6)
+						web_del
+						;;
+
 
 					*)
 						break
@@ -7027,7 +7053,7 @@ linux_panel() {
 				echo "------------------------"
 				echo "1. 安装           2. 更新           3. 卸载"
 				echo "------------------------"
-				echo "5. 域名访问"
+				echo "5. 域名访问       6. 删除域名访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -7082,6 +7108,11 @@ linux_panel() {
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
 						;;
+
+					6)
+						web_del
+						;;
+
 
 					*)
 						break
@@ -7704,7 +7735,7 @@ linux_panel() {
 				echo "------------------------"
 				echo "1. 安装           2. 更新           3. 卸载"
 				echo "------------------------"
-				echo "5. 域名访问"
+				echo "5. 域名访问       6. 删除域名访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -7754,6 +7785,11 @@ linux_panel() {
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
 						;;
+
+					6)
+						web_del
+						;;
+
 
 					*)
 						break
