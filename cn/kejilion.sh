@@ -2404,7 +2404,7 @@ frps_panel() {
 		clear
 		check_frp_app
 		echo -e "FRP服务端 $check_frp"
-		echo "构建FRP内网穿透服务环境"
+		echo "构建FRP内网穿透服务环境，将无公网IP的设备暴露到互联网"
 		echo "官网介绍: https://github.com/fatedier/frp/"
 		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=124.0"
 		if [ -d "/home/frp/" ]; then
@@ -2475,7 +2475,7 @@ frpc_panel() {
 		clear
 		check_frp_app
 		echo -e "FRP客户端 $check_frp"
-		echo "与服务端对接，对接后可创建内网穿透转发服务"
+		echo "与服务端对接，对接后可创建内网穿透服务到互联网访问"
 		echo "官网介绍: https://github.com/fatedier/frp/"
 		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=173.9"
 		echo "------------------------"
