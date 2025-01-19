@@ -2406,6 +2406,7 @@ frps_panel() {
 		echo -e "FRP服务端 $check_frp"
 		echo "构建FRP内网穿透服务环境"
 		echo "官网介绍: https://github.com/fatedier/frp/"
+		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=124.0"
 		if [ -d "/home/frp/" ]; then
 			check_docker_app_ip
 			frps_main_ports
@@ -2476,6 +2477,7 @@ frpc_panel() {
 		echo -e "FRP客户端 $check_frp"
 		echo "与服务端对接，对接后可创建内网穿透转发服务"
 		echo "官网介绍: https://github.com/fatedier/frp/"
+		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=173.9"
 		echo "------------------------"
 		if [ -d "/home/frp/" ]; then
 			list_forwarding_services "/home/frp/frp_0.61.0_linux_amd64/frpc.toml"
