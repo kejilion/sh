@@ -2456,7 +2456,7 @@ frps_panel() {
 
 			00)
 				send_stats "刷新FRP服务状态"
-				frps_panel
+				echo "已经刷新FRP服务状态"	
 				;;
 
 			*)
