@@ -2129,6 +2129,7 @@ donlond_frp() {
 	fi
 	
 	# 解压 .tar.gz 文件
+	install tar
 	tar -zxvf frp_*.tar.gz
 	dir_name=$(tar -tzf frp_*.tar.gz | head -n 1 | cut -f 1 -d '/')		
 	mv "$dir_name" frp_0.61.0_linux_amd64
