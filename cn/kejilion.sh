@@ -2450,14 +2450,13 @@ frps_panel() {
 				ldnmp_Proxy ${yuming} ${ipv4_address} ${frps_port}
 				;;
 			6)
-				echo "域名格式 example.com 不带https://"
-				
+				echo "域名格式 example.com 不带https://"			
 				web_del
 				;;
 
 			00)
-				echo "刷新FRP服务状态"
 				send_stats "刷新FRP服务状态"
+				frps_panel
 				;;
 
 			*)
