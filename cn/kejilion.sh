@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.6"
+sh_v="3.6.7"
 
 
 gl_hui='\e[37m'
@@ -1462,7 +1462,7 @@ while true; do
 
 		6)
 			echo "域名格式 example.com 不带https://"
-			
+
 			web_del
 			;;
 
@@ -2014,7 +2014,7 @@ ldnmp_web_status() {
 
 			20)
 				echo "域名格式 example.com 不带https://"
-				
+
 				web_del
 
 				;;
@@ -2127,13 +2127,13 @@ donlond_frp() {
 	else
 		echo "不支持当前CPU架构: $arch"
 	fi
-	
+
 	# 解压 .tar.gz 文件
 	install tar
 	tar -zxvf frp_*.tar.gz
-	dir_name=$(tar -tzf frp_*.tar.gz | head -n 1 | cut -f 1 -d '/')		
+	dir_name=$(tar -tzf frp_*.tar.gz | head -n 1 | cut -f 1 -d '/')
 	mv "$dir_name" frp_0.61.0_linux_amd64
-	
+
 
 }
 
@@ -2217,7 +2217,9 @@ add_forwarding_service() {
 	# 提示用户输入服务名称和转发信息
 	read -e -p "请输入服务名称: " service_name
 	read -e -p "请输入转发类型 (tcp/udp) [回车默认tcp]: " service_type
-	service_type=${service_type:-tcp}
+	local service_type=${service_type:-tcp}
+	read -e -p "请输入内网IP [回车默认127.0.0.1]: " local_ip
+	local local_ip=${local_ip:-127.0.0.1}
 	read -e -p "请输入内网端口: " local_port
 	read -e -p "请输入外网端口: " remote_port
 
@@ -2225,7 +2227,7 @@ add_forwarding_service() {
 	cat <<EOF >> /home/frp/frp_0.61.0_linux_amd64/frpc.toml
 [$service_name]
 type = ${service_type}
-local_ip = 127.0.0.1
+local_ip = ${local_ip}
 local_port = ${local_port}
 remote_port = ${remote_port}
 
@@ -2343,7 +2345,7 @@ get_frp_ports() {
 generate_access_urls() {
 	# 首先获取所有端口
 	get_frp_ports
-	
+
 	# 检查是否有非 8055/8056 的端口
 	local has_valid_ports=false
 	for port in "${ports[@]}"; do
@@ -2356,7 +2358,7 @@ generate_access_urls() {
 	# 只在有有效端口时显示标题和内容
 	if [ "$has_valid_ports" = true ]; then
 		echo "FRP服务对外访问地址:"
-		
+
 		# 处理 IPv4 地址
 		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
@@ -2450,13 +2452,13 @@ frps_panel() {
 				ldnmp_Proxy ${yuming} ${ipv4_address} ${frps_port}
 				;;
 			6)
-				echo "域名格式 example.com 不带https://"			
+				echo "域名格式 example.com 不带https://"
 				web_del
 				;;
 
 			00)
 				send_stats "刷新FRP服务状态"
-				echo "已经刷新FRP服务状态"	
+				echo "已经刷新FRP服务状态"
 				;;
 
 			*)
@@ -6781,7 +6783,7 @@ linux_panel() {
 
 					3)
 						echo "域名格式 example.com 不带https://"
-						
+
 						web_del
 						;;
 
@@ -7013,7 +7015,7 @@ linux_panel() {
 
 					6)
 						echo "域名格式 example.com 不带https://"
-						
+
 						web_del
 						;;
 
@@ -7146,7 +7148,7 @@ linux_panel() {
 
 					6)
 						echo "域名格式 example.com 不带https://"
-						
+
 						web_del
 						;;
 
@@ -7825,7 +7827,7 @@ linux_panel() {
 
 					6)
 						echo "域名格式 example.com 不带https://"
-						
+
 						web_del
 						;;
 
