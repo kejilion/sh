@@ -6290,6 +6290,9 @@ linux_ldnmp() {
 			  case $sub_choice in
 				  1)
 				  send_stats "站点标准模式"
+
+				  iptables -P FORWARD ACCEPT
+
 				  # nginx调优
 				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
 				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
@@ -6317,11 +6320,15 @@ linux_ldnmp() {
 				  restart_redis
 				  optimize_balanced
 
+
 				  echo "LDNMP环境已设置成 标准模式"
 
 					  ;;
 				  2)
 				  send_stats "站点高性能模式"
+
+				  iptables -P FORWARD ACCEPT
+
 				  # nginx调优
 				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
 				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
