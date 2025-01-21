@@ -4289,6 +4289,197 @@ ssh_manager() {
 
 
 
+
+
+
+
+
+# 列出可用的硬盘分区
+list_partitions() {
+    echo "可用的硬盘分区："
+    lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT | grep -v "sr\|loop"
+}
+
+# 挂载分区
+mount_partition() {
+    send_stats "挂载分区"
+    read -p "请输入要挂载的分区名称（例如 sda1）: " PARTITION
+
+    # 检查分区是否存在
+    if ! lsblk -o NAME | grep -w "$PARTITION" > /dev/null; then
+        echo "分区不存在！"
+        return
+    fi
+
+    # 检查分区是否已经挂载
+    if lsblk -o MOUNTPOINT | grep -w "$PARTITION" > /dev/null; then
+        echo "分区已经挂载！"
+        return
+    fi
+
+    # 创建挂载点
+    MOUNT_POINT="/mnt/$PARTITION"
+    mkdir -p "$MOUNT_POINT"
+
+    # 挂载分区
+    mount "/dev/$PARTITION" "$MOUNT_POINT"
+
+    if [ $? -eq 0 ]; then
+        echo "分区挂载成功: $MOUNT_POINT"
+    else
+        echo "分区挂载失败！"
+        rmdir "$MOUNT_POINT"
+    fi
+}
+
+# 卸载分区
+unmount_partition() {
+	send_stats "卸载分区"
+    read -p "请输入要卸载的分区名称（例如 sda1）: " PARTITION
+
+    # 检查分区是否已经挂载
+    MOUNT_POINT=$(lsblk -o MOUNTPOINT | grep -w "$PARTITION")
+    if [ -z "$MOUNT_POINT" ]; then
+        echo "分区未挂载！"
+        return
+    fi
+
+    # 卸载分区
+    umount "/dev/$PARTITION"
+
+    if [ $? -eq 0 ]; then
+        echo "分区卸载成功: $MOUNT_POINT"
+        rmdir "$MOUNT_POINT"
+    else
+        echo "分区卸载失败！"
+    fi
+}
+
+# 列出已挂载的分区
+list_mounted_partitions() {
+    echo "已挂载的分区："
+    df -h | grep -v "tmpfs\|udev\|overlay"
+}
+
+# 格式化分区
+format_partition() {
+    send_stats "格式化分区"
+    read -p "请输入要格式化的分区名称（例如 sda1）: " PARTITION
+
+    # 检查分区是否存在
+    if ! lsblk -o NAME | grep -w "$PARTITION" > /dev/null; then
+        echo "分区不存在！"
+        return
+    fi
+
+    # 检查分区是否已经挂载
+    if lsblk -o MOUNTPOINT | grep -w "$PARTITION" > /dev/null; then
+        echo "分区已经挂载，请先卸载！"
+        return
+    fi
+
+    # 选择文件系统类型
+    echo "请选择文件系统类型："
+    echo "1. ext4"
+    echo "2. xfs"
+    echo "3. ntfs"
+    echo "4. vfat"
+    read -p "请输入你的选择: " FS_CHOICE
+
+    case $FS_CHOICE in
+        1) FS_TYPE="ext4" ;;
+        2) FS_TYPE="xfs" ;;
+        3) FS_TYPE="ntfs" ;;
+        4) FS_TYPE="vfat" ;;
+        *) echo "无效的选择！"; return ;;
+    esac
+
+    # 确认格式化
+    read -p "确认格式化分区 /dev/$PARTITION 为 $FS_TYPE 吗？(y/n): " CONFIRM
+    if [ "$CONFIRM" != "y" ]; then
+        echo "操作已取消。"
+        return
+    fi
+
+    # 格式化分区
+    echo "正在格式化分区 /dev/$PARTITION 为 $FS_TYPE ..."
+    mkfs.$FS_TYPE "/dev/$PARTITION"
+
+    if [ $? -eq 0 ]; then
+        echo "分区格式化成功！"
+    else
+        echo "分区格式化失败！"
+    fi
+}
+
+# 检查分区状态
+check_partition() {
+    send_stats "检查分区状态"
+    read -p "请输入要检查的分区名称（例如 sda1）: " PARTITION
+
+    # 检查分区是否存在
+    if ! lsblk -o NAME | grep -w "$PARTITION" > /dev/null; then
+        echo "分区不存在！"
+        return
+    fi
+
+    # 检查分区状态
+    echo "检查分区 /dev/$PARTITION 的状态："
+    sudo fsck "/dev/$PARTITION"
+}
+
+# 主菜单
+disk_manager() {
+    send_stats "硬盘管理功能"
+    while true; do
+        clear
+        echo "硬盘分区管理"
+        echo -e "${gl_huang}该功能内部测试阶段，请勿在生产环境使用。${gl_bai}"
+        echo "------------------------"
+        list_partitions
+        echo "------------------------"
+        echo "1. 挂载分区        2. 卸载分区        3. 查看已挂载分区"
+        echo "4. 格式化分区      5. 检查分区状态"
+        echo "------------------------"
+        echo "0. 返回上一级"
+        echo "------------------------"
+        read -p "请输入你的选择: " choice
+        case $choice in
+            1) mount_partition ;;
+            2) unmount_partition ;;
+            3) list_mounted_partitions ;;
+            4) format_partition ;;
+            5) check_partition ;;
+            *) break ;;
+        esac
+        read -p "按回车键继续..."
+    done
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 linux_ps() {
 
 	clear
@@ -8168,7 +8359,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行美化工具 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${gl_bai}设置系统回收站                     ${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
-	  echo -e "${gl_kjlan}35.  ${gl_bai}ssh远程连接工具"
+	  echo -e "${gl_kjlan}35.  ${gl_bai}ssh远程连接工具                    ${gl_kjlan}36.  ${gl_bai}硬盘分区管理工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}99.  ${gl_bai}重启服务器                         ${gl_kjlan}100. ${gl_bai}隐私与安全"
@@ -9336,6 +9527,9 @@ EOF
 		  35)
 			  ssh_manager
 			  ;;
+		  36)
+			  disk_manager
+			  ;;
 		  41)
 			clear
 			send_stats "留言板"
@@ -10117,6 +10311,7 @@ echo "设置虚拟时区        k time Asia/Shanghai | k 时区 Asia/Shanghai"
 echo "系统回收站          k trash | k hsz | k 回收站"
 echo "系统备份功能        k backup | k bf | k 备份"
 echo "ssh远程连接工具     k ssh | k 远程连接"
+echo "硬盘管理工具        k disk | k 硬盘管理"
 echo "内网穿透（服务端）  k frps"
 echo "内网穿透（客户端）  k frpc"
 echo "软件启动            k start sshd | k 启动 sshd "
@@ -10178,6 +10373,11 @@ else
 		ssh|远程连接)
 			ssh_manager
 			;;
+
+		disk|硬盘管理)
+			disk_manager
+			;;
+
 		wp|wordpress)
 			shift
 			ldnmp_wp "$@"
