@@ -1462,7 +1462,6 @@ while true; do
 
 		6)
 			echo "域名格式 example.com 不带https://"
-
 			web_del
 			;;
 
@@ -2014,7 +2013,6 @@ ldnmp_web_status() {
 
 			20)
 				echo "域名格式 example.com 不带https://"
-
 				web_del
 
 				;;
@@ -2188,7 +2186,6 @@ EOF
 
 configure_frpc() {
 	send_stats "安装frp客户端"
-	# 提示用户输入外网服务器信息
 	read -e -p "请输入外网对接IP: " server_addr
 	read -e -p "请输入外网对接token: " token
 	echo
@@ -6783,7 +6780,6 @@ linux_panel() {
 
 					3)
 						echo "域名格式 example.com 不带https://"
-
 						web_del
 						;;
 
@@ -7015,7 +7011,6 @@ linux_panel() {
 
 					6)
 						echo "域名格式 example.com 不带https://"
-
 						web_del
 						;;
 
@@ -7148,7 +7143,6 @@ linux_panel() {
 
 					6)
 						echo "域名格式 example.com 不带https://"
-
 						web_del
 						;;
 
@@ -7747,7 +7741,7 @@ linux_panel() {
 			local docker_name="ghproxy"
 			local docker_img="wjqserver/ghproxy:latest"
 			local docker_port=8046
-			local docker_rum="docker run -d --name ghproxy --restart always -p 8046:80 wjqserver/ghproxy:latest"
+			local docker_rum="docker run -d --name ghproxy --restart always -p 8046:8080 wjqserver/ghproxy:latest"
 			local docker_describe="使用Go实现的GHProxy，用于加速部分地区Github仓库的拉取。"
 			local docker_url="官网介绍: https://github.com/WJQSERVER-STUDIO/ghproxy"
 			local docker_use=""
@@ -7827,7 +7821,6 @@ linux_panel() {
 
 					6)
 						echo "域名格式 example.com 不带https://"
-
 						web_del
 						;;
 
