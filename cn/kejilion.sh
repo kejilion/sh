@@ -46,7 +46,6 @@ run_command() {
 canshu_v6() {
 	if grep -q '^canshu="V6"' /usr/local/bin/k > /dev/null 2>&1; then
 		sed -i 's/^canshu="default"/canshu="V6"/' ~/kejilion.sh
-		sed -i 's/^canshu="default"/canshu="V6"/' /usr/local/bin/k
 	fi
 }
 
@@ -54,7 +53,6 @@ canshu_v6() {
 CheckFirstRun_true() {
 	if grep -q '^permission_granted="true"' /usr/local/bin/k > /dev/null 2>&1; then
 		sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
-		sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
 	fi
 }
 
@@ -85,7 +83,6 @@ yinsiyuanquan2() {
 
 if grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null 2>&1; then
 	sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
-	sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 fi
 
 }
