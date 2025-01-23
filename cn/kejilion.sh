@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.7"
+sh_v="3.6.8"
 
 
 gl_hui='\e[37m'
@@ -96,6 +96,10 @@ canshu_v6
 CheckFirstRun_true
 yinsiyuanquan2
 
+
+sed -i '/^alias k=/d' ~/.bashrc > /dev/null 2>&1
+sed -i '/^alias k=/d' ~/.profile > /dev/null 2>&1
+sed -i '/^alias k=/d' ~/.bash_profile > /dev/null 2>&1
 cp -f ./kejilion.sh ~/kejilion.sh > /dev/null 2>&1
 cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
 
@@ -6277,7 +6281,7 @@ linux_ldnmp() {
 			  echo "5. 查看SSH拦截记录                6. 查看网站拦截记录"
 			  echo "7. 查看防御规则列表               8. 查看日志实时监控"
 			  echo "------------------------"
-			  echo "11. 配置拦截参数"
+			  echo "11. 配置拦截参数                  12. 清除所有拉黑的IP"
 			  echo "------------------------"
 			  echo "21. cloudflare模式                22. 高负载开启5秒盾"
 			  echo "------------------------"
@@ -6360,6 +6364,11 @@ linux_ldnmp() {
 
 					  break
 					  ;;
+
+				  12)
+					  docker exec -it fail2ban fail2ban-client unban --all
+					  ;;
+
 				  21)
 					  send_stats "cloudflare模式"
 					  echo "到cf后台右上角我的个人资料，选择左侧API令牌，获取Global API Key"
@@ -6784,7 +6793,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}49.  ${gl_bai}普罗米修斯(容器监控)		 ${gl_kjlan}50.  ${gl_bai}补货监控工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板			 ${gl_kjlan}52.  ${gl_bai}DPanel容器管理面板"
-	  echo -e "${gl_kjlan}53.  ${gl_bai}ollama聊天AI大模型"
+	  echo -e "${gl_kjlan}53.  ${gl_bai}ollama聊天AI大模型       ${gl_kjlan}54.  ${gl_bai}AMH主机建站管理面板"
 	  echo -e "${gl_kjlan}55.  ${gl_bai}FRP内网穿透(服务端)		 ${gl_kjlan}56.  ${gl_bai}FRP内网穿透(客户端)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
@@ -8120,6 +8129,42 @@ linux_panel() {
 			local docker_passwd=""
 			docker_app
 			  ;;
+
+		  54)
+			send_stats "AMH面板"
+			while true; do
+				clear
+				echo "AMH面板"
+				echo "AMH是国内首款开源的主机面板，持续更新14年、2011至今0漏洞0后门0收集0广告、面板闲时近乎0占用"
+				echo "官方地址: https://amh.sh/index.htm?amh"
+				echo "------------------------"
+				echo "1. 安装            2. 管理            3. 卸载"
+				echo "------------------------"
+				echo "0. 返回上一级"
+				echo "------------------------"
+				read -e -p "输入你的选择: " choice
+
+				case $choice in
+					1)
+						cd ~
+						wget https://dl.amh.sh/amh.sh && bash amh.sh
+						;;
+					2)
+						cd ~
+						wget https://dl.amh.sh/amh.sh && bash amh.sh
+						;;
+					3)
+						cd ~
+						wget https://dl.amh.sh/amh.sh && bash amh.sh
+						;;
+					*)
+						break
+						;;
+				esac
+				break_end
+			done
+			  ;;
+
 
 		  55)
 		  	frps_panel
