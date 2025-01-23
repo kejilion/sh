@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.7"
+sh_v="3.6.8"
 
 
 gl_hui='\e[37m'
@@ -6277,7 +6277,7 @@ linux_ldnmp() {
 			  echo "5. 查看SSH拦截记录                6. 查看网站拦截记录"
 			  echo "7. 查看防御规则列表               8. 查看日志实时监控"
 			  echo "------------------------"
-			  echo "11. 配置拦截参数"
+			  echo "11. 配置拦截参数                  12. 清除所有拉黑的IP"
 			  echo "------------------------"
 			  echo "21. cloudflare模式                22. 高负载开启5秒盾"
 			  echo "------------------------"
@@ -6360,6 +6360,11 @@ linux_ldnmp() {
 
 					  break
 					  ;;
+
+				  12)
+					  docker exec -it fail2ban fail2ban-client unban --all
+					  ;;
+
 				  21)
 					  send_stats "cloudflare模式"
 					  echo "到cf后台右上角我的个人资料，选择左侧API令牌，获取Global API Key"
