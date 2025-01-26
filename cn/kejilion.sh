@@ -1555,12 +1555,12 @@ while true; do
 
 		7)
 			send_stats "允许IP访问 ${docker_name}"
-			block_container_port "$docker_name"
+			clear_container_rules "$docker_name"
 			;;
 
 		8)
 			send_stats "阻止IP访问 ${docker_name}"
-			clear_container_rules "$docker_name" "$ipv4_address"
+			block_container_port "$docker_name" "$ipv4_address"
 			;;
 
 		*)
@@ -7329,12 +7329,12 @@ linux_panel() {
 
 					7)
 						send_stats "允许IP访问 ${docker_name}"
-						block_container_port "$docker_name"
+						clear_container_rules "$docker_name"
 						;;
 
 					8)
 						send_stats "阻止IP访问 ${docker_name}"
-						clear_container_rules "$docker_name" "$ipv4_address"
+						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 
@@ -7472,12 +7472,12 @@ linux_panel() {
 
 					7)
 						send_stats "允许IP访问 ${docker_name}"
-						block_container_port "$docker_name"
+						clear_container_rules "$docker_name"
 						;;
 
 					8)
 						send_stats "阻止IP访问 ${docker_name}"
-						clear_container_rules "$docker_name" "$ipv4_address"
+						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 
@@ -8162,14 +8162,13 @@ linux_panel() {
 
 					7)
 						send_stats "允许IP访问 ${docker_name}"
-						block_container_port "$docker_name"
+						clear_container_rules "$docker_name"
 						;;
 
 					8)
 						send_stats "阻止IP访问 ${docker_name}"
-						clear_container_rules "$docker_name" "$ipv4_address"
+						block_container_port "$docker_name" "$ipv4_address"
 						;;
-
 
 
 
