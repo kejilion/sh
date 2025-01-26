@@ -937,7 +937,6 @@ install_certbot() {
 
 install_ssltls() {
 	  docker stop nginx > /dev/null 2>&1
-	  iptables_open > /dev/null 2>&1
 	  check_port > /dev/null 2>&1
 	  cd ~
 
