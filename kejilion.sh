@@ -1409,6 +1409,82 @@ check_docker_image_update() {
 }
 
 
+
+block_container_port() {
+	local container_name_or_id=$1
+	local allowed_ip=$2
+
+	# 获取容器的 IP 地址
+	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
+
+	if [ -z "$container_ip" ]; then
+		echo "错误：无法获取容器 $container_name_or_id 的 IP 地址。请检查容器名称或ID是否正确。"
+		return 1
+	fi
+
+	echo "容器 $container_name_or_id 的 IP 地址为: $container_ip"
+
+	# 检查并封禁其他所有 IP
+	if ! iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
+		echo "封禁其他所有 IP 访问 $container_ip"
+		iptables -I DOCKER-USER -p tcp -d "$container_ip" -j DROP
+	else
+		echo "规则已存在：封禁其他所有 IP 访问 $container_ip，跳过添加。"
+	fi
+
+	# 检查并放行指定 IP
+	if ! iptables -C DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
+		echo "放行 IP $allowed_ip 访问 $container_ip"
+		iptables -I DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
+	else
+		echo "规则已存在：放行 IP $allowed_ip 访问 $container_ip，跳过添加。"
+	fi
+
+	if ! iptables -C DOCKER-USER -p tcp -s 127.18.0.0/16 -d "$container_ip" -j ACCEPT &>/dev/null; then
+		echo "放行本地网络 127.18.0.0/16 访问 $container_ip"
+		iptables -I DOCKER-USER -p tcp -s 127.18.0.0/16 -d "$container_ip" -j ACCEPT
+	else
+		echo "规则已存在：放行本地网络 127.18.0.0/16 访问 $container_ip，跳过添加。"
+	fi
+
+	# 检查并放行本地网络 127.0.0.0/16
+	if ! iptables -C DOCKER-USER -p tcp -s 127.0.0.0/16 -d "$container_ip" -j ACCEPT &>/dev/null; then
+		echo "放行本地网络 127.0.0.0/16 访问 $container_ip"
+		iptables -I DOCKER-USER -p tcp -s 127.0.0.0/16 -d "$container_ip" -j ACCEPT
+	else
+		echo "规则已存在：放行本地网络 127.0.0.0/16 访问 $container_ip，跳过添加。"
+	fi
+
+	echo "规则已成功添加到 DOCKER-USER 链。"
+}
+
+
+
+clear_container_rules() {
+	local container_name_or_id=$1
+
+	# 获取容器的 IP 地址
+	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
+
+	if [ -z "$container_ip" ]; then
+		echo "错误：无法获取容器 $container_name_or_id 的 IP 地址。请检查容器名称或ID是否正确。"
+		return 1
+	fi
+
+	echo "容器 $container_name_or_id 的 IP 地址为: $container_ip"
+
+	# 删除与该容器 IP 相关的所有规则
+	iptables-save | grep -v "$container_ip" | iptables-restore
+
+	echo "所有与容器 IP $container_ip 相关的规则已清除。"
+}
+
+
+
+
+
+
+
 docker_app() {
 send_stats "${docker_name}管理"
 
@@ -1427,6 +1503,7 @@ while true; do
 	echo "1. 安装            2. 更新            3. 卸载"
 	echo "------------------------"
 	echo "5. 域名访问        6. 删除域名访问"
+	echo "7. 允许IP访问      8. 阻止IP访问"
 	echo "------------------------"
 	echo "0. 返回上一级"
 	echo "------------------------"
@@ -1474,6 +1551,16 @@ while true; do
 		6)
 			echo "域名格式 example.com 不带https://"
 			web_del
+			;;
+
+		7)
+			send_stats "允许IP访问 ${docker_name}"
+			block_container_port "$docker_name"
+			;;
+
+		8)
+			send_stats "阻止IP访问 ${docker_name}"
+			clear_container_rules "$docker_name" "$ipv4_address"
 			;;
 
 		*)
@@ -2463,6 +2550,7 @@ frps_panel() {
 				echo "域名格式 example.com 不带https://"
 				web_del
 				;;
+
 
 			00)
 				send_stats "刷新FRP服务状态"
@@ -7180,6 +7268,7 @@ linux_panel() {
 				echo "1. 安装           2. 更新           3. 卸载"
 				echo "------------------------"
 				echo "5. 域名访问       6. 删除域名访问"
+				echo "7. 允许IP访问     8. 阻止IP访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -7236,6 +7325,16 @@ linux_panel() {
 					6)
 						echo "域名格式 example.com 不带https://"
 						web_del
+						;;
+
+					7)
+						send_stats "允许IP访问 ${docker_name}"
+						block_container_port "$docker_name"
+						;;
+
+					8)
+						send_stats "阻止IP访问 ${docker_name}"
+						clear_container_rules "$docker_name" "$ipv4_address"
 						;;
 
 
@@ -7310,6 +7409,7 @@ linux_panel() {
 				echo "1. 安装           2. 更新           3. 卸载"
 				echo "------------------------"
 				echo "5. 域名访问       6. 删除域名访问"
+				echo "7. 允许IP访问     8. 阻止IP访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -7369,6 +7469,17 @@ linux_panel() {
 						echo "域名格式 example.com 不带https://"
 						web_del
 						;;
+
+					7)
+						send_stats "允许IP访问 ${docker_name}"
+						block_container_port "$docker_name"
+						;;
+
+					8)
+						send_stats "阻止IP访问 ${docker_name}"
+						clear_container_rules "$docker_name" "$ipv4_address"
+						;;
+
 
 
 					*)
@@ -7993,6 +8104,7 @@ linux_panel() {
 				echo "1. 安装           2. 更新           3. 卸载"
 				echo "------------------------"
 				echo "5. 域名访问       6. 删除域名访问"
+				echo "7. 允许IP访问     8. 阻止IP访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -8047,6 +8159,19 @@ linux_panel() {
 						echo "域名格式 example.com 不带https://"
 						web_del
 						;;
+
+					7)
+						send_stats "允许IP访问 ${docker_name}"
+						block_container_port "$docker_name"
+						;;
+
+					8)
+						send_stats "阻止IP访问 ${docker_name}"
+						clear_container_rules "$docker_name" "$ipv4_address"
+						;;
+
+
+
 
 
 					*)
