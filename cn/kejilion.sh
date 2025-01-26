@@ -1456,6 +1456,7 @@ block_container_port() {
 
 clear_container_rules() {
 	local container_name_or_id=$1
+	local allowed_ip=$2
 
 	# 获取容器的 IP 地址
 	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
@@ -1568,7 +1569,7 @@ while true; do
 
 		7)
 			send_stats "允许IP访问 ${docker_name}"
-			clear_container_rules "$docker_name"
+			clear_container_rules "$docker_name" "$ipv4_address"
 			;;
 
 		8)
@@ -7112,7 +7113,7 @@ linux_panel() {
 
 					7)
 						send_stats "允许IP访问 ${docker_name}"
-						clear_container_rules "$docker_name"
+						clear_container_rules "$docker_name" "$ipv4_address"
 						;;
 
 					8)
@@ -7354,7 +7355,7 @@ linux_panel() {
 
 					7)
 						send_stats "允许IP访问 ${docker_name}"
-						clear_container_rules "$docker_name"
+						clear_container_rules "$docker_name" "$ipv4_address"
 						;;
 
 					8)
@@ -7497,7 +7498,7 @@ linux_panel() {
 
 					7)
 						send_stats "允许IP访问 ${docker_name}"
-						clear_container_rules "$docker_name"
+						clear_container_rules "$docker_name" "$ipv4_address"
 						;;
 
 					8)
@@ -8187,7 +8188,7 @@ linux_panel() {
 
 					7)
 						send_stats "允许IP访问 ${docker_name}"
-						clear_container_rules "$docker_name"
+						clear_container_rules "$docker_name" "$ipv4_address"
 						;;
 
 					8)
