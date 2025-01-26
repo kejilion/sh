@@ -1453,6 +1453,7 @@ block_container_port() {
 
 
 
+
 clear_container_rules() {
 	local container_name_or_id=$1
 
@@ -1466,13 +1467,32 @@ clear_container_rules() {
 
 	echo "容器 $container_name_or_id 的 IP 地址为: $container_ip"
 
-	# 删除与该容器 IP 相关的所有规则
-	iptables-save | grep -v "$container_ip" | iptables-restore
+	# 清除封禁其他所有 IP 的规则
+	if iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
+		echo "清除封禁其他所有 IP 访问 $container_ip 的规则"
+		iptables -D DOCKER-USER -p tcp -d "$container_ip" -j DROP
+	else
+		echo "规则不存在：封禁其他所有 IP 访问 $container_ip，无需清除。"
+	fi
+
+	# 清除放行指定 IP 的规则
+	if iptables -C DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
+		echo "清除放行 IP $allowed_ip 访问 $container_ip 的规则"
+		iptables -D DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
+	else
+		echo "规则不存在：放行 IP $allowed_ip 访问 $container_ip，无需清除。"
+	fi
+
+	# 清除放行本地网络 127.0.0.0/8 的规则
+	if iptables -C DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
+		echo "清除放行本地网络 127.0.0.0/8 访问 $container_ip 的规则"
+		iptables -D DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
+	else
+		echo "规则不存在：放行本地网络 127.0.0.0/8 访问 $container_ip，无需清除。"
+	fi
 
 	echo "所有与容器 IP $container_ip 相关的规则已清除。"
 }
-
-
 
 
 
