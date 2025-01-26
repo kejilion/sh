@@ -6610,11 +6610,7 @@ linux_ldnmp() {
 				  1)
 				  send_stats "站点标准模式"
 
-				  iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-				  iptables -A FORWARD -s 172.0.0.0/8 -j ACCEPT
-				  iptables -A FORWARD -p tcp --dport 80 -j ACCEPT
-				  iptables -A FORWARD -p tcp --dport 443 -j ACCEPT
-				  iptables -A FORWARD -p udp --dport 443 -j ACCEPT
+				  iptables -P FORWARD ACCEPT
 
 				  # nginx调优
 				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
@@ -6650,11 +6646,7 @@ linux_ldnmp() {
 				  2)
 				  send_stats "站点高性能模式"
 
-				  iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-				  iptables -A FORWARD -s 172.0.0.0/8 -j ACCEPT
-				  iptables -A FORWARD -p tcp --dport 80 -j ACCEPT
-				  iptables -A FORWARD -p tcp --dport 443 -j ACCEPT
-				  iptables -A FORWARD -p udp --dport 443 -j ACCEPT
+				  iptables -P FORWARD ACCEPT
 
 				  # nginx调优
 				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
