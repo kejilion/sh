@@ -1440,19 +1440,12 @@ block_container_port() {
 		echo "规则已存在：放行 IP $allowed_ip 访问 $container_ip，跳过添加。"
 	fi
 
-	if ! iptables -C DOCKER-USER -p tcp -s 127.18.0.0/16 -d "$container_ip" -j ACCEPT &>/dev/null; then
-		echo "放行本地网络 127.18.0.0/16 访问 $container_ip"
-		iptables -I DOCKER-USER -p tcp -s 127.18.0.0/16 -d "$container_ip" -j ACCEPT
+	# 检查并放行本地网络 127.0.0.0/8
+	if ! iptables -C DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
+		echo "放行本地网络 127.0.0.0/8 访问 $container_ip"
+		iptables -I DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	else
-		echo "规则已存在：放行本地网络 127.18.0.0/16 访问 $container_ip，跳过添加。"
-	fi
-
-	# 检查并放行本地网络 127.0.0.0/16
-	if ! iptables -C DOCKER-USER -p tcp -s 127.0.0.0/16 -d "$container_ip" -j ACCEPT &>/dev/null; then
-		echo "放行本地网络 127.0.0.0/16 访问 $container_ip"
-		iptables -I DOCKER-USER -p tcp -s 127.0.0.0/16 -d "$container_ip" -j ACCEPT
-	else
-		echo "规则已存在：放行本地网络 127.0.0.0/16 访问 $container_ip，跳过添加。"
+		echo "规则已存在：放行本地网络 127.0.0.0/8 访问 $container_ip，跳过添加。"
 	fi
 
 	echo "规则已成功添加到 DOCKER-USER 链。"
