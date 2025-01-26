@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.8"
+sh_v="3.6.9"
 
 
 gl_hui='\e[37m'
@@ -174,6 +174,9 @@ install() {
 			elif command -v opkg &>/dev/null; then
 				opkg update
 				opkg install "$package"
+			elif command -v pkg &>/dev/null; then
+				pkg update
+				pkg install -y "$package"
 			else
 				echo "未知的包管理器!"
 				return 1
@@ -210,6 +213,8 @@ remove() {
 			zypper remove -y "$package"
 		elif command -v opkg &>/dev/null; then
 			opkg remove "$package"
+		elif command -v pkg &>/dev/null; then
+			pkg delete -y "$package"
 		else
 			echo "未知的包管理器!"
 			return 1
@@ -660,11 +665,16 @@ install_crontab() {
 				systemctl enable cron
 				systemctl start cron
 				;;
-			openwrt|lede)
+			iStoreOS|openwrt|ImmortalWrt|lede)
 				opkg update
 				opkg install cron
 				/etc/init.d/cron enable
 				/etc/init.d/cron start
+				;;
+			FreeBSD)
+				pkg install -y cronie
+				sysrc cron_enable="YES"
+				service cron start
 				;;
 			*)
 				echo "不支持的发行版: $ID"
@@ -2652,6 +2662,16 @@ linux_clean() {
 		journalctl --vacuum-size=500M
 
 	elif command -v opkg &>/dev/null; then
+		echo "删除系统日志..."
+		rm -rf /var/log/*
+		echo "删除临时文件..."
+		rm -rf /tmp/*
+
+	elif command -v pkg &>/dev/null; then
+		echo "清理未使用的依赖..."
+		pkg autoremove -y
+		echo "清理包管理器缓存..."
+		pkg clean -y
 		echo "删除系统日志..."
 		rm -rf /var/log/*
 		echo "删除临时文件..."
@@ -8420,7 +8440,6 @@ linux_Settings() {
 					   break_end
 					   linux_Settings
 				  fi
-				  sed -i '/alias .*='\''k'\''$/d' ~/.bashrc
 				  find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/k" && rm -f {}' \;
 				  ln -s /usr/local/bin/k /usr/local/bin/$kuaijiejian
 				  echo "快捷键已设置"
