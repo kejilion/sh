@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -7067,9 +7067,11 @@ linux_panel() {
 					check_docker_app_ip
 				fi
 				echo ""
-
 				echo "------------------------"
-				echo "1. 使用           2. 域名访问           3. 删除域名访问"
+				echo "1. 使用"
+				echo "------------------------"
+				echo "5. 域名访问           6. 删除域名访问"
+				echo "7. 允许IP访问         8. 阻止IP访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -7083,16 +7085,26 @@ linux_panel() {
 						local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 						check_docker_app_ip
 						;;
-					2)
+					5)
 						echo "${docker_name}域名访问设置"
 						send_stats "${docker_name}域名访问设置"
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
 						;;
 
-					3)
+					6)
 						echo "域名格式 example.com 不带https://"
 						web_del
+						;;
+
+					7)
+						send_stats "允许IP访问 ${docker_name}"
+						clear_container_rules "$docker_name"
+						;;
+
+					8)
+						send_stats "阻止IP访问 ${docker_name}"
+						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 					*)
@@ -8087,7 +8099,7 @@ linux_panel() {
 		  47)
 			send_stats "普罗米修斯监控"
 
-			local docker_name=prometheus
+			local docker_name=grafana
 			local docker_port=8047
 			while true; do
 				check_docker_app
