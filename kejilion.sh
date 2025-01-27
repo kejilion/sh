@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.9"
+sh_v="3.6.10"
 
 
 gl_hui='\e[37m'
@@ -762,6 +762,12 @@ docker_ipv6_off() {
 
 
 iptables_open() {
+	mkdir -p /etc/iptables
+	touch /etc/iptables/rules.v4
+	iptables-save > /etc/iptables/rules.v4
+	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
+	(crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
+
 	iptables -P INPUT ACCEPT
 	iptables -P FORWARD ACCEPT
 	iptables -P OUTPUT ACCEPT
@@ -2893,7 +2899,15 @@ new_ssh_port() {
   # 重启 SSH 服务
   restart_ssh
 
-  iptables_open
+  iptables -A INPUT -p tcp --dport "$new_port" -j ACCEPT
+  ip6tables -A INPUT -p tcp --dport "$new_port" -j ACCEPT
+
+  mkdir -p /etc/iptables
+  touch /etc/iptables/rules.v4
+  iptables-save > /etc/iptables/rules.v4
+  crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
+  (crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
+
   remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 
   echo "SSH 端口已修改为: $new_port"
@@ -9069,9 +9083,14 @@ EOF
 			  ;;
 
 		  17)
+
 		  root_use
+		  mkdir -p /etc/iptables
+		  touch /etc/iptables/rules.v4
+		  iptables-save > /etc/iptables/rules.v4
+		  crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
+		  (crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
 		  while true; do
-			if dpkg -l | grep -q iptables-persistent; then
 				  clear
 				  echo "高级防火墙管理"
 				  send_stats "高级防火墙管理"
@@ -9089,8 +9108,6 @@ EOF
 				  echo "------------------------"
 				  echo "11. 允许PING                  	 12. 禁止PING"
 				  echo "------------------------"
-				  echo "99. 卸载防火墙"
-				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
 				  read -e -p "请输入你的选择: " sub_choice
@@ -9098,96 +9115,90 @@ EOF
 				  case $sub_choice in
 					  1)
 						   read -e -p "请输入开放的端口号: " o_port
-						   sed -i "/COMMIT/i -A INPUT -p tcp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
-						   sed -i "/COMMIT/i -A INPUT -p udp --dport $o_port -j ACCEPT" /etc/iptables/rules.v4
-						   iptables-restore < /etc/iptables/rules.v4
+
+						   iptables -A INPUT -p tcp --dport $o_port -j ACCEPT
+						   iptables -A INPUT -p udp --dport $o_port -j ACCEPT
+						   iptables-save > /etc/iptables/rules.v4
 						   send_stats "开放指定端口"
 
 						  ;;
 					  2)
-						  read -e -p "请输入关闭的端口号: " c_port
-						  sed -i "/--dport $c_port/d" /etc/iptables/rules.v4
-						  iptables-restore < /etc/iptables/rules.v4
-						  send_stats "关闭指定端口"
+
+						  iptables -D INPUT -p tcp --dport $c_port -j ACCEPT
+						  iptables -D INPUT -p udp --dport $c_port -j ACCEPT
+						  iptables-save > /etc/iptables/rules.v4
 						  ;;
 
 					  3)
+						  # 开放所有端口
 						  current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
-
-						  cat > /etc/iptables/rules.v4 << EOF
-*filter
-:INPUT ACCEPT [0:0]
-:FORWARD ACCEPT [0:0]
-:OUTPUT ACCEPT [0:0]
--A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
--A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
--A INPUT -i lo -j ACCEPT
--A FORWARD -i lo -j ACCEPT
--A INPUT -p tcp --dport $current_port -j ACCEPT
-COMMIT
-EOF
-						  iptables-restore < /etc/iptables/rules.v4
+						  iptables -F
+						  iptables -X
+						  iptables -P INPUT ACCEPT
+						  iptables -P FORWARD ACCEPT
+						  iptables -P OUTPUT ACCEPT
+						  iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+						  iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+						  iptables -A INPUT -i lo -j ACCEPT
+						  iptables -A FORWARD -i lo -j ACCEPT
+						  iptables -A INPUT -p tcp --dport $current_port -j ACCEPT
+						  iptables-save > /etc/iptables/rules.v4
 						  send_stats "开放所有端口"
 						  ;;
-					  4)
-						  current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
 
-						  cat > /etc/iptables/rules.v4 << EOF
-*filter
-:INPUT DROP [0:0]
-:FORWARD DROP [0:0]
-:OUTPUT ACCEPT [0:0]
--A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
--A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
--A INPUT -i lo -j ACCEPT
--A FORWARD -i lo -j ACCEPT
--A INPUT -p tcp --dport $current_port -j ACCEPT
-COMMIT
-EOF
-						  iptables-restore < /etc/iptables/rules.v4
+					  4)
+						  # 关闭所有端口
+						  current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
+						  iptables -F
+						  iptables -X
+						  iptables -P INPUT DROP
+						  iptables -P FORWARD DROP
+						  iptables -P OUTPUT ACCEPT
+						  iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+						  iptables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+						  iptables -A INPUT -i lo -j ACCEPT
+						  iptables -A FORWARD -i lo -j ACCEPT
+						  iptables -A INPUT -p tcp --dport $current_port -j ACCEPT
+						  iptables-save > /etc/iptables/rules.v4
 						  send_stats "关闭所有端口"
 						  ;;
 
+				  
 					  5)
+						  # IP 白名单
 						  read -e -p "请输入放行的IP: " o_ip
-						  sed -i "/COMMIT/i -A INPUT -s $o_ip -j ACCEPT" /etc/iptables/rules.v4
-						  iptables-restore < /etc/iptables/rules.v4
+						  iptables -A INPUT -s $o_ip -j ACCEPT
+						  iptables-save > /etc/iptables/rules.v4
 						  send_stats "IP白名单"
 						  ;;
-
 					  6)
+						  # IP 黑名单
 						  read -e -p "请输入封锁的IP: " c_ip
-						  sed -i "/COMMIT/i -A INPUT -s $c_ip -j DROP" /etc/iptables/rules.v4
-						  iptables-restore < /etc/iptables/rules.v4
+						  iptables -A INPUT -s $c_ip -j DROP
+						  iptables-save > /etc/iptables/rules.v4
 						  send_stats "IP黑名单"
 						  ;;
-
 					  7)
+						  # 清除指定 IP
 						  read -e -p "请输入清除的IP: " d_ip
-						  sed -i "/-A INPUT -s $d_ip/d" /etc/iptables/rules.v4
-						  iptables-restore < /etc/iptables/rules.v4
+						  iptables -D INPUT -s $d_ip -j ACCEPT 2>/dev/null
+						  iptables -D INPUT -s $d_ip -j DROP 2>/dev/null
+						  iptables-save > /etc/iptables/rules.v4
 						  send_stats "清除指定IP"
 						  ;;
-
 					  11)
-						  sed -i '$i -A INPUT -p icmp --icmp-type echo-request -j ACCEPT' /etc/iptables/rules.v4
-						  sed -i '$i -A OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT' /etc/iptables/rules.v4
-						  iptables-restore < /etc/iptables/rules.v4
-						  send_stats "允许ping"
+						  # 允许 PING
+						  iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
+						  iptables -A OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT
+						  iptables-save > /etc/iptables/rules.v4
+						  send_stats "允许PING"
 						  ;;
-
 					  12)
-						  sed -i "/icmp/d" /etc/iptables/rules.v4
-						  iptables-restore < /etc/iptables/rules.v4
-						  send_stats "禁用ping"
-						  ;;
-
-					  99)
-						  remove iptables-persistent
-						  rm /etc/iptables/rules.v4
-						  send_stats "卸载防火墙"
-						  break
-
+						  # 禁用 PING
+						  iptables -D INPUT -p icmp --icmp-type echo-request -j ACCEPT 2>/dev/null
+						  iptables -D OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT 2>/dev/null
+						  iptables-save > /etc/iptables/rules.v4
+						  send_stats "禁用PING"
 						  ;;
 
 					  *)
@@ -9195,61 +9206,8 @@ EOF
 						  ;;
 
 				  esac
-			else
-
-				clear
-				echo "将为你安装防火墙，该防火墙仅支持Debian/Ubuntu"
-				echo "------------------------------------------------"
-				read -e -p "确定继续吗？(Y/N): " choice
-
-				case "$choice" in
-				  [Yy])
-					if [ -r /etc/os-release ]; then
-						. /etc/os-release
-						if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
-							echo "当前环境不支持，仅支持Debian和Ubuntu系统"
-							break_end
-							linux_Settings
-						fi
-					else
-						echo "无法确定操作系统类型"
-						break
-					fi
-
-					clear
-					iptables_open
-					remove iptables-persistent ufw
-					rm /etc/iptables/rules.v4
-
-					apt update -y && apt install -y iptables-persistent
-
-					local current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
-
-					cat > /etc/iptables/rules.v4 << EOF
-*filter
-:INPUT DROP [0:0]
-:FORWARD DROP [0:0]
-:OUTPUT ACCEPT [0:0]
--A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
--A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
--A INPUT -i lo -j ACCEPT
--A FORWARD -i lo -j ACCEPT
--A INPUT -p tcp --dport $current_port -j ACCEPT
-COMMIT
-EOF
-
-					iptables-restore < /etc/iptables/rules.v4
-					systemctl enable netfilter-persistent
-					echo "防火墙安装完成"
-					break_end
-					;;
-				  *)
-					echo "已取消"
-					break
-					;;
-				esac
-			fi
 		  done
+
 			  ;;
 
 		  18)
