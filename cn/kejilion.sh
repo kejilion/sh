@@ -1455,7 +1455,7 @@ block_container_port() {
 		echo "规则已存在：放行本地网络 127.0.0.0/8 访问 $container_ip，跳过添加。"
 	fi
 
-	echo "规则已成功添加到 DOCKER-USER 链。"
+	echo "规则已成功添加到 DOCKER-USER 链。如果无效重启服务器后再试！"
 }
 
 
