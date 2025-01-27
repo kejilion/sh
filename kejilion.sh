@@ -1212,7 +1212,9 @@ web_cache() {
   cf_purge_cache
   docker exec php php -r 'opcache_reset();'
   docker exec php74 php -r 'opcache_reset();'
-  docker exec nginx nginx -s reload
+  docker exec nginx nginx -s stop
+  docker exec nginx rm -rf /var/cache/nginx/*
+  docker exec nginx nginx
   docker restart php php74 redis
   restart_redis
 }
