@@ -6603,7 +6603,7 @@ linux_ldnmp() {
 					  enable_ddos_defense
 					  ;;
 
-				  33)
+				  34)
 					  disable_ddos_defense
 					  ;;
 
