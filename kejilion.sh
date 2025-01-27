@@ -783,16 +783,15 @@ iptables_open() {
 
 enable_ddos_defense() {
 	# 开启防御 DDoS
-	iptables -I DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT
-	iptables -I DOCKER-USER -p tcp --syn -j DROP
-	iptables -I DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT
-	iptables -I DOCKER-USER -p udp -j DROP
-	iptables -I INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT
-	iptables -I INPUT -p tcp --syn -j DROP
-	iptables -I INPUT -p udp -m limit --limit 3000/s -j ACCEPT
-	iptables -I INPUT -p udp -j DROP
-	
-	iptables-save > /etc/iptables/rules.v4
+	iptables -A DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT
+	iptables -A DOCKER-USER -p tcp --syn -j DROP
+	iptables -A DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT
+	iptables -A DOCKER-USER -p udp -j DROP
+	iptables -A INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT
+	iptables -A INPUT -p tcp --syn -j DROP
+	iptables -A INPUT -p udp -m limit --limit 3000/s -j ACCEPT
+	iptables -A INPUT -p udp -j DROP
+
 	send_stats "开启DDoS防御"
 }
 
@@ -807,8 +806,7 @@ disable_ddos_defense() {
 	iptables -D INPUT -p tcp --syn -j DROP 2>/dev/null
 	iptables -D INPUT -p udp -m limit --limit 3000/s -j ACCEPT 2>/dev/null
 	iptables -D INPUT -p udp -j DROP 2>/dev/null
-	
-	iptables-save > /etc/iptables/rules.v4
+
 	send_stats "关闭DDoS防御"
 }
 
