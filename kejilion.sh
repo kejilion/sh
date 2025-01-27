@@ -781,6 +781,39 @@ iptables_open() {
 }
 
 
+enable_ddos_defense() {
+	# 开启防御 DDoS
+	iptables -I DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT
+	iptables -I DOCKER-USER -p tcp --syn -j DROP
+	iptables -I DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT
+	iptables -I DOCKER-USER -p udp -j DROP
+	iptables -I INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT
+	iptables -I INPUT -p tcp --syn -j DROP
+	iptables -I INPUT -p udp -m limit --limit 3000/s -j ACCEPT
+	iptables -I INPUT -p udp -j DROP
+	
+	iptables-save > /etc/iptables/rules.v4
+	send_stats "开启DDoS防御"
+}
+
+# 关闭DDoS防御
+disable_ddos_defense() {
+	# 关闭防御 DDoS
+	iptables -D DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT 2>/dev/null
+	iptables -D DOCKER-USER -p tcp --syn -j DROP 2>/dev/null
+	iptables -D DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT 2>/dev/null
+	iptables -D DOCKER-USER -p udp -j DROP 2>/dev/null
+	iptables -D INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT 2>/dev/null
+	iptables -D INPUT -p tcp --syn -j DROP 2>/dev/null
+	iptables -D INPUT -p udp -m limit --limit 3000/s -j ACCEPT 2>/dev/null
+	iptables -D INPUT -p udp -j DROP 2>/dev/null
+	
+	iptables-save > /etc/iptables/rules.v4
+	send_stats "关闭DDoS防御"
+}
+
+
+
 
 add_swap() {
 	local new_swap=$1  # 获取传入的参数
@@ -6412,6 +6445,7 @@ linux_ldnmp() {
 			  echo "21. cloudflare模式                22. 高负载开启5秒盾"
 			  echo "------------------------"
 			  echo "31. 开启WAF                       32. 关闭WAF"
+			  echo "33. 开启DDOS防御                  34. 关闭DDOS防御"
 			  echo "------------------------"
 			  echo "9. 卸载防御程序"
 			  echo "------------------------"
@@ -6563,6 +6597,14 @@ linux_ldnmp() {
 				  	  nginx_waf off
 					  echo "站点WAF已关闭"
 					  send_stats "站点WAF已关闭"
+					  ;;
+
+				  33)
+					  enable_ddos_defense
+					  ;;
+
+				  33)
+					  disable_ddos_defense
 					  ;;
 
 				  *)
@@ -9102,6 +9144,8 @@ EOF
 				  echo "------------------------"
 				  echo "11. 允许PING                  	 12. 禁止PING"
 				  echo "------------------------"
+				  echo "13. 启动DDOS防御                 14. 关闭DDOS防御"
+				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
 				  read -e -p "请输入你的选择: " sub_choice
@@ -9193,6 +9237,13 @@ EOF
 						  iptables -D OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT 2>/dev/null
 						  iptables-save > /etc/iptables/rules.v4
 						  send_stats "禁用PING"
+						  ;;
+
+					  13)
+						  enable_ddos_defense
+						  ;;
+					  14)
+						  disable_ddos_defense
 						  ;;
 
 					  *)
