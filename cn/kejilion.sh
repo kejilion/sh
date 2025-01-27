@@ -1093,7 +1093,7 @@ reverse_proxy() {
 	  sed -i "s/0.0.0.0/$ipv4_address/g" /home/web/conf.d/$yuming.conf
 	  sed -i "s|0000|$duankou|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
-	  docker restart nginx
+	  docker exec nginx nginx -s reload
 }
 
 
@@ -1212,7 +1212,8 @@ web_cache() {
   cf_purge_cache
   docker exec php php -r 'opcache_reset();'
   docker exec php74 php -r 'opcache_reset();'
-  docker restart nginx php php74 redis
+  docker exec nginx nginx -s reload
+  docker restart php php74 redis
   restart_redis
 }
 
@@ -1245,7 +1246,8 @@ web_del() {
 		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE ${dbname};" > /dev/null 2>&1
 	done
 
-	docker restart nginx
+	docker exec nginx nginx -s reload
+
 }
 
 
@@ -1274,7 +1276,7 @@ nginx_waf() {
 
 	# 检查 nginx 镜像并根据情况处理
 	if grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
-		docker restart nginx
+		docker exec nginx nginx -s reload
 	else
 		sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml
 		nginx_upgrade
@@ -1682,7 +1684,7 @@ tmux new -d -s "$base_name-$tmuxd_ID" "$tmuxd"
 
 
 f2b_status() {
-	 docker restart fail2ban
+	 docker exec -it fail2ban fail2ban-client reload
 	 sleep 3
 	 docker exec -it fail2ban fail2ban-client status
 }
@@ -1948,7 +1950,7 @@ ldnmp_Proxy() {
 	sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
 	sed -i "s|0000|$port|g" /home/web/conf.d/$yuming.conf
 	nginx_http_on
-	docker restart nginx
+	docker exec nginx nginx -s reload
 	nginx_web_on
 }
 
@@ -2047,18 +2049,8 @@ ldnmp_web_status() {
 					done
 				done
 
-				# docker exec mysql mysql -u root -p"$dbrootpasswd" -D $dbname -e "
-				# UPDATE wp_options SET option_value = replace(option_value, '$oddyuming', '$yuming') WHERE option_name = 'home' OR option_name = 'siteurl';
-				# UPDATE wp_posts SET guid = replace(guid, '$oddyuming', '$yuming');
-				# UPDATE wp_posts SET post_content = replace(post_content, '$oddyuming', '$yuming');
-				# UPDATE wp_postmeta SET meta_value = replace(meta_value,'$oddyuming', '$yuming');
-				# "
-
-
 				# 网站目录替换
 				mv /home/web/html/$oddyuming /home/web/html/$yuming
-				# sed -i "s/$odd_dbname/$dbname/g" /home/web/html/$yuming/wordpress/wp-config.php
-				# sed -i "s/$oddyuming/$yuming/g" /home/web/html/$yuming/wordpress/wp-config.php
 
 				find /home/web/html/$yuming -type f -exec sed -i "s/$odd_dbname/$dbname/g" {} +
 				find /home/web/html/$yuming -type f -exec sed -i "s/$oddyuming/$yuming/g" {} +
@@ -2069,7 +2061,7 @@ ldnmp_web_status() {
 				rm /home/web/certs/${oddyuming}_key.pem
 				rm /home/web/certs/${oddyuming}_cert.pem
 
-				docker restart nginx
+				docker exec nginx nginx -s reload
 
 				;;
 
@@ -2091,7 +2083,7 @@ ldnmp_web_status() {
 				sed -i "s|/etc/nginx/certs/${oddyuming}_cert.pem|/etc/nginx/certs/${yuming}_cert.pem|g" /home/web/conf.d/$yuming.conf
 				sed -i "s|/etc/nginx/certs/${oddyuming}_key.pem|/etc/nginx/certs/${yuming}_key.pem|g" /home/web/conf.d/$yuming.conf
 
-				docker restart nginx
+				docker exec nginx nginx -s reload
 
 				;;
 			5)
@@ -2108,7 +2100,7 @@ ldnmp_web_status() {
 				send_stats "编辑全局配置"
 				install nano
 				nano /home/web/nginx.conf
-				docker restart nginx
+				docker exec nginx nginx -s reload
 				;;
 
 			8)
@@ -2116,7 +2108,7 @@ ldnmp_web_status() {
 				read -e -p "编辑站点配置，请输入你要编辑的域名: " yuming
 				install nano
 				nano /home/web/conf.d/$yuming.conf
-				docker restart nginx
+				docker exec nginx nginx -s reload
 				;;
 			9)
 				phpmyadmin_upgrade
@@ -6119,7 +6111,7 @@ linux_ldnmp() {
 	  sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
-	  docker restart nginx
+	  docker exec nginx nginx -s reload
 
 	  nginx_web_on
 
@@ -6147,7 +6139,7 @@ linux_ldnmp() {
 	  sed -i "s|fandaicom|$fandai_yuming|g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
 
-	  docker restart nginx
+	  docker exec nginx nginx -s reload
 
 	  nginx_web_on
 
@@ -6218,7 +6210,7 @@ linux_ldnmp() {
 	  rm -f $(ls -t *.zip | head -n 1)
 
 	  docker exec nginx chmod -R nginx:nginx /var/www/html
-	  docker restart nginx
+	  docker exec nginx nginx -s reload
 
 	  nginx_web_on
 
@@ -6270,7 +6262,7 @@ linux_ldnmp() {
 	  sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
 	  docker exec nginx chmod -R nginx:nginx /var/www/html
-	  docker restart nginx
+	  docker exec nginx nginx -s reload
 
 	  nginx_web_on
 
@@ -6509,7 +6501,7 @@ linux_ldnmp() {
 					  read -e -p "输入CF的Global API Key: " cftoken
 
 					  wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf
-					  docker restart nginx
+					  docker exec nginx nginx -s reload
 
 					  cd /path/to/fail2ban/config/fail2ban/jail.d/
 					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
