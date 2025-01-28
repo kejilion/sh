@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.6.10"
+sh_v="3.7.0"
 
 
 gl_hui='\e[37m'
@@ -6961,6 +6961,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板			 ${gl_kjlan}52.  ${gl_bai}DPanel容器管理面板"
 	  echo -e "${gl_kjlan}53.  ${gl_bai}ollama聊天AI大模型                  ${gl_kjlan}54.  ${gl_bai}AMH主机建站管理面板"
 	  echo -e "${gl_kjlan}55.  ${gl_bai}FRP内网穿透(服务端)		 ${gl_kjlan}56.  ${gl_bai}FRP内网穿透(客户端)"
+	  echo -e "${gl_kjlan}57.  ${gl_bai}Deepseek聊天AI大模型"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -8386,6 +8387,18 @@ linux_panel() {
 
 		  56)
 			frpc_panel
+			  ;;
+
+		  57)
+			local docker_name="ollama"
+			local docker_img="ghcr.io/open-webui/open-webui:Ollama"
+			local docker_port=8053
+			local docker_rum="docker run -d -p 8053:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama"
+			local docker_describe="OpenWebUI一款大语言模型网页框架，接入全新的DeepSeek R1大语言模型"
+			local docker_url="官网介绍: https://github.com/open-webui/open-webui"
+			local docker_use="docker exec ollama ollama run deepseek-r1"
+			local docker_passwd=""
+			docker_app
 			  ;;
 
 
