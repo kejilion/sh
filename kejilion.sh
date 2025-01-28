@@ -333,10 +333,27 @@ local country=$(curl -s ipinfo.io/country)
 if [ "$country" = "CN" ]; then
 	cat > /etc/docker/daemon.json << EOF
 {
-	"registry-mirrors": ["https://docker.kejilion.pro"]
+  "registry-mirrors": [
+	"https://docker-0.unsee.tech",
+	"https://docker.1panel.live",
+	"https://registry.dockermirror.com",
+	"https://docker.imgdb.de",
+	"https://docker.m.daocloud.io",
+	"https://hub.firefly.store",
+	"https://hub.littlediary.cn",
+	"https://hub.rat.dev",
+	"https://dhub.kubesre.xyz",
+	"https://cjie.eu.org",
+	"https://docker.1panelproxy.com",
+	"https://docker.hlmirror.com",
+	"https://hub.fast360.xyz",
+	"https://dockerpull.cn",
+	"https://cr.laoyou.ip-ddns.com",
+	"https://docker.melikeme.cn",
+	"https://docker.kejilion.pro"
+  ]
 }
 EOF
-
 fi
 
 
