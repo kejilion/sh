@@ -6959,7 +6959,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}49.  ${gl_bai}普罗米修斯(容器监控)		 ${gl_kjlan}50.  ${gl_bai}补货监控工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板			 ${gl_kjlan}52.  ${gl_bai}DPanel容器管理面板"
-	  echo -e "${gl_kjlan}53.  ${gl_bai}ollama聊天AI大模型                  ${gl_kjlan}54.  ${gl_bai}AMH主机建站管理面板"
+	  echo -e "${gl_kjlan}53.  ${gl_bai}llama3聊天AI大模型                  ${gl_kjlan}54.  ${gl_bai}AMH主机建站管理面板"
 	  echo -e "${gl_kjlan}55.  ${gl_bai}FRP内网穿透(服务端)		 ${gl_kjlan}56.  ${gl_bai}FRP内网穿透(客户端)"
 	  echo -e "${gl_kjlan}57.  ${gl_bai}Deepseek聊天AI大模型"
 	  echo -e "${gl_kjlan}------------------------"
