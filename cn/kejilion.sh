@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.7.0"
+sh_v="3.7.1"
 
 
 gl_hui='\e[37m'
@@ -1338,7 +1338,7 @@ check_waf_status() {
 	if grep -q "^\s*#\s*modsecurity on;" /home/web/nginx.conf; then
 		waf_status=""
 	elif grep -q "modsecurity on;" /home/web/nginx.conf; then
-		waf_status="WAF已开启"
+		waf_status=" WAF已开启"
 	else
 		waf_status=""
 	fi
@@ -1347,7 +1347,7 @@ check_waf_status() {
 
 check_cf_mode() {
 	if [ -f "/path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf" ]; then
-		CFmessage="cf模式已开启"
+		CFmessage=" cf模式已开启"
 	else
 		CFmessage=""
 	fi
@@ -6445,12 +6445,17 @@ linux_ldnmp() {
 	  while true; do
 		check_waf_status
 		check_cf_mode
-		if docker inspect fail2ban &>/dev/null ; then
+		if [ -x "$(command -v fail2ban-client)" ] ; then
+			clear
+			remove fail2ban
+			rm -rf /etc/fail2ban
+		else
 			  clear
-			  echo -e "服务器防御程序已启动 ${gl_lv}${CFmessage} ${waf_status}${gl_bai}"
+			  docker_name="fail2ban"
+			  check_docker_app
+			  echo -e "服务器网站防御程序 ${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
 			  echo "------------------------"
-			  echo "1. 开启SSH防暴力破解              2. 关闭SSH防暴力破解"
-			  echo "3. 开启网站保护                   4. 关闭网站保护"
+			  echo "1. 安装防御程序"
 			  echo "------------------------"
 			  echo "5. 查看SSH拦截记录                6. 查看网站拦截记录"
 			  echo "7. 查看防御规则列表               8. 查看日志实时监控"
@@ -6469,23 +6474,12 @@ linux_ldnmp() {
 			  read -e -p "请输入你的选择: " sub_choice
 			  case $sub_choice in
 				  1)
-					  sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/alpine-ssh.conf
-					  sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/linux-ssh.conf
-					  sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/centos-ssh.conf
-					  f2b_status
-					  ;;
-				  2)
-					  sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/alpine-ssh.conf
-					  sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/linux-ssh.conf
-					  sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/centos-ssh.conf
-					  f2b_status
-					  ;;
-				  3)
-					  sed -i 's/false/true/g' /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
-					  f2b_status
-					  ;;
-				  4)
-					  sed -i 's/true/false/g' /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+					  f2b_install_sshd
+					  cd /path/to/fail2ban/config/fail2ban/filter.d
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
+					  cd /path/to/fail2ban/config/fail2ban/jail.d/
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+					  sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
 					  f2b_status
 					  ;;
 				  5)
@@ -6529,14 +6523,12 @@ linux_ldnmp() {
 					  rm -rf /path/to/fail2ban
 					  crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
 					  echo "Fail2Ban防御程序已卸载"
-					  break
 					  ;;
 
 				  11)
 					  install nano
 					  nano /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
 					  f2b_status
-
 					  break
 					  ;;
 
@@ -6626,37 +6618,9 @@ linux_ldnmp() {
 					  break
 					  ;;
 			  esac
-		elif [ -x "$(command -v fail2ban-client)" ] ; then
-			clear
-			echo "卸载旧版fail2ban"
-			read -e -p "确定继续吗？(Y/N): " choice
-			case "$choice" in
-			  [Yy])
-				remove fail2ban
-				rm -rf /etc/fail2ban
-				echo "Fail2Ban防御程序已卸载"
-				;;
-			  *)
-				echo "已取消"
-				break
-				;;
-			esac
-
-		else
-			clear
-			f2b_install_sshd
-			cd /path/to/fail2ban/config/fail2ban/filter.d
-			curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
-			cd /path/to/fail2ban/config/fail2ban/jail.d/
-			curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
-			sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
-			f2b_status
-			cd ~
-			echo "防御程序已开启"
 		fi
 	  break_end
 	  done
-
 		;;
 
 	36)
@@ -8640,7 +8604,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}防火墙高级管理器                   ${gl_kjlan}18.  ${gl_bai}修改主机名"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}切换系统更新源                     ${gl_kjlan}20.  ${gl_bai}定时任务管理"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}本机host解析                       ${gl_kjlan}22.  ${gl_bai}fail2banSSH防御程序"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}本机host解析                       ${gl_kjlan}22.  ${gl_bai}SSH防御程序"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}限流自动关机                       ${gl_kjlan}24.  ${gl_bai}ROOT私钥登录模式"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot系统监控预警                 ${gl_kjlan}26.  ${gl_bai}修复OpenSSH高危漏洞（岫源）"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}红帽系Linux内核升级                ${gl_kjlan}28.  ${gl_bai}Linux系统内核参数优化 ${gl_huang}★${gl_bai}"
@@ -9467,86 +9431,56 @@ EOF
 		  root_use
 		  send_stats "ssh防御"
 		  while true; do
-			if docker inspect fail2ban &>/dev/null ; then
-					clear
-					echo "SSH防御程序已启动"
-					echo "------------------------"
-					echo "1. 查看SSH拦截记录"
-					echo "2. 日志实时监控"
-					echo "------------------------"
-					echo "9. 卸载防御程序"
-					echo "------------------------"
-					echo "0. 退出"
-					echo "------------------------"
-					read -e -p "请输入你的选择: " sub_choice
-					case $sub_choice in
-
-						1)
-							echo "------------------------"
-							f2b_sshd
-							echo "------------------------"
-							break_end
-							;;
-						2)
-							tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
-							break
-							;;
-						9)
-							docker rm -f fail2ban
-							rm -rf /path/to/fail2ban
-							echo "Fail2Ban防御程序已卸载"
-							break
-							;;
-						*)
-							echo "已取消"
-							break
-							;;
-					esac
-
-			elif [ -x "$(command -v fail2ban-client)" ] ; then
+			if [ -x "$(command -v fail2ban-client)" ] ; then
 				clear
-				echo "卸载旧版fail2ban"
-				read -e -p "确定继续吗？(Y/N): " choice
-				case "$choice" in
-				  [Yy])
-					remove fail2ban
-					rm -rf /etc/fail2ban
-					echo "Fail2Ban防御程序已卸载"
-					break_end
-					;;
-				  *)
-					echo "已取消"
-					break
-					;;
-				esac
-
+				remove fail2ban
+				rm -rf /etc/fail2ban
 			else
-
-			  clear
-			  echo "fail2ban是一个SSH防止暴力破解工具"
-			  echo "官网介绍: ${gh_proxy}github.com/fail2ban/fail2ban"
-			  echo "------------------------------------------------"
-			  echo "工作原理：研判非法IP恶意高频访问SSH端口，自动进行IP封锁"
-			  echo "------------------------------------------------"
-			  read -e -p "确定继续吗？(Y/N): " choice
-
-			  case "$choice" in
-				[Yy])
-				  clear
-				  install_docker
-				  f2b_install_sshd
-
-				  cd ~
-				  f2b_status
-				  echo "Fail2Ban防御程序已开启"
-				  send_stats "ssh防御安装完成"
-				  break_end
-				  ;;
-				*)
-				  echo "已取消"
-				  break
-				  ;;
-			  esac
+				clear
+				docker_name="fail2ban"
+				check_docker_app
+				echo -e "SSH防御程序 $check_docker"
+				echo "fail2ban是一个SSH防止暴力破解工具"	
+				echo "官网介绍: ${gh_proxy}github.com/fail2ban/fail2ban"							
+				echo "------------------------"
+				echo "1. 安装防御程序"
+				echo "------------------------"
+				echo "2. 查看SSH拦截记录"
+				echo "3. 日志实时监控"
+				echo "------------------------"
+				echo "9. 卸载防御程序"
+				echo "------------------------"
+				echo "0. 退出"
+				echo "------------------------"
+				read -e -p "请输入你的选择: " sub_choice
+				case $sub_choice in
+					1)
+						install_docker
+						f2b_install_sshd
+	  
+						cd ~
+						f2b_status
+						break_end
+						;;
+					2)
+						echo "------------------------"
+						f2b_sshd
+						echo "------------------------"
+						break_end
+						;;
+					3)
+						tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
+						break
+						;;
+					9)
+						docker rm -f fail2ban
+						rm -rf /path/to/fail2ban
+						echo "Fail2Ban防御程序已卸载"
+						;;
+					*)
+						break
+						;;
+				esac
 			fi
 		  done
 			  ;;
