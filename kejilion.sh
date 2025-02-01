@@ -187,6 +187,26 @@ install() {
 	done
 }
 
+
+check_disk_space() {
+
+	required_gb=$1
+	required_space_mb=$((required_gb * 1024))
+	
+	available_space_mb=$(df -m / | awk 'NR==2 {print $4}')
+	
+	if [ $available_space_mb -lt $required_space_mb ]; then
+		echo -e "${gl_huang}提示: ${gl_bai}磁盘空间不足！"
+		echo "当前可用空间: $((available_space_mb/1024))GB"
+		echo "最小需求空间: ${required_gb}GB"
+		echo "无法继续安装，请清理磁盘空间后重试。"
+		send_stats "磁盘空间不足"
+		break_end
+		kejilion
+	fi
+}
+
+
 install_dependency() {
 	install wget unzip tar jq
 }
@@ -1841,8 +1861,6 @@ ldnmp_install_status_one() {
 	echo -e "${gl_huang}提示: ${gl_bai}建站环境已安装。无需再次安装！"
 	break_end
 	linux_ldnmp
-   else
-	:
    fi
 
 }
@@ -1854,6 +1872,7 @@ send_stats "安装LDNMP环境"
 root_use
 clear
 echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境...${gl_bai}"
+check_disk_space 3
 check_port
 install_dependency
 install_docker
@@ -1870,6 +1889,7 @@ send_stats "安装nginx环境"
 root_use
 clear
 echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
+check_disk_space 1
 check_port
 install_dependency
 install_docker
