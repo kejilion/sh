@@ -9093,6 +9093,8 @@ EOF
 				echo "23. 加拿大时间               24. 墨西哥时间"
 				echo "25. 巴西时间                 26. 阿根廷时间"
 				echo "------------------------"
+				echo "31. UTC全球标准时间"
+				echo "------------------------"
 				echo "0. 返回上一级选单"
 				echo "------------------------"
 				read -e -p "请输入你的选择: " sub_choice
@@ -9120,7 +9122,8 @@ EOF
 					24) set_timedate America/Mexico_City ;;
 					25) set_timedate America/Sao_Paulo ;;
 					26) set_timedate America/Argentina/Buenos_Aires ;;
-					*) break ;; # 跳出循环，退出菜单
+					31) set_timedate UTC ;;
+					*) break ;;
 				esac
 			done
 			  ;;
