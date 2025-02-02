@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.7.1"
+sh_v="3.7.2"
 
 
 gl_hui='\e[37m'
@@ -6962,7 +6962,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE开小鸡面板			 ${gl_kjlan}52.  ${gl_bai}DPanel容器管理面板"
 	  echo -e "${gl_kjlan}53.  ${gl_bai}llama3聊天AI大模型                  ${gl_kjlan}54.  ${gl_bai}AMH主机建站管理面板"
 	  echo -e "${gl_kjlan}55.  ${gl_bai}FRP内网穿透(服务端)		 ${gl_kjlan}56.  ${gl_bai}FRP内网穿透(客户端)"
-	  echo -e "${gl_kjlan}57.  ${gl_bai}Deepseek聊天AI大模型"
+	  echo -e "${gl_kjlan}57.  ${gl_bai}Deepseek聊天AI大模型                ${gl_kjlan}58.  ${gl_bai}Dify大模型知识库"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -7464,8 +7464,6 @@ linux_panel() {
 			  ;;
 		  13)
 			send_stats "搭建网盘"
-
-
 			local docker_name=cloudreve
 			local docker_port=5212
 			while true; do
@@ -7509,10 +7507,7 @@ linux_panel() {
 						;;
 
 					2)
-						docker rm -f cloudreve
-						docker rmi -f cloudreve/cloudreve:latest
-						docker rm -f aria2
-						docker rmi -f p3terx/aria2-pro
+						cd /home/docker/cloud/ && docker compose down --rmi all
 						cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
 						curl -o /home/docker/cloud/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
 						cd /home/docker/cloud/ && docker compose up -d
@@ -7524,11 +7519,7 @@ linux_panel() {
 						echo ""
 						;;
 					3)
-
-						docker rm -f cloudreve
-						docker rmi -f cloudreve/cloudreve:latest
-						docker rm -f aria2
-						docker rmi -f p3terx/aria2-pro
+						cd /home/docker/cloud/ && docker compose down --rmi all
 						rm -rf /home/docker/cloud
 						echo "应用已卸载"
 
@@ -8401,6 +8392,94 @@ linux_panel() {
 			local docker_passwd=""
 			docker_app
 			  ;;
+
+
+		  58)
+			send_stats "Dify知识库"
+			local docker_name=docker-web-1
+			local docker_port=8058
+			while true; do
+				check_docker_app
+				check_docker_image_update $docker_name
+				clear
+				echo -e "Dify知识库 $check_docker $update_status"
+				echo "是一款开源的大语言模型(LLM) 应用开发平台。自托管训练数据用于AI生成"
+				echo "官方网站: https://docs.dify.ai/zh-hans"
+				if docker inspect "$docker_name" &>/dev/null; then
+					check_docker_app_ip
+				fi
+				echo ""
+
+				echo "------------------------"
+				echo "1. 安装           2. 更新           3. 卸载"
+				echo "------------------------"
+				echo "5. 域名访问       6. 删除域名访问"
+				echo "7. 允许IP访问     8. 阻止IP访问"
+				echo "------------------------"
+				echo "0. 返回上一级"
+				echo "------------------------"
+				read -e -p "输入你的选择: " choice
+
+				case $choice in
+					1)
+						check_disk_space 3
+						install jq git
+						install_docker
+						mkdir -p  /home/docker/ && cd /home/docker/ && git clone  ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
+						sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
+						docker compose up -d
+
+						clear
+						echo "已经安装完成"
+						check_docker_app_ip
+
+						;;
+
+					2)
+						mkdir -p  /home/docker/ && cd /home/docker/ && git clone  ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
+						sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
+						docker compose up -d
+						clear
+						echo "已经安装完成"
+						check_docker_app_ip
+						;;
+					3)
+						cd  /home/docker/dify/docker/ && docker compose down --rmi all
+						rm -rf /home/docker/dify
+						echo "应用已卸载"
+
+						;;
+					5)
+						echo "${docker_name}域名访问设置"
+						send_stats "${docker_name}域名访问设置"
+						add_yuming
+						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+						;;
+
+					6)
+						echo "域名格式 example.com 不带https://"
+						web_del
+						;;
+
+					7)
+						send_stats "允许IP访问 ${docker_name}"
+						clear_container_rules "$docker_name" "$ipv4_address"
+						;;
+
+					8)
+						send_stats "阻止IP访问 ${docker_name}"
+						block_container_port "$docker_name" "$ipv4_address"
+						;;
+
+					*)
+						break
+						;;
+
+				esac
+				break_end
+			done
+			  ;;
+
 
 
 		  0)
