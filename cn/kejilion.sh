@@ -1744,11 +1744,7 @@ block_container_port() {
 		iptables -I DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	fi
 
-
-	echo "封禁其他所有 IP 访问 $container_ip"
-	echo "放行 IP $allowed_ip 访问 $container_ip"
-	echo "放行本地网络 127.0.0.0/8 访问 $container_ip"
-	echo "规则已成功添加到 DOCKER-USER 链。如果无效重启服务器后再试！"
+	echo "已阻止IP+端口访问该服务，如果无效重启服务器后再试！"
 }
 
 
@@ -1802,10 +1798,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	fi
 
-	echo "清除封禁其他所有 IP 访问 $container_ip 的规则"
-	echo "清除放行 IP $allowed_ip 访问 $container_ip 的规则"
-	echo "清除放行本地网络 127.0.0.0/8 访问 $container_ip 的规则"
-	echo "所有与容器 IP $container_ip 相关的规则已清除。"
+	echo "已允许IP+端口访问该服务"
 }
 
 
@@ -1859,10 +1852,7 @@ block_host_port() {
 	fi
 
 
-	echo "允许本机访问端口 $port"
-	echo "允许 IP $allowed_ip 访问端口 $port"
-	echo "封禁所有其他 IP 访问端口 $port"
-	echo "规则已成功添加。如果无效，尝试重启服务器！"
+	echo "已阻止IP+端口访问该服务"
 }
 
 
@@ -1909,12 +1899,7 @@ clear_host_port_rules() {
 		iptables -D INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT
 	fi
 
-
-
-	echo "清除允许本机访问端口 $port 的规则"
-	echo "清除允许 IP $allowed_ip 访问端口 $port 的规则"
-	echo "清除封禁所有其他 IP 访问端口 $port 的规则"
-	echo "所有与端口 $port 相关的规则已清除。"
+	echo "已允许IP+端口访问该服务"
 }
 
 
@@ -1982,6 +1967,7 @@ while true; do
 			send_stats "${docker_name}域名访问设置"
 			add_yuming
 			ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+			block_container_port "$docker_name" "$ipv4_address"
 			;;
 
 		6)
@@ -2983,6 +2969,7 @@ frps_panel() {
 				add_yuming
 				read -e -p "请输入你的内网穿透服务端口: " frps_port
 				ldnmp_Proxy ${yuming} ${ipv4_address} ${frps_port}
+				block_host_port "$frps_port" "$ipv4_address"
 				;;
 			6)
 				echo "域名格式 example.com 不带https://"
@@ -7515,6 +7502,7 @@ linux_panel() {
 						send_stats "${docker_name}域名访问设置"
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 					6)
@@ -7756,6 +7744,7 @@ linux_panel() {
 						send_stats "${docker_name}域名访问设置"
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 
@@ -7891,6 +7880,7 @@ linux_panel() {
 						send_stats "${docker_name}域名访问设置"
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 					6)
@@ -8581,6 +8571,7 @@ linux_panel() {
 						send_stats "${docker_name}域名访问设置"
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 					6)
@@ -8816,6 +8807,7 @@ linux_panel() {
 						send_stats "${docker_name}域名访问设置"
 						add_yuming
 						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 					6)
