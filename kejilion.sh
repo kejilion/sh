@@ -10039,8 +10039,16 @@ EOF
 			  disk_manager
 			  ;;
 		  37)
+			  clear
 			  send_stats "命令行历史记录"
-			  history
+			  get_history_file() {
+				  for file in "$HOME"/.bash_history "$HOME"/.ash_history "$HOME"/.zsh_history "$HOME"/.local/share/fish/fish_history; do
+					  [ -f "$file" ] && { echo "$file"; return; }
+				  done
+				  return 1
+			  }
+			  
+			  history_file=$(get_history_file) && cat -n "$history_file"			  
 			  ;;			  
 		  41)
 			clear
