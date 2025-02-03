@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.7.2"
+sh_v="3.7.3"
 
 
 gl_hui='\e[37m'
@@ -797,14 +797,20 @@ docker_ipv6_off() {
 
 
 
-
-iptables_open() {
+save_iptables_rules() {
 	mkdir -p /etc/iptables
 	touch /etc/iptables/rules.v4
 	iptables-save > /etc/iptables/rules.v4
 	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
+}
 
+
+
+
+iptables_open() {
+
+	save_iptables_rules
 	iptables -P INPUT ACCEPT
 	iptables -P FORWARD ACCEPT
 	iptables -P OUTPUT ACCEPT
@@ -1503,28 +1509,40 @@ block_container_port() {
 
 	# 检查并封禁其他所有 IP
 	if ! iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
-		echo "封禁其他所有 IP 访问 $container_ip"
 		iptables -I DOCKER-USER -p tcp -d "$container_ip" -j DROP
-	else
-		echo "规则已存在：封禁其他所有 IP 访问 $container_ip，跳过添加。"
 	fi
 
 	# 检查并放行指定 IP
 	if ! iptables -C DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
-		echo "放行 IP $allowed_ip 访问 $container_ip"
 		iptables -I DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
-	else
-		echo "规则已存在：放行 IP $allowed_ip 访问 $container_ip，跳过添加。"
 	fi
 
 	# 检查并放行本地网络 127.0.0.0/8
 	if ! iptables -C DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
-		echo "放行本地网络 127.0.0.0/8 访问 $container_ip"
 		iptables -I DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
-	else
-		echo "规则已存在：放行本地网络 127.0.0.0/8 访问 $container_ip，跳过添加。"
 	fi
 
+
+
+	# 检查并封禁其他所有 IP
+	if ! iptables -C DOCKER-USER -p udp -d "$container_ip" -j DROP &>/dev/null; then
+		iptables -I DOCKER-USER -p udp -d "$container_ip" -j DROP
+	fi
+
+	# 检查并放行指定 IP
+	if ! iptables -C DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
+		iptables -I DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
+	fi
+
+	# 检查并放行本地网络 127.0.0.0/8
+	if ! iptables -C DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
+		iptables -I DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
+	fi
+
+
+	echo "封禁其他所有 IP 访问 $container_ip"
+	echo "放行 IP $allowed_ip 访问 $container_ip"
+	echo "放行本地网络 127.0.0.0/8 访问 $container_ip"
 	echo "规则已成功添加到 DOCKER-USER 链。如果无效重启服务器后再试！"
 }
 
@@ -1547,29 +1565,151 @@ clear_container_rules() {
 
 	# 清除封禁其他所有 IP 的规则
 	if iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
-		echo "清除封禁其他所有 IP 访问 $container_ip 的规则"
 		iptables -D DOCKER-USER -p tcp -d "$container_ip" -j DROP
-	else
-		echo "规则不存在：封禁其他所有 IP 访问 $container_ip，无需清除。"
 	fi
 
 	# 清除放行指定 IP 的规则
 	if iptables -C DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
-		echo "清除放行 IP $allowed_ip 访问 $container_ip 的规则"
 		iptables -D DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
-	else
-		echo "规则不存在：放行 IP $allowed_ip 访问 $container_ip，无需清除。"
 	fi
 
 	# 清除放行本地网络 127.0.0.0/8 的规则
 	if iptables -C DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
-		echo "清除放行本地网络 127.0.0.0/8 访问 $container_ip 的规则"
 		iptables -D DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
-	else
-		echo "规则不存在：放行本地网络 127.0.0.0/8 访问 $container_ip，无需清除。"
 	fi
 
+
+
+
+
+	# 清除封禁其他所有 IP 的规则
+	if iptables -C DOCKER-USER -p udp -d "$container_ip" -j DROP &>/dev/null; then
+		iptables -D DOCKER-USER -p udp -d "$container_ip" -j DROP
+	fi
+
+	# 清除放行指定 IP 的规则
+	if iptables -C DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
+		iptables -D DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
+	fi
+
+	# 清除放行本地网络 127.0.0.0/8 的规则
+	if iptables -C DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
+		iptables -D DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
+	fi
+
+	echo "清除封禁其他所有 IP 访问 $container_ip 的规则"
+	echo "清除放行 IP $allowed_ip 访问 $container_ip 的规则"
+	echo "清除放行本地网络 127.0.0.0/8 访问 $container_ip 的规则"
 	echo "所有与容器 IP $container_ip 相关的规则已清除。"
+}
+
+
+
+
+
+
+block_host_port() {
+	local port=$1
+	local allowed_ip=$2
+
+	if [[ -z "$port" || -z "$allowed_ip" ]]; then
+		echo "错误：请提供端口号和允许访问的 IP。"
+		echo "用法: block_host_port <端口号> <允许的IP>"
+		return 1
+	fi
+
+
+	# 拒绝其他所有 IP 访问
+	if ! iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
+		iptables -I INPUT -p tcp --dport "$port" -j DROP
+	fi
+
+	# 允许指定 IP 访问
+	if ! iptables -C INPUT -p tcp --dport "$port" -s "$allowed_ip" -j ACCEPT &>/dev/null; then
+		iptables -I INPUT -p tcp --dport "$port" -s "$allowed_ip" -j ACCEPT
+	fi
+
+	# 允许本机访问
+	if ! iptables -C INPUT -p tcp --dport "$port" -s 127.0.0.0/8 -j ACCEPT &>/dev/null; then
+		iptables -I INPUT -p tcp --dport "$port" -s 127.0.0.0/8 -j ACCEPT
+	fi
+
+
+
+
+
+	# 拒绝其他所有 IP 访问
+	if ! iptables -C INPUT -p udp --dport "$port" -j DROP &>/dev/null; then
+		iptables -I INPUT -p udp --dport "$port" -j DROP
+	fi
+
+	# 允许指定 IP 访问
+	if ! iptables -C INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT &>/dev/null; then
+		iptables -I INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT
+	fi
+
+	# 允许本机访问
+	if ! iptables -C INPUT -p udp --dport "$port" -s 127.0.0.0/8 -j ACCEPT &>/dev/null; then
+		iptables -I INPUT -p udp --dport "$port" -s 127.0.0.0/8 -j ACCEPT
+	fi
+
+
+	echo "允许本机访问端口 $port"
+	echo "允许 IP $allowed_ip 访问端口 $port"
+	echo "封禁所有其他 IP 访问端口 $port"
+	echo "规则已成功添加。如果无效，尝试重启服务器！"
+}
+
+
+
+
+clear_host_port_rules() {
+	local port=$1
+	local allowed_ip=$2
+
+	if [[ -z "$port" || -z "$allowed_ip" ]]; then
+		echo "错误：请提供端口号和允许访问的 IP。"
+		echo "用法: clear_host_port_rules <端口号> <允许的IP>"
+		return 1
+	fi
+
+	# 清除封禁所有其他 IP 访问的规则
+	if iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
+		iptables -D INPUT -p tcp --dport "$port" -j DROP
+	fi
+
+	# 清除允许本机访问的规则
+	if iptables -C INPUT -p tcp --dport "$port" -s 127.0.0.0/8 -j ACCEPT &>/dev/null; then
+		iptables -D INPUT -p tcp --dport "$port" -s 127.0.0.0/8 -j ACCEPT
+	fi
+
+	# 清除允许指定 IP 访问的规则
+	if iptables -C INPUT -p tcp --dport "$port" -s "$allowed_ip" -j ACCEPT &>/dev/null; then
+		iptables -D INPUT -p tcp --dport "$port" -s "$allowed_ip" -j ACCEPT
+	fi
+
+
+	# 清除封禁所有其他 IP 访问的规则
+	if iptables -C INPUT -p udp --dport "$port" -j DROP &>/dev/null; then
+		iptables -D INPUT -p udp --dport "$port" -j DROP
+	fi
+
+	# 清除允许本机访问的规则
+	if iptables -C INPUT -p udp --dport "$port" -s 127.0.0.0/8 -j ACCEPT &>/dev/null; then
+		iptables -D INPUT -p udp --dport "$port" -s 127.0.0.0/8 -j ACCEPT
+	fi
+
+	# 清除允许指定 IP 访问的规则
+	if iptables -C INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT &>/dev/null; then
+		iptables -D INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT
+	fi
+
+
+
+	echo "清除允许本机访问端口 $port 的规则"
+	echo "清除允许 IP $allowed_ip 访问端口 $port 的规则"
+	echo "清除封禁所有其他 IP 访问端口 $port 的规则"
+	echo "所有与端口 $port 相关的规则已清除。"
 }
 
 
@@ -1591,10 +1731,10 @@ while true; do
 	fi
 	echo ""
 	echo "------------------------"
-	echo "1. 安装            2. 更新            3. 卸载"
+	echo "1. 安装              2. 更新            3. 卸载"
 	echo "------------------------"
-	echo "5. 域名访问        6. 删除域名访问"
-	echo "7. 允许IP访问      8. 阻止IP访问"
+	echo "5. 域名访问          6. 删除域名访问"
+	echo "7. 允许IP+端口访问   8. 阻止IP+端口访问"
 	echo "------------------------"
 	echo "0. 返回上一级"
 	echo "------------------------"
@@ -2359,6 +2499,14 @@ EOF
 	crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
 
+	iptables -D INPUT -p tcp --dport 8055 -j ACCEPT 2>/dev/null
+	iptables -I INPUT -p tcp --dport 8055 -j ACCEPT 2>/dev/null
+	iptables -D INPUT -p udp --dport 8055 -j ACCEPT 2>/dev/null
+	iptables -I INPUT -p udp --dport 8055 -j ACCEPT 2>/dev/null
+	iptables -D INPUT -p tcp --dport 8056 -j ACCEPT 2>/dev/null
+	iptables -I INPUT -p tcp --dport 8056 -j ACCEPT 2>/dev/null
+	save_iptables_rules
+	
 }
 
 
@@ -2385,6 +2533,12 @@ EOF
 	check_crontab_installed
 	crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
+
+	iptables -D INPUT -p tcp --dport 8055 -j ACCEPT 2>/dev/null
+	iptables -I INPUT -p tcp --dport 8055 -j ACCEPT 2>/dev/null	
+	iptables -D INPUT -p udp --dport 8055 -j ACCEPT 2>/dev/null
+	iptables -I INPUT -p udp --dport 8055 -j ACCEPT 2>/dev/null	
+	save_iptables_rules
 
 }
 
@@ -2596,6 +2750,8 @@ frps_panel() {
 		echo "------------------------"
 		echo "5. 内网服务域名访问      6. 删除域名访问"
 		echo "------------------------"
+		echo "7. 允许IP+端口访问       8. 阻止IP+端口访问"
+		echo "------------------------"
 		echo "00. 刷新服务状态         0. 返回上一级"
 		echo "------------------------"
 		read -e -p "输入你的选择: " choice
@@ -2618,6 +2774,10 @@ frps_panel() {
 				crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 				tmux kill-session -t frps >/dev/null 2>&1
 				rm -rf /home/frp
+				iptables -D INPUT -p tcp --dport 8055 -j ACCEPT 2>/dev/null
+				iptables -D INPUT -p udp --dport 8055 -j ACCEPT 2>/dev/null
+				iptables -D INPUT -p tcp --dport 8056 -j ACCEPT 2>/dev/null
+				save_iptables_rules
 				echo "应用已卸载"
 				;;
 			5)
@@ -2632,6 +2792,18 @@ frps_panel() {
 				web_del
 				;;
 
+			7)
+				send_stats "允许IP访问"
+				read -e -p "请输入需要放行的端口: " frps_port
+				clear_host_port_rules "$frps_port" "$ipv4_address"
+				;;
+
+			8)
+				send_stats "阻止IP访问"
+				echo "如果你已经反代域名访问了，可用此功能阻止IP+端口访问，这样更安全。"
+				read -e -p "请输入需要阻止的端口: " frps_port
+				block_host_port "$frps_port" "$ipv4_address"
+				;;
 
 			00)
 				send_stats "刷新FRP服务状态"
@@ -2690,6 +2862,9 @@ frpc_panel() {
 				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 				tmux kill-session -t frpc >/dev/null 2>&1
 				rm -rf /home/frp
+				iptables -D INPUT -p tcp --dport 8055 -j ACCEPT 2>/dev/null
+				iptables -D INPUT -p udp --dport 8055 -j ACCEPT 2>/dev/null
+				save_iptables_rules
 				echo "应用已卸载"
 				;;
 
@@ -2964,11 +3139,7 @@ new_ssh_port() {
   iptables -A INPUT -p tcp --dport "$new_port" -j ACCEPT
   ip6tables -A INPUT -p tcp --dport "$new_port" -j ACCEPT
 
-  mkdir -p /etc/iptables
-  touch /etc/iptables/rules.v4
-  iptables-save > /etc/iptables/rules.v4
-  crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
-  (crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
+  save_iptables_rules
 
   remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 
@@ -7134,7 +7305,7 @@ linux_panel() {
 				echo "1. 使用"
 				echo "------------------------"
 				echo "5. 域名访问           6. 删除域名访问"
-				echo "7. 允许IP访问         8. 阻止IP访问"
+				echo "7. 允许IP+端口访问    8. 阻止IP+端口访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -7340,10 +7511,10 @@ linux_panel() {
 				echo ""
 
 				echo "------------------------"
-				echo "1. 安装           2. 更新           3. 卸载"
+				echo "1. 安装             2. 更新             3. 卸载"
 				echo "------------------------"
-				echo "5. 域名访问       6. 删除域名访问"
-				echo "7. 允许IP访问     8. 阻止IP访问"
+				echo "5. 域名访问         6. 删除域名访问"
+				echo "7. 允许IP+端口访问  8. 阻止IP+端口访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -7479,10 +7650,10 @@ linux_panel() {
 				echo ""
 
 				echo "------------------------"
-				echo "1. 安装           2. 更新           3. 卸载"
+				echo "1. 安装             2. 更新             3. 卸载"
 				echo "------------------------"
-				echo "5. 域名访问       6. 删除域名访问"
-				echo "7. 允许IP访问     8. 阻止IP访问"
+				echo "5. 域名访问         6. 删除域名访问"
+				echo "7. 允许IP+端口访问  8. 阻止IP+端口访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -8167,10 +8338,10 @@ linux_panel() {
 				echo ""
 
 				echo "------------------------"
-				echo "1. 安装           2. 更新           3. 卸载"
+				echo "1. 安装             2. 更新             3. 卸载"
 				echo "------------------------"
-				echo "5. 域名访问       6. 删除域名访问"
-				echo "7. 允许IP访问     8. 阻止IP访问"
+				echo "5. 域名访问         6. 删除域名访问"
+				echo "7. 允许IP+端口访问  8. 阻止IP+端口访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -8411,10 +8582,10 @@ linux_panel() {
 				echo ""
 
 				echo "------------------------"
-				echo "1. 安装           2. 更新           3. 卸载"
+				echo "1. 安装             2. 更新             3. 卸载"
 				echo "------------------------"
-				echo "5. 域名访问       6. 删除域名访问"
-				echo "7. 允许IP访问     8. 阻止IP访问"
+				echo "5. 域名访问         6. 删除域名访问"
+				echo "7. 允许IP+端口访问  8. 阻止IP+端口访问"
 				echo "------------------------"
 				echo "0. 返回上一级"
 				echo "------------------------"
@@ -9215,11 +9386,7 @@ EOF
 		  17)
 
 		  root_use
-		  mkdir -p /etc/iptables
-		  touch /etc/iptables/rules.v4
-		  iptables-save > /etc/iptables/rules.v4
-		  crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
-		  (crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
+		  save_iptables_rules
 		  while true; do
 				  clear
 				  echo "高级防火墙管理"
@@ -9247,7 +9414,6 @@ EOF
 				  case $sub_choice in
 					  1)
 						   read -e -p "请输入开放的端口号: " o_port
-
 						   iptables -A INPUT -p tcp --dport $o_port -j ACCEPT
 						   iptables -A INPUT -p udp --dport $o_port -j ACCEPT
 						   iptables-save > /etc/iptables/rules.v4
@@ -9255,7 +9421,7 @@ EOF
 
 						  ;;
 					  2)
-
+						  read -e -p "请输入关闭的端口号: " c_port
 						  iptables -D INPUT -p tcp --dport $c_port -j ACCEPT
 						  iptables -D INPUT -p udp --dport $c_port -j ACCEPT
 						  iptables-save > /etc/iptables/rules.v4
