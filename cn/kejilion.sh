@@ -3053,7 +3053,6 @@ frpc_panel() {
 				tmux kill-session -t frpc >/dev/null 2>&1
 				rm -rf /home/frp
 				close_port 8055
-				save_iptables_rules
 				echo "应用已卸载"
 				;;
 
