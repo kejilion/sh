@@ -1743,7 +1743,7 @@ block_container_port() {
 		iptables -I DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	fi
 
-	echo "已阻止IP+端口访问该服务，如果无效重启服务器后再试！"
+	echo "已阻止IP+端口访问该服务"
 	save_iptables_rules
 }
 
