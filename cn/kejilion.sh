@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -1698,6 +1698,7 @@ check_docker_image_update() {
 
 
 
+
 block_container_port() {
 	local container_name_or_id=$1
 	local allowed_ip=$2
@@ -1745,6 +1746,7 @@ block_container_port() {
 	fi
 
 	echo "已阻止IP+端口访问该服务，如果无效重启服务器后再试！"
+	save_iptables_rules
 }
 
 
@@ -1799,6 +1801,7 @@ clear_container_rules() {
 	fi
 
 	echo "已允许IP+端口访问该服务"
+	save_iptables_rules
 }
 
 
@@ -1853,6 +1856,7 @@ block_host_port() {
 
 
 	echo "已阻止IP+端口访问该服务"
+	save_iptables_rules
 }
 
 
@@ -1900,6 +1904,8 @@ clear_host_port_rules() {
 	fi
 
 	echo "已允许IP+端口访问该服务"
+	save_iptables_rules
+	
 }
 
 
