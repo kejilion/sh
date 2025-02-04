@@ -1711,8 +1711,6 @@ block_container_port() {
 		return 1
 	fi
 
-	echo "容器 $container_name_or_id 的 IP 地址为: $container_ip"
-
 	# 检查并封禁其他所有 IP
 	if ! iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
 		iptables -I DOCKER-USER -p tcp -d "$container_ip" -j DROP
@@ -1763,8 +1761,6 @@ clear_container_rules() {
 		echo "错误：无法获取容器 $container_name_or_id 的 IP 地址。请检查容器名称或ID是否正确。"
 		return 1
 	fi
-
-	echo "容器 $container_name_or_id 的 IP 地址为: $container_ip"
 
 	# 清除封禁其他所有 IP 的规则
 	if iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
