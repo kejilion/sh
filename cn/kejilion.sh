@@ -1513,10 +1513,10 @@ web_del() {
 
 	for yuming in $yuming_list; do
 		echo "正在删除域名: $yuming"
-		rm -r /home/web/html/$yuming
-		rm /home/web/conf.d/$yuming.conf
-		rm /home/web/certs/${yuming}_key.pem
-		rm /home/web/certs/${yuming}_cert.pem
+		rm -r /home/web/html/$yuming > /dev/null 2>&1
+		rm /home/web/conf.d/$yuming.conf > /dev/null 2>&1
+		rm /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
+		rm /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
 
 		# 将域名转换为数据库名
 		dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
