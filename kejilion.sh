@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.7.3"
+sh_v="3.7.4"
 
 
 gl_hui='\e[37m'
@@ -801,8 +801,10 @@ save_iptables_rules() {
 	mkdir -p /etc/iptables
 	touch /etc/iptables/rules.v4
 	iptables-save > /etc/iptables/rules.v4
+	check_crontab_installed
 	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
+
 }
 
 
@@ -3304,20 +3306,45 @@ restart_ssh() {
 }
 
 
-new_ssh_port() {
 
+correct_ssh_config() {
+	
+	local sshd_config="/etc/ssh/sshd_config"
+	
+	# 如果找到 PasswordAuthentication 设置为 yes
+	if grep -Eq "^PasswordAuthentication\s+yes" "$sshd_config"; then
+		sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' "$sshd_config"
+		sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' "$sshd_config"
+	fi
+
+	# 如果找到 PubkeyAuthentication 设置为 yes
+	if grep -Eq "^PubkeyAuthentication\s+yes" "$sshd_config"; then
+		sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
+			   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
+			   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+			   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' "$sshd_config"
+	fi
+
+	# 如果 PasswordAuthentication 和 PubkeyAuthentication 都没有匹配，则设置默认值
+	if ! grep -Eq "^PasswordAuthentication\s+yes" "$sshd_config" && ! grep -Eq "^PubkeyAuthentication\s+yes" "$sshd_config"; then
+		sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' "$sshd_config"
+		sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' "$sshd_config"
+	fi
+
+}
+
+
+new_ssh_port() {
 
   # 备份 SSH 配置文件
   cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 
   sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
-
-  # 替换 SSH 配置文件中的端口号
   sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
 
+  correct_ssh_config
   rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 
-  # 重启 SSH 服务
   restart_ssh
   open_port $new_port
   remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
