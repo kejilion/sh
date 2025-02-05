@@ -192,9 +192,9 @@ check_disk_space() {
 
 	required_gb=$1
 	required_space_mb=$((required_gb * 1024))
-	
+
 	available_space_mb=$(df -m / | awk 'NR==2 {print $4}')
-	
+
 	if [ $available_space_mb -lt $required_space_mb ]; then
 		echo -e "${gl_huang}提示: ${gl_bai}磁盘空间不足！"
 		echo "当前可用空间: $((available_space_mb/1024))GB"
@@ -839,11 +839,11 @@ open_port() {
 
 	if ! sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
 		sudo iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
-		echo "已打开UDP端口 $port"		
+		echo "已打开UDP端口 $port"
 	fi
 
 	save_iptables_rules
-	send_stats "已打开端口"	
+	send_stats "已打开端口"
 }
 
 
@@ -856,7 +856,7 @@ close_port() {
 
 	if sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
 		sudo iptables -D INPUT -p tcp --dport $port -j ACCEPT
-		echo "已关闭TCP端口 $port"		
+		echo "已关闭TCP端口 $port"
 	fi
 
 	if sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
@@ -864,7 +864,7 @@ close_port() {
 		echo "已关闭UDP端口 $port"
 	fi
 
-	save_iptables_rules	
+	save_iptables_rules
 	send_stats "已关闭端口"
 }
 
@@ -882,8 +882,8 @@ allow_ip() {
 		echo "已放行IP $ip"
 	fi
 
-	save_iptables_rules	
-	send_stats "已放行IP"	
+	save_iptables_rules
+	send_stats "已放行IP"
 }
 
 
@@ -899,8 +899,8 @@ block_ip() {
 		echo "已阻止IP $ip"
 	fi
 
-	save_iptables_rules	
-	send_stats "已阻止IP"	
+	save_iptables_rules
+	send_stats "已阻止IP"
 }
 
 
@@ -1007,7 +1007,7 @@ iptables_panel() {
 				  iptables-save > /etc/iptables/rules.v4
 				  send_stats "关闭所有端口"
 				  ;;
-		  
+
 			  5)
 				  # IP 白名单
 				  read -e -p "请输入放行的IP或IP段: " o_ip
@@ -1901,7 +1901,7 @@ clear_host_port_rules() {
 
 	echo "已允许IP+端口访问该服务"
 	save_iptables_rules
-	
+
 }
 
 
@@ -2694,7 +2694,7 @@ EOF
 
 	open_port 8055
 	open_port 8056
-	
+
 }
 
 
@@ -2752,7 +2752,7 @@ EOF
 
 	tmux kill-session -t frpc >/dev/null 2>&1
 	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
-	
+
 	open_port $local_port
 
 }
@@ -3660,22 +3660,15 @@ dd_xitong() {
 			  43)
 				send_stats "重装windows7"
 				dd_xitong_4
-				local URL="https://massgrave.dev/windows_7_links"
-				local web_content=$(wget -q -O - "$URL")
-				local iso_link=$(echo "$web_content" | grep -oP '(?<=href=")[^"]*cn[^"]*windows_7[^"]*professional[^"]*x64[^"]*\.iso')
-				# bash reinstall.sh windows --image-name 'Windows 7 Professional' --lang zh-cn
-				# bash reinstall.sh windows --iso='$iso_link' --image-name='Windows 7 PROFESSIONAL'
-				bash reinstall.sh windows --iso="$iso_link" --image-name='Windows 7 PROFESSIONAL'
+				bash reinstall.sh windows --iso="https://drive.massgrave.dev/cn_windows_7_professional_with_sp1_x64_dvd_u_677031.iso" --image-name='Windows 7 PROFESSIONAL'
 				reboot
 				exit
 				;;
+
 			  44)
 				send_stats "重装windows server 22"
-				dd_xitong_4
-				local URL="https://massgrave.dev/windows_server_links"
-				local web_content=$(wget -q -O - "$URL")
-				local iso_link=$(echo "$web_content" | grep -oP '(?<=href=")[^"]*cn[^"]*windows_server[^"]*2022[^"]*x64[^"]*\.iso')
-				bash reinstall.sh windows --iso="$iso_link" --image-name='Windows Server 2022 SERVERDATACENTER'
+				dd_xitong_2
+				bash InstallNET.sh -windows 2022 -lang "cn"
 				reboot
 				exit
 				;;
@@ -9766,8 +9759,8 @@ EOF
 				docker_name="fail2ban"
 				check_docker_app
 				echo -e "SSH防御程序 $check_docker"
-				echo "fail2ban是一个SSH防止暴力破解工具"	
-				echo "官网介绍: ${gh_proxy}github.com/fail2ban/fail2ban"							
+				echo "fail2ban是一个SSH防止暴力破解工具"
+				echo "官网介绍: ${gh_proxy}github.com/fail2ban/fail2ban"
 				echo "------------------------"
 				echo "1. 安装防御程序"
 				echo "------------------------"
@@ -9783,7 +9776,7 @@ EOF
 					1)
 						install_docker
 						f2b_install_sshd
-	  
+
 						cd ~
 						f2b_status
 						break_end
@@ -10040,9 +10033,9 @@ EOF
 				  done
 				  return 1
 			  }
-			  
-			  history_file=$(get_history_file) && cat -n "$history_file"			  
-			  ;;			  
+
+			  history_file=$(get_history_file) && cat -n "$history_file"
+			  ;;
 		  41)
 			clear
 			send_stats "留言板"
