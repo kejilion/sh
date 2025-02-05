@@ -800,7 +800,6 @@ docker_ipv6_off() {
 save_iptables_rules() {
 	mkdir -p /etc/iptables
 	touch /etc/iptables/rules.v4
-	install iptables
 	iptables-save > /etc/iptables/rules.v4
 	check_crontab_installed
 	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
@@ -812,7 +811,7 @@ save_iptables_rules() {
 
 
 iptables_open() {
-
+	install iptables
 	save_iptables_rules
 	iptables -P INPUT ACCEPT
 	iptables -P FORWARD ACCEPT
@@ -835,6 +834,8 @@ open_port() {
 		return 1
 	fi
 
+	install iptables
+
 	if ! sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
 		sudo iptables -I INPUT 1 -p tcp --dport $port -j ACCEPT
 		echo "已打开TCP端口 $port"
@@ -856,6 +857,8 @@ close_port() {
 		echo "请提供端口号"
 		return 1
 	fi
+
+	install iptables
 
 	if sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
 		sudo iptables -D INPUT -p tcp --dport $port -j ACCEPT
@@ -880,6 +883,8 @@ allow_ip() {
 		return 1
 	fi
 
+	install iptables
+
 	if ! sudo iptables -C INPUT -s $ip -j ACCEPT 2>/dev/null; then
 		sudo iptables -I INPUT 1 -s $ip -j ACCEPT
 		echo "已放行IP $ip"
@@ -896,6 +901,8 @@ block_ip() {
 		echo "请提供IP地址或IP段"
 		return 1
 	fi
+
+	install iptables
 
 	if ! sudo iptables -C INPUT -s $ip -j DROP 2>/dev/null; then
 		sudo iptables -I INPUT 1 -s $ip -j DROP
@@ -944,6 +951,7 @@ disable_ddos_defense() {
 
 iptables_panel() {
   root_use
+  install iptables
   save_iptables_rules
   while true; do
 		  clear
@@ -1714,6 +1722,8 @@ block_container_port() {
 		return 1
 	fi
 
+	install iptables
+
 	# 检查并封禁其他所有 IP
 	if ! iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
 		iptables -I DOCKER-USER -p tcp -d "$container_ip" -j DROP
@@ -1764,6 +1774,8 @@ clear_container_rules() {
 		echo "错误：无法获取容器 $container_name_or_id 的 IP 地址。请检查容器名称或ID是否正确。"
 		return 1
 	fi
+
+	install iptables
 
 	# 清除封禁其他所有 IP 的规则
 	if iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
@@ -1818,6 +1830,7 @@ block_host_port() {
 		return 1
 	fi
 
+	install iptables
 
 	# 拒绝其他所有 IP 访问
 	if ! iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
@@ -1870,6 +1883,8 @@ clear_host_port_rules() {
 		echo "用法: clear_host_port_rules <端口号> <允许的IP>"
 		return 1
 	fi
+
+	install iptables
 
 	# 清除封禁所有其他 IP 访问的规则
 	if iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
