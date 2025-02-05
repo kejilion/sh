@@ -800,6 +800,7 @@ docker_ipv6_off() {
 save_iptables_rules() {
 	mkdir -p /etc/iptables
 	touch /etc/iptables/rules.v4
+	install iptables
 	iptables-save > /etc/iptables/rules.v4
 	check_crontab_installed
 	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
