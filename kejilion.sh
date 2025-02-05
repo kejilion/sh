@@ -811,8 +811,8 @@ save_iptables_rules() {
 
 
 iptables_open() {
-	install iptables
-	save_iptables_rules
+	install iptables > /dev/null 2>&1
+	save_iptables_rules > /dev/null 2>&1
 	iptables -P INPUT ACCEPT
 	iptables -P FORWARD ACCEPT
 	iptables -P OUTPUT ACCEPT
@@ -834,7 +834,7 @@ open_port() {
 		return 1
 	fi
 
-	install iptables
+	install iptables > /dev/null 2>&1
 
 	if ! sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
 		sudo iptables -I INPUT 1 -p tcp --dport $port -j ACCEPT
@@ -846,7 +846,7 @@ open_port() {
 		echo "已打开UDP端口 $port"
 	fi
 
-	save_iptables_rules
+	save_iptables_rules > /dev/null 2>&1
 	send_stats "已打开端口"
 }
 
@@ -858,7 +858,7 @@ close_port() {
 		return 1
 	fi
 
-	install iptables
+	install iptables > /dev/null 2>&1
 
 	if sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
 		sudo iptables -D INPUT -p tcp --dport $port -j ACCEPT
@@ -870,7 +870,7 @@ close_port() {
 		echo "已关闭UDP端口 $port"
 	fi
 
-	save_iptables_rules
+	save_iptables_rules > /dev/null 2>&1
 	send_stats "已关闭端口"
 }
 
@@ -883,14 +883,14 @@ allow_ip() {
 		return 1
 	fi
 
-	install iptables
+	install iptables > /dev/null 2>&1
 
 	if ! sudo iptables -C INPUT -s $ip -j ACCEPT 2>/dev/null; then
 		sudo iptables -I INPUT 1 -s $ip -j ACCEPT
 		echo "已放行IP $ip"
 	fi
 
-	save_iptables_rules
+	save_iptables_rules > /dev/null 2>&1
 	send_stats "已放行IP"
 }
 
@@ -902,14 +902,14 @@ block_ip() {
 		return 1
 	fi
 
-	install iptables
+	install iptables > /dev/null 2>&1
 
 	if ! sudo iptables -C INPUT -s $ip -j DROP 2>/dev/null; then
 		sudo iptables -I INPUT 1 -s $ip -j DROP
 		echo "已阻止IP $ip"
 	fi
 
-	save_iptables_rules
+	save_iptables_rules > /dev/null 2>&1
 	send_stats "已阻止IP"
 }
 
@@ -951,7 +951,7 @@ disable_ddos_defense() {
 
 iptables_panel() {
   root_use
-  install iptables
+  install iptables > /dev/null 2>&1
   save_iptables_rules
   while true; do
 		  clear
@@ -1722,7 +1722,7 @@ block_container_port() {
 		return 1
 	fi
 
-	install iptables
+	install iptables > /dev/null 2>&1
 
 	# 检查并封禁其他所有 IP
 	if ! iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
@@ -1757,7 +1757,7 @@ block_container_port() {
 	fi
 
 	echo "已阻止IP+端口访问该服务"
-	save_iptables_rules
+	save_iptables_rules > /dev/null 2>&1
 }
 
 
@@ -1775,7 +1775,7 @@ clear_container_rules() {
 		return 1
 	fi
 
-	install iptables
+	install iptables > /dev/null 2>&1
 
 	# 清除封禁其他所有 IP 的规则
 	if iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
@@ -1812,7 +1812,7 @@ clear_container_rules() {
 	fi
 
 	echo "已允许IP+端口访问该服务"
-	save_iptables_rules
+	save_iptables_rules > /dev/null 2>&1
 }
 
 
@@ -1830,7 +1830,7 @@ block_host_port() {
 		return 1
 	fi
 
-	install iptables
+	install iptables > /dev/null 2>&1
 
 	# 拒绝其他所有 IP 访问
 	if ! iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
@@ -1868,7 +1868,7 @@ block_host_port() {
 
 
 	echo "已阻止IP+端口访问该服务"
-	save_iptables_rules
+	save_iptables_rules > /dev/null 2>&1
 }
 
 
@@ -1884,7 +1884,7 @@ clear_host_port_rules() {
 		return 1
 	fi
 
-	install iptables
+	install iptables > /dev/null 2>&1
 
 	# 清除封禁所有其他 IP 访问的规则
 	if iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
@@ -1918,7 +1918,7 @@ clear_host_port_rules() {
 	fi
 
 	echo "已允许IP+端口访问该服务"
-	save_iptables_rules
+	save_iptables_rules > /dev/null 2>&1
 
 }
 
