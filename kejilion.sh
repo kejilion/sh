@@ -843,11 +843,11 @@ open_port() {
 
 		if ! sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
 			sudo iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
+			echo "已打开端口 $port"
 		fi
 	done
 
 	save_iptables_rules > /dev/null 2>&1
-	echo "已打开端口 $port"
 	send_stats "已打开端口"
 }
 
@@ -868,11 +868,11 @@ close_port() {
 
 		if sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
 			sudo iptables -D INPUT -p udp --dport $port -j ACCEPT
+			echo "已关闭端口 $port"
 		fi
 	done
 
 	save_iptables_rules > /dev/null 2>&1
-	echo "已关闭端口 $port"
 	send_stats "已关闭端口"
 
 }
