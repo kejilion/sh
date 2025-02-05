@@ -801,7 +801,7 @@ save_iptables_rules() {
 	mkdir -p /etc/iptables
 	touch /etc/iptables/rules.v4
 	iptables-save > /etc/iptables/rules.v4
-	check_crontab_installed
+	check_crontab_installed > /dev/null 2>&1
 	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
 
@@ -1223,7 +1223,7 @@ install_certbot() {
 	curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
 	chmod +x auto_cert_renewal.sh
 
-	check_crontab_installed
+	check_crontab_installed > /dev/null 2>&1
 	local cron_job="0 0 * * * ~/auto_cert_renewal.sh"
 	crontab -l 2>/dev/null | grep -vF "$cron_job" | crontab -
 	(crontab -l 2>/dev/null; echo "$cron_job") | crontab -
@@ -2706,7 +2706,7 @@ EOF
 	install tmux
 	tmux kill-session -t frps >/dev/null 2>&1
 	tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
-	check_crontab_installed
+	check_crontab_installed > /dev/null 2>&1
 	crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
 
@@ -2736,7 +2736,7 @@ EOF
 	install tmux
 	tmux kill-session -t frpc >/dev/null 2>&1
 	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
-	check_crontab_installed
+	check_crontab_installed > /dev/null 2>&1
 	crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
 
@@ -6790,12 +6790,12 @@ linux_ldnmp() {
 
 	  case $dingshi in
 		  1)
-			  check_crontab_installed
+			  check_crontab_installed > /dev/null 2>&1
 			  read -e -p "选择每周备份的星期几 (0-6，0代表星期日): " weekday
 			  (crontab -l ; echo "0 0 * * $weekday ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
 		  2)
-			  check_crontab_installed
+			  check_crontab_installed > /dev/null 2>&1
 			  read -e -p "选择每天备份的时间（小时，0-23）: " hour
 			  (crontab -l ; echo "0 $hour * * * ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
@@ -6980,7 +6980,7 @@ linux_ldnmp() {
 
 					  cd ~
 					  install jq bc
-					  check_crontab_installed
+					  check_crontab_installed > /dev/null 2>&1
 					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
 					  chmod +x CF-Under-Attack.sh
 					  sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
@@ -9691,7 +9691,7 @@ EOF
 		  send_stats "定时任务管理"
 			  while true; do
 				  clear
-				  check_crontab_installed
+				  check_crontab_installed > /dev/null 2>&1
 				  clear
 				  echo "定时任务列表"
 				  crontab -l
@@ -9892,7 +9892,7 @@ EOF
 					chmod +x ~/Limiting_Shut_down.sh
 					sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
 					sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
-					check_crontab_installed
+					check_crontab_installed > /dev/null 2>&1
 					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
 					(crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
 					crontab -l | grep -v 'reboot' | crontab -
@@ -9901,7 +9901,7 @@ EOF
 					send_stats "限流关机已设置"
 					;;
 				  2)
-					check_crontab_installed
+					check_crontab_installed > /dev/null 2>&1
 					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
 					crontab -l | grep -v 'reboot' | crontab -
 					rm ~/Limiting_Shut_down.sh
@@ -9981,7 +9981,7 @@ EOF
 				  send_stats "电报预警启用"
 				  cd ~
 				  install nano tmux bc jq
-				  check_crontab_installed
+				  check_crontab_installed > /dev/null 2>&1
 				  if [ -f ~/TG-check-notify.sh ]; then
 					  chmod +x ~/TG-check-notify.sh
 					  nano ~/TG-check-notify.sh
@@ -10751,7 +10751,7 @@ while true; do
 			else
 				SH_Update_task="curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh"
 			fi
-			check_crontab_installed
+			check_crontab_installed > /dev/null 2>&1
 			(crontab -l | grep -v "kejilion.sh") | crontab -
 			(crontab -l 2>/dev/null; echo "0 2 * * * bash -c \"$SH_Update_task\"") | crontab -
 			echo -e "${gl_lv}自动更新已开启，每天凌晨2点脚本会自动更新！${gl_bai}"
