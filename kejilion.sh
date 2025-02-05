@@ -828,67 +828,72 @@ iptables_open() {
 
 
 open_port() {
-	local port=$1
-	if [ -z "$port" ]; then
-		echo "请提供端口号"
+	local ports=($@)  # 将传入的参数转换为数组
+	if [ ${#ports[@]} -eq 0 ]; then
+		echo "请提供至少一个端口号"
 		return 1
 	fi
 
 	install iptables > /dev/null 2>&1
 
-	if ! sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
-		sudo iptables -I INPUT 1 -p tcp --dport $port -j ACCEPT
-		echo "已打开TCP端口 $port"
-	fi
+	for port in "${ports[@]}"; do
+		if ! sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
+			sudo iptables -I INPUT 1 -p tcp --dport $port -j ACCEPT
+		fi
 
-	if ! sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
-		sudo iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
-		echo "已打开UDP端口 $port"
-	fi
+		if ! sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
+			sudo iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
+		fi
+	done
 
 	save_iptables_rules > /dev/null 2>&1
+	echo "已打开端口 $port"
 	send_stats "已打开端口"
 }
 
 
 close_port() {
-	local port=$1
-	if [ -z "$port" ]; then
-		echo "请提供端口号"
+	local ports=($@)  # 将传入的参数转换为数组
+	if [ ${#ports[@]} -eq 0 ]; then
+		echo "请提供至少一个端口号"
 		return 1
 	fi
 
 	install iptables > /dev/null 2>&1
 
-	if sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
-		sudo iptables -D INPUT -p tcp --dport $port -j ACCEPT
-		echo "已关闭TCP端口 $port"
-	fi
+	for port in "${ports[@]}"; do
+		if sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
+			sudo iptables -D INPUT -p tcp --dport $port -j ACCEPT
+		fi
 
-	if sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
-		sudo iptables -D INPUT -p udp --dport $port -j ACCEPT
-		echo "已关闭UDP端口 $port"
-	fi
+		if sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
+			sudo iptables -D INPUT -p udp --dport $port -j ACCEPT
+		fi
+	done
 
 	save_iptables_rules > /dev/null 2>&1
+	echo "已关闭端口 $port"
 	send_stats "已关闭端口"
+
 }
 
 
 
 allow_ip() {
-	local ip=$1
-	if [ -z "$ip" ]; then
-		echo "请提供IP地址或IP段"
+	local ips=($@)  # 将传入的参数转换为数组
+	if [ ${#ips[@]} -eq 0 ]; then
+		echo "请提供至少一个IP地址或IP段"
 		return 1
 	fi
 
 	install iptables > /dev/null 2>&1
 
-	if ! sudo iptables -C INPUT -s $ip -j ACCEPT 2>/dev/null; then
-		sudo iptables -I INPUT 1 -s $ip -j ACCEPT
-		echo "已放行IP $ip"
-	fi
+	for ip in "${ips[@]}"; do
+		if ! sudo iptables -C INPUT -s $ip -j ACCEPT 2>/dev/null; then
+			sudo iptables -I INPUT 1 -s $ip -j ACCEPT
+			echo "已放行IP $ip"
+		fi
+	done
 
 	save_iptables_rules > /dev/null 2>&1
 	send_stats "已放行IP"
@@ -896,18 +901,20 @@ allow_ip() {
 
 
 block_ip() {
-	local ip=$1
-	if [ -z "$ip" ]; then
-		echo "请提供IP地址或IP段"
+	local ips=($@)  # 将传入的参数转换为数组
+	if [ ${#ips[@]} -eq 0 ]; then
+		echo "请提供至少一个IP地址或IP段"
 		return 1
 	fi
 
 	install iptables > /dev/null 2>&1
 
-	if ! sudo iptables -C INPUT -s $ip -j DROP 2>/dev/null; then
-		sudo iptables -I INPUT 1 -s $ip -j DROP
-		echo "已阻止IP $ip"
-	fi
+	for ip in "${ips[@]}"; do
+		if ! sudo iptables -C INPUT -s $ip -j DROP 2>/dev/null; then
+			sudo iptables -I INPUT 1 -s $ip -j DROP
+			echo "已阻止IP $ip"
+		fi
+	done
 
 	save_iptables_rules > /dev/null 2>&1
 	send_stats "已阻止IP"
@@ -2710,8 +2717,7 @@ EOF
 	crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
 
-	open_port 8055
-	open_port 8056
+	open_port 8055 8056
 
 }
 
@@ -2978,8 +2984,7 @@ frps_panel() {
 				crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 				tmux kill-session -t frps >/dev/null 2>&1
 				rm -rf /home/frp
-				close_port 8055
-				close_port 8056
+				close_port 8055 8056
 
 				echo "应用已卸载"
 				;;
