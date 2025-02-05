@@ -837,12 +837,17 @@ open_port() {
 	install iptables > /dev/null 2>&1
 
 	for port in "${ports[@]}"; do
-		if ! sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
-			sudo iptables -I INPUT 1 -p tcp --dport $port -j ACCEPT
+		# 删除已存在的关闭规则
+		iptables -D INPUT -p tcp --dport $port -j DROP 2>/dev/null
+		iptables -D INPUT -p udp --dport $port -j DROP 2>/dev/null
+
+		# 添加打开规则
+		if ! iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
+			iptables -I INPUT 1 -p tcp --dport $port -j ACCEPT
 		fi
 
-		if ! sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
-			sudo iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
+		if ! iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
+			iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
 			echo "已打开端口 $port"
 		fi
 	done
@@ -862,21 +867,24 @@ close_port() {
 	install iptables > /dev/null 2>&1
 
 	for port in "${ports[@]}"; do
-		if sudo iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
-			sudo iptables -D INPUT -p tcp --dport $port -j ACCEPT
+		# 删除已存在的打开规则
+		iptables -D INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null
+		iptables -D INPUT -p udp --dport $port -j ACCEPT 2>/dev/null
+
+		# 添加关闭规则
+		if ! iptables -C INPUT -p tcp --dport $port -j DROP 2>/dev/null; then
+			iptables -I INPUT 1 -p tcp --dport $port -j DROP
 		fi
 
-		if sudo iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
-			sudo iptables -D INPUT -p udp --dport $port -j ACCEPT
+		if ! iptables -C INPUT -p udp --dport $port -j DROP 2>/dev/null; then
+			iptables -I INPUT 1 -p udp --dport $port -j DROP
 			echo "已关闭端口 $port"
 		fi
 	done
 
 	save_iptables_rules > /dev/null 2>&1
 	send_stats "已关闭端口"
-
 }
-
 
 
 allow_ip() {
@@ -889,8 +897,12 @@ allow_ip() {
 	install iptables > /dev/null 2>&1
 
 	for ip in "${ips[@]}"; do
-		if ! sudo iptables -C INPUT -s $ip -j ACCEPT 2>/dev/null; then
-			sudo iptables -I INPUT 1 -s $ip -j ACCEPT
+		# 删除已存在的阻止规则
+		iptables -D INPUT -s $ip -j DROP 2>/dev/null
+
+		# 添加允许规则
+		if ! iptables -C INPUT -s $ip -j ACCEPT 2>/dev/null; then
+			iptables -I INPUT 1 -s $ip -j ACCEPT
 			echo "已放行IP $ip"
 		fi
 	done
@@ -898,7 +910,6 @@ allow_ip() {
 	save_iptables_rules > /dev/null 2>&1
 	send_stats "已放行IP"
 }
-
 
 block_ip() {
 	local ips=($@)  # 将传入的参数转换为数组
@@ -910,8 +921,12 @@ block_ip() {
 	install iptables > /dev/null 2>&1
 
 	for ip in "${ips[@]}"; do
-		if ! sudo iptables -C INPUT -s $ip -j DROP 2>/dev/null; then
-			sudo iptables -I INPUT 1 -s $ip -j DROP
+		# 删除已存在的允许规则
+		iptables -D INPUT -s $ip -j ACCEPT 2>/dev/null
+
+		# 添加阻止规则
+		if ! iptables -C INPUT -s $ip -j DROP 2>/dev/null; then
+			iptables -I INPUT 1 -s $ip -j DROP
 			echo "已阻止IP $ip"
 		fi
 	done
@@ -919,6 +934,7 @@ block_ip() {
 	save_iptables_rules > /dev/null 2>&1
 	send_stats "已阻止IP"
 }
+
 
 
 
@@ -4821,8 +4837,8 @@ use_connection() {
 		if ! command -v sshpass &> /dev/null; then
 			echo "错误：未安装 sshpass，请先安装 sshpass。"
 			echo "安装方法："
-			echo "  - Ubuntu/Debian: sudo apt install sshpass"
-			echo "  - CentOS/RHEL: sudo yum install sshpass"
+			echo "  - Ubuntu/Debian: apt install sshpass"
+			echo "  - CentOS/RHEL: yum install sshpass"
 			return
 		fi
 		sshpass -p "$password_or_key" ssh -o StrictHostKeyChecking=no -p "$port" "$user@$ip"
