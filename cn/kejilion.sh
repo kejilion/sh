@@ -1952,12 +1952,6 @@ clear_host_port_rules() {
 	fi
 
 
-	# 清除已建立和相关连接的规则
-	if iptables -C INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT &>/dev/null; then
-		iptables -D INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
-	fi
-
-
 	echo "已允许IP+端口访问该服务"
 	save_iptables_rules
 
