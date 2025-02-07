@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.7.4"
+sh_v="3.7.5"
 
 
 gl_hui='\e[37m'
@@ -1739,6 +1739,7 @@ block_container_port() {
 
 	install iptables
 
+
 	# 检查并封禁其他所有 IP
 	if ! iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
 		iptables -I DOCKER-USER -p tcp -d "$container_ip" -j DROP
@@ -1771,6 +1772,11 @@ block_container_port() {
 		iptables -I DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	fi
 
+	if ! iptables -C DOCKER-USER -m state --state ESTABLISHED,RELATED -d "$container_ip" -j ACCEPT &>/dev/null; then
+		iptables -I DOCKER-USER -m state --state ESTABLISHED,RELATED -d "$container_ip" -j ACCEPT
+	fi
+
+
 	echo "已阻止IP+端口访问该服务"
 	save_iptables_rules
 }
@@ -1791,6 +1797,7 @@ clear_container_rules() {
 	fi
 
 	install iptables
+
 
 	# 清除封禁其他所有 IP 的规则
 	if iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
@@ -1826,6 +1833,12 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	fi
 
+
+	if iptables -C DOCKER-USER -m state --state ESTABLISHED,RELATED -d "$container_ip" -j ACCEPT &>/dev/null; then
+		iptables -D DOCKER-USER -m state --state ESTABLISHED,RELATED -d "$container_ip" -j ACCEPT
+	fi
+
+
 	echo "已允许IP+端口访问该服务"
 	save_iptables_rules
 }
@@ -1846,6 +1859,7 @@ block_host_port() {
 	fi
 
 	install iptables
+
 
 	# 拒绝其他所有 IP 访问
 	if ! iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
@@ -1881,6 +1895,10 @@ block_host_port() {
 		iptables -I INPUT -p udp --dport "$port" -s 127.0.0.0/8 -j ACCEPT
 	fi
 
+	# 允许已建立和相关连接的流量
+	if ! iptables -C INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT &>/dev/null; then
+		iptables -I INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+	fi
 
 	echo "已阻止IP+端口访问该服务"
 	save_iptables_rules
@@ -1900,6 +1918,7 @@ clear_host_port_rules() {
 	fi
 
 	install iptables
+
 
 	# 清除封禁所有其他 IP 访问的规则
 	if iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
@@ -1931,6 +1950,13 @@ clear_host_port_rules() {
 	if iptables -C INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT &>/dev/null; then
 		iptables -D INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT
 	fi
+
+
+	# 清除已建立和相关连接的规则
+	if iptables -C INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT &>/dev/null; then
+		iptables -D INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+	fi
+
 
 	echo "已允许IP+端口访问该服务"
 	save_iptables_rules
