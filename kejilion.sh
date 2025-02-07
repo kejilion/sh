@@ -181,8 +181,6 @@ install() {
 				echo "未知的包管理器!"
 				return 1
 			fi
-		else
-			echo -e "${gl_lv}$package 已经安装${gl_bai}"
 		fi
 	done
 }
@@ -470,8 +468,6 @@ install_add_docker() {
 install_docker() {
 	if ! command -v docker &>/dev/null; then
 		install_add_docker
-	else
-		echo -e "${gl_lv}Docker环境已经安装${gl_bai}"
 	fi
 }
 
@@ -660,12 +656,8 @@ done
 
 
 check_crontab_installed() {
-	if command -v crontab >/dev/null 2>&1; then
-		echo -e "${gl_lv}crontab 已经安装${gl_bai}"
-		return
-	else
+	if ! command -v crontab >/dev/null 2>&1; then
 		install_crontab
-		return
 	fi
 }
 
@@ -801,7 +793,7 @@ save_iptables_rules() {
 	mkdir -p /etc/iptables
 	touch /etc/iptables/rules.v4
 	iptables-save > /etc/iptables/rules.v4
-	check_crontab_installed > /dev/null 2>&1
+	check_crontab_installed
 	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
 
@@ -811,8 +803,8 @@ save_iptables_rules() {
 
 
 iptables_open() {
-	install iptables > /dev/null 2>&1
-	save_iptables_rules > /dev/null 2>&1
+	install iptables
+	save_iptables_rules
 	iptables -P INPUT ACCEPT
 	iptables -P FORWARD ACCEPT
 	iptables -P OUTPUT ACCEPT
@@ -834,7 +826,7 @@ open_port() {
 		return 1
 	fi
 
-	install iptables > /dev/null 2>&1
+	install iptables
 
 	for port in "${ports[@]}"; do
 		# 删除已存在的关闭规则
@@ -852,7 +844,7 @@ open_port() {
 		fi
 	done
 
-	save_iptables_rules > /dev/null 2>&1
+	save_iptables_rules
 	send_stats "已打开端口"
 }
 
@@ -864,7 +856,7 @@ close_port() {
 		return 1
 	fi
 
-	install iptables > /dev/null 2>&1
+	install iptables
 
 	for port in "${ports[@]}"; do
 		# 删除已存在的打开规则
@@ -882,7 +874,7 @@ close_port() {
 		fi
 	done
 
-	save_iptables_rules > /dev/null 2>&1
+	save_iptables_rules
 	send_stats "已关闭端口"
 }
 
@@ -894,7 +886,7 @@ allow_ip() {
 		return 1
 	fi
 
-	install iptables > /dev/null 2>&1
+	install iptables
 
 	for ip in "${ips[@]}"; do
 		# 删除已存在的阻止规则
@@ -907,7 +899,7 @@ allow_ip() {
 		fi
 	done
 
-	save_iptables_rules > /dev/null 2>&1
+	save_iptables_rules
 	send_stats "已放行IP"
 }
 
@@ -918,7 +910,7 @@ block_ip() {
 		return 1
 	fi
 
-	install iptables > /dev/null 2>&1
+	install iptables
 
 	for ip in "${ips[@]}"; do
 		# 删除已存在的允许规则
@@ -931,7 +923,7 @@ block_ip() {
 		fi
 	done
 
-	save_iptables_rules > /dev/null 2>&1
+	save_iptables_rules
 	send_stats "已阻止IP"
 }
 
@@ -974,7 +966,7 @@ disable_ddos_defense() {
 
 iptables_panel() {
   root_use
-  install iptables > /dev/null 2>&1
+  install iptables
   save_iptables_rules
   while true; do
 		  clear
@@ -1246,7 +1238,7 @@ install_certbot() {
 	curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/auto_cert_renewal.sh
 	chmod +x auto_cert_renewal.sh
 
-	check_crontab_installed > /dev/null 2>&1
+	check_crontab_installed
 	local cron_job="0 0 * * * ~/auto_cert_renewal.sh"
 	crontab -l 2>/dev/null | grep -vF "$cron_job" | crontab -
 	(crontab -l 2>/dev/null; echo "$cron_job") | crontab -
@@ -1745,7 +1737,7 @@ block_container_port() {
 		return 1
 	fi
 
-	install iptables > /dev/null 2>&1
+	install iptables
 
 	# 检查并封禁其他所有 IP
 	if ! iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
@@ -1780,7 +1772,7 @@ block_container_port() {
 	fi
 
 	echo "已阻止IP+端口访问该服务"
-	save_iptables_rules > /dev/null 2>&1
+	save_iptables_rules
 }
 
 
@@ -1798,7 +1790,7 @@ clear_container_rules() {
 		return 1
 	fi
 
-	install iptables > /dev/null 2>&1
+	install iptables
 
 	# 清除封禁其他所有 IP 的规则
 	if iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP &>/dev/null; then
@@ -1835,7 +1827,7 @@ clear_container_rules() {
 	fi
 
 	echo "已允许IP+端口访问该服务"
-	save_iptables_rules > /dev/null 2>&1
+	save_iptables_rules
 }
 
 
@@ -1853,7 +1845,7 @@ block_host_port() {
 		return 1
 	fi
 
-	install iptables > /dev/null 2>&1
+	install iptables
 
 	# 拒绝其他所有 IP 访问
 	if ! iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
@@ -1891,7 +1883,7 @@ block_host_port() {
 
 
 	echo "已阻止IP+端口访问该服务"
-	save_iptables_rules > /dev/null 2>&1
+	save_iptables_rules
 }
 
 
@@ -1907,7 +1899,7 @@ clear_host_port_rules() {
 		return 1
 	fi
 
-	install iptables > /dev/null 2>&1
+	install iptables
 
 	# 清除封禁所有其他 IP 访问的规则
 	if iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
@@ -1941,7 +1933,7 @@ clear_host_port_rules() {
 	fi
 
 	echo "已允许IP+端口访问该服务"
-	save_iptables_rules > /dev/null 2>&1
+	save_iptables_rules
 
 }
 
@@ -2729,7 +2721,7 @@ EOF
 	install tmux
 	tmux kill-session -t frps >/dev/null 2>&1
 	tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
-	check_crontab_installed > /dev/null 2>&1
+	check_crontab_installed
 	crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
 
@@ -2758,7 +2750,7 @@ EOF
 	install tmux
 	tmux kill-session -t frpc >/dev/null 2>&1
 	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
-	check_crontab_installed > /dev/null 2>&1
+	check_crontab_installed
 	crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 	(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
 
@@ -6811,12 +6803,12 @@ linux_ldnmp() {
 
 	  case $dingshi in
 		  1)
-			  check_crontab_installed > /dev/null 2>&1
+			  check_crontab_installed
 			  read -e -p "选择每周备份的星期几 (0-6，0代表星期日): " weekday
 			  (crontab -l ; echo "0 0 * * $weekday ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
 		  2)
-			  check_crontab_installed > /dev/null 2>&1
+			  check_crontab_installed
 			  read -e -p "选择每天备份的时间（小时，0-23）: " hour
 			  (crontab -l ; echo "0 $hour * * * ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
@@ -7001,7 +6993,7 @@ linux_ldnmp() {
 
 					  cd ~
 					  install jq bc
-					  check_crontab_installed > /dev/null 2>&1
+					  check_crontab_installed
 					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
 					  chmod +x CF-Under-Attack.sh
 					  sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
@@ -9708,7 +9700,7 @@ EOF
 		  send_stats "定时任务管理"
 			  while true; do
 				  clear
-				  check_crontab_installed > /dev/null 2>&1
+				  check_crontab_installed
 				  clear
 				  echo "定时任务列表"
 				  crontab -l
@@ -9909,7 +9901,7 @@ EOF
 					chmod +x ~/Limiting_Shut_down.sh
 					sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
 					sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
-					check_crontab_installed > /dev/null 2>&1
+					check_crontab_installed
 					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
 					(crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
 					crontab -l | grep -v 'reboot' | crontab -
@@ -9918,7 +9910,7 @@ EOF
 					send_stats "限流关机已设置"
 					;;
 				  2)
-					check_crontab_installed > /dev/null 2>&1
+					check_crontab_installed
 					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
 					crontab -l | grep -v 'reboot' | crontab -
 					rm ~/Limiting_Shut_down.sh
@@ -9998,7 +9990,7 @@ EOF
 				  send_stats "电报预警启用"
 				  cd ~
 				  install nano tmux bc jq
-				  check_crontab_installed > /dev/null 2>&1
+				  check_crontab_installed
 				  if [ -f ~/TG-check-notify.sh ]; then
 					  chmod +x ~/TG-check-notify.sh
 					  nano ~/TG-check-notify.sh
@@ -10768,7 +10760,7 @@ while true; do
 			else
 				SH_Update_task="curl -sS -O https://raw.githubusercontent.com/kejilion/sh/main/kejilion.sh && chmod +x kejilion.sh"
 			fi
-			check_crontab_installed > /dev/null 2>&1
+			check_crontab_installed
 			(crontab -l | grep -v "kejilion.sh") | crontab -
 			(crontab -l 2>/dev/null; echo "0 2 * * * bash -c \"$SH_Update_task\"") | crontab -
 			echo -e "${gl_lv}自动更新已开启，每天凌晨2点脚本会自动更新！${gl_bai}"
