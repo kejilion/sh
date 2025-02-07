@@ -3345,9 +3345,9 @@ restart_ssh() {
 
 
 correct_ssh_config() {
-	
+
 	local sshd_config="/etc/ssh/sshd_config"
-	
+
 	# 如果找到 PasswordAuthentication 设置为 yes
 	if grep -Eq "^PasswordAuthentication\s+yes" "$sshd_config"; then
 		sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' "$sshd_config"
@@ -7065,8 +7065,6 @@ linux_ldnmp() {
 				  1)
 				  send_stats "站点标准模式"
 
-				  iptables -P FORWARD ACCEPT
-
 				  # nginx调优
 				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
 				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
@@ -7100,8 +7098,6 @@ linux_ldnmp() {
 					  ;;
 				  2)
 				  send_stats "站点高性能模式"
-
-				  iptables -P FORWARD ACCEPT
 
 				  # nginx调优
 				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
