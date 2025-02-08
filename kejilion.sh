@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.7.5"
+sh_v="3.7.6"
 
 
 gl_hui='\e[37m'
@@ -2051,6 +2051,75 @@ done
 
 
 
+
+
+
+docker_app_plus() {
+	send_stats "$app_name"
+	while true; do
+		check_docker_app
+		check_docker_image_update $docker_name
+		clear
+		echo -e "$app_name $check_docker $update_status"
+		echo "$app_text"
+		echo "$app_url"
+		if docker inspect "$docker_name" &>/dev/null; then
+			check_docker_app_ip
+		fi
+		echo ""
+		echo "------------------------"
+		echo "1. 安装             2. 更新             3. 卸载"
+		echo "------------------------"
+		echo "5. 添加域名访问     6. 删除域名访问"
+		echo "7. 允许IP+端口访问  8. 阻止IP+端口访问"
+		echo "------------------------"
+		echo "0. 返回上一级"
+		echo "------------------------"
+		read -e -p "输入你的选择: " choice
+		case $choice in
+			1)
+				check_disk_space $app_size
+				install jq
+				install_docker
+				docker_app_install
+				;;
+			2)
+				docker_app_update
+				;;
+			3)
+				docker_app_uninstall
+				;;
+			5)
+				echo "${docker_name}域名访问设置"
+				send_stats "${docker_name}域名访问设置"
+				add_yuming
+				ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+				block_container_port "$docker_name" "$ipv4_address"
+				;;
+			6)
+				echo "域名格式 example.com 不带https://"
+				web_del
+				;;
+			7)
+				send_stats "允许IP访问 ${docker_name}"
+				clear_container_rules "$docker_name" "$ipv4_address"
+				;;
+			8)
+				send_stats "阻止IP访问 ${docker_name}"
+				block_container_port "$docker_name" "$ipv4_address"
+				;;
+			*)
+				break
+				;;
+		esac
+		break_end
+	done
+}
+
+
+
+
+
 prometheus_install() {
 
 local PROMETHEUS_DIR="/home/docker/monitoring/prometheus"
@@ -2591,16 +2660,12 @@ ldnmp_web_status() {
 }
 
 
-
-
 check_panel_app() {
-
 if $lujing ; then
 	check_panel="${gl_lv}已安装${gl_bai}"
 else
-	check_panel="${gl_hui}未安装${gl_bai}"
+	check_panel=""
 fi
-
 }
 
 
@@ -2623,34 +2688,19 @@ while true; do
 	read -e -p "请输入你的选择: " choice
 	 case $choice in
 		1)
-			iptables_open
 			install wget
-			if grep -q 'Alpine' /etc/issue; then
-				$ubuntu_mingling
-				$ubuntu_mingling2
-			elif command -v dnf &>/dev/null; then
-				$centos_mingling
-				$centos_mingling2
-			elif grep -qi 'Ubuntu' /etc/os-release; then
-				$ubuntu_mingling
-				$ubuntu_mingling2
-			elif grep -qi 'Debian' /etc/os-release; then
-				$ubuntu_mingling
-				$ubuntu_mingling2
-			else
-				echo "不支持的系统"
-			fi
+			iptables_open
+
+			panel_app_install
 			send_stats "${panelname}安装"
 			;;
 		2)
-			$gongneng1
-			$gongneng1_1
+			panel_app_manage
 			send_stats "${panelname}控制"
+
 			;;
 		3)
-			$gongneng2
-			$gongneng2_1
-			$gongneng2_2
+			panel_app_uninstall
 			send_stats "${panelname}卸载"
 			;;
 		*)
@@ -7388,21 +7438,21 @@ linux_panel() {
 
 			local lujing="[ -d "/www/server/panel" ]"
 			local panelname="宝塔面板"
-
-			local gongneng1="bt"
-			local gongneng1_1=""
-			local gongneng2="curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh"
-			local gongneng2_1="chmod +x bt-uninstall.sh"
-			local gongneng2_2="./bt-uninstall.sh"
-
 			local panelurl="https://www.bt.cn/new/index.html"
 
+			panel_app_install() {
+				if [ -f /usr/bin/curl ];then curl -sSO https://download.bt.cn/install/install_panel.sh;else wget -O install_panel.sh https://download.bt.cn/install/install_panel.sh;fi;bash install_panel.sh ed8484bec
+			}
 
-			local centos_mingling="wget -O install.sh https://download.bt.cn/install/install_6.0.sh"
-			local centos_mingling2="sh install.sh ed8484bec"
+			panel_app_manage() {
+				bt
+			}
 
-			local ubuntu_mingling="wget -O install.sh https://download.bt.cn/install/install-ubuntu_6.0.sh"
-			local ubuntu_mingling2="bash install.sh ed8484bec"
+			panel_app_uninstall() {
+				curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh
+				chmod +x bt-uninstall.sh
+				./bt-uninstall.sh
+			}
 
 			install_panel
 
@@ -7413,43 +7463,44 @@ linux_panel() {
 
 			local lujing="[ -d "/www/server/panel" ]"
 			local panelname="aapanel"
-
-			local gongneng1="bt"
-			local gongneng1_1=""
-			local gongneng2="curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh"
-			local gongneng2_1="chmod +x bt-uninstall.sh"
-			local gongneng2_2="./bt-uninstall.sh"
-
 			local panelurl="https://www.aapanel.com/new/index.html"
 
-			local centos_mingling="wget -O install.sh http://www.aapanel.com/script/install_6.0_en.sh"
-			local centos_mingling2="bash install.sh aapanel"
+			panel_app_install() {
+				URL=https://www.aapanel.com/script/install_7.0_en.sh && if [ -f /usr/bin/curl ];then curl -ksSO "$URL" ;else wget --no-check-certificate -O install_7.0_en.sh "$URL";fi;bash install_7.0_en.sh aapanel
+			}
 
-			local ubuntu_mingling="wget -O install.sh http://www.aapanel.com/script/install-ubuntu_6.0_en.sh"
-			local ubuntu_mingling2="bash install.sh aapanel"
+			panel_app_manage() {
+				bt
+			}
+
+			panel_app_uninstall() {
+				curl -o bt-uninstall.sh http://download.bt.cn/install/bt-uninstall.sh > /dev/null 2>&1 && chmod +x bt-uninstall.sh && ./bt-uninstall.sh
+				chmod +x bt-uninstall.sh
+				./bt-uninstall.sh
+			}
 
 			install_panel
 
 			  ;;
 		  3)
 
-			local lujing="command -v 1pctl > /dev/null 2>&1 "
+			local lujing="command -v 1pctl > /dev/null 2>&1"
 			local panelname="1Panel"
-
-			local gongneng1="1pctl user-info"
-			local gongneng1_1="1pctl update password"
-			local gongneng2="1pctl uninstall"
-			local gongneng2_1=""
-			local gongneng2_2=""
-
 			local panelurl="https://1panel.cn/"
 
+			panel_app_install() {
+				install bash
+				curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
+			}
 
-			local centos_mingling="curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh"
-			local centos_mingling2="sh quick_start.sh"
+			panel_app_manage() {
+				1pctl user-info
+				1pctl update password
+			}
 
-			local ubuntu_mingling="curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh"
-			local ubuntu_mingling2="bash quick_start.sh"
+			panel_app_uninstall() {
+				1pctl uninstall
+			}
 
 			install_panel
 
@@ -7739,104 +7790,49 @@ linux_panel() {
 			  ;;
 
 		  10)
-			send_stats "搭建聊天"
 
-			local docker_name=rocketchat
-			local docker_port=3897
-			while true; do
-				check_docker_app
-				check_docker_image_update $docker_name
+			local app_name="Rocket.Chat聊天系统"
+			local app_text="Rocket.Chat 是一个开源的团队通讯平台，支持实时聊天、音视频通话、文件共享等多种功能，"
+			local app_url="官方介绍: https://www.rocket.chat/"
+			local docker_name="rocketchat"
+			local docker_port="3897"
+			local app_size="2"
+
+			docker_app_install() {
+				docker run --name db -d --restart=always \
+					-v /home/docker/mongo/dump:/dump \
+					mongo:latest --replSet rs5 --oplogSize 256
+				sleep 1
+				docker exec -it db mongosh --eval "printjson(rs.initiate())"
+				sleep 5
+				docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+
 				clear
-				echo -e "聊天服务 $check_docker $update_status"
-				echo "Rocket.Chat 是一个开源的团队通讯平台，支持实时聊天、音视频通话、文件共享等多种功能，"
-				echo "官网介绍: https://www.rocket.chat"
-				if docker inspect "$docker_name" &>/dev/null; then
-					check_docker_app_ip
-				fi
-				echo ""
+				ip_address
+				echo "已经安装完成"
+				check_docker_app_ip
+			}
 
-				echo "------------------------"
-				echo "1. 安装             2. 更新             3. 卸载"
-				echo "------------------------"
-				echo "5. 添加域名访问     6. 删除域名访问"
-				echo "7. 允许IP+端口访问  8. 阻止IP+端口访问"
-				echo "------------------------"
-				echo "0. 返回上一级"
-				echo "------------------------"
-				read -e -p "输入你的选择: " choice
+			docker_app_update() {
+				docker rm -f rocketchat
+				docker rmi -f rocket.chat:latest
+				docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+				clear
+				ip_address
+				echo "rocket.chat已经安装完成"
+				check_docker_app_ip
+			}
 
-				case $choice in
-					1)
-						install jq
-						install_docker
-						docker run --name db -d --restart=always \
-							-v /home/docker/mongo/dump:/dump \
-							mongo:latest --replSet rs5 --oplogSize 256
-						sleep 1
-						docker exec -it db mongosh --eval "printjson(rs.initiate())"
-						sleep 5
-						docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+			docker_app_uninstall() {
+				docker rm -f rocketchat
+				docker rmi -f rocket.chat
+				docker rm -f db
+				docker rmi -f mongo:latest
+				rm -rf /home/docker/mongo
+				echo "应用已卸载"
+			}
 
-						clear
-
-						ip_address
-						echo "rocket.chat已经安装完成"
-						check_docker_app_ip
-						echo ""
-
-						;;
-
-					2)
-						docker rm -f rocketchat
-						docker rmi -f rocket.chat:6.3
-						docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
-						clear
-						ip_address
-						echo "rocket.chat已经安装完成"
-						check_docker_app_ip
-						echo ""
-						;;
-					3)
-						docker rm -f rocketchat
-						docker rmi -f rocket.chat
-						docker rm -f db
-						docker rmi -f mongo:latest
-						rm -rf /home/docker/mongo
-						echo "应用已卸载"
-
-						;;
-					5)
-						echo "${docker_name}域名访问设置"
-						send_stats "${docker_name}域名访问设置"
-						add_yuming
-						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
-
-
-					6)
-						echo "域名格式 example.com 不带https://"
-						web_del
-						;;
-
-					7)
-						send_stats "允许IP访问 ${docker_name}"
-						clear_container_rules "$docker_name" "$ipv4_address"
-						;;
-
-					8)
-						send_stats "阻止IP访问 ${docker_name}"
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
-
-
-					*)
-						break
-						;;
-
-				esac
-				break_end
-			done
+			docker_app_plus
 			  ;;
 
 
@@ -7880,99 +7876,39 @@ linux_panel() {
 
 			  ;;
 		  13)
-			send_stats "搭建网盘"
-			local docker_name=cloudreve
-			local docker_port=5212
-			while true; do
-				check_docker_app
-				check_docker_image_update $docker_name
+
+			local app_name="cloudreve网盘"
+			local app_text="cloudreve是一个支持多家云存储的网盘系统"
+			local app_url="视频介绍: https://www.bilibili.com/video/BV13F4m1c7h7?t=0.1"
+			local docker_name="cloudreve"
+			local docker_port="5212"
+			local app_size="1"
+
+			docker_app_install() {
+				cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
+				curl -o /home/docker/cloud/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
+				cd /home/docker/cloud/ && docker compose up -d
 				clear
-				echo -e "网盘服务 $check_docker $update_status"
-				echo "cloudreve是一个支持多家云存储的网盘系统"
-				echo "视频介绍: https://www.bilibili.com/video/BV13F4m1c7h7?t=0.1"
-				if docker inspect "$docker_name" &>/dev/null; then
-					check_docker_app_ip
-				fi
-				echo ""
-
-				echo "------------------------"
-				echo "1. 安装             2. 更新             3. 卸载"
-				echo "------------------------"
-				echo "5. 添加域名访问     6. 删除域名访问"
-				echo "7. 允许IP+端口访问  8. 阻止IP+端口访问"
-				echo "------------------------"
-				echo "0. 返回上一级"
-				echo "------------------------"
-				read -e -p "输入你的选择: " choice
-
-				case $choice in
-					1)
-						install jq
-						install_docker
-						cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-						curl -o /home/docker/cloud/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
-						cd /home/docker/cloud/ && docker compose up -d
-
-						clear
-						echo "cloudreve已经安装完成"
-						check_docker_app_ip
-						sleep 3
-						docker logs cloudreve
-						echo ""
+				echo "已经安装完成"
+				check_docker_app_ip
+				sleep 3
+				docker logs cloudreve
+			}
 
 
-						;;
-
-					2)
-						cd /home/docker/cloud/ && docker compose down --rmi all
-						cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-						curl -o /home/docker/cloud/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
-						cd /home/docker/cloud/ && docker compose up -d
-						clear
-						echo "cloudreve已经安装完成"
-						check_docker_app_ip
-						sleep 3
-						docker logs cloudreve
-						echo ""
-						;;
-					3)
-						cd /home/docker/cloud/ && docker compose down --rmi all
-						rm -rf /home/docker/cloud
-						echo "应用已卸载"
-
-						;;
-					5)
-						echo "${docker_name}域名访问设置"
-						send_stats "${docker_name}域名访问设置"
-						add_yuming
-						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
-
-					6)
-						echo "域名格式 example.com 不带https://"
-						web_del
-						;;
-
-					7)
-						send_stats "允许IP访问 ${docker_name}"
-						clear_container_rules "$docker_name" "$ipv4_address"
-						;;
-
-					8)
-						send_stats "阻止IP访问 ${docker_name}"
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
+			docker_app_update() {
+				cd /home/docker/cloud/ && docker compose down --rmi all
+				docker_app_install
+			}
 
 
+			docker_app_uninstall() {
+				cd /home/docker/cloud/ && docker compose down --rmi all
+				rm -rf /home/docker/cloud
+				echo "应用已卸载"
+			}
 
-					*)
-						break
-						;;
-
-				esac
-				break_end
-			done
+			docker_app_plus
 			  ;;
 
 		  14)
@@ -8071,7 +8007,6 @@ linux_panel() {
 
 		  19)
 			send_stats "搭建雷池"
-
 
 			local docker_name=safeline-mgt
 			local docker_port=9443
@@ -8462,38 +8397,27 @@ linux_panel() {
 			  ;;
 
 		  41)
-			send_stats "耗子面板"
-			while true; do
-				clear
-				echo "耗子管理面板"
-				echo "使用 Golang + Vue 开发的开源轻量 Linux 服务器运维管理面板。"
-				echo "官方地址: ${gh_proxy}github.com/TheTNB/panel"
-				echo "------------------------"
-				echo "1. 安装            2. 管理            3. 卸载"
-				echo "------------------------"
-				echo "0. 返回上一级"
-				echo "------------------------"
-				read -e -p "输入你的选择: " choice
 
-				case $choice in
-					1)
-						mkdir -p ~/haozi && cd ~/haozi && curl -fsLm 10 -o install.sh https://dl.cdn.haozi.net/panel/install.sh && bash install.sh
-						cd ~
-						;;
-					2)
-						panel-cli
-						;;
-					3)
-						mkdir -p ~/haozi && cd ~/haozi && curl -fsLm 10 -o uninstall.sh https://dl.cdn.haozi.net/panel/uninstall.sh && bash uninstall.sh
-						cd ~
-						;;
-					*)
-						break
-						;;
+			local lujing="[ -d "/www/server/panel" ]"
+			local panelname="耗子面板"
+			local panelurl="官方地址: ${gh_proxy}github.com/TheTNB/panel"
 
-				esac
-				break_end
-			done
+			panel_app_install() {
+				mkdir -p ~/haozi && cd ~/haozi && curl -fsLm 10 -o install.sh https://dl.cdn.haozi.net/panel/install.sh && bash install.sh
+				cd ~
+			}
+
+			panel_app_manage() {
+				panel-cli
+			}
+
+			panel_app_uninstall() {
+				mkdir -p ~/haozi && cd ~/haozi && curl -fsLm 10 -o uninstall.sh https://dl.cdn.haozi.net/panel/uninstall.sh && bash uninstall.sh
+				cd ~
+			}
+
+			install_panel
+
 			  ;;
 
 
@@ -8569,102 +8493,44 @@ linux_panel() {
 			  ;;
 
 		  47)
-			send_stats "普罗米修斯监控"
 
-			local docker_name=grafana
-			local docker_port=8047
-			while true; do
-				check_docker_app
+
+
+			local app_name="普罗米修斯监控"
+			local app_text="Prometheus+Grafana企业级监控系统"
+			local app_url="官网介绍: https://prometheus.io"
+			local docker_name="grafana"
+			local docker_port="8047"
+			local app_size="2"
+
+			docker_app_install() {
+				prometheus_install
 				clear
-				echo -e "普罗米修斯监控 $check_docker"
-				echo "Prometheus+Grafana企业级监控系统"
-				echo "官网介绍: https://prometheus.io"
-				if docker inspect "$docker_name" &>/dev/null; then
-					check_docker_app_ip
-				fi
-				echo ""
+				ip_address
+				echo "已经安装完成"
+				check_docker_app_ip
+				echo "初始用户名密码均为: admin"
+			}
 
-				echo "------------------------"
-				echo "1. 安装             2. 更新             3. 卸载"
-				echo "------------------------"
-				echo "5. 添加域名访问     6. 删除域名访问"
-				echo "7. 允许IP+端口访问  8. 阻止IP+端口访问"
-				echo "------------------------"
-				echo "0. 返回上一级"
-				echo "------------------------"
-				read -e -p "输入你的选择: " choice
+			docker_app_update() {
+				docker rm -f node-exporter prometheus grafana
+				docker rmi -f prom/node-exporter
+				docker rmi -f prom/prometheus:latest
+				docker rmi -f grafana/grafana:latest
+				docker_app_install
+			}
 
-				case $choice in
-					1)
-						install_docker
-						prometheus_install
+			docker_app_uninstall() {
+				docker rm -f node-exporter prometheus grafana
+				docker rmi -f prom/node-exporter
+				docker rmi -f prom/prometheus:latest
+				docker rmi -f grafana/grafana:latest
 
-						clear
+				rm -rf /home/docker/monitoring
+				echo "应用已卸载"
+			}
 
-						ip_address
-						echo "普罗米修斯监控 已经安装完成"
-						check_docker_app_ip
-						echo "用户名密码均为: admin"
-
-						;;
-
-					2)
-						docker rm -f node-exporter prometheus grafana
-						docker rmi -f prom/node-exporter
-						docker rmi -f prom/prometheus:latest
-						docker rmi -f grafana/grafana:latest
-						prometheus_install
-
-						clear
-
-						ip_address
-						echo "普罗米修斯监控 已经安装完成"
-						check_docker_app_ip
-
-						;;
-					3)
-						docker rm -f node-exporter prometheus grafana
-						docker rmi -f prom/node-exporter
-						docker rmi -f prom/prometheus:latest
-						docker rmi -f grafana/grafana:latest
-
-						rm -rf /home/docker/monitoring
-						echo "应用已卸载"
-
-						;;
-					5)
-						echo "${docker_name}域名访问设置"
-						send_stats "${docker_name}域名访问设置"
-						add_yuming
-						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
-
-					6)
-						echo "域名格式 example.com 不带https://"
-						web_del
-						;;
-
-					7)
-						send_stats "允许IP访问 ${docker_name}"
-						clear_container_rules "$docker_name" "$ipv4_address"
-						;;
-
-					8)
-						send_stats "阻止IP访问 ${docker_name}"
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
-
-
-
-
-					*)
-						break
-						;;
-
-				esac
-				break_end
-			done
+			docker_app_plus
 			  ;;
 
 		  48)
@@ -8757,38 +8623,25 @@ linux_panel() {
 			  ;;
 
 		  54)
-			send_stats "AMH面板"
-			while true; do
-				clear
-				echo "AMH面板"
-				echo "AMH是国内首款开源的主机面板，持续更新14年、2011至今0漏洞0后门0收集0广告、面板闲时近乎0占用"
-				echo "官方地址: https://amh.sh/index.htm?amh"
-				echo "------------------------"
-				echo "1. 安装            2. 管理            3. 卸载"
-				echo "------------------------"
-				echo "0. 返回上一级"
-				echo "------------------------"
-				read -e -p "输入你的选择: " choice
 
-				case $choice in
-					1)
-						cd ~
-						wget https://dl.amh.sh/amh.sh && bash amh.sh
-						;;
-					2)
-						cd ~
-						wget https://dl.amh.sh/amh.sh && bash amh.sh
-						;;
-					3)
-						cd ~
-						wget https://dl.amh.sh/amh.sh && bash amh.sh
-						;;
-					*)
-						break
-						;;
-				esac
-				break_end
-			done
+			local lujing="[ -d "/www/server/panel" ]"
+			local panelname="AMH面板"
+			local panelurl="官方地址: https://amh.sh/index.htm?amh"
+
+			panel_app_install() {
+				cd ~
+				wget https://dl.amh.sh/amh.sh && bash amh.sh
+			}
+
+			panel_app_manage() {
+				panel_app_install
+			}
+
+			panel_app_uninstall() {
+				panel_app_install
+			}
+
+			install_panel
 			  ;;
 
 
@@ -8814,90 +8667,36 @@ linux_panel() {
 
 
 		  58)
-			send_stats "Dify知识库"
-			local docker_name=docker-web-1
-			local docker_port=8058
-			while true; do
-				check_docker_app
-				check_docker_image_update $docker_name
+			local app_name="Dify知识库"
+			local app_text="是一款开源的大语言模型(LLM) 应用开发平台。自托管训练数据用于AI生成"
+			local app_url="官方网站: https://docs.dify.ai/zh-hans"
+			local docker_name="docker-web-1"
+			local docker_port="8058"
+			local app_size="3"
+
+			docker_app_install() {
+				install git
+				mkdir -p  /home/docker/ && cd /home/docker/ && git clone  ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
+				sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
+				docker compose up -d
 				clear
-				echo -e "Dify知识库 $check_docker $update_status"
-				echo "是一款开源的大语言模型(LLM) 应用开发平台。自托管训练数据用于AI生成"
-				echo "官方网站: https://docs.dify.ai/zh-hans"
-				if docker inspect "$docker_name" &>/dev/null; then
-					check_docker_app_ip
-				fi
-				echo ""
+				echo "已经安装完成"
+				check_docker_app_ip
+			}
 
-				echo "------------------------"
-				echo "1. 安装             2. 更新             3. 卸载"
-				echo "------------------------"
-				echo "5. 添加域名访问     6. 删除域名访问"
-				echo "7. 允许IP+端口访问  8. 阻止IP+端口访问"
-				echo "------------------------"
-				echo "0. 返回上一级"
-				echo "------------------------"
-				read -e -p "输入你的选择: " choice
+			docker_app_update() {
+				cd  /home/docker/dify/docker/ && docker compose down --rmi all
+				docker_app_install
+			}
 
-				case $choice in
-					1)
-						check_disk_space 3
-						install jq git
-						install_docker
-						mkdir -p  /home/docker/ && cd /home/docker/ && git clone  ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
-						sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
-						docker compose up -d
+			docker_app_uninstall() {
+				cd  /home/docker/dify/docker/ && docker compose down --rmi all
+				rm -rf /home/docker/dify
+				echo "应用已卸载"
+			}
 
-						clear
-						echo "已经安装完成"
-						check_docker_app_ip
+			docker_app_plus
 
-						;;
-
-					2)
-						mkdir -p  /home/docker/ && cd /home/docker/ && git clone  ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
-						sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
-						docker compose up -d
-						clear
-						echo "已经安装完成"
-						check_docker_app_ip
-						;;
-					3)
-						cd  /home/docker/dify/docker/ && docker compose down --rmi all
-						rm -rf /home/docker/dify
-						echo "应用已卸载"
-
-						;;
-					5)
-						echo "${docker_name}域名访问设置"
-						send_stats "${docker_name}域名访问设置"
-						add_yuming
-						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
-
-					6)
-						echo "域名格式 example.com 不带https://"
-						web_del
-						;;
-
-					7)
-						send_stats "允许IP访问 ${docker_name}"
-						clear_container_rules "$docker_name" "$ipv4_address"
-						;;
-
-					8)
-						send_stats "阻止IP访问 ${docker_name}"
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
-
-					*)
-						break
-						;;
-
-				esac
-				break_end
-			done
 			  ;;
 
 
