@@ -190,7 +190,6 @@ check_disk_space() {
 
 	required_gb=$1
 	required_space_mb=$((required_gb * 1024))
-
 	available_space_mb=$(df -m / | awk 'NR==2 {print $4}')
 
 	if [ $available_space_mb -lt $required_space_mb ]; then
@@ -1986,6 +1985,7 @@ while true; do
 	read -e -p "请输入你的选择: " choice
 	 case $choice in
 		1)
+			check_disk_space $app_size
 			install jq
 			install_docker
 			$docker_rum
@@ -2688,9 +2688,9 @@ while true; do
 	read -e -p "请输入你的选择: " choice
 	 case $choice in
 		1)
+			check_disk_space 1
 			install wget
 			iptables_open
-
 			panel_app_install
 			send_stats "${panelname}安装"
 			;;
@@ -7523,6 +7523,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://nginxproxymanager.com/"
 			local docker_use="echo \"初始用户名: admin@example.com\""
 			local docker_passwd="echo \"初始密码: changeme\""
+			local app_size="1"
 
 			docker_app
 
@@ -7546,7 +7547,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://alist.nn.ci/zh/"
 			local docker_use="docker exec -it alist ./alist admin random"
 			local docker_passwd=""
-
+			local app_size="1"
 			docker_app
 
 			  ;;
@@ -7575,6 +7576,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="2"
 			docker_app
 
 
@@ -7608,6 +7610,7 @@ linux_panel() {
 
 				case $choice in
 					1)
+						check_disk_space 1
 						install unzip jq
 						install_docker
 						curl -sL ${gh_proxy}raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
@@ -7668,7 +7671,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://hub.docker.com/r/linuxserver/qbittorrent"
 			local docker_use="sleep 3"
 			local docker_passwd="docker logs qbittorrent"
-
+			local app_size="1"
 			docker_app
 
 			  ;;
@@ -7713,6 +7716,7 @@ linux_panel() {
 
 				case $choice in
 					1)
+						check_disk_space 2
 						read -e -p "请设置邮箱域名 例如 mail.yuming.com : " yuming
 						mkdir -p /home/docker
 						echo "$yuming" > /home/docker/mail.txt
@@ -7853,6 +7857,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://www.zentao.net/"
 			local docker_use="echo \"初始用户名: admin\""
 			local docker_passwd="echo \"初始密码: 123456\""
+			local app_size="2"
 			docker_app
 
 			  ;;
@@ -7872,6 +7877,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/whyour/qinglong"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 
 			  ;;
@@ -7882,7 +7888,7 @@ linux_panel() {
 			local app_url="视频介绍: https://www.bilibili.com/video/BV13F4m1c7h7?t=0.1"
 			local docker_name="cloudreve"
 			local docker_port="5212"
-			local app_size="1"
+			local app_size="2"
 
 			docker_app_install() {
 				cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
@@ -7929,6 +7935,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/icret/EasyImages2.0"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -7948,6 +7955,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://emby.media/"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -7960,6 +7968,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/wikihost-opensource/als"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 
 			  ;;
@@ -7981,6 +7990,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://hub.docker.com/r/adguard/adguardhome"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 
 			  ;;
@@ -8001,6 +8011,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://www.onlyoffice.com/"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="2"
 			docker_app
 
 			  ;;
@@ -8031,6 +8042,7 @@ linux_panel() {
 				case $choice in
 					1)
 						install_docker
+						check_disk_space 5
 						bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
 						clear
 						echo "雷池WAF面板已经安装完成"
@@ -8081,6 +8093,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://www.portainer.io/"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 
 			  ;;
@@ -8094,6 +8107,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/coder/code-server"
 			local docker_use="sleep 3"
 			local docker_passwd="docker exec vscode-web cat /home/coder/.config/code-server/config.yaml"
+			local app_size="1"
 			docker_app
 			  ;;
 		  22)
@@ -8110,6 +8124,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/louislam/uptime-kuma"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8122,6 +8137,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/usememos/memos"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8151,6 +8167,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="2"
 			docker_app
 			  ;;
 
@@ -8164,6 +8181,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://nextcloud.com/"
 			local docker_use="echo \"账号: nextcloud  密码: $rootpasswd\""
 			local docker_passwd=""
+			local app_size="3"
 			docker_app
 			  ;;
 
@@ -8176,6 +8194,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://qd-today.github.io/qd/zh_CN/"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 		  27)
@@ -8187,6 +8206,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/louislam/dockge"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8199,6 +8219,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/librespeed/speedtest"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8218,6 +8239,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://hub.docker.com/r/alandoyle/searxng"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8241,6 +8263,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://www.photoprism.app/"
 			local docker_use="echo \"账号: admin  密码: $rootpasswd\""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8262,6 +8285,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/Stirling-Tools/Stirling-PDF"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8274,6 +8298,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://www.drawio.com/"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8291,6 +8316,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://doc.sun-panel.top/zh_cn/"
 			local docker_use="echo \"账号: admin@sun.cc  密码: 12345678\""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8308,6 +8334,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/stonith404/pingvin-share"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8327,6 +8354,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/kingwrcy/moments?tab=readme-ov-file"
 			local docker_use="echo \"账号: admin  密码: a123456\""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8344,6 +8372,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/lobehub/lobe-chat"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="2"
 			docker_app
 			  ;;
 
@@ -8356,6 +8385,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/jason5ng32/MyIP/blob/main/README_ZH.md"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8363,6 +8393,7 @@ linux_panel() {
 			send_stats "小雅全家桶"
 			clear
 			install_docker
+			check_disk_space 1
 			bash -c "$(curl --insecure -fsSL https://ddsrem.com/xiaoya_install.sh)"
 			  ;;
 
@@ -8381,6 +8412,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/hr3lxphr6j/bililive-go"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8393,6 +8425,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/Jrohy/webssh"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8435,6 +8468,7 @@ linux_panel() {
 			local docker_url="官网介绍: ${gh_proxy}github.com/gnmyt/Nexterm"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8447,6 +8481,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://rustdesk.com/zh-cn/"
 			local docker_use="docker logs hbbs"
 			local docker_passwd="echo \"把你的IP和key记录下，会在远程桌面客户端中用到。去44选项装中继端吧！\""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8459,6 +8494,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://rustdesk.com/zh-cn/"
 			local docker_use="echo \"前往官网下载远程桌面的客户端: https://rustdesk.com/zh-cn/\""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8477,6 +8513,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://hub.docker.com/_/registry"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="2"
 			docker_app
 			  ;;
 
@@ -8489,6 +8526,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://github.com/WJQSERVER-STUDIO/ghproxy"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8546,6 +8584,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://github.com/prometheus/node_exporter"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8568,6 +8607,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://github.com/google/cadvisor"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8583,6 +8623,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://github.com/dgtlmoon/changedetection.io"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8590,6 +8631,7 @@ linux_panel() {
 		  51)
 			clear
 			send_stats "PVE开小鸡"
+			check_disk_space 1
 			curl -L ${gh_proxy}raw.githubusercontent.com/oneclickvirt/pve/main/scripts/install_pve.sh -o install_pve.sh && chmod +x install_pve.sh && bash install_pve.sh
 			  ;;
 
@@ -8607,6 +8649,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://github.com/donknap/dpanel"
 			local docker_use=""
 			local docker_passwd=""
+			local app_size="1"
 			docker_app
 			  ;;
 
@@ -8619,6 +8662,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://github.com/open-webui/open-webui"
 			local docker_use="docker exec ollama ollama run llama3"
 			local docker_passwd=""
+			local app_size="7"
 			docker_app
 			  ;;
 
@@ -8662,6 +8706,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://github.com/open-webui/open-webui"
 			local docker_use="docker exec ollama ollama run deepseek-r1"
 			local docker_passwd=""
+			local app_size="7"
 			docker_app
 			  ;;
 
