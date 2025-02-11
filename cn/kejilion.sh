@@ -8655,7 +8655,7 @@ linux_panel() {
 
 		  53)
 			local docker_name="ollama"
-			local docker_img="ghcr.io/open-webui/open-webui:Ollama"
+			local docker_img="ghcr.io/open-webui/open-webui:ollama"
 			local docker_port=8053
 			local docker_rum="docker run -d -p 8053:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama"
 			local docker_describe="OpenWebUI一款大语言模型网页框架，接入全新的llama3大语言模型"
@@ -8699,7 +8699,7 @@ linux_panel() {
 
 		  57)
 			local docker_name="ollama"
-			local docker_img="ghcr.io/open-webui/open-webui:Ollama"
+			local docker_img="ghcr.io/open-webui/open-webui:ollama"
 			local docker_port=8053
 			local docker_rum="docker run -d -p 8053:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama"
 			local docker_describe="OpenWebUI一款大语言模型网页框架，接入全新的DeepSeek R1大语言模型"
