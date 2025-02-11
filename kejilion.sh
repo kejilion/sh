@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
