@@ -8723,7 +8723,7 @@ linux_panel() {
 
 			docker_app_install() {
 				install git
-				mkdir -p  /home/docker/ && cd /home/docker/ && git clone  ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
+				mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
 				sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
 				docker compose up -d
 				clear
@@ -8733,6 +8733,9 @@ linux_panel() {
 
 			docker_app_update() {
 				cd  /home/docker/dify/docker/ && docker compose down --rmi all
+				cd  /home/docker/dify/
+				git pull origin main
+				sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
 				cd  /home/docker/dify/docker/ && docker compose up -d				
 			}
 
