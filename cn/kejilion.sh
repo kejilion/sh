@@ -137,8 +137,8 @@ CheckFirstRun_false
 
 ip_address() {
 
-ipv4_address=$(curl -4 icanhazip.com)
-ipv6_address=$(curl -6 --max-time 1 icanhazip.com)
+ipv4_address=$(curl -s -4 icanhazip.com)
+ipv6_address=$(curl -s -6 --max-time 1 icanhazip.com)
 
 }
 
