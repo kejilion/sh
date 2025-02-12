@@ -7906,7 +7906,7 @@ linux_panel() {
 
 			docker_app_update() {
 				cd /home/docker/cloud/ && docker compose down --rmi all
-				docker_app_install
+				cd /home/docker/cloud/ && docker compose up -d			
 			}
 
 
@@ -8733,7 +8733,7 @@ linux_panel() {
 
 			docker_app_update() {
 				cd  /home/docker/dify/docker/ && docker compose down --rmi all
-				docker_app_install
+				cd  /home/docker/dify/docker/ && docker compose up -d				
 			}
 
 			docker_app_uninstall() {
