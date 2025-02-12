@@ -2059,9 +2059,9 @@ done
 docker_app_plus() {
 	send_stats "$app_name"
 	while true; do
+		clear
 		check_docker_app
 		check_docker_image_update $docker_name
-		clear
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
