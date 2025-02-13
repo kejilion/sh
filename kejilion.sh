@@ -4935,6 +4935,7 @@ ssh_manager() {
 	while true; do
 		clear
 		echo "SSH 远程连接工具"
+		echo "可以通过SSH连接到其他Linux系统上"
 		echo "------------------------"
 		list_connections
 		echo "1. 创建新连接        2. 使用连接        3. 删除连接"
@@ -5296,6 +5297,7 @@ rsync_manager() {
 	while true; do
 		clear
 		echo "Rsync 远程同步工具"
+		echo "远程目录之间同步，支持增量同步，高效稳定。"
 		echo "---------------------------------"
 		list_tasks
 		echo "1. 创建新任务    2. 执行任务    3. 删除任务"
