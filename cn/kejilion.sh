@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.7.7"
+sh_v="3.7.8"
 
 
 gl_hui='\e[37m'
@@ -5128,8 +5128,191 @@ disk_manager() {
 
 
 
+# 显示任务列表
+list_tasks() {
+	echo "已保存的同步任务:"
+	echo "---------------------------------"
+	awk -F'|' '{print NR " - " $1 " ( " $2 " -> " $3":"$4 " )"}' "$CONFIG_FILE"
+	echo "---------------------------------"
+}
+
+# 添加新任务
+add_task() {
+	send_stats "添加新同步任务"
+	echo "创建新同步任务示例："
+	echo "  - 任务名称: backup_www"
+	echo "  - 本地目录: /var/www"
+	echo "  - 远程地址: user@192.168.1.100"
+	echo "  - 远程目录: /backup/www"
+	echo "  - 端口号 (默认 22)"
+	echo "---------------------------------"
+	read -e -p "请输入任务名称: " name
+	read -e -p "请输入本地目录: " local_path
+	read -e -p "请输入远程用户@IP: " remote
+	read -e -p "请输入远程目录: " remote_path
+	read -e -p "请输入 SSH 端口 (默认 22): " port
+	port=${port:-22}
+
+	echo "请选择身份验证方式:"
+	echo "1. 密码"
+	echo "2. 密钥"
+	read -e -p "请选择 (1/2): " auth_choice
+
+	case $auth_choice in
+		1)
+			read -s -p "请输入密码: " password_or_key
+			echo  # 换行
+			auth_method="password"
+			;;
+		2)
+			echo "请粘贴密钥内容 (粘贴完成后按两次回车)："
+			local password_or_key=""
+			while IFS= read -r line; do
+				# 如果输入为空行且密钥内容已经包含了开头，则结束输入
+				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
+					break
+				fi
+				# 如果是第一行或已经开始输入密钥内容，则继续添加
+				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
+					password_or_key+="${line}"$'\n'
+				fi
+			done
+
+			# 检查是否是密钥内容
+			if [[ "$password_or_key" == *"-----BEGIN"* && "$password_or_key" == *"PRIVATE KEY-----"* ]]; then
+				local key_file="$KEY_DIR/${name}_sync.key"
+				echo -n "$password_or_key" > "$key_file"
+				chmod 600 "$key_file"
+				password_or_key="$key_file"
+				auth_method="key"
+			else
+				echo "无效的密钥内容！"
+				return
+			fi
+			;;
+		*)
+			echo "无效的选择！"
+			return
+			;;
+	esac
+
+	echo "请选择同步模式:"
+	echo "1. 标准模式 (-avz)"
+	echo "2. 删除目标文件 (-avz --delete)"
+	read -e -p "请选择 (1/2): " mode
+	case $mode in
+		1) options="-avz" ;;
+		2) options="-avz --delete" ;;
+		*) echo "无效选择，使用默认 -avz"; options="-avz" ;;
+	esac
+
+	echo "$name|$local_path|$remote|$remote_path|$port|$options|$auth_method|$password_or_key" >> "$CONFIG_FILE"
+
+	install rsync rsync
+
+	echo "任务已保存!"
+}
+
+# 删除任务
+delete_task() {
+	send_stats "删除同步任务"
+	read -e -p "请输入要删除的任务编号: " num
+
+	local task=$(sed -n "${num}p" "$CONFIG_FILE")
+	if [[ -z "$task" ]]; then
+		echo "错误：未找到对应的任务。"
+		return
+	fi
+
+	IFS='|' read -r name local_path remote remote_path port options auth_method password_or_key <<< "$task"
+
+	# 如果任务使用的是密钥文件，则删除该密钥文件
+	if [[ "$auth_method" == "key" && "$password_or_key" == "$KEY_DIR"* ]]; then
+		rm -f "$password_or_key"
+	fi
+
+	sed -i "${num}d" "$CONFIG_FILE"
+	echo "任务已删除!"
+}
+
+# 执行任务
+run_task() {
+	send_stats "执行同步任务"
+	read -e -p "请输入要执行的任务编号: " num
+
+	local task=$(sed -n "${num}p" "$CONFIG_FILE")
+	if [[ -z "$task" ]]; then
+		echo "错误: 未找到该任务!"
+		return
+	fi
+
+	IFS='|' read -r name local_path remote remote_path port options auth_method password_or_key <<< "$task"
+
+	echo "正在执行同步: $local_path -> $remote:$remote_path"
+
+	# 添加 SSH 连接通用参数
+	local ssh_options="-p $port -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+
+	if [[ "$auth_method" == "password" ]]; then
+		if ! command -v sshpass &> /dev/null; then
+			echo "错误：未安装 sshpass，请先安装 sshpass。"
+			echo "安装方法："
+			echo "  - Ubuntu/Debian: apt install sshpass"
+			echo "  - CentOS/RHEL: yum install sshpass"
+			return
+		fi
+		sshpass -p "$password_or_key" rsync $options -e "ssh $ssh_options" "$local_path" "$remote:$remote_path"
+	else
+		# 检查密钥文件是否存在和权限是否正确
+		if [[ ! -f "$password_or_key" ]]; then
+			echo "错误：密钥文件不存在：$password_or_key"
+			return
+		fi
+
+		if [[ "$(stat -c %a "$password_or_key")" != "600" ]]; then
+			echo "警告：密钥文件权限不正确，正在修复..."
+			chmod 600 "$password_or_key"
+		fi
+
+		rsync $options -e "ssh -i $password_or_key $ssh_options" "$local_path" "$remote:$remote_path"
+	fi
+
+	if [[ $? -eq 0 ]]; then
+		echo "同步完成!"
+	else
+		echo "同步失败! 请检查以下内容："
+		echo "1. 网络连接是否正常"
+		echo "2. 远程主机是否可访问"
+		echo "3. 认证信息是否正确"
+		echo "4. 本地和远程目录是否有正确的访问权限"
+	fi
+}
 
 
+# 任务管理主菜单
+rsync_manager() {
+	CONFIG_FILE="$HOME/.rsync_tasks"
+	CRON_FILE="$HOME/.rsync_cron"
+	while true; do
+		clear
+		echo "Rsync 远程同步工具"
+		echo "---------------------------------"
+		list_tasks
+		echo "1. 创建新任务    2. 执行任务    3. 删除任务"
+		echo "---------------------------------"
+		echo "0. 退出"
+		echo "---------------------------------"
+		read -e -p "请输入你的选择: " choice
+		case $choice in
+			1) add_task ;;
+			2) run_task ;;
+			3) delete_task ;;
+			0) break ;;
+			*) echo "无效的选择，请重试。" ;;
+		esac
+		read -p "按回车键继续..."
+	done
+}
 
 
 
@@ -8981,7 +9164,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行美化工具 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${gl_bai}设置系统回收站                     ${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
 	  echo -e "${gl_kjlan}35.  ${gl_bai}ssh远程连接工具                    ${gl_kjlan}36.  ${gl_bai}硬盘分区管理工具"
-	  echo -e "${gl_kjlan}37.  ${gl_bai}命令行历史记录"
+	  echo -e "${gl_kjlan}37.  ${gl_bai}命令行历史记录                     ${gl_kjlan}38.  ${gl_bai}rsync远程同步工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}99.  ${gl_bai}重启服务器                         ${gl_kjlan}100. ${gl_bai}隐私与安全"
@@ -9957,6 +10140,12 @@ EOF
 
 			  history_file=$(get_history_file) && cat -n "$history_file"
 			  ;;
+
+		  38)
+			  rsync_manager
+			  ;;
+
+
 		  41)
 			clear
 			send_stats "留言板"
@@ -10742,6 +10931,7 @@ echo "设置虚拟时区        k time Asia/Shanghai | k 时区 Asia/Shanghai"
 echo "系统回收站          k trash | k hsz | k 回收站"
 echo "系统备份功能        k backup | k bf | k 备份"
 echo "ssh远程连接工具     k ssh | k 远程连接"
+echo "rsync远程同步工具   k rsync | k 远程同步"
 echo "硬盘管理工具        k disk | k 硬盘管理"
 echo "内网穿透（服务端）  k frps"
 echo "内网穿透（客户端）  k frpc"
@@ -10809,6 +10999,10 @@ else
 			;;
 		ssh|远程连接)
 			ssh_manager
+			;;
+
+		rsync|远程同步)
+			rsync_manager
 			;;
 
 		disk|硬盘管理)
