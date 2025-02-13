@@ -137,8 +137,8 @@ CheckFirstRun_false
 
 ip_address() {
 
-ipv4_address=$(curl -s -4 icanhazip.com)
-ipv6_address=$(curl -s -6 --max-time 1 icanhazip.com)
+ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
+ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
 
 }
 
@@ -7906,7 +7906,7 @@ linux_panel() {
 
 			docker_app_update() {
 				cd /home/docker/cloud/ && docker compose down --rmi all
-				cd /home/docker/cloud/ && docker compose up -d			
+				cd /home/docker/cloud/ && docker compose up -d
 			}
 
 
@@ -8736,7 +8736,7 @@ linux_panel() {
 				cd  /home/docker/dify/
 				git pull origin main
 				sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
-				cd  /home/docker/dify/docker/ && docker compose up -d				
+				cd  /home/docker/dify/docker/ && docker compose up -d
 			}
 
 			docker_app_uninstall() {
