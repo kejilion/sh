@@ -5149,8 +5149,8 @@ add_task() {
 	echo "---------------------------------"
 	read -e -p "请输入任务名称: " name
 	read -e -p "请输入本地目录: " local_path
-	read -e -p "请输入远程用户@IP: " remote
 	read -e -p "请输入远程目录: " remote_path
+	read -e -p "请输入远程用户@IP: " remote
 	read -e -p "请输入 SSH 端口 (默认 22): " port
 	port=${port:-22}
 
