@@ -10650,6 +10650,8 @@ cluster_python3() {
 
 run_commands_on_servers() {
 
+	install sshpass
+
 	local SERVERS_FILE="$HOME/cluster/servers.py"
 	local SERVERS=$(grep -oP '{"name": "\K[^"]+|"hostname": "\K[^"]+|"port": \K[^,]+|"username": "\K[^"]+|"password": "\K[^"]+' "$SERVERS_FILE")
 
