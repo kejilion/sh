@@ -12,7 +12,6 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-
 canshu="CN"
 permission_granted="false"
 ENABLE_STATS="true"
@@ -5236,10 +5235,21 @@ delete_task() {
 	echo "任务已删除!"
 }
 
+
+
 # 执行任务
 run_task() {
 	send_stats "执行同步任务"
-	read -e -p "请输入要执行的任务编号: " num
+
+	CONFIG_FILE="$HOME/.rsync_tasks"
+	CRON_FILE="$HOME/.rsync_cron"
+
+	# 兼容参数调用，如果有参数则直接使用，否则提示输入
+	if [[ -n "$1" ]]; then
+		num="$1"
+	else
+		read -e -p "请输入要执行的任务编号: " num
+	fi
 
 	local task=$(sed -n "${num}p" "$CONFIG_FILE")
 	if [[ -z "$task" ]]; then
@@ -5290,17 +5300,80 @@ run_task() {
 }
 
 
+# 添加定时任务
+schedule_task() {
+	echo "=== 任务定时同步设置 ==="
+
+	read -e -p "请输入要定时同步的任务编号: " num
+	if ! [[ "$num" =~ ^[0-9]+$ ]]; then
+		echo "错误: 请输入有效的任务编号！"
+		return
+	fi
+
+	echo "请选择定时执行间隔："
+	echo "1) 每小时第十分钟执行一次"
+	echo "2) 每天0点执行一次"
+	echo "3) 每周一执行一次"
+	read -e -p "请输入选项 (1/2/3): " interval
+
+	local cron_time=""
+	case "$interval" in
+		1) cron_time="10 * * * *" ;;  # 每小时
+		2) cron_time="10 0 * * *" ;;  # 每天
+		3) cron_time="10 0 * * 1" ;;  # 每周
+		*) echo "错误: 请输入有效的选项！" ; return ;;
+	esac
+
+	local cron_job="$cron_time k rsync_run $num"
+
+	# 检查是否已存在相同任务
+	if crontab -l | grep -q "k rsync_run $num"; then
+		echo "错误: 该任务的定时同步已存在！"
+		return
+	fi
+
+	# 添加到用户的 crontab
+	(crontab -l 2>/dev/null; echo "$cron_job") | crontab -
+	echo "定时任务已添加: $cron_job"
+}
+
+# 查看定时任务
+view_tasks() {
+	echo "当前的定时任务:"
+	echo "---------------------------------"
+	crontab -l | grep "k rsync_run"
+	echo "---------------------------------"
+}
+
+# 删除定时任务
+delete_task_schedule() {
+	read -e -p "请输入要删除的任务编号: " num
+	if ! [[ "$num" =~ ^[0-9]+$ ]]; then
+		echo "错误: 请输入有效的任务编号！"
+		return
+	fi
+
+	crontab -l | grep -v "k rsync_run $num" | crontab -
+	echo "已删除任务编号 $num 的定时任务"
+}
+
+
 # 任务管理主菜单
 rsync_manager() {
 	CONFIG_FILE="$HOME/.rsync_tasks"
 	CRON_FILE="$HOME/.rsync_cron"
+
 	while true; do
 		clear
 		echo "Rsync 远程同步工具"
 		echo "远程目录之间同步，支持增量同步，高效稳定。"
 		echo "---------------------------------"
 		list_tasks
-		echo "1. 创建新任务    2. 执行任务    3. 删除任务"
+		echo
+		view_tasks
+		echo
+		echo "1. 创建新任务         2. 执行任务         3. 删除任务"
+		echo "4. 设定定时任务       5. 删除定时任务"
 		echo "---------------------------------"
 		echo "0. 返回上一级选单"
 		echo "---------------------------------"
@@ -5309,22 +5382,14 @@ rsync_manager() {
 			1) add_task ;;
 			2) run_task ;;
 			3) delete_task ;;
+			4) schedule_task ;;
+			5) delete_task_schedule ;;
 			0) break ;;
 			*) echo "无效的选择，请重试。" ;;
 		esac
 		read -p "按回车键继续..."
 	done
 }
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -11021,6 +11086,12 @@ else
 
 		rsync|远程同步)
 			rsync_manager
+			;;
+
+		rsync_run)
+			shift
+			send_stats "定时rsync同步"
+			run_task "$@"
 			;;
 
 		disk|硬盘管理)
