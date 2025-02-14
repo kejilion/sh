@@ -5300,7 +5300,7 @@ run_task() {
 }
 
 
-# 添加定时任务
+# 创建定时任务
 schedule_task() {
 
 	read -e -p "请输入要定时同步的任务编号: " num
@@ -5333,9 +5333,9 @@ schedule_task() {
 		return
 	fi
 
-	# 添加到用户的 crontab
+	# 创建到用户的 crontab
 	(crontab -l 2>/dev/null; echo "$cron_job") | crontab -
-	echo "定时任务已添加: $cron_job"
+	echo "定时任务已创建: $cron_job"
 }
 
 # 查看定时任务
@@ -5374,7 +5374,7 @@ rsync_manager() {
 		view_tasks
 		echo
 		echo "1. 创建新任务         2. 执行任务         3. 删除任务"
-		echo "4. 添加定时任务       5. 删除定时任务"
+		echo "4. 创建定时任务       5. 删除定时任务"
 		echo "---------------------------------"
 		echo "0. 返回上一级选单"
 		echo "---------------------------------"
