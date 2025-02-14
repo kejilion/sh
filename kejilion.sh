@@ -5302,7 +5302,6 @@ run_task() {
 
 # 添加定时任务
 schedule_task() {
-	echo "=== 任务定时同步设置 ==="
 
 	read -e -p "请输入要定时同步的任务编号: " num
 	if ! [[ "$num" =~ ^[0-9]+$ ]]; then
@@ -5311,19 +5310,21 @@ schedule_task() {
 	fi
 
 	echo "请选择定时执行间隔："
-	echo "1) 每小时第十分钟执行一次"
-	echo "2) 每天0点执行一次"
-	echo "3) 每周一执行一次"
+	echo "1) 每小时执行一次"
+	echo "2) 每天执行一次"
+	echo "3) 每周执行一次"
 	read -e -p "请输入选项 (1/2/3): " interval
 
+	local random_minute=$(shuf -i 0-59 -n 1)  # 生成 0-59 之间的随机分钟数
 	local cron_time=""
 	case "$interval" in
-		1) cron_time="10 * * * *" ;;  # 每小时
-		2) cron_time="10 0 * * *" ;;  # 每天
-		3) cron_time="10 0 * * 1" ;;  # 每周
+		1) cron_time="$random_minute * * * *" ;;  # 每小时，随机分钟执行
+		2) cron_time="$random_minute 0 * * *" ;;  # 每天，随机分钟执行
+		3) cron_time="$random_minute 0 * * 1" ;;  # 每周，随机分钟执行
 		*) echo "错误: 请输入有效的选项！" ; return ;;
 	esac
 
+	local cron_job="$cron_time k rsync_run $num"
 	local cron_job="$cron_time k rsync_run $num"
 
 	# 检查是否已存在相同任务
@@ -5373,7 +5374,7 @@ rsync_manager() {
 		view_tasks
 		echo
 		echo "1. 创建新任务         2. 执行任务         3. 删除任务"
-		echo "4. 设定定时任务       5. 删除定时任务"
+		echo "4. 添加定时任务       5. 删除定时任务"
 		echo "---------------------------------"
 		echo "0. 返回上一级选单"
 		echo "---------------------------------"
