@@ -5302,6 +5302,7 @@ run_task() {
 
 # 创建定时任务
 schedule_task() {
+	send_stats "添加同步定时任务"
 
 	read -e -p "请输入要定时同步的任务编号: " num
 	if ! [[ "$num" =~ ^[0-9]+$ ]]; then
@@ -5348,6 +5349,7 @@ view_tasks() {
 
 # 删除定时任务
 delete_task_schedule() {
+	send_stats "删除同步定时任务"
 	read -e -p "请输入要删除的任务编号: " num
 	if ! [[ "$num" =~ ^[0-9]+$ ]]; then
 		echo "错误: 请输入有效的任务编号！"
