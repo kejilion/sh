@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.7.9"
+sh_v="3.7.10"
 
 
 gl_hui='\e[37m'
@@ -5236,18 +5236,25 @@ delete_task() {
 }
 
 
-
-# 执行任务
 run_task() {
 	send_stats "执行同步任务"
 
 	CONFIG_FILE="$HOME/.rsync_tasks"
 	CRON_FILE="$HOME/.rsync_cron"
 
-	# 兼容参数调用，如果有参数则直接使用，否则提示输入
-	if [[ -n "$1" ]]; then
-		num="$1"
+	# 解析参数
+	local direction="push"  # 默认是推送到远端
+	local num
+
+	if [[ "$1" == "push" || "$1" == "pull" ]]; then
+		direction="$1"
+		num="$2"
 	else
+		num="$1"
+	fi
+
+	# 如果没有传入任务编号，提示用户输入
+	if [[ -z "$num" ]]; then
 		read -e -p "请输入要执行的任务编号: " num
 	fi
 
@@ -5259,7 +5266,16 @@ run_task() {
 
 	IFS='|' read -r name local_path remote remote_path port options auth_method password_or_key <<< "$task"
 
-	echo "正在执行同步: $local_path -> $remote:$remote_path"
+	# 根据同步方向调整源和目标路径
+	if [[ "$direction" == "pull" ]]; then
+		echo "正在拉取同步到本地: $remote:$local_path -> $remote_path"
+		source="$remote:$local_path"
+		destination="$remote_path"
+	else
+		echo "正在推送同步到远端: $local_path -> $remote:$remote_path"
+		source="$local_path"
+		destination="$remote:$remote_path"
+	fi
 
 	# 添加 SSH 连接通用参数
 	local ssh_options="-p $port -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
@@ -5272,7 +5288,7 @@ run_task() {
 			echo "  - CentOS/RHEL: yum install sshpass"
 			return
 		fi
-		sshpass -p "$password_or_key" rsync $options -e "ssh $ssh_options" "$local_path" "$remote:$remote_path"
+		sshpass -p "$password_or_key" rsync $options -e "ssh $ssh_options" "$source" "$destination"
 	else
 		# 检查密钥文件是否存在和权限是否正确
 		if [[ ! -f "$password_or_key" ]]; then
@@ -5285,7 +5301,7 @@ run_task() {
 			chmod 600 "$password_or_key"
 		fi
 
-		rsync $options -e "ssh -i $password_or_key $ssh_options" "$local_path" "$remote:$remote_path"
+		rsync $options -e "ssh -i $password_or_key $ssh_options" "$source" "$destination"
 	fi
 
 	if [[ $? -eq 0 ]]; then
@@ -5375,18 +5391,20 @@ rsync_manager() {
 		echo
 		view_tasks
 		echo
-		echo "1. 创建新任务         2. 执行任务         3. 删除任务"
-		echo "4. 创建定时任务       5. 删除定时任务"
+		echo "1. 创建新任务                 2. 删除任务"
+		echo "3. 执行本地同步到远端         4. 执行远端同步到本地"
+		echo "5. 创建定时任务               6. 删除定时任务"
 		echo "---------------------------------"
 		echo "0. 返回上一级选单"
 		echo "---------------------------------"
 		read -e -p "请输入你的选择: " choice
 		case $choice in
 			1) add_task ;;
-			2) run_task ;;
-			3) delete_task ;;
-			4) schedule_task ;;
-			5) delete_task_schedule ;;
+			2) delete_task ;;
+			3) run_task push;;
+			4) run_task pull;;
+			5) schedule_task ;;
+			6) delete_task_schedule ;;
 			0) break ;;
 			*) echo "无效的选择，请重试。" ;;
 		esac
