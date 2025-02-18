@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
