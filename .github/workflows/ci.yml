@@ -1,0 +1,33 @@
+name: Test Shell Script Syntax
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-shell-scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Find Modified .sh Scripts
+        id: find_scripts
+        run: |
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep '\.sh$' || true)
+          echo "Changed shell scripts: $CHANGED_FILES"
+          echo "scripts=$CHANGED_FILES" >> $GITHUB_ENV
+
+      - name: Run ShellCheck on Modified Scripts
+        if: env.scripts != ''
+        run: |
+          sudo apt update
+          sudo apt install -y shellcheck
+          for script in ${{ env.scripts }}; do
+            echo "Running ShellCheck on $script..."
+            shellcheck "$script"
+          done
