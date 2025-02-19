@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置OpenSSH的版本号
-OPENSSH_VERSION="9.9p1"
+OPENSSH_VERSION="9.9p2"
 
 
 # 检测系统类型
@@ -118,7 +118,7 @@ check_openssh_version() {
 
     # 版本范围
     min_version=8.5
-    max_version=9.7
+    max_version=9.8
 
     if awk -v ver="$current_version" -v min="$min_version" -v max="$max_version" 'BEGIN{if(ver>=min && ver<=max) exit 0; else exit 1}'; then
       check_openssh_test
