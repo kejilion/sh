@@ -15,19 +15,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      - name: Find Modified .sh Scripts
-        id: find_scripts
-        run: |
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD | grep '\.sh$' || true)
-          echo "Changed shell scripts: $CHANGED_FILES"
-          echo "scripts=$CHANGED_FILES" >> $GITHUB_ENV
-
-      - name: Run ShellCheck on Modified Scripts
-        if: env.scripts != ''
+      - name: Install ShellCheck
         run: |
           sudo apt update
           sudo apt install -y shellcheck
-          for script in ${{ env.scripts }}; do
+
+      - name: Run ShellCheck on All .sh Scripts
+        run: |
+          find . -type f -name "*.sh" | while read script; do
             echo "Running ShellCheck on $script..."
             shellcheck "$script"
           done
