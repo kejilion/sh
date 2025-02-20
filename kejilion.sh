@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.7.10"
+sh_v="3.8.0"
 
 
 gl_hui='\e[37m'
@@ -2290,26 +2290,26 @@ server_reboot() {
 }
 
 output_status() {
-    output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
-        # 匹配常见的公网网卡命名: eth*, ens*, enp*, eno*
-        $1 ~ /^(eth|ens|enp|eno)[0-9]+/ {
-            rx_total += $2
-            tx_total += $10
-        }
-        END {
-            rx_units = "Bytes";
-            tx_units = "Bytes";
-            if (rx_total > 1024) { rx_total /= 1024; rx_units = "KB"; }
-            if (rx_total > 1024) { rx_total /= 1024; rx_units = "MB"; }
-            if (rx_total > 1024) { rx_total /= 1024; rx_units = "GB"; }
+	output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
+		# 匹配常见的公网网卡命名: eth*, ens*, enp*, eno*
+		$1 ~ /^(eth|ens|enp|eno)[0-9]+/ {
+			rx_total += $2
+			tx_total += $10
+		}
+		END {
+			rx_units = "Bytes";
+			tx_units = "Bytes";
+			if (rx_total > 1024) { rx_total /= 1024; rx_units = "KB"; }
+			if (rx_total > 1024) { rx_total /= 1024; rx_units = "MB"; }
+			if (rx_total > 1024) { rx_total /= 1024; rx_units = "GB"; }
 
-            if (tx_total > 1024) { tx_total /= 1024; tx_units = "KB"; }
-            if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
-            if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
+			if (tx_total > 1024) { tx_total /= 1024; tx_units = "KB"; }
+			if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
+			if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
 
-            printf("总接收:       %.2f %s\n总发送:       %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
-        }' /proc/net/dev)
-    # echo "$output"
+			printf("总接收:       %.2f %s\n总发送:       %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
+		}' /proc/net/dev)
+	# echo "$output"
 }
 
 
