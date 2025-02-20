@@ -43,19 +43,21 @@ get_disk_usage() {
     df / | awk 'NR==2 {print $5}' | sed 's/%//'
 }
 
-# 获取总的接收流量（字节数）
+# 获取总的接收流量（以 GB 为单位）
 get_rx_bytes() {
     awk 'BEGIN { rx_total = 0 }
-        NR > 2 { rx_total += $2 }
+        # 匹配常见的公网网卡命名: eth*, ens*, enp*, eno*
+        $1 ~ /^(eth|ens|enp|eno)[0-9]+/ { rx_total += $2 }
         END {
             printf("%.2f", rx_total / (1024 * 1024 * 1024));
         }' /proc/net/dev
 }
 
-# 获取总的发送流量（字节数）
+# 获取总的发送流量（以 GB 为单位）
 get_tx_bytes() {
     awk 'BEGIN { tx_total = 0 }
-        NR > 2 { tx_total += $10 }
+        # 匹配常见的公网网卡命名: eth*, ens*, enp*, eno*
+        $1 ~ /^(eth|ens|enp|eno)[0-9]+/ { tx_total += $10 }
         END {
             printf("%.2f", tx_total / (1024 * 1024 * 1024));
         }' /proc/net/dev
