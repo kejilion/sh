@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.0"
+sh_v="3.8.1"
 
 
 gl_hui='\e[37m'
@@ -3590,11 +3590,11 @@ dd_xitong() {
 			echo "23. Alma Linux 9              24. Alma Linux 8"
 			echo "25. oracle Linux 9            26. oracle Linux 8"
 			echo "27. Fedora Linux 41           28. Fedora Linux 40"
-			echo "29. CentOS 7"
+			echo "29. CentOS 10                 30. CentOS 9"
 			echo "------------------------"
 			echo "31. Alpine Linux              32. Arch Linux"
 			echo "33. Kali Linux                34. openEuler"
-			echo "35. openSUSE Tumbleweed"
+			echo "35. openSUSE Tumbleweed       36. 飞牛 fnos"
 			echo "------------------------"
 			echo "41. Windows 11                42. Windows 10"
 			echo "43. Windows 7                 44. Windows Server 2022"
@@ -3728,9 +3728,17 @@ dd_xitong() {
 				;;
 
 			  29)
-				send_stats "重装centos 7"
-				dd_xitong_1
-				bash InstallNET.sh -centos 7
+				send_stats "重装centos10"
+				dd_xitong_3
+				bash reinstall.sh centos 10
+				reboot
+				exit
+				;;
+
+			  30)
+				send_stats "重装centos9"
+				dd_xitong_3
+				bash reinstall.sh centos 9
 				reboot
 				exit
 				;;
@@ -3774,6 +3782,15 @@ dd_xitong() {
 				reboot
 				exit
 				;;
+
+			  36)
+				send_stats "重装飞牛"
+				dd_xitong_3
+				bash reinstall.sh fnos
+				reboot
+				exit
+				;;
+
 
 			  41)
 				send_stats "重装windows11"
