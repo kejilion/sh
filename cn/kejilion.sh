@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.1"
+sh_v="3.8.2"
 
 
 gl_hui='\e[37m'
@@ -195,8 +195,8 @@ check_disk_space() {
 
 	if [ $available_space_mb -lt $required_space_mb ]; then
 		echo -e "${gl_huang}提示: ${gl_bai}磁盘空间不足！"
-		echo "当前可用空间: $((available_space_mb/1024))GB"
-		echo "最小需求空间: ${required_gb}GB"
+		echo "当前可用空间: $((available_space_mb/1024))G"
+		echo "最小需求空间: ${required_gb}G"
 		echo "无法继续安装，请清理磁盘空间后重试。"
 		send_stats "磁盘空间不足"
 		break_end
@@ -1121,7 +1121,7 @@ add_swap() {
 		rc-update add local
 	fi
 
-	echo -e "虚拟内存大小已调整为${gl_huang}${new_swap}${gl_bai}MB"
+	echo -e "虚拟内存大小已调整为${gl_huang}${new_swap}${gl_bai}M"
 }
 
 
@@ -2299,13 +2299,13 @@ output_status() {
 		END {
 			rx_units = "Bytes";
 			tx_units = "Bytes";
-			if (rx_total > 1024) { rx_total /= 1024; rx_units = "KB"; }
-			if (rx_total > 1024) { rx_total /= 1024; rx_units = "MB"; }
-			if (rx_total > 1024) { rx_total /= 1024; rx_units = "GB"; }
+			if (rx_total > 1024) { rx_total /= 1024; rx_units = "K"; }
+			if (rx_total > 1024) { rx_total /= 1024; rx_units = "M"; }
+			if (rx_total > 1024) { rx_total /= 1024; rx_units = "G"; }
 
-			if (tx_total > 1024) { tx_total /= 1024; tx_units = "KB"; }
-			if (tx_total > 1024) { tx_total /= 1024; tx_units = "MB"; }
-			if (tx_total > 1024) { tx_total /= 1024; tx_units = "GB"; }
+			if (tx_total > 1024) { tx_total /= 1024; tx_units = "K"; }
+			if (tx_total > 1024) { tx_total /= 1024; tx_units = "M"; }
+			if (tx_total > 1024) { tx_total /= 1024; tx_units = "G"; }
 
 			printf("总接收:       %.2f %s\n总发送:       %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
 		}' /proc/net/dev)
@@ -5458,7 +5458,7 @@ linux_ps() {
 
 	local cpu_freq=$(cat /proc/cpuinfo | grep "MHz" | head -n 1 | awk '{printf "%.1f GHz\n", $4/1000}')
 
-	local mem_info=$(free -b | awk 'NR==2{printf "%.2f/%.2f MB (%.2f%%)", $3/1024/1024, $2/1024/1024, $3*100/$2}')
+	local mem_info=$(free -b | awk 'NR==2{printf "%.2f/%.2f M (%.2f%%)", $3/1024/1024, $2/1024/1024, $3*100/$2}')
 
 	local disk_info=$(df -h | awk '$NF=="/"{printf "%s/%s (%s)", $3, $2, $5}')
 
@@ -5487,7 +5487,7 @@ linux_ps() {
 	local current_time=$(date "+%Y-%m-%d %I:%M %p")
 
 
-	local swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dMB/%dMB (%d%%)", used, total, percentage}')
+	local swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dM/%dM (%d%%)", used, total, percentage}')
 
 	local runtime=$(cat /proc/uptime | awk -F. '{run_days=int($1 / 86400);run_hours=int(($1 % 86400) / 3600);run_minutes=int(($1 % 3600) / 60); if (run_days > 0) printf("%d天 ", run_days); if (run_hours > 0) printf("%d时 ", run_hours); printf("%d分\n", run_minutes)}')
 
@@ -9540,11 +9540,11 @@ EOF
 				echo "设置虚拟内存"
 				local swap_used=$(free -m | awk 'NR==3{print $3}')
 				local swap_total=$(free -m | awk 'NR==3{print $2}')
-				local swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dMB/%dMB (%d%%)", used, total, percentage}')
+				local swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dM/%dM (%d%%)", used, total, percentage}')
 
 				echo -e "当前虚拟内存: ${gl_huang}$swap_info${gl_bai}"
 				echo "------------------------"
-				echo "1. 分配1024MB         2. 分配2048MB         3. 分配4096MB         4. 自定义大小"
+				echo "1. 分配1024M         2. 分配2048M         3. 分配4096M         4. 自定义大小"
 				echo "------------------------"
 				echo "0. 返回上一级选单"
 				echo "------------------------"
@@ -9568,7 +9568,7 @@ EOF
 					;;
 
 				  4)
-					read -e -p "请输入虚拟内存大小MB: " new_swap
+					read -e -p "请输入虚拟内存大小（单位M）: " new_swap
 					add_swap "$new_swap"
 					send_stats "已设置自定义虚拟内存"
 					;;
@@ -10046,7 +10046,7 @@ EOF
 					# 获取 threshold_gb 的值
 					local rx_threshold_gb=$(grep -oP 'rx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
 					local tx_threshold_gb=$(grep -oP 'tx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
-					echo -e "${gl_lv}当前设置的进站限流阈值为: ${gl_huang}${rx_threshold_gb}${gl_lv}GB${gl_bai}"
+					echo -e "${gl_lv}当前设置的进站限流阈值为: ${gl_huang}${rx_threshold_gb}${gl_lv}G${gl_bai}"
 					echo -e "${gl_lv}当前设置的出站限流阈值为: ${gl_huang}${tx_threshold_gb}${gl_lv}GB${gl_bai}"
 				else
 					echo -e "${gl_hui}当前未启用限流关机功能${gl_bai}"
@@ -10066,9 +10066,9 @@ EOF
 				  1)
 					# 输入新的虚拟内存大小
 					echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出。"
-					read -e -p "请输入进站流量阈值（单位为GB，默认100G）: " rx_threshold_gb
+					read -e -p "请输入进站流量阈值（单位为G，默认100G）: " rx_threshold_gb
 					rx_threshold_gb=${rx_threshold_gb:-100}
-					read -e -p "请输入出站流量阈值（单位为GB，默认100G）: " tx_threshold_gb
+					read -e -p "请输入出站流量阈值（单位为G，默认100G）: " tx_threshold_gb
 					tx_threshold_gb=${tx_threshold_gb:-100}
 					read -e -p "请输入流量重置日期（默认每月1日重置）: " cz_day
 					cz_day=${cz_day:-1}
