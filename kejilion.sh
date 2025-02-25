@@ -2307,7 +2307,7 @@ output_status() {
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "M"; }
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "G"; }
 
-			printf("总接收:       %.2f %s\n总发送:       %.2f %s\n", rx_total,rx_units, tx_total,tx_units);
+			printf("总接收:       %.2f%s\n总发送:       %.2f%s\n", rx_total, rx_units, tx_total, tx_units);
 		}' /proc/net/dev)
 	# echo "$output"
 }
