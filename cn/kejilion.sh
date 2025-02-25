@@ -2307,7 +2307,7 @@ output_status() {
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "M"; }
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "G"; }
 
-			printf("总接收:       %.2f %s\n总发送:       %.2f %s\n", rx_total, rx_units, tx_total, tx_units);
+			printf("总接收:       %.2f %s\n总发送:       %.2f %s\n", rx_total,rx_units, tx_total,tx_units);
 		}' /proc/net/dev)
 	# echo "$output"
 }
@@ -5458,7 +5458,7 @@ linux_ps() {
 
 	local cpu_freq=$(cat /proc/cpuinfo | grep "MHz" | head -n 1 | awk '{printf "%.1f GHz\n", $4/1000}')
 
-	local mem_info=$(free -b | awk 'NR==2{printf "%.2f/%.2f M (%.2f%%)", $3/1024/1024, $2/1024/1024, $3*100/$2}')
+	local mem_info=$(free -b | awk 'NR==2{printf "%.2f/%.2fM (%.2f%%)", $3/1024/1024, $2/1024/1024, $3*100/$2}')
 
 	local disk_info=$(df -h | awk '$NF=="/"{printf "%s/%s (%s)", $3, $2, $5}')
 
