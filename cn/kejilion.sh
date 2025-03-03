@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.2"
+sh_v="3.8.3"
 
 
 gl_hui='\e[37m'
@@ -7723,6 +7723,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}53.  ${gl_bai}llama3聊天AI大模型                  ${gl_kjlan}54.  ${gl_bai}AMH主机建站管理面板"
 	  echo -e "${gl_kjlan}55.  ${gl_bai}FRP内网穿透(服务端)		 ${gl_kjlan}56.  ${gl_bai}FRP内网穿透(客户端)"
 	  echo -e "${gl_kjlan}57.  ${gl_bai}Deepseek聊天AI大模型                ${gl_kjlan}58.  ${gl_bai}Dify大模型知识库"
+	  echo -e "${gl_kjlan}59.  ${gl_bai}NewAPI大模型资产管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9035,6 +9036,51 @@ linux_panel() {
 			docker_app_uninstall() {
 				cd  /home/docker/dify/docker/ && docker compose down --rmi all
 				rm -rf /home/docker/dify
+				echo "应用已卸载"
+			}
+
+			docker_app_plus
+
+			  ;;
+
+		  59)
+			local app_name="New API"
+			local app_text="新一代大模型网关与AI资产管理系统"
+			local app_url="官方网站: https://github.com/Calcium-Ion/new-api"
+			local docker_name="new-api"
+			local docker_port="8059"
+			local app_size="3"
+
+			docker_app_install() {
+				install git
+				mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/Calcium-Ion/new-api.git && cd new-api
+				sed -i -e 's/- "3000:3000"/- "8059:3000"/g' \
+					   -e 's/container_name: redis/container_name: redis-new-api/g' \
+					   -e 's/container_name: mysql/container_name: mysql-new-api/g' docker-compose.yml
+
+				docker compose up -d
+				clear
+				echo "已经安装完成"
+				check_docker_app_ip
+			}
+
+			docker_app_update() {
+				cd  /home/docker/new-api/ && docker compose down --rmi all
+				cd  /home/docker/new-api/
+				git pull origin main
+				sed -i -e 's/- "3000:3000"/- "8059:3000"/g' \
+					   -e 's/container_name: redis/container_name: redis-new-api/g' \
+					   -e 's/container_name: mysql/container_name: mysql-new-api/g' docker-compose.yml
+				docker compose up -d
+				clear
+				echo "已经安装完成"
+				check_docker_app_ip
+
+			}
+
+			docker_app_uninstall() {
+				cd  /home/docker/new-api/ && docker compose down --rmi all
+				rm -rf /home/docker/new-api
 				echo "应用已卸载"
 			}
 
