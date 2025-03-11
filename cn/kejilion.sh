@@ -2747,11 +2747,18 @@ donlond_frp() {
 		echo "不支持当前CPU架构: $arch"
 	fi
 
-	# 解压 .tar.gz 文件
-	install tar
-	tar -zxvf frp_*.tar.gz
-	dir_name=$(tar -tzf frp_*.tar.gz | head -n 1 | cut -f 1 -d '/')
-	mv "$dir_name" frp_0.61.0_linux_amd64
+	# 找到最新下载的 frp 文件
+	latest_file=$(ls -t /home/frp/frp_*.tar.gz | head -n 1)
+
+	# 解压该文件
+	tar -zxvf "$latest_file"
+
+	# 获取解压后文件夹的名字
+	dir_name=$(tar -tzf "$latest_file" | head -n 1 | cut -f 1 -d '/')
+
+	# 重命名解压后的文件夹为统一的版本名
+	mv "$dir_name" "frp_0.61.0_linux_amd64"
+
 
 
 }
