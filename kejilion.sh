@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -9088,12 +9088,43 @@ linux_panel() {
 
 			  ;;
 
+
 		  60)
-			clear
-			send_stats "JumpServer开源堡垒机"
-			check_disk_space 2
-			install_docker
-			curl -sSL ${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh | bash
+
+			local app_name="JumpServer开源堡垒机"
+			local app_text="是一个开源的特权访问管理 (PAM) 工具，该程序占用80端口不支持添加域名访问了"
+			local app_url="官方介绍: https://github.com/jumpserver/jumpserver"
+			local docker_name="jms_web"
+			local docker_port="80"
+			local app_size="2"
+
+			docker_app_install() {
+				curl -sSL ${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh | bash
+				clear
+				echo "已经安装完成"
+				check_docker_app_ip
+				echo "初始用户名: admin"
+				echo "初始密码: ChangeMe"
+			}
+
+
+			docker_app_update() {
+				cd /opt/jumpserver-installer*/
+				./jmsctl.sh upgrade
+				echo "应用已更新"
+			}
+
+
+			docker_app_uninstall() {
+				cd /opt/jumpserver-installer*/
+				./jmsctl.sh uninstall
+				cd /opt
+				rm -rf jumpserver-installer*/
+				rm -rf jumpserver
+				echo "应用已卸载"
+			}
+
+			docker_app_plus
 			  ;;
 
 		  0)
