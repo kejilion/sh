@@ -3059,6 +3059,7 @@ frps_panel() {
 		case $choice in
 			1)
 				generate_frps_config
+				rm -rf /home/frp/*.tar.gz
 				echo "FRP服务端已经安装完成"
 				;;
 			2)
@@ -3069,6 +3070,7 @@ frps_panel() {
 				tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
 				crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 				(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
+				rm -rf /home/frp/*.tar.gz
 				echo "FRP服务端已经更新完成"
 				;;
 			3)
@@ -3145,6 +3147,7 @@ frpc_panel() {
 		case $choice in
 			1)
 				configure_frpc
+				rm -rf /home/frp/*.tar.gz
 				echo "FRP客户端已经安装完成"
 				;;
 			2)
@@ -3155,6 +3158,7 @@ frpc_panel() {
 				tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
 				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 				(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
+				rm -rf /home/frp/*.tar.gz
 				echo "FRP客户端已经更新完成"
 				;;
 
