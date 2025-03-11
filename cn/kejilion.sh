@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.3"
+sh_v="3.8.4"
 
 
 gl_hui='\e[37m'
@@ -7723,7 +7723,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}53.  ${gl_bai}llama3聊天AI大模型                  ${gl_kjlan}54.  ${gl_bai}AMH主机建站管理面板"
 	  echo -e "${gl_kjlan}55.  ${gl_bai}FRP内网穿透(服务端)		 ${gl_kjlan}56.  ${gl_bai}FRP内网穿透(客户端)"
 	  echo -e "${gl_kjlan}57.  ${gl_bai}Deepseek聊天AI大模型                ${gl_kjlan}58.  ${gl_bai}Dify大模型知识库"
-	  echo -e "${gl_kjlan}59.  ${gl_bai}NewAPI大模型资产管理"
+	  echo -e "${gl_kjlan}59.  ${gl_bai}NewAPI大模型资产管理                ${gl_kjlan}60.  ${gl_bai}JumpServer开源堡垒机"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9089,6 +9089,43 @@ linux_panel() {
 			  ;;
 
 
+		  60)
+
+			local app_name="JumpServer开源堡垒机"
+			local app_text="是一个开源的特权访问管理 (PAM) 工具，该程序占用80端口不支持添加域名访问了"
+			local app_url="官方介绍: https://github.com/jumpserver/jumpserver"
+			local docker_name="jms_web"
+			local docker_port="80"
+			local app_size="2"
+
+			docker_app_install() {
+				curl -sSL ${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh | bash
+				clear
+				echo "已经安装完成"
+				check_docker_app_ip
+				echo "初始用户名: admin"
+				echo "初始密码: ChangeMe"
+			}
+
+
+			docker_app_update() {
+				cd /opt/jumpserver-installer*/
+				./jmsctl.sh upgrade
+				echo "应用已更新"
+			}
+
+
+			docker_app_uninstall() {
+				cd /opt/jumpserver-installer*/
+				./jmsctl.sh uninstall
+				cd /opt
+				rm -rf jumpserver-installer*/
+				rm -rf jumpserver
+				echo "应用已卸载"
+			}
+
+			docker_app_plus
+			  ;;
 
 		  0)
 			  kejilion
