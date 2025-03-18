@@ -6149,6 +6149,8 @@ linux_test() {
 	  echo -e "${gl_kjlan}2.   ${gl_bai}Region 流媒体解锁测试"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}yeahwu 流媒体解锁检测"
 	  echo -e "${gl_kjlan}4.   ${gl_bai}xykt IP质量体检脚本 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}NetQuality 网络质量体检脚本 ${gl_huang}★${gl_bai}"
+
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}网络线路测速"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}besttrace 三网回程延迟路由测试"
@@ -6193,6 +6195,14 @@ linux_test() {
 			  send_stats "xykt_IP质量体检脚本"
 			  bash <(curl -Ls IP.Check.Place)
 			  ;;
+
+		  5)
+			  clear
+			  send_stats "网络质量测试脚本"
+			  bash <(curl -sL Net.Check.Place)
+			  ;;
+
+
 		  11)
 			  clear
 			  send_stats "besttrace三网回程延迟路由测试"
