@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.5"
+sh_v="3.8.6"
 
 
 gl_hui='\e[37m'
@@ -7863,6 +7863,8 @@ linux_panel() {
 	  echo -e "${gl_kjlan}57.  ${gl_bai}Deepseek聊天AI大模型                ${gl_kjlan}58.  ${gl_bai}Dify大模型知识库"
 	  echo -e "${gl_kjlan}59.  ${gl_bai}NewAPI大模型资产管理                ${gl_kjlan}60.  ${gl_bai}JumpServer开源堡垒机"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}61.  ${gl_bai}在线翻译服务器			 ${gl_kjlan}62.  ${gl_bai}RAGFlow大模型知识库"
+	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
@@ -9264,6 +9266,64 @@ linux_panel() {
 
 			docker_app_plus
 			  ;;
+
+		  61)
+			local docker_name="libretranslate"
+			local docker_img="libretranslate/libretranslate:latest"
+			local docker_port=8061
+			local docker_rum="docker run -d \
+  								-p 8061:5000 \
+  								--name libretranslate \
+  								libretranslate/libretranslate \
+  								--load-only ko,zt,zh,en,ja,pt,es,fr,de,ru"
+			local docker_describe="免费开源机器翻译 API，完全自托管，它的翻译引擎由开源Argos Translate库提供支持。"
+			local docker_url="官网介绍: https://github.com/LibreTranslate/LibreTranslate"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="2"
+			docker_app
+			  ;;
+
+
+
+		  62)
+			local app_name="RAGFlow知识库"
+			local app_text="基于深度文档理解的开源 RAG（检索增强生成）引擎"
+			local app_url="官方网站: https://github.com/infiniflow/ragflow"
+			local docker_name="ragflow-server"
+			local docker_port="8062"
+			local app_size="8"
+
+			docker_app_install() {
+				install git
+				mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/infiniflow/ragflow.git && cd ragflow/docker
+				sed -i 's/- 80:80/- 8062:80/; /- 443:443/d' docker-compose.yml
+				docker compose up -d
+				clear
+				echo "已经安装完成"
+				check_docker_app_ip
+			}
+
+			docker_app_update() {
+				cd  /home/docker/ragflow/docker/ && docker compose down --rmi all
+				cd  /home/docker/ragflow/
+				git pull origin main
+				sed -i 's/- 80:80/- 8062:80/; /- 443:443/d' docker-compose.yml
+				cd  /home/docker/ragflow/docker/ && docker compose up -d
+			}
+
+			docker_app_uninstall() {
+				cd  /home/docker/ragflow/docker/ && docker compose down --rmi all
+				rm -rf /home/docker/ragflow
+				echo "应用已卸载"
+			}
+
+			docker_app_plus
+
+			  ;;
+
+
+
 
 		  0)
 			  kejilion
