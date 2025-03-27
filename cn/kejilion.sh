@@ -9280,7 +9280,7 @@ linux_panel() {
 			local docker_url="官网介绍: https://github.com/LibreTranslate/LibreTranslate"
 			local docker_use=""
 			local docker_passwd=""
-			local app_size="2"
+			local app_size="5"
 			docker_app
 			  ;;
 
