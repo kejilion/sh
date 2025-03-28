@@ -11400,7 +11400,7 @@ else
 		nhyh)
 			Kernel_optimize
 			;;
-		trash|hsz|)
+		trash|hsz)
 			linux_trash
 			;;
 		backup|bf|backup)
