@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.6"
+sh_v="3.8.7"
 
 
 gl_hui='\e[37m'
@@ -2600,6 +2600,51 @@ ldnmp_Proxy() {
 	docker exec nginx nginx -s reload
 	nginx_web_on
 }
+
+
+
+ldnmp_Proxy_Backend() {
+	clear
+	webname="反向代理-负载均衡"
+	yuming="${1:-}"
+	reverseproxy_port="${2:-}"
+
+	send_stats "安装$webname"
+	echo "开始部署 $webname"
+	if [ -z "$yuming" ]; then
+		add_yuming
+	fi
+
+	# 获取用户输入的多个IP:端口（用空格分隔）
+	if [ -z "$reverseproxy_port" ]; then
+		read -e -p "请输入你的多个反代IP+端口用空格隔开（例如 127.0.0.1:3000 127.0.0.1:3002）： " reverseproxy_port
+	fi
+
+	nginx_install_status
+	install_ssltls
+	certs_status
+	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+
+	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
+	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf
+
+
+	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	# 动态生成 upstream 配置
+	upstream_servers=""
+	for server in $reverseproxy_port; do
+		upstream_servers="$upstream_servers    server $server;\n"
+	done
+
+	# 替换模板中的占位符
+	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
+
+	nginx_http_on
+	docker exec nginx nginx -s reload
+	nginx_web_on
+}
+
 
 
 
@@ -6624,7 +6669,8 @@ linux_ldnmp() {
 	echo -e "${gl_huang}21.  ${gl_bai}仅安装nginx ${gl_huang}★${gl_bai}                     ${gl_huang}22.  ${gl_bai}站点重定向"
 	echo -e "${gl_huang}23.  ${gl_bai}站点反向代理-IP+端口 ${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}站点反向代理-域名"
 	echo -e "${gl_huang}25.  ${gl_bai}安装Bitwarden密码管理平台         ${gl_huang}26.  ${gl_bai}安装Halo博客网站"
-	echo -e "${gl_huang}27.  ${gl_bai}安装AI绘画提示词生成器            ${gl_huang}30.  ${gl_bai}自定义静态站点"
+	echo -e "${gl_huang}27.  ${gl_bai}安装AI绘画提示词生成器            ${gl_huang}28.  ${gl_bai}站点反向代理-负载均衡"
+	echo -e "${gl_huang}30.  ${gl_bai}自定义静态站点"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}31.  ${gl_bai}站点数据管理 ${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}备份全站数据"
 	echo -e "${gl_huang}33.  ${gl_bai}定时远程备份                      ${gl_huang}34.  ${gl_bai}还原全站数据"
@@ -7094,6 +7140,11 @@ linux_ldnmp() {
 	  ldnmp_Proxy
 		;;
 
+	  28)
+	  ldnmp_Proxy_Backend
+		;;
+
+
 	  24)
 	  clear
 	  webname="反向代理-域名"
@@ -7189,6 +7240,11 @@ linux_ldnmp() {
 		;;
 
 
+	  28)
+	  ldnmp_Proxy_backend
+		;;
+
+
 	  30)
 	  clear
 	  webname="静态站点"
@@ -7239,6 +7295,10 @@ linux_ldnmp() {
 	  nginx_web_on
 
 		;;
+
+
+
+
 
 
 
