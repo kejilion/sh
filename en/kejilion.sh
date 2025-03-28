@@ -11391,26 +11391,26 @@ else
 		clean|Cleaning)
 			linux_clean
 			;;
-		dd|Heavy fitting)
+		dd)
 			dd_xitong
 			;;
 		bbr3|bbrv3)
 			bbrv3
 			;;
-		nhyh|Kernel Optimization)
+		nhyh)
 			Kernel_optimize
 			;;
-		trash|hsz|Recycle Bin)
+		trash|hsz|)
 			linux_trash
 			;;
 		backup|bf|backup)
 			linux_backup
 			;;
-		ssh|Remote connection)
+		ssh)
 			ssh_manager
 			;;
 
-		rsync|Remote synchronization)
+		rsync)
 			rsync_manager
 			;;
 
@@ -11420,7 +11420,7 @@ else
 			run_task "$@"
 			;;
 
-		disk|Hard disk management)
+		disk)
 			disk_manager
 			;;
 
@@ -11440,7 +11440,7 @@ else
 			add_swap "$@"
 			;;
 
-		time|time zone)
+		time)
 			shift
 			send_stats "Quickly set time zone"
 			set_timedate "$@"
@@ -11460,52 +11460,52 @@ else
 			;;
 
 
-		Open port|dkdk)
+		dkdk)
 			shift
 			open_port "$@"
 			;;
 
-		Close port | gbdk)
+		gbdk)
 			shift
 			close_port "$@"
 			;;
 
-		Release IP|fxip)
+		fxip)
 			shift
 			allow_ip "$@"
 			;;
 
-		Block IP|zzip)
+		zzip)
 			shift
 			block_ip "$@"
 			;;
 
-		Firewall |fhq)
+		fhq)
 			iptables_panel
 			;;
 
-		status|status)
+		status)
 			shift
 			send_stats "Software Status View"
 			status "$@"
 			;;
-		start|start)
+		start)
 			shift
 			send_stats "Software Startup"
 			start "$@"
 			;;
-		stop|stop)
+		stop)
 			shift
 			send_stats "Software Pause"
 			stop "$@"
 			;;
-		restart|Restart)
+		restart)
 			shift
 			send_stats "Software Reboot"
 			restart "$@"
 			;;
 
-		enable|autostart|boot boot)
+		enable|autostart)
 			shift
 			send_stats "Software startup"
 			enable "$@"
@@ -11530,15 +11530,15 @@ else
 		docker)
 			shift
 			case $1 in
-				install|install)
+				install)
 					send_stats "Quick installation docker"
 					install_docker
 					;;
-				ps|container)
+				ps)
 					send_stats "Quick Container Management"
 					docker_ps
 					;;
-				img|mirrors)
+				img)
 					send_stats "Quick Mirror Management"
 					docker_image
 					;;
