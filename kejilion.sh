@@ -7140,11 +7140,6 @@ linux_ldnmp() {
 	  ldnmp_Proxy
 		;;
 
-	  28)
-	  ldnmp_Proxy_Backend
-		;;
-
-
 	  24)
 	  clear
 	  webname="反向代理-域名"
@@ -7238,7 +7233,6 @@ linux_ldnmp() {
 	  nginx_web_on
 
 		;;
-
 
 	  28)
 	  ldnmp_Proxy_backend
@@ -11418,6 +11412,7 @@ echo "LDNMP站点管理       k web"
 echo "LDNMP缓存清理       k web cache"
 echo "安装WordPress       k wp |k wordpress |k wp xxx.com"
 echo "安装反向代理        k fd |k rp |k 反代 |k fd xxx.com"
+echo "安装负载均衡        k loadbalance |k 负载均衡"
 echo "防火墙面板          k fhq |k 防火墙"
 echo "开放端口            k dkdk 8080 |k 打开端口 8080"
 echo "关闭端口            k gbdk 7800 |k 关闭端口 7800"
@@ -11492,6 +11487,10 @@ else
 		fd|rp|反代)
 			shift
 			ldnmp_Proxy "$@"
+			;;
+
+		loadbalance|负载均衡)
+			ldnmp_Proxy_Backend
 			;;
 
 		swap)
