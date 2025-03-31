@@ -7469,16 +7469,25 @@ linux_ldnmp() {
 					  local xxx="fail2ban-nginx-cc"
 					  f2b_status_xxx
 					  echo "------------------------"
+					  local xxx="docker-nginx-418"
+					  f2b_status_xxx
+					  echo "------------------------"
 					  local xxx="docker-nginx-bad-request"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-badbots"
 					  f2b_status_xxx
 					  echo "------------------------"
 					  local xxx="docker-nginx-botsearch"
 					  f2b_status_xxx
 					  echo "------------------------"
+					  local xxx="docker-nginx-deny"
+					  f2b_status_xxx
+					  echo "------------------------"
 					  local xxx="docker-nginx-http-auth"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-nginx-limit-req"
+					  local xxx="docker-nginx-unauthorized"
 					  f2b_status_xxx
 					  echo "------------------------"
 					  local xxx="docker-php-url-fopen"
