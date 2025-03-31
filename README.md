@@ -36,7 +36,7 @@ curl -sS -O https://raw.githubusercontent.com/kejilion/sh/refs/heads/main/en/kej
 
 Feel free to support us with USTD TRC20 donations.
 
-TCP3PLGUTG9Z4z4tnHHSLbw5bgp8NXhTT3
+<strong style="color: navy;">TCP3PLGUTG9Z4z4tnHHSLbw5bgp8NXhTT3</strong>
 
 ***
 
