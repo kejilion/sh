@@ -2813,8 +2813,8 @@ ldnmp_web_status() {
 				;;
 
 			20)
-				echo "域名格式 example.com 不带https://"
 				web_del
+				docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
 
 				;;
 			*)
