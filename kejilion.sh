@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.7"
+sh_v="3.8.8"
 
 
 gl_hui='\e[37m'
@@ -64,7 +64,6 @@ CheckFirstRun_true() {
 
 
 send_stats() {
-
 	if [ "$ENABLE_STATS" == "false" ]; then
 		return
 	fi
@@ -72,9 +71,14 @@ send_stats() {
 	local country=$(curl -s ipinfo.io/country)
 	local os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
 	local cpu_arch=$(uname -m)
-	curl -s -X POST "https://api.kejilion.pro/api/log" \
-		 -H "Content-Type: application/json" \
-		 -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"cpu_arch\":\"$cpu_arch\",\"version\":\"$sh_v\"}" &>/dev/null &
+
+	(
+		curl -s -X POST "https://api.kejilion.pro/api/log" \
+			-H "Content-Type: application/json" \
+			-d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"cpu_arch\":\"$cpu_arch\",\"version\":\"$sh_v\"}" \
+		&>/dev/null
+	) &
+
 }
 
 
@@ -2368,6 +2372,7 @@ f2b_install_sshd() {
 		systemctl enable rsyslog
 		cd /path/to/fail2ban/config/fail2ban/jail.d/
 		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/linux-ssh.conf
+		systemctl restart rsyslog
 	fi
 }
 
