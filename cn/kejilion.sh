@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.8"
+sh_v="3.8.9"
 
 
 gl_hui='\e[37m'
@@ -1776,14 +1776,14 @@ echo "------------------------"
 echo "访问地址:"
 ip_address
 if [ -n "$ipv4_address" ]; then
-	echo "http://$ipv4_address:$docker_port"
+	echo "http://$ipv4_address:${docker_port}"
 fi
 
 if [ -n "$ipv6_address" ]; then
-	echo "http://[$ipv6_address]:$docker_port"
+	echo "http://[$ipv6_address]:${docker_port}"
 fi
 
-local search_pattern="$ipv4_address:$docker_port"
+local search_pattern="$ipv4_address:${docker_port}"
 
 for file in /home/web/conf.d/*; do
 	if [ -f "$file" ]; then
@@ -2092,6 +2092,7 @@ while true; do
 	echo "$docker_describe"
 	echo "$docker_url"
 	if docker inspect "$docker_name" &>/dev/null; then
+		local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 		check_docker_app_ip
 	fi
 	echo ""
@@ -2107,9 +2108,13 @@ while true; do
 	 case $choice in
 		1)
 			check_disk_space $app_size
+			read -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
+			local app_port=${app_port:-${docker_port}}
+			local docker_port=$app_port
+
 			install jq
 			install_docker
-			$docker_rum
+			docker_rum
 			clear
 			echo "$docker_name 已经安装完成"
 			check_docker_app_ip
@@ -2121,7 +2126,7 @@ while true; do
 		2)
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
-			$docker_rum
+			docker_rum
 			clear
 			echo "$docker_name 已经安装完成"
 			check_docker_app_ip
@@ -2185,6 +2190,7 @@ docker_app_plus() {
 		echo "$app_text"
 		echo "$app_url"
 		if docker inspect "$docker_name" &>/dev/null; then
+			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			check_docker_app_ip
 		fi
 		echo ""
@@ -2200,6 +2206,9 @@ docker_app_plus() {
 		case $choice in
 			1)
 				check_disk_space $app_size
+				read -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
+				local app_port=${app_port:-${docker_port}}
+				local docker_port=$app_port
 				install jq
 				install_docker
 				docker_app_install
@@ -2281,7 +2290,7 @@ docker run -d \
 # Run Grafana container
 docker run -d \
   --name grafana \
-  -p 8047:3000 \
+  -p ${docker_port}:3000 \
   -v $GRAFANA_DIR:/var/lib/grafana \
   --network $NETWORK_NAME \
   --restart unless-stopped \
@@ -8014,15 +8023,22 @@ linux_panel() {
 			local docker_name="npm"
 			local docker_img="jc21/nginx-proxy-manager:latest"
 			local docker_port=81
-			local docker_rum="docker run -d \
-						  --name=$docker_name \
-						  -p 80:80 \
-						  -p 81:$docker_port \
-						  -p 443:443 \
-						  -v /home/docker/npm/data:/data \
-						  -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
-						  --restart=always \
-						  $docker_img"
+
+			docker_rum() {
+
+				docker run -d \
+				  --name=$docker_name \
+				  -p ${docker_port}:81 \
+				  -p 80:80 \
+				  -p 443:443 \
+				  -v /home/docker/npm/data:/data \
+				  -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
+				  --restart=always \
+				  $docker_img
+
+
+			}
+
 			local docker_describe="如果您已经安装了其他面板或者LDNMP建站环境，建议先卸载，再安装npm！"
 			local docker_url="官网介绍: https://nginxproxymanager.com/"
 			local docker_use="echo \"初始用户名: admin@example.com\""
@@ -8038,15 +8054,22 @@ linux_panel() {
 			local docker_name="alist"
 			local docker_img="xhofe/alist-aria2:latest"
 			local docker_port=5244
-			local docker_rum="docker run -d \
-								--restart=always \
-								-v /home/docker/alist:/opt/alist/data \
-								-p 5244:5244 \
-								-e PUID=0 \
-								-e PGID=0 \
-								-e UMASK=022 \
-								--name="alist" \
-								xhofe/alist-aria2:latest"
+
+			docker_rum() {
+
+				docker run -d \
+					--restart=always \
+					-v /home/docker/alist:/opt/alist/data \
+					-p ${docker_port}:5244 \
+					-e PUID=0 \
+					-e PGID=0 \
+					-e UMASK=022 \
+					--name="alist" \
+					xhofe/alist-aria2:latest
+
+			}
+
+
 			local docker_describe="一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"
 			local docker_url="官网介绍: https://alist.nn.ci/zh/"
 			local docker_use="docker exec -it alist ./alist admin random"
@@ -8061,7 +8084,11 @@ linux_panel() {
 			local docker_name="webtop-ubuntu"
 			local docker_img="lscr.io/linuxserver/webtop:ubuntu-kde"
 			local docker_port=3006
-			local docker_rum="docker run -d \
+
+			docker_rum() {
+
+
+						docker run -d \
 						  --name=webtop-ubuntu \
 						  --security-opt seccomp=unconfined \
 						  -e PUID=1000 \
@@ -8069,12 +8096,17 @@ linux_panel() {
 						  -e TZ=Etc/UTC \
 						  -e SUBFOLDER=/ \
 						  -e TITLE=Webtop \
-						  -p 3006:3000 \
+						  -p ${docker_port}:3000 \
 						  -v /home/docker/webtop/data:/config \
 						  -v /var/run/docker.sock:/var/run/docker.sock \
 						  --shm-size="1gb" \
 						  --restart unless-stopped \
-						  lscr.io/linuxserver/webtop:ubuntu-kde"
+						  lscr.io/linuxserver/webtop:ubuntu-kde
+
+
+
+			}
+
 
 			local docker_describe="webtop基于Ubuntu的容器，包含官方支持的完整桌面环境，可通过任何现代 Web 浏览器访问"
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
@@ -8158,19 +8190,27 @@ linux_panel() {
 			local docker_name="qbittorrent"
 			local docker_img="lscr.io/linuxserver/qbittorrent:latest"
 			local docker_port=8081
-			local docker_rum="docker run -d \
-								  --name=qbittorrent \
-								  -e PUID=1000 \
-								  -e PGID=1000 \
-								  -e TZ=Etc/UTC \
-								  -e WEBUI_PORT=8081 \
-								  -p 8081:8081 \
-								  -p 6881:6881 \
-								  -p 6881:6881/udp \
-								  -v /home/docker/qbittorrent/config:/config \
-								  -v /home/docker/qbittorrent/downloads:/downloads \
-								  --restart unless-stopped \
-								  lscr.io/linuxserver/qbittorrent:latest"
+
+			docker_rum() {
+
+
+				docker run -d \
+				  --name=qbittorrent \
+				  -e PUID=1000 \
+				  -e PGID=1000 \
+				  -e TZ=Etc/UTC \
+				  -e WEBUI_PORT=8081 \
+				  -p ${docker_port}:8081 \
+				  -p 6881:6881 \
+				  -p 6881:6881/udp \
+				  -v /home/docker/qbittorrent/config:/config \
+				  -v /home/docker/qbittorrent/downloads:/downloads \
+				  --restart unless-stopped \
+				  lscr.io/linuxserver/qbittorrent:latest
+
+
+			}
+
 			local docker_describe="qbittorrent离线BT磁力下载服务"
 			local docker_url="官网介绍: https://hub.docker.com/r/linuxserver/qbittorrent"
 			local docker_use="sleep 3"
@@ -8313,7 +8353,7 @@ linux_panel() {
 				sleep 1
 				docker exec -it db mongosh --eval "printjson(rs.initiate())"
 				sleep 5
-				docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+				docker run --name rocketchat --restart=always -p ${docker_port}:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
 				clear
 				ip_address
@@ -8324,7 +8364,7 @@ linux_panel() {
 			docker_app_update() {
 				docker rm -f rocketchat
 				docker rmi -f rocket.chat:latest
-				docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+				docker run --name rocketchat --restart=always -p ${docker_port}:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 				clear
 				ip_address
 				echo "rocket.chat已经安装完成"
@@ -8349,14 +8389,23 @@ linux_panel() {
 			local docker_name="zentao-server"
 			local docker_img="idoop/zentao:latest"
 			local docker_port=82
-			local docker_rum="docker run -d -p 82:80 -p 3308:3306 \
-							  -e ADMINER_USER="root" -e ADMINER_PASSWD="password" \
-							  -e BIND_ADDRESS="false" \
-							  -v /home/docker/zentao-server/:/opt/zbox/ \
-							  --add-host smtp.exmail.qq.com:163.177.90.125 \
-							  --name zentao-server \
-							  --restart=always \
-							  idoop/zentao:latest"
+
+
+			docker_rum() {
+
+
+				docker run -d -p ${docker_port}:80 \
+				  -e ADMINER_USER="root" -e ADMINER_PASSWD="password" \
+				  -e BIND_ADDRESS="false" \
+				  -v /home/docker/zentao-server/:/opt/zbox/ \
+				  --add-host smtp.exmail.qq.com:163.177.90.125 \
+				  --name zentao-server \
+				  --restart=always \
+				  idoop/zentao:latest
+
+
+			}
+
 			local docker_describe="禅道是通用的项目管理软件"
 			local docker_url="官网介绍: https://www.zentao.net/"
 			local docker_use="echo \"初始用户名: admin\""
@@ -8370,13 +8419,21 @@ linux_panel() {
 			local docker_name="qinglong"
 			local docker_img="whyour/qinglong:latest"
 			local docker_port=5700
-			local docker_rum="docker run -d \
-					  -v /home/docker/qinglong/data:/ql/data \
-					  -p 5700:5700 \
-					  --name qinglong \
-					  --hostname qinglong \
-					  --restart unless-stopped \
-					  whyour/qinglong:latest"
+
+			docker_rum() {
+
+
+				docker run -d \
+				  -v /home/docker/qinglong/data:/ql/data \
+				  -p ${docker_port}:5700 \
+				  --name qinglong \
+				  --hostname qinglong \
+				  --restart unless-stopped \
+				  whyour/qinglong:latest
+
+
+			}
+
 			local docker_describe="青龙面板是一个定时任务管理平台"
 			local docker_url="官网介绍: ${gh_proxy}github.com/whyour/qinglong"
 			local docker_use=""
@@ -8397,7 +8454,9 @@ linux_panel() {
 			docker_app_install() {
 				cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
 				curl -o /home/docker/cloud/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
-				cd /home/docker/cloud/ && docker compose up -d
+				sed -i "s/5212:5212/${docker_port}:5212/g" /home/docker/cloud/docker-compose.yml
+				cd /home/docker/cloud/
+				docker compose up -d
 				clear
 				echo "已经安装完成"
 				check_docker_app_ip
@@ -8425,16 +8484,21 @@ linux_panel() {
 			local docker_name="easyimage"
 			local docker_img="ddsderek/easyimage:latest"
 			local docker_port=85
-			local docker_rum="docker run -d \
-					  --name easyimage \
-					  -p 85:80 \
-					  -e TZ=Asia/Shanghai \
-					  -e PUID=1000 \
-					  -e PGID=1000 \
-					  -v /home/docker/easyimage/config:/app/web/config \
-					  -v /home/docker/easyimage/i:/app/web/i \
-					  --restart unless-stopped \
-					  ddsderek/easyimage:latest"
+			docker_rum() {
+
+				docker run -d \
+				  --name easyimage \
+				  -p ${docker_port}:80 \
+				  -e TZ=Asia/Shanghai \
+				  -e PUID=1000 \
+				  -e PGID=1000 \
+				  -v /home/docker/easyimage/config:/app/web/config \
+				  -v /home/docker/easyimage/i:/app/web/i \
+				  --restart unless-stopped \
+				  ddsderek/easyimage:latest
+
+			}
+
 			local docker_describe="简单图床是一个简单的图床程序"
 			local docker_url="官网介绍: ${gh_proxy}github.com/icret/EasyImages2.0"
 			local docker_use=""
@@ -8447,14 +8511,21 @@ linux_panel() {
 			local docker_name="emby"
 			local docker_img="linuxserver/emby:latest"
 			local docker_port=8096
-			local docker_rum="docker run -d --name=emby --restart=always \
-						-v /home/docker/emby/config:/config \
-						-v /home/docker/emby/share1:/mnt/share1 \
-						-v /home/docker/emby/share2:/mnt/share2 \
-						-v /mnt/notify:/mnt/notify \
-						-p 8096:8096 -p 8920:8920 \
-						-e UID=1000 -e GID=100 -e GIDLIST=100 \
-						linuxserver/emby:latest"
+
+			docker_rum() {
+
+				docker run -d --name=emby --restart=always \
+					-v /home/docker/emby/config:/config \
+					-v /home/docker/emby/share1:/mnt/share1 \
+					-v /home/docker/emby/share2:/mnt/share2 \
+					-v /mnt/notify:/mnt/notify \
+					-p ${docker_port}:8096 \
+					-e UID=1000 -e GID=100 -e GIDLIST=100 \
+					linuxserver/emby:latest
+
+			}
+
+
 			local docker_describe="emby是一个主从式架构的媒体服务器软件，可以用来整理服务器上的视频和音频，并将音频和视频流式传输到客户端设备"
 			local docker_url="官网介绍: https://emby.media/"
 			local docker_use=""
@@ -8467,7 +8538,14 @@ linux_panel() {
 			local docker_name="looking-glass"
 			local docker_img="wikihostinc/looking-glass-server"
 			local docker_port=89
-			local docker_rum="docker run -d --name looking-glass --restart always -p 89:80 wikihostinc/looking-glass-server"
+
+
+			docker_rum() {
+
+				docker run -d --name looking-glass --restart always -p ${docker_port}:80 wikihostinc/looking-glass-server
+
+			}
+
 			local docker_describe="Speedtest测速面板是一个VPS网速测试工具，多项测试功能，还可以实时监控VPS进出站流量"
 			local docker_url="官网介绍: ${gh_proxy}github.com/wikihost-opensource/als"
 			local docker_use=""
@@ -8481,15 +8559,23 @@ linux_panel() {
 			local docker_name="adguardhome"
 			local docker_img="adguard/adguardhome"
 			local docker_port=3000
-			local docker_rum="docker run -d \
-							--name adguardhome \
-							-v /home/docker/adguardhome/work:/opt/adguardhome/work \
-							-v /home/docker/adguardhome/conf:/opt/adguardhome/conf \
-							-p 53:53/tcp \
-							-p 53:53/udp \
-							-p 3000:3000/tcp \
-							--restart always \
-							adguard/adguardhome"
+
+			docker_rum() {
+
+				docker run -d \
+					--name adguardhome \
+					-v /home/docker/adguardhome/work:/opt/adguardhome/work \
+					-v /home/docker/adguardhome/conf:/opt/adguardhome/conf \
+					-p 53:53/tcp \
+					-p 53:53/udp \
+					-p ${docker_port}:3000/tcp \
+					--restart always \
+					adguard/adguardhome
+
+
+			}
+
+
 			local docker_describe="AdGuardHome是一款全网广告拦截与反跟踪软件，未来将不止是一个DNS服务器。"
 			local docker_url="官网介绍: https://hub.docker.com/r/adguard/adguardhome"
 			local docker_use=""
@@ -8505,12 +8591,19 @@ linux_panel() {
 			local docker_name="onlyoffice"
 			local docker_img="onlyoffice/documentserver"
 			local docker_port=8082
-			local docker_rum="docker run -d -p 8082:80 \
-						--restart=always \
-						--name onlyoffice \
-						-v /home/docker/onlyoffice/DocumentServer/logs:/var/log/onlyoffice  \
-						-v /home/docker/onlyoffice/DocumentServer/data:/var/www/onlyoffice/Data  \
-						 onlyoffice/documentserver"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:80 \
+					--restart=always \
+					--name onlyoffice \
+					-v /home/docker/onlyoffice/DocumentServer/logs:/var/log/onlyoffice  \
+					-v /home/docker/onlyoffice/DocumentServer/data:/var/www/onlyoffice/Data  \
+					 onlyoffice/documentserver
+
+
+			}
+
 			local docker_describe="onlyoffice是一款开源的在线office工具，太强大了！"
 			local docker_url="官网介绍: https://www.onlyoffice.com/"
 			local docker_use=""
@@ -8586,13 +8679,20 @@ linux_panel() {
 			local docker_name="portainer"
 			local docker_img="portainer/portainer"
 			local docker_port=9050
-			local docker_rum="docker run -d \
+
+			docker_rum() {
+
+				docker run -d \
 					--name portainer \
-					-p 9050:9000 \
+					-p ${docker_port}:9000 \
 					-v /var/run/docker.sock:/var/run/docker.sock \
 					-v /home/docker/portainer:/data \
 					--restart always \
-					portainer/portainer"
+					portainer/portainer
+
+			}
+
+
 			local docker_describe="portainer是一个轻量级的docker容器管理面板"
 			local docker_url="官网介绍: https://www.portainer.io/"
 			local docker_use=""
@@ -8606,7 +8706,15 @@ linux_panel() {
 			local docker_name="vscode-web"
 			local docker_img="codercom/code-server"
 			local docker_port=8180
-			local docker_rum="docker run -d -p 8180:8080 -v /home/docker/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart always codercom/code-server"
+
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 -v /home/docker/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart always codercom/code-server
+
+			}
+
+
 			local docker_describe="VScode是一款强大的在线代码编写工具"
 			local docker_url="官网介绍: ${gh_proxy}github.com/coder/code-server"
 			local docker_use="sleep 3"
@@ -8618,12 +8726,20 @@ linux_panel() {
 			local docker_name="uptime-kuma"
 			local docker_img="louislam/uptime-kuma:latest"
 			local docker_port=3003
-			local docker_rum="docker run -d \
-							--name=uptime-kuma \
-							-p 3003:3001 \
-							-v /home/docker/uptime-kuma/uptime-kuma-data:/app/data \
-							--restart=always \
-							louislam/uptime-kuma:latest"
+
+
+			docker_rum() {
+
+				docker run -d \
+					--name=uptime-kuma \
+					-p ${docker_port}:3001 \
+					-v /home/docker/uptime-kuma/uptime-kuma-data:/app/data \
+					--restart=always \
+					louislam/uptime-kuma:latest
+
+			}
+
+
 			local docker_describe="Uptime Kuma 易于使用的自托管监控工具"
 			local docker_url="官网介绍: ${gh_proxy}github.com/louislam/uptime-kuma"
 			local docker_use=""
@@ -8636,7 +8752,13 @@ linux_panel() {
 			local docker_name="memos"
 			local docker_img="ghcr.io/usememos/memos:latest"
 			local docker_port=5230
-			local docker_rum="docker run -d --name memos -p 5230:5230 -v /home/docker/memos:/var/opt/memos --restart always ghcr.io/usememos/memos:latest"
+
+			docker_rum() {
+
+				docker run -d --name memos -p ${docker_port}:5230 -v /home/docker/memos:/var/opt/memos --restart always ghcr.io/usememos/memos:latest
+
+			}
+
 			local docker_describe="Memos是一款轻量级、自托管的备忘录中心"
 			local docker_url="官网介绍: ${gh_proxy}github.com/usememos/memos"
 			local docker_use=""
@@ -8649,23 +8771,31 @@ linux_panel() {
 			local docker_name="webtop"
 			local docker_img="lscr.io/linuxserver/webtop:latest"
 			local docker_port=3083
-			local docker_rum="docker run -d \
-						  --name=webtop \
-						  --security-opt seccomp=unconfined \
-						  -e PUID=1000 \
-						  -e PGID=1000 \
-						  -e TZ=Etc/UTC \
-						  -e SUBFOLDER=/ \
-						  -e TITLE=Webtop \
-						  -e LC_ALL=zh_CN.UTF-8 \
-						  -e DOCKER_MODS=linuxserver/mods:universal-package-install \
-						  -e INSTALL_PACKAGES=font-noto-cjk \
-						  -p 3083:3000 \
-						  -v /home/docker/webtop/data:/config \
-						  -v /var/run/docker.sock:/var/run/docker.sock \
-						  --shm-size="1gb" \
-						  --restart unless-stopped \
-						  lscr.io/linuxserver/webtop:latest"
+
+			docker_rum() {
+
+
+				docker run -d \
+				  --name=webtop \
+				  --security-opt seccomp=unconfined \
+				  -e PUID=1000 \
+				  -e PGID=1000 \
+				  -e TZ=Etc/UTC \
+				  -e SUBFOLDER=/ \
+				  -e TITLE=Webtop \
+				  -e LC_ALL=zh_CN.UTF-8 \
+				  -e DOCKER_MODS=linuxserver/mods:universal-package-install \
+				  -e INSTALL_PACKAGES=font-noto-cjk \
+				  -p ${docker_port}:3000 \
+				  -v /home/docker/webtop/data:/config \
+				  -v /var/run/docker.sock:/var/run/docker.sock \
+				  --shm-size="1gb" \
+				  --restart unless-stopped \
+				  lscr.io/linuxserver/webtop:latest
+
+
+			}
+
 
 			local docker_describe="webtop基于 Alpine、Ubuntu、Fedora 和 Arch 的容器，包含官方支持的完整桌面环境，可通过任何现代 Web 浏览器访问"
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
@@ -8680,7 +8810,13 @@ linux_panel() {
 			local docker_img="nextcloud:latest"
 			local docker_port=8989
 			local rootpasswd=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16)
-			local docker_rum="docker run -d --name nextcloud --restart=always -p 8989:80 -v /home/docker/nextcloud:/var/www/html -e NEXTCLOUD_ADMIN_USER=nextcloud -e NEXTCLOUD_ADMIN_PASSWORD=$rootpasswd nextcloud"
+
+			docker_rum() {
+
+				docker run -d --name nextcloud --restart=always -p ${docker_port}:80 -v /home/docker/nextcloud:/var/www/html -e NEXTCLOUD_ADMIN_USER=nextcloud -e NEXTCLOUD_ADMIN_PASSWORD=$rootpasswd nextcloud
+
+			}
+
 			local docker_describe="Nextcloud拥有超过 400,000 个部署，是您可以下载的最受欢迎的本地内容协作平台"
 			local docker_url="官网介绍: https://nextcloud.com/"
 			local docker_use="echo \"账号: nextcloud  密码: $rootpasswd\""
@@ -8693,7 +8829,13 @@ linux_panel() {
 			local docker_name="qd"
 			local docker_img="qdtoday/qd:latest"
 			local docker_port=8923
-			local docker_rum="docker run -d --name qd -p 8923:80 -v /home/docker/qd/config:/usr/src/app/config qdtoday/qd"
+
+			docker_rum() {
+
+				docker run -d --name qd -p ${docker_port}:80 -v /home/docker/qd/config:/usr/src/app/config qdtoday/qd
+
+			}
+
 			local docker_describe="QD-Today是一个HTTP请求定时任务自动执行框架"
 			local docker_url="官网介绍: https://qd-today.github.io/qd/zh_CN/"
 			local docker_use=""
@@ -8705,7 +8847,13 @@ linux_panel() {
 			local docker_name="dockge"
 			local docker_img="louislam/dockge:latest"
 			local docker_port=5003
-			local docker_rum="docker run -d --name dockge --restart unless-stopped -p 5003:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/home/docker/dockge/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge"
+
+			docker_rum() {
+
+				docker run -d --name dockge --restart unless-stopped -p ${docker_port}:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/home/docker/dockge/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge
+
+			}
+
 			local docker_describe="dockge是一个可视化的docker-compose容器管理面板"
 			local docker_url="官网介绍: ${gh_proxy}github.com/louislam/dockge"
 			local docker_use=""
@@ -8718,7 +8866,13 @@ linux_panel() {
 			local docker_name="speedtest"
 			local docker_img="ghcr.io/librespeed/speedtest"
 			local docker_port=8028
-			local docker_rum="docker run -d -p 8028:8080 --name speedtest --restart always ghcr.io/librespeed/speedtest"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 --name speedtest --restart always ghcr.io/librespeed/speedtest
+
+			}
+
 			local docker_describe="librespeed是用Javascript实现的轻量级速度测试工具，即开即用"
 			local docker_url="官网介绍: ${gh_proxy}github.com/librespeed/speedtest"
 			local docker_use=""
@@ -8731,14 +8885,18 @@ linux_panel() {
 			local docker_name="searxng"
 			local docker_img="alandoyle/searxng:latest"
 			local docker_port=8700
-			local docker_rum="docker run --name=searxng \
-							-d --init \
-							--restart=unless-stopped \
-							-v /home/docker/searxng/config:/etc/searxng \
-							-v /home/docker/searxng/templates:/usr/local/searxng/searx/templates/simple \
-							-v /home/docker/searxng/theme:/usr/local/searxng/searx/static/themes/simple \
-							-p 8700:8080/tcp \
-							alandoyle/searxng:latest"
+
+			docker_rum() {
+				docker run --name=searxng \
+					-d --init \
+					--restart=unless-stopped \
+					-v /home/docker/searxng/config:/etc/searxng \
+					-v /home/docker/searxng/templates:/usr/local/searxng/searx/templates/simple \
+					-v /home/docker/searxng/theme:/usr/local/searxng/searx/static/themes/simple \
+					-p ${docker_port}:8080/tcp \
+					alandoyle/searxng:latest
+			}
+
 			local docker_describe="searxng是一个私有且隐私的搜索引擎站点"
 			local docker_url="官网介绍: https://hub.docker.com/r/alandoyle/searxng"
 			local docker_use=""
@@ -8752,17 +8910,24 @@ linux_panel() {
 			local docker_img="photoprism/photoprism:latest"
 			local docker_port=2342
 			local rootpasswd=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16)
-			local docker_rum="docker run -d \
-							--name photoprism \
-							--restart always \
-							--security-opt seccomp=unconfined \
-							--security-opt apparmor=unconfined \
-							-p 2342:2342 \
-							-e PHOTOPRISM_UPLOAD_NSFW="true" \
-							-e PHOTOPRISM_ADMIN_PASSWORD="$rootpasswd" \
-							-v /home/docker/photoprism/storage:/photoprism/storage \
-							-v /home/docker/photoprism/Pictures:/photoprism/originals \
-							photoprism/photoprism"
+
+			docker_rum() {
+
+				docker run -d \
+					--name photoprism \
+					--restart always \
+					--security-opt seccomp=unconfined \
+					--security-opt apparmor=unconfined \
+					-p ${docker_port}:2342 \
+					-e PHOTOPRISM_UPLOAD_NSFW="true" \
+					-e PHOTOPRISM_ADMIN_PASSWORD="$rootpasswd" \
+					-v /home/docker/photoprism/storage:/photoprism/storage \
+					-v /home/docker/photoprism/Pictures:/photoprism/originals \
+					photoprism/photoprism
+
+			}
+
+
 			local docker_describe="photoprism非常强大的私有相册系统"
 			local docker_url="官网介绍: https://www.photoprism.app/"
 			local docker_use="echo \"账号: admin  密码: $rootpasswd\""
@@ -8776,15 +8941,20 @@ linux_panel() {
 			local docker_name="s-pdf"
 			local docker_img="frooodle/s-pdf:latest"
 			local docker_port=8020
-			local docker_rum="docker run -d \
-							--name s-pdf \
-							--restart=always \
-							 -p 8020:8080 \
-							 -v /home/docker/s-pdf/trainingData:/usr/share/tesseract-ocr/5/tessdata \
-							 -v /home/docker/s-pdf/extraConfigs:/configs \
-							 -v /home/docker/s-pdf/logs:/logs \
-							 -e DOCKER_ENABLE_SECURITY=false \
-							 frooodle/s-pdf:latest"
+
+			docker_rum() {
+
+				docker run -d \
+					--name s-pdf \
+					--restart=always \
+					 -p ${docker_port}:8080 \
+					 -v /home/docker/s-pdf/trainingData:/usr/share/tesseract-ocr/5/tessdata \
+					 -v /home/docker/s-pdf/extraConfigs:/configs \
+					 -v /home/docker/s-pdf/logs:/logs \
+					 -e DOCKER_ENABLE_SECURITY=false \
+					 frooodle/s-pdf:latest
+			}
+
 			local docker_describe="这是一个强大的本地托管基于 Web 的 PDF 操作工具，使用 docker，允许您对 PDF 文件执行各种操作，例如拆分合并、转换、重新组织、添加图像、旋转、压缩等。"
 			local docker_url="官网介绍: ${gh_proxy}github.com/Stirling-Tools/Stirling-PDF"
 			local docker_use=""
@@ -8797,7 +8967,14 @@ linux_panel() {
 			local docker_name="drawio"
 			local docker_img="jgraph/drawio"
 			local docker_port=7080
-			local docker_rum="docker run -d --restart=always --name drawio -p 7080:8080 -v /home/docker/drawio:/var/lib/drawio jgraph/drawio"
+
+			docker_rum() {
+
+				docker run -d --restart=always --name drawio -p ${docker_port}:8080 -v /home/docker/drawio:/var/lib/drawio jgraph/drawio
+
+			}
+
+
 			local docker_describe="这是一个强大图表绘制软件。思维导图，拓扑图，流程图，都能画"
 			local docker_url="官网介绍: https://www.drawio.com/"
 			local docker_use=""
@@ -8810,12 +8987,18 @@ linux_panel() {
 			local docker_name="sun-panel"
 			local docker_img="hslr/sun-panel"
 			local docker_port=3009
-			local docker_rum="docker run -d --restart=always -p 3009:3002 \
-							-v /home/docker/sun-panel/conf:/app/conf \
-							-v /home/docker/sun-panel/uploads:/app/uploads \
-							-v /home/docker/sun-panel/database:/app/database \
-							--name sun-panel \
-							hslr/sun-panel"
+
+			docker_rum() {
+
+				docker run -d --restart=always -p ${docker_port}:3002 \
+					-v /home/docker/sun-panel/conf:/app/conf \
+					-v /home/docker/sun-panel/uploads:/app/uploads \
+					-v /home/docker/sun-panel/database:/app/database \
+					--name sun-panel \
+					hslr/sun-panel
+
+			}
+
 			local docker_describe="Sun-Panel服务器、NAS导航面板、Homepage、浏览器首页"
 			local docker_url="官网介绍: https://doc.sun-panel.top/zh_cn/"
 			local docker_use="echo \"账号: admin@sun.cc  密码: 12345678\""
@@ -8828,12 +9011,17 @@ linux_panel() {
 			local docker_name="pingvin-share"
 			local docker_img="stonith404/pingvin-share"
 			local docker_port=3060
-			local docker_rum="docker run -d \
-							--name pingvin-share \
-							--restart always \
-							-p 3060:3000 \
-							-v /home/docker/pingvin-share/data:/opt/app/backend/data \
-							stonith404/pingvin-share"
+
+			docker_rum() {
+
+				docker run -d \
+					--name pingvin-share \
+					--restart always \
+					-p ${docker_port}:3000 \
+					-v /home/docker/pingvin-share/data:/opt/app/backend/data \
+					stonith404/pingvin-share
+			}
+
 			local docker_describe="Pingvin Share 是一个可自建的文件分享平台，是 WeTransfer 的一个替代品"
 			local docker_url="官网介绍: ${gh_proxy}github.com/stonith404/pingvin-share"
 			local docker_use=""
@@ -8847,13 +9035,19 @@ linux_panel() {
 			local docker_name="moments"
 			local docker_img="kingwrcy/moments:latest"
 			local docker_port=8035
-			local docker_rum="docker run -d --restart unless-stopped \
-							-p 8035:3000 \
-							-v /home/docker/moments/data:/app/data \
-							-v /etc/localtime:/etc/localtime:ro \
-							-v /etc/timezone:/etc/timezone:ro \
-							--name moments \
-							kingwrcy/moments:latest"
+
+			docker_rum() {
+
+				docker run -d --restart unless-stopped \
+					-p ${docker_port}:3000 \
+					-v /home/docker/moments/data:/app/data \
+					-v /etc/localtime:/etc/localtime:ro \
+					-v /etc/timezone:/etc/timezone:ro \
+					--name moments \
+					kingwrcy/moments:latest
+			}
+
+
 			local docker_describe="极简朋友圈，高仿微信朋友圈，记录你的美好生活"
 			local docker_url="官网介绍: ${gh_proxy}github.com/kingwrcy/moments?tab=readme-ov-file"
 			local docker_use="echo \"账号: admin  密码: a123456\""
@@ -8868,10 +9062,15 @@ linux_panel() {
 			local docker_name="lobe-chat"
 			local docker_img="lobehub/lobe-chat:latest"
 			local docker_port=8036
-			local docker_rum="docker run -d -p 8036:3210 \
-							--name lobe-chat \
-							--restart=always \
-							lobehub/lobe-chat"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:3210 \
+					--name lobe-chat \
+					--restart=always \
+					lobehub/lobe-chat
+			}
+
 			local docker_describe="LobeChat聚合市面上主流的AI大模型，ChatGPT/Claude/Gemini/Groq/Ollama"
 			local docker_url="官网介绍: ${gh_proxy}github.com/lobehub/lobe-chat"
 			local docker_use=""
@@ -8884,7 +9083,14 @@ linux_panel() {
 			local docker_name="myip"
 			local docker_img="ghcr.io/jason5ng32/myip:latest"
 			local docker_port=8037
-			local docker_rum="docker run -d -p 8037:18966 --name myip --restart always ghcr.io/jason5ng32/myip:latest"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:18966 --name myip --restart always ghcr.io/jason5ng32/myip:latest
+
+			}
+
+
 			local docker_describe="是一个多功能IP工具箱，可以查看自己IP信息及连通性，用网页面板呈现"
 			local docker_url="官网介绍: ${gh_proxy}github.com/jason5ng32/MyIP/blob/main/README_ZH.md"
 			local docker_use=""
@@ -8911,7 +9117,13 @@ linux_panel() {
 			local docker_name="bililive-go"
 			local docker_img="chigusa/bililive-go"
 			local docker_port=8039
-			local docker_rum="docker run --restart=always --name bililive-go -v /home/docker/bililive-go/config.yml:/etc/bililive-go/config.yml -v /home/docker/bililive-go/Videos:/srv/bililive -p 8039:8080 -d chigusa/bililive-go"
+
+			docker_rum() {
+
+				docker run --restart=always --name bililive-go -v /home/docker/bililive-go/config.yml:/etc/bililive-go/config.yml -v /home/docker/bililive-go/Videos:/srv/bililive -p ${docker_port}:8080 -d chigusa/bililive-go
+
+			}
+
 			local docker_describe="Bililive-go是一个支持多种直播平台的直播录制工具"
 			local docker_url="官网介绍: ${gh_proxy}github.com/hr3lxphr6j/bililive-go"
 			local docker_use=""
@@ -8924,7 +9136,10 @@ linux_panel() {
 			local docker_name="webssh"
 			local docker_img="jrohy/webssh"
 			local docker_port=8040
-			local docker_rum="docker run -d -p 8040:5032 --restart always --name webssh -e TZ=Asia/Shanghai jrohy/webssh"
+			docker_rum() {
+				docker run -d -p ${docker_port}:5032 --restart always --name webssh -e TZ=Asia/Shanghai jrohy/webssh
+			}
+
 			local docker_describe="简易在线ssh连接工具和sftp工具"
 			local docker_url="官网介绍: ${gh_proxy}github.com/Jrohy/webssh"
 			local docker_use=""
@@ -8962,12 +9177,18 @@ linux_panel() {
 			local docker_name="nexterm"
 			local docker_img="germannewsmaker/nexterm:latest"
 			local docker_port=8042
-			local docker_rum="docker run -d \
-						  --name nexterm \
-						  -p 8042:6989 \
-						  -v /home/docker/nexterm:/app/data \
-						  --restart unless-stopped \
-						  germannewsmaker/nexterm:latest"
+
+			docker_rum() {
+
+				docker run -d \
+				  --name nexterm \
+				  -p ${docker_port}:6989 \
+				  -v /home/docker/nexterm:/app/data \
+				  --restart unless-stopped \
+				  germannewsmaker/nexterm:latest
+
+			}
+
 			local docker_describe="nexterm是一款强大的在线SSH/VNC/RDP连接工具。"
 			local docker_url="官网介绍: ${gh_proxy}github.com/gnmyt/Nexterm"
 			local docker_use=""
@@ -8980,7 +9201,14 @@ linux_panel() {
 			local docker_name="hbbs"
 			local docker_img="rustdesk/rustdesk-server"
 			local docker_port=21116
-			local docker_rum="docker run --name hbbs -v /home/docker/hbbs/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbs"
+
+			docker_rum() {
+
+				docker run --name hbbs -v /home/docker/hbbs/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbs
+
+			}
+
+
 			local docker_describe="rustdesk开源的远程桌面(服务端)，类似自己的向日葵私服。"
 			local docker_url="官网介绍: https://rustdesk.com/zh-cn/"
 			local docker_use="docker logs hbbs"
@@ -8993,7 +9221,13 @@ linux_panel() {
 			local docker_name="hbbr"
 			local docker_img="rustdesk/rustdesk-server"
 			local docker_port=21116
-			local docker_rum="docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbr"
+
+			docker_rum() {
+
+				docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbr
+
+			}
+
 			local docker_describe="rustdesk开源的远程桌面(中继端)，类似自己的向日葵私服。"
 			local docker_url="官网介绍: https://rustdesk.com/zh-cn/"
 			local docker_use="echo \"前往官网下载远程桌面的客户端: https://rustdesk.com/zh-cn/\""
@@ -9006,13 +9240,19 @@ linux_panel() {
 			local docker_name="registry"
 			local docker_img="registry:2"
 			local docker_port=8045
-			local docker_rum="docker run -d \
-							-p 8045:5000 \
-							--name registry \
-							-v /home/docker/registry:/var/lib/registry \
-							-e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
-							--restart always \
-							registry:2"
+
+			docker_rum() {
+
+				docker run -d \
+					-p ${docker_port}:5000 \
+					--name registry \
+					-v /home/docker/registry:/var/lib/registry \
+					-e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+					--restart always \
+					registry:2
+
+			}
+
 			local docker_describe="Docker Registry 是一个用于存储和分发 Docker 镜像的服务。"
 			local docker_url="官网介绍: https://hub.docker.com/_/registry"
 			local docker_use=""
@@ -9025,7 +9265,13 @@ linux_panel() {
 			local docker_name="ghproxy"
 			local docker_img="wjqserver/ghproxy:latest"
 			local docker_port=8046
-			local docker_rum="docker run -d --name ghproxy --restart always -p 8046:8080 wjqserver/ghproxy:latest"
+
+			docker_rum() {
+
+				docker run -d --name ghproxy --restart always -p ${docker_port}:8080 wjqserver/ghproxy:latest
+
+			}
+
 			local docker_describe="使用Go实现的GHProxy，用于加速部分地区Github仓库的拉取。"
 			local docker_url="官网介绍: https://github.com/WJQSERVER-STUDIO/ghproxy"
 			local docker_use=""
@@ -9079,11 +9325,18 @@ linux_panel() {
 			local docker_name="node-exporter"
 			local docker_img="prom/node-exporter"
 			local docker_port=8048
-			local docker_rum="docker run -d \
-  								--name=node-exporter \
-  								-p 8048:9100 \
-  								--restart unless-stopped \
-  								prom/node-exporter"
+
+			docker_rum() {
+
+				docker run -d \
+  					--name=node-exporter \
+  					-p ${docker_port}:9100 \
+  					--restart unless-stopped \
+  					prom/node-exporter
+
+
+			}
+
 			local docker_describe="这是一个普罗米修斯的主机数据采集组件，请部署在被监控主机上。"
 			local docker_url="官网介绍: https://github.com/prometheus/node_exporter"
 			local docker_use=""
@@ -9096,17 +9349,23 @@ linux_panel() {
 			local docker_name="cadvisor"
 			local docker_img="gcr.io/cadvisor/cadvisor:latest"
 			local docker_port=8049
-			local docker_rum="docker run -d \
-  								--name=cadvisor \
-  								--restart unless-stopped \
-  								-p 8049:8080 \
-  								--volume=/:/rootfs:ro \
-  								--volume=/var/run:/var/run:rw \
-  								--volume=/sys:/sys:ro \
-  								--volume=/var/lib/docker/:/var/lib/docker:ro \
-  								gcr.io/cadvisor/cadvisor:latest \
-  								-housekeeping_interval=10s \
-  								-docker_only=true"
+
+			docker_rum() {
+
+				docker run -d \
+  					--name=cadvisor \
+  					--restart unless-stopped \
+  					-p ${docker_port}:8080 \
+  					--volume=/:/rootfs:ro \
+  					--volume=/var/run:/var/run:rw \
+  					--volume=/sys:/sys:ro \
+  					--volume=/var/lib/docker/:/var/lib/docker:ro \
+  					gcr.io/cadvisor/cadvisor:latest \
+  					-housekeeping_interval=10s \
+  					-docker_only=true
+
+			}
+
 			local docker_describe="这是一个普罗米修斯的容器数据采集组件，请部署在被监控主机上。"
 			local docker_url="官网介绍: https://github.com/google/cadvisor"
 			local docker_use=""
@@ -9120,9 +9379,15 @@ linux_panel() {
 			local docker_name="changedetection"
 			local docker_img="dgtlmoon/changedetection.io:latest"
 			local docker_port=8050
-			local docker_rum="docker run -d --restart always -p 8050:5000 \
-								-v /home/docker/datastore:/datastore \
-								--name changedetection dgtlmoon/changedetection.io:latest"
+
+			docker_rum() {
+
+				docker run -d --restart always -p ${docker_port}:5000 \
+					-v /home/docker/datastore:/datastore \
+					--name changedetection dgtlmoon/changedetection.io:latest
+
+			}
+
 			local docker_describe="这是一款网站变化检测、补货监控和通知的小工具"
 			local docker_url="官网介绍: https://github.com/dgtlmoon/changedetection.io"
 			local docker_use=""
@@ -9144,11 +9409,17 @@ linux_panel() {
 			local docker_name="dpanel"
 			local docker_img="dpanel/dpanel:lite"
 			local docker_port=8052
-			local docker_rum="docker run -it -d --name dpanel --restart=always \
-  								-p 8052:8080 -e APP_NAME=dpanel \
-  								-v /var/run/docker.sock:/var/run/docker.sock \
-  								-v /home/docker/dpanel:/dpanel \
-  								dpanel/dpanel:lite"
+
+			docker_rum() {
+
+				docker run -it -d --name dpanel --restart=always \
+  					-p ${docker_port}:8080 -e APP_NAME=dpanel \
+  					-v /var/run/docker.sock:/var/run/docker.sock \
+  					-v /home/docker/dpanel:/dpanel \
+  					dpanel/dpanel:lite
+
+			}
+
 			local docker_describe="Docker可视化面板系统，提供完善的docker管理功能。"
 			local docker_url="官网介绍: https://github.com/donknap/dpanel"
 			local docker_use=""
@@ -9161,7 +9432,13 @@ linux_panel() {
 			local docker_name="ollama"
 			local docker_img="ghcr.io/open-webui/open-webui:ollama"
 			local docker_port=8053
-			local docker_rum="docker run -d -p 8053:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama
+
+			}
+
 			local docker_describe="OpenWebUI一款大语言模型网页框架，接入全新的llama3大语言模型"
 			local docker_url="官网介绍: https://github.com/open-webui/open-webui"
 			local docker_use="docker exec ollama ollama run llama3.2:1b"
@@ -9205,7 +9482,13 @@ linux_panel() {
 			local docker_name="ollama"
 			local docker_img="ghcr.io/open-webui/open-webui:ollama"
 			local docker_port=8053
-			local docker_rum="docker run -d -p 8053:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama
+
+			}
+
 			local docker_describe="OpenWebUI一款大语言模型网页框架，接入全新的DeepSeek R1大语言模型"
 			local docker_url="官网介绍: https://github.com/open-webui/open-webui"
 			local docker_use="docker exec ollama ollama run deepseek-r1:1.5b"
@@ -9219,14 +9502,16 @@ linux_panel() {
 			local app_name="Dify知识库"
 			local app_text="是一款开源的大语言模型(LLM) 应用开发平台。自托管训练数据用于AI生成"
 			local app_url="官方网站: https://docs.dify.ai/zh-hans"
-			local docker_name="docker-web-1"
+			local docker_name="docker-nginx-1"
 			local docker_port="8058"
 			local app_size="3"
 
 			docker_app_install() {
 				install git
 				mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
-				sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
+				# sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
+				sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
+
 				docker compose up -d
 				clear
 				echo "已经安装完成"
@@ -9262,9 +9547,12 @@ linux_panel() {
 			docker_app_install() {
 				install git
 				mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/Calcium-Ion/new-api.git && cd new-api
-				sed -i -e 's/- "3000:3000"/- "8059:3000"/g' \
+
+				sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
 					   -e 's/container_name: redis/container_name: redis-new-api/g' \
-					   -e 's/container_name: mysql/container_name: mysql-new-api/g' docker-compose.yml
+					   -e 's/container_name: mysql/container_name: mysql-new-api/g' \
+					   docker-compose.yml
+
 
 				docker compose up -d
 				clear
@@ -9276,9 +9564,11 @@ linux_panel() {
 				cd  /home/docker/new-api/ && docker compose down --rmi all
 				cd  /home/docker/new-api/
 				git pull origin main
-				sed -i -e 's/- "3000:3000"/- "8059:3000"/g' \
+				sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
 					   -e 's/container_name: redis/container_name: redis-new-api/g' \
-					   -e 's/container_name: mysql/container_name: mysql-new-api/g' docker-compose.yml
+					   -e 's/container_name: mysql/container_name: mysql-new-api/g' \
+					   docker-compose.yml
+
 				docker compose up -d
 				clear
 				echo "已经安装完成"
@@ -9339,11 +9629,17 @@ linux_panel() {
 			local docker_name="libretranslate"
 			local docker_img="libretranslate/libretranslate:latest"
 			local docker_port=8061
-			local docker_rum="docker run -d \
-  								-p 8061:5000 \
-  								--name libretranslate \
-  								libretranslate/libretranslate \
-  								--load-only ko,zt,zh,en,ja,pt,es,fr,de,ru"
+
+			docker_rum() {
+
+				docker run -d \
+  					-p ${docker_port}:5000 \
+  					--name libretranslate \
+  					libretranslate/libretranslate \
+  					--load-only ko,zt,zh,en,ja,pt,es,fr,de,ru
+
+			}
+
 			local docker_describe="免费开源机器翻译 API，完全自托管，它的翻译引擎由开源Argos Translate库提供支持。"
 			local docker_url="官网介绍: https://github.com/LibreTranslate/LibreTranslate"
 			local docker_use=""
@@ -9365,7 +9661,7 @@ linux_panel() {
 			docker_app_install() {
 				install git
 				mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/infiniflow/ragflow.git && cd ragflow/docker
-				sed -i 's/- 80:80/- 8062:80/; /- 443:443/d' docker-compose.yml
+				sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
 				docker compose up -d
 				clear
 				echo "已经安装完成"
@@ -9377,7 +9673,7 @@ linux_panel() {
 				cd  /home/docker/ragflow/
 				git pull origin main
 				cd  /home/docker/ragflow/docker/
-				sed -i 's/- 80:80/- 8062:80/; /- 443:443/d' docker-compose.yml
+				sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
 				docker compose up -d
 			}
 
