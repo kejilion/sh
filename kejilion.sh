@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.9"
+sh_v="3.8.10"
 
 
 gl_hui='\e[37m'
@@ -2093,6 +2093,7 @@ while true; do
 	echo "$docker_url"
 	if docker inspect "$docker_name" &>/dev/null; then
 		local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+		docker_port=${docker_port:-0000}
 		check_docker_app_ip
 	fi
 	echo ""
@@ -2191,6 +2192,7 @@ docker_app_plus() {
 		echo "$app_url"
 		if docker inspect "$docker_name" &>/dev/null; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+			docker_port=${docker_port:-0000}
 			check_docker_app_ip
 		fi
 		echo ""
@@ -9081,12 +9083,12 @@ linux_panel() {
 
 		  37)
 			local docker_name="myip"
-			local docker_img="ghcr.io/jason5ng32/myip:latest"
+			local docker_img="jason5ng32/myip:latest"
 			local docker_port=8037
 
 			docker_rum() {
 
-				docker run -d -p ${docker_port}:18966 --name myip --restart always ghcr.io/jason5ng32/myip:latest
+				docker run -d -p ${docker_port}:18966 --name myip jason5ng32/myip:latest
 
 			}
 
@@ -9200,7 +9202,7 @@ linux_panel() {
 		  43)
 			local docker_name="hbbs"
 			local docker_img="rustdesk/rustdesk-server"
-			local docker_port=21116
+			local docker_port=0000
 
 			docker_rum() {
 
@@ -9220,7 +9222,7 @@ linux_panel() {
 		  44)
 			local docker_name="hbbr"
 			local docker_img="rustdesk/rustdesk-server"
-			local docker_port=21116
+			local docker_port=0000
 
 			docker_rum() {
 
