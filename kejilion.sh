@@ -7111,6 +7111,8 @@ linux_ldnmp() {
 			  ;;
 	  esac
 
+	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
+
 	  restart_ldnmp
 	  ldnmp_web_on
 	  prefix="web$(shuf -i 10-99 -n 1)_"
