@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置OpenSSH的版本号
-OPENSSH_VERSION="10.0p1"
+OPENSSH_VERSION=$(curl -s https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/ | grep -oP 'openssh-\K[0-9]+\.[0-9]+p[0-9]+' | sort -V | tail -n 1)
 
 
 # 检测系统类型
