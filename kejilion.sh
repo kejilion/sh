@@ -7945,6 +7945,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}59.  ${gl_bai}NewAPI大模型资产管理                ${gl_kjlan}60.  ${gl_bai}JumpServer开源堡垒机"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}61.  ${gl_bai}在线翻译服务器			 ${gl_kjlan}62.  ${gl_bai}RAGFlow大模型知识库"
+	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebUI自托管AI平台"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9692,7 +9693,24 @@ linux_panel() {
 			  ;;
 
 
+		  63)
+			local docker_name="open-webui"
+			local docker_img="ghcr.io/open-webui/open-webui:main"
+			local docker_port=8063
 
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 -v /home/docker/open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
+
+			}
+
+			local docker_describe="OpenWebUI一款大语言模型网页框架，官方精简版本，支持各大模型API接入"
+			local docker_url="官网介绍: https://github.com/open-webui/open-webui"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="3"
+			docker_app
+			  ;;
 
 		  0)
 			  kejilion
