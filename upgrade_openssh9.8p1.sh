@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # 设置OpenSSH的版本号
-OPENSSH_VERSION="10p2"
+OPENSSH_VERSION="10.0p1"
 
 
 # 检测系统类型
