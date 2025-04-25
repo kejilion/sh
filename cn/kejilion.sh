@@ -7945,7 +7945,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}59.  ${gl_bai}NewAPI大模型资产管理                ${gl_kjlan}60.  ${gl_bai}JumpServer开源堡垒机"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}61.  ${gl_bai}在线翻译服务器			 ${gl_kjlan}62.  ${gl_bai}RAGFlow大模型知识库"
-	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebUI自托管AI平台"
+	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebUI自托管AI平台               ${gl_kjlan}64.  ${gl_bai}it-tools工具箱"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9711,6 +9711,24 @@ linux_panel() {
 			local app_size="3"
 			docker_app
 			  ;;
+
+		  64)
+			local docker_name="it-tools"
+			local docker_img="corentinth/it-tools:latest"
+			local docker_port=8064
+
+			docker_rum() {
+				docker run -d --name it-tools --restart unless-stopped -p ${docker_port}:80 corentinth/it-tools:latest
+			}
+
+			local docker_describe="对开发人员和 IT 工作者来说非常有用的工具"
+			local docker_url="官网介绍: https://github.com/CorentinTh/it-tools"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
+
 
 		  0)
 			  kejilion
