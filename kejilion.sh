@@ -9712,7 +9712,7 @@ linux_panel() {
 			docker_app
 			  ;;
 
-		  63)
+		  64)
 			local docker_name="it-tools"
 			local docker_img="corentinth/it-tools:latest"
 			local docker_port=8064
