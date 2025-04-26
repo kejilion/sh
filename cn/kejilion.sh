@@ -9742,7 +9742,7 @@ linux_panel() {
 				chmod -R 777 /home/docker/n8n	
 				docker run -d --name n8n \
 				  --restart always \
-				  -p 5678:5678 \
+				  -p ${docker_port}:5678 \
 				  -v /home/docker/n8n:/home/node/.n8n \
 				  docker.n8n.io/n8nio/n8n
 
