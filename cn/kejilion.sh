@@ -7946,6 +7946,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}61.  ${gl_bai}在线翻译服务器			 ${gl_kjlan}62.  ${gl_bai}RAGFlow大模型知识库"
 	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebUI自托管AI平台 ${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${gl_bai}it-tools工具箱"
+	  echo -e "${gl_kjlan}65.  ${gl_bai}n8n自动化工作流平台 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9728,6 +9729,33 @@ linux_panel() {
 			local app_size="1"
 			docker_app
 			  ;;
+
+
+		  65)
+			local docker_name="n8n"
+			local docker_img="docker.n8n.io/n8nio/n8n"
+			local docker_port=8065
+
+			docker_rum() {
+
+				mkdir -p /home/docker/n8n
+				chmod -R 777 /home/docker/n8n	
+				docker run -d --name n8n \
+				  --restart always \
+				  -p 5678:5678 \
+				  -v /home/docker/n8n:/home/node/.n8n \
+				  docker.n8n.io/n8nio/n8n
+
+			}
+
+			local docker_describe="是一款功能强大的自动化工作流平台"
+			local docker_url="官网介绍: https://github.com/n8n-io/n8n"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
+
 
 
 		  0)
