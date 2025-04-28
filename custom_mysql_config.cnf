@@ -6,33 +6,39 @@ thread_cache_size = 512
 interactive_timeout = 30
 wait_timeout = 30
 
+# 查询缓存（MySQL8废除Query Cache，不配置）
+# no query_cache_size or query_cache_type needed
+
 # InnoDB设置
-innodb_buffer_pool_size = 2048M
-innodb_buffer_pool_instances = 2
-innodb_log_buffer_size = 16M
-innodb_redo_log_capacity = 64M
+innodb_buffer_pool_size = 4096M            # ⭐如果内存允许，给到一半RAM，数据库读性能暴涨
+innodb_buffer_pool_instances = 4            # ⭐分片更细（>2G建议4-8分片）
+innodb_log_buffer_size = 32M                # ⭐更大事务写更稳
+innodb_redo_log_capacity = 128M             # ⭐防止大事务日志爆满
 innodb_lock_wait_timeout = 30
 innodb_file_per_table = 1
-innodb_flush_log_at_trx_commit = 1
-innodb_io_capacity = 1000
-innodb_io_capacity_max = 2000
+innodb_flush_log_at_trx_commit = 1          # ⭐坚持ACID，不放松一致性
+innodb_io_capacity = 2000                   # ⭐如果是NVMe磁盘可以调高（>SSD）
+innodb_io_capacity_max = 4000
 
-# 缓存和限制
-table_open_cache = 2000
-open_files_limit = 4000
-tmp_table_size = 16M
-max_heap_table_size = 16M
-max_allowed_packet = 16M
+# 缓存和表限制
+table_open_cache = 4000                     # ⭐动态表多的网站，加大打开表缓存
+open_files_limit = 65535                    # ⭐极限设置（注意宿主机ulimit）
+tmp_table_size = 64M                        # ⭐调大，减少临时表落磁盘
+max_heap_table_size = 64M                   # ⭐配合tmp_table_size，一起调大
+max_allowed_packet = 64M                    # ⭐适配大SQL（比如大BLOB字段）
 
 # 缓冲区大小
-sort_buffer_size = 4M
+sort_buffer_size = 8M                       # ⭐适配中大型ORDER BY场景
 read_buffer_size = 2M
-join_buffer_size = 2M
+join_buffer_size = 4M                       # ⭐稍微放大Join场景效率更高
+
+# 日志管理
+log_error_verbosity = 3                     # ⭐详细日志，便于追查慢问题
+slow_query_log = 1                           # ⭐打开慢查询日志
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 1                         # ⭐超过1秒算慢查询
+log_queries_not_using_indexes = 1           # ⭐记录无索引扫描
 
 # 其他
-sql_mode=NO_ENGINE_SUBSTITUTION
-# --------------------------
-
-
-
-
+sql_mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+performance_schema=ON                       # ⭐生产环境推荐打开，监控分析好用
