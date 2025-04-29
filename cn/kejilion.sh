@@ -1327,9 +1327,6 @@ install_ldnmp() {
   		sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
   		sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
 
-		find /home/web/conf.d/ -type f -name "*.conf" -exec sed -i "s#fastcgi_pass php:9000;#fastcgi_pass unix:/run/php/php-fpm.sock;#g" {} \;
-		find /home/web/conf.d/ -type f -name "*.conf" -exec sed -i "s#fastcgi_pass php74:9000;#fastcgi_pass unix:/run/php74/php-fpm.sock;#g" {} \;
-
 	  fi
 
 	  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
@@ -1341,7 +1338,13 @@ install_ldnmp() {
 	  sleep 1
   	  crontab -l 2>/dev/null | grep -v 'logrotate' | crontab -
   	  (crontab -l 2>/dev/null; echo '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf') | crontab -
+
+	  fix_phpfpm_conf php
+	  fix_phpfpm_conf php74
 	  restart_ldnmp
+
+
+
 
 	  clear
 	  echo "LDNMP环境安装完毕"
@@ -6676,8 +6679,11 @@ fix_phpfpm_conf() {
 	local container_name=$1
 
 	echo "正在修复容器: $container_name"
+	docker exec "$container_name" sh -c "mkdir -p /run/$container_name && chmod 777 /run/$container_name"
 	docker exec "$container_name" sh -c "sed -i '/^listen =/d' /usr/local/etc/php-fpm.d/www.conf"
 	docker exec "$container_name" sh -c "echo -e '\nlisten = /run/$container_name/php-fpm.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0777' >> /usr/local/etc/php-fpm.d/www.conf"
+	docker exec "$container_name" sh -c "sed -i '/^daemonize = no/,\$d' /usr/local/etc/php-fpm.d/zz-docker.conf"
+
 	find /home/web/conf.d/ -type f -name "*.conf" -exec sed -i "s#fastcgi_pass ${container_name}:9000;#fastcgi_pass unix:/run/${container_name}/php-fpm.sock;#g" {} \;
 
 }
@@ -7818,22 +7824,7 @@ linux_ldnmp() {
 			  docker exec php mkdir -p /usr/local/bin/
 			  docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
 			  docker exec php chmod +x /usr/local/bin/install-php-extensions
-
-			  docker exec php sh -c "\
-							apk add --no-cache imagemagick imagemagick-dev \
-							&& apk add --no-cache git autoconf gcc g++ make pkgconfig \
-							&& rm -rf /tmp/imagick \
-							&& git clone ${gh_proxy}github.com/Imagick/imagick /tmp/imagick \
-							&& cd /tmp/imagick \
-							&& phpize \
-							&& ./configure \
-							&& make \
-							&& make install \
-							&& echo 'extension=imagick.so' > /usr/local/etc/php/conf.d/imagick.ini \
-							&& rm -rf /tmp/imagick"
-
-
-			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis
+			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis imagick
 
 
 			  docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
@@ -7841,13 +7832,9 @@ linux_ldnmp() {
 			  docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_execution_time=1200" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_input_time=600" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1
-			  docker exec php sh -c 'echo "max_input_vars=3000" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1
+			  docker exec php sh -c 'echo "max_input_vars=5000" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1
 
-			  docker exec php sh -c "sed -i '/^listen =/d' /usr/local/etc/php-fpm.d/www.conf"
-			  docker exec php sh -c "echo -e '\nlisten = /run/php/php-fpm.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0777' >> /usr/local/etc/php-fpm.d/www.conf"
-			  docker exec php sh -c "sed -i '/^daemonize = no/,\$d' /usr/local/etc/php-fpm.d/zz-docker.conf"
-
-
+			  fix_phpfpm_con $ldnmp_pods
 
 			  docker restart $ldnmp_pods > /dev/null 2>&1
 			  cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
