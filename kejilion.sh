@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.10"
+sh_v="3.9.0"
 
 
 gl_hui='\e[37m'
@@ -1317,7 +1317,7 @@ install_ldnmp() {
 
 	  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
 
-	  if ! grep -q "healthcheck" /home/web/docker-compose.yml; then
+	  if ! grep -q "php-socket" /home/web/docker-compose.yml; then
 		wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
 	  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
 	  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
@@ -1326,6 +1326,10 @@ install_ldnmp() {
   		sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
   		sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
   		sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
+
+		find /home/web/conf.d/ -type f -name "*.conf" -exec sed -i "s#fastcgi_pass php:9000;#fastcgi_pass unix:/run/php/php-fpm.sock;#g" {} \;
+		find /home/web/conf.d/ -type f -name "*.conf" -exec sed -i "s#fastcgi_pass php74:9000;#fastcgi_pass unix:/run/php74/php-fpm.sock;#g" {} \;
+
 	  fi
 
 	  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
@@ -1523,6 +1527,7 @@ reverse_proxy() {
 
 
 restart_redis() {
+  rm -rf /home/web/redis/*
   docker exec redis redis-cli FLUSHALL > /dev/null 2>&1
   docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1
   docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
@@ -1633,14 +1638,13 @@ cf_purge_cache() {
 
 web_cache() {
   send_stats "清理站点缓存"
-  # docker exec -it nginx rm -rf /var/cache/nginx
   cf_purge_cache
   docker exec php php -r 'opcache_reset();'
   docker exec php74 php -r 'opcache_reset();'
   docker exec nginx nginx -s stop
   docker exec nginx rm -rf /var/cache/nginx/*
   docker exec nginx nginx
-  docker restart php php74 redis
+  docker restart redis
   restart_redis
 }
 
@@ -6668,6 +6672,21 @@ fi
 }
 
 
+fix_phpfpm_conf() {
+	local container_name=$1
+
+	echo "正在修复容器: $container_name"
+	docker exec "$container_name" sh -c "sed -i '/^listen =/d' /usr/local/etc/php-fpm.d/www.conf"
+	docker exec "$container_name" sh -c "echo -e '\nlisten = /run/$container_name/php-fpm.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0777' >> /usr/local/etc/php-fpm.d/www.conf"
+	find /home/web/conf.d/ -type f -name "*.conf" -exec sed -i "s#fastcgi_pass ${container_name}:9000;#fastcgi_pass unix:/run/${container_name}/php-fpm.sock;#g" {} \;
+
+}
+
+
+
+
+
+
 linux_ldnmp() {
   while true; do
 
@@ -7657,6 +7676,9 @@ linux_ldnmp() {
 				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
 				  rm -rf /home/www.conf
 
+				  fix_phpfpm_conf php
+				  fix_phpfpm_conf php74
+
 				  # mysql调优
 				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
 				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
@@ -7690,6 +7712,9 @@ linux_ldnmp() {
 				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
 				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
 				  rm -rf /home/www.conf
+
+				  fix_phpfpm_conf php
+				  fix_phpfpm_conf php74
 
 				  # mysql调优
 				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
@@ -7818,6 +7843,11 @@ linux_ldnmp() {
 			  docker exec php sh -c 'echo "max_input_time=600" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_input_vars=3000" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1
 
+			  docker exec php sh -c "sed -i '/^listen =/d' /usr/local/etc/php-fpm.d/www.conf"
+			  docker exec php sh -c "echo -e '\nlisten = /run/php/php-fpm.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0777' >> /usr/local/etc/php-fpm.d/www.conf"
+			  docker exec php sh -c "sed -i '/^daemonize = no/,\$d' /usr/local/etc/php-fpm.d/zz-docker.conf"
+
+
 
 			  docker restart $ldnmp_pods > /dev/null 2>&1
 			  cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
@@ -7831,8 +7861,8 @@ linux_ldnmp() {
 			  docker rm -f $ldnmp_pods
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
-			  restart_redis
 			  docker restart $ldnmp_pods > /dev/null 2>&1
+			  restart_redis
 			  send_stats "更新$ldnmp_pods"
 			  echo "更新${ldnmp_pods}完成"
 
@@ -9739,7 +9769,7 @@ linux_panel() {
 			docker_rum() {
 
 				mkdir -p /home/docker/n8n
-				chmod -R 777 /home/docker/n8n	
+				chmod -R 777 /home/docker/n8n
 				docker run -d --name n8n \
 				  --restart always \
 				  -p ${docker_port}:5678 \
