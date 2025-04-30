@@ -2626,7 +2626,7 @@ ldnmp_Proxy() {
 
 
 
-ldnmp_Proxy_Backend() {
+ldnmp_Proxy_backend() {
 	clear
 	webname="反向代理-负载均衡"
 	yuming="${1:-}"
@@ -11884,7 +11884,7 @@ else
 			;;
 
 		loadbalance|负载均衡)
-			ldnmp_Proxy_Backend
+			ldnmp_Proxy_backend
 			;;
 
 		swap)
