@@ -52,7 +52,7 @@ for cert_dir in $certs_directory*; do
 
         docker run --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa  
 
-        mkdir -p /home/web/certs/ > /dev/null 2>&1
+        mkdir -p /home/web/certs/
         cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
         cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
 
