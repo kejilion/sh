@@ -1,26 +1,17 @@
 # 定义证书存储目录
-certs_directory="/etc/letsencrypt/live/"
-
-days_before_expiry=10  # 设置在证书到期前几天触发续签
+certs_directory="/home/web/certs/"
+days_before_expiry=15  # 设置在证书到期前几天触发续签
 
 # 遍历所有证书文件
-for cert_dir in $certs_directory*; do
+for cert_file in $certs_directory*_cert.pem; do
     # 获取域名
-    yuming=$(basename "$cert_dir")
-
-    # 忽略 README 目录
-    if [ "$yuming" = "README" ]; then
-        continue
-    fi
+    yuming=$(basename "$cert_file" "_cert.pem")
 
     # 输出正在检查的证书信息
     echo "检查证书过期日期： ${yuming}"
 
-    # 获取fullchain.pem文件路径
-    cert_file="${cert_dir}/fullchain.pem"
-
     # 获取证书过期日期
-    expiration_date=$(openssl x509 -enddate -noout -in "${cert_file}" | cut -d "=" -f 2-)
+    expiration_date=$(openssl x509 -enddate -noout -in "${certs_directory}${yuming}_cert.pem" | cut -d "=" -f 2-)
 
     # 输出证书过期日期
     echo "过期日期： ${expiration_date}"
