@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.8.6"
+sh_v="3.9.1"
 
 
 gl_hui='\e[37m'
@@ -57,14 +57,13 @@ CheckFirstRun_true() {
 
 
 
-# Functions that collect function buried point information, record the current script version number, usage time, system version, CPU architecture, function names used by the machine country and user. They absolutely do not involve any sensitive information, please rest assured! Please believe me!
-# Why design this function? The purpose is to better understand the functions that users like to use, and further optimize the functions to launch more functions that meet user needs.
-# The full text can be searched for the send_stats function call location, transparent and open source, and if you have any concerns, you can refuse to use it.
+# Functions that collect function buried point information, record the current script version number, usage time, system version, CPU architecture, the country of the machine and the function name used by the user. They absolutely do not involve any sensitive information, please rest assured! Please believe me!
+# Why do we need to design this function? The purpose is to better understand the functions that users like to use, and further optimize the functions to launch more functions that meet user needs.
+# For the full text, you can search for the send_stats function call location, transparent and open source, and you can refuse to use it if you have any concerns.
 
 
 
 send_stats() {
-
 	if [ "$ENABLE_STATS" == "false" ]; then
 		return
 	fi
@@ -72,9 +71,14 @@ send_stats() {
 	local country=$(curl -s ipinfo.io/country)
 	local os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
 	local cpu_arch=$(uname -m)
-	curl -s -X POST "https://api.kejilion.pro/api/log" \
-		 -H "Content-Type: application/json" \
-		 -d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"cpu_arch\":\"$cpu_arch\",\"version\":\"$sh_v\"}" &>/dev/null &
+
+	(
+		curl -s -X POST "https://api.kejilion.pro/api/log" \
+			-H "Content-Type: application/json" \
+			-d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"cpu_arch\":\"$cpu_arch\",\"version\":\"$sh_v\"}" \
+		&>/dev/null
+	) &
+
 }
 
 
@@ -840,7 +844,7 @@ open_port() {
 
 		if ! iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
 			iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
-			echo "Port $port opened"
+			echo "Port open $port"
 		fi
 	done
 
@@ -993,7 +997,7 @@ manage_country_rules() {
 				ipset add "$ipset_name" "$ip"
 			done < "${country_code,,}.zone"
 
-			# Block IPs with iptables
+			# Block IP with iptables
 			iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
 			iptables -I OUTPUT -m set --match-set "$ipset_name" dst -j DROP
 
@@ -1078,7 +1082,7 @@ iptables_panel() {
 		  echo "13. Start DDOS Defense 14. Turn off DDOS Defense"
 		  echo "------------------------"
 		  echo "15. Block specified country IP 16. Only specified country IPs are allowed"
-		  echo "17. Release the IP restrictions of designated countries"
+		  echo "17. Release IP restrictions in designated countries"
 		  echo "------------------------"
 		  echo "0. Return to previous menu"
 		  echo "------------------------"
@@ -1289,6 +1293,8 @@ install_ldnmp_conf() {
   cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
   wget -O /home/web/nginx.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
   wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default10.conf
+  wget -O /home/web/redis/valkey.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/valkey.conf
+
 
   default_server_ssl
 
@@ -1313,7 +1319,7 @@ install_ldnmp() {
 
 	  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
 
-	  if ! grep -q "healthcheck" /home/web/docker-compose.yml; then
+	  if ! grep -q "php-socket" /home/web/docker-compose.yml; then
 		wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
 	  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
 	  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
@@ -1322,6 +1328,7 @@ install_ldnmp() {
   		sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
   		sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
   		sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
+
 	  fi
 
 	  if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
@@ -1333,10 +1340,16 @@ install_ldnmp() {
 	  sleep 1
   	  crontab -l 2>/dev/null | grep -v 'logrotate' | crontab -
   	  (crontab -l 2>/dev/null; echo '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf') | crontab -
+
+	  fix_phpfpm_conf php
+	  fix_phpfpm_conf php74
 	  restart_ldnmp
 
+
+
+
 	  clear
-	  echo "LDNMP environment installation is completed"
+	  echo "LDNMP environment installation has been completed"
 	  echo "------------------------"
 	  ldnmp_v
 
@@ -1378,7 +1391,7 @@ install_ssltls() {
 				docker run -it --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d "$yuming" --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
 			fi
 	  fi
-
+	  mkdir -p /home/web/certs/
 	  cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
 	  cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
 
@@ -1519,6 +1532,7 @@ reverse_proxy() {
 
 
 restart_redis() {
+  rm -rf /home/web/redis/*
   docker exec redis redis-cli FLUSHALL > /dev/null 2>&1
   docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1
   docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
@@ -1629,14 +1643,13 @@ cf_purge_cache() {
 
 web_cache() {
   send_stats "Clean the site cache"
-  # docker exec -it nginx rm -rf /var/cache/nginx
   cf_purge_cache
   docker exec php php -r 'opcache_reset();'
   docker exec php74 php -r 'opcache_reset();'
   docker exec nginx nginx -s stop
   docker exec nginx rm -rf /var/cache/nginx/*
   docker exec nginx nginx
-  docker restart php php74 redis
+  docker restart redis
   restart_redis
 }
 
@@ -1681,7 +1694,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# Decide to turn on or off WAF according to mode parameters
+	# Decide to turn on or off WAF according to the mode parameter
 	if [ "$mode" == "on" ]; then
 		# Turn on WAF: Remove comments
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -1772,14 +1785,14 @@ echo "------------------------"
 echo "Access Address:"
 ip_address
 if [ -n "$ipv4_address" ]; then
-	echo "http://$ipv4_address:$docker_port"
+	echo "http://$ipv4_address:${docker_port}"
 fi
 
 if [ -n "$ipv6_address" ]; then
-	echo "http://[$ipv6_address]:$docker_port"
+	echo "http://[$ipv6_address]:${docker_port}"
 fi
 
-local search_pattern="$ipv4_address:$docker_port"
+local search_pattern="$ipv4_address:${docker_port}"
 
 for file in /home/web/conf.d/*; do
 	if [ -f "$file" ]; then
@@ -2088,6 +2101,8 @@ while true; do
 	echo "$docker_describe"
 	echo "$docker_url"
 	if docker inspect "$docker_name" &>/dev/null; then
+		local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+		docker_port=${docker_port:-0000}
 		check_docker_app_ip
 	fi
 	echo ""
@@ -2103,9 +2118,13 @@ while true; do
 	 case $choice in
 		1)
 			check_disk_space $app_size
+			read -e -p "Enter the application external service port, and enter the default port to use ${docker_port}: " app_port
+			local app_port=${app_port:-${docker_port}}
+			local docker_port=$app_port
+
 			install jq
 			install_docker
-			$docker_rum
+			docker_rum
 			clear
 			echo "$docker_name has been installed"
 			check_docker_app_ip
@@ -2117,7 +2136,7 @@ while true; do
 		2)
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
-			$docker_rum
+			docker_rum
 			clear
 			echo "$docker_name has been installed"
 			check_docker_app_ip
@@ -2181,6 +2200,8 @@ docker_app_plus() {
 		echo "$app_text"
 		echo "$app_url"
 		if docker inspect "$docker_name" &>/dev/null; then
+			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+			docker_port=${docker_port:-0000}
 			check_docker_app_ip
 		fi
 		echo ""
@@ -2196,6 +2217,9 @@ docker_app_plus() {
 		case $choice in
 			1)
 				check_disk_space $app_size
+				read -e -p "Enter the application external service port, and enter the default port to use ${docker_port}: " app_port
+				local app_port=${app_port:-${docker_port}}
+				local docker_port=$app_port
 				install jq
 				install_docker
 				docker_app_install
@@ -2277,7 +2301,7 @@ docker run -d \
 # Run Grafana container
 docker run -d \
   --name grafana \
-  -p 8047:3000 \
+  -p ${docker_port}:3000 \
   -v $GRAFANA_DIR:/var/lib/grafana \
   --network $NETWORK_NAME \
   --restart unless-stopped \
@@ -2368,6 +2392,7 @@ f2b_install_sshd() {
 		systemctl enable rsyslog
 		cd /path/to/fail2ban/config/fail2ban/jail.d/
 		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/linux-ssh.conf
+		systemctl restart rsyslog
 	fi
 }
 
@@ -2603,6 +2628,51 @@ ldnmp_Proxy() {
 
 
 
+ldnmp_Proxy_backend() {
+	clear
+	webname="Reverse proxy-load balancing"
+	yuming="${1:-}"
+	reverseproxy_port="${2:-}"
+
+	send_stats "Installation $webname"
+	echo "Start deploy $webname"
+	if [ -z "$yuming" ]; then
+		add_yuming
+	fi
+
+	# Get multiple IPs entered by the user: ports (separated by spaces)
+	if [ -z "$reverseproxy_port" ]; then
+		read -e -p "Please enter your multiple anti-generation IP+ ports separated by spaces (for example, 127.0.0.1:3000 127.0.0.1:3002): " reverseproxy_port
+	fi
+
+	nginx_install_status
+	install_ssltls
+	certs_status
+	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+
+	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
+	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf
+
+
+	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	# Dynamically generate upstream configuration
+	upstream_servers=""
+	for server in $reverseproxy_port; do
+		upstream_servers="$upstream_servers    server $server;\n"
+	done
+
+	# Replace placeholders in templates
+	sed -i "s/# Dynamically add /$upstream_servers/g" /home/web/conf.d/$yuming.conf
+
+	nginx_http_on
+	docker exec nginx nginx -s reload
+	nginx_web_on
+}
+
+
+
+
 ldnmp_web_status() {
 	root_use
 	while true; do
@@ -2670,7 +2740,7 @@ ldnmp_web_status() {
 				;;
 
 			2)
-				send_stats "Replace the site domain name"
+				send_stats "Replace the site domain"
 				echo -e "${gl_hong} strongly recommends: ${gl_bai}Back up the entire site data first and then change the site domain name!"
 				read -e -p "Please enter the old domain name: " oddyuming
 				read -e -p "Please enter the new domain name: " yuming
@@ -2768,8 +2838,8 @@ ldnmp_web_status() {
 				;;
 
 			20)
-				echo "Domain name format example.com without https://"
 				web_del
+				docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
 
 				;;
 			*)
@@ -3070,7 +3140,7 @@ list_forwarding_services() {
 	}
 
 	END {
-		# Print information for the last service
+		# Print the information for the last service
 		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
 			printf "%-16s %-21s %-26s %-10s\n", \
 				current_service, \
@@ -3122,7 +3192,7 @@ generate_access_urls() {
 			done
 		fi
 
-		# Handle HTTPS configuration
+		# Handling HTTPS configuration
 		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
 				frps_search_pattern="${ipv4_address}:${port}"
@@ -3495,7 +3565,7 @@ while true; do
 	echo "2. Domestic DNS optimization: "
 	echo " v4: 223.5.5.5 183.60.83.19"
 	echo " v6: 2400:3200::1 2400:da00::6666"
-	echo "3. Edit DNS configuration manually"
+	echo "3. Manually edit DNS configuration"
 	echo "------------------------"
 	echo "0. Return to previous menu"
 	echo "------------------------"
@@ -3679,7 +3749,7 @@ dd_xitong() {
 		}
 
 		dd_xitong_2() {
-		  echo -e "Initial username after reinstallation: ${gl_huang}Administrator${gl_bai} Initial password: ${gl_huang}Teddysun.com${gl_bai} Initial port: ${gl_huang}3389${gl_bai}"
+		  echo -e "Initial username after reinstall: ${gl_huang}Administrator${gl_bai} Initial password: ${gl_huang}Teddysun.com${gl_bai} Initial port: ${gl_huang}3389${gl_bai}"
 		  echo -e "Press any key to continue..."
 		  read -n 1 -s -r -p ""
 		  install wget
@@ -4060,7 +4130,7 @@ bbrv3() {
 			if [ -r /etc/os-release ]; then
 				. /etc/os-release
 				if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
-					echo "The current environment does not support it, only Debian and Ubuntu systems"
+					echo "The current environment does not support it, only Debian and Ubuntu systems are supported"
 					break_end
 					linux_Settings
 				fi
@@ -4491,7 +4561,7 @@ Kernel_optimize() {
 	root_use
 	while true; do
 	  clear
-	  send_stats "Linux Kernel Tuning Management"
+	  send_stats "Linux kernel tuning management"
 	  echo "Linux system kernel parameter optimization"
 	  echo "Video introduction: https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1"
 	  echo "------------------------------------------------"
@@ -4500,7 +4570,7 @@ Kernel_optimize() {
 	  echo "--------------------"
 	  echo "1. High-performance optimization mode: Maximize system performance, optimize file descriptors, virtual memory, network settings, cache management, and CPU settings."
 	  echo "2. Balanced Optimization Mode: Balance between performance and resource consumption, suitable for daily use."
-	  echo "3. Website Optimization Mode: Optimizes for the website server to improve concurrent connection processing capabilities, response speed and overall performance."
+	  echo "3. Website optimization mode: Optimize for website servers to improve concurrent connection processing capabilities, response speed and overall performance."
 	  echo "4. Live streaming optimization mode: Optimize for the special needs of live streaming, reduce latency and improve transmission performance."
 	  echo "5. Game server optimization mode: Optimize for game servers to improve concurrent processing capabilities and response speed."
 	  echo "6. Restore the default settings: Restore the system settings to the default configuration."
@@ -4646,7 +4716,7 @@ else
 	echo "${bianse}" >> ~/.profile
 	# source ~/.profile
 fi
-echo -e "${gl_lv} change is completed. You can view the changes after reconnecting SSH! ${gl_bai}"
+echo -e "${gl_lv} change is completed. After reconnecting SSH, you can view the changes! ${gl_bai}"
 
 hash -r
 break_end
@@ -5001,7 +5071,7 @@ add_connection() {
 
 # Delete a connection
 delete_connection() {
-	send_stats "Delete the connection"
+	send_stats "Delete connection"
 	read -e -p "Please enter the connection number to be deleted: " num
 
 	local connection=$(sed -n "${num}p" "$CONFIG_FILE")
@@ -5220,7 +5290,7 @@ format_partition() {
 	fi
 
 	# Format partition
-	echo "Format partition /dev/$PARTITION to $FS_TYPE..."
+	echo "Formatting partition /dev/$PARTITION to $FS_TYPE..."
 	mkfs.$FS_TYPE "/dev/$PARTITION"
 
 	if [ $? -eq 0 ]; then
@@ -5460,7 +5530,7 @@ run_task() {
 		echo "1. Is the network connection normal?"
 		echo "2. Is the remote host accessible?"
 		echo "3. Is the authentication information correct?"
-		echo "4. Do local and remote directories have correct access rights"
+		echo "4. Do local and remote directories have correct access permissions"
 	fi
 }
 
@@ -5522,7 +5592,7 @@ delete_task_schedule() {
 	fi
 
 	crontab -l | grep -v "k rsync_run $num" | crontab -
-	echo "Timed tasks with task number $num deleted"
+	echo "Deleted timed tasks with task number $num"
 }
 
 
@@ -5541,7 +5611,7 @@ rsync_manager() {
 		view_tasks
 		echo
 		echo "1. Create a new task 2. Delete a task"
-		echo "3. Perform local synchronization to remote 4. Perform remote synchronization to local"
+		echo "3. Perform local synchronization to the remote end 4. Perform remote synchronization to the local"
 		echo "5. Create a timing task 6. Delete a timing task"
 		echo "---------------------------------"
 		echo "0. Return to previous menu"
@@ -5625,7 +5695,7 @@ linux_ps() {
 	echo -e "System Information Query"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}hostname: ${gl_bai}$hostname"
-	echo -e "${gl_kjlan} system version: ${gl_bai}$os_info"
+	echo -e "${gl_kjlan}system version: ${gl_bai}$os_info"
 	echo -e "${gl_kjlan}Linux version: ${gl_bai}$kernel_version"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}CPU stack: ${gl_bai}$cpu_arch"
@@ -5634,10 +5704,10 @@ linux_ps() {
 	echo -e "${gl_kjlan}CPUFactor Rate: ${gl_bai}$cpu_freq"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}CPU占用:      ${gl_bai}$cpu_usage_percent%"
-	echo -e "${gl_kjlan} system load: ${gl_bai}$load"
+	echo -e "${gl_kjlan}system load: ${gl_bai}$load"
 	echo -e "${gl_kjlan}Physical memory: ${gl_bai}$mem_info"
 	echo -e "${gl_kjlan}virtual memory: ${gl_bai}$swap_info"
-	echo -e "${gl_kjlan}hard disk occupation: ${gl_bai}$disk_info"
+	echo -e "${gl_kjlan}hard disk occupancy: ${gl_bai}$disk_info"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}$output"
 	echo -e "${gl_kjlan}-------------"
@@ -5677,7 +5747,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}7. ${gl_bai}unzip ZIP compression and decompression tool ${gl_kjlan}8. ${gl_bai}tar GZ compression and decompression tool"
 	  echo -e "${gl_kjlan}9. ${gl_bai}tmux multi-channel background running tool ${gl_kjlan}10. ${gl_bai}ffmpeg video encoding live streaming tool"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}11. ${gl_bai}btop Modern monitoring tool ${gl_huang}★${gl_bai} ${gl_kjlan}12. ${gl_bai}ranger file management tool"
+	  echo -e "${gl_kjlan}11. ${gl_bai}btop Modern monitoring tool ${gl_huang}★${gl_bai} ${gl_kjlan}12. ${gl_bai}ranger File Management Tool"
 	  echo -e "${gl_kjlan}13. ${gl_bai}ncdu Disk occupancy viewing tool ${gl_kjlan}14. ${gl_bai}fzf Global Search Tool"
 	  echo -e "${gl_kjlan}15. ${gl_bai}vim Text Editor ${gl_kjlan}16. ${gl_bai}nano Text Editor ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}17. ${gl_bai}git version control system"
@@ -5687,11 +5757,11 @@ linux_tools() {
 	  echo -e "${gl_kjlan}28. ${gl_bai}Space Invader Game"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31. ${gl_bai}all installation ${gl_kjlan}32. ${gl_bai}all installation (excluding screen savers and games) ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33. ${gl_bai} uninstall all"
+	  echo -e "${gl_kjlan}33. ${gl_bai}uninstall all"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41. ${gl_bai}install the specified tool ${gl_kjlan}42. ${gl_bai}uninstall the specified tool"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0. ${gl_bai} returns to main menu"
+	  echo -e "${gl_kjlan}0. ${gl_bai}returns to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "Please enter your choice: " sub_choice
 
@@ -5995,12 +6065,12 @@ linux_docker() {
 	  echo -e "${gl_kjlan}8. ${gl_bai}replace Docker source"
 	  echo -e "${gl_kjlan}9. ${gl_bai}edit daemon.json file"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}11. ${gl_bai} enable Docker-ipv6 access"
-	  echo -e "${gl_kjlan}12. ${gl_bai} closes Docker-ipv6 access"
+	  echo -e "${gl_kjlan}11. ${gl_bai}enable Docker-ipv6 access"
+	  echo -e "${gl_kjlan}12. ${gl_bai}closes Docker-ipv6 access"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}20. ${gl_bai}Uninstall Docker environment"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0. ${gl_bai} returns to main menu"
+	  echo -e "${gl_kjlan}0. ${gl_bai}returns to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "Please enter your choice: " sub_choice
 
@@ -6287,7 +6357,7 @@ linux_test() {
 	  echo -e "${gl_kjlan}31. ${gl_bai}bench performance test"
 	  echo -e "${gl_kjlan}32. ${gl_bai}spiritsdx Fusion Monster Evaluation ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0. ${gl_bai} returns to main menu"
+	  echo -e "${gl_kjlan}0. ${gl_bai}returns to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "Please enter your choice: " sub_choice
 
@@ -6438,7 +6508,7 @@ linux_Oracle() {
 	  echo -e "${gl_kjlan}5. ${gl_bai} enable ROOT password login mode"
 	  echo -e "${gl_kjlan}6. ${gl_bai}IPV6 recovery tool"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0. ${gl_bai} returns to main menu"
+	  echo -e "${gl_kjlan}0. ${gl_bai}returns to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "Please enter your choice: " sub_choice
 
@@ -6607,6 +6677,23 @@ fi
 }
 
 
+fix_phpfpm_conf() {
+	local container_name=$1
+	docker exec "$container_name" sh -c "mkdir -p /run/$container_name && chmod 777 /run/$container_name"
+	docker exec "$container_name" sh -c "sed -i '1i [global]\\ndaemonize = no' /usr/local/etc/php-fpm.d/www.conf"
+	docker exec "$container_name" sh -c "sed -i '/^listen =/d' /usr/local/etc/php-fpm.d/www.conf"
+	docker exec "$container_name" sh -c "echo -e '\nlisten = /run/$container_name/php-fpm.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0777' >> /usr/local/etc/php-fpm.d/www.conf"
+	docker exec "$container_name" sh -c "rm -f /usr/local/etc/php-fpm.d/zz-docker.conf"
+
+	find /home/web/conf.d/ -type f -name "*.conf" -exec sed -i "s#fastcgi_pass ${container_name}:9000;#fastcgi_pass unix:/run/${container_name}/php-fpm.sock;#g" {} \;
+
+}
+
+
+
+
+
+
 linux_ldnmp() {
   while true; do
 
@@ -6624,15 +6711,16 @@ linux_ldnmp() {
 	echo -e "${gl_huang}21. ${gl_bai} install nginx only ${gl_huang}★${gl_bai} ${gl_huang}22. ${gl_bai} site redirection"
 	echo -e "${gl_huang}23. ${gl_bai} site reverse proxy-IP+port ${gl_huang}★${gl_bai} ${gl_huang}24. ${gl_bai} site reverse proxy-domain name"
 	echo -e "${gl_huang}25. ${gl_bai}install Bitwarden password management platform ${gl_huang}26. ${gl_bai}install Halo blog website"
-	echo -e "${gl_huang}27. ${gl_bai}install AI painting prompt word generator ${gl_huang}30. ${gl_bai}custom static site"
+	echo -e "${gl_huang}27. ${gl_bai}install AI painting prompt word generator ${gl_huang}28. ${gl_bai} site reverse proxy-load balancing"
+	echo -e "${gl_huang}30. ${gl_bai}custom static site"
 	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}31. ${gl_bai} Site Data Management ${gl_huang}★${gl_bai} ${gl_huang}32. ${gl_bai} Backup the entire site data"
+	echo -e "${gl_huang}31. ${gl_bai} Site data management ${gl_huang}★${gl_bai} ${gl_huang}32. ${gl_bai} Backup the entire site data"
 	echo -e "${gl_huang}33. ${gl_bai} timed remote backup ${gl_huang}34. ${gl_bai} restores the entire site data"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}35. ${gl_bai}Protect LDNMP environment ${gl_huang}36. ${gl_bai}Optimize LDNMP environment"
 	echo -e "${gl_huang}37. ${gl_bai}Update LDNMP environment ${gl_huang}38. ${gl_bai}Uninstall LDNMP environment"
 	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}0. ${gl_bai} returns to main menu"
+	echo -e "${gl_huang}0. ${gl_bai}returns to main menu"
 	echo -e "${gl_huang}------------------------${gl_bai}"
 	read -e -p "Please enter your choice: " sub_choice
 
@@ -6959,7 +7047,7 @@ linux_ldnmp() {
 	  echo -e "[${gl_huang}1/6${gl_bai}] Upload PHP source code"
 	  echo "-------------"
 	  echo "At present, only zip-format source code packages are allowed to be uploaded. Please put the source code packages in the /home/web/html/${yuming} directory"
-	  read -e -p "You can also enter the download link to remotely download the source code package. Directly press Enter will skip remote download: " url_download
+	  read -e -p "You can also enter the download link to remotely download the source code package. Directly press Enter will skip the remote download: " url_download
 
 	  if [ -n "$url_download" ]; then
 		  wget "$url_download"
@@ -7013,7 +7101,7 @@ linux_ldnmp() {
 	  clear
 	  echo -e "[${gl_huang}5/6${gl_bai}] Edit site configuration"
 	  echo "-------------"
-	  echo "Press any key to continue, and you can set the site configuration in detail, such as pseudo-static contents, etc."
+	  echo "Press any key to continue, and you can set the site configuration in detail, such as pseudo-static contents."
 	  read -n 1 -s -r -p ""
 	  install nano
 	  nano /home/web/conf.d/$yuming.conf
@@ -7048,6 +7136,8 @@ linux_ldnmp() {
 			  echo
 			  ;;
 	  esac
+
+	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
 
 	  restart_ldnmp
 	  ldnmp_web_on
@@ -7188,6 +7278,10 @@ linux_ldnmp() {
 
 		;;
 
+	  28)
+	  ldnmp_Proxy_backend
+		;;
+
 
 	  30)
 	  clear
@@ -7213,7 +7307,7 @@ linux_ldnmp() {
 	  echo -e "[${gl_huang}1/2${gl_bai}] Upload static source code"
 	  echo "-------------"
 	  echo "At present, only zip-format source code packages are allowed to be uploaded. Please put the source code packages in the /home/web/html/${yuming} directory"
-	  read -e -p "You can also enter the download link to remotely download the source code package. Directly press Enter will skip remote download: " url_download
+	  read -e -p "You can also enter the download link to remotely download the source code package. Directly press Enter will skip the remote download: " url_download
 
 	  if [ -n "$url_download" ]; then
 		  wget "$url_download"
@@ -7242,6 +7336,10 @@ linux_ldnmp() {
 
 
 
+
+
+
+
 	31)
 	  ldnmp_web_status
 	  ;;
@@ -7258,7 +7356,7 @@ linux_ldnmp() {
 	  while true; do
 		clear
 		echo "Backup file has been created: /home/$backup_filename"
-		read -e -p "Do you want to transfer backup data to the remote server? (Y/N): " choice
+		read -e -p "Do you want to transfer backup data to a remote server? (Y/N): " choice
 		case "$choice" in
 		  [Yy])
 			read -e -p "Please enter the remote server IP: " remote_ip
@@ -7307,7 +7405,7 @@ linux_ldnmp() {
 	  case $dingshi in
 		  1)
 			  check_crontab_installed
-			  read -e -p "Select the day of the week for the weekly backup (0-6, 0 represents Sunday): " weekday
+			  read -e -p "Select the weekly backup day (0-6, 0 represents Sunday): " weekday
 			  (crontab -l ; echo "0 0 * * $weekday ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
 		  2)
@@ -7380,7 +7478,7 @@ linux_ldnmp() {
 			  echo "1. Install the defense program"
 			  echo "------------------------"
 			  echo "5. View SSH interception record 6. View website interception record"
-			  echo "7. View the list of defense rules 8. View real-time monitoring of logs"
+			  echo "7. View the list of defense rules 8. View the real-time monitoring of the log"
 			  echo "------------------------"
 			  echo "11. Configure intercept parameters 12. Clear all blocked IPs"
 			  echo "------------------------"
@@ -7415,16 +7513,25 @@ linux_ldnmp() {
 					  local xxx="fail2ban-nginx-cc"
 					  f2b_status_xxx
 					  echo "------------------------"
+					  local xxx="docker-nginx-418"
+					  f2b_status_xxx
+					  echo "------------------------"
 					  local xxx="docker-nginx-bad-request"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-badbots"
 					  f2b_status_xxx
 					  echo "------------------------"
 					  local xxx="docker-nginx-botsearch"
 					  f2b_status_xxx
 					  echo "------------------------"
+					  local xxx="docker-nginx-deny"
+					  f2b_status_xxx
+					  echo "------------------------"
 					  local xxx="docker-nginx-http-auth"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-nginx-limit-req"
+					  local xxx="docker-nginx-unauthorized"
 					  f2b_status_xxx
 					  echo "------------------------"
 					  local xxx="docker-php-url-fopen"
@@ -7460,7 +7567,7 @@ linux_ldnmp() {
 
 				  21)
 					  send_stats "cloudflare mode"
-					  echo "Go to the upper right corner of the cf background, select the API token on the left, and get the Global API Key"
+					  echo "Go to the upper right corner of the cf background my profile, select the API token on the left, and get the Global API Key"
 					  echo "https://dash.cloudflare.com/login"
 					  read -e -p "Enter CF's account number: " cfuser
 					  read -e -p "Global API Key for input CF: " cftoken
@@ -7511,7 +7618,7 @@ linux_ldnmp() {
 						  (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
 						  echo "High load automatic shield script has been added"
 					  else
-						  echo "The automatic shield script already exists, no need to add"
+						  echo "The automatic shield script already exists, no need to add it"
 					  fi
 
 					  ;;
@@ -7576,6 +7683,9 @@ linux_ldnmp() {
 				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
 				  rm -rf /home/www.conf
 
+				  fix_phpfpm_conf php
+				  fix_phpfpm_conf php74
+
 				  # mysql tuning
 				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
 				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
@@ -7609,6 +7719,9 @@ linux_ldnmp() {
 				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
 				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
 				  rm -rf /home/www.conf
+
+				  fix_phpfpm_conf php
+				  fix_phpfpm_conf php74
 
 				  # mysql tuning
 				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
@@ -7712,22 +7825,7 @@ linux_ldnmp() {
 			  docker exec php mkdir -p /usr/local/bin/
 			  docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
 			  docker exec php chmod +x /usr/local/bin/install-php-extensions
-
-			  docker exec php sh -c "\
-							apk add --no-cache imagemagick imagemagick-dev \
-							&& apk add --no-cache git autoconf gcc g++ make pkgconfig \
-							&& rm -rf /tmp/imagick \
-							&& git clone ${gh_proxy}github.com/Imagick/imagick /tmp/imagick \
-							&& cd /tmp/imagick \
-							&& phpize \
-							&& ./configure \
-							&& make \
-							&& make install \
-							&& echo 'extension=imagick.so' > /usr/local/etc/php/conf.d/imagick.ini \
-							&& rm -rf /tmp/imagick"
-
-
-			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis
+			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis imagick
 
 
 			  docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
@@ -7735,8 +7833,9 @@ linux_ldnmp() {
 			  docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_execution_time=1200" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_input_time=600" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1
-			  docker exec php sh -c 'echo "max_input_vars=3000" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1
+			  docker exec php sh -c 'echo "max_input_vars=5000" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1
 
+			  fix_phpfpm_con $ldnmp_pods
 
 			  docker restart $ldnmp_pods > /dev/null 2>&1
 			  cp /home/web/docker-compose1.yml /home/web/docker-compose.yml
@@ -7750,8 +7849,8 @@ linux_ldnmp() {
 			  docker rm -f $ldnmp_pods
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
-			  restart_redis
 			  docker restart $ldnmp_pods > /dev/null 2>&1
+			  restart_redis
 			  send_stats "Update $ldnmp_pods"
 			  echo "Update ${ldnmp_pods} completed"
 
@@ -7852,20 +7951,22 @@ linux_panel() {
 	  echo -e "${gl_kjlan}39. ${gl_bai}Bililive live recording tool ${gl_kjlan}40. ${gl_bai}webssh web version SSH connection tool"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41. ${gl_bai}Mouse Management Panel ${gl_kjlan}42. ${gl_bai}Nexterm Remote Connection Tool"
-	  echo -e "${gl_kjlan}43. ${gl_bai}RustDesk Remote Desk (Server) ${gl_kjlan}44. ${gl_bai}RustDesk Remote Desk (Relay)"
-	  echo -e "${gl_kjlan}45. ${gl_bai}Docker acceleration station ${gl_kjlan}46. ${gl_bai}GitHub acceleration station"
+	  echo -e "${gl_kjlan}43. ${gl_bai}RustDesk Remote Desk (Server) ${gl_huang}★${gl_bai} ${gl_kjlan}44. ${gl_bai}RustDesk Remote Desk (Relay) ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}45. ${gl_bai}Docker acceleration station ${gl_kjlan}46. ${gl_bai}GitHub acceleration station ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}47. ${gl_bai}Prometheus monitoring ${gl_kjlan}48. ${gl_bai}Prometheus (host monitoring)"
 	  echo -e "${gl_kjlan}49. ${gl_bai}Prometheus (Container Monitoring) ${gl_kjlan}50. ${gl_bai}Replenishment Monitoring Tool"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51. ${gl_bai}PVE open chick panel ${gl_kjlan}52. ${gl_bai}DPanel container management panel"
 	  echo -e "${gl_kjlan}53. ${gl_bai}llama3 chat AI model ${gl_kjlan}54. ${gl_bai}AMH host website building management panel"
-	  echo -e "${gl_kjlan}55. ${gl_bai}FRP intranet penetration (server) ${gl_kjlan}56. ${gl_bai}FRP intranet penetration (client)"
-	  echo -e "${gl_kjlan}57. ${gl_bai}Deepseek chat AI model ${gl_kjlan}58. ${gl_bai}Dify mockup knowledge base"
+	  echo -e "${gl_kjlan}55. ${gl_bai}FRP intranet penetration (server) ${gl_huang}★${gl_bai} ${gl_kjlan}56. ${gl_bai}FRP intranet penetration (client) ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}57. ${gl_bai}Deepseek chat AI big model ${gl_kjlan}58. ${gl_bai}Dify big model knowledge base ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}59. ${gl_bai}NewAPI Big Model Asset Management ${gl_kjlan}60. ${gl_bai}JumpServer Open Source Bastion Machine"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}61. ${gl_bai}Online Translation Server ${gl_kjlan}62. ${gl_bai}RAGFlow Mockup Knowledge Base"
+	  echo -e "${gl_kjlan}63. ${gl_bai}OpenWebUI self-hosted AI platform ${gl_huang}★${gl_bai} ${gl_kjlan}64. ${gl_bai} it-tools toolbox"
+	  echo -e "${gl_kjlan}65. ${gl_bai}n8n Automation Workflow Platform ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0. ${gl_bai} returns to main menu"
+	  echo -e "${gl_kjlan}0. ${gl_bai}returns to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "Please enter your choice: " sub_choice
 
@@ -7946,15 +8047,22 @@ linux_panel() {
 			local docker_name="npm"
 			local docker_img="jc21/nginx-proxy-manager:latest"
 			local docker_port=81
-			local docker_rum="docker run -d \
-						  --name=$docker_name \
-						  -p 80:80 \
-						  -p 81:$docker_port \
-						  -p 443:443 \
-						  -v /home/docker/npm/data:/data \
-						  -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
-						  --restart=always \
-						  $docker_img"
+
+			docker_rum() {
+
+				docker run -d \
+				  --name=$docker_name \
+				  -p ${docker_port}:81 \
+				  -p 80:80 \
+				  -p 443:443 \
+				  -v /home/docker/npm/data:/data \
+				  -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
+				  --restart=always \
+				  $docker_img
+
+
+			}
+
 			local docker_describe="If you have installed other panels or LDNMP website building environments, it is recommended to uninstall first and then install npm!"
 			local docker_url="Official website introduction: https://nginxproxymanager.com/"
 			local docker_use="echo \"Initial username: admin@example.com\""
@@ -7970,15 +8078,22 @@ linux_panel() {
 			local docker_name="alist"
 			local docker_img="xhofe/alist-aria2:latest"
 			local docker_port=5244
-			local docker_rum="docker run -d \
-								--restart=always \
-								-v /home/docker/alist:/opt/alist/data \
-								-p 5244:5244 \
-								-e PUID=0 \
-								-e PGID=0 \
-								-e UMASK=022 \
-								--name="alist" \
-								xhofe/alist-aria2:latest"
+
+			docker_rum() {
+
+				docker run -d \
+					--restart=always \
+					-v /home/docker/alist:/opt/alist/data \
+					-p ${docker_port}:5244 \
+					-e PUID=0 \
+					-e PGID=0 \
+					-e UMASK=022 \
+					--name="alist" \
+					xhofe/alist-aria2:latest
+
+			}
+
+
 			local docker_describe="A file listing program that supports multiple storage, supports web browsing and WebDAV, powered by gin and Solidjs"
 			local docker_url="Official website introduction: https://alist.nn.ci/zh/"
 			local docker_use="docker exec -it alist ./alist admin random"
@@ -7993,7 +8108,11 @@ linux_panel() {
 			local docker_name="webtop-ubuntu"
 			local docker_img="lscr.io/linuxserver/webtop:ubuntu-kde"
 			local docker_port=3006
-			local docker_rum="docker run -d \
+
+			docker_rum() {
+
+
+						docker run -d \
 						  --name=webtop-ubuntu \
 						  --security-opt seccomp=unconfined \
 						  -e PUID=1000 \
@@ -8001,12 +8120,17 @@ linux_panel() {
 						  -e TZ=Etc/UTC \
 						  -e SUBFOLDER=/ \
 						  -e TITLE=Webtop \
-						  -p 3006:3000 \
+						  -p ${docker_port}:3000 \
 						  -v /home/docker/webtop/data:/config \
 						  -v /var/run/docker.sock:/var/run/docker.sock \
 						  --shm-size="1gb" \
 						  --restart unless-stopped \
-						  lscr.io/linuxserver/webtop:ubuntu-kde"
+						  lscr.io/linuxserver/webtop:ubuntu-kde
+
+
+
+			}
+
 
 			local docker_describe="webtop Ubuntu-based containers, containing the official supported full desktop environment, accessible through any modern web browser"
 			local docker_url="Official website introduction: https://docs.linuxserver.io/images/docker-webtop/"
@@ -8019,7 +8143,7 @@ linux_panel() {
 			  ;;
 		  7)
 			clear
-			send_stats "Build Nezha"
+			send_stats "搭建哪吒"
 			local docker_name="nezha-dashboard"
 			local docker_port=8008
 			while true; do
@@ -8090,19 +8214,27 @@ linux_panel() {
 			local docker_name="qbittorrent"
 			local docker_img="lscr.io/linuxserver/qbittorrent:latest"
 			local docker_port=8081
-			local docker_rum="docker run -d \
-								  --name=qbittorrent \
-								  -e PUID=1000 \
-								  -e PGID=1000 \
-								  -e TZ=Etc/UTC \
-								  -e WEBUI_PORT=8081 \
-								  -p 8081:8081 \
-								  -p 6881:6881 \
-								  -p 6881:6881/udp \
-								  -v /home/docker/qbittorrent/config:/config \
-								  -v /home/docker/qbittorrent/downloads:/downloads \
-								  --restart unless-stopped \
-								  lscr.io/linuxserver/qbittorrent:latest"
+
+			docker_rum() {
+
+
+				docker run -d \
+				  --name=qbittorrent \
+				  -e PUID=1000 \
+				  -e PGID=1000 \
+				  -e TZ=Etc/UTC \
+				  -e WEBUI_PORT=8081 \
+				  -p ${docker_port}:8081 \
+				  -p 6881:6881 \
+				  -p 6881:6881/udp \
+				  -v /home/docker/qbittorrent/config:/config \
+				  -v /home/docker/qbittorrent/downloads:/downloads \
+				  --restart unless-stopped \
+				  lscr.io/linuxserver/qbittorrent:latest
+
+
+			}
+
 			local docker_describe="qbittorrent offline BT magnetic download service"
 			local docker_url="Official website introduction: https://hub.docker.com/r/linuxserver/qbittorrent"
 			local docker_use="sleep 3"
@@ -8131,7 +8263,7 @@ linux_panel() {
 				port=25
 				timeout=3
 				if echo "quit" | timeout $timeout telnet smtp.qq.com $port | grep 'Connected'; then
-				  echo -e "${gl_lv}port ${gl_bai}"
+				  echo -e "${gl_lv}port $port Currently available ${gl_bai}"
 				else
 				  echo -e "${gl_hong} port $port ${gl_bai}"
 				fi
@@ -8245,7 +8377,7 @@ linux_panel() {
 				sleep 1
 				docker exec -it db mongosh --eval "printjson(rs.initiate())"
 				sleep 5
-				docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+				docker run --name rocketchat --restart=always -p ${docker_port}:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
 				clear
 				ip_address
@@ -8256,7 +8388,7 @@ linux_panel() {
 			docker_app_update() {
 				docker rm -f rocketchat
 				docker rmi -f rocket.chat:latest
-				docker run --name rocketchat --restart=always -p 3897:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
+				docker run --name rocketchat --restart=always -p ${docker_port}:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 				clear
 				ip_address
 				echo "rocket.chat has been installed"
@@ -8281,14 +8413,23 @@ linux_panel() {
 			local docker_name="zentao-server"
 			local docker_img="idoop/zentao:latest"
 			local docker_port=82
-			local docker_rum="docker run -d -p 82:80 -p 3308:3306 \
-							  -e ADMINER_USER="root" -e ADMINER_PASSWD="password" \
-							  -e BIND_ADDRESS="false" \
-							  -v /home/docker/zentao-server/:/opt/zbox/ \
-							  --add-host smtp.exmail.qq.com:163.177.90.125 \
-							  --name zentao-server \
-							  --restart=always \
-							  idoop/zentao:latest"
+
+
+			docker_rum() {
+
+
+				docker run -d -p ${docker_port}:80 \
+				  -e ADMINER_USER="root" -e ADMINER_PASSWD="password" \
+				  -e BIND_ADDRESS="false" \
+				  -v /home/docker/zentao-server/:/opt/zbox/ \
+				  --add-host smtp.exmail.qq.com:163.177.90.125 \
+				  --name zentao-server \
+				  --restart=always \
+				  idoop/zentao:latest
+
+
+			}
+
 			local docker_describe="Zen Tao is a general project management software"
 			local docker_url="Official website introduction: https://www.zentao.net/"
 			local docker_use="echo \"Initial username: admin\""
@@ -8302,13 +8443,21 @@ linux_panel() {
 			local docker_name="qinglong"
 			local docker_img="whyour/qinglong:latest"
 			local docker_port=5700
-			local docker_rum="docker run -d \
-					  -v /home/docker/qinglong/data:/ql/data \
-					  -p 5700:5700 \
-					  --name qinglong \
-					  --hostname qinglong \
-					  --restart unless-stopped \
-					  whyour/qinglong:latest"
+
+			docker_rum() {
+
+
+				docker run -d \
+				  -v /home/docker/qinglong/data:/ql/data \
+				  -p ${docker_port}:5700 \
+				  --name qinglong \
+				  --hostname qinglong \
+				  --restart unless-stopped \
+				  whyour/qinglong:latest
+
+
+			}
+
 			local docker_describe="Qinglong Panel is a timed task management platform"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/whyour/qinglong"
 			local docker_use=""
@@ -8329,7 +8478,9 @@ linux_panel() {
 			docker_app_install() {
 				cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
 				curl -o /home/docker/cloud/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
-				cd /home/docker/cloud/ && docker compose up -d
+				sed -i "s/5212:5212/${docker_port}:5212/g" /home/docker/cloud/docker-compose.yml
+				cd /home/docker/cloud/
+				docker compose up -d
 				clear
 				echo "installed"
 				check_docker_app_ip
@@ -8357,16 +8508,21 @@ linux_panel() {
 			local docker_name="easyimage"
 			local docker_img="ddsderek/easyimage:latest"
 			local docker_port=85
-			local docker_rum="docker run -d \
-					  --name easyimage \
-					  -p 85:80 \
-					  -e TZ=Asia/Shanghai \
-					  -e PUID=1000 \
-					  -e PGID=1000 \
-					  -v /home/docker/easyimage/config:/app/web/config \
-					  -v /home/docker/easyimage/i:/app/web/i \
-					  --restart unless-stopped \
-					  ddsderek/easyimage:latest"
+			docker_rum() {
+
+				docker run -d \
+				  --name easyimage \
+				  -p ${docker_port}:80 \
+				  -e TZ=Asia/Shanghai \
+				  -e PUID=1000 \
+				  -e PGID=1000 \
+				  -v /home/docker/easyimage/config:/app/web/config \
+				  -v /home/docker/easyimage/i:/app/web/i \
+				  --restart unless-stopped \
+				  ddsderek/easyimage:latest
+
+			}
+
 			local docker_describe="Simple picture bed is a simple picture bed program"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/icret/EasyImages2.0"
 			local docker_use=""
@@ -8379,14 +8535,21 @@ linux_panel() {
 			local docker_name="emby"
 			local docker_img="linuxserver/emby:latest"
 			local docker_port=8096
-			local docker_rum="docker run -d --name=emby --restart=always \
-						-v /home/docker/emby/config:/config \
-						-v /home/docker/emby/share1:/mnt/share1 \
-						-v /home/docker/emby/share2:/mnt/share2 \
-						-v /mnt/notify:/mnt/notify \
-						-p 8096:8096 -p 8920:8920 \
-						-e UID=1000 -e GID=100 -e GIDLIST=100 \
-						linuxserver/emby:latest"
+
+			docker_rum() {
+
+				docker run -d --name=emby --restart=always \
+					-v /home/docker/emby/config:/config \
+					-v /home/docker/emby/share1:/mnt/share1 \
+					-v /home/docker/emby/share2:/mnt/share2 \
+					-v /mnt/notify:/mnt/notify \
+					-p ${docker_port}:8096 \
+					-e UID=1000 -e GID=100 -e GIDLIST=100 \
+					linuxserver/emby:latest
+
+			}
+
+
 			local docker_describe="emby is a master-slave-architecture media server software that can be used to organize videos and audio on the server and stream audio and video to the client device"
 			local docker_url="Official website introduction: https://emby.media/"
 			local docker_use=""
@@ -8399,7 +8562,14 @@ linux_panel() {
 			local docker_name="looking-glass"
 			local docker_img="wikihostinc/looking-glass-server"
 			local docker_port=89
-			local docker_rum="docker run -d --name looking-glass --restart always -p 89:80 wikihostinc/looking-glass-server"
+
+
+			docker_rum() {
+
+				docker run -d --name looking-glass --restart always -p ${docker_port}:80 wikihostinc/looking-glass-server
+
+			}
+
 			local docker_describe="Speedtest speed test panel is a VPS network speed test tool with multiple test functions, and can also monitor VPS in and out of the station in real time"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/wikihost-opensource/als"
 			local docker_use=""
@@ -8413,15 +8583,23 @@ linux_panel() {
 			local docker_name="adguardhome"
 			local docker_img="adguard/adguardhome"
 			local docker_port=3000
-			local docker_rum="docker run -d \
-							--name adguardhome \
-							-v /home/docker/adguardhome/work:/opt/adguardhome/work \
-							-v /home/docker/adguardhome/conf:/opt/adguardhome/conf \
-							-p 53:53/tcp \
-							-p 53:53/udp \
-							-p 3000:3000/tcp \
-							--restart always \
-							adguard/adguardhome"
+
+			docker_rum() {
+
+				docker run -d \
+					--name adguardhome \
+					-v /home/docker/adguardhome/work:/opt/adguardhome/work \
+					-v /home/docker/adguardhome/conf:/opt/adguardhome/conf \
+					-p 53:53/tcp \
+					-p 53:53/udp \
+					-p ${docker_port}:3000/tcp \
+					--restart always \
+					adguard/adguardhome
+
+
+			}
+
+
 			local docker_describe="AdGuardHome is a full-network ad blocking and anti-tracking software, and will be more than just a DNS server in the future."
 			local docker_url="Official website introduction: https://hub.docker.com/r/adguard/adguardhome"
 			local docker_use=""
@@ -8437,12 +8615,19 @@ linux_panel() {
 			local docker_name="onlyoffice"
 			local docker_img="onlyoffice/documentserver"
 			local docker_port=8082
-			local docker_rum="docker run -d -p 8082:80 \
-						--restart=always \
-						--name onlyoffice \
-						-v /home/docker/onlyoffice/DocumentServer/logs:/var/log/onlyoffice  \
-						-v /home/docker/onlyoffice/DocumentServer/data:/var/www/onlyoffice/Data  \
-						 onlyoffice/documentserver"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:80 \
+					--restart=always \
+					--name onlyoffice \
+					-v /home/docker/onlyoffice/DocumentServer/logs:/var/log/onlyoffice  \
+					-v /home/docker/onlyoffice/DocumentServer/data:/var/www/onlyoffice/Data  \
+					 onlyoffice/documentserver
+
+
+			}
+
 			local docker_describe="onlyoffice is an open source online office tool, so powerful!"
 			local docker_url="Official website introduction: https://www.onlyoffice.com/"
 			local docker_use=""
@@ -8481,7 +8666,7 @@ linux_panel() {
 						check_disk_space 5
 						bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
 						clear
-						echo "Lei Pool WAF panel has been installed"
+						echo "Thunder Pool WAF panel has been installed"
 						check_docker_app_ip
 						docker exec safeline-mgt resetadmin
 
@@ -8518,13 +8703,20 @@ linux_panel() {
 			local docker_name="portainer"
 			local docker_img="portainer/portainer"
 			local docker_port=9050
-			local docker_rum="docker run -d \
+
+			docker_rum() {
+
+				docker run -d \
 					--name portainer \
-					-p 9050:9000 \
+					-p ${docker_port}:9000 \
 					-v /var/run/docker.sock:/var/run/docker.sock \
 					-v /home/docker/portainer:/data \
 					--restart always \
-					portainer/portainer"
+					portainer/portainer
+
+			}
+
+
 			local docker_describe="portainer is a lightweight docker container management panel"
 			local docker_url="Official website introduction: https://www.portainer.io/"
 			local docker_use=""
@@ -8538,7 +8730,15 @@ linux_panel() {
 			local docker_name="vscode-web"
 			local docker_img="codercom/code-server"
 			local docker_port=8180
-			local docker_rum="docker run -d -p 8180:8080 -v /home/docker/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart always codercom/code-server"
+
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 -v /home/docker/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart always codercom/code-server
+
+			}
+
+
 			local docker_describe="VScode is a powerful online code writing tool"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/coder/code-server"
 			local docker_use="sleep 3"
@@ -8550,12 +8750,20 @@ linux_panel() {
 			local docker_name="uptime-kuma"
 			local docker_img="louislam/uptime-kuma:latest"
 			local docker_port=3003
-			local docker_rum="docker run -d \
-							--name=uptime-kuma \
-							-p 3003:3001 \
-							-v /home/docker/uptime-kuma/uptime-kuma-data:/app/data \
-							--restart=always \
-							louislam/uptime-kuma:latest"
+
+
+			docker_rum() {
+
+				docker run -d \
+					--name=uptime-kuma \
+					-p ${docker_port}:3001 \
+					-v /home/docker/uptime-kuma/uptime-kuma-data:/app/data \
+					--restart=always \
+					louislam/uptime-kuma:latest
+
+			}
+
+
 			local docker_describe="Uptime Kuma Easy to use self-hosted monitoring tool"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/louislam/uptime-kuma"
 			local docker_use=""
@@ -8568,7 +8776,13 @@ linux_panel() {
 			local docker_name="memos"
 			local docker_img="ghcr.io/usememos/memos:latest"
 			local docker_port=5230
-			local docker_rum="docker run -d --name memos -p 5230:5230 -v /home/docker/memos:/var/opt/memos --restart always ghcr.io/usememos/memos:latest"
+
+			docker_rum() {
+
+				docker run -d --name memos -p ${docker_port}:5230 -v /home/docker/memos:/var/opt/memos --restart always ghcr.io/usememos/memos:latest
+
+			}
+
 			local docker_describe="Memos is a lightweight, self-hosted memo center"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/usememos/memos"
 			local docker_use=""
@@ -8581,23 +8795,31 @@ linux_panel() {
 			local docker_name="webtop"
 			local docker_img="lscr.io/linuxserver/webtop:latest"
 			local docker_port=3083
-			local docker_rum="docker run -d \
-						  --name=webtop \
-						  --security-opt seccomp=unconfined \
-						  -e PUID=1000 \
-						  -e PGID=1000 \
-						  -e TZ=Etc/UTC \
-						  -e SUBFOLDER=/ \
-						  -e TITLE=Webtop \
-						  -e LC_ALL=zh_CN.UTF-8 \
-						  -e DOCKER_MODS=linuxserver/mods:universal-package-install \
-						  -e INSTALL_PACKAGES=font-noto-cjk \
-						  -p 3083:3000 \
-						  -v /home/docker/webtop/data:/config \
-						  -v /var/run/docker.sock:/var/run/docker.sock \
-						  --shm-size="1gb" \
-						  --restart unless-stopped \
-						  lscr.io/linuxserver/webtop:latest"
+
+			docker_rum() {
+
+
+				docker run -d \
+				  --name=webtop \
+				  --security-opt seccomp=unconfined \
+				  -e PUID=1000 \
+				  -e PGID=1000 \
+				  -e TZ=Etc/UTC \
+				  -e SUBFOLDER=/ \
+				  -e TITLE=Webtop \
+				  -e LC_ALL=zh_CN.UTF-8 \
+				  -e DOCKER_MODS=linuxserver/mods:universal-package-install \
+				  -e INSTALL_PACKAGES=font-noto-cjk \
+				  -p ${docker_port}:3000 \
+				  -v /home/docker/webtop/data:/config \
+				  -v /var/run/docker.sock:/var/run/docker.sock \
+				  --shm-size="1gb" \
+				  --restart unless-stopped \
+				  lscr.io/linuxserver/webtop:latest
+
+
+			}
+
 
 			local docker_describe="webtop is based on Alpine, Ubuntu, Fedora and Arch containers, with a full desktop environment officially supported, accessible through any modern web browser"
 			local docker_url="Official website introduction: https://docs.linuxserver.io/images/docker-webtop/"
@@ -8612,7 +8834,13 @@ linux_panel() {
 			local docker_img="nextcloud:latest"
 			local docker_port=8989
 			local rootpasswd=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16)
-			local docker_rum="docker run -d --name nextcloud --restart=always -p 8989:80 -v /home/docker/nextcloud:/var/www/html -e NEXTCLOUD_ADMIN_USER=nextcloud -e NEXTCLOUD_ADMIN_PASSWORD=$rootpasswd nextcloud"
+
+			docker_rum() {
+
+				docker run -d --name nextcloud --restart=always -p ${docker_port}:80 -v /home/docker/nextcloud:/var/www/html -e NEXTCLOUD_ADMIN_USER=nextcloud -e NEXTCLOUD_ADMIN_PASSWORD=$rootpasswd nextcloud
+
+			}
+
 			local docker_describe="Nextcloud has over 400,000 deployments and is the most popular local content collaboration platform you can download"
 			local docker_url="Official website introduction: https://nextcloud.com/"
 			local docker_use="echo \"Account: nextcloud Password: $rootpasswd\""
@@ -8625,7 +8853,13 @@ linux_panel() {
 			local docker_name="qd"
 			local docker_img="qdtoday/qd:latest"
 			local docker_port=8923
-			local docker_rum="docker run -d --name qd -p 8923:80 -v /home/docker/qd/config:/usr/src/app/config qdtoday/qd"
+
+			docker_rum() {
+
+				docker run -d --name qd -p ${docker_port}:80 -v /home/docker/qd/config:/usr/src/app/config qdtoday/qd
+
+			}
+
 			local docker_describe="QD-Today is an HTTP request timing task automatic execution framework"
 			local docker_url="Official website introduction: https://qd-today.github.io/qd/zh_CN/"
 			local docker_use=""
@@ -8637,7 +8871,13 @@ linux_panel() {
 			local docker_name="dockge"
 			local docker_img="louislam/dockge:latest"
 			local docker_port=5003
-			local docker_rum="docker run -d --name dockge --restart unless-stopped -p 5003:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/home/docker/dockge/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge"
+
+			docker_rum() {
+
+				docker run -d --name dockge --restart unless-stopped -p ${docker_port}:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/home/docker/dockge/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge
+
+			}
+
 			local docker_describe="dockge is a visual docker-compose container management panel"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/louislam/dockge"
 			local docker_use=""
@@ -8650,7 +8890,13 @@ linux_panel() {
 			local docker_name="speedtest"
 			local docker_img="ghcr.io/librespeed/speedtest"
 			local docker_port=8028
-			local docker_rum="docker run -d -p 8028:8080 --name speedtest --restart always ghcr.io/librespeed/speedtest"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 --name speedtest --restart always ghcr.io/librespeed/speedtest
+
+			}
+
 			local docker_describe="librespeed is a lightweight speed test tool implemented in Javascript, ready to use"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/librespeed/speedtest"
 			local docker_use=""
@@ -8663,14 +8909,18 @@ linux_panel() {
 			local docker_name="searxng"
 			local docker_img="alandoyle/searxng:latest"
 			local docker_port=8700
-			local docker_rum="docker run --name=searxng \
-							-d --init \
-							--restart=unless-stopped \
-							-v /home/docker/searxng/config:/etc/searxng \
-							-v /home/docker/searxng/templates:/usr/local/searxng/searx/templates/simple \
-							-v /home/docker/searxng/theme:/usr/local/searxng/searx/static/themes/simple \
-							-p 8700:8080/tcp \
-							alandoyle/searxng:latest"
+
+			docker_rum() {
+				docker run --name=searxng \
+					-d --init \
+					--restart=unless-stopped \
+					-v /home/docker/searxng/config:/etc/searxng \
+					-v /home/docker/searxng/templates:/usr/local/searxng/searx/templates/simple \
+					-v /home/docker/searxng/theme:/usr/local/searxng/searx/static/themes/simple \
+					-p ${docker_port}:8080/tcp \
+					alandoyle/searxng:latest
+			}
+
 			local docker_describe="searxng is a private and private search engine site"
 			local docker_url="Official website introduction: https://hub.docker.com/r/alandoyle/searxng"
 			local docker_use=""
@@ -8684,17 +8934,24 @@ linux_panel() {
 			local docker_img="photoprism/photoprism:latest"
 			local docker_port=2342
 			local rootpasswd=$(< /dev/urandom tr -dc _A-Z-a-z-0-9 | head -c16)
-			local docker_rum="docker run -d \
-							--name photoprism \
-							--restart always \
-							--security-opt seccomp=unconfined \
-							--security-opt apparmor=unconfined \
-							-p 2342:2342 \
-							-e PHOTOPRISM_UPLOAD_NSFW="true" \
-							-e PHOTOPRISM_ADMIN_PASSWORD="$rootpasswd" \
-							-v /home/docker/photoprism/storage:/photoprism/storage \
-							-v /home/docker/photoprism/Pictures:/photoprism/originals \
-							photoprism/photoprism"
+
+			docker_rum() {
+
+				docker run -d \
+					--name photoprism \
+					--restart always \
+					--security-opt seccomp=unconfined \
+					--security-opt apparmor=unconfined \
+					-p ${docker_port}:2342 \
+					-e PHOTOPRISM_UPLOAD_NSFW="true" \
+					-e PHOTOPRISM_ADMIN_PASSWORD="$rootpasswd" \
+					-v /home/docker/photoprism/storage:/photoprism/storage \
+					-v /home/docker/photoprism/Pictures:/photoprism/originals \
+					photoprism/photoprism
+
+			}
+
+
 			local docker_describe="photoprism very powerful private photo album system"
 			local docker_url="Official website introduction: https://www.photoprism.app/"
 			local docker_use="echo \"Account: admin Password: $rootpasswd\""
@@ -8708,15 +8965,20 @@ linux_panel() {
 			local docker_name="s-pdf"
 			local docker_img="frooodle/s-pdf:latest"
 			local docker_port=8020
-			local docker_rum="docker run -d \
-							--name s-pdf \
-							--restart=always \
-							 -p 8020:8080 \
-							 -v /home/docker/s-pdf/trainingData:/usr/share/tesseract-ocr/5/tessdata \
-							 -v /home/docker/s-pdf/extraConfigs:/configs \
-							 -v /home/docker/s-pdf/logs:/logs \
-							 -e DOCKER_ENABLE_SECURITY=false \
-							 frooodle/s-pdf:latest"
+
+			docker_rum() {
+
+				docker run -d \
+					--name s-pdf \
+					--restart=always \
+					 -p ${docker_port}:8080 \
+					 -v /home/docker/s-pdf/trainingData:/usr/share/tesseract-ocr/5/tessdata \
+					 -v /home/docker/s-pdf/extraConfigs:/configs \
+					 -v /home/docker/s-pdf/logs:/logs \
+					 -e DOCKER_ENABLE_SECURITY=false \
+					 frooodle/s-pdf:latest
+			}
+
 			local docker_describe="This is a powerful locally managed web-based PDF operation tool that uses docker to allow you to perform various actions on PDF files such as splitting and merging, transforming, reorganizing, adding images, rotating, compressing, and more."
 			local docker_url="Official website introduction: ${gh_proxy}github.com/Stirling-Tools/Stirling-PDF"
 			local docker_use=""
@@ -8729,7 +8991,14 @@ linux_panel() {
 			local docker_name="drawio"
 			local docker_img="jgraph/drawio"
 			local docker_port=7080
-			local docker_rum="docker run -d --restart=always --name drawio -p 7080:8080 -v /home/docker/drawio:/var/lib/drawio jgraph/drawio"
+
+			docker_rum() {
+
+				docker run -d --restart=always --name drawio -p ${docker_port}:8080 -v /home/docker/drawio:/var/lib/drawio jgraph/drawio
+
+			}
+
+
 			local docker_describe="This is a powerful chart drawing software. Mind maps, topology diagrams, and flow charts can be drawn"
 			local docker_url="Official website introduction: https://www.drawio.com/"
 			local docker_use=""
@@ -8742,12 +9011,18 @@ linux_panel() {
 			local docker_name="sun-panel"
 			local docker_img="hslr/sun-panel"
 			local docker_port=3009
-			local docker_rum="docker run -d --restart=always -p 3009:3002 \
-							-v /home/docker/sun-panel/conf:/app/conf \
-							-v /home/docker/sun-panel/uploads:/app/uploads \
-							-v /home/docker/sun-panel/database:/app/database \
-							--name sun-panel \
-							hslr/sun-panel"
+
+			docker_rum() {
+
+				docker run -d --restart=always -p ${docker_port}:3002 \
+					-v /home/docker/sun-panel/conf:/app/conf \
+					-v /home/docker/sun-panel/uploads:/app/uploads \
+					-v /home/docker/sun-panel/database:/app/database \
+					--name sun-panel \
+					hslr/sun-panel
+
+			}
+
 			local docker_describe="Sun-Panel server, NAS navigation panel, Homepage, browser homepage"
 			local docker_url="Official website introduction: https://doc.sun-panel.top/zh_cn/"
 			local docker_use="echo \"Account: admin@sun.cc Password: 12345678\""
@@ -8760,12 +9035,17 @@ linux_panel() {
 			local docker_name="pingvin-share"
 			local docker_img="stonith404/pingvin-share"
 			local docker_port=3060
-			local docker_rum="docker run -d \
-							--name pingvin-share \
-							--restart always \
-							-p 3060:3000 \
-							-v /home/docker/pingvin-share/data:/opt/app/backend/data \
-							stonith404/pingvin-share"
+
+			docker_rum() {
+
+				docker run -d \
+					--name pingvin-share \
+					--restart always \
+					-p ${docker_port}:3000 \
+					-v /home/docker/pingvin-share/data:/opt/app/backend/data \
+					stonith404/pingvin-share
+			}
+
 			local docker_describe="Pingvin Share is a self-built file sharing platform and an alternative to WeTransfer"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/stonith404/pingvin-share"
 			local docker_use=""
@@ -8779,13 +9059,19 @@ linux_panel() {
 			local docker_name="moments"
 			local docker_img="kingwrcy/moments:latest"
 			local docker_port=8035
-			local docker_rum="docker run -d --restart unless-stopped \
-							-p 8035:3000 \
-							-v /home/docker/moments/data:/app/data \
-							-v /etc/localtime:/etc/localtime:ro \
-							-v /etc/timezone:/etc/timezone:ro \
-							--name moments \
-							kingwrcy/moments:latest"
+
+			docker_rum() {
+
+				docker run -d --restart unless-stopped \
+					-p ${docker_port}:3000 \
+					-v /home/docker/moments/data:/app/data \
+					-v /etc/localtime:/etc/localtime:ro \
+					-v /etc/timezone:/etc/timezone:ro \
+					--name moments \
+					kingwrcy/moments:latest
+			}
+
+
 			local docker_describe="Minimal Moments, high imitation WeChat Moments, record your beautiful life"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/kingwrcy/moments?tab=readme-ov-file"
 			local docker_use="echo \"Account: admin Password: a123456\""
@@ -8800,10 +9086,15 @@ linux_panel() {
 			local docker_name="lobe-chat"
 			local docker_img="lobehub/lobe-chat:latest"
 			local docker_port=8036
-			local docker_rum="docker run -d -p 8036:3210 \
-							--name lobe-chat \
-							--restart=always \
-							lobehub/lobe-chat"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:3210 \
+					--name lobe-chat \
+					--restart=always \
+					lobehub/lobe-chat
+			}
+
 			local docker_describe="LobeChat aggregation of mainstream AI models on the market, ChatGPT/Claude/Gemini/Groq/Ollama"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/lobehub/lobe-chat"
 			local docker_use=""
@@ -8814,9 +9105,16 @@ linux_panel() {
 
 		  37)
 			local docker_name="myip"
-			local docker_img="ghcr.io/jason5ng32/myip:latest"
+			local docker_img="jason5ng32/myip:latest"
 			local docker_port=8037
-			local docker_rum="docker run -d -p 8037:18966 --name myip --restart always ghcr.io/jason5ng32/myip:latest"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:18966 --name myip jason5ng32/myip:latest
+
+			}
+
+
 			local docker_describe="is a multi-function IP toolbox that can view your IP information and connectivity and present it with the web page board"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/jason5ng32/MyIP/blob/main/README_ZH.md"
 			local docker_use=""
@@ -8843,7 +9141,13 @@ linux_panel() {
 			local docker_name="bililive-go"
 			local docker_img="chigusa/bililive-go"
 			local docker_port=8039
-			local docker_rum="docker run --restart=always --name bililive-go -v /home/docker/bililive-go/config.yml:/etc/bililive-go/config.yml -v /home/docker/bililive-go/Videos:/srv/bililive -p 8039:8080 -d chigusa/bililive-go"
+
+			docker_rum() {
+
+				docker run --restart=always --name bililive-go -v /home/docker/bililive-go/config.yml:/etc/bililive-go/config.yml -v /home/docker/bililive-go/Videos:/srv/bililive -p ${docker_port}:8080 -d chigusa/bililive-go
+
+			}
+
 			local docker_describe="Bililive-go is a live broadcast recording tool that supports multiple live broadcast platforms"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/hr3lxphr6j/bililive-go"
 			local docker_use=""
@@ -8856,7 +9160,10 @@ linux_panel() {
 			local docker_name="webssh"
 			local docker_img="jrohy/webssh"
 			local docker_port=8040
-			local docker_rum="docker run -d -p 8040:5032 --restart always --name webssh -e TZ=Asia/Shanghai jrohy/webssh"
+			docker_rum() {
+				docker run -d -p ${docker_port}:5032 --restart always --name webssh -e TZ=Asia/Shanghai jrohy/webssh
+			}
+
 			local docker_describe="Easy online ssh connection tool and sftp tool"
 			local docker_url="Official website introduction: ${gh_proxy}github.com/Jrohy/webssh"
 			local docker_use=""
@@ -8894,12 +9201,18 @@ linux_panel() {
 			local docker_name="nexterm"
 			local docker_img="germannewsmaker/nexterm:latest"
 			local docker_port=8042
-			local docker_rum="docker run -d \
-						  --name nexterm \
-						  -p 8042:6989 \
-						  -v /home/docker/nexterm:/app/data \
-						  --restart unless-stopped \
-						  germannewsmaker/nexterm:latest"
+
+			docker_rum() {
+
+				docker run -d \
+				  --name nexterm \
+				  -p ${docker_port}:6989 \
+				  -v /home/docker/nexterm:/app/data \
+				  --restart unless-stopped \
+				  germannewsmaker/nexterm:latest
+
+			}
+
 			local docker_describe="nexterm is a powerful online SSH/VNC/RDP connection tool."
 			local docker_url="Official website introduction: ${gh_proxy}github.com/gnmyt/Nexterm"
 			local docker_use=""
@@ -8911,8 +9224,15 @@ linux_panel() {
 		  43)
 			local docker_name="hbbs"
 			local docker_img="rustdesk/rustdesk-server"
-			local docker_port=21116
-			local docker_rum="docker run --name hbbs -v /home/docker/hbbs/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbs"
+			local docker_port=0000
+
+			docker_rum() {
+
+				docker run --name hbbs -v /home/docker/hbbs/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbs
+
+			}
+
+
 			local docker_describe="rustdesk's open source remote desktop (server side), similar to its own Sunflower private server."
 			local docker_url="Official website introduction: https://rustdesk.com/zh-cn/"
 			local docker_use="docker logs hbbs"
@@ -8924,8 +9244,14 @@ linux_panel() {
 		  44)
 			local docker_name="hbbr"
 			local docker_img="rustdesk/rustdesk-server"
-			local docker_port=21116
-			local docker_rum="docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbr"
+			local docker_port=0000
+
+			docker_rum() {
+
+				docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbr
+
+			}
+
 			local docker_describe="rustdesk's open source remote desktop (relay terminal), similar to its own Sunflower private server."
 			local docker_url="Official website introduction: https://rustdesk.com/zh-cn/"
 			local docker_use="echo \"Go to the official website to download the remote desktop client: https://rustdesk.com/zh-cn/\""
@@ -8938,13 +9264,19 @@ linux_panel() {
 			local docker_name="registry"
 			local docker_img="registry:2"
 			local docker_port=8045
-			local docker_rum="docker run -d \
-							-p 8045:5000 \
-							--name registry \
-							-v /home/docker/registry:/var/lib/registry \
-							-e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
-							--restart always \
-							registry:2"
+
+			docker_rum() {
+
+				docker run -d \
+					-p ${docker_port}:5000 \
+					--name registry \
+					-v /home/docker/registry:/var/lib/registry \
+					-e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
+					--restart always \
+					registry:2
+
+			}
+
 			local docker_describe="Docker Registry is a service for storing and distributing Docker images."
 			local docker_url="Official website introduction: https://hub.docker.com/_/registry"
 			local docker_use=""
@@ -8957,7 +9289,13 @@ linux_panel() {
 			local docker_name="ghproxy"
 			local docker_img="wjqserver/ghproxy:latest"
 			local docker_port=8046
-			local docker_rum="docker run -d --name ghproxy --restart always -p 8046:8080 wjqserver/ghproxy:latest"
+
+			docker_rum() {
+
+				docker run -d --name ghproxy --restart always -p ${docker_port}:8080 wjqserver/ghproxy:latest
+
+			}
+
 			local docker_describe="GHProxy implemented using Go is used to accelerate pulling of Github repositories in some regions."
 			local docker_url="Official website introduction: https://github.com/WJQSERVER-STUDIO/ghproxy"
 			local docker_use=""
@@ -9011,11 +9349,18 @@ linux_panel() {
 			local docker_name="node-exporter"
 			local docker_img="prom/node-exporter"
 			local docker_port=8048
-			local docker_rum="docker run -d \
-  								--name=node-exporter \
-  								-p 8048:9100 \
-  								--restart unless-stopped \
-  								prom/node-exporter"
+
+			docker_rum() {
+
+				docker run -d \
+  					--name=node-exporter \
+  					-p ${docker_port}:9100 \
+  					--restart unless-stopped \
+  					prom/node-exporter
+
+
+			}
+
 			local docker_describe="This is a Prometheus host data acquisition component, please deploy it on the monitored host."
 			local docker_url="Official website introduction: https://github.com/prometheus/node_exporter"
 			local docker_use=""
@@ -9028,17 +9373,23 @@ linux_panel() {
 			local docker_name="cadvisor"
 			local docker_img="gcr.io/cadvisor/cadvisor:latest"
 			local docker_port=8049
-			local docker_rum="docker run -d \
-  								--name=cadvisor \
-  								--restart unless-stopped \
-  								-p 8049:8080 \
-  								--volume=/:/rootfs:ro \
-  								--volume=/var/run:/var/run:rw \
-  								--volume=/sys:/sys:ro \
-  								--volume=/var/lib/docker/:/var/lib/docker:ro \
-  								gcr.io/cadvisor/cadvisor:latest \
-  								-housekeeping_interval=10s \
-  								-docker_only=true"
+
+			docker_rum() {
+
+				docker run -d \
+  					--name=cadvisor \
+  					--restart unless-stopped \
+  					-p ${docker_port}:8080 \
+  					--volume=/:/rootfs:ro \
+  					--volume=/var/run:/var/run:rw \
+  					--volume=/sys:/sys:ro \
+  					--volume=/var/lib/docker/:/var/lib/docker:ro \
+  					gcr.io/cadvisor/cadvisor:latest \
+  					-housekeeping_interval=10s \
+  					-docker_only=true
+
+			}
+
 			local docker_describe="This is a Prometheus container data acquisition component, please deploy it on the monitored host."
 			local docker_url="Official website introduction: https://github.com/google/cadvisor"
 			local docker_use=""
@@ -9052,9 +9403,15 @@ linux_panel() {
 			local docker_name="changedetection"
 			local docker_img="dgtlmoon/changedetection.io:latest"
 			local docker_port=8050
-			local docker_rum="docker run -d --restart always -p 8050:5000 \
-								-v /home/docker/datastore:/datastore \
-								--name changedetection dgtlmoon/changedetection.io:latest"
+
+			docker_rum() {
+
+				docker run -d --restart always -p ${docker_port}:5000 \
+					-v /home/docker/datastore:/datastore \
+					--name changedetection dgtlmoon/changedetection.io:latest
+
+			}
+
 			local docker_describe="This is a gadget for website change detection, replenishment monitoring and notification"
 			local docker_url="Official website introduction: https://github.com/dgtlmoon/changedidetection.io"
 			local docker_use=""
@@ -9076,11 +9433,17 @@ linux_panel() {
 			local docker_name="dpanel"
 			local docker_img="dpanel/dpanel:lite"
 			local docker_port=8052
-			local docker_rum="docker run -it -d --name dpanel --restart=always \
-  								-p 8052:8080 -e APP_NAME=dpanel \
-  								-v /var/run/docker.sock:/var/run/docker.sock \
-  								-v /home/docker/dpanel:/dpanel \
-  								dpanel/dpanel:lite"
+
+			docker_rum() {
+
+				docker run -it -d --name dpanel --restart=always \
+  					-p ${docker_port}:8080 -e APP_NAME=dpanel \
+  					-v /var/run/docker.sock:/var/run/docker.sock \
+  					-v /home/docker/dpanel:/dpanel \
+  					dpanel/dpanel:lite
+
+			}
+
 			local docker_describe="Docker visual panel system, providing complete docker management functions."
 			local docker_url="Official website introduction: https://github.com/donknap/dpanel"
 			local docker_use=""
@@ -9093,7 +9456,13 @@ linux_panel() {
 			local docker_name="ollama"
 			local docker_img="ghcr.io/open-webui/open-webui:ollama"
 			local docker_port=8053
-			local docker_rum="docker run -d -p 8053:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama
+
+			}
+
 			local docker_describe="OpenWebUI is a large language model web framework, which connects to the brand new llama 3 large language model"
 			local docker_url="Official website introduction: https://github.com/open-webui/open-webui"
 			local docker_use="docker exec ollama ollama run llama3.2:1b"
@@ -9137,7 +9506,13 @@ linux_panel() {
 			local docker_name="ollama"
 			local docker_img="ghcr.io/open-webui/open-webui:ollama"
 			local docker_port=8053
-			local docker_rum="docker run -d -p 8053:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama"
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama
+
+			}
+
 			local docker_describe="OpenWebUI is a large language model web framework, connected to the new DeepSeek R1 large language model"
 			local docker_url="Official website introduction: https://github.com/open-webui/open-webui"
 			local docker_use="docker exec ollama ollama run deepseek-r1:1.5b"
@@ -9151,14 +9526,16 @@ linux_panel() {
 			local app_name="Dify Knowledge Base"
 			local app_text="is an open source large language model (LLM) application development platform. Self-hosted training data is used for AI generation"
 			local app_url="Official website: https://docs.dify.ai/zh-hans"
-			local docker_name="docker-web-1"
+			local docker_name="docker-nginx-1"
 			local docker_port="8058"
 			local app_size="3"
 
 			docker_app_install() {
 				install git
 				mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
-				sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
+				# sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
+				sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
+
 				docker compose up -d
 				clear
 				echo "installed"
@@ -9194,9 +9571,12 @@ linux_panel() {
 			docker_app_install() {
 				install git
 				mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/Calcium-Ion/new-api.git && cd new-api
-				sed -i -e 's/- "3000:3000"/- "8059:3000"/g' \
+
+				sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
 					   -e 's/container_name: redis/container_name: redis-new-api/g' \
-					   -e 's/container_name: mysql/container_name: mysql-new-api/g' docker-compose.yml
+					   -e 's/container_name: mysql/container_name: mysql-new-api/g' \
+					   docker-compose.yml
+
 
 				docker compose up -d
 				clear
@@ -9208,9 +9588,11 @@ linux_panel() {
 				cd  /home/docker/new-api/ && docker compose down --rmi all
 				cd  /home/docker/new-api/
 				git pull origin main
-				sed -i -e 's/- "3000:3000"/- "8059:3000"/g' \
+				sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
 					   -e 's/container_name: redis/container_name: redis-new-api/g' \
-					   -e 's/container_name: mysql/container_name: mysql-new-api/g' docker-compose.yml
+					   -e 's/container_name: mysql/container_name: mysql-new-api/g' \
+					   docker-compose.yml
+
 				docker compose up -d
 				clear
 				echo "installed"
@@ -9232,7 +9614,7 @@ linux_panel() {
 		  60)
 
 			local app_name="JumpServer open source bastion machine"
-			local app_text="is an open source privileged access management (PAM) tool. This program occupies port 80 and does not support adding domain name access"
+			local app_text="is an open source privileged access management (PAM) tool. This program occupies port 80 and does not support adding domain name access."
 			local app_url="Official introduction: https://github.com/jumpserver/jumpserver"
 			local docker_name="jms_web"
 			local docker_port="80"
@@ -9271,12 +9653,18 @@ linux_panel() {
 			local docker_name="libretranslate"
 			local docker_img="libretranslate/libretranslate:latest"
 			local docker_port=8061
-			local docker_rum="docker run -d \
-  								-p 8061:5000 \
-  								--name libretranslate \
-  								libretranslate/libretranslate \
-  								--load-only ko,zt,zh,en,ja,pt,es,fr,de,ru"
-			local docker_describe="Free open source machine translation API, fully self-hosted, and its translation engine is powered by the open source Argos Translate library."
+
+			docker_rum() {
+
+				docker run -d \
+  					-p ${docker_port}:5000 \
+  					--name libretranslate \
+  					libretranslate/libretranslate \
+  					--load-only ko,zt,zh,en,ja,pt,es,fr,de,ru
+
+			}
+
+			local docker_describe="Free open source machine translation API, fully self-hosted, its translation engine is powered by the open source Argos Translate library."
 			local docker_url="Official website introduction: https://github.com/LibreTranslate/LibreTranslate"
 			local docker_use=""
 			local docker_passwd=""
@@ -9297,7 +9685,7 @@ linux_panel() {
 			docker_app_install() {
 				install git
 				mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/infiniflow/ragflow.git && cd ragflow/docker
-				sed -i 's/- 80:80/- 8062:80/; /- 443:443/d' docker-compose.yml
+				sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
 				docker compose up -d
 				clear
 				echo "installed"
@@ -9309,7 +9697,7 @@ linux_panel() {
 				cd  /home/docker/ragflow/
 				git pull origin main
 				cd  /home/docker/ragflow/docker/
-				sed -i 's/- 80:80/- 8062:80/; /- 443:443/d' docker-compose.yml
+				sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
 				docker compose up -d
 			}
 
@@ -9323,6 +9711,68 @@ linux_panel() {
 
 			  ;;
 
+
+		  63)
+			local docker_name="open-webui"
+			local docker_img="ghcr.io/open-webui/open-webui:main"
+			local docker_port=8063
+
+			docker_rum() {
+
+				docker run -d -p ${docker_port}:8080 -v /home/docker/open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
+
+			}
+
+			local docker_describe="OpenWebUI is a large language model web framework, the official streamlined version, and supports access to various major model APIs"
+			local docker_url="Official website introduction: https://github.com/open-webui/open-webui"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="3"
+			docker_app
+			  ;;
+
+		  64)
+			local docker_name="it-tools"
+			local docker_img="corentinth/it-tools:latest"
+			local docker_port=8064
+
+			docker_rum() {
+				docker run -d --name it-tools --restart unless-stopped -p ${docker_port}:80 corentinth/it-tools:latest
+			}
+
+			local docker_describe="A very useful tool for developers and IT workers"
+			local docker_url="Official website introduction: https://github.com/CorentinTh/it-tools"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
+
+
+		  65)
+			local docker_name="n8n"
+			local docker_img="docker.n8n.io/n8nio/n8n"
+			local docker_port=8065
+
+			docker_rum() {
+
+				mkdir -p /home/docker/n8n
+				chmod -R 777 /home/docker/n8n
+				docker run -d --name n8n \
+				  --restart always \
+				  -p ${docker_port}:5678 \
+				  -v /home/docker/n8n:/home/node/.n8n \
+				  docker.n8n.io/n8nio/n8n
+
+			}
+
+			local docker_describe="is a powerful automated workflow platform"
+			local docker_url="Official website introduction: https://github.com/n8n-io/n8n"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
 
 
 
@@ -9369,7 +9819,7 @@ linux_work() {
 	  echo -e "${gl_kjlan}23. ${gl_bai} inject command into background workspace"
 	  echo -e "${gl_kjlan}24. ${gl_bai}Delete the specified workspace"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0. ${gl_bai} returns to main menu"
+	  echo -e "${gl_kjlan}0. ${gl_bai}returns to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "Please enter your choice: " sub_choice
 
@@ -9469,7 +9919,7 @@ linux_work() {
 			  	  install tmux
 			  	  local SESSION_NAME="sshd"
 			  	  send_stats "Start workspace $SESSION_NAME"
-				  grep -q "tmux attachment-session -t sshd" ~/.bashrc || echo -e "\n# Automatically enter the tmux session\nif [[ -z \"\$TMUX\" ]]]; then\n tmux attachment-session -t sshd || tmux new-session -s sshd\nfi" >> ~/.bashrc
+				  grep -q "tmux attachment-session -t sshd" ~/.bashrc || echo -e "\n# Automatically enter the tmux session\nif [[ -z \"\$TMUX\" ]]; then\n tmux attachment-session -t sshd || tmux new-session -s sshd\nfi" >> ~/.bashrc
 				  source ~/.bashrc
 			  	  tmux_run
 				  ;;
@@ -9562,7 +10012,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}99. ${gl_bai}Restart the server ${gl_kjlan}100. ${gl_bai}Privacy and Security"
 	  echo -e "${gl_kjlan}101. Advanced usage of ${gl_bai}k command ${gl_huang}★${gl_bai} ${gl_kjlan}102. ${gl_bai} Uninstall the technology lion script"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0. ${gl_bai} returns to main menu"
+	  echo -e "${gl_kjlan}0. ${gl_bai}returns to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "Please enter your choice: " sub_choice
 
@@ -9682,7 +10132,7 @@ EOF
 
 		  5)
 			  root_use
-			  send_stats "Open Port"
+			  send_stats "Open port"
 			  iptables_open
 			  remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 			  echo "The ports are all open"
@@ -9703,7 +10153,7 @@ EOF
 				echo -e "The current SSH port number is: ${gl_huang}$current_port ${gl_bai}"
 
 				echo "------------------------"
-				echo "Numbers between port number range 1 and 65535. (Input 0 to exit)"
+				echo "Numbers in the range of port numbers 1 to 65535. (Input 0 to exit)"
 
 				# Prompt the user to enter a new SSH port number
 				read -e -p "Please enter a new SSH port number: " new_port
@@ -9883,7 +10333,7 @@ EOF
 				  echo "------------------------"
 				  echo "3. Grant the highest permissions 4. Cancel the highest permissions"
 				  echo "------------------------"
-				  echo "5. Delete the account"
+				  echo "5. Delete Account"
 				  echo "------------------------"
 				  echo "0. Return to previous menu"
 				  echo "------------------------"
@@ -9916,12 +10366,12 @@ EOF
 
 						  ;;
 					  3)
-					   read -e -p "Please enter username: " username
+					   read -e -p "Please enter the username: " username
 					   # Grant new users sudo permissions
 					   echo "$username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 						  ;;
 					  4)
-					   read -e -p "Please enter username: " username
+					   read -e -p "Please enter the username: " username
 					   # Remove user's sudo permissions from sudoers file
 					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
@@ -10178,7 +10628,7 @@ EOF
 
 						  case $dingshi in
 							  1)
-								  read -e -p "Select what day of each month to perform tasks? (1-30): " day
+								  read -e -p "Select what day of the month to perform tasks? (1-30): " day
 								  (crontab -l ; echo "0 0 $day * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  2)
@@ -10190,7 +10640,7 @@ EOF
 								  (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  4)
-								  read -e -p "Enter what minute of the hour to perform the task? (minutes, 0-60): " minute
+								  read -e -p "Enter what minute of each hour to perform the task? (minutes, 0-60): " minute
 								  (crontab -l ; echo "$minute * * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  *)
@@ -10331,7 +10781,7 @@ EOF
 					echo -e "${gl_lv}The current set pit stop current limit threshold is: ${gl_huang}${rx_threshold_gb}${gl_lv}G${gl_bai}"
 					echo -e "${gl_lv}The current set out of the outbound current limit threshold is: ${gl_huang}${tx_threshold_gb}${gl_lv}GB${gl_bai}"
 				else
-					echo -e "${gl_hui}The current limit shutdown function is not currently enabled ${gl_bai}"
+					echo -e "${gl_hui}The current limit shutdown function is not currently enabled${gl_bai}"
 				fi
 
 				echo
@@ -10373,7 +10823,7 @@ EOF
 					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
 					crontab -l | grep -v 'reboot' | crontab -
 					rm ~/Limiting_Shut_down.sh
-					echo "Current limit shutdown function has been turned off"
+					echo "current limit shutdown function has been turned off"
 					;;
 				  *)
 					break
@@ -10436,7 +10886,6 @@ EOF
 		  25)
 			  root_use
 			  send_stats "Telecome Warning"
-			  echo "TG-bot monitoring and early warning function"
 			  echo "Video introduction: https://youtu.be/vLL-eb3Z_TY"
 			  echo "------------------------------------------------"
 			  echo "You need to configure the tg robot API and the user ID to receive early warnings to realize real-time monitoring and early warnings for native CPU, memory, hard disk, traffic, and SSH login"
@@ -10636,7 +11085,7 @@ EOF
 
 				  echo "------------------------------------------------"
 				  optimize_balanced
-				  echo -e "[${gl_lv}OK${gl_bai}] 10/10. Optimization of kernel parameters for Linux system"
+				  echo -e "[${gl_lv}OK${gl_bai}] 10/10. Linux system kernel parameter optimization"
 				  echo -e "${gl_lv}One-stop system tuning has been completed${gl_bai}"
 
 				  ;;
@@ -10712,7 +11161,7 @@ EOF
 			  send_stats "Uninstall tech lion script"
 			  echo "Uninstall tech lion script"
 			  echo "------------------------------------------------"
-			  echo "Will completely uninstall the kejilion script and will not affect your other functions"
+			  echo "Will completely uninstall the kejilion script and not affect your other functions"
 			  read -e -p "Are you sure to continue? (Y/N): " choice
 
 			  case "$choice" in
@@ -10809,7 +11258,7 @@ linux_file() {
 				rm -rf "$dirname" && echo "Directed directory" || echo "Delete failed"
 				send_stats "Delete Directory"
 				;;
-			6) # Return to the previous menu directory
+			6)
 				cd ..
 				send_stats "Return to the previous menu directory"
 				;;
@@ -10827,7 +11276,7 @@ linux_file() {
 			13) # Modify file permissions
 				read -e -p "Please enter the file name: " filename
 				read -e -p "Please enter permissions (such as 755): " perm
-				chmod "$perm" "$filename" && echo "Permission modified" || echo "Modification failed"
+				chmod "$perm" "$filename" && echo "Permission has been modified" || echo "Modification failed"
 				send_stats "Modify file permissions"
 				;;
 			14) # Rename the file
@@ -10836,12 +11285,12 @@ linux_file() {
 				mv "$current_name" "$new_name" && echo "File has been renamed" || echo "Rename failed"
 				send_stats "Rename file"
 				;;
-			15) # Delete the file
+			15)
 				read -e -p "Please enter the file name to be deleted: " filename
 				rm -f "$filename" && echo "File deleted" || echo "Delete failed"
 				send_stats "Delete File"
 				;;
-			21) # Compress files/directories
+			21) # Compressed files/directories
 				read -e -p "Please enter the file/directory name to be compressed: " name
 				install tar
 				tar -czvf "$name.tar.gz" "$name" && echo "Compressed to $name.tar.gz" || echo "Compressed failed"
@@ -10885,7 +11334,7 @@ linux_file() {
 				read -e -p "Please enter the target path (including the new file name or directory name): " dest_path
 				if [ -z "$dest_path" ]; then
 					echo "Error: Please enter the target path."
-					send_stats "File or directory failed to copy: destination path not specified"
+					send_stats "Copy file or directory failed: Destination path not specified"
 					continue
 				fi
 
@@ -11025,7 +11474,7 @@ while true; do
 	  echo -e "${gl_kjlan}14. ${gl_bai}install docker ${gl_kjlan}15. ${gl_bai}install BBR3 ${gl_kjlan}16. ${gl_bai}set 1G virtual memory"
 	  echo -e "${gl_kjlan}17. ${gl_bai}Set the time zone to Shanghai ${gl_kjlan}18. ${gl_bai}Open all ports ${gl_kjlan}51. ${gl_bai}Custom directive"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  echo -e "${gl_kjlan}0. ${gl_bai} returns to main menu"
+	  echo -e "${gl_kjlan}0. ${gl_bai}returns to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "Please enter your choice: " sub_choice
 
@@ -11131,7 +11580,7 @@ echo "------------------------"
 echo -e "${gl_zi}Hostinger $52.7 per year United States 1 core 4G memory 50G hard drive 4T traffic ${gl_bai} per month"
 echo -e "${gl_bai} URL: https://cart.hostinger.com/pay/d83c51e9-0c28-47a6-8414-b8ab010ef94f?_ga=GA1.3.942352702.1711283207${gl_bai}"
 echo "------------------------"
-echo -e "${gl_huang}Brandman 49 dollars per quarter US CN2GIA Japan SoftBank 2 core 1G memory 20G hard drive 1T traffic ${gl_bai} per month"
+echo -e "${gl_huang}Brandman, $49 per quarter, US CN2GIA, Japan SoftBank, 2 cores, 1G memory, 20G hard drive, 1T traffic per month, ${gl_bai}"
 echo -e "${gl_bai} URL: https://bandwagonhost.com/aff.php?aff=69004&pid=87${gl_bai}"
 echo "------------------------"
 echo -e "${gl_lan}DMIT $28 per quarter US CN2GIA 1 core 2G memory 20G hard drive 800G traffic ${gl_bai} per month"
@@ -11285,7 +11734,7 @@ echo -e "${gl_kjlan}15. ${gl_bai}Advertising Column"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}p. ${gl_bai}Palu server script"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}00. ${gl_bai}script update"
+echo -e "${gl_kjlan}00. ${gl_bai} script update"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}0. ${gl_bai}Exit script"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -11346,7 +11795,7 @@ echo "Intranet penetration (server side) k frps"
 echo "Intranet penetration (client) k frpc"
 echo "Software start k start sshd | k start sshd "
 echo "Software stop k stop sshd | k stop sshd "
-echo "Software restart k restart sshd | k restart sshd"
+echo "Software restart k restart sshd | k restart sshd "
 echo "Software Status View k status sshd | k status sshd "
 echo "Software boot k enable docker | k autostart docke | k startup docker "
 echo "Domain Certificate Application K SSL"
@@ -11358,6 +11807,7 @@ echo "LDNMP Site Management k web"
 echo "LDNMP cache cleanup k web cache"
 echo "安装WordPress       k wp |k wordpress |k wp xxx.com"
 echo "Installing the reverse proxy k fd |k rp |k anti-generation |k fd xxx.com"
+echo "Installing load balancing k loadbalance |k load balancing"
 echo "Firewall Panel k fhq |k Firewall"
 echo "Open port k dkdk 8080 |k Open port 8080"
 echo "Close port k gbdk 7800 |kClose port 7800"
@@ -11377,7 +11827,7 @@ else
 	case $1 in
 		install|add|install)
 			shift
-			send_stats "Installation software"
+			send_stats "Installation Software"
 			install "$@"
 			;;
 		remove|del|uninstall|uninstall)
@@ -11391,26 +11841,26 @@ else
 		clean|Cleaning)
 			linux_clean
 			;;
-		dd)
+		dd|Heavyfitting)
 			dd_xitong
 			;;
 		bbr3|bbrv3)
 			bbrv3
 			;;
-		nhyh)
+		nhyh|KernelOptimization)
 			Kernel_optimize
 			;;
-		trash|hsz)
+		trash|hsz|RecycleBin)
 			linux_trash
 			;;
 		backup|bf|backup)
 			linux_backup
 			;;
-		ssh)
+		ssh|Remoteconnection)
 			ssh_manager
 			;;
 
-		rsync)
+		rsync|Remotesynchronization)
 			rsync_manager
 			;;
 
@@ -11420,7 +11870,7 @@ else
 			run_task "$@"
 			;;
 
-		disk)
+		disk|Harddiskmanagement)
 			disk_manager
 			;;
 
@@ -11434,13 +11884,17 @@ else
 			ldnmp_Proxy "$@"
 			;;
 
+		loadbalance|Loadbalancing)
+			ldnmp_Proxy_backend
+			;;
+
 		swap)
 			shift
 			send_stats "Quickly set up virtual memory"
 			add_swap "$@"
 			;;
 
-		time)
+		time|timezone)
 			shift
 			send_stats "Quickly set time zone"
 			set_timedate "$@"
@@ -11460,52 +11914,52 @@ else
 			;;
 
 
-		dkdk)
+		Openport|dkdk)
 			shift
 			open_port "$@"
 			;;
 
-		gbdk)
+		Closeport | gbdk)
 			shift
 			close_port "$@"
 			;;
 
-		fxip)
+		ReleaseIP|fxip)
 			shift
 			allow_ip "$@"
 			;;
 
-		zzip)
+		BlockIP|zzip)
 			shift
 			block_ip "$@"
 			;;
 
-		fhq)
+		Firewall|fhq)
 			iptables_panel
 			;;
 
-		status)
+		status|status)
 			shift
 			send_stats "Software Status View"
 			status "$@"
 			;;
-		start)
+		start|start)
 			shift
 			send_stats "Software Startup"
 			start "$@"
 			;;
-		stop)
+		stop|stop)
 			shift
 			send_stats "Software Pause"
 			stop "$@"
 			;;
-		restart)
+		restart|Restart)
 			shift
-			send_stats "Software Reboot"
+			send_stats "Software Restart"
 			restart "$@"
 			;;
 
-		enable|autostart)
+		enable|autostart|bootboot)
 			shift
 			send_stats "Software startup"
 			enable "$@"
@@ -11530,15 +11984,15 @@ else
 		docker)
 			shift
 			case $1 in
-				install)
+				install|install)
 					send_stats "Quick installation docker"
 					install_docker
 					;;
-				ps)
+				ps|container)
 					send_stats "Quick Container Management"
 					docker_ps
 					;;
-				img)
+				img|mirrors)
 					send_stats "Quick Mirror Management"
 					docker_image
 					;;
