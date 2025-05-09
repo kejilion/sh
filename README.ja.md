@@ -21,7 +21,7 @@ TechLion のシェル スクリプト ツールは、Linux の監視、テスト
 
 ## 🚀 ワンクリックインストール
 ```bash
-bash <(curl -sL kejilion.sh) en
+bash <(curl -sL kejilion.sh) jp
 ```
 ***
 ## 📦 コア機能
