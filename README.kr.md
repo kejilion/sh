@@ -21,8 +21,8 @@ TechLion의 Shell Script Tool은 Linux 모니터링, 테스트, 관리를 위해
 
 
 ## 🚀 원클릭 설치
-```
-bash <(curl -sL kejilion.sh) kr
+```bash
+bash <(curl -sL kejilion.sh) en
 ```
 
 ***
