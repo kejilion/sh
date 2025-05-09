@@ -19,8 +19,8 @@
 ***
 
 ## 🚀 一鍵安裝
-『`bash
-bash <(curl -sL kejilion.sh) kr
+```bash
+bash <(curl -sL kejilion.sh) jp
 ```
 
 ***
