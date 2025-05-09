@@ -20,7 +20,7 @@
 
 ## 🚀 一鍵安裝
 ```bash
-bash <(curl -sL kejilion.sh) jp
+bash <(curl -sL kejilion.sh) tw
 ```
 
 ***
