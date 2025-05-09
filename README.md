@@ -31,41 +31,33 @@ curl -sS -O https://raw.githubusercontent.com/kejilion/sh/refs/heads/main/en/kej
 ```
 ***
 ## 📦 核心功能 (Core Features)
-系统信息概览：快速展示 CPU、内存、磁盘、带宽等运行状态
 
-System status overview: CPU, memory, disk, bandwidth and more
+- **系统信息概览**：快速展示 CPU、内存、磁盘、带宽等运行状态  
+  *System status overview: CPU, memory, disk, bandwidth and more*<br>
 
-网络测试工具：集成测速、回程、延迟、丢包检测等
+- **网络测试工具**：集成测速、回程、延迟、丢包检测等  
+  *Network tools: speed test, route trace, latency, packet loss test*<br>
 
-Network tools: speed test, route trace, latency, packet loss test
+- **Docker 容器管理**：独家容器可视化 + 容器控制增强命令  
+  *Advanced Docker management with enhanced commands and visualization*<br>
 
-Docker 容器管理：独家容器可视化 + 容器控制增强命令
+- **LNMP 一键部署**：轻松搭建 Nginx + MySQL + PHP 站点  
+  *One-click LNMP stack deployment (Nginx, MySQL, PHP)*<br>
 
-Advanced Docker management with enhanced commands and visualization
+- **网站防御与优化**：防CC、防爬虫，自动配置防火墙与性能优化  
+  *Site defense and optimization: anti-CC, anti-crawler, firewall and tuning*<br>
 
-LNMP 一键部署：轻松搭建 Nginx + MySQL + PHP 站点
+- **备份与迁移**：站点与数据库一键备份/恢复/远程迁移  
+  *Backup & migration: one-click site/database backup and remote restore*<br>
 
-One-click LNMP stack deployment (Nginx, MySQL, PHP)
+- **BBR 加速优化**：内核加速、网络拥塞控制智能切换  
+  *Network acceleration: BBR/tcp congestion control optimization*<br>
 
-网站防御与优化：防CC、防爬虫，自动配置防火墙与性能优化
+- **应用市场集成**：内置主流工具与面板，支持一键安装常用服务  
+  *App Store integration: built-in panels and tools for one-click deployment*<br>
 
-Site defense and optimization: anti-CC, anti-crawler, firewall and tuning
-
-备份与迁移：站点与数据库一键备份/恢复/远程迁移
-
-Backup & migration: one-click site/database backup and remote restore
-
-BBR 加速优化：内核加速、网络拥塞控制智能切换
-
-Network acceleration: BBR/tcp congestion control optimization
-
-应用市场集成：内置主流工具与面板，支持一键安装常用服务
-
-App Store integration: built-in panels and tools for one-click deployment
-
-自动更新机制：定时检测脚本版本，保持最新最稳定
-
-Auto-update engine: ensure you're always running the latest version
+- **自动更新机制**：定时检测脚本版本，保持最新最稳定  
+  *Auto-update engine: ensure you're always running the latest version*<br>
 
 ***
 
