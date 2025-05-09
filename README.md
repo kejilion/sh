@@ -11,16 +11,18 @@ KejiLion's Shell script tool is an all-in-one script toolbox designed for Linux 
 ***
 
 ## 🌐 支持系统 (Supported Systems)
->Ubuntu
->Debian
->CentOS
->Alpine
->Kali
->Arch
->RedHat
->Fedora
->Alma
->Rocky
+<p>
+  <kbd>Ubuntu</kbd>
+  <kbd>Debian</kbd>
+  <kbd>CentOS</kbd>
+  <kbd>Alpine</kbd>
+  <kbd>Kali</kbd>
+  <kbd>Arch</kbd>
+  <kbd>RedHat</kbd>
+  <kbd>Fedora</kbd>
+  <kbd>Alma</kbd>
+  <kbd>Rocky</kbd>
+</p>
 ***
 
 ## 🚀 一键安装 (One-Click Installation) CN
