@@ -1,6 +1,6 @@
 # 科技lion一键脚本工具 (kejilion.sh)
 
-[🇨🇳 中文](/README.md) | [🇹🇼 繁體中文](/README.tw.md) | [🇺🇸 English](/README.md) | [🇰🇷 한국어](/README.kr.md) | [🇯🇵 日本語](/README.ja.md)
+[🇨🇳 简体中文](/README.md) | [🇹🇼 繁體中文](/README.tw.md) | [🇺🇸 English](/README.md) | [🇰🇷 한국어](/README.kr.md) | [🇯🇵 日本語](/README.ja.md)
 
 
 ## 📜 介绍 (Introduction)
