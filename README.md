@@ -27,7 +27,7 @@ bash <(curl -sL kejilion.sh)
 
 ## 🚀 一键安装 (One-Click Installation) EN
 ```bash
-curl -sS -O https://raw.githubusercontent.com/kejilion/sh/refs/heads/main/en/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
+bash <(curl -sL kejilion.sh) en
 ```
 ***
 ## 📦 核心功能 (Core Features)
