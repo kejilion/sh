@@ -1,6 +1,6 @@
 # 科技lion一键脚本工具 (kejilion.sh)
 
-[🇨🇳 中文](/README.md) | [🇺🇸 English](/README.en.md) | [🇰🇷 한국어](/README.kr.md) | [🇯🇵 日本語](/README.ja.md)
+[🇨🇳 中文](/README.md) | [🇺🇸 English](/README.md) | [🇰🇷 한국어](/README.kr.md) | [🇯🇵 日本語](/README.ja.md)
 
 ## 📜 介绍 (Introduction)
 科技Lion 的 Shell 脚本工具是一款全能脚本工具箱，专为 Linux 监控、测试和管理而设计。无论您是初学者还是经验丰富的用户，该工具都能为您提供便捷的解决方案。集成了独创的 Docker 管理功能，让您轻松管理容器化应用；LNMP建站解决方案能帮助您快速搭建网站，站点优化、防御、备份还原迁移一应俱全；并且整合了各类系统工具面板的安装及使用，使系统维护变得更加简单。我们的目标是成为全网最优秀的 Linux 一键脚本工具，为用户提供高效、便捷的科技支持。
