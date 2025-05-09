@@ -7,17 +7,18 @@ TechLion의 Shell Script Tool은 Linux 모니터링, 테스트, 관리를 위해
 ***
 
 ## 🌐 지원 시스템
->우분투
->데비안
->센트OS
->알파인
->칼리
->아치
->레드햇
->페도라
->알마
->록키
+>Ubuntu
+>Debian
+>CentOS
+>Alpine
+>Kali
+>Arch
+>RedHat
+>Fedora
+>Alma
+>Rocky
 ***
+
 
 ## 🚀 원클릭 설치
 ```
