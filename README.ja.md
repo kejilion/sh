@@ -19,15 +19,10 @@ TechLion のシェル スクリプト ツールは、Linux の監視、テスト
 >ロッキー
 ***
 
-## 🚀ワンクリックインストールCN
-```バッシュ
-bash <(curl -sL kejilion.sh)
-「」
-
-## 🚀 ワンクリックインストール EN
-```バッシュ
+## 🚀 ワンクリックインストール
+```bash
 bash <(curl -sL kejilion.sh) en
-「」
+```
 ***
 ## 📦 コア機能
 
