@@ -1,6 +1,22 @@
-# 科技lion一键脚本工具 (kejilion.sh)
+<div align="center">
+  <img src="https://kejilion.sh/kejilionsh_logo.webp" alt="kejilion.sh logo" width="600";">
+</div>
 
-[🇨🇳 简体中文](/README.md) | [🇹🇼 繁體中文](/README.tw.md) | [🇺🇸 English](/README.md) | [🇰🇷 한국어](/README.kr.md) | [🇯🇵 日本語](/README.ja.md)
+<div align="center" style="margin-top:-200px;">
+  <h1 style="font-size:150px;">KEJILION.SH - 科技lion一键脚本工具</h1>
+</div>
+
+
+<p align="center">
+  <a href="/README.md">🇨🇳 简体中文</a> | 
+  <a href="/README.tw.md">🇹🇼 繁體中文</a> | 
+  <a href="/README.md">🇺🇸 English</a> | 
+  <a href="/README.kr.md">🇰🇷 한국어</a> | 
+  <a href="/README.ja.md">🇯🇵 日本語</a>
+</p>
+
+
+<br><br><br>
 
 
 ## 📜 介绍 (Introduction)
@@ -8,7 +24,7 @@
 
 KejiLion's Shell script tool is an all-in-one script toolbox designed for Linux monitoring, testing, and management. Whether you are a beginner or an experienced user, this tool offers convenient solutions. It integrates unique Docker management features, enabling easy containerized application management. The LNMP site-building solution helps you quickly set up websites, covering optimization, defense, backup, restoration, and migration. It also includes the installation and use of various system tool panels, making system maintenance simpler. Our goal is to become the best Linux one-click script tool on the internet, providing users with efficient and convenient tech support.
 
-***
+<br><br>
 
 ## 🌐 支持系统 (Supported Systems)
 <p>
@@ -24,7 +40,7 @@ KejiLion's Shell script tool is an all-in-one script toolbox designed for Linux 
   <kbd>Rocky</kbd>
 </p>
 
-***
+<br><br>
 
 ## 🚀 一键安装 (One-Click Installation) CN
 ```bash
@@ -35,7 +51,8 @@ bash <(curl -sL kejilion.sh)
 ```bash
 bash <(curl -sL kejilion.sh) en
 ```
-***
+
+<br><br>
 ## 📦 核心功能 (Core Features)
 
 - **系统信息概览**：快速展示 CPU、内存、磁盘、带宽等运行状态  
@@ -65,7 +82,8 @@ bash <(curl -sL kejilion.sh) en
 - **自动更新机制**：定时检测脚本版本，保持最新最稳定  
   *Auto-update engine: ensure you're always running the latest version*<br>
 
-***
+
+<br><br>
 
 ## 💖 支持我们 (Support Us)
 觉得脚本还可以 USTD TRC20 打赏
@@ -74,7 +92,7 @@ Feel free to support us with USTD TRC20 donations.
 
 <strong style="color: navy;">TCP3PLGUTG9Z4z4tnHHSLbw5bgp8NXhTT3</strong>
 
-***
+<br><br>
 
-## Star History
+## ⭐ Star History
 [![Star History Chart](https://api.star-history.com/svg?repos=kejilion/sh&type=Date)](https://star-history.com/#kejilion/sh&Date)
