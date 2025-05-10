@@ -1,6 +1,6 @@
-<br><br><br><br>
+<br><br>
 <div align="center">
-  <img src="https://kejilion.sh/kejilionsh_logo.webp" alt="kejilion.sh logo" width="600";">
+  <img src="https://kejilion.sh/kejilionsh_logo.webp?v=2" alt="logo" width="650">
 </div>
 
 <div align="center" style="margin-top:-200px;">
@@ -27,7 +27,7 @@
 </p>
 
 
-<br><br><br>
+<br><br>
 
 
 ## 📜 介绍 (Introduction)
