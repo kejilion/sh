@@ -50,7 +50,7 @@ KejiLion's Shell script tool is an all-in-one script toolbox designed for Linux 
     <img src="https://img.shields.io/badge/CentOS-98FB98?style=for-the-badge&logo=centos&logoColor=black" alt="CentOS" style="margin: 5px;">
   </a>
   <a href="#">
-    <img src="https://img.shields.io/badge/Alpine-ADD8E6?style=for-the-badge&logo=alpine&logoColor=black" alt="Alpine" style="margin: 5px;">
+    <img src="https://img.shields.io/badge/alpinelinux-ADD8E6?style=for-the-badge&logo=alpinelinux&logoColor=black" alt="alpinelinux" style="margin: 5px;">
   </a>
   <a href="#">
     <img src="https://img.shields.io/badge/Kali-D3D3D3?style=for-the-badge&logo=kali-linux&logoColor=black" alt="Kali" style="margin: 5px;">
@@ -65,7 +65,7 @@ KejiLion's Shell script tool is an all-in-one script toolbox designed for Linux 
     <img src="https://img.shields.io/badge/Fedora-FFD700?style=for-the-badge&logo=fedora&logoColor=black" alt="Fedora" style="margin: 5px;">
   </a>
   <a href="#">
-    <img src="https://img.shields.io/badge/Alma-FFEFD5?style=for-the-badge&logo=alma-linux&logoColor=black" alt="Alma" style="margin: 5px;">
+    <img src="https://img.shields.io/badge/almalinux-FFEFD5?style=for-the-badge&logo=almalinux&logoColor=black" alt="almalinux" style="margin: 5px;">
   </a>
   <a href="#">
     <img src="https://img.shields.io/badge/Rocky-FFFACD?style=for-the-badge&logo=rocky-linux&logoColor=black" alt="Rocky" style="margin: 5px;">
