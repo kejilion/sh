@@ -8082,6 +8082,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}61.  ${gl_bai}在线翻译服务器			 ${gl_kjlan}62.  ${gl_bai}RAGFlow大模型知识库"
 	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebUI自托管AI平台 ${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${gl_bai}it-tools工具箱"
 	  echo -e "${gl_kjlan}65.  ${gl_bai}n8n自动化工作流平台 ${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${gl_bai}yt-dlp视频下载工具"
+	  echo -e "${gl_kjlan}67.  ${gl_bai}ddns-go动态DNS管理工具 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9901,6 +9902,32 @@ linux_panel() {
 		  66)
 			yt_menu_pro
 			  ;;
+
+
+		  67)
+			local docker_name="ddns-go"
+			local docker_img="jeessy/ddns-go"
+			local docker_port=9876
+
+			docker_rum() {
+				docker run -d \
+						 --name ddns-go \
+						 --restart=always \
+						 -p ${docker_port}:9876 \
+						 -v /home/docker/ddns-go:/root \
+						 jeessy/ddns-go
+
+			}
+
+			local docker_describe="自动将你的公网 IP（IPv4/IPv6）实时更新到各大 DNS 服务商，实现动态域名解析。"
+			local docker_url="官网介绍: https://github.com/CorentinTh/it-tools"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
+
+
 
 		  0)
 			  kejilion
