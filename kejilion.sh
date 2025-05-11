@@ -9871,13 +9871,22 @@ linux_panel() {
 
 			docker_rum() {
 
+				add_yuming
 				mkdir -p /home/docker/n8n
 				chmod -R 777 /home/docker/n8n
+
 				docker run -d --name n8n \
 				  --restart always \
 				  -p ${docker_port}:5678 \
 				  -v /home/docker/n8n:/home/node/.n8n \
+				  -e N8N_HOST=${yuming} \
+				  -e N8N_PORT=5678 \
+				  -e N8N_PROTOCOL=https \
+				  -e N8N_WEBHOOK_URL=https://${yuming}/ \
 				  docker.n8n.io/n8nio/n8n
+
+				ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+				block_container_port "$docker_name" "$ipv4_address"
 
 			}
 
