@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.1"
+sh_v="3.9.2"
 
 
 gl_hui='\e[37m'
@@ -3382,6 +3382,114 @@ frpc_panel() {
 
 
 
+yt_menu_pro() {
+
+	local VIDEO_DIR="/home/yt-dlp"
+	local URL_FILE="$VIDEO_DIR/urls.txt"
+	local ARCHIVE_FILE="$VIDEO_DIR/archive.txt"
+
+	mkdir -p "$VIDEO_DIR"
+
+	while true; do
+
+		if [ -x "/usr/local/bin/yt-dlp" ]; then
+		   local YTDLP_STATUS="${gl_lv}已安装${gl_bai}"
+		else
+		   local YTDLP_STATUS="${gl_hui}未安装${gl_bai}"
+		fi
+
+		clear
+		echo -e "yt-dlp $YTDLP_STATUS"
+		echo -e "yt-dlp 是一个功能强大的视频下载工具，支持 YouTube、Bilibili、Twitter 等数千站点。"
+		echo -e "官网地址：https://github.com/yt-dlp/yt-dlp"
+		echo "-------------------------"		
+		echo "已下载视频列表:"
+		ls -td "$VIDEO_DIR"/*/ 2>/dev/null || echo "（暂无）"
+		echo "-------------------------"
+		echo "1. 安装               2. 更新               3. 卸载"
+		echo "-------------------------"
+		echo "5. 单个视频下载       6. 批量视频下载       7. 自定义参数下载"
+		echo "8. 下载为MP3音频      9. 删除视频目录"
+		echo "-------------------------"
+		echo "0. 返回上一级选单"
+		echo "-------------------------"
+		read -e -p "请输入选项编号: " choice
+
+		case $choice in
+			1)
+				echo "正在安装 yt-dlp..."
+				install ffmpeg
+				sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+				sudo chmod a+rx /usr/local/bin/yt-dlp
+				echo "安装完成。按任意键继续..."
+				read ;;
+			2)
+				echo "正在更新 yt-dlp..."
+				sudo yt-dlp -U
+				echo "更新完成。按任意键继续..."
+				read ;;
+			3)
+				echo "正在卸载 yt-dlp..."
+				sudo rm -f /usr/local/bin/yt-dlp
+				echo "卸载完成。按任意键继续..."
+				read ;;
+			5)
+				read -e -p "请输入视频链接: " url
+				yt-dlp -P "$VIDEO_DIR" -f "bv*+ba/b" --merge-output-format mp4 \
+					--write-subs --sub-langs all \
+					--write-thumbnail --embed-thumbnail \
+					--write-info-json \
+					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
+					--no-overwrites --no-post-overwrites "$url"
+				read -e -p "下载完成，按任意键继续..." ;;
+			6)
+				install nano
+				if [ ! -f "$URL_FILE" ]; then
+				  echo -e "# 输入多个视频链接地址\n# https://www.bilibili.com/bangumi/play/ep733316?spm_id_from=333.337.0.0&from_spmid=666.25.episode.0" > "$URL_FILE"
+				fi
+				nano $URL_FILE
+				echo "现在开始批量下载..."
+				yt-dlp -P "$VIDEO_DIR" -f "bv*+ba/b" --merge-output-format mp4 \
+					--write-subs --sub-langs all \
+					--write-thumbnail --embed-thumbnail \
+					--write-info-json \
+					-a "$URL_FILE" \
+					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
+					--no-overwrites --no-post-overwrites
+				read -e -p "批量下载完成，按任意键继续..." ;;
+			7)
+				read -e -p "请输入完整 yt-dlp 参数（不含 yt-dlp）: " custom
+				yt-dlp -P "$VIDEO_DIR" $custom \
+					--write-subs --sub-langs all \
+					--write-thumbnail --embed-thumbnail \
+					--write-info-json \
+					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
+					--no-overwrites --no-post-overwrites
+				read -e -p "执行完成，按任意键继续..." ;;
+			8)
+				read -e -p "请输入视频链接: " url
+				yt-dlp -P "$VIDEO_DIR" -x --audio-format mp3 \
+					--write-subs --sub-langs all \
+					--write-thumbnail --embed-thumbnail \
+					--write-info-json \
+					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
+					--no-overwrites --no-post-overwrites "$url"
+				read -e -p "音频下载完成，按任意键继续..." ;;
+				
+			9)
+				read -e -p "请输入删除视频名称: " rmdir
+				rm -rf "$VIDEO_DIR/$rmdir"
+				;;
+			*)
+				break ;;
+		esac
+	done
+}
+
+
+
+
+
 current_timezone() {
 	if grep -q 'Alpine' /etc/issue; then
 	   date +"%Z %z"
@@ -5191,7 +5299,7 @@ list_partitions() {
 # 挂载分区
 mount_partition() {
 	send_stats "挂载分区"
-	read -p "请输入要挂载的分区名称（例如 sda1）: " PARTITION
+	read -e -p "请输入要挂载的分区名称（例如 sda1）: " PARTITION
 
 	# 检查分区是否存在
 	if ! lsblk -o NAME | grep -w "$PARTITION" > /dev/null; then
@@ -5223,7 +5331,7 @@ mount_partition() {
 # 卸载分区
 unmount_partition() {
 	send_stats "卸载分区"
-	read -p "请输入要卸载的分区名称（例如 sda1）: " PARTITION
+	read -e -p "请输入要卸载的分区名称（例如 sda1）: " PARTITION
 
 	# 检查分区是否已经挂载
 	MOUNT_POINT=$(lsblk -o MOUNTPOINT | grep -w "$PARTITION")
@@ -5252,7 +5360,7 @@ list_mounted_partitions() {
 # 格式化分区
 format_partition() {
 	send_stats "格式化分区"
-	read -p "请输入要格式化的分区名称（例如 sda1）: " PARTITION
+	read -e -p "请输入要格式化的分区名称（例如 sda1）: " PARTITION
 
 	# 检查分区是否存在
 	if ! lsblk -o NAME | grep -w "$PARTITION" > /dev/null; then
@@ -5272,7 +5380,7 @@ format_partition() {
 	echo "2. xfs"
 	echo "3. ntfs"
 	echo "4. vfat"
-	read -p "请输入你的选择: " FS_CHOICE
+	read -e -p "请输入你的选择: " FS_CHOICE
 
 	case $FS_CHOICE in
 		1) FS_TYPE="ext4" ;;
@@ -5283,7 +5391,7 @@ format_partition() {
 	esac
 
 	# 确认格式化
-	read -p "确认格式化分区 /dev/$PARTITION 为 $FS_TYPE 吗？(y/n): " CONFIRM
+	read -e -p "确认格式化分区 /dev/$PARTITION 为 $FS_TYPE 吗？(y/n): " CONFIRM
 	if [ "$CONFIRM" != "y" ]; then
 		echo "操作已取消。"
 		return
@@ -5303,7 +5411,7 @@ format_partition() {
 # 检查分区状态
 check_partition() {
 	send_stats "检查分区状态"
-	read -p "请输入要检查的分区名称（例如 sda1）: " PARTITION
+	read -e -p "请输入要检查的分区名称（例如 sda1）: " PARTITION
 
 	# 检查分区是否存在
 	if ! lsblk -o NAME | grep -w "$PARTITION" > /dev/null; then
@@ -5331,7 +5439,7 @@ disk_manager() {
 		echo "------------------------"
 		echo "0. 返回上一级选单"
 		echo "------------------------"
-		read -p "请输入你的选择: " choice
+		read -e -p "请输入你的选择: " choice
 		case $choice in
 			1) mount_partition ;;
 			2) unmount_partition ;;
@@ -5340,7 +5448,7 @@ disk_manager() {
 			5) check_partition ;;
 			*) break ;;
 		esac
-		read -p "按回车键继续..."
+		read -e -p "按回车键继续..."
 	done
 }
 
@@ -5627,7 +5735,7 @@ rsync_manager() {
 			0) break ;;
 			*) echo "无效的选择，请重试。" ;;
 		esac
-		read -p "按回车键继续..."
+		read -e -p "按回车键继续..."
 	done
 }
 
@@ -7964,7 +8072,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}61.  ${gl_bai}在线翻译服务器			 ${gl_kjlan}62.  ${gl_bai}RAGFlow大模型知识库"
 	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebUI自托管AI平台 ${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${gl_bai}it-tools工具箱"
-	  echo -e "${gl_kjlan}65.  ${gl_bai}n8n自动化工作流平台 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}65.  ${gl_bai}n8n自动化工作流平台 ${gl_huang}★${gl_bai}              ${gl_kjlan}66.  ${gl_bai}yt-dlp视频下载工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -8484,8 +8592,6 @@ linux_panel() {
 				clear
 				echo "已经安装完成"
 				check_docker_app_ip
-				sleep 3
-				docker logs cloudreve
 			}
 
 
@@ -9774,7 +9880,9 @@ linux_panel() {
 			docker_app
 			  ;;
 
-
+		  66)
+			yt_menu_pro
+			  ;;
 
 		  0)
 			  kejilion
