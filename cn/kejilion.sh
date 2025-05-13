@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -3006,6 +3006,11 @@ configure_frpc() {
 	read -e -p "请输入外网对接token: " token
 	echo
 
+	if command -v opkg >/dev/null 2>&1; then
+		opkg update
+		opkg install grep
+	fi
+
 	donlond_frp
 
 	cat <<EOF > /home/frp/frp_0.61.0_linux_amd64/frpc.toml
@@ -3403,7 +3408,7 @@ yt_menu_pro() {
 		echo -e "yt-dlp $YTDLP_STATUS"
 		echo -e "yt-dlp 是一个功能强大的视频下载工具，支持 YouTube、Bilibili、Twitter 等数千站点。"
 		echo -e "官网地址：https://github.com/yt-dlp/yt-dlp"
-		echo "-------------------------"		
+		echo "-------------------------"
 		echo "已下载视频列表:"
 		ls -td "$VIDEO_DIR"/*/ 2>/dev/null || echo "（暂无）"
 		echo "-------------------------"
@@ -3483,7 +3488,7 @@ yt_menu_pro() {
 					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
 					--no-overwrites --no-post-overwrites "$url"
 				read -e -p "音频下载完成，按任意键继续..." ;;
-				
+
 			9)
 				send_stats "删除视频"
 				read -e -p "请输入删除视频名称: " rmdir
