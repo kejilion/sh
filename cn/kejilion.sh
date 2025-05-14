@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.2"
+sh_v="3.9.3"
 
 
 gl_hui='\e[37m'
@@ -8087,7 +8087,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}61.  ${gl_bai}在线翻译服务器			 ${gl_kjlan}62.  ${gl_bai}RAGFlow大模型知识库"
 	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebUI自托管AI平台 ${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${gl_bai}it-tools工具箱"
 	  echo -e "${gl_kjlan}65.  ${gl_bai}n8n自动化工作流平台 ${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${gl_bai}yt-dlp视频下载工具"
-	  echo -e "${gl_kjlan}67.  ${gl_bai}ddns-go动态DNS管理工具 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}67.  ${gl_bai}ddns-go动态DNS管理工具 ${gl_huang}★${gl_bai}               ${gl_kjlan}68.  ${gl_bai}AllinSSL证书管理平台"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9931,6 +9931,22 @@ linux_panel() {
 			docker_app
 			  ;;
 
+		  68)
+			local docker_name="allinssl"
+			local docker_img="allinssl/allinssl:latest"
+			local docker_port=7979
+
+			docker_rum() {
+				docker run -itd --name allinssl -p ${docker_port}:8888 -v /home/docker/allinssl/data:/www/allinssl/data -e ALLINSSL_USER=allinssl -e ALLINSSL_PWD=allinssldocker -e ALLINSSL_URL=allinssl allinssl/allinssl:latest
+			}
+
+			local docker_describe="开源免费的 SSL 证书自动化管理平台"
+			local docker_url="官网介绍: https://allinssl.com"
+			local docker_use="echo \"初始用户名: allinssl\""
+			local docker_passwd="echo \"初始密码: allinssldocker\""
+			local app_size="1"
+			docker_app
+			  ;;
 
 
 		  0)
