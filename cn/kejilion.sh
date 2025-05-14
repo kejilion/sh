@@ -2430,9 +2430,32 @@ server_reboot() {
 
 }
 
+# output_status() {
+# 	output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
+# 		# 匹配常见的公网网卡命名: eth*, ens*, enp*, eno*
+# 		$1 ~ /^(eth|ens|enp|eno)[0-9]+/ {
+# 			rx_total += $2
+# 			tx_total += $10
+# 		}
+# 		END {
+# 			rx_units = "Bytes";
+# 			tx_units = "Bytes";
+# 			if (rx_total > 1024) { rx_total /= 1024; rx_units = "K"; }
+# 			if (rx_total > 1024) { rx_total /= 1024; rx_units = "M"; }
+# 			if (rx_total > 1024) { rx_total /= 1024; rx_units = "G"; }
+
+# 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "K"; }
+# 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "M"; }
+# 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "G"; }
+
+# 			printf("总接收:       %.2f%s\n总发送:       %.2f%s\n", rx_total, rx_units, tx_total, tx_units);
+# 		}' /proc/net/dev)
+# 	# echo "$output"
+# }
+
+
 output_status() {
 	output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
-		# 匹配常见的公网网卡命名: eth*, ens*, enp*, eno*
 		$1 ~ /^(eth|ens|enp|eno)[0-9]+/ {
 			rx_total += $2
 			tx_total += $10
@@ -2448,10 +2471,14 @@ output_status() {
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "M"; }
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "G"; }
 
-			printf("总接收:       %.2f%s\n总发送:       %.2f%s\n", rx_total, rx_units, tx_total, tx_units);
+			printf("%.2f%s %.2f%s\n", rx_total, rx_units, tx_total, tx_units);
 		}' /proc/net/dev)
-	# echo "$output"
+
+	rx=$(echo "$output" | awk '{print $1}')
+	tx=$(echo "$output" | awk '{print $2}')
+
 }
+
 
 
 
@@ -5831,7 +5858,8 @@ linux_ps() {
 	echo -e "${gl_kjlan}虚拟内存:     ${gl_bai}$swap_info"
 	echo -e "${gl_kjlan}硬盘占用:     ${gl_bai}$disk_info"
 	echo -e "${gl_kjlan}-------------"
-	echo -e "${gl_kjlan}$output"
+	echo -e "${gl_kjlan}总接收:       ${gl_bai}$rx"
+	echo -e "${gl_kjlan}总发送:       ${gl_bai}$tx"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}网络算法:     ${gl_bai}$congestion_algorithm $queue_algorithm"
 	echo -e "${gl_kjlan}-------------"
@@ -10944,7 +10972,8 @@ EOF
 				echo "------------------------------------------------"
 				echo "当前流量使用情况，重启服务器流量计算会清零！"
 				output_status
-				echo "$output"
+				echo -e "${gl_kjlan}总接收: ${gl_bai}$rx"
+				echo -e "${gl_kjlan}总发送: ${gl_bai}$tx"
 
 				# 检查是否存在 Limiting_Shut_down.sh 文件
 				if [ -f ~/Limiting_Shut_down.sh ]; then
