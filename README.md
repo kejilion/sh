@@ -24,6 +24,9 @@
   <a href="/README.ja.md">
     <img src="https://img.shields.io/badge/日本語-2F4F4F?style=for-the-badge&logo=google-chrome&logoColor=white" alt="日本語" style="margin: 5px;">
   </a>
+  <a href="/README.ru.md">
+    <img src="https://img.shields.io/badge/Русский-2F4F4F?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Русский" style="margin: 5px;">
+  </a>  
   <a href="/README.fa.md">
     <img src="https://img.shields.io/badge/فارسی-2F4F4F?style=for-the-badge&logo=google-chrome&logoColor=white" alt="فارسی" style="margin: 5px;">
   </a>
