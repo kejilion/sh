@@ -24,6 +24,16 @@ bash <(curl -sL kejilion.sh) tw
 ```
 
 ***
+
+## 🖼️ 실제 화면 미리보기 (Preview)
+
+<img src="https://kejilion.sh/kejilionsh_tw.webp" alt="한국어 버전 미리보기" width="75%"/>
+
+
+
+
+
+***
 ## 📦 核心功能
 
 - **系統資訊概覽**：快速展示 CPU、記憶體、磁碟、頻寬等運作狀態
