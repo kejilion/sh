@@ -23,7 +23,15 @@ TechLion のシェル スクリプト ツールは、Linux の監視、テスト
 ```bash
 bash <(curl -sL kejilion.sh) jp
 ```
+
 ***
+## 🖼️ 実際のスクリーンショット
+
+<img src="https://kejilion.sh/kejilionsh_jp.webp" alt="日本語版プレビュー" width="75%"/>
+
+
+***
+
 ## 📦 コア機能
 
 - **システム情報概要**: CPU、メモリ、ディスク、帯域幅などの動作状態をすばやく表示します。
