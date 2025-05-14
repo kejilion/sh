@@ -90,10 +90,8 @@ bash <(curl -sL kejilion.sh) ru
 <br><br>
 
 ## 🖼️ Предпросмотр интерфейса
+<img src="https://kejilion.sh/kejilionsh_ru.webp" alt="Предпросмотр русской версии" width="75%"/>
 
-<p align="center">
-  <img src="https://kejilion.sh/kejilionsh_ru.webp" alt="Предпросмотр русской версии" width="75%"/>
-</p>
 
 
 <br><br>
