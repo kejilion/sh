@@ -24,6 +24,15 @@ TechLion의 Shell Script Tool은 Linux 모니터링, 테스트, 관리를 위해
 ```bash
 bash <(curl -sL kejilion.sh) kr
 ```
+***
+
+## 🖼️ 실제 화면 미리보기 (Preview)
+
+<img src="https://kejilion.sh/kejilionsh_kr.webp" alt="한국어 버전 미리보기" width="75%"/>
+
+
+
+
 
 ***
 ## 📦 핵심 기능
