@@ -1418,7 +1418,7 @@ install_ssltls_text() {
 
 
 add_ssl() {
-
+echo -e "${gl_huang}快速申请SSL证书，过期前自动续签${gl_bai}"
 yuming="${1:-}"
 if [ -z "$yuming" ]; then
 	add_yuming
@@ -8116,6 +8116,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebUI自托管AI平台 ${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${gl_bai}it-tools工具箱"
 	  echo -e "${gl_kjlan}65.  ${gl_bai}n8n自动化工作流平台 ${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${gl_bai}yt-dlp视频下载工具"
 	  echo -e "${gl_kjlan}67.  ${gl_bai}ddns-go动态DNS管理工具 ${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${gl_bai}AllinSSL证书管理平台"
+	  echo -e "${gl_kjlan}69.  ${gl_bai}SFTPGo文件传输工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9939,7 +9940,7 @@ linux_panel() {
 		  67)
 			local docker_name="ddns-go"
 			local docker_img="jeessy/ddns-go"
-			local docker_port=9876
+			local docker_port=8067
 
 			docker_rum() {
 				docker run -d \
@@ -9962,7 +9963,7 @@ linux_panel() {
 		  68)
 			local docker_name="allinssl"
 			local docker_img="allinssl/allinssl:latest"
-			local docker_port=7979
+			local docker_port=8068
 
 			docker_rum() {
 				docker run -itd --name allinssl -p ${docker_port}:8888 -v /home/docker/allinssl/data:/www/allinssl/data -e ALLINSSL_USER=allinssl -e ALLINSSL_PWD=allinssldocker -e ALLINSSL_URL=allinssl allinssl/allinssl:latest
@@ -9976,6 +9977,36 @@ linux_panel() {
 			docker_app
 			  ;;
 
+
+		  69)
+			local docker_name="allinssl"
+			local docker_img="allinssl/allinssl:latest"
+			local docker_port=8069
+
+			docker_rum() {
+
+				mkdir -p /home/docker/sftpgo/data
+				mkdir -p /home/docker/sftpgo/config
+				chown -R 1000:1000 /home/docker/sftpgo
+
+				docker run -d \
+				  --name sftpgo \
+				  --restart=always \
+				  -p ${docker_port}:8080 \
+				  -p 22022:2022 \
+				  --mount type=bind,source=/home/docker/sftpgo/data,target=/srv/sftpgo \
+				  --mount type=bind,source=/home/docker/sftpgo/config,target=/var/lib/sftpgo \
+				  drakkan/sftpgo:latest
+
+			}
+
+			local docker_describe="开源免费随时随地SFTP FTP WebDAV 文件传输工具"
+			local docker_url="官网介绍: https://sftpgo.com/"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
 
 		  0)
 			  kejilion
