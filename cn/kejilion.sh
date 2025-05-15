@@ -2101,8 +2101,12 @@ while true; do
 	echo "$docker_describe"
 	echo "$docker_url"
 	if docker inspect "$docker_name" &>/dev/null; then
-		local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
-		docker_port=${docker_port:-0000}
+		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
+			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+			docker_port=${docker_port:-0000}
+			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+		fi
+		local docker_port=$(cat "/home/docker/${docker_name}_port.conf")
 		check_docker_app_ip
 	fi
 	echo ""
@@ -2125,6 +2129,8 @@ while true; do
 			install jq
 			install_docker
 			docker_rum
+			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+
 			clear
 			echo "$docker_name 已经安装完成"
 			check_docker_app_ip
@@ -2200,8 +2206,12 @@ docker_app_plus() {
 		echo "$app_text"
 		echo "$app_url"
 		if docker inspect "$docker_name" &>/dev/null; then
-			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
-			docker_port=${docker_port:-0000}
+			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
+				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+				docker_port=${docker_port:-0000}
+				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+			fi
+			local docker_port=$(cat "/home/docker/${docker_name}_port.conf")
 			check_docker_app_ip
 		fi
 		echo ""
@@ -2223,6 +2233,7 @@ docker_app_plus() {
 				install jq
 				install_docker
 				docker_app_install
+				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 				;;
 			2)
 				docker_app_update
