@@ -9979,8 +9979,8 @@ linux_panel() {
 
 
 		  69)
-			local docker_name="allinssl"
-			local docker_img="allinssl/allinssl:latest"
+			local docker_name="sftpgo"
+			local docker_img="drakkan/sftpgo:latest"
 			local docker_port=8069
 
 			docker_rum() {
