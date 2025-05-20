@@ -9982,8 +9982,8 @@ linux_panel() {
 
 			local docker_describe="开源免费的 SSL 证书自动化管理平台"
 			local docker_url="官网介绍: https://allinssl.com"
-			local docker_use="echo \"初始用户名: allinssl\""
-			local docker_passwd="echo \"初始密码: allinssldocker\""
+			local docker_use="echo \"安全入口: /allinssl\""
+			local docker_passwd="echo \"用户名: allinssl  密码: allinssldocker\""
 			local app_size="1"
 			docker_app
 			  ;;
