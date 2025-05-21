@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.3"
+sh_v="3.9.4"
 
 
 gl_hui='\e[37m'
@@ -1751,6 +1751,28 @@ fi
 }
 
 
+patch_wp_memory_limit() {
+  local MEMORY_LIMIT="${1:-256M}"      # 第一个参数，默认256M
+  local MAX_MEMORY_LIMIT="${2:-256M}"  # 第二个参数，默认256M
+  local TARGET_DIR="/home/web/html"    # 路径写死
+
+  find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
+	# 删除旧定义
+	sed -i "/define(['\"]WP_MEMORY_LIMIT['\"].*/d" "$FILE"
+	sed -i "/define(['\"]WP_MAX_MEMORY_LIMIT['\"].*/d" "$FILE"
+
+	# 插入新定义，放在含 "Happy publishing" 的行前
+	awk -v insert="define('WP_MEMORY_LIMIT', '$MEMORY_LIMIT');\ndefine('WP_MAX_MEMORY_LIMIT', '$MAX_MEMORY_LIMIT');" \
+	'
+	  /Happy publishing/ {
+		print insert
+	  }
+	  { print }
+	' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+
+	echo "[+] Replaced WP_MEMORY_LIMIT in $FILE"
+  done
+}
 
 
 
@@ -7844,6 +7866,8 @@ linux_ldnmp() {
 				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
 				  rm -rf /home/www.conf
 
+				  patch_wp_memory_limit
+
 				  fix_phpfpm_conf php
 				  fix_phpfpm_conf php74
 
@@ -7880,6 +7904,8 @@ linux_ldnmp() {
 				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
 				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
 				  rm -rf /home/www.conf
+
+				  patch_wp_memory_limit 512M 512M
 
 				  fix_phpfpm_conf php
 				  fix_phpfpm_conf php74
@@ -7991,7 +8017,7 @@ linux_ldnmp() {
 
 			  docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "post_max_size=50M " > /usr/local/etc/php/conf.d/post.ini' > /dev/null 2>&1
-			  docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1
+			  docker exec php sh -c 'echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_execution_time=1200" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_input_time=600" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_input_vars=5000" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1
