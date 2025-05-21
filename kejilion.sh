@@ -1768,7 +1768,7 @@ patch_wp_memory_limit() {
 		print insert
 	  }
 	  { print }
-	' "$FILE" > "$FILE.tmp" && mv "$FILE.tmp" "$FILE"
+	' "$FILE" > "$FILE.tmp" && mv -f "$FILE.tmp" "$FILE"
 
 	echo "[+] Replaced WP_MEMORY_LIMIT in $FILE"
   done
@@ -1777,6 +1777,30 @@ patch_wp_memory_limit() {
 
 
 
+patch_wp_debug() {
+  local DEBUG="${1:-false}"           # 第一个参数，默认false
+  local DEBUG_DISPLAY="${2:-false}"   # 第二个参数，默认false
+  local DEBUG_LOG="${3:-false}"       # 第三个参数，默认false
+  local TARGET_DIR="/home/web/html"   # 路径写死
+
+  find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
+	# 删除旧定义
+	sed -i "/define(['\"]WP_DEBUG['\"].*/d" "$FILE"
+	sed -i "/define(['\"]WP_DEBUG_DISPLAY['\"].*/d" "$FILE"
+	sed -i "/define(['\"]WP_DEBUG_LOG['\"].*/d" "$FILE"
+
+	# 插入新定义，放在含 "Happy publishing" 的行前
+	awk -v insert="define('WP_DEBUG', $DEBUG);\ndefine('WP_DEBUG_DISPLAY', $DEBUG_DISPLAY);\ndefine('WP_DEBUG_LOG', $DEBUG_LOG);" \
+	'
+	  /Happy publishing/ {
+		print insert
+	  }
+	  { print }
+	' "$FILE" > "$FILE.tmp" && mv -f "$FILE.tmp" "$FILE"
+
+	echo "[+] Replaced WP_DEBUG settings in $FILE"
+  done
+}
 
 
 
@@ -7867,6 +7891,7 @@ linux_ldnmp() {
 				  rm -rf /home/www.conf
 
 				  patch_wp_memory_limit
+				  patch_wp_debug
 
 				  fix_phpfpm_conf php
 				  fix_phpfpm_conf php74
@@ -7906,6 +7931,7 @@ linux_ldnmp() {
 				  rm -rf /home/www.conf
 
 				  patch_wp_memory_limit 512M 512M
+				  patch_wp_debug
 
 				  fix_phpfpm_conf php
 				  fix_phpfpm_conf php74
