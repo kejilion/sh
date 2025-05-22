@@ -10096,7 +10096,7 @@ linux_panel() {
 
 			local docker_describe="开源AI聊天机器人框架，支持微信，QQ，TG接入AI大模型"
 			local docker_url="官网介绍: https://astrbot.app/"
-			local docker_use=""
+			local docker_use="echo \"用户名: astrbot  密码: astrbot\""
 			local docker_passwd=""
 			local app_size="1"
 			docker_app
