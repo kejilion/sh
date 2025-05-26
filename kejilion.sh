@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.4"
+sh_v="3.9.5"
 
 
 gl_hui='\e[37m'
@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -1802,6 +1802,519 @@ patch_wp_debug() {
   done
 }
 
+
+nginx_br() {
+
+	local mode=$1
+
+	if ! grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
+	fi
+
+	if [ "$mode" == "on" ]; then
+		# 开启 Brotli：去掉注释
+		sed -i 's|# load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|# load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+
+		sed -i 's|^\(\s*\)# brotli on;|\1brotli on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_static on;|\1brotli_static on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_comp_level \(.*\);|\1brotli_comp_level \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_buffers \(.*\);|\1brotli_buffers \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_min_length \(.*\);|\1brotli_min_length \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_window \(.*\);|\1brotli_window \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_types \(.*\);|\1brotli_types \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i '/brotli_types application\/atom+xml/,+6 s/^\(\s*\)#\s*/\1/' /home/web/nginx.conf
+
+	elif [ "$mode" == "off" ]; then
+		# 关闭 Brotli：加上注释
+		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+
+		sed -i 's|^\(\s*\)brotli on;|\1# brotli on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_static on;|\1# brotli_static on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_comp_level \(.*\);|\1# brotli_comp_level \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_buffers \(.*\);|\1# brotli_buffers \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_min_length \(.*\);|\1# brotli_min_length \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_window \(.*\);|\1# brotli_window \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_types \(.*\);|\1# brotli_types \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i '/brotli_types application\/atom+xml/,+6 {
+			/^[[:space:]]*[^#[:space:]]/ s/^\(\s*\)/\1# /
+		}' /home/web/nginx.conf
+
+	else
+		echo "无效的参数：使用 'on' 或 'off'"
+		return 1
+	fi
+
+	# 检查 nginx 镜像并根据情况处理
+	if grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+		docker exec nginx nginx -s reload
+	else
+		sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml
+		nginx_upgrade
+	fi
+
+
+}
+
+
+
+nginx_zstd() {
+
+	local mode=$1
+
+	if ! grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
+	fi
+
+	if [ "$mode" == "on" ]; then
+		# 开启 Zstd：去掉注释
+		sed -i 's|# load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|# load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+
+		sed -i 's|^\(\s*\)# zstd on;|\1zstd on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_static on;|\1zstd_static on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_comp_level \(.*\);|\1zstd_comp_level \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_buffers \(.*\);|\1zstd_buffers \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_min_length \(.*\);|\1zstd_min_length \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_types \(.*\);|\1zstd_types \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i '/zstd_types application\/atom+xml/,+6 s/^\(\s*\)#\s*/\1/' /home/web/nginx.conf
+
+
+
+	elif [ "$mode" == "off" ]; then
+		# 关闭 Zstd：加上注释
+		sed -i 's|^load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|# load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|# load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+
+		sed -i 's|^\(\s*\)zstd on;|\1# zstd on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_static on;|\1# zstd_static on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_comp_level \(.*\);|\1# zstd_comp_level \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_buffers \(.*\);|\1# zstd_buffers \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_min_length \(.*\);|\1# zstd_min_length \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_types \(.*\);|\1# zstd_types \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i '/zstd_types application\/atom+xml/,+6 {
+			/^[[:space:]]*[^#[:space:]]/ s/^\(\s*\)/\1# /
+		}' /home/web/nginx.conf
+
+
+	else
+		echo "无效的参数：使用 'on' 或 'off'"
+		return 1
+	fi
+
+	# 检查 nginx 镜像并根据情况处理
+	if grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+		docker exec nginx nginx -s reload
+	else
+		sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml
+		nginx_upgrade
+	fi
+
+
+
+}
+
+
+
+
+
+
+
+
+nginx_gzip() {
+
+	local mode=$1
+	if [ "$mode" == "on" ]; then
+		sed -i 's|^\(\s*\)# gzip on;|\1gzip on;|' /home/web/nginx.conf > /dev/null 2>&1
+	elif [ "$mode" == "off" ]; then
+		sed -i 's|^\(\s*\)gzip on;|\1# gzip on;|' /home/web/nginx.conf > /dev/null 2>&1
+	else
+		echo "无效的参数：使用 'on' 或 'off'"
+		return 1
+	fi
+
+	docker exec nginx nginx -s reload
+
+}
+
+
+
+
+
+
+web_security() {
+	  send_stats "LDNMP环境防御"
+	  while true; do
+		check_waf_status
+		check_cf_mode
+		if [ -x "$(command -v fail2ban-client)" ] ; then
+			clear
+			remove fail2ban
+			rm -rf /etc/fail2ban
+		else
+			  clear
+			  docker_name="fail2ban"
+			  check_docker_app
+			  echo -e "服务器网站防御程序 ${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
+			  echo "------------------------"
+			  echo "1. 安装防御程序"
+			  echo "------------------------"
+			  echo "5. 查看SSH拦截记录                6. 查看网站拦截记录"
+			  echo "7. 查看防御规则列表               8. 查看日志实时监控"
+			  echo "------------------------"
+			  echo "11. 配置拦截参数                  12. 清除所有拉黑的IP"
+			  echo "------------------------"
+			  echo "21. cloudflare模式                22. 高负载开启5秒盾"
+			  echo "------------------------"
+			  echo "31. 开启WAF                       32. 关闭WAF"
+			  echo "33. 开启DDOS防御                  34. 关闭DDOS防御"
+			  echo "------------------------"
+			  echo "9. 卸载防御程序"
+			  echo "------------------------"
+			  echo "0. 返回上一级选单"
+			  echo "------------------------"
+			  read -e -p "请输入你的选择: " sub_choice
+			  case $sub_choice in
+				  1)
+					  f2b_install_sshd
+					  cd /path/to/fail2ban/config/fail2ban/filter.d
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
+					  cd /path/to/fail2ban/config/fail2ban/jail.d/
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+					  sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+					  f2b_status
+					  ;;
+				  5)
+					  echo "------------------------"
+					  f2b_sshd
+					  echo "------------------------"
+					  ;;
+				  6)
+
+					  echo "------------------------"
+					  local xxx="fail2ban-nginx-cc"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-418"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-bad-request"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-badbots"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-botsearch"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-deny"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-http-auth"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-unauthorized"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-php-url-fopen"
+					  f2b_status_xxx
+					  echo "------------------------"
+
+					  ;;
+
+				  7)
+					  docker exec -it fail2ban fail2ban-client status
+					  ;;
+				  8)
+					  tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
+
+					  ;;
+				  9)
+					  docker rm -f fail2ban
+					  rm -rf /path/to/fail2ban
+					  crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
+					  echo "Fail2Ban防御程序已卸载"
+					  ;;
+
+				  11)
+					  install nano
+					  nano /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+					  f2b_status
+					  break
+					  ;;
+
+				  12)
+					  docker exec -it fail2ban fail2ban-client unban --all
+					  ;;
+
+				  21)
+					  send_stats "cloudflare模式"
+					  echo "到cf后台右上角我的个人资料，选择左侧API令牌，获取Global API Key"
+					  echo "https://dash.cloudflare.com/login"
+					  read -e -p "输入CF的账号: " cfuser
+					  read -e -p "输入CF的Global API Key: " cftoken
+
+					  wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf
+					  docker exec nginx nginx -s reload
+
+					  cd /path/to/fail2ban/config/fail2ban/jail.d/
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+
+					  cd /path/to/fail2ban/config/fail2ban/action.d
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
+
+					  sed -i "s/kejilion@outlook.com/$cfuser/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
+					  sed -i "s/APIKEY00000/$cftoken/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
+					  f2b_status
+
+					  echo "已配置cloudflare模式，可在cf后台，站点-安全性-事件中查看拦截记录"
+					  ;;
+
+				  22)
+					  send_stats "高负载开启5秒盾"
+					  echo -e "${gl_huang}网站每5分钟自动检测，当达检测到高负载会自动开盾，低负载也会自动关闭5秒盾。${gl_bai}"
+					  echo "--------------"
+					  echo "获取CF参数: "
+					  echo -e "到cf后台右上角我的个人资料，选择左侧API令牌，获取${gl_huang}Global API Key${gl_bai}"
+					  echo -e "到cf后台域名概要页面右下方获取${gl_huang}区域ID${gl_bai}"
+					  echo "https://dash.cloudflare.com/login"
+					  echo "--------------"
+					  read -e -p "输入CF的账号: " cfuser
+					  read -e -p "输入CF的Global API Key: " cftoken
+					  read -e -p "输入CF中域名的区域ID: " cfzonID
+
+					  cd ~
+					  install jq bc
+					  check_crontab_installed
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
+					  chmod +x CF-Under-Attack.sh
+					  sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
+					  sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
+					  sed -i "s/CCCC/$cfzonID/g" ~/CF-Under-Attack.sh
+
+					  local cron_job="*/5 * * * * ~/CF-Under-Attack.sh"
+
+					  local existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
+
+					  if [ -z "$existing_cron" ]; then
+						  (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
+						  echo "高负载自动开盾脚本已添加"
+					  else
+						  echo "自动开盾脚本已存在，无需添加"
+					  fi
+
+					  ;;
+
+				  31)
+					  nginx_waf on
+					  echo "站点WAF已开启"
+					  send_stats "站点WAF已开启"
+					  ;;
+
+				  32)
+				  	  nginx_waf off
+					  echo "站点WAF已关闭"
+					  send_stats "站点WAF已关闭"
+					  ;;
+
+				  33)
+					  enable_ddos_defense
+					  ;;
+
+				  34)
+					  disable_ddos_defense
+					  ;;
+
+				  *)
+					  break
+					  ;;
+			  esac
+		fi
+	  break_end
+	  done
+}
+
+
+
+check_nginx_mode() {
+
+CONFIG_FILE="/home/web/nginx.conf"
+
+# 获取当前的 worker_processes 设置值
+current_value=$(grep -E '^\s*worker_processes\s+[0-9]+;' "$CONFIG_FILE" | awk '{print $2}' | tr -d ';')
+
+# 根据值设置模式信息
+if [ "$current_value" = "8" ]; then
+	mode_info=" 高性能模式"
+else
+	mode_info=" 标准模式"
+fi
+
+
+
+}
+
+
+check_nginx_compression() {
+
+	CONFIG_FILE="/home/web/nginx.conf"
+
+	# 检查 zstd 是否开启且未被注释（整行以 zstd on; 开头）
+	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
+		zstd_status=" zstd压缩已开启"
+	else
+		zstd_status=""
+	fi
+
+	# 检查 brotli 是否开启且未被注释
+	if grep -qE '^\s*brotli\s+on;' "$CONFIG_FILE"; then
+		br_status=" br压缩已开启"
+	else
+		br_status=""
+	fi
+
+	# 检查 gzip 是否开启且未被注释
+	if grep -qE '^\s*gzip\s+on;' "$CONFIG_FILE"; then
+		gzip_status=" gzip压缩已开启"
+	else
+		gzip_status=""
+	fi
+}
+
+
+
+
+web_optimization() {
+		  while true; do
+		  	  check_nginx_mode
+			  check_nginx_compression
+			  clear
+			  send_stats "优化LDNMP环境"
+			  echo -e "优化LDNMP环境${gl_lv}${mode_info}${gzip_status}${br_status}${zstd_status}${gl_bai}"
+			  echo "------------------------"
+			  echo "1. 标准模式              2. 高性能模式 (推荐2H4G以上)"
+			  echo "------------------------"
+			  echo "3. 开启gzip压缩          4. 关闭gzip压缩"
+			  echo "5. 开启br压缩            6. 关闭br压缩"
+			  echo "7. 开启zstd压缩          8. 关闭zstd压缩"
+			  echo "------------------------"
+			  echo "0. 返回上一级选单"
+			  echo "------------------------"
+			  read -e -p "请输入你的选择: " sub_choice
+			  case $sub_choice in
+				  1)
+				  send_stats "站点标准模式"
+
+				  # nginx调优
+				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
+				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
+
+				  # php调优
+				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
+				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
+				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
+				  rm -rf /home/optimized_php.ini
+
+				  # php调优
+				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www-1.conf
+				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
+				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
+				  rm -rf /home/www.conf
+
+				  patch_wp_memory_limit
+				  patch_wp_debug
+
+				  fix_phpfpm_conf php
+				  fix_phpfpm_conf php74
+
+				  # mysql调优
+				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
+				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
+				  rm -rf /home/custom_mysql_config.cnf
+
+
+				  cd /home/web && docker compose restart
+
+				  restart_redis
+				  optimize_balanced
+
+
+				  echo "LDNMP环境已设置成 标准模式"
+
+					  ;;
+				  2)
+				  send_stats "站点高性能模式"
+
+				  # nginx调优
+				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
+				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
+
+				  # php调优
+				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
+				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
+				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
+				  rm -rf /home/optimized_php.ini
+
+				  # php调优
+				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www.conf
+				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
+				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
+				  rm -rf /home/www.conf
+
+				  patch_wp_memory_limit 512M 512M
+				  patch_wp_debug
+
+				  fix_phpfpm_conf php
+				  fix_phpfpm_conf php74
+
+				  # mysql调优
+				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
+				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
+				  rm -rf /home/custom_mysql_config.cnf
+
+				  cd /home/web && docker compose restart
+
+				  restart_redis
+				  optimize_web_server
+
+				  echo "LDNMP环境已设置成 高性能模式"
+
+					  ;;
+				  3)
+				  send_stats "nginx_gzip on"
+				  nginx_gzip on
+					  ;;
+				  4)
+				  send_stats "nginx_gzip off"
+				  nginx_gzip off
+					  ;;
+				  5)
+				  send_stats "nginx_br on"
+				  nginx_br on
+					  ;;
+				  6)
+				  send_stats "nginx_br off"
+				  nginx_br off
+					  ;;
+				  7)
+				  send_stats "nginx_zstd on"
+				  nginx_zstd on
+					  ;;
+				  8)
+				  send_stats "nginx_zstd off"
+				  nginx_zstd off
+					  ;;
+				  *)
+					  break
+					  ;;
+			  esac
+			  break_end
+
+		  done
+
+
+}
 
 
 
@@ -7668,294 +8181,11 @@ linux_ldnmp() {
 	  ;;
 
 	35)
-	  send_stats "LDNMP环境防御"
-	  while true; do
-		check_waf_status
-		check_cf_mode
-		if [ -x "$(command -v fail2ban-client)" ] ; then
-			clear
-			remove fail2ban
-			rm -rf /etc/fail2ban
-		else
-			  clear
-			  docker_name="fail2ban"
-			  check_docker_app
-			  echo -e "服务器网站防御程序 ${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
-			  echo "------------------------"
-			  echo "1. 安装防御程序"
-			  echo "------------------------"
-			  echo "5. 查看SSH拦截记录                6. 查看网站拦截记录"
-			  echo "7. 查看防御规则列表               8. 查看日志实时监控"
-			  echo "------------------------"
-			  echo "11. 配置拦截参数                  12. 清除所有拉黑的IP"
-			  echo "------------------------"
-			  echo "21. cloudflare模式                22. 高负载开启5秒盾"
-			  echo "------------------------"
-			  echo "31. 开启WAF                       32. 关闭WAF"
-			  echo "33. 开启DDOS防御                  34. 关闭DDOS防御"
-			  echo "------------------------"
-			  echo "9. 卸载防御程序"
-			  echo "------------------------"
-			  echo "0. 返回上一级选单"
-			  echo "------------------------"
-			  read -e -p "请输入你的选择: " sub_choice
-			  case $sub_choice in
-				  1)
-					  f2b_install_sshd
-					  cd /path/to/fail2ban/config/fail2ban/filter.d
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
-					  cd /path/to/fail2ban/config/fail2ban/jail.d/
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
-					  sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
-					  f2b_status
-					  ;;
-				  5)
-					  echo "------------------------"
-					  f2b_sshd
-					  echo "------------------------"
-					  ;;
-				  6)
-
-					  echo "------------------------"
-					  local xxx="fail2ban-nginx-cc"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-418"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-bad-request"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-badbots"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-botsearch"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-deny"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-http-auth"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-unauthorized"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-php-url-fopen"
-					  f2b_status_xxx
-					  echo "------------------------"
-
-					  ;;
-
-				  7)
-					  docker exec -it fail2ban fail2ban-client status
-					  ;;
-				  8)
-					  tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
-
-					  ;;
-				  9)
-					  docker rm -f fail2ban
-					  rm -rf /path/to/fail2ban
-					  crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
-					  echo "Fail2Ban防御程序已卸载"
-					  ;;
-
-				  11)
-					  install nano
-					  nano /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
-					  f2b_status
-					  break
-					  ;;
-
-				  12)
-					  docker exec -it fail2ban fail2ban-client unban --all
-					  ;;
-
-				  21)
-					  send_stats "cloudflare模式"
-					  echo "到cf后台右上角我的个人资料，选择左侧API令牌，获取Global API Key"
-					  echo "https://dash.cloudflare.com/login"
-					  read -e -p "输入CF的账号: " cfuser
-					  read -e -p "输入CF的Global API Key: " cftoken
-
-					  wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf
-					  docker exec nginx nginx -s reload
-
-					  cd /path/to/fail2ban/config/fail2ban/jail.d/
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
-
-					  cd /path/to/fail2ban/config/fail2ban/action.d
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
-
-					  sed -i "s/kejilion@outlook.com/$cfuser/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
-					  sed -i "s/APIKEY00000/$cftoken/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
-					  f2b_status
-
-					  echo "已配置cloudflare模式，可在cf后台，站点-安全性-事件中查看拦截记录"
-					  ;;
-
-				  22)
-					  send_stats "高负载开启5秒盾"
-					  echo -e "${gl_huang}网站每5分钟自动检测，当达检测到高负载会自动开盾，低负载也会自动关闭5秒盾。${gl_bai}"
-					  echo "--------------"
-					  echo "获取CF参数: "
-					  echo -e "到cf后台右上角我的个人资料，选择左侧API令牌，获取${gl_huang}Global API Key${gl_bai}"
-					  echo -e "到cf后台域名概要页面右下方获取${gl_huang}区域ID${gl_bai}"
-					  echo "https://dash.cloudflare.com/login"
-					  echo "--------------"
-					  read -e -p "输入CF的账号: " cfuser
-					  read -e -p "输入CF的Global API Key: " cftoken
-					  read -e -p "输入CF中域名的区域ID: " cfzonID
-
-					  cd ~
-					  install jq bc
-					  check_crontab_installed
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
-					  chmod +x CF-Under-Attack.sh
-					  sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
-					  sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
-					  sed -i "s/CCCC/$cfzonID/g" ~/CF-Under-Attack.sh
-
-					  local cron_job="*/5 * * * * ~/CF-Under-Attack.sh"
-
-					  local existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
-
-					  if [ -z "$existing_cron" ]; then
-						  (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
-						  echo "高负载自动开盾脚本已添加"
-					  else
-						  echo "自动开盾脚本已存在，无需添加"
-					  fi
-
-					  ;;
-
-				  31)
-					  nginx_waf on
-					  echo "站点WAF已开启"
-					  send_stats "站点WAF已开启"
-					  ;;
-
-				  32)
-				  	  nginx_waf off
-					  echo "站点WAF已关闭"
-					  send_stats "站点WAF已关闭"
-					  ;;
-
-				  33)
-					  enable_ddos_defense
-					  ;;
-
-				  34)
-					  disable_ddos_defense
-					  ;;
-
-				  *)
-					  break
-					  ;;
-			  esac
-		fi
-	  break_end
-	  done
+		web_security
 		;;
 
 	36)
-		  while true; do
-			  clear
-			  send_stats "优化LDNMP环境"
-			  echo "优化LDNMP环境"
-			  echo "------------------------"
-			  echo "1. 标准模式              2. 高性能模式 (推荐2H2G以上)"
-			  echo "------------------------"
-			  echo "0. 返回上一级选单"
-			  echo "------------------------"
-			  read -e -p "请输入你的选择: " sub_choice
-			  case $sub_choice in
-				  1)
-				  send_stats "站点标准模式"
-
-				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
-
-				  # php调优
-				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
-				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
-				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
-				  rm -rf /home/optimized_php.ini
-
-				  # php调优
-				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www-1.conf
-				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
-				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
-				  rm -rf /home/www.conf
-
-				  patch_wp_memory_limit
-				  patch_wp_debug
-
-				  fix_phpfpm_conf php
-				  fix_phpfpm_conf php74
-
-				  # mysql调优
-				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
-				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
-				  rm -rf /home/custom_mysql_config.cnf
-
-
-				  cd /home/web && docker compose restart
-
-				  restart_redis
-				  optimize_balanced
-
-
-				  echo "LDNMP环境已设置成 标准模式"
-
-					  ;;
-				  2)
-				  send_stats "站点高性能模式"
-
-				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
-
-				  # php调优
-				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
-				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
-				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
-				  rm -rf /home/optimized_php.ini
-
-				  # php调优
-				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www.conf
-				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
-				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
-				  rm -rf /home/www.conf
-
-				  patch_wp_memory_limit 512M 512M
-				  patch_wp_debug
-
-				  fix_phpfpm_conf php
-				  fix_phpfpm_conf php74
-
-				  # mysql调优
-				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
-				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
-				  rm -rf /home/custom_mysql_config.cnf
-
-				  cd /home/web && docker compose restart
-
-				  restart_redis
-				  optimize_web_server
-
-				  echo "LDNMP环境已设置成 高性能模式"
-
-					  ;;
-				  *)
-					  break
-					  ;;
-			  esac
-			  break_end
-
-		  done
+		web_optimization
 		;;
 
 
@@ -12334,6 +12564,10 @@ else
 		   shift
 			if [ "$1" = "cache" ]; then
 				web_cache
+			elif [ "$1" = "sec"]; then
+				web_security
+			elif [ "$1" = "opt"]; then
+				web_optimization
 			elif [ -z "$1" ]; then
 				ldnmp_web_status
 			else
@@ -12345,3 +12579,5 @@ else
 			;;
 	esac
 fi
+
+
