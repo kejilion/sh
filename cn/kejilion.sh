@@ -12567,9 +12567,9 @@ else
 		   shift
 			if [ "$1" = "cache" ]; then
 				web_cache
-			elif [ "$1" = "sec"]; then
+			elif [ "$1" = "sec" ]; then
 				web_security
-			elif [ "$1" = "opt"]; then
+			elif [ "$1" = "opt" ]; then
 				web_optimization
 			elif [ -z "$1" ]; then
 				ldnmp_web_status
@@ -12577,6 +12577,7 @@ else
 				k_info
 			fi
 			;;
+
 		*)
 			k_info
 			;;
