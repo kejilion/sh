@@ -4398,6 +4398,7 @@ add_sshkey() {
 		   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
 		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+	restart_ssh
 	echo -e "${gl_lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
 
 }
@@ -4412,6 +4413,9 @@ import_sshkey() {
 		return 1
 	fi
 
+	mkdir -p ~/.ssh
+	chmod 700 ~/.ssh
+	touch ~/.ssh/authorized_keys
 	echo "$public_key" >> ~/.ssh/authorized_keys
 	chmod 600 ~/.ssh/authorized_keys
 
@@ -4421,6 +4425,7 @@ import_sshkey() {
 		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+	restart_ssh
 	echo -e "${gl_lv}公钥已成功导入，ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
 
 }
