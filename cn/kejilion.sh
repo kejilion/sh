@@ -3921,6 +3921,8 @@ frpc_panel() {
 		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=173.9"
 		echo "------------------------"
 		if [ -d "/home/frp/" ]; then
+			tmux kill-session -t frpc >/dev/null 2>&1
+			tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
 			list_forwarding_services "/home/frp/frp_0.61.0_linux_amd64/frpc.toml"
 		fi
 		echo ""
