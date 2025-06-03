@@ -3581,6 +3581,8 @@ configure_frpc() {
 	read -e -p "请输入外网对接token: " token
 	echo
 
+	mkdir -p /home/frp
+	touch /home/frp/frpc.toml
 	cat <<EOF > /home/frp/frpc.toml
 [common]
 server_addr = ${server_addr}
