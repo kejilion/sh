@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.5"
+sh_v="3.9.6"
 
 
 gl_hui='\e[37m'
@@ -3516,35 +3516,19 @@ fi
 
 
 donlond_frp() {
-	mkdir -p /home/frp/ && cd /home/frp/
-	rm -rf /home/frp/frp_0.61.0_linux_amd64
+  role="$1"
+  config_file="/home/frp/${role}.toml"
 
-	arch=$(uname -m)
-	frp_v=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | grep -oP '"tag_name": "v\K.*?(?=")')
-
-	if [[ "$arch" == "x86_64" ]]; then
-		curl -L ${gh_proxy}github.com/fatedier/frp/releases/download/v${frp_v}/frp_${frp_v}_linux_amd64.tar.gz -o frp_${frp_v}_linux_amd64.tar.gz
-	elif [[ "$arch" == "armv7l" || "$arch" == "aarch64" ]]; then
-		curl -L ${gh_proxy}github.com/fatedier/frp/releases/download/v${frp_v}/frp_${frp_v}_linux_arm.tar.gz -o frp_${frp_v}_linux_amd64.tar.gz
-	else
-		echo "不支持当前CPU架构: $arch"
-	fi
-
-	# 找到最新下载的 frp 文件
-	latest_file=$(ls -t /home/frp/frp_*.tar.gz | head -n 1)
-
-	# 解压该文件
-	tar -zxvf "$latest_file"
-
-	# 获取解压后文件夹的名字
-	dir_name=$(tar -tzf "$latest_file" | head -n 1 | cut -f 1 -d '/')
-
-	# 重命名解压后的文件夹为统一的版本名
-	mv "$dir_name" "frp_0.61.0_linux_amd64"
-
-
+  docker run -d \
+	--name "$role" \
+	--restart=always \
+	--network host \
+	-v "$config_file":"/frp/${role}.toml" \
+	kjlion/frp:alpine \
+	"/frp/${role}" -c "/frp/${role}.toml"
 
 }
+
 
 
 
@@ -3558,10 +3542,9 @@ generate_frps_config() {
 	local dashboard_user="user_$(openssl rand -hex 4)"
 	local dashboard_pwd=$(openssl rand -hex 8)
 
-	donlond_frp
-
-	# 创建 frps.toml 文件
-	cat <<EOF > /home/frp/frp_0.61.0_linux_amd64/frps.toml
+	mkdir -p /home/frp
+	touch /home/frp/frps.toml
+	cat <<EOF > /home/frp/frps.toml
 [common]
 bind_port = $bind_port
 authentication_method = token
@@ -3570,6 +3553,8 @@ dashboard_port = $dashboard_port
 dashboard_user = $dashboard_user
 dashboard_pwd = $dashboard_pwd
 EOF
+
+	donlond_frp frps
 
 	# 输出生成的信息
 	ip_address
@@ -3583,13 +3568,6 @@ EOF
 	echo "FRP面板用户名: $dashboard_user"
 	echo "FRP面板密码: $dashboard_pwd"
 	echo
-	echo "------------------------"
-	install tmux
-	tmux kill-session -t frps >/dev/null 2>&1
-	tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
-	check_crontab_installed
-	crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
-	(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
 
 	open_port 8055 8056
 
@@ -3603,14 +3581,7 @@ configure_frpc() {
 	read -e -p "请输入外网对接token: " token
 	echo
 
-	if command -v opkg >/dev/null 2>&1; then
-		opkg update
-		opkg install grep
-	fi
-
-	donlond_frp
-
-	cat <<EOF > /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+	cat <<EOF > /home/frp/frpc.toml
 [common]
 server_addr = ${server_addr}
 server_port = 8055
@@ -3618,12 +3589,7 @@ token = ${token}
 
 EOF
 
-	install tmux
-	tmux kill-session -t frpc >/dev/null 2>&1
-	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
-	check_crontab_installed
-	crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
-	(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
+	donlond_frp frpc
 
 	open_port 8055
 
@@ -3641,7 +3607,7 @@ add_forwarding_service() {
 	read -e -p "请输入外网端口: " remote_port
 
 	# 将用户输入写入配置文件
-	cat <<EOF >> /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+	cat <<EOF >> /home/frp/frpc.toml
 [$service_name]
 type = ${service_type}
 local_ip = ${local_ip}
@@ -3653,8 +3619,7 @@ EOF
 	# 输出生成的信息
 	echo "服务 $service_name 已成功添加到 frpc.toml"
 
-	tmux kill-session -t frpc >/dev/null 2>&1
-	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+	docker restart frpc
 
 	open_port $local_port
 
@@ -3667,11 +3632,10 @@ delete_forwarding_service() {
 	# 提示用户输入需要删除的服务名称
 	read -e -p "请输入需要删除的服务名称: " service_name
 	# 使用 sed 删除该服务及其相关配置
-	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frpc.toml
 	echo "服务 $service_name 已成功从 frpc.toml 删除"
 
-	tmux kill-session -t frpc >/dev/null 2>&1
-	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+	docker restart frpc
 
 }
 
@@ -3821,11 +3785,13 @@ frps_main_ports() {
 
 frps_panel() {
 	send_stats "FRP服务端"
+	local docker_name="frps"
 	local docker_port=8056
 	while true; do
 		clear
 		check_frp_app
-		echo -e "FRP服务端 $check_frp"
+		check_docker_image_update $docker_name
+		echo -e "FRP服务端 $check_frp $update_status"
 		echo "构建FRP内网穿透服务环境，将无公网IP的设备暴露到互联网"
 		echo "官网介绍: https://github.com/fatedier/frp/"
 		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=124.0"
@@ -3846,25 +3812,25 @@ frps_panel() {
 		read -e -p "输入你的选择: " choice
 		case $choice in
 			1)
+				install jq
+				install_docker
 				generate_frps_config
-				rm -rf /home/frp/*.tar.gz
 				echo "FRP服务端已经安装完成"
 				;;
 			2)
-				cp -f /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
-				donlond_frp
-				cp -f /home/frp/frps.toml /home/frp/frp_0.61.0_linux_amd64/frps.toml
-				tmux kill-session -t frps >/dev/null 2>&1
-				tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
 				crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
-				(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
-				rm -rf /home/frp/*.tar.gz
+				tmux kill-session -t frps >/dev/null 2>&1
+				docker rm -f frps && docker rmi kjlion/frp:alpine >/dev/null 2>&1
+				[ -f /home/frp/frps.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
+				donlond_frp frps
 				echo "FRP服务端已经更新完成"
 				;;
 			3)
 				crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 				tmux kill-session -t frps >/dev/null 2>&1
+				docker rm -f frps && docker rmi kjlion/frp:alpine
 				rm -rf /home/frp
+
 				close_port 8055 8056
 
 				echo "应用已卸载"
@@ -3911,19 +3877,20 @@ frps_panel() {
 
 frpc_panel() {
 	send_stats "FRP客户端"
+	local docker_name="frpc"
 	local docker_port=8055
 	while true; do
 		clear
 		check_frp_app
-		echo -e "FRP客户端 $check_frp"
+		check_docker_image_update $docker_name
+		echo -e "FRP客户端 $check_frp $update_status"
 		echo "与服务端对接，对接后可创建内网穿透服务到互联网访问"
 		echo "官网介绍: https://github.com/fatedier/frp/"
 		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=173.9"
 		echo "------------------------"
 		if [ -d "/home/frp/" ]; then
-			tmux kill-session -t frpc >/dev/null 2>&1
-			tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
-			list_forwarding_services "/home/frp/frp_0.61.0_linux_amd64/frpc.toml"
+			[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
+			list_forwarding_services "/home/frp/frpc.toml"
 		fi
 		echo ""
 		echo "------------------------"
@@ -3936,25 +3903,24 @@ frpc_panel() {
 		read -e -p "输入你的选择: " choice
 		case $choice in
 			1)
+				install jq
+				install_docker
 				configure_frpc
-				rm -rf /home/frp/*.tar.gz
 				echo "FRP客户端已经安装完成"
 				;;
 			2)
-				cp -f /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
-				donlond_frp
-				cp -f /home/frp/frpc.toml /home/frp/frp_0.61.0_linux_amd64/frpc.toml
-				tmux kill-session -t frpc >/dev/null 2>&1
-				tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
 				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
-				(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
-				rm -rf /home/frp/*.tar.gz
+				tmux kill-session -t frpc >/dev/null 2>&1
+				docker rm -f frpc && docker rmi kjlion/frp:alpine >/dev/null 2>&1
+				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
+				donlond_frp frpc
 				echo "FRP客户端已经更新完成"
 				;;
 
 			3)
 				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 				tmux kill-session -t frpc >/dev/null 2>&1
+				docker rm -f frpc && docker rmi kjlion/frp:alpine
 				rm -rf /home/frp
 				close_port 8055
 				echo "应用已卸载"
@@ -3970,9 +3936,8 @@ frpc_panel() {
 
 			6)
 				install nano
-				nano /home/frp/frp_0.61.0_linux_amd64/frpc.toml
-				tmux kill-session -t frpc >/dev/null 2>&1
-				tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+				nano /home/frp/frpc.toml
+				docker restart frpc
 				;;
 
 			*)
