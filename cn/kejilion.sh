@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.6"
+sh_v="3.9.7"
 
 
 gl_hui='\e[37m'
@@ -8389,6 +8389,8 @@ linux_panel() {
 	  echo -e "${gl_kjlan}67.  ${gl_bai}ddns-go动态DNS管理工具 ${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${gl_bai}AllinSSL证书管理平台"
 	  echo -e "${gl_kjlan}69.  ${gl_bai}SFTPGo文件传输工具                  ${gl_kjlan}70.  ${gl_bai}AstrBot聊天机器人框架"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}71.  ${gl_bai}Navidrome私有音乐服务器"
+	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
@@ -10312,6 +10314,40 @@ linux_panel() {
 			local app_size="1"
 			docker_app
 			  ;;
+
+
+		  71)
+			local docker_name="navidrome"
+			local docker_img="deluan/navidrome:latest"
+			local docker_port=8071
+
+			docker_rum() {
+
+				docker run -d \
+				  --name navidrome \
+				  --restart=unless-stopped \
+				  --user $(id -u):$(id -g) \
+				  -v /home/docker/navidrome/music:/music \
+				  -v /home/docker/navidrome/data:/data \
+				  -p ${docker_port}:4533 \
+				  -e ND_LOGLEVEL=info \
+				  deluan/navidrome:latest
+
+			}
+
+			local docker_describe="是一个轻量、高性能的音乐流媒体服务器"
+			local docker_url="官网介绍: https://www.navidrome.org/"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
+
+
+		  72)
+
+			  ;;
+
 
 		  0)
 			  kejilion
