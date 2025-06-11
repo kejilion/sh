@@ -2972,11 +2972,8 @@ f2b_sshd() {
 	if grep -q 'Alpine' /etc/issue; then
 		xxx=alpine-sshd
 		f2b_status_xxx
-	elif command -v dnf &>/dev/null; then
-		xxx=centos-sshd
-		f2b_status_xxx
 	else
-		xxx=linux-sshd
+		xxx=sshd
 		f2b_status_xxx
 	fi
 }
