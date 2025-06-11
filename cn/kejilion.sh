@@ -2964,6 +2964,8 @@ f2b_install_sshd() {
 		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/linux-ssh.conf
 		systemctl restart rsyslog
 	fi
+
+	rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf
 }
 
 f2b_sshd() {
