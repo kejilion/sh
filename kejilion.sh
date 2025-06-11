@@ -4823,7 +4823,7 @@ bbrv3() {
 
 		  case "$choice" in
 			[Yy])
-			check_disk_space 5
+			check_disk_space 3
 			if [ -r /etc/os-release ]; then
 				. /etc/os-release
 				if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
