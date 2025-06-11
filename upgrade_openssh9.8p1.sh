@@ -54,8 +54,15 @@ install_dependencies() {
 # 下载、编译和安装OpenSSH
 install_openssh() {
     wget --no-check-certificate https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-${OPENSSH_VERSION}.tar.gz
-    tar -xzf openssh-${OPENSSH_VERSION}.tar.gz
-    cd openssh-${OPENSSH_VERSION}
+
+    # 解压最新的 .tar.gz 文件
+    tar -xzf openssh-*.tar.gz
+
+    # 获取解压出来的目录名并进入（自动适配）
+    DIR_NAME=$(tar -tzf openssh-*.tar.gz | head -1 | cut -f1 -d"/")
+    cd "$DIR_NAME"
+
+
     ./configure
     make
     make install
