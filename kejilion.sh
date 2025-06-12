@@ -9721,7 +9721,7 @@ linux_panel() {
 
 			}
 
-			local docker_describe="使用Go实现的GHProxy，用于加速部分地区Github仓库的拉取。"
+			local docker_describe="基于Go的高性能,多功能,可扩展的Github代理加速项目"
 			local docker_url="官网介绍: https://github.com/WJQSERVER-STUDIO/ghproxy"
 			local docker_use=""
 			local docker_passwd=""
@@ -10371,6 +10371,24 @@ linux_panel() {
 
 			  ;;
 
+		  73)
+			local docker_name="ghproxy-touka"
+			local docker_img="wjqserver/ghproxy-touka:latest"
+			local docker_port=8073
+
+			docker_rum() {
+
+				docker run -d --name ghproxy-touka --restart always -p ${docker_port}:8080 wjqserver/ghproxy-touka:latest
+
+			}
+
+			local docker_describe="高性能,多功能,可扩展的Github代理, 基于Touka框架"
+			local docker_url="官网介绍: https://github.com/WJQSERVER-STUDIO/ghproxy-touka"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
 
 		  0)
 			  kejilion
