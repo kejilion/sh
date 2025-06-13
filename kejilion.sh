@@ -8390,6 +8390,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}69.  ${gl_bai}SFTPGo文件传输工具                  ${gl_kjlan}70.  ${gl_bai}AstrBot聊天机器人框架"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}71.  ${gl_bai}Navidrome私有音乐服务器             ${gl_kjlan}72.  ${gl_bai}bitwarden密码管理器 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}73.  ${gl_bai}Melody音乐精灵"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -10370,6 +10371,37 @@ linux_panel() {
 
 
 			  ;;
+
+
+		  73)
+
+			local docker_name="melody"
+			local docker_img="foamzou/melody:latest"
+			local docker_port=8073
+
+			docker_rum() {
+
+				docker run -d \
+				  --name melody \
+				  --restart unless-stopped \
+				  -p ${docker_port}:5566 \
+				  -v /home/docker/melody/.profile:/app/backend/.profile \
+				  foamzou/melody:latest
+
+
+			}
+
+			local docker_describe="你的音乐精灵，旨在帮助你更好地管理音乐。"
+			local docker_url="官网介绍: https://github.com/foamzou/melody"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+
+			  ;;
+
+
 
 
 		  0)
