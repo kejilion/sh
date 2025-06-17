@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.7"
+sh_v="3.9.8"
 
 
 gl_hui='\e[37m'
@@ -8349,7 +8349,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}宝塔面板官方版                      ${gl_kjlan}2.   ${gl_bai}aaPanel宝塔国际版"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}1Panel新一代管理面板                ${gl_kjlan}4.   ${gl_bai}NginxProxyManager可视化面板"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}AList多存储文件列表程序             ${gl_kjlan}6.   ${gl_bai}Ubuntu远程桌面网页版"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}OpenList多存储文件列表程序          ${gl_kjlan}6.   ${gl_bai}Ubuntu远程桌面网页版"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}哪吒探针VPS监控面板                 ${gl_kjlan}8.   ${gl_bai}QB离线BT磁力下载面板"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}Poste.io邮件服务器程序              ${gl_kjlan}10.  ${gl_bai}RocketChat多人在线聊天系统"
 	  echo -e "${gl_kjlan}------------------------"
@@ -8501,28 +8501,28 @@ linux_panel() {
 
 		  5)
 
-			local docker_name="alist"
-			local docker_img="xhofe/alist-aria2:latest"
+			local docker_name="openlist"
+			local docker_img="openlistteam/openlist:beta-aria2"
 			local docker_port=5244
 
 			docker_rum() {
 
 				docker run -d \
 					--restart=always \
-					-v /home/docker/alist:/opt/alist/data \
+					-v /home/docker/openlist:/opt/openlist/data \
 					-p ${docker_port}:5244 \
 					-e PUID=0 \
 					-e PGID=0 \
 					-e UMASK=022 \
-					--name="alist" \
-					xhofe/alist-aria2:latest
+					--name="openlist" \
+					openlistteam/openlist:beta-aria2
 
 			}
 
 
 			local docker_describe="一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"
-			local docker_url="官网介绍: https://alist.nn.ci/zh/"
-			local docker_use="docker exec -it alist ./alist admin random"
+			local docker_url="官网介绍: https://github.com/OpenListTeam/OpenList"
+			local docker_use="docker exec -it openlist ./openlist admin random"
 			local docker_passwd=""
 			local app_size="1"
 			docker_app
