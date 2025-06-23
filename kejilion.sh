@@ -2351,15 +2351,17 @@ if [ -n "$ipv6_address" ]; then
 	echo "http://[$ipv6_address]:${docker_port}"
 fi
 
-local search_pattern="$ipv4_address:${docker_port}"
+local search_pattern1="$ipv4_address:${docker_port}"
+local search_pattern2="127.0.0.1:${docker_port}"
 
 for file in /home/web/conf.d/*; do
 	if [ -f "$file" ]; then
-		if grep -q "$search_pattern" "$file" 2>/dev/null; then
+		if grep -q "$search_pattern1" "$file" 2>/dev/null || grep -q "$search_pattern2" "$file" 2>/dev/null; then
 			echo "https://$(basename "$file" | sed 's/\.conf$//')"
 		fi
 	fi
 done
+
 
 }
 
@@ -2722,7 +2724,7 @@ while true; do
 			echo "${docker_name}域名访问设置"
 			send_stats "${docker_name}域名访问设置"
 			add_yuming
-			ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 			block_container_port "$docker_name" "$ipv4_address"
 			;;
 
@@ -2804,7 +2806,7 @@ docker_app_plus() {
 				echo "${docker_name}域名访问设置"
 				send_stats "${docker_name}域名访问设置"
 				add_yuming
-				ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+				ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 				block_container_port "$docker_name" "$ipv4_address"
 				;;
 			6)
@@ -3844,7 +3846,7 @@ frps_panel() {
 				send_stats "FRP对外域名访问"
 				add_yuming
 				read -e -p "请输入你的内网穿透服务端口: " frps_port
-				ldnmp_Proxy ${yuming} ${ipv4_address} ${frps_port}
+				ldnmp_Proxy ${yuming} 127.0.0.1 ${frps_port}
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
 			6)
@@ -8608,7 +8610,7 @@ linux_panel() {
 						echo "${docker_name}域名访问设置"
 						send_stats "${docker_name}域名访问设置"
 						add_yuming
-						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+						ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
@@ -10196,7 +10198,7 @@ linux_panel() {
 				  -e N8N_WEBHOOK_URL=https://${yuming}/ \
 				  docker.n8n.io/n8nio/n8n
 
-				ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+				ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 				block_container_port "$docker_name" "$ipv4_address"
 
 			}
