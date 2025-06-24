@@ -3765,10 +3765,11 @@ generate_access_urls() {
 		# 处理 HTTPS 配置
 		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
-				frps_search_pattern="${ipv4_address}:${port}"
+				local frps_search_pattern="${ipv4_address}:${port}"
+				local frps_search_pattern2="127.0.0.1:${port}"
 				for file in /home/web/conf.d/*.conf; do
 					if [ -f "$file" ]; then
-						if grep -q "$frps_search_pattern" "$file" 2>/dev/null; then
+						if grep -q "$frps_search_pattern" "$file" 2>/dev/null || grep -q "$frps_search_pattern2" "$file" 2>/dev/null; then
 							echo "https://$(basename "$file" .conf)"
 						fi
 					fi
@@ -8502,7 +8503,7 @@ linux_panel() {
 		  5)
 
 			local docker_name="openlist"
-			local docker_img="openlistteam/openlist:beta-aria2"
+			local docker_img="openlistteam/openlist:latest-aria2"
 			local docker_port=5244
 
 			docker_rum() {
@@ -8515,7 +8516,7 @@ linux_panel() {
 					-e PGID=0 \
 					-e UMASK=022 \
 					--name="openlist" \
-					openlistteam/openlist:beta-aria2
+					openlistteam/openlist:latest-aria2
 
 			}
 
