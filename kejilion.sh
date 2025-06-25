@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.8"
+sh_v="3.9.9"
 
 
 gl_hui='\e[37m'
@@ -2688,6 +2688,7 @@ while true; do
 			install jq
 			install_docker
 			docker_rum
+			mkdir -p /home/docker/
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 			clear
@@ -2792,6 +2793,7 @@ docker_app_plus() {
 				install jq
 				install_docker
 				docker_app_install
+				mkdir -p /home/docker/
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 				;;
 			2)
