@@ -1788,7 +1788,7 @@ patch_wp_debug() {
 	sed -i "/define(['\"]WP_DEBUG_LOG['\"].*/d" "$FILE"
 
 	# 插入新定义，放在含 "Happy publishing" 的行前
-	awk -v insert="define('WP_DEBUG', $DEBUG);\ndefine('WP_DEBUG_DISPLAY', $DEBUG_DISPLAY);\ndefine('WP_DEBUG_LOG', $DEBUG_LOG);" \
+	awk -v insert="define('WP_DEBUG_DISPLAY', $DEBUG_DISPLAY);\ndefine('WP_DEBUG_LOG', $DEBUG_LOG);" \
 	'
 	  /Happy publishing/ {
 		print insert
@@ -12655,5 +12655,4 @@ else
 			;;
 	esac
 fi
-
 
