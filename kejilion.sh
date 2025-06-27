@@ -8495,7 +8495,7 @@ linux_panel() {
 
 			}
 
-			local docker_describe="如果您已经安装了其他面板或者LDNMP建站环境，建议先卸载，再安装npm！"
+			local docker_describe="一个Nginx反向代理工具面板，不支持添加域名访问。"
 			local docker_url="官网介绍: https://nginxproxymanager.com/"
 			local docker_use="echo \"初始用户名: admin@example.com\""
 			local docker_passwd="echo \"初始密码: changeme\""
@@ -8565,7 +8565,7 @@ linux_panel() {
 			}
 
 
-			local docker_describe="webtop基于Ubuntu的容器，建议添加域名访问。"
+			local docker_describe="webtop基于Ubuntu的容器。若IP无法访问，请添加域名访问。"
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
 			local docker_use="echo \"用户名: ubuntu-abc\""
 			local docker_passwd="echo \"密码: ubuntuABC123\""
@@ -9253,7 +9253,7 @@ linux_panel() {
 			}
 
 
-			local docker_describe="webtop基于Alpine的中文版容器，建议添加域名访问。"
+			local docker_describe="webtop基于Alpine的中文版容器。若IP无法访问，请添加域名访问。"
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
 			local docker_use="echo \"用户名: webtop-abc\""
 			local docker_passwd="echo \"密码: webtopABC123\""
