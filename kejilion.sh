@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.9"
+sh_v="3.9.10"
 
 
 gl_hui='\e[37m'
@@ -4482,10 +4482,10 @@ dd_xitong() {
 			echo "11. Ubuntu 24.04              12. Ubuntu 22.04"
 			echo "13. Ubuntu 20.04              14. Ubuntu 18.04"
 			echo "------------------------"
-			echo "21. Rocky Linux 9             22. Rocky Linux 8"
-			echo "23. Alma Linux 9              24. Alma Linux 8"
-			echo "25. oracle Linux 9            26. oracle Linux 8"
-			echo "27. Fedora Linux 41           28. Fedora Linux 40"
+			echo "21. Rocky Linux 10            22. Rocky Linux 9"
+			echo "23. Alma Linux 10             24. Alma Linux 9"
+			echo "25. oracle Linux 10           26. oracle Linux 9"
+			echo "27. Fedora Linux 42           28. Fedora Linux 41"
 			echo "29. CentOS 10                 30. CentOS 9"
 			echo "------------------------"
 			echo "31. Alpine Linux              32. Arch Linux"
@@ -4560,7 +4560,7 @@ dd_xitong() {
 
 
 			  21)
-				send_stats "重装rockylinux9"
+				send_stats "重装rockylinux10"
 				dd_xitong_3
 				bash reinstall.sh rocky
 				reboot
@@ -4568,15 +4568,15 @@ dd_xitong() {
 				;;
 
 			  22)
-				send_stats "重装rockylinux8"
+				send_stats "重装rockylinux9"
 				dd_xitong_3
-				bash reinstall.sh rocky 8
+				bash reinstall.sh rocky 9
 				reboot
 				exit
 				;;
 
 			  23)
-				send_stats "重装alma9"
+				send_stats "重装alma10"
 				dd_xitong_3
 				bash reinstall.sh almalinux
 				reboot
@@ -4584,15 +4584,15 @@ dd_xitong() {
 				;;
 
 			  24)
-				send_stats "重装alma8"
+				send_stats "重装alma9"
 				dd_xitong_3
-				bash reinstall.sh almalinux 8
+				bash reinstall.sh almalinux 9
 				reboot
 				exit
 				;;
 
 			  25)
-				send_stats "重装oracle9"
+				send_stats "重装oracle10"
 				dd_xitong_3
 				bash reinstall.sh oracle
 				reboot
@@ -4600,15 +4600,15 @@ dd_xitong() {
 				;;
 
 			  26)
-				send_stats "重装oracle8"
+				send_stats "重装oracle9"
 				dd_xitong_3
-				bash reinstall.sh oracle 8
+				bash reinstall.sh oracle 9
 				reboot
 				exit
 				;;
 
 			  27)
-				send_stats "重装fedora41"
+				send_stats "重装fedora42"
 				dd_xitong_3
 				bash reinstall.sh fedora
 				reboot
@@ -4616,9 +4616,9 @@ dd_xitong() {
 				;;
 
 			  28)
-				send_stats "重装fedora40"
+				send_stats "重装fedora41"
 				dd_xitong_3
-				bash reinstall.sh fedora 40
+				bash reinstall.sh fedora 41
 				reboot
 				exit
 				;;
@@ -4897,6 +4897,9 @@ elrepo_install() {
 	elif [[ "$os_version" == 9 ]]; then
 		echo "安装 ELRepo 仓库配置 (版本 9)..."
 		yum -y install https://www.elrepo.org/elrepo-release-9.el9.elrepo.noarch.rpm
+	elif [[ "$os_version" == 10 ]]; then
+		echo "安装 ELRepo 仓库配置 (版本 10)..."
+		yum -y install https://www.elrepo.org/elrepo-release-10.el10.elrepo.noarch.rpm
 	else
 		echo "不支持的系统版本：$os_version"
 		break_end
@@ -8562,7 +8565,7 @@ linux_panel() {
 			}
 
 
-			local docker_describe="webtop基于Ubuntu的容器，包含官方支持的完整桌面环境，可通过任何现代 Web 浏览器访问"
+			local docker_describe="webtop基于Ubuntu的容器，建议添加域名访问。"
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
 			local docker_use="echo \"用户名: ubuntu-abc\""
 			local docker_passwd="echo \"密码: ubuntuABC123\""
@@ -9250,7 +9253,7 @@ linux_panel() {
 			}
 
 
-			local docker_describe="webtop基于 Alpine、Ubuntu、Fedora 和 Arch 的容器，包含官方支持的完整桌面环境，可通过任何现代 Web 浏览器访问"
+			local docker_describe="webtop基于Alpine的中文版容器，建议添加域名访问。"
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
 			local docker_use="echo \"用户名: webtop-abc\""
 			local docker_passwd="echo \"密码: webtopABC123\""
@@ -10431,7 +10434,6 @@ linux_panel() {
 			local app_size="1"
 			docker_app
 
-
 			  ;;
 
 
@@ -10454,8 +10456,8 @@ linux_work() {
 
 	while true; do
 	  clear
-	  send_stats "我的工作区"
-	  echo -e "我的工作区"
+	  send_stats "后台工作区"
+	  echo -e "后台工作区"
 	  echo -e "系统将为你提供可以后台常驻运行的工作区，你可以用来执行长时间的任务"
 	  echo -e "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
 	  echo -e "${gl_huang}提示: ${gl_bai}进入工作区后使用Ctrl+b再单独按d，退出工作区！"
@@ -12392,7 +12394,7 @@ echo -e "${gl_kjlan}8.   ${gl_bai}测试脚本合集"
 echo -e "${gl_kjlan}9.   ${gl_bai}甲骨文云脚本合集"
 echo -e "${gl_huang}10.  ${gl_bai}LDNMP建站"
 echo -e "${gl_kjlan}11.  ${gl_bai}应用市场"
-echo -e "${gl_kjlan}12.  ${gl_bai}我的工作区"
+echo -e "${gl_kjlan}12.  ${gl_bai}后台工作区"
 echo -e "${gl_kjlan}13.  ${gl_bai}系统工具"
 echo -e "${gl_kjlan}14.  ${gl_bai}服务器集群控制"
 echo -e "${gl_kjlan}15.  ${gl_bai}广告专栏"
