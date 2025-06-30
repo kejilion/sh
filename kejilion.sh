@@ -9337,18 +9337,18 @@ linux_panel() {
 
 		  29)
 			local docker_name="searxng"
-			local docker_img="alandoyle/searxng:latest"
-			local docker_port=8700
+			local docker_img="searxng/searxng"
+			local docker_port=8029
 
 			docker_rum() {
-				docker run --name=searxng \
-					-d --init \
-					--restart=unless-stopped \
-					-v /home/docker/searxng/config:/etc/searxng \
-					-v /home/docker/searxng/templates:/usr/local/searxng/searx/templates/simple \
-					-v /home/docker/searxng/theme:/usr/local/searxng/searx/static/themes/simple \
-					-p ${docker_port}:8080/tcp \
-					alandoyle/searxng:latest
+
+				docker run -d \
+				  --name searxng \
+				  --restart unless-stopped \
+				  -p ${docker_port}:8080 \
+				  -v "/home/docker/searxng:/etc/searxng" \
+				  searxng/searxng
+
 			}
 
 			local docker_describe="searxng是一个私有且隐私的搜索引擎站点"
