@@ -2645,6 +2645,17 @@ clear_host_port_rules() {
 
 
 
+setup_docker_dir() {
+
+	mkdir -p /home/docker/ 2>/dev/null
+	if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
+		cp -f /home/docker /home/docker1 2>/dev/null
+		rm -rf /home/docker 2>/dev/null
+		ln -s /vol1/1000/docker /home/docker 2>/dev/null  
+	fi
+}
+
+
 
 
 docker_app() {
@@ -2686,7 +2697,7 @@ while true; do
 			install jq
 			install_docker
 			docker_rum
-			mkdir -p /home/docker/
+			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 			clear
@@ -2791,7 +2802,7 @@ docker_app_plus() {
 				install jq
 				install_docker
 				docker_app_install
-				mkdir -p /home/docker/
+				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 				;;
 			2)
@@ -2981,8 +2992,6 @@ f2b_sshd() {
 
 
 
-
-
 server_reboot() {
 
 	read -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}现在重启服务器吗？(Y/N): ")" rboot
@@ -2999,28 +3008,8 @@ server_reboot() {
 
 }
 
-# output_status() {
-# 	output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
-# 		# 匹配常见的公网网卡命名: eth*, ens*, enp*, eno*
-# 		$1 ~ /^(eth|ens|enp|eno)[0-9]+/ {
-# 			rx_total += $2
-# 			tx_total += $10
-# 		}
-# 		END {
-# 			rx_units = "Bytes";
-# 			tx_units = "Bytes";
-# 			if (rx_total > 1024) { rx_total /= 1024; rx_units = "K"; }
-# 			if (rx_total > 1024) { rx_total /= 1024; rx_units = "M"; }
-# 			if (rx_total > 1024) { rx_total /= 1024; rx_units = "G"; }
 
-# 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "K"; }
-# 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "M"; }
-# 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "G"; }
 
-# 			printf("总接收:       %.2f%s\n总发送:       %.2f%s\n", rx_total, rx_units, tx_total, tx_units);
-# 		}' /proc/net/dev)
-# 	# echo "$output"
-# }
 
 
 output_status() {
