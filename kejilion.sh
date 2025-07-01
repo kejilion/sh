@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.10"
+sh_v="4.0.0"
 
 
 gl_hui='\e[37m'
@@ -8394,7 +8394,8 @@ linux_panel() {
 	  echo -e "${gl_kjlan}69.  ${gl_bai}SFTPGo文件传输工具                  ${gl_kjlan}70.  ${gl_bai}AstrBot聊天机器人框架"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}71.  ${gl_bai}Navidrome私有音乐服务器             ${gl_kjlan}72.  ${gl_bai}bitwarden密码管理器 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}73.  ${gl_bai}Melody音乐精灵                      ${gl_kjlan}74.  ${gl_bai}LibreTV私有影视"
+	  echo -e "${gl_kjlan}73.  ${gl_bai}LibreTV私有影视                     ${gl_kjlan}74.  ${gl_bai}MoonTV私有影视"
+	  echo -e "${gl_kjlan}75.  ${gl_bai}Melody音乐精灵                      ${gl_kjlan}76.  ${gl_bai}在线DOS老游戏"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -10377,11 +10378,70 @@ linux_panel() {
 			  ;;
 
 
+
 		  73)
+
+			local docker_name="libretv"
+			local docker_img="bestzwei/libretv:latest"
+			local docker_port=8073
+
+			docker_rum() {
+
+				read -e -p "设置LibreTV的登录密码: " app_passwd
+
+				docker run -d \
+				  --name libretv \
+				  --restart unless-stopped \
+				  -p ${docker_port}:8080 \
+				  -e PASSWORD=${app_passwd} \
+				  bestzwei/libretv:latest
+
+			}
+
+			local docker_describe="免费在线视频搜索与观看平台"
+			local docker_url="官网介绍: https://github.com/LibreSpark/LibreTV"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+		  74)
+
+			local docker_name="moontv"
+			local docker_img="ghcr.io/senshinya/moontv:latest"
+			local docker_port=8074
+
+			docker_rum() {
+
+				read -e -p "设置LibreTV的登录密码: " app_passwd
+
+					docker run -d \
+					  --name moontv \
+					  --restart unless-stopped \
+					  -p ${docker_port}:3000 \
+					  -e PASSWORD=${app_passwd} \
+					  ghcr.io/senshinya/moontv:latest
+
+			}
+
+			local docker_describe="免费在线视频搜索与观看平台"
+			local docker_url="官网介绍: https://github.com/senshinya/MoonTV"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+		  75)
 
 			local docker_name="melody"
 			local docker_img="foamzou/melody:latest"
-			local docker_port=8073
+			local docker_port=8075
 
 			docker_rum() {
 
@@ -10406,34 +10466,30 @@ linux_panel() {
 			  ;;
 
 
-		  74)
+		  76)
 
-			local docker_name="libretv"
-			local docker_img="bestzwei/libretv:latest"
-			local docker_port=8074
+			local docker_name="dosgame"
+			local docker_img="oldiy/dosgame-web-docker:latest"
+			local docker_port=8076
 
 			docker_rum() {
-
-				read -e -p "设置LibreTV的登录密码: " app_passwd
-
 				docker run -d \
-				  --name libretv \
-				  --restart unless-stopped \
-				  -p ${docker_port}:8080 \
-				  -e PASSWORD=${app_passwd} \
-				  bestzwei/libretv:latest
+  					--name dosgame \
+  					--restart unless-stopped \
+  					-p ${docker_port}:262 \
+  					oldiy/dosgame-web-docker:latest
 
 			}
 
-			local docker_describe="免费在线视频搜索与观看平台"
-			local docker_url="官网介绍: https://github.com/LibreSpark/LibreTV"
+			local docker_describe="是一个中文DOS游戏合集网站"
+			local docker_url="官网介绍: https://github.com/rwv/chinese-dos-games"
 			local docker_use=""
 			local docker_passwd=""
-			local app_size="1"
+			local app_size="2"
 			docker_app
 
-			  ;;
 
+			  ;;
 
 
 
