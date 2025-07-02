@@ -8385,6 +8385,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}71.  ${gl_bai}Navidrome私有音乐服务器             ${gl_kjlan}72.  ${gl_bai}bitwarden密码管理器 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}73.  ${gl_bai}LibreTV私有影视                     ${gl_kjlan}74.  ${gl_bai}MoonTV私有影视"
 	  echo -e "${gl_kjlan}75.  ${gl_bai}Melody音乐精灵                      ${gl_kjlan}76.  ${gl_bai}在线DOS老游戏"
+	  echo -e "${gl_kjlan}77.  ${gl_bai}迅雷离线下载工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -10454,6 +10455,40 @@ linux_panel() {
 
 
 			  ;;
+
+		  77)
+
+			local docker_name="xunlei"
+			local docker_img="cnk3x/xunlei"
+			local docker_port=8077
+
+			docker_rum() {
+
+
+				read -e -p "设置${docker_name}的登录密码: " app_passwd
+
+				docker run -d \
+				  --name xunlei \
+				  --restart unless-stopped \
+				  --privileged \
+				  -e XL_DASHBOARD_USERNAME=xunlei \
+				  -e XL_DASHBOARD_PASSWORD=${app_passwd} \
+				  -v /home/docker/xunlei/data:/xunlei/data \
+				  -v /home/docker/xunlei/downloads:/xunlei/downloads \
+				  -p ${docker_port}:2345 \
+				  cnk3x/xunlei
+
+			}
+
+			local docker_describe="迅雷你的离线高速BT磁力下载工具"
+			local docker_url="官网介绍: https://github.com/cnk3x/xunlei"
+			local docker_use="echo \"用户名: xunlei  密码: ${app_passwd}  邀请码: 迅雷牛通\""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
 
 
 
