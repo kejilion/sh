@@ -10380,7 +10380,7 @@ linux_panel() {
 
 			docker_rum() {
 
-				read -e -p "设置LibreTV的登录密码: " app_passwd
+				read -e -p "设置MoonTV的登录密码: " app_passwd
 
 					docker run -d \
 					  --name moontv \
