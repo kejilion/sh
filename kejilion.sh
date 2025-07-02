@@ -10464,14 +10464,14 @@ linux_panel() {
 
 			docker_rum() {
 
-
+				read -e -p "设置${docker_name}的登录用户名: " app_use
 				read -e -p "设置${docker_name}的登录密码: " app_passwd
 
 				docker run -d \
 				  --name xunlei \
 				  --restart unless-stopped \
 				  --privileged \
-				  -e XL_DASHBOARD_USERNAME=xunlei \
+				  -e XL_DASHBOARD_USERNAME=${app_use} \
 				  -e XL_DASHBOARD_PASSWORD=${app_passwd} \
 				  -v /home/docker/xunlei/data:/xunlei/data \
 				  -v /home/docker/xunlei/downloads:/xunlei/downloads \
@@ -10482,7 +10482,7 @@ linux_panel() {
 
 			local docker_describe="迅雷你的离线高速BT磁力下载工具"
 			local docker_url="官网介绍: https://github.com/cnk3x/xunlei"
-			local docker_use="echo \"用户名: xunlei  密码: ${app_passwd}  邀请码: 迅雷牛通\""
+			local docker_use="echo \"手机登录迅雷，再输入邀请码，邀请码: 迅雷牛通\""
 			local docker_passwd=""
 			local app_size="1"
 			docker_app
