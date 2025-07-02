@@ -2651,6 +2651,7 @@ setup_docker_dir() {
 	if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
 		cp -f /home/docker /home/docker1 2>/dev/null
 		rm -rf /home/docker 2>/dev/null
+		mkdir -p /vol1/1000/docker 2>/dev/null
 		ln -s /vol1/1000/docker /home/docker 2>/dev/null
 	fi
 }
