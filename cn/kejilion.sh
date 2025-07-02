@@ -8573,7 +8573,7 @@ linux_panel() {
 				clear
 				echo -e "哪吒监控 $check_docker $update_status"
 				echo "开源、轻量、易用的服务器监控与运维工具"
-				echo "视频介绍: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
+				echo "官网搭建文档: https://nezha.wiki/guide/dashboard.html"
 				if docker inspect "$docker_name" &>/dev/null; then
 					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 					check_docker_app_ip
@@ -8581,9 +8581,6 @@ linux_panel() {
 				echo ""
 				echo "------------------------"
 				echo "1. 使用"
-				echo "------------------------"
-				echo "5. 添加域名访问       6. 删除域名访问"
-				echo "7. 允许IP+端口访问    8. 阻止IP+端口访问"
 				echo "------------------------"
 				echo "0. 返回上一级选单"
 				echo "------------------------"
@@ -8597,28 +8594,6 @@ linux_panel() {
 						curl -sL ${gh_proxy}raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
 						local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 						check_docker_app_ip
-						;;
-					5)
-						echo "${docker_name}域名访问设置"
-						send_stats "${docker_name}域名访问设置"
-						add_yuming
-						ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
-
-					6)
-						echo "域名格式 example.com 不带https://"
-						web_del
-						;;
-
-					7)
-						send_stats "允许IP访问 ${docker_name}"
-						clear_container_rules "$docker_name" "$ipv4_address"
-						;;
-
-					8)
-						send_stats "阻止IP访问 ${docker_name}"
-						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 					*)
