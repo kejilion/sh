@@ -210,7 +210,7 @@ check_disk_space() {
 
 
 install_dependency() {
-	install wget unzip tar jq
+	install wget unzip tar jq grep
 }
 
 remove() {
@@ -2651,7 +2651,7 @@ setup_docker_dir() {
 	if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
 		cp -f /home/docker /home/docker1 2>/dev/null
 		rm -rf /home/docker 2>/dev/null
-		ln -s /vol1/1000/docker /home/docker 2>/dev/null  
+		ln -s /vol1/1000/docker /home/docker 2>/dev/null
 	fi
 }
 
@@ -3806,7 +3806,7 @@ frps_panel() {
 		read -e -p "输入你的选择: " choice
 		case $choice in
 			1)
-				install jq
+				install jq grep ss
 				install_docker
 				generate_frps_config
 				echo "FRP服务端已经安装完成"
@@ -3897,7 +3897,7 @@ frpc_panel() {
 		read -e -p "输入你的选择: " choice
 		case $choice in
 			1)
-				install jq
+				install jq grep ss
 				install_docker
 				configure_frpc
 				echo "FRP客户端已经安装完成"
