@@ -4341,7 +4341,7 @@ new_ssh_port() {
 
 
 add_sshkey() {
-
+	chmod 700 ~/
 	mkdir -p ~/.ssh
 	chmod 700 ~/.ssh
 	touch ~/.ssh/authorized_keys
@@ -4376,6 +4376,7 @@ import_sshkey() {
 		return 1
 	fi
 
+	chmod 700 ~/
 	mkdir -p ~/.ssh
 	chmod 700 ~/.ssh
 	touch ~/.ssh/authorized_keys
