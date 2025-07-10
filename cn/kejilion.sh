@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.0"
+sh_v="4.0.1"
 
 
 gl_hui='\e[37m'
@@ -2725,6 +2725,7 @@ while true; do
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
 			rm -rf "/home/docker/$docker_name"
+			rm -f /home/docker/${docker_name}_port.conf
 			echo "应用已卸载"
 			send_stats "卸载$docker_name"
 			;;
@@ -2811,6 +2812,7 @@ docker_app_plus() {
 				;;
 			3)
 				docker_app_uninstall
+				rm -f /home/docker/${docker_name}_port.conf
 				;;
 			5)
 				echo "${docker_name}域名访问设置"
@@ -8387,7 +8389,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}71.  ${gl_bai}Navidrome私有音乐服务器             ${gl_kjlan}72.  ${gl_bai}bitwarden密码管理器 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}73.  ${gl_bai}LibreTV私有影视                     ${gl_kjlan}74.  ${gl_bai}MoonTV私有影视"
 	  echo -e "${gl_kjlan}75.  ${gl_bai}Melody音乐精灵                      ${gl_kjlan}76.  ${gl_bai}在线DOS老游戏"
-	  echo -e "${gl_kjlan}77.  ${gl_bai}迅雷离线下载工具"
+	  echo -e "${gl_kjlan}77.  ${gl_bai}迅雷离线下载工具                    ${gl_kjlan}78.  ${gl_bai}PandaWiki智能文档管理系统"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -10489,6 +10491,33 @@ linux_panel() {
 			local app_size="1"
 			docker_app
 
+			  ;;
+
+
+
+		  78)
+
+			local app_name="PandaWiki"
+			local app_text="PandaWiki是一款AI大模型驱动的开源智能文档管理系统，强烈建议不要自定义端口部署。"
+			local app_url="官方介绍: https://github.com/chaitin/PandaWiki"
+			local docker_name="panda-wiki-nginx"
+			local docker_port="2443"
+			local app_size="2"
+
+			docker_app_install() {
+				bash -c "$(curl -fsSLk https://release.baizhi.cloud/panda-wiki/manager.sh)"
+			}
+
+			docker_app_update() {
+				docker_app_install
+			}
+
+
+			docker_app_uninstall() {
+				docker_app_install
+			}
+
+			docker_app_plus
 			  ;;
 
 
