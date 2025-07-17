@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="3.9.1"
+sh_v="4.0.1"
 
 
 gl_hui='\e[37m'
@@ -122,11 +122,11 @@ UserLicenseAgreement() {
 
 
 	if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
-		send_stats "라이센스 동의"
+		send_stats "许可同意"
 		sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
 		sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
 	else
-		send_stats "허가 거부"
+		send_stats "许可拒绝"
 		clear
 		exit
 	fi
@@ -155,7 +155,7 @@ install() {
 
 	for package in "$@"; do
 		if ! command -v "$package" &>/dev/null; then
-			echo -e "${gl_huang}설치$package...${gl_bai}"
+			echo -e "${gl_huang}正在安装 $package...${gl_bai}"
 			if command -v dnf &>/dev/null; then
 				dnf -y update
 				dnf install -y epel-release
@@ -210,7 +210,7 @@ check_disk_space() {
 
 
 install_dependency() {
-	install wget unzip tar jq
+	install wget unzip tar jq grep
 }
 
 remove() {
@@ -487,20 +487,20 @@ while true; do
 	echo "------------------------"
 	echo "1. 새 컨테이너를 만듭니다"
 	echo "------------------------"
-	echo "2. 지정된 컨테이너를 시작하십시오. 6. 모든 컨테이너를 시작하십시오"
-	echo "3. 지정된 컨테이너를 중지하십시오. 7. 모든 컨테이너를 중지하십시오"
+	echo "2. 启动指定容器             6. 启动所有容器"
+	echo "3. 停止指定容器             7. 停止所有容器"
 	echo "4. 지정된 컨테이너를 삭제합니다. 8. 모든 컨테이너를 삭제하십시오"
 	echo "5. 지정된 컨테이너를 다시 시작하십시오. 9. 모든 컨테이너를 다시 시작하십시오"
 	echo "------------------------"
-	echo "11. 지정된 컨테이너를 입력하십시오. 12. 컨테이너 로그보기"
-	echo "13. 컨테이너 네트워크보기 14. 컨테이너 점유보기"
+	echo "11. 进入指定容器           12. 查看容器日志"
+	echo "13. 查看容器网络           14. 查看容器占用"
 	echo "------------------------"
 	echo "0. 이전 메뉴로 돌아갑니다"
 	echo "------------------------"
 	read -e -p "선택을 입력하십시오 :" sub_choice
 	case $sub_choice in
 		1)
-			send_stats "새 컨테이너를 만듭니다"
+			send_stats "新建容器"
 			read -e -p "창조 명령을 입력하십시오 :" dockername
 			$dockername
 			;;
@@ -877,6 +877,14 @@ close_port() {
 			echo "포트 폐쇄$port"
 		fi
 	done
+
+	# 기존 규칙 삭제 (있는 경우)
+	iptables -D INPUT -i lo -j ACCEPT 2>/dev/null
+	iptables -D FORWARD -i lo -j ACCEPT 2>/dev/null
+
+	# 새로운 규칙을 먼저 삽입하십시오
+	iptables -I INPUT 1 -i lo -j ACCEPT
+	iptables -I FORWARD 1 -i lo -j ACCEPT
 
 	save_iptables_rules
 	send_stats "포트 폐쇄"
@@ -1319,7 +1327,7 @@ install_ldnmp() {
 
 	  cp /home/web/docker-compose.yml /home/web/docker-compose1.yml
 
-	  if ! grep -q "php-socket" /home/web/docker-compose.yml; then
+	  if ! grep -q "network_mode" /home/web/docker-compose.yml; then
 		wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
 	  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
 	  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
@@ -1344,8 +1352,6 @@ install_ldnmp() {
 	  fix_phpfpm_conf php
 	  fix_phpfpm_conf php74
 	  restart_ldnmp
-
-
 
 
 	  clear
@@ -1418,7 +1424,7 @@ install_ssltls_text() {
 
 
 add_ssl() {
-
+echo -e "${gl_huang}SSL 인증서를 신속하게 신청하고 만료 전에 서명을 자동으로 갱신하십시오.${gl_bai}"
 yuming="${1:-}"
 if [ -z "$yuming" ]; then
 	add_yuming
@@ -1483,6 +1489,7 @@ certs_status() {
 		echo -e "3. 네트워크 구성 문제 ➠ CloudFlare Warp 및 기타 가상 네트워크를 사용하는 경우 임시로 종료하십시오."
 		echo -e "4. 방화벽 제한 ➠ 검증에 액세스 할 수 있도록 포트 80/443이 열려 있는지 확인"
 		echo -e "5. 응용 프로그램 수는 한계를 초과합니다. ➠ 암호화하자는 주간 제한 (5 배/도메인 이름/주)을 갖습니다."
+		echo -e "6. 국내 등록 제한 ➠ 도메인 이름이 중국 본토에 등록되어 있는지 확인하십시오."
 		break_end
 		clear
 		echo "다시 배포를 시도하십시오$webname"
@@ -1534,10 +1541,8 @@ reverse_proxy() {
 restart_redis() {
   rm -rf /home/web/redis/*
   docker exec redis redis-cli FLUSHALL > /dev/null 2>&1
-  docker exec -it redis redis-cli CONFIG SET maxmemory 512mb > /dev/null 2>&1
-  docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
-  docker exec -it redis redis-cli CONFIG SET save "" > /dev/null 2>&1
-  docker exec -it redis redis-cli CONFIG SET appendonly no > /dev/null 2>&1
+  # docker exec -it redis redis-cli CONFIG SET maxmemory 1gb > /dev/null 2>&1
+  # docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
 }
 
 
@@ -1613,7 +1618,7 @@ cf_purge_cache() {
 	# Zone_ids를 배열로 변환합니다
 	ZONE_IDS=($ZONE_IDS)
   else
-	# 캐시 청소 여부를 사용자에게 프롬프트하십시오
+	# 캐시 청소 여부를 사용자에게 프롬프트합니다
 	read -e -p "CloudFlare의 캐시를 청소해야합니까? (Y/N) :" answer
 	if [[ "$answer" == "y" ]]; then
 	  echo "CF 정보가 저장됩니다$CONFIG_FILE, 나중에 CF 정보를 수정할 수 있습니다"
@@ -1751,11 +1756,570 @@ fi
 }
 
 
+patch_wp_memory_limit() {
+  local MEMORY_LIMIT="${1:-256M}"      # 第一个参数，默认256M
+  local MAX_MEMORY_LIMIT="${2:-256M}"  # 第二个参数，默认256M
+  local TARGET_DIR="/home/web/html"    # 路径写死
+
+  find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
+	# 오래된 정의를 삭제하십시오
+	sed -i "/define(['\"]WP_MEMORY_LIMIT['\"].*/d" "$FILE"
+	sed -i "/define(['\"]WP_MAX_MEMORY_LIMIT['\"].*/d" "$FILE"
+
+	# "Happy Publishing"과 함께 새로운 정의를 삽입하십시오.
+	awk -v insert="define('WP_MEMORY_LIMIT', '$MEMORY_LIMIT');\ndefine('WP_MAX_MEMORY_LIMIT', '$MAX_MEMORY_LIMIT');" \
+	'
+	  /Happy publishing/ {
+		print insert
+	  }
+	  { print }
+	' "$FILE" > "$FILE.tmp" && mv -f "$FILE.tmp" "$FILE"
+
+	echo "[+] Replaced WP_MEMORY_LIMIT in $FILE"
+  done
+}
+
+
+
+
+patch_wp_debug() {
+  local DEBUG="${1:-false}"           # 第一个参数，默认false
+  local DEBUG_DISPLAY="${2:-false}"   # 第二个参数，默认false
+  local DEBUG_LOG="${3:-false}"       # 第三个参数，默认false
+  local TARGET_DIR="/home/web/html"   # 路径写死
+
+  find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
+	# 오래된 정의를 삭제하십시오
+	sed -i "/define(['\"]WP_DEBUG['\"].*/d" "$FILE"
+	sed -i "/define(['\"]WP_DEBUG_DISPLAY['\"].*/d" "$FILE"
+	sed -i "/define(['\"]WP_DEBUG_LOG['\"].*/d" "$FILE"
+
+	# "Happy Publishing"과 함께 새로운 정의를 삽입하십시오.
+	awk -v insert="define('WP_DEBUG_DISPLAY', $DEBUG_DISPLAY);\ndefine('WP_DEBUG_LOG', $DEBUG_LOG);" \
+	'
+	  /Happy publishing/ {
+		print insert
+	  }
+	  { print }
+	' "$FILE" > "$FILE.tmp" && mv -f "$FILE.tmp" "$FILE"
+
+	echo "[+] Replaced WP_DEBUG settings in $FILE"
+  done
+}
+
+
+nginx_br() {
+
+	local mode=$1
+
+	if ! grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
+	fi
+
+	if [ "$mode" == "on" ]; then
+		# Brotli를 켜십시오 : 주석을 제거하십시오
+		sed -i 's|# load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|# load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+
+		sed -i 's|^\(\s*\)# brotli on;|\1brotli on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_static on;|\1brotli_static on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_comp_level \(.*\);|\1brotli_comp_level \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_buffers \(.*\);|\1brotli_buffers \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_min_length \(.*\);|\1brotli_min_length \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_window \(.*\);|\1brotli_window \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# brotli_types \(.*\);|\1brotli_types \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i '/brotli_types/,+6 s/^\(\s*\)#\s*/\1/' /home/web/nginx.conf
+
+	elif [ "$mode" == "off" ]; then
+		# Brotli를 닫습니다 : 주석을 추가하십시오
+		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+
+		sed -i 's|^\(\s*\)brotli on;|\1# brotli on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_static on;|\1# brotli_static on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_comp_level \(.*\);|\1# brotli_comp_level \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_buffers \(.*\);|\1# brotli_buffers \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_min_length \(.*\);|\1# brotli_min_length \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_window \(.*\);|\1# brotli_window \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)brotli_types \(.*\);|\1# brotli_types \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i '/brotli_types/,+6 {
+			/^[[:space:]]*[^#[:space:]]/ s/^\(\s*\)/\1# /
+		}' /home/web/nginx.conf
+
+	else
+		echo "유효하지 않은 매개 변수 : 'ON'또는 'OFF'사용"
+		return 1
+	fi
+
+	# Nginx 이미지를 확인하고 상황에 따라 처리하십시오.
+	if grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+		docker exec nginx nginx -s reload
+	else
+		sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml
+		nginx_upgrade
+	fi
+
+
+}
+
+
+
+nginx_zstd() {
+
+	local mode=$1
+
+	if ! grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
+	fi
+
+	if [ "$mode" == "on" ]; then
+		# ZSTD를 켜십시오 : 주석을 제거하십시오
+		sed -i 's|# load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|# load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+
+		sed -i 's|^\(\s*\)# zstd on;|\1zstd on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_static on;|\1zstd_static on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_comp_level \(.*\);|\1zstd_comp_level \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_buffers \(.*\);|\1zstd_buffers \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_min_length \(.*\);|\1zstd_min_length \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)# zstd_types \(.*\);|\1zstd_types \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i '/zstd_types/,+6 s/^\(\s*\)#\s*/\1/' /home/web/nginx.conf
+
+
+
+	elif [ "$mode" == "off" ]; then
+		# Zstd를 닫습니다 : 주석을 추가하십시오
+		sed -i 's|^load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|# load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|# load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
+
+		sed -i 's|^\(\s*\)zstd on;|\1# zstd on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_static on;|\1# zstd_static on;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_comp_level \(.*\);|\1# zstd_comp_level \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_buffers \(.*\);|\1# zstd_buffers \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_min_length \(.*\);|\1# zstd_min_length \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i 's|^\(\s*\)zstd_types \(.*\);|\1# zstd_types \2;|' /home/web/nginx.conf > /dev/null 2>&1
+		sed -i '/zstd_types/,+6 {
+			/^[[:space:]]*[^#[:space:]]/ s/^\(\s*\)/\1# /
+		}' /home/web/nginx.conf
+
+
+	else
+		echo "유효하지 않은 매개 변수 : 'ON'또는 'OFF'사용"
+		return 1
+	fi
+
+	# Nginx 이미지를 확인하고 상황에 따라 처리하십시오.
+	if grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
+		docker exec nginx nginx -s reload
+	else
+		sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml
+		nginx_upgrade
+	fi
+
+
+
+}
 
 
 
 
 
+
+
+
+nginx_gzip() {
+
+	local mode=$1
+	if [ "$mode" == "on" ]; then
+		sed -i 's|^\(\s*\)# gzip on;|\1gzip on;|' /home/web/nginx.conf > /dev/null 2>&1
+	elif [ "$mode" == "off" ]; then
+		sed -i 's|^\(\s*\)gzip on;|\1# gzip on;|' /home/web/nginx.conf > /dev/null 2>&1
+	else
+		echo "유효하지 않은 매개 변수 : 'ON'또는 'OFF'사용"
+		return 1
+	fi
+
+	docker exec nginx nginx -s reload
+
+}
+
+
+
+
+
+
+web_security() {
+	  send_stats "LDNMP 환경 방어"
+	  while true; do
+		check_waf_status
+		check_cf_mode
+		if [ -x "$(command -v fail2ban-client)" ] ; then
+			clear
+			remove fail2ban
+			rm -rf /etc/fail2ban
+		else
+			  clear
+			  docker_name="fail2ban"
+			  check_docker_app
+			  echo -e "서버 웹 사이트 방어 프로그램${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
+			  echo "------------------------"
+			  echo "1. 방어 프로그램을 설치하십시오"
+			  echo "------------------------"
+			  echo "5. SSH 차단 레코드보기 6. 웹 사이트 차단 레코드보기"
+			  echo "7. 방어 규칙 목록보기 8. 로그의 실시간 모니터링보기"
+			  echo "------------------------"
+			  echo "11. 인터셉트 매개 변수 구성 12. 차단 된 모든 IP를 지우십시오"
+			  echo "------------------------"
+			  echo "21. CloudFlare 모드 22. 5 초 방패의 높은 하중"
+			  echo "------------------------"
+			  echo "31. WAF 32를 켜십시오. WAF를 끄십시오"
+			  echo "33. DDOS 방어 켜기 34. DDOS 방어 끄기"
+			  echo "------------------------"
+			  echo "9. 방어 프로그램을 제거하십시오"
+			  echo "------------------------"
+			  echo "0. 이전 메뉴로 돌아갑니다"
+			  echo "------------------------"
+			  read -e -p "선택을 입력하십시오 :" sub_choice
+			  case $sub_choice in
+				  1)
+					  f2b_install_sshd
+					  cd /path/to/fail2ban/config/fail2ban/filter.d
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
+					  cd /path/to/fail2ban/config/fail2ban/jail.d/
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+					  sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+					  f2b_status
+					  ;;
+				  5)
+					  echo "------------------------"
+					  f2b_sshd
+					  echo "------------------------"
+					  ;;
+				  6)
+
+					  echo "------------------------"
+					  local xxx="fail2ban-nginx-cc"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-418"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-bad-request"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-badbots"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-botsearch"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-deny"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-http-auth"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-nginx-unauthorized"
+					  f2b_status_xxx
+					  echo "------------------------"
+					  local xxx="docker-php-url-fopen"
+					  f2b_status_xxx
+					  echo "------------------------"
+
+					  ;;
+
+				  7)
+					  docker exec -it fail2ban fail2ban-client status
+					  ;;
+				  8)
+					  tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
+
+					  ;;
+				  9)
+					  docker rm -f fail2ban
+					  rm -rf /path/to/fail2ban
+					  crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
+					  echo "Fail2ban 방어 프로그램은 제거되었습니다"
+					  ;;
+
+				  11)
+					  install nano
+					  nano /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+					  f2b_status
+					  break
+					  ;;
+
+				  12)
+					  docker exec -it fail2ban fail2ban-client unban --all
+					  ;;
+
+				  21)
+					  send_stats "CloudFlare 모드"
+					  echo "CF 배경의 오른쪽 상단 모서리로 이동하여 왼쪽의 API 토큰을 선택하고 글로벌 API 키를 얻습니다."
+					  echo "https://dash.cloudflare.com/login"
+					  read -e -p "CF 계정 번호를 입력하십시오." cfuser
+					  read -e -p "CF의 글로벌 API 키를 입력하십시오." cftoken
+
+					  wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf
+					  docker exec nginx nginx -s reload
+
+					  cd /path/to/fail2ban/config/fail2ban/jail.d/
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
+
+					  cd /path/to/fail2ban/config/fail2ban/action.d
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
+
+					  sed -i "s/kejilion@outlook.com/$cfuser/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
+					  sed -i "s/APIKEY00000/$cftoken/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
+					  f2b_status
+
+					  echo "CloudFlare 모드는 CF 배경, Site-Security-Events에서 인터셉트 레코드를 보도록 구성됩니다."
+					  ;;
+
+				  22)
+					  send_stats "5 초 방패의 높은 하중"
+					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 부하가 감지되면 방패가 자동으로 켜지고 5 초 동안 낮은 부하가 자동으로 꺼집니다.${gl_bai}"
+					  echo "--------------"
+					  echo "CF 매개 변수 가져 오기 :"
+					  echo -e "CF 배경의 오른쪽 상단 모서리로 이동하여 왼쪽의 API 토큰을 선택하고 얻습니다.${gl_huang}Global API Key${gl_bai}"
+					  echo -e "CF 배경 도메인 이름 요약 페이지의 오른쪽 하단으로 이동하려면${gl_huang}지역 ID${gl_bai}"
+					  echo "https://dash.cloudflare.com/login"
+					  echo "--------------"
+					  read -e -p "CF 계정 번호를 입력하십시오." cfuser
+					  read -e -p "CF의 글로벌 API 키를 입력하십시오." cftoken
+					  read -e -p "CF에 도메인 이름의 영역 ID를 입력하십시오." cfzonID
+
+					  cd ~
+					  install jq bc
+					  check_crontab_installed
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
+					  chmod +x CF-Under-Attack.sh
+					  sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
+					  sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
+					  sed -i "s/CCCC/$cfzonID/g" ~/CF-Under-Attack.sh
+
+					  local cron_job="*/5 * * * * ~/CF-Under-Attack.sh"
+
+					  local existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
+
+					  if [ -z "$existing_cron" ]; then
+						  (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
+						  echo "고 부하 자동 방패 오프닝 스크립트가 추가되었습니다"
+					  else
+						  echo "자동 방패 스크립트가 이미 존재합니다. 추가 할 필요가 없습니다."
+					  fi
+
+					  ;;
+
+				  31)
+					  nginx_waf on
+					  echo "사이트 waf가 활성화되어 있습니다"
+					  send_stats "사이트 waf가 활성화되어 있습니다"
+					  ;;
+
+				  32)
+				  	  nginx_waf off
+					  echo "사이트 waf가 닫혔습니다"
+					  send_stats "사이트 waf가 닫혔습니다"
+					  ;;
+
+				  33)
+					  enable_ddos_defense
+					  ;;
+
+				  34)
+					  disable_ddos_defense
+					  ;;
+
+				  *)
+					  break
+					  ;;
+			  esac
+		fi
+	  break_end
+	  done
+}
+
+
+
+check_nginx_mode() {
+
+CONFIG_FILE="/home/web/nginx.conf"
+
+# 현재 Worker_Processes 설정 값을 얻으십시오
+current_value=$(grep -E '^\s*worker_processes\s+[0-9]+;' "$CONFIG_FILE" | awk '{print $2}' | tr -d ';')
+
+# 값에 따라 모드 정보를 설정합니다
+if [ "$current_value" = "8" ]; then
+	mode_info=" 高性能模式"
+else
+	mode_info=" 标准模式"
+fi
+
+
+
+}
+
+
+check_nginx_compression() {
+
+	CONFIG_FILE="/home/web/nginx.conf"
+
+	# ZSTD가 활성화되어 있고 주석이 없는지 확인하십시오 (전체 라인은 ZSTD 켜기로 시작합니다.)
+	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
+		zstd_status=" zstd压缩已开启"
+	else
+		zstd_status=""
+	fi
+
+	# Brotli가 활성화되어 있고 댓글이 없는지 확인하십시오
+	if grep -qE '^\s*brotli\s+on;' "$CONFIG_FILE"; then
+		br_status=" br压缩已开启"
+	else
+		br_status=""
+	fi
+
+	# GZIP가 활성화되어 있고 댓글을 달지 않은지 확인하십시오
+	if grep -qE '^\s*gzip\s+on;' "$CONFIG_FILE"; then
+		gzip_status=" gzip压缩已开启"
+	else
+		gzip_status=""
+	fi
+}
+
+
+
+
+web_optimization() {
+		  while true; do
+		  	  check_nginx_mode
+			  check_nginx_compression
+			  clear
+			  send_stats "LDNMP 환경을 최적화하십시오"
+			  echo -e "LDNMP 환경을 최적화하십시오${gl_lv}${mode_info}${gzip_status}${br_status}${zstd_status}${gl_bai}"
+			  echo "------------------------"
+			  echo "1. 표준 모드 2. 고성능 모드 (2H4G 이상 권장)"
+			  echo "------------------------"
+			  echo "3. GZIP 압축 켜기 4. GZIP 압축 끄기"
+			  echo "5. BR 압축 켜기 6. BR 압축 끄기"
+			  echo "7. ZSTD 압축 켜기 8. ZSTD 압축 끄기"
+			  echo "------------------------"
+			  echo "0. 이전 메뉴로 돌아갑니다"
+			  echo "------------------------"
+			  read -e -p "선택을 입력하십시오 :" sub_choice
+			  case $sub_choice in
+				  1)
+				  send_stats "사이트 표준 모드"
+
+				  # nginx 튜닝
+				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
+				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
+
+				  # PHP 튜닝
+				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
+				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
+				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
+				  rm -rf /home/optimized_php.ini
+
+				  # PHP 튜닝
+				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www-1.conf
+				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
+				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
+				  rm -rf /home/www.conf
+
+				  patch_wp_memory_limit
+				  patch_wp_debug
+
+				  fix_phpfpm_conf php
+				  fix_phpfpm_conf php74
+
+				  # MySQL 튜닝
+				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
+				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
+				  rm -rf /home/custom_mysql_config.cnf
+
+
+				  cd /home/web && docker compose restart
+
+				  restart_redis
+				  optimize_balanced
+
+
+				  echo "LDNMP 환경은 표준 모드로 설정되었습니다"
+
+					  ;;
+				  2)
+				  send_stats "사이트 고성능 모드"
+
+				  # nginx 튜닝
+				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
+				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
+
+				  # PHP 튜닝
+				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
+				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
+				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
+				  rm -rf /home/optimized_php.ini
+
+				  # PHP 튜닝
+				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www.conf
+				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
+				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
+				  rm -rf /home/www.conf
+
+				  patch_wp_memory_limit 512M 512M
+				  patch_wp_debug
+
+				  fix_phpfpm_conf php
+				  fix_phpfpm_conf php74
+
+				  # MySQL 튜닝
+				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
+				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
+				  rm -rf /home/custom_mysql_config.cnf
+
+				  cd /home/web && docker compose restart
+
+				  restart_redis
+				  optimize_web_server
+
+				  echo "LDNMP 환경은 고성능 모드로 설정되었습니다"
+
+					  ;;
+				  3)
+				  send_stats "nginx_gzip on"
+				  nginx_gzip on
+					  ;;
+				  4)
+				  send_stats "nginx_gzip off"
+				  nginx_gzip off
+					  ;;
+				  5)
+				  send_stats "nginx_br on"
+				  nginx_br on
+					  ;;
+				  6)
+				  send_stats "nginx_br off"
+				  nginx_br off
+					  ;;
+				  7)
+				  send_stats "nginx_zstd on"
+				  nginx_zstd on
+					  ;;
+				  8)
+				  send_stats "nginx_zstd off"
+				  nginx_zstd off
+					  ;;
+				  *)
+					  break
+					  ;;
+			  esac
+			  break_end
+
+		  done
+
+
+}
 
 
 
@@ -1792,15 +2356,17 @@ if [ -n "$ipv6_address" ]; then
 	echo "http://[$ipv6_address]:${docker_port}"
 fi
 
-local search_pattern="$ipv4_address:${docker_port}"
+local search_pattern1="$ipv4_address:${docker_port}"
+local search_pattern2="127.0.0.1:${docker_port}"
 
 for file in /home/web/conf.d/*; do
 	if [ -f "$file" ]; then
-		if grep -q "$search_pattern" "$file" 2>/dev/null; then
+		if grep -q "$search_pattern1" "$file" 2>/dev/null || grep -q "$search_pattern2" "$file" 2>/dev/null; then
 			echo "https://$(basename "$file" | sed 's/\.conf$//')"
 		fi
 	fi
 done
+
 
 }
 
@@ -2088,6 +2654,18 @@ clear_host_port_rules() {
 
 
 
+setup_docker_dir() {
+
+	mkdir -p /home/docker/ 2>/dev/null
+	if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
+		cp -f /home/docker /home/docker1 2>/dev/null
+		rm -rf /home/docker 2>/dev/null
+		mkdir -p /vol1/1000/docker 2>/dev/null
+		ln -s /vol1/1000/docker /home/docker 2>/dev/null
+	fi
+}
+
+
 
 
 docker_app() {
@@ -2101,8 +2679,12 @@ while true; do
 	echo "$docker_describe"
 	echo "$docker_url"
 	if docker inspect "$docker_name" &>/dev/null; then
-		local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
-		docker_port=${docker_port:-0000}
+		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
+			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+			docker_port=${docker_port:-0000}
+			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+		fi
+		local docker_port=$(cat "/home/docker/${docker_name}_port.conf")
 		check_docker_app_ip
 	fi
 	echo ""
@@ -2125,6 +2707,9 @@ while true; do
 			install jq
 			install_docker
 			docker_rum
+			setup_docker_dir
+			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+
 			clear
 			echo "$docker_name설치"
 			check_docker_app_ip
@@ -2149,6 +2734,7 @@ while true; do
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
 			rm -rf "/home/docker/$docker_name"
+			rm -f /home/docker/${docker_name}_port.conf
 			echo "앱이 제거되었습니다"
 			send_stats "제거하십시오$docker_name"
 			;;
@@ -2157,7 +2743,7 @@ while true; do
 			echo "${docker_name}도메인 액세스 설정"
 			send_stats "${docker_name}도메인 액세스 설정"
 			add_yuming
-			ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 			block_container_port "$docker_name" "$ipv4_address"
 			;;
 
@@ -2200,8 +2786,12 @@ docker_app_plus() {
 		echo "$app_text"
 		echo "$app_url"
 		if docker inspect "$docker_name" &>/dev/null; then
-			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
-			docker_port=${docker_port:-0000}
+			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
+				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+				docker_port=${docker_port:-0000}
+				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+			fi
+			local docker_port=$(cat "/home/docker/${docker_name}_port.conf")
 			check_docker_app_ip
 		fi
 		echo ""
@@ -2223,18 +2813,21 @@ docker_app_plus() {
 				install jq
 				install_docker
 				docker_app_install
+				setup_docker_dir
+				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 				;;
 			2)
 				docker_app_update
 				;;
 			3)
 				docker_app_uninstall
+				rm -f /home/docker/${docker_name}_port.conf
 				;;
 			5)
 				echo "${docker_name}도메인 액세스 설정"
 				send_stats "${docker_name}도메인 액세스 설정"
 				add_yuming
-				ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
+				ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 				block_container_port "$docker_name" "$ipv4_address"
 				;;
 			6)
@@ -2394,22 +2987,19 @@ f2b_install_sshd() {
 		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/linux-ssh.conf
 		systemctl restart rsyslog
 	fi
+
+	rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf
 }
 
 f2b_sshd() {
 	if grep -q 'Alpine' /etc/issue; then
 		xxx=alpine-sshd
 		f2b_status_xxx
-	elif command -v dnf &>/dev/null; then
-		xxx=centos-sshd
-		f2b_status_xxx
 	else
-		xxx=linux-sshd
+		xxx=sshd
 		f2b_status_xxx
 	fi
 }
-
-
 
 
 
@@ -2430,9 +3020,12 @@ server_reboot() {
 
 }
 
+
+
+
+
 output_status() {
 	output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
-		# 공통 공개 네트워크 카드 이름과 일치합니다 : ETH*, ens*, enp*, eno*
 		$1 ~ /^(eth|ens|enp|eno)[0-9]+/ {
 			rx_total += $2
 			tx_total += $10
@@ -2448,10 +3041,14 @@ output_status() {
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "M"; }
 			if (tx_total > 1024) { tx_total /= 1024; tx_units = "G"; }
 
-			printf("总接收:       %.2f%s\n总发送:       %.2f%s\n", rx_total, rx_units, tx_total, tx_units);
+			printf("%.2f%s %.2f%s\n", rx_total, rx_units, tx_total, tx_units);
 		}' /proc/net/dev)
-	# echo "$output"
+
+	rx=$(echo "$output" | awk '{print $1}')
+	tx=$(echo "$output" | awk '{print $2}')
+
 }
+
 
 
 
@@ -2565,6 +3162,7 @@ ldnmp_wp() {
   install_ssltls
   certs_status
   add_db
+  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
   wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
   sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
   nginx_http_on
@@ -2617,6 +3215,7 @@ ldnmp_Proxy() {
 	nginx_install_status
 	install_ssltls
 	certs_status
+	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
 	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
@@ -2648,6 +3247,7 @@ ldnmp_Proxy_backend() {
 	nginx_install_status
 	install_ssltls
 	certs_status
+	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
 
 	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
@@ -2919,35 +3519,19 @@ fi
 
 
 donlond_frp() {
-	mkdir -p /home/frp/ && cd /home/frp/
-	rm -rf /home/frp/frp_0.61.0_linux_amd64
+  role="$1"
+  config_file="/home/frp/${role}.toml"
 
-	arch=$(uname -m)
-	frp_v=$(curl -s https://api.github.com/repos/fatedier/frp/releases/latest | grep -oP '"tag_name": "v\K.*?(?=")')
-
-	if [[ "$arch" == "x86_64" ]]; then
-		curl -L ${gh_proxy}github.com/fatedier/frp/releases/download/v${frp_v}/frp_${frp_v}_linux_amd64.tar.gz -o frp_${frp_v}_linux_amd64.tar.gz
-	elif [[ "$arch" == "armv7l" || "$arch" == "aarch64" ]]; then
-		curl -L ${gh_proxy}github.com/fatedier/frp/releases/download/v${frp_v}/frp_${frp_v}_linux_arm.tar.gz -o frp_${frp_v}_linux_amd64.tar.gz
-	else
-		echo "현재 CPU 아키텍처는 지원되지 않습니다.$arch"
-	fi
-
-	# 최신 다운로드 FRP 파일을 찾으십시오
-	latest_file=$(ls -t /home/frp/frp_*.tar.gz | head -n 1)
-
-	# 파일을 압축 해제하십시오
-	tar -zxvf "$latest_file"
-
-	# 압축 압축 폴더의 이름을 얻으십시오
-	dir_name=$(tar -tzf "$latest_file" | head -n 1 | cut -f 1 -d '/')
-
-	# 압축이없는 폴더의 이름을 통합 버전 이름으로 바꿉니다
-	mv "$dir_name" "frp_0.61.0_linux_amd64"
-
-
+  docker run -d \
+	--name "$role" \
+	--restart=always \
+	--network host \
+	-v "$config_file":"/frp/${role}.toml" \
+	kjlion/frp:alpine \
+	"/frp/${role}" -c "/frp/${role}.toml"
 
 }
+
 
 
 
@@ -2961,10 +3545,9 @@ generate_frps_config() {
 	local dashboard_user="user_$(openssl rand -hex 4)"
 	local dashboard_pwd=$(openssl rand -hex 8)
 
-	donlond_frp
-
-	# frps.toml 파일을 만듭니다
-	cat <<EOF > /home/frp/frp_0.61.0_linux_amd64/frps.toml
+	mkdir -p /home/frp
+	touch /home/frp/frps.toml
+	cat <<EOF > /home/frp/frps.toml
 [common]
 bind_port = $bind_port
 authentication_method = token
@@ -2973,6 +3556,8 @@ dashboard_port = $dashboard_port
 dashboard_user = $dashboard_user
 dashboard_pwd = $dashboard_pwd
 EOF
+
+	donlond_frp frps
 
 	# 출력 생성 정보
 	ip_address
@@ -2986,13 +3571,6 @@ EOF
 	echo "FRP 패널 사용자 이름 :$dashboard_user"
 	echo "FRP 패널 비밀번호 :$dashboard_pwd"
 	echo
-	echo "------------------------"
-	install tmux
-	tmux kill-session -t frps >/dev/null 2>&1
-	tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
-	check_crontab_installed
-	crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
-	(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
 
 	open_port 8055 8056
 
@@ -3006,9 +3584,9 @@ configure_frpc() {
 	read -e -p "외부 네트워크 도킹 토큰을 입력하십시오." token
 	echo
 
-	donlond_frp
-
-	cat <<EOF > /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+	mkdir -p /home/frp
+	touch /home/frp/frpc.toml
+	cat <<EOF > /home/frp/frpc.toml
 [common]
 server_addr = ${server_addr}
 server_port = 8055
@@ -3016,12 +3594,7 @@ token = ${token}
 
 EOF
 
-	install tmux
-	tmux kill-session -t frpc >/dev/null 2>&1
-	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
-	check_crontab_installed
-	crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
-	(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
+	donlond_frp frpc
 
 	open_port 8055
 
@@ -3039,7 +3612,7 @@ add_forwarding_service() {
 	read -e -p "외부 네트워크 포트를 입력하십시오 :" remote_port
 
 	# 구성 파일에 사용자 입력을 쓰십시오
-	cat <<EOF >> /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+	cat <<EOF >> /home/frp/frpc.toml
 [$service_name]
 type = ${service_type}
 local_ip = ${local_ip}
@@ -3051,8 +3624,7 @@ EOF
 	# 출력 생성 정보
 	echo "제공하다$service_namefrpc.toml에 성공적으로 추가되었습니다"
 
-	tmux kill-session -t frpc >/dev/null 2>&1
-	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+	docker restart frpc
 
 	open_port $local_port
 
@@ -3065,11 +3637,10 @@ delete_forwarding_service() {
 	# 삭제 해야하는 서비스 이름을 입력하라는 메시지
 	read -e -p "삭제 해야하는 서비스 이름을 입력하십시오." service_name
 	# SED를 사용하여 서비스 및 관련 구성을 삭제하십시오.
-	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frp_0.61.0_linux_amd64/frpc.toml
+	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frpc.toml
 	echo "제공하다$service_namefrpc.toml에서 성공적으로 삭제되었습니다"
 
-	tmux kill-session -t frpc >/dev/null 2>&1
-	tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+	docker restart frpc
 
 }
 
@@ -3195,10 +3766,11 @@ generate_access_urls() {
 		# HTTPS 구성 처리
 		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
-				frps_search_pattern="${ipv4_address}:${port}"
+				local frps_search_pattern="${ipv4_address}:${port}"
+				local frps_search_pattern2="127.0.0.1:${port}"
 				for file in /home/web/conf.d/*.conf; do
 					if [ -f "$file" ]; then
-						if grep -q "$frps_search_pattern" "$file" 2>/dev/null; then
+						if grep -q "$frps_search_pattern" "$file" 2>/dev/null || grep -q "$frps_search_pattern2" "$file" 2>/dev/null; then
 							echo "https://$(basename "$file" .conf)"
 						fi
 					fi
@@ -3219,11 +3791,13 @@ frps_main_ports() {
 
 frps_panel() {
 	send_stats "FRP 서버"
+	local docker_name="frps"
 	local docker_port=8056
 	while true; do
 		clear
 		check_frp_app
-		echo -e "FRP 서버$check_frp"
+		check_docker_image_update $docker_name
+		echo -e "FRP 서버$check_frp $update_status"
 		echo "FRP 인트라넷 침투 서비스 환경을 구축하여 인터넷에 공개 IP없이 장치를 노출시킵니다."
 		echo "공식 웹 사이트 소개 : https://github.com/fatedier/frp/"
 		echo "비디오 교육 : https://www.bilibili.com/video/bv1ymw6e2ewl?t=124.0"
@@ -3244,25 +3818,25 @@ frps_panel() {
 		read -e -p "선택을 입력하십시오 :" choice
 		case $choice in
 			1)
+				install jq grep ss
+				install_docker
 				generate_frps_config
-				rm -rf /home/frp/*.tar.gz
 				echo "FRP 서버가 설치되었습니다"
 				;;
 			2)
-				cp -f /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
-				donlond_frp
-				cp -f /home/frp/frps.toml /home/frp/frp_0.61.0_linux_amd64/frps.toml
-				tmux kill-session -t frps >/dev/null 2>&1
-				tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"
 				crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
-				(crontab -l ; echo '@reboot tmux new -d -s "frps" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frps -c frps.toml"') | crontab - > /dev/null 2>&1
-				rm -rf /home/frp/*.tar.gz
+				tmux kill-session -t frps >/dev/null 2>&1
+				docker rm -f frps && docker rmi kjlion/frp:alpine >/dev/null 2>&1
+				[ -f /home/frp/frps.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
+				donlond_frp frps
 				echo "FRP 서버가 업데이트되었습니다"
 				;;
 			3)
 				crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
 				tmux kill-session -t frps >/dev/null 2>&1
+				docker rm -f frps && docker rmi kjlion/frp:alpine
 				rm -rf /home/frp
+
 				close_port 8055 8056
 
 				echo "앱이 제거되었습니다"
@@ -3272,7 +3846,7 @@ frps_panel() {
 				send_stats "외부 도메인 이름에 대한 FRP 액세스"
 				add_yuming
 				read -e -p "인트라넷 침투 서비스 포트를 입력하십시오 :" frps_port
-				ldnmp_Proxy ${yuming} ${ipv4_address} ${frps_port}
+				ldnmp_Proxy ${yuming} 127.0.0.1 ${frps_port}
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
 			6)
@@ -3309,17 +3883,20 @@ frps_panel() {
 
 frpc_panel() {
 	send_stats "FRP 클라이언트"
+	local docker_name="frpc"
 	local docker_port=8055
 	while true; do
 		clear
 		check_frp_app
-		echo -e "FRP 클라이언트$check_frp"
+		check_docker_image_update $docker_name
+		echo -e "FRP 클라이언트$check_frp $update_status"
 		echo "서버로 도킹, 도킹 후 인터넷 액세스에 인트라넷 침투 서비스를 만들 수 있습니다."
 		echo "공식 웹 사이트 소개 : https://github.com/fatedier/frp/"
 		echo "비디오 교육 : https://www.bilibili.com/video/bv1ymw6e2ewl?t=173.9"
 		echo "------------------------"
 		if [ -d "/home/frp/" ]; then
-			list_forwarding_services "/home/frp/frp_0.61.0_linux_amd64/frpc.toml"
+			[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
+			list_forwarding_services "/home/frp/frpc.toml"
 		fi
 		echo ""
 		echo "------------------------"
@@ -3332,25 +3909,24 @@ frpc_panel() {
 		read -e -p "선택을 입력하십시오 :" choice
 		case $choice in
 			1)
+				install jq grep ss
+				install_docker
 				configure_frpc
-				rm -rf /home/frp/*.tar.gz
 				echo "FRP 클라이언트가 설치되었습니다"
 				;;
 			2)
-				cp -f /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
-				donlond_frp
-				cp -f /home/frp/frpc.toml /home/frp/frp_0.61.0_linux_amd64/frpc.toml
-				tmux kill-session -t frpc >/dev/null 2>&1
-				tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
 				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
-				(crontab -l ; echo '@reboot tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"') | crontab - > /dev/null 2>&1
-				rm -rf /home/frp/*.tar.gz
+				tmux kill-session -t frpc >/dev/null 2>&1
+				docker rm -f frpc && docker rmi kjlion/frp:alpine >/dev/null 2>&1
+				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
+				donlond_frp frpc
 				echo "FRP 클라이언트가 업데이트되었습니다"
 				;;
 
 			3)
 				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
 				tmux kill-session -t frpc >/dev/null 2>&1
+				docker rm -f frpc && docker rmi kjlion/frp:alpine
 				rm -rf /home/frp
 				close_port 8055
 				echo "앱이 제거되었습니다"
@@ -3366,9 +3942,8 @@ frpc_panel() {
 
 			6)
 				install nano
-				nano /home/frp/frp_0.61.0_linux_amd64/frpc.toml
-				tmux kill-session -t frpc >/dev/null 2>&1
-				tmux new -d -s "frpc" "cd /home/frp/frp_0.61.0_linux_amd64 && ./frpc -c frpc.toml"
+				nano /home/frp/frpc.toml
+				docker restart frpc
 				;;
 
 			*)
@@ -3378,6 +3953,123 @@ frpc_panel() {
 		break_end
 	done
 }
+
+
+
+
+yt_menu_pro() {
+
+	local VIDEO_DIR="/home/yt-dlp"
+	local URL_FILE="$VIDEO_DIR/urls.txt"
+	local ARCHIVE_FILE="$VIDEO_DIR/archive.txt"
+
+	mkdir -p "$VIDEO_DIR"
+
+	while true; do
+
+		if [ -x "/usr/local/bin/yt-dlp" ]; then
+		   local YTDLP_STATUS="${gl_lv}已安装${gl_bai}"
+		else
+		   local YTDLP_STATUS="${gl_hui}未安装${gl_bai}"
+		fi
+
+		clear
+		send_stats "YT-DLP 다운로드 도구"
+		echo -e "yt-dlp $YTDLP_STATUS"
+		echo -e "YT-DLP는 YouTube, Bilibili, Twitter 등을 포함한 수천 개의 사이트를 지원하는 강력한 비디오 다운로드 도구입니다."
+		echo -e "공식 웹 사이트 주소 : https://github.com/yt-dlp/yt-dlp"
+		echo "-------------------------"
+		echo "다운로드 된 비디오 목록 :"
+		ls -td "$VIDEO_DIR"/*/ 2>/dev/null || echo "(아직 없음)"
+		echo "-------------------------"
+		echo "1. 설치 2. 업데이트 3. 제거"
+		echo "-------------------------"
+		echo "5. 단일 비디오 다운로드 6. 배치 비디오 다운로드 7. 사용자 정의 매개 변수 다운로드"
+		echo "8. MP3 오디오 9. 비디오 디렉토리 삭제 10. 쿠키 관리 (개발 중)"
+		echo "-------------------------"
+		echo "0. 이전 메뉴로 돌아갑니다"
+		echo "-------------------------"
+		read -e -p "옵션 번호를 입력하십시오 :" choice
+
+		case $choice in
+			1)
+				send_stats "yt-dlp 설치 ..."
+				echo "yt-dlp 설치 ..."
+				install ffmpeg
+				sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+				sudo chmod a+rx /usr/local/bin/yt-dlp
+				echo "설치가 완료되었습니다. 계속하려면 키를 누르십시오 ..."
+				read ;;
+			2)
+				send_stats "yt-dlp 업데이트 ..."
+				echo "yt-dlp 업데이트 ..."
+				sudo yt-dlp -U
+				echo "업데이트가 완료되었습니다. 계속하려면 키를 누르십시오 ..."
+				read ;;
+			3)
+				send_stats "yt-dlp 제거 ..."
+				echo "yt-dlp 제거 ..."
+				sudo rm -f /usr/local/bin/yt-dlp
+				echo "Uninstall is complete. 계속하려면 키를 누르십시오 ..."
+				read ;;
+			5)
+				send_stats "单个视频下载"
+				read -e -p "비디오 링크를 입력하십시오 :" url
+				yt-dlp -P "$VIDEO_DIR" -f "bv*+ba/b" --merge-output-format mp4 \
+					--write-subs --sub-langs all \
+					--write-thumbnail --embed-thumbnail \
+					--write-info-json \
+					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
+					--no-overwrites --no-post-overwrites "$url"
+				read -e -p "다운로드가 완료되면 키를 눌러 계속하십시오 ..." ;;
+			6)
+				send_stats "배치 비디오 다운로드"
+				install nano
+				if [ ! -f "$URL_FILE" ]; then
+				  echo -e "# 여러 비디오 링크 주소를 입력하십시오 \ n# https://www.bilibili.com/bangumi/play/ep733316?spm_id_from=333.337.0.0&from_spmid=666.25.episode.0" > "$URL_FILE"
+				fi
+				nano $URL_FILE
+				echo "이제 배치 다운로드를 시작하십시오 ..."
+				yt-dlp -P "$VIDEO_DIR" -f "bv*+ba/b" --merge-output-format mp4 \
+					--write-subs --sub-langs all \
+					--write-thumbnail --embed-thumbnail \
+					--write-info-json \
+					-a "$URL_FILE" \
+					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
+					--no-overwrites --no-post-overwrites
+				read -e -p "배치 다운로드가 완료되었습니다. 키를 눌러 계속하십시오 ..." ;;
+			7)
+				send_stats "맞춤형 비디오 다운로드"
+				read -e -p "전체 YT-DLP 매개 변수를 입력하십시오 (YT-DLP 제외) :" custom
+				yt-dlp -P "$VIDEO_DIR" $custom \
+					--write-subs --sub-langs all \
+					--write-thumbnail --embed-thumbnail \
+					--write-info-json \
+					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
+					--no-overwrites --no-post-overwrites
+				read -e -p "실행이 완료되면 키를 눌러 계속하십시오 ..." ;;
+			8)
+				send_stats "MP3 다운로드"
+				read -e -p "비디오 링크를 입력하십시오 :" url
+				yt-dlp -P "$VIDEO_DIR" -x --audio-format mp3 \
+					--write-subs --sub-langs all \
+					--write-thumbnail --embed-thumbnail \
+					--write-info-json \
+					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
+					--no-overwrites --no-post-overwrites "$url"
+				read -e -p "오디오 다운로드가 완료되었습니다. 키를 누르면 계속하십시오 ..." ;;
+
+			9)
+				send_stats "비디오 삭제"
+				read -e -p "삭제 비디오의 이름을 입력하십시오." rmdir
+				rm -rf "$VIDEO_DIR/$rmdir"
+				;;
+			*)
+				break ;;
+		esac
+	done
+}
+
 
 
 
@@ -3660,12 +4352,13 @@ new_ssh_port() {
 
 
 add_sshkey() {
-
+	chmod 700 ~/
+	mkdir -p ~/.ssh
+	chmod 700 ~/.ssh
+	touch ~/.ssh/authorized_keys
 	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
-
 	cat ~/.ssh/sshkey.pub >> ~/.ssh/authorized_keys
 	chmod 600 ~/.ssh/authorized_keys
-
 
 	ip_address
 	echo -e "개인 키 정보가 생성되었습니다. 복사하고 저장하십시오.${gl_huang}${ipv4_address}_ssh.key${gl_bai}향후 SSH 로그인 파일"
@@ -3679,6 +4372,7 @@ add_sshkey() {
 		   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
 		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+	restart_ssh
 	echo -e "${gl_lv}루트 프라이빗 키 로그인이 활성화되고 루트 비밀번호 로그인이 닫히고 재 연결이 적용됩니다.${gl_bai}"
 
 }
@@ -3693,6 +4387,10 @@ import_sshkey() {
 		return 1
 	fi
 
+	chmod 700 ~/
+	mkdir -p ~/.ssh
+	chmod 700 ~/.ssh
+	touch ~/.ssh/authorized_keys
 	echo "$public_key" >> ~/.ssh/authorized_keys
 	chmod 600 ~/.ssh/authorized_keys
 
@@ -3702,6 +4400,7 @@ import_sshkey() {
 		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+	restart_ssh
 	echo -e "${gl_lv}공개 키가 성공적으로 가져 왔고 루트 개인 키 로그인이 활성화되었고 루트 비밀번호 로그인이 닫히고 재 연결이 적용됩니다.${gl_bai}"
 
 }
@@ -3783,10 +4482,10 @@ dd_xitong() {
 			echo "11. Ubuntu 24.04              12. Ubuntu 22.04"
 			echo "13. Ubuntu 20.04              14. Ubuntu 18.04"
 			echo "------------------------"
-			echo "21. Rocky Linux 9             22. Rocky Linux 8"
-			echo "23. Alma Linux 9              24. Alma Linux 8"
-			echo "25. oracle Linux 9            26. oracle Linux 8"
-			echo "27. Fedora Linux 41           28. Fedora Linux 40"
+			echo "21. Rocky Linux 10            22. Rocky Linux 9"
+			echo "23. Alma Linux 10             24. Alma Linux 9"
+			echo "25. oracle Linux 10           26. oracle Linux 9"
+			echo "27. Fedora Linux 42           28. Fedora Linux 41"
 			echo "29. CentOS 10                 30. CentOS 9"
 			echo "------------------------"
 			echo "31. Alpine Linux              32. Arch Linux"
@@ -3861,7 +4560,7 @@ dd_xitong() {
 
 
 			  21)
-				send_stats "Rockylinux9를 다시 설치하십시오"
+				send_stats "Rockylinux10을 다시 설치하십시오"
 				dd_xitong_3
 				bash reinstall.sh rocky
 				reboot
@@ -3869,15 +4568,15 @@ dd_xitong() {
 				;;
 
 			  22)
-				send_stats "Rockylinux8을 다시 설치하십시오"
+				send_stats "Rockylinux9를 다시 설치하십시오"
 				dd_xitong_3
-				bash reinstall.sh rocky 8
+				bash reinstall.sh rocky 9
 				reboot
 				exit
 				;;
 
 			  23)
-				send_stats "Alma9를 다시 설치하십시오"
+				send_stats "Alma10을 다시 설치하십시오"
 				dd_xitong_3
 				bash reinstall.sh almalinux
 				reboot
@@ -3885,15 +4584,15 @@ dd_xitong() {
 				;;
 
 			  24)
-				send_stats "Alma8을 다시 설치하십시오"
+				send_stats "Alma9를 다시 설치하십시오"
 				dd_xitong_3
-				bash reinstall.sh almalinux 8
+				bash reinstall.sh almalinux 9
 				reboot
 				exit
 				;;
 
 			  25)
-				send_stats "Oracle9를 다시 설치하십시오"
+				send_stats "Oracle10을 다시 설치하십시오"
 				dd_xitong_3
 				bash reinstall.sh oracle
 				reboot
@@ -3901,15 +4600,15 @@ dd_xitong() {
 				;;
 
 			  26)
-				send_stats "Oracle8을 다시 설치하십시오"
+				send_stats "Oracle9를 다시 설치하십시오"
 				dd_xitong_3
-				bash reinstall.sh oracle 8
+				bash reinstall.sh oracle 9
 				reboot
 				exit
 				;;
 
 			  27)
-				send_stats "Fedora41을 다시 설치하십시오"
+				send_stats "Fedora42를 다시 설치하십시오"
 				dd_xitong_3
 				bash reinstall.sh fedora
 				reboot
@@ -3917,9 +4616,9 @@ dd_xitong() {
 				;;
 
 			  28)
-				send_stats "Fedora40을 다시 설치하십시오"
+				send_stats "Fedora41을 다시 설치하십시오"
 				dd_xitong_3
-				bash reinstall.sh fedora 40
+				bash reinstall.sh fedora 41
 				reboot
 				exit
 				;;
@@ -4127,6 +4826,7 @@ bbrv3() {
 
 		  case "$choice" in
 			[Yy])
+			check_disk_space 3
 			if [ -r /etc/os-release ]; then
 				. /etc/os-release
 				if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
@@ -4197,6 +4897,9 @@ elrepo_install() {
 	elif [[ "$os_version" == 9 ]]; then
 		echo "Elrepo 저장소 구성 (버전 9)을 설치하십시오 ..."
 		yum -y install https://www.elrepo.org/elrepo-release-9.el9.elrepo.noarch.rpm
+	elif [[ "$os_version" == 10 ]]; then
+		echo "Elrepo 저장소 구성 (버전 10)을 설치하십시오 ..."
+		yum -y install https://www.elrepo.org/elrepo-release-10.el10.elrepo.noarch.rpm
 	else
 		echo "지원되지 않는 시스템 버전 :$os_version"
 		break_end
@@ -4328,7 +5031,7 @@ clamav_scan() {
 		clamscan -r --log=/var/log/clamav/scan.log $SCAN_PARAMS
 
 	echo -e "${gl_lv}$@ scan이 완료되고 바이러스 보고서가 저장됩니다${gl_huang}/home/docker/clamav/log/scan.log${gl_bai}"
-	echo -e "${gl_lv}바이러스가 있다면 제발${gl_huang}scan.log${gl_lv}파일에서 찾은 키워드를 검색하여 바이러스의 위치를 ​​확인하십시오.${gl_bai}"
+	echo -e "${gl_lv}바이러스가 있다면 제발${gl_huang}scan.log${gl_lv}파일에서 찾은 키워드를 검색하여 바이러스의 위치를 확인하십시오.${gl_bai}"
 
 }
 
@@ -4643,7 +5346,7 @@ update_locale() {
 				locale-gen
 				echo "LANG=${lang}" > /etc/default/locale
 				export LANG=${lang}
-				echo -e "${gl_lv}시스템 언어는 다음으로 수정되었습니다.$langSSH를 다시 ​​연결하면 적용됩니다.${gl_bai}"
+				echo -e "${gl_lv}시스템 언어는 다음으로 수정되었습니다.$langSSH를 다시 연결하면 적용됩니다.${gl_bai}"
 				hash -r
 				break_end
 
@@ -4652,7 +5355,7 @@ update_locale() {
 				install glibc-langpack-zh
 				localectl set-locale LANG=${lang}
 				echo "LANG=${lang}" | tee /etc/locale.conf
-				echo -e "${gl_lv}시스템 언어는 다음으로 수정되었습니다.$langSSH를 다시 ​​연결하면 적용됩니다.${gl_bai}"
+				echo -e "${gl_lv}시스템 언어는 다음으로 수정되었습니다.$langSSH를 다시 연결하면 적용됩니다.${gl_bai}"
 				hash -r
 				break_end
 				;;
@@ -4716,7 +5419,7 @@ else
 	echo "${bianse}" >> ~/.profile
 	# source ~/.profile
 fi
-echo -e "${gl_lv}변경이 완료되었습니다. 변경 사항을 볼 수 있도록 SSH를 다시 ​​연결하십시오!${gl_bai}"
+echo -e "${gl_lv}변경이 완료되었습니다. 변경 사항을 볼 수 있도록 SSH를 다시 연결하십시오!${gl_bai}"
 
 hash -r
 break_end
@@ -5191,7 +5894,7 @@ list_partitions() {
 # 파티션을 장착하십시오
 mount_partition() {
 	send_stats "파티션을 장착하십시오"
-	read -p "장착 할 파티션 이름을 입력하십시오 (예 : SDA1) :" PARTITION
+	read -e -p "장착 할 파티션 이름을 입력하십시오 (예 : SDA1) :" PARTITION
 
 	# 파티션이 있는지 확인하십시오
 	if ! lsblk -o NAME | grep -w "$PARTITION" > /dev/null; then
@@ -5223,7 +5926,7 @@ mount_partition() {
 # 파티션을 제거하십시오
 unmount_partition() {
 	send_stats "파티션을 제거하십시오"
-	read -p "파티션 이름 (예 : SDA1)을 입력하십시오." PARTITION
+	read -e -p "파티션 이름 (예 : SDA1)을 입력하십시오." PARTITION
 
 	# 파티션이 이미 장착되어 있는지 확인하십시오
 	MOUNT_POINT=$(lsblk -o MOUNTPOINT | grep -w "$PARTITION")
@@ -5252,7 +5955,7 @@ list_mounted_partitions() {
 # 형식 파티션
 format_partition() {
 	send_stats "형식 파티션"
-	read -p "파티션 이름을 형식 (예 : SDA1)에 입력하십시오." PARTITION
+	read -e -p "파티션 이름을 형식 (예 : SDA1)에 입력하십시오." PARTITION
 
 	# 파티션이 있는지 확인하십시오
 	if ! lsblk -o NAME | grep -w "$PARTITION" > /dev/null; then
@@ -5272,7 +5975,7 @@ format_partition() {
 	echo "2. xfs"
 	echo "3. ntfs"
 	echo "4. vfat"
-	read -p "선택을 입력하십시오 :" FS_CHOICE
+	read -e -p "선택을 입력하십시오 :" FS_CHOICE
 
 	case $FS_CHOICE in
 		1) FS_TYPE="ext4" ;;
@@ -5283,7 +5986,7 @@ format_partition() {
 	esac
 
 	# 형식을 확인하십시오
-	read -p "파티션 형식 확인 /dev /$PARTITION~을 위한$FS_TYPE그게? (Y/N) :" CONFIRM
+	read -e -p "파티션 형식 확인 /dev /$PARTITION~을 위한$FS_TYPE그게? (Y/N) :" CONFIRM
 	if [ "$CONFIRM" != "y" ]; then
 		echo "작업이 취소되었습니다."
 		return
@@ -5303,7 +6006,7 @@ format_partition() {
 # 파티션 상태를 확인하십시오
 check_partition() {
 	send_stats "파티션 상태를 확인하십시오"
-	read -p "파티션 이름을 입력하여 확인하십시오 (예 : SDA1) :" PARTITION
+	read -e -p "파티션 이름을 입력하여 확인하십시오 (예 : SDA1) :" PARTITION
 
 	# 파티션이 있는지 확인하십시오
 	if ! lsblk -o NAME | grep -w "$PARTITION" > /dev/null; then
@@ -5331,7 +6034,7 @@ disk_manager() {
 		echo "------------------------"
 		echo "0. 이전 메뉴로 돌아갑니다"
 		echo "------------------------"
-		read -p "선택을 입력하십시오 :" choice
+		read -e -p "선택을 입력하십시오 :" choice
 		case $choice in
 			1) mount_partition ;;
 			2) unmount_partition ;;
@@ -5340,7 +6043,7 @@ disk_manager() {
 			5) check_partition ;;
 			*) break ;;
 		esac
-		read -p "계속하려면 Enter를 누르십시오 ..."
+		read -e -p "계속하려면 Enter를 누르십시오 ..."
 	done
 }
 
@@ -5627,7 +6330,7 @@ rsync_manager() {
 			0) break ;;
 			*) echo "잘못된 선택, 다시 시도하십시오." ;;
 		esac
-		read -p "계속하려면 Enter를 누르십시오 ..."
+		read -e -p "계속하려면 Enter를 누르십시오 ..."
 	done
 }
 
@@ -5709,7 +6412,8 @@ linux_ps() {
 	echo -e "${gl_kjlan}가상 메모리 :${gl_bai}$swap_info"
 	echo -e "${gl_kjlan}하드 디스크 직업 :${gl_bai}$disk_info"
 	echo -e "${gl_kjlan}-------------"
-	echo -e "${gl_kjlan}$output"
+	echo -e "${gl_kjlan}총 수신 :${gl_bai}$rx"
+	echo -e "${gl_kjlan}총 보내기 :${gl_bai}$tx"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}네트워크 알고리즘 :${gl_bai}$congestion_algorithm $queue_algorithm"
 	echo -e "${gl_kjlan}-------------"
@@ -6717,7 +7421,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}31.  ${gl_bai}사이트 데이터 관리${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}전체 사이트 데이터를 백업합니다"
 	echo -e "${gl_huang}33.  ${gl_bai}시간이 지정된 원격 백업${gl_huang}34.  ${gl_bai}전체 사이트 데이터를 복원하십시오"
 	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}35.  ${gl_bai}LDNMP 환경 보호${gl_huang}36.  ${gl_bai}LDNMP 환경을 최적화하십시오"
+	echo -e "${gl_huang}35.  ${gl_bai}LDNMP 환경을 보호하십시오${gl_huang}36.  ${gl_bai}LDNMP 환경을 최적화하십시오"
 	echo -e "${gl_huang}37.  ${gl_bai}LDNMP 환경을 업데이트하십시오${gl_huang}38.  ${gl_bai}LDNMP 환경을 제거하십시오"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}0.   ${gl_bai}메인 메뉴로 돌아갑니다"
@@ -6746,7 +7450,7 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 	  add_db
-
+	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
@@ -6783,7 +7487,7 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 	  add_db
-
+	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
@@ -6818,7 +7522,7 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 	  add_db
-
+	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
@@ -6861,7 +7565,7 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 	  add_db
-
+	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
@@ -6909,7 +7613,7 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 	  add_db
-
+	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
@@ -6960,7 +7664,7 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 	  add_db
-
+	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
@@ -6998,7 +7702,7 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 	  add_db
-
+	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/refs/heads/main/index_php.conf
 	  sed -i "s|/var/www/html/yuming.com/|/var/www/html/yuming.com/linkstack|g" /home/web/conf.d/$yuming.conf
 	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
@@ -7034,7 +7738,7 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 	  add_db
-
+	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  nginx_http_on
@@ -7461,288 +8165,11 @@ linux_ldnmp() {
 	  ;;
 
 	35)
-	  send_stats "LDNMP 환경 방어"
-	  while true; do
-		check_waf_status
-		check_cf_mode
-		if [ -x "$(command -v fail2ban-client)" ] ; then
-			clear
-			remove fail2ban
-			rm -rf /etc/fail2ban
-		else
-			  clear
-			  docker_name="fail2ban"
-			  check_docker_app
-			  echo -e "서버 웹 사이트 방어 프로그램${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
-			  echo "------------------------"
-			  echo "1. 방어 프로그램을 설치하십시오"
-			  echo "------------------------"
-			  echo "5. SSH 차단 레코드보기 6. 웹 사이트 차단 레코드보기"
-			  echo "7. 방어 규칙 목록보기 8. 로그의 실시간 모니터링보기"
-			  echo "------------------------"
-			  echo "11. 인터셉트 매개 변수 구성 12. 차단 된 모든 IP를 지우십시오"
-			  echo "------------------------"
-			  echo "21. CloudFlare 모드 22. 5 초 방패의 높은 하중"
-			  echo "------------------------"
-			  echo "31. WAF 32를 켜십시오. WAF를 끄십시오"
-			  echo "33. DDOS 방어 켜기 34. DDOS 방어 끄기"
-			  echo "------------------------"
-			  echo "9. 방어 프로그램을 제거하십시오"
-			  echo "------------------------"
-			  echo "0. 이전 메뉴로 돌아갑니다"
-			  echo "------------------------"
-			  read -e -p "선택을 입력하십시오 :" sub_choice
-			  case $sub_choice in
-				  1)
-					  f2b_install_sshd
-					  cd /path/to/fail2ban/config/fail2ban/filter.d
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
-					  cd /path/to/fail2ban/config/fail2ban/jail.d/
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
-					  sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
-					  f2b_status
-					  ;;
-				  5)
-					  echo "------------------------"
-					  f2b_sshd
-					  echo "------------------------"
-					  ;;
-				  6)
-
-					  echo "------------------------"
-					  local xxx="fail2ban-nginx-cc"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-418"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-bad-request"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-badbots"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-botsearch"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-deny"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-http-auth"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-nginx-unauthorized"
-					  f2b_status_xxx
-					  echo "------------------------"
-					  local xxx="docker-php-url-fopen"
-					  f2b_status_xxx
-					  echo "------------------------"
-
-					  ;;
-
-				  7)
-					  docker exec -it fail2ban fail2ban-client status
-					  ;;
-				  8)
-					  tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
-
-					  ;;
-				  9)
-					  docker rm -f fail2ban
-					  rm -rf /path/to/fail2ban
-					  crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
-					  echo "Fail2ban 방어 프로그램은 제거되었습니다"
-					  ;;
-
-				  11)
-					  install nano
-					  nano /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
-					  f2b_status
-					  break
-					  ;;
-
-				  12)
-					  docker exec -it fail2ban fail2ban-client unban --all
-					  ;;
-
-				  21)
-					  send_stats "CloudFlare 모드"
-					  echo "CF 배경의 오른쪽 상단 모서리로 이동하여 왼쪽의 API 토큰을 선택하고 글로벌 API 키를 얻습니다."
-					  echo "https://dash.cloudflare.com/login"
-					  read -e -p "CF 계정 번호를 입력하십시오." cfuser
-					  read -e -p "CF의 글로벌 API 키를 입력하십시오." cftoken
-
-					  wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf
-					  docker exec nginx nginx -s reload
-
-					  cd /path/to/fail2ban/config/fail2ban/jail.d/
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
-
-					  cd /path/to/fail2ban/config/fail2ban/action.d
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
-
-					  sed -i "s/kejilion@outlook.com/$cfuser/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
-					  sed -i "s/APIKEY00000/$cftoken/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
-					  f2b_status
-
-					  echo "CloudFlare 모드는 CF 배경, Site-Security-Events에서 인터셉트 레코드를 보도록 구성됩니다."
-					  ;;
-
-				  22)
-					  send_stats "5 초 방패의 높은 하중"
-					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 부하가 감지되면 방패가 자동으로 켜지고 5 초 동안 낮은 부하가 자동으로 꺼집니다.${gl_bai}"
-					  echo "--------------"
-					  echo "CF 매개 변수 가져 오기 :"
-					  echo -e "CF 배경의 오른쪽 상단 모서리로 이동하여 왼쪽의 API 토큰을 선택하고 얻습니다.${gl_huang}Global API Key${gl_bai}"
-					  echo -e "CF 배경 도메인 이름 요약 페이지의 오른쪽 하단으로 이동하려면${gl_huang}지역 ID${gl_bai}"
-					  echo "https://dash.cloudflare.com/login"
-					  echo "--------------"
-					  read -e -p "CF 계정 번호를 입력하십시오." cfuser
-					  read -e -p "CF의 글로벌 API 키를 입력하십시오." cftoken
-					  read -e -p "CF에 도메인 이름의 영역 ID를 입력하십시오." cfzonID
-
-					  cd ~
-					  install jq bc
-					  check_crontab_installed
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
-					  chmod +x CF-Under-Attack.sh
-					  sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
-					  sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
-					  sed -i "s/CCCC/$cfzonID/g" ~/CF-Under-Attack.sh
-
-					  local cron_job="*/5 * * * * ~/CF-Under-Attack.sh"
-
-					  local existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
-
-					  if [ -z "$existing_cron" ]; then
-						  (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
-						  echo "고 부하 자동 방패 오프닝 스크립트가 추가되었습니다"
-					  else
-						  echo "자동 방패 스크립트가 이미 존재합니다. 추가 할 필요가 없습니다."
-					  fi
-
-					  ;;
-
-				  31)
-					  nginx_waf on
-					  echo "사이트 waf가 활성화되어 있습니다"
-					  send_stats "사이트 waf가 활성화되어 있습니다"
-					  ;;
-
-				  32)
-				  	  nginx_waf off
-					  echo "사이트 waf가 닫혔습니다"
-					  send_stats "사이트 waf가 닫혔습니다"
-					  ;;
-
-				  33)
-					  enable_ddos_defense
-					  ;;
-
-				  34)
-					  disable_ddos_defense
-					  ;;
-
-				  *)
-					  break
-					  ;;
-			  esac
-		fi
-	  break_end
-	  done
+		web_security
 		;;
 
 	36)
-		  while true; do
-			  clear
-			  send_stats "LDNMP 환경을 최적화하십시오"
-			  echo "LDNMP 환경을 최적화하십시오"
-			  echo "------------------------"
-			  echo "1. 표준 모드 2. 고성능 모드 (2H2G 이상 권장)"
-			  echo "------------------------"
-			  echo "0. 이전 메뉴로 돌아갑니다"
-			  echo "------------------------"
-			  read -e -p "선택을 입력하십시오 :" sub_choice
-			  case $sub_choice in
-				  1)
-				  send_stats "사이트 표준 모드"
-
-				  # nginx 튜닝
-				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
-
-				  # PHP 튜닝
-				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
-				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
-				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
-				  rm -rf /home/optimized_php.ini
-
-				  # PHP 튜닝
-				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www-1.conf
-				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
-				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
-				  rm -rf /home/www.conf
-
-				  fix_phpfpm_conf php
-				  fix_phpfpm_conf php74
-
-				  # MySQL 튜닝
-				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
-				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
-				  rm -rf /home/custom_mysql_config.cnf
-
-
-				  cd /home/web && docker compose restart
-
-				  restart_redis
-				  optimize_balanced
-
-
-				  echo "LDNMP 환경은 표준 모드로 설정되었습니다"
-
-					  ;;
-				  2)
-				  send_stats "사이트 고성능 모드"
-
-				  # nginx 튜닝
-				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
-
-				  # PHP 튜닝
-				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
-				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
-				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
-				  rm -rf /home/optimized_php.ini
-
-				  # PHP 튜닝
-				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www.conf
-				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
-				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
-				  rm -rf /home/www.conf
-
-				  fix_phpfpm_conf php
-				  fix_phpfpm_conf php74
-
-				  # MySQL 튜닝
-				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
-				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
-				  rm -rf /home/custom_mysql_config.cnf
-
-				  cd /home/web && docker compose restart
-
-				  restart_redis
-				  optimize_web_server
-
-				  echo "LDNMP 환경은 고성능 모드로 설정되었습니다"
-
-					  ;;
-				  *)
-					  break
-					  ;;
-			  esac
-			  break_end
-
-		  done
+		web_optimization
 		;;
 
 
@@ -7830,7 +8257,7 @@ linux_ldnmp() {
 
 			  docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "post_max_size=50M " > /usr/local/etc/php/conf.d/post.ini' > /dev/null 2>&1
-			  docker exec php sh -c 'echo "memory_limit=256M" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1
+			  docker exec php sh -c 'echo "memory_limit=512M" > /usr/local/etc/php/conf.d/memory.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_execution_time=1200" > /usr/local/etc/php/conf.d/max_execution_time.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_input_time=600" > /usr/local/etc/php/conf.d/max_input_time.ini' > /dev/null 2>&1
 			  docker exec php sh -c 'echo "max_input_vars=5000" > /usr/local/etc/php/conf.d/max_input_vars.ini' > /dev/null 2>&1
@@ -7928,7 +8355,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}Baota 패널의 공식 버전${gl_kjlan}2.   ${gl_bai}Aapanel International Edition"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}1 파넬 신세대 관리 패널${gl_kjlan}4.   ${gl_bai}nginxproxymanager 시각적 패널"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}Alist 멀티 스토어 파일 목록 프로그램${gl_kjlan}6.   ${gl_bai}우분투 원격 데스크탑 웹 에디션"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}OpenList 멀티 스토어 파일 목록 프로그램${gl_kjlan}6.   ${gl_bai}우분투 원격 데스크탑 웹 에디션"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}Nezha 프로브 VPS 모니터링 패널${gl_kjlan}8.   ${gl_bai}QB 오프라인 BT 자기 다운로드 패널"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}Poste.io 메일 서버 프로그램${gl_kjlan}10.  ${gl_bai}Rocketchat 멀티 플레이어 온라인 채팅 시스템"
 	  echo -e "${gl_kjlan}------------------------"
@@ -7964,7 +8391,14 @@ linux_panel() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}61.  ${gl_bai}온라인 번역 서버${gl_kjlan}62.  ${gl_bai}래그 플로 큰 모델 지식 기반"
 	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebui 자체 호스팅 AI 플랫폼${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${gl_bai}it-tools 도구 상자"
-	  echo -e "${gl_kjlan}65.  ${gl_bai}N8N 자동화 워크 플로 플랫폼${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}65.  ${gl_bai}N8N 자동화 워크 플로 플랫폼${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${gl_bai}YT-DLP 비디오 다운로드 도구"
+	  echo -e "${gl_kjlan}67.  ${gl_bai}DDNS-GO 동적 DNS 관리 도구${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${gl_bai}AllInsSL 인증서 관리 플랫폼"
+	  echo -e "${gl_kjlan}69.  ${gl_bai}sftpgo 파일 전송 도구${gl_kjlan}70.  ${gl_bai}Astrbot 채팅 로봇 프레임 워크"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}71.  ${gl_bai}Navidrome 개인 음악 서버${gl_kjlan}72.  ${gl_bai}Bitwarden 비밀번호 관리자${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}73.  ${gl_bai}Libretv 개인 영화 및 텔레비전${gl_kjlan}74.  ${gl_bai}Moontv 개인 영화"
+	  echo -e "${gl_kjlan}75.  ${gl_bai}멜로디 음악 엘프${gl_kjlan}76.  ${gl_bai}온라인 dos 오래된 게임"
+	  echo -e "${gl_kjlan}77.  ${gl_bai}천둥 오프라인 다운로드 도구${gl_kjlan}78.  ${gl_bai}Pandawiki 지능형 문서 관리 시스템"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}메인 메뉴로 돌아갑니다"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -8063,7 +8497,7 @@ linux_panel() {
 
 			}
 
-			local docker_describe="如果您已经安装了其他面板或者LDNMP建站环境，建议先卸载，再安装npm！"
+			local docker_describe="一个Nginx反向代理工具面板，不支持添加域名访问。"
 			local docker_url="官网介绍: https://nginxproxymanager.com/"
 			local docker_use="echo \"初始用户名: admin@example.com\""
 			local docker_passwd="echo \"初始密码: changeme\""
@@ -8075,28 +8509,28 @@ linux_panel() {
 
 		  5)
 
-			local docker_name="alist"
-			local docker_img="xhofe/alist-aria2:latest"
+			local docker_name="openlist"
+			local docker_img="openlistteam/openlist:latest-aria2"
 			local docker_port=5244
 
 			docker_rum() {
 
 				docker run -d \
 					--restart=always \
-					-v /home/docker/alist:/opt/alist/data \
+					-v /home/docker/openlist:/opt/openlist/data \
 					-p ${docker_port}:5244 \
 					-e PUID=0 \
 					-e PGID=0 \
 					-e UMASK=022 \
-					--name="alist" \
-					xhofe/alist-aria2:latest
+					--name="openlist" \
+					openlistteam/openlist:latest-aria2
 
 			}
 
 
 			local docker_describe="一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"
-			local docker_url="官网介绍: https://alist.nn.ci/zh/"
-			local docker_use="docker exec -it alist ./alist admin random"
+			local docker_url="官网介绍: https://github.com/OpenListTeam/OpenList"
+			local docker_use="docker exec -it openlist ./openlist admin random"
 			local docker_passwd=""
 			local app_size="1"
 			docker_app
@@ -8112,30 +8546,31 @@ linux_panel() {
 			docker_rum() {
 
 
-						docker run -d \
-						  --name=webtop-ubuntu \
-						  --security-opt seccomp=unconfined \
-						  -e PUID=1000 \
-						  -e PGID=1000 \
-						  -e TZ=Etc/UTC \
-						  -e SUBFOLDER=/ \
-						  -e TITLE=Webtop \
-						  -p ${docker_port}:3000 \
-						  -v /home/docker/webtop/data:/config \
-						  -v /var/run/docker.sock:/var/run/docker.sock \
-						  --shm-size="1gb" \
-						  --restart unless-stopped \
-						  lscr.io/linuxserver/webtop:ubuntu-kde
-
+				docker run -d \
+				  --name=webtop-ubuntu \
+				  --security-opt seccomp=unconfined \
+				  -e PUID=1000 \
+				  -e PGID=1000 \
+				  -e TZ=Etc/UTC \
+				  -e SUBFOLDER=/ \
+				  -e TITLE=Webtop \
+				  -e CUSTOM_USER=ubuntu-abc \
+				  -e PASSWORD=ubuntuABC123 \
+				  -p ${docker_port}:3000 \
+				  -v /home/docker/webtop/data:/config \
+				  -v /var/run/docker.sock:/var/run/docker.sock \
+				  --shm-size="1gb" \
+				  --restart unless-stopped \
+				  lscr.io/linuxserver/webtop:ubuntu-kde
 
 
 			}
 
 
-			local docker_describe="webtop基于Ubuntu的容器，包含官方支持的完整桌面环境，可通过任何现代 Web 浏览器访问"
+			local docker_describe="webtop基于Ubuntu的容器。若IP无法访问，请添加域名访问。"
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
-			local docker_use=""
-			local docker_passwd=""
+			local docker_use="echo \"用户名: ubuntu-abc\""
+			local docker_passwd="echo \"密码: ubuntuABC123\""
 			local app_size="2"
 			docker_app
 
@@ -8152,7 +8587,7 @@ linux_panel() {
 				clear
 				echo -e "Nezha 모니터링$check_docker $update_status"
 				echo "오픈 소스, 가볍고 사용하기 쉬운 서버 모니터링 및 작동 및 유지 보수 도구"
-				echo "비디오 소개 : https://www.bilibili.com/video/bv1wv421c71t?t=0.1"
+				echo "공식 웹 사이트 구성 문서 : https://nezha.wiki/guide/dashboard.html"
 				if docker inspect "$docker_name" &>/dev/null; then
 					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 					check_docker_app_ip
@@ -8160,9 +8595,6 @@ linux_panel() {
 				echo ""
 				echo "------------------------"
 				echo "1. 사용"
-				echo "------------------------"
-				echo "5. 도메인 이름 액세스 추가 6. 도메인 이름 액세스 삭제"
-				echo "7. IP+ 포트 액세스 허용 8. 블록 IP+ 포트 액세스"
 				echo "------------------------"
 				echo "0. 이전 메뉴로 돌아갑니다"
 				echo "------------------------"
@@ -8176,28 +8608,6 @@ linux_panel() {
 						curl -sL ${gh_proxy}raw.githubusercontent.com/nezhahq/scripts/refs/heads/main/install.sh -o nezha.sh && chmod +x nezha.sh && ./nezha.sh
 						local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 						check_docker_app_ip
-						;;
-					5)
-						echo "${docker_name}도메인 액세스 설정"
-						send_stats "${docker_name}도메인 액세스 설정"
-						add_yuming
-						ldnmp_Proxy ${yuming} ${ipv4_address} ${docker_port}
-						block_container_port "$docker_name" "$ipv4_address"
-						;;
-
-					6)
-						echo "도메인 이름 형식 example.com은 https : //와 함께 제공되지 않습니다."
-						web_del
-						;;
-
-					7)
-						send_stats "IP 액세스 허용${docker_name}"
-						clear_container_rules "$docker_name" "$ipv4_address"
-						;;
-
-					8)
-						send_stats "IP 액세스를 차단하십시오${docker_name}"
-						block_container_port "$docker_name" "$ipv4_address"
 						;;
 
 					*)
@@ -8217,21 +8627,20 @@ linux_panel() {
 
 			docker_rum() {
 
-
 				docker run -d \
 				  --name=qbittorrent \
 				  -e PUID=1000 \
 				  -e PGID=1000 \
 				  -e TZ=Etc/UTC \
-				  -e WEBUI_PORT=8081 \
-				  -p ${docker_port}:8081 \
-				  -p 6881:6881 \
-				  -p 6881:6881/udp \
+				  -e WEBUI_PORT=${docker_port} \
+				  -e TORRENTING_PORT=56881 \
+				  -p ${docker_port}:${docker_port} \
+				  -p 56881:56881 \
+				  -p 56881:56881/udp \
 				  -v /home/docker/qbittorrent/config:/config \
 				  -v /home/docker/qbittorrent/downloads:/downloads \
 				  --restart unless-stopped \
 				  lscr.io/linuxserver/qbittorrent:latest
-
 
 			}
 
@@ -8805,6 +9214,8 @@ linux_panel() {
 				  -e TZ=Etc/UTC \
 				  -e SUBFOLDER=/ \
 				  -e TITLE=Webtop \
+				  -e CUSTOM_USER=webtop-abc \
+				  -e PASSWORD=webtopABC123 \
 				  -e LC_ALL=zh_CN.UTF-8 \
 				  -e DOCKER_MODS=linuxserver/mods:universal-package-install \
 				  -e INSTALL_PACKAGES=font-noto-cjk \
@@ -8819,10 +9230,10 @@ linux_panel() {
 			}
 
 
-			local docker_describe="webtop基于 Alpine、Ubuntu、Fedora 和 Arch 的容器，包含官方支持的完整桌面环境，可通过任何现代 Web 浏览器访问"
+			local docker_describe="webtop基于Alpine的中文版容器。若IP无法访问，请添加域名访问。"
 			local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
-			local docker_use=""
-			local docker_passwd=""
+			local docker_use="echo \"用户名: webtop-abc\""
+			local docker_passwd="echo \"密码: webtopABC123\""
 			local app_size="2"
 			docker_app
 			  ;;
@@ -8905,18 +9316,18 @@ linux_panel() {
 
 		  29)
 			local docker_name="searxng"
-			local docker_img="alandoyle/searxng:latest"
-			local docker_port=8700
+			local docker_img="searxng/searxng"
+			local docker_port=8029
 
 			docker_rum() {
-				docker run --name=searxng \
-					-d --init \
-					--restart=unless-stopped \
-					-v /home/docker/searxng/config:/etc/searxng \
-					-v /home/docker/searxng/templates:/usr/local/searxng/searx/templates/simple \
-					-v /home/docker/searxng/theme:/usr/local/searxng/searx/static/themes/simple \
-					-p ${docker_port}:8080/tcp \
-					alandoyle/searxng:latest
+
+				docker run -d \
+				  --name searxng \
+				  --restart unless-stopped \
+				  -p ${docker_port}:8080 \
+				  -v "/home/docker/searxng:/etc/searxng" \
+				  searxng/searxng
+
 			}
 
 			local docker_describe="searxng是一个私有且隐私的搜索引擎站点"
@@ -9754,13 +10165,22 @@ linux_panel() {
 
 			docker_rum() {
 
+				add_yuming
 				mkdir -p /home/docker/n8n
 				chmod -R 777 /home/docker/n8n
+
 				docker run -d --name n8n \
 				  --restart always \
 				  -p ${docker_port}:5678 \
 				  -v /home/docker/n8n:/home/node/.n8n \
+				  -e N8N_HOST=${yuming} \
+				  -e N8N_PORT=5678 \
+				  -e N8N_PROTOCOL=https \
+				  -e N8N_WEBHOOK_URL=https://${yuming}/ \
 				  docker.n8n.io/n8nio/n8n
+
+				ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+				block_container_port "$docker_name" "$ipv4_address"
 
 			}
 
@@ -9771,6 +10191,344 @@ linux_panel() {
 			local app_size="1"
 			docker_app
 			  ;;
+
+		  66)
+			yt_menu_pro
+			  ;;
+
+
+		  67)
+			local docker_name="ddns-go"
+			local docker_img="jeessy/ddns-go"
+			local docker_port=8067
+
+			docker_rum() {
+				docker run -d \
+					--name ddns-go \
+					--restart=always \
+					-p ${docker_port}:9876 \
+					-v /home/docker/ddns-go:/root \
+					jeessy/ddns-go
+
+			}
+
+			local docker_describe="自动将你的公网 IP（IPv4/IPv6）实时更新到各大 DNS 服务商，实现动态域名解析。"
+			local docker_url="官网介绍: https://github.com/jeessy2/ddns-go"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
+
+		  68)
+			local docker_name="allinssl"
+			local docker_img="allinssl/allinssl:latest"
+			local docker_port=8068
+
+			docker_rum() {
+				docker run -itd --name allinssl -p ${docker_port}:8888 -v /home/docker/allinssl/data:/www/allinssl/data -e ALLINSSL_USER=allinssl -e ALLINSSL_PWD=allinssldocker -e ALLINSSL_URL=allinssl allinssl/allinssl:latest
+			}
+
+			local docker_describe="开源免费的 SSL 证书自动化管理平台"
+			local docker_url="官网介绍: https://allinssl.com"
+			local docker_use="echo \"安全入口: /allinssl\""
+			local docker_passwd="echo \"用户名: allinssl  密码: allinssldocker\""
+			local app_size="1"
+			docker_app
+			  ;;
+
+
+		  69)
+			local docker_name="sftpgo"
+			local docker_img="drakkan/sftpgo:latest"
+			local docker_port=8069
+
+			docker_rum() {
+
+				mkdir -p /home/docker/sftpgo/data
+				mkdir -p /home/docker/sftpgo/config
+				chown -R 1000:1000 /home/docker/sftpgo
+
+				docker run -d \
+				  --name sftpgo \
+				  --restart=always \
+				  -p ${docker_port}:8080 \
+				  -p 22022:2022 \
+				  --mount type=bind,source=/home/docker/sftpgo/data,target=/srv/sftpgo \
+				  --mount type=bind,source=/home/docker/sftpgo/config,target=/var/lib/sftpgo \
+				  drakkan/sftpgo:latest
+
+			}
+
+			local docker_describe="开源免费随时随地SFTP FTP WebDAV 文件传输工具"
+			local docker_url="官网介绍: https://sftpgo.com/"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
+
+
+		  70)
+			local docker_name="astrbot"
+			local docker_img="soulter/astrbot:latest"
+			local docker_port=8070
+
+			docker_rum() {
+
+				mkdir -p /home/docker/astrbot/data
+
+				sudo docker run -d \
+				  -p ${docker_port}:6185 \
+				  -p 6195:6195 \
+				  -p 6196:6196 \
+				  -p 6199:6199 \
+				  -p 11451:11451 \
+				  -v /home/docker/astrbot/data:/AstrBot/data \
+				  --restart unless-stopped \
+				  --name astrbot \
+				  soulter/astrbot:latest
+
+			}
+
+			local docker_describe="开源AI聊天机器人框架，支持微信，QQ，TG接入AI大模型"
+			local docker_url="官网介绍: https://astrbot.app/"
+			local docker_use="echo \"用户名: astrbot  密码: astrbot\""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
+
+
+		  71)
+			local docker_name="navidrome"
+			local docker_img="deluan/navidrome:latest"
+			local docker_port=8071
+
+			docker_rum() {
+
+				docker run -d \
+				  --name navidrome \
+				  --restart=unless-stopped \
+				  --user $(id -u):$(id -g) \
+				  -v /home/docker/navidrome/music:/music \
+				  -v /home/docker/navidrome/data:/data \
+				  -p ${docker_port}:4533 \
+				  -e ND_LOGLEVEL=info \
+				  deluan/navidrome:latest
+
+			}
+
+			local docker_describe="是一个轻量、高性能的音乐流媒体服务器"
+			local docker_url="官网介绍: https://www.navidrome.org/"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+			  ;;
+
+
+		  72)
+
+			local docker_name="bitwarden"
+			local docker_img="vaultwarden/server"
+			local docker_port=8072
+
+			docker_rum() {
+
+				docker run -d \
+					--name bitwarden \
+					--restart always \
+					-p ${docker_port}:80 \
+					-v /home/docker/bitwarden/data:/data \
+					vaultwarden/server
+
+			}
+
+			local docker_describe="一个你可以控制数据的密码管理器"
+			local docker_url="官网介绍: https://bitwarden.com/"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+
+			  ;;
+
+
+
+		  73)
+
+			local docker_name="libretv"
+			local docker_img="bestzwei/libretv:latest"
+			local docker_port=8073
+
+			docker_rum() {
+
+				read -e -p "libretv 로그인 비밀번호 설정 :" app_passwd
+
+				docker run -d \
+				  --name libretv \
+				  --restart unless-stopped \
+				  -p ${docker_port}:8080 \
+				  -e PASSWORD=${app_passwd} \
+				  bestzwei/libretv:latest
+
+			}
+
+			local docker_describe="免费在线视频搜索与观看平台"
+			local docker_url="官网介绍: https://github.com/LibreSpark/LibreTV"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+		  74)
+
+			local docker_name="moontv"
+			local docker_img="ghcr.io/senshinya/moontv:latest"
+			local docker_port=8074
+
+			docker_rum() {
+
+				read -e -p "MOONTV 로그인 비밀번호 설정 :" app_passwd
+
+					docker run -d \
+					  --name moontv \
+					  --restart unless-stopped \
+					  -p ${docker_port}:3000 \
+					  -e PASSWORD=${app_passwd} \
+					  ghcr.io/senshinya/moontv:latest
+
+			}
+
+			local docker_describe="免费在线视频搜索与观看平台"
+			local docker_url="官网介绍: https://github.com/senshinya/MoonTV"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+		  75)
+
+			local docker_name="melody"
+			local docker_img="foamzou/melody:latest"
+			local docker_port=8075
+
+			docker_rum() {
+
+				docker run -d \
+				  --name melody \
+				  --restart unless-stopped \
+				  -p ${docker_port}:5566 \
+				  -v /home/docker/melody/.profile:/app/backend/.profile \
+				  foamzou/melody:latest
+
+
+			}
+
+			local docker_describe="你的音乐精灵，旨在帮助你更好地管理音乐。"
+			local docker_url="官网介绍: https://github.com/foamzou/melody"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+
+			  ;;
+
+
+		  76)
+
+			local docker_name="dosgame"
+			local docker_img="oldiy/dosgame-web-docker:latest"
+			local docker_port=8076
+
+			docker_rum() {
+				docker run -d \
+  					--name dosgame \
+  					--restart unless-stopped \
+  					-p ${docker_port}:262 \
+  					oldiy/dosgame-web-docker:latest
+
+			}
+
+			local docker_describe="是一个中文DOS游戏合集网站"
+			local docker_url="官网介绍: https://github.com/rwv/chinese-dos-games"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="2"
+			docker_app
+
+
+			  ;;
+
+		  77)
+
+			local docker_name="xunlei"
+			local docker_img="cnk3x/xunlei"
+			local docker_port=8077
+
+			docker_rum() {
+
+				read -e -p "설정${docker_name}로그인 사용자 이름 :" app_use
+				read -e -p "설정${docker_name}로그인 비밀번호 :" app_passwd
+
+				docker run -d \
+				  --name xunlei \
+				  --restart unless-stopped \
+				  --privileged \
+				  -e XL_DASHBOARD_USERNAME=${app_use} \
+				  -e XL_DASHBOARD_PASSWORD=${app_passwd} \
+				  -v /home/docker/xunlei/data:/xunlei/data \
+				  -v /home/docker/xunlei/downloads:/xunlei/downloads \
+				  -p ${docker_port}:2345 \
+				  cnk3x/xunlei
+
+			}
+
+			local docker_describe="迅雷你的离线高速BT磁力下载工具"
+			local docker_url="官网介绍: https://github.com/cnk3x/xunlei"
+			local docker_use="echo \"手机登录迅雷，再输入邀请码，邀请码: 迅雷牛通\""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+
+		  78)
+
+			local app_name="PandaWiki"
+			local app_text="PandaWiki是一款AI大模型驱动的开源智能文档管理系统，强烈建议不要自定义端口部署。"
+			local app_url="官方介绍: https://github.com/chaitin/PandaWiki"
+			local docker_name="panda-wiki-nginx"
+			local docker_port="2443"
+			local app_size="2"
+
+			docker_app_install() {
+				bash -c "$(curl -fsSLk https://release.baizhi.cloud/panda-wiki/manager.sh)"
+			}
+
+			docker_app_update() {
+				docker_app_install
+			}
+
+
+			docker_app_uninstall() {
+				docker_app_install
+			}
+
+			docker_app_plus
+			  ;;
+
 
 
 
@@ -9791,8 +10549,8 @@ linux_work() {
 
 	while true; do
 	  clear
-	  send_stats "내 작업 공간"
-	  echo -e "내 작업 공간"
+	  send_stats "백엔드 작업 공간"
+	  echo -e "백엔드 작업 공간"
 	  echo -e "이 시스템은 백엔드에서 실행할 수있는 작업 공간을 제공하며 장기 작업을 수행하는 데 사용할 수 있습니다."
 	  echo -e "SSH를 분리하더라도 작업 공간의 작업이 중단되지 않으며 백그라운드의 작업이 거주됩니다."
 	  echo -e "${gl_huang}힌트:${gl_bai}작업 공간에 입력 한 후 Ctrl+B를 사용하고 D 만 눌러 작업 공간을 종료하십시오!"
@@ -9805,10 +10563,10 @@ linux_work() {
 	  echo -e "${gl_kjlan}2.   ${gl_bai}작업 공간 2 번"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}작업 공간 번호 3"
 	  echo -e "${gl_kjlan}4.   ${gl_bai}작업 공간 No. 4"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}5号工作区"
-	  echo -e "${gl_kjlan}6.   ${gl_bai}6号工作区"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}7号工作区"
-	  echo -e "${gl_kjlan}8.   ${gl_bai}8号工作区"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}작업 공간 번호 5"
+	  echo -e "${gl_kjlan}6.   ${gl_bai}작업 공간 No. 6"
+	  echo -e "${gl_kjlan}7.   ${gl_bai}작업 공간 번호 7"
+	  echo -e "${gl_kjlan}8.   ${gl_bai}작업 공간 번호 8"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}작업 공간 No. 9"
 	  echo -e "${gl_kjlan}10.  ${gl_bai}작업 공간 번호 10"
 	  echo -e "${gl_kjlan}------------------------"
@@ -10456,7 +11214,7 @@ EOF
 				echo "현재 시스템 시간 :$current_time"
 
 				echo ""
-				echo "시간대 스위칭"
+				echo "시간대 전환"
 				echo "------------------------"
 				echo "아시아"
 				echo "1. 중국의 상하이 시간 2. 중국의 홍콩 시간"
@@ -10769,7 +11527,8 @@ EOF
 				echo "------------------------------------------------"
 				echo "서버 트래픽 계산을 다시 시작하는 현재 트래픽 사용이 지워집니다!"
 				output_status
-				echo "$output"
+				echo -e "${gl_kjlan}총 수신 :${gl_bai}$rx"
+				echo -e "${gl_kjlan}총 보내기 :${gl_bai}$tx"
 
 				# limiting_shut_down.sh 파일이 있는지 확인하십시오
 				if [ -f ~/Limiting_Shut_down.sh ]; then
@@ -11339,7 +12098,7 @@ linux_file() {
 
 				# -r 옵션을 사용하여 디렉토리를 재귀 적으로 복사하십시오
 				cp -r "$src_path" "$dest_path" && echo "파일 또는 디렉토리가 복사되었습니다$dest_path" || echo "파일이나 디렉토리를 복사하지 못했습니다"
-				send_stats "파일 또는 디렉토리를 복사하십시오"
+				send_stats "파일 또는 디렉토리를 복사합니다"
 				;;
 
 
@@ -11601,8 +12360,10 @@ echo ""
 echo -e "주변 기술 사자"
 echo "------------------------"
 echo -e "${gl_kjlan}B 스테이션 :${gl_bai}https://b23.tv/2mqnQyh              ${gl_kjlan}오일 파이프 :${gl_bai}https://www.youtube.com/@kejilion${gl_bai}"
-echo -e "${gl_kjlan}공식 웹 사이트 :${gl_bai}https://kejilion.pro/               ${gl_kjlan}항해:${gl_bai}https://dh.kejilion.pro/${gl_bai}"
-echo -e "${gl_kjlan}블로그 :${gl_bai}https://blog.kejilion.pro/          ${gl_kjlan}소프트웨어 센터 :${gl_bai}https://app.kejilion.pro/${gl_bai}"
+echo -e "${gl_kjlan}공식 웹 사이트 :${gl_bai}https://kejilion.pro/              ${gl_kjlan}항해:${gl_bai}https://dh.kejilion.pro/${gl_bai}"
+echo -e "${gl_kjlan}블로그 :${gl_bai}https://blog.kejilion.pro/         ${gl_kjlan}소프트웨어 센터 :${gl_bai}https://app.kejilion.pro/${gl_bai}"
+echo "------------------------"
+echo -e "${gl_kjlan}스크립트 공식 웹 사이트 :${gl_bai}https://kejilion.sh            ${gl_kjlan}Github 주소 :${gl_bai}https://github.com/kejilion/sh${gl_bai}"
 echo "------------------------"
 echo ""
 }
@@ -11726,7 +12487,7 @@ echo -e "${gl_kjlan}8.   ${gl_bai}스크립트 수집 테스트"
 echo -e "${gl_kjlan}9.   ${gl_bai}Oracle Cloud 스크립트 컬렉션"
 echo -e "${gl_huang}10.  ${gl_bai}LDNMP 웹 사이트 구축"
 echo -e "${gl_kjlan}11.  ${gl_bai}응용 프로그램 시장"
-echo -e "${gl_kjlan}12.  ${gl_bai}내 작업 공간"
+echo -e "${gl_kjlan}12.  ${gl_bai}백엔드 작업 공간"
 echo -e "${gl_kjlan}13.  ${gl_bai}시스템 도구"
 echo -e "${gl_kjlan}14.  ${gl_bai}서버 클러스터 제어"
 echo -e "${gl_kjlan}15.  ${gl_bai}광고 열"
@@ -11775,7 +12536,7 @@ send_stats "K 명령 참조 사용 사례"
 echo "-------------------"
 echo "비디오 소개 : https://www.bilibili.com/video/bv1ib421e7it?t=0.1"
 echo "다음은 K 명령 참조 유스 케이스입니다."
-echo "启动脚本            k"
+echo "스크립트 시작 k"
 echo "소프트웨어 패키지 설치 K 설치 나노 wget | K 추가 나노 wget | K Nano wget을 설치하십시오"
 echo "패키지 k 제거 나노 wget | K del nano wget | k 제거 나노 wget | K를 제거하십시오"
 echo "업데이트 시스템 K 업데이트 | K 업데이트"
@@ -12005,14 +12766,20 @@ else
 		   shift
 			if [ "$1" = "cache" ]; then
 				web_cache
+			elif [ "$1" = "sec" ]; then
+				web_security
+			elif [ "$1" = "opt" ]; then
+				web_optimization
 			elif [ -z "$1" ]; then
 				ldnmp_web_status
 			else
 				k_info
 			fi
 			;;
+
 		*)
 			k_info
 			;;
 	esac
 fi
+

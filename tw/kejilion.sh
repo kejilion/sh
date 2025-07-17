@@ -878,6 +878,14 @@ close_port() {
 		fi
 	done
 
+	# 刪除已存在的規則（如果有）
+	iptables -D INPUT -i lo -j ACCEPT 2>/dev/null
+	iptables -D FORWARD -i lo -j ACCEPT 2>/dev/null
+
+	# 插入新規則到第一條
+	iptables -I INPUT 1 -i lo -j ACCEPT
+	iptables -I FORWARD 1 -i lo -j ACCEPT
+
 	save_iptables_rules
 	send_stats "已關閉端口"
 }
@@ -1481,6 +1489,7 @@ certs_status() {
 		echo -e "3. 網絡配置問題 ➠ 如使用Cloudflare Warp等虛擬網絡請暫時關閉"
 		echo -e "4. 防火牆限制 ➠ 檢查80/443端口是否開放，確保驗證可訪問"
 		echo -e "5. 申請次數超限 ➠ Let's Encrypt有每週限額(5次/域名/週)"
+		echo -e "6. 國內備案限制 ➠ 中國大陸環境請確認域名是否備案"
 		break_end
 		clear
 		echo "請再次嘗試部署$webname"
@@ -12487,7 +12496,7 @@ echo -e "${gl_kjlan}p.   ${gl_bai}幻獸帕魯開服腳本"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}00.  ${gl_bai}腳本更新"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}0.   ${gl_bai}退出脚本"
+echo -e "${gl_kjlan}0.   ${gl_bai}退出腳本"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -e -p "請輸入你的選擇:" choice
 
