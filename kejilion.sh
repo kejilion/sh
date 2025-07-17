@@ -878,6 +878,14 @@ close_port() {
 		fi
 	done
 
+	# 删除已存在的规则（如果有）
+	iptables -D INPUT -i lo -j ACCEPT 2>/dev/null
+	iptables -D FORWARD -i lo -j ACCEPT 2>/dev/null
+
+	# 插入新规则到第一条
+	iptables -I INPUT 1 -i lo -j ACCEPT
+	iptables -I FORWARD 1 -i lo -j ACCEPT
+
 	save_iptables_rules
 	send_stats "已关闭端口"
 }
