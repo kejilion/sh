@@ -1649,12 +1649,7 @@ cf_purge_cache() {
 web_cache() {
   send_stats "清理站点缓存"
   cf_purge_cache
-  docker exec php php -r 'opcache_reset();'
-  docker exec php74 php -r 'opcache_reset();'
-  docker exec nginx nginx -s stop
-  docker exec nginx rm -rf /var/cache/nginx/*
-  docker exec nginx nginx
-  docker restart redis
+  cd /home/web && docker compose restart
   restart_redis
 }
 
