@@ -10527,7 +10527,7 @@ linux_panel() {
 
 
 
-		  77)
+		  79)
 
 			local docker_name="beszel"
 			local docker_img="henrygd/beszel"
