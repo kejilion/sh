@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.1"
+sh_v="4.0.2"
 
 
 gl_hui='\e[37m'
@@ -1141,7 +1141,7 @@ iptables_panel() {
 
 			  5)
 				  # IP whitelist
-				  read -e -p "Please enter the IP or IP segment to release:" o_ip
+				  read -e -p "Please enter the IP or IP segment to be released:" o_ip
 				  allow_ip $o_ip
 				  ;;
 			  6)
@@ -1649,12 +1649,7 @@ cf_purge_cache() {
 web_cache() {
   send_stats "Clean up site cache"
   cf_purge_cache
-  docker exec php php -r 'opcache_reset();'
-  docker exec php74 php -r 'opcache_reset();'
-  docker exec nginx nginx -s stop
-  docker exec nginx rm -rf /var/cache/nginx/*
-  docker exec nginx nginx
-  docker restart redis
+  cd /home/web && docker compose restart
   restart_redis
 }
 
@@ -1699,7 +1694,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# Decide to turn on or off WAF according to the mode parameter
+	# Decide to turn on or off WAF according to mode parameters
 	if [ "$mode" == "on" ]; then
 		# Turn on WAF: Remove comments
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -2078,7 +2073,7 @@ web_security() {
 
 				  22)
 					  send_stats "High load on 5 seconds shield"
-					  echo -e "${gl_huang}The website automatically detects every 5 minutes. When high load is detected, the shield will be automatically turned on, and low load will be automatically turned off for 5 seconds.${gl_bai}"
+					  echo -e "${gl_huang}The website automatically detects every 5 minutes. When it reaches the detection of a high load, the shield will be automatically turned on, and the low load will be automatically turned off for 5 seconds.${gl_bai}"
 					  echo "--------------"
 					  echo "Get CF parameters:"
 					  echo -e "Go to the upper right corner of the cf background, select the API token on the left, and obtain it${gl_huang}Global API Key${gl_bai}"
@@ -3453,7 +3448,7 @@ ldnmp_web_status() {
 
 
 check_panel_app() {
-if $lujing ; then
+if $lujing > /dev/null 2>&1; then
 	check_panel="${gl_lv}已安装${gl_bai}"
 else
 	check_panel=""
@@ -8399,6 +8394,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}73.  ${gl_bai}LibreTV Private Film and Television${gl_kjlan}74.  ${gl_bai}MoonTV Private Movie"
 	  echo -e "${gl_kjlan}75.  ${gl_bai}Melody Music Elf${gl_kjlan}76.  ${gl_bai}Online DOS old games"
 	  echo -e "${gl_kjlan}77.  ${gl_bai}Thunder offline download tool${gl_kjlan}78.  ${gl_bai}PandaWiki Intelligent Document Management System"
+	  echo -e "${gl_kjlan}79.  ${gl_bai}Beszel server monitoring"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}Return to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -8455,13 +8451,13 @@ linux_panel() {
 			  ;;
 		  3)
 
-			local lujing="command -v 1pctl > /dev/null 2>&1"
+			local lujing="command -v 1pctl"
 			local panelname="1Panel"
 			local panelurl="https://1panel.cn/"
 
 			panel_app_install() {
 				install bash
-				curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
+				bash -c "$(curl -sSL https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh)"
 			}
 
 			panel_app_manage() {
@@ -10530,6 +10526,33 @@ linux_panel() {
 			  ;;
 
 
+
+		  79)
+
+			local docker_name="beszel"
+			local docker_img="henrygd/beszel"
+			local docker_port=8079
+
+			docker_rum() {
+
+				mkdir -p /home/docker/beszel && \
+				docker run -d \
+				  --name beszel \
+				  --restart=unless-stopped \
+				  -v /home/docker/beszel:/beszel_data \
+				  -p ${docker_port}:8090 \
+				  henrygd/beszel
+
+			}
+
+			local docker_describe="Beszel轻量易用的服务器监控"
+			local docker_url="官网介绍: https://beszel.dev/zh/"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
 
 
 		  0)

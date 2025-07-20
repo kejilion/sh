@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.1"
+sh_v="4.0.2"
 
 
 gl_hui='\e[37m'
@@ -749,7 +749,7 @@ docker_ipv6_on() {
 			UPDATED_CONFIG=$(echo "$ORIGINAL_CONFIG" | jq '. + {"fixed-cidr-v6": "2001:db8:1::/64"}')
 		fi
 
-		# 元の構成を新しい構成と比較します
+		# 元の構成と新しい構成を比較します
 		if [[ "$ORIGINAL_CONFIG" == "$UPDATED_CONFIG" ]]; then
 			echo -e "${gl_huang}現在、IPv6アクセスが有効になっています${gl_bai}"
 		else
@@ -1649,12 +1649,7 @@ cf_purge_cache() {
 web_cache() {
   send_stats "サイトキャッシュをクリーンアップします"
   cf_purge_cache
-  docker exec php php -r 'opcache_reset();'
-  docker exec php74 php -r 'opcache_reset();'
-  docker exec nginx nginx -s stop
-  docker exec nginx rm -rf /var/cache/nginx/*
-  docker exec nginx nginx
-  docker restart redis
+  cd /home/web && docker compose restart
   restart_redis
 }
 
@@ -1699,7 +1694,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# モードパラメーターに従ってWAFをオンまたはオフにすることにしました
+	# モードパラメーターに従ってWAFをオンまたはオフにすることを決定します
 	if [ "$mode" == "on" ]; then
 		# WAFをオンにしてください：コメントを削除します
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -2078,7 +2073,7 @@ web_security() {
 
 				  22)
 					  send_stats "5秒シールドでの高負荷"
-					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷が検出されると、シールドが自動的にオンになり、低負荷が5秒間自動的にオフになります。${gl_bai}"
+					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷の検出に達すると、シールドが自動的にオンになり、低負荷が5秒間自動的にオフになります。${gl_bai}"
 					  echo "--------------"
 					  echo "CFパラメーターを取得します："
 					  echo -e "CFバックグラウンドの右上隅に移動し、左側のAPIトークンを選択して、取得します${gl_huang}Global API Key${gl_bai}"
@@ -3453,7 +3448,7 @@ ldnmp_web_status() {
 
 
 check_panel_app() {
-if $lujing ; then
+if $lujing > /dev/null 2>&1; then
 	check_panel="${gl_lv}已安装${gl_bai}"
 else
 	check_panel=""
@@ -3609,7 +3604,7 @@ add_forwarding_service() {
 	read -e -p "イントラネットIPを入力してください[デフォルト127.0.0.1を入力]：" local_ip
 	local local_ip=${local_ip:-127.0.0.1}
 	read -e -p "イントラネットポートを入力してください：" local_port
-	read -e -p "外部ネットワークポートを入力してください：" remote_port
+	read -e -p "请输入外网端口: " remote_port
 
 	# ユーザー入力を構成ファイルに書き込みます
 	cat <<EOF >> /home/frp/frpc.toml
@@ -3863,7 +3858,7 @@ frps_panel() {
 			8)
 				send_stats "IPアクセスをブロックします"
 				echo "アンチジェネレーションドメイン名にアクセスした場合、この関数を使用して、より安全なIP+ポートアクセスをブロックできます。"
-				read -e -p "ブロックする必要があるポートを入力してください。" frps_port
+				read -e -p "请输入需要阻止的端口: " frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
 
@@ -4037,7 +4032,7 @@ yt_menu_pro() {
 					-a "$URL_FILE" \
 					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
 					--no-overwrites --no-post-overwrites
-				read -e -p "バッチのダウンロードが完了し、任意のキーを押して続行します..." ;;
+				read -e -p "批量下载完成，按任意键继续..." ;;
 			7)
 				send_stats "カスタムビデオのダウンロード"
 				read -e -p "完全なYT-DLPパラメーター（YT-DLPを除く）を入力してください。" custom
@@ -4819,7 +4814,7 @@ bbrv3() {
 		  echo "ビデオの紹介：https：//www.bilibili.com/video/bv14k421x7bs?t=0.1"
 		  echo "------------------------------------------------"
 		  echo "Debian/Ubuntuのみをサポートします"
-		  echo "データをバックアップしてください。Linuxカーネルをアップグレードできるようになります。"
+		  echo "请备份数据，将为你升级Linux内核开启BBR3"
 		  echo "VPSには512mのメモリがあります。メモリが不十分なため、接触の欠落を防ぐために、事前に1G仮想メモリを追加してください！"
 		  echo "------------------------------------------------"
 		  read -e -p "必ず続行しますか？ （y/n）：" choice
@@ -5209,7 +5204,7 @@ restore_defaults() {
 	sysctl -w kernel.sched_autogroup_enabled=1 2>/dev/null
 
 	echo -e "${gl_lv}他の最適化を復元します...${gl_bai}"
-	# 还原透明大页面
+	# 透明なページを復元します
 	echo always > /sys/kernel/mm/transparent_hugepage/enabled
 	# numaバランスを復元します
 	sysctl -w kernel.numa_balancing=1 2>/dev/null
@@ -5273,7 +5268,7 @@ Kernel_optimize() {
 	  echo "--------------------"
 	  echo "1.高性能最適化モード：システムパフォーマンスを最大化し、ファイル記述子、仮想メモリ、ネットワーク設定、キャッシュ管理、CPU設定を最適化します。"
 	  echo "2。バランスの取れた最適化モード：毎日の使用に適したパフォーマンスとリソース消費のバランス。"
-	  echo "3.ウェブサイトの最適化モード：Webサイトサーバーを最適化して、接続処理機能、応答速度、全体的なパフォーマンスを同時に改善します。"
+	  echo "3.ウェブサイトの最適化モード：Webサイトサーバーを最適化して、接続処理機能、応答速度、全体的なパフォーマンスを並行します。"
 	  echo "4。ライブブロードキャスト最適化モード：ライブブロードキャストストリーミングの特別なニーズを最適化して、遅延を減らし、伝送パフォーマンスを向上させます。"
 	  echo "5。ゲームサーバーの最適化モード：ゲームサーバーを最適化して、同時処理機能と応答速度を改善します。"
 	  echo "6.デフォルト設定を復元します：システム設定をデフォルトの構成に復元します。"
@@ -5393,7 +5388,7 @@ while true; do
 		  ;;
 	  2)
 		  update_locale "zh_CN.UTF-8" "zh_CN.UTF-8"
-		  send_stats "切换到简体中文"
+		  send_stats "簡素化された中国人に切り替えます"
 		  ;;
 	  3)
 		  update_locale "zh_TW.UTF-8" "zh_TW.UTF-8"
@@ -6452,7 +6447,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}9.   ${gl_bai}TMUXマルチチャネルバックグラウンドランニングツール${gl_kjlan}10.  ${gl_bai}Live StreamingツールをエンコードするFFMPEGビデオ"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}BTOPモダン監視ツール${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}範囲ファイル管理ツール"
-	  echo -e "${gl_kjlan}13.  ${gl_bai}NCDUディスク職業視聴ツール${gl_kjlan}14.  ${gl_bai}FZFグローバル検索ツール"
+	  echo -e "${gl_kjlan}13.  ${gl_bai}NCDUディスク職業視聴ツール${gl_kjlan}14.  ${gl_bai}fzf 全局搜索工具"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}VIMテキストエディター${gl_kjlan}16.  ${gl_bai}ナノテキストエディター${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}17.  ${gl_bai}gitバージョン制御システム"
 	  echo -e "${gl_kjlan}------------------------"
@@ -8362,7 +8357,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}Zendaoプロジェクト管理ソフトウェア${gl_kjlan}12.  ${gl_bai}Qinglongパネルの時限タスク管理プラットフォーム"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}CloudReveネットワークディスク${gl_huang}★${gl_bai}                     ${gl_kjlan}14.  ${gl_bai}シンプルな写真ベッド画像管理プログラム"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}Emby Multimedia Management System${gl_kjlan}16.  ${gl_bai}SpeedTest速度テストパネル"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}AdGuardhomeアドウェア${gl_kjlan}18.  ${gl_bai}唯一のオンラインオフィスオフィス"
+	  echo -e "${gl_kjlan}17.  ${gl_bai}AdGuardhomeアドウェア${gl_kjlan}18.  ${gl_bai}唯一のオフィスオンラインオフィスオフィス"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}サンダープールWAFファイアウォールパネル${gl_kjlan}20.  ${gl_bai}Portainerコンテナ管理パネル"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}vscode webバージョン${gl_kjlan}22.  ${gl_bai}UptimeKuma監視ツール"
@@ -8399,6 +8394,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}73.  ${gl_bai}libretvプライベート映画とテレビ${gl_kjlan}74.  ${gl_bai}MOONTVプライベート映画"
 	  echo -e "${gl_kjlan}75.  ${gl_bai}メロディーミュージックエルフ${gl_kjlan}76.  ${gl_bai}オンラインDOS古いゲーム"
 	  echo -e "${gl_kjlan}77.  ${gl_bai}サンダーオフラインダウンロードツール${gl_kjlan}78.  ${gl_bai}Pandawikiインテリジェントドキュメント管理システム"
+	  echo -e "${gl_kjlan}79.  ${gl_bai}Beszelサーバーの監視"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}メインメニューに戻ります"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -8455,13 +8451,13 @@ linux_panel() {
 			  ;;
 		  3)
 
-			local lujing="command -v 1pctl > /dev/null 2>&1"
+			local lujing="command -v 1pctl"
 			local panelname="1Panel"
 			local panelurl="https://1panel.cn/"
 
 			panel_app_install() {
 				install bash
-				curl -sSL https://resource.fit2cloud.com/1panel/package/quick_start.sh -o quick_start.sh && bash quick_start.sh
+				bash -c "$(curl -sSL https://resource.fit2cloud.com/1panel/package/v2/quick_start.sh)"
 			}
 
 			panel_app_manage() {
@@ -10531,6 +10527,33 @@ linux_panel() {
 
 
 
+		  79)
+
+			local docker_name="beszel"
+			local docker_img="henrygd/beszel"
+			local docker_port=8079
+
+			docker_rum() {
+
+				mkdir -p /home/docker/beszel && \
+				docker run -d \
+				  --name beszel \
+				  --restart=unless-stopped \
+				  -v /home/docker/beszel:/beszel_data \
+				  -p ${docker_port}:8090 \
+				  henrygd/beszel
+
+			}
+
+			local docker_describe="Beszel轻量易用的服务器监控"
+			local docker_url="官网介绍: https://beszel.dev/zh/"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
 
 		  0)
 			  kejilion
@@ -10738,7 +10761,7 @@ linux_Settings() {
 
 	while true; do
 	  clear
-	  # send_stats「システムツール」
+	  # send_stats "系统工具"
 	  echo -e "システムツール"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}スクリプトの起動ショートカットキーを設定します${gl_kjlan}2.   ${gl_bai}ログインパスワードを変更します"
@@ -11128,7 +11151,7 @@ EOF
 						  ;;
 					  4)
 					   read -e -p "ユーザー名を入力してください：" username
-					   # sudoersファイルからユーザーのsudo許可を削除します
+					   # sudoersファイルからユーザーのsudoアクセス許可を削除します
 					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
 						  ;;
