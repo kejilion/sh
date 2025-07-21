@@ -140,7 +140,29 @@ CheckFirstRun_false
 
 ip_address() {
 
-ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
+get_public_ip() {
+	curl -s --connect-timeout 3 http://ipv4.icanhazip.com 2>/dev/null || \
+	curl -s --connect-timeout 3 http://checkip.amazonaws.com 2>/dev/null || \
+	curl -s --connect-timeout 3 http://ipinfo.io/ip 2>/dev/null || \
+	wget -qO- --timeout=3 http://ipv4.icanhazip.com 2>/dev/null
+}
+
+get_local_ip() {
+	ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \K[^ ]+' || \
+	hostname -I 2>/dev/null | awk '{print $1}' || \
+	ifconfig 2>/dev/null | grep -E 'inet [0-9]' | grep -v '127.0.0.1' | awk '{print $2}' | head -n1
+}
+
+public_ip=$(get_public_ip | grep -E '^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$')
+
+if [[ -n "$public_ip" ]]; then
+	ipv4_address="$public_ip"
+else
+	local_ip=$(get_local_ip)
+	ipv4_address="${local_ip:-无法获取IP}"
+fi
+
+# ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
 ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
 
 }
@@ -2343,6 +2365,9 @@ check_docker_app_ip() {
 echo "------------------------"
 echo "访问地址:"
 ip_address
+
+
+
 if [ -n "$ipv4_address" ]; then
 	echo "http://$ipv4_address:${docker_port}"
 fi
