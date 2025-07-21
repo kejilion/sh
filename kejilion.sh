@@ -154,11 +154,12 @@ public_ip=$(get_public_ip)
 isp_info=$(curl -s --max-time 3 http://ipinfo.io/org)
 
 
-if [[ "$isp_info" =~ [Cc]hina ]]; then
+if [[ "$isp_info" == "China" || "$isp_info" == "CHINA" ]]; then
   ipv4_address=$(get_local_ip)
 else
   ipv4_address="$public_ip"
 fi
+
 
 # ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
 ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
