@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -7943,6 +7943,7 @@ linux_ldnmp() {
 		close_port "$port"
 		echo "已阻止IP+端口访问该服务"
 	  else
+	  	ip_address
 		block_container_port "$docker_name" "$ipv4_address"
 	  fi
 
@@ -12735,6 +12736,7 @@ else
 	  		  close_port "$port"
 			  echo "已阻止IP+端口访问该服务"
 	  		else
+			  ip_address
 	  		  block_container_port "$docker_name" "$ipv4_address"
 	  		fi
 			;;
