@@ -3320,7 +3320,6 @@ find_container_by_host_port() {
 			break
 		fi
 	done)
-
 }
 
 
@@ -7942,9 +7941,9 @@ linux_ldnmp() {
 	  find_container_by_host_port "$port"
 	  if [ -z "$docker_name" ]; then
 		close_port "$port"
-		echo "已允许IP+端口访问该服务"
+		echo "已阻止IP+端口访问该服务"
 	  else
-		clear_container_rules "$docker_name" "$ipv4_address"
+		block_container_port "$docker_name" "$ipv4_address"
 	  fi
 
 		;;
@@ -12734,9 +12733,9 @@ else
 	  		find_container_by_host_port "$port"
 	  		if [ -z "$docker_name" ]; then
 	  		  close_port "$port"
-			  echo "已允许IP+端口访问该服务"
+			  echo "已阻止IP+端口访问该服务"
 	  		else
-	  		  clear_container_rules "$docker_name" "$ipv4_address"
+	  		  block_container_port "$docker_name" "$ipv4_address"
 	  		fi
 			;;
 
