@@ -7939,9 +7939,14 @@ linux_ldnmp() {
 
 	  23)
 	  ldnmp_Proxy
-	  close_port $port
 	  find_container_by_host_port "$port"
-	  clear_container_rules "$docker_name" "$ipv4_address"
+	  if [ -z "$docker_name" ]; then
+		close_port "$port"
+		echo "已允许IP+端口访问该服务"
+	  else
+		clear_container_rules "$docker_name" "$ipv4_address"
+	  fi
+
 		;;
 
 	  24)
@@ -12726,9 +12731,13 @@ else
 		fd|rp|反代)
 			shift
 			ldnmp_Proxy "$@"
-			close_port $port
 	  		find_container_by_host_port "$port"
-	  		clear_container_rules "$docker_name" "$ipv4_address"
+	  		if [ -z "$docker_name" ]; then
+	  		  close_port "$port"
+			  echo "已允许IP+端口访问该服务"
+	  		else
+	  		  clear_container_rules "$docker_name" "$ipv4_address"
+	  		fi
 			;;
 
 		loadbalance|负载均衡)
