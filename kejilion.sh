@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.2"
+sh_v="4.0.3"
 
 
 gl_hui='\e[37m'
@@ -516,6 +516,8 @@ while true; do
 	echo "11. 进入指定容器           12. 查看容器日志"
 	echo "13. 查看容器网络           14. 查看容器占用"
 	echo "------------------------"
+	echo "15. 开启容器端口访问       16. 关闭容器端口访问"
+	echo "------------------------"
 	echo "0. 返回上一级选单"
 	echo "------------------------"
 	read -e -p "请输入你的选择: " sub_choice
@@ -606,6 +608,27 @@ while true; do
 			docker stats --no-stream
 			break_end
 			;;
+
+		15)
+			send_stats "允许容器端口访问"
+			read -e -p "请输入容器名: " docker_name
+			ip_address
+			clear_container_rules "$docker_name" "$ipv4_address"
+			local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
+			check_docker_app_ip
+			break_end
+			;;
+
+		16)
+			send_stats "阻止容器端口访问"
+			read -e -p "请输入容器名: " docker_name
+			ip_address
+			block_container_port "$docker_name" "$ipv4_address"
+			local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
+			check_docker_app_ip
+			break_end
+			;;
+
 		*)
 			break  # 跳出循环，退出菜单
 			;;
@@ -3287,6 +3310,22 @@ ldnmp_Proxy_backend() {
 	nginx_http_on
 	docker exec nginx nginx -s reload
 	nginx_web_on
+}
+
+
+
+find_container_by_host_port() {
+	port="$1"
+	docker_name=$(docker ps --format '{{.ID}} {{.Names}}' | while read id name; do
+		if docker port "$id" | grep -q ":$port"; then
+			echo "$name"
+			break
+		fi
+	done)
+
+	if [ -n "$docker_name" ]; then
+		echo "$docker_name"
+	fi
 }
 
 
@@ -7905,6 +7944,9 @@ linux_ldnmp() {
 
 	  23)
 	  ldnmp_Proxy
+	  close_port $port
+	  find_container_by_host_port "$port"
+	  clear_container_rules "$docker_name" "$ipv4_address"
 		;;
 
 	  24)
@@ -8271,7 +8313,7 @@ linux_ldnmp() {
 			  docker exec php mkdir -p /usr/local/bin/
 			  docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
 			  docker exec php chmod +x /usr/local/bin/install-php-extensions
-			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis imagick
+			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis imagick soap
 
 
 			  docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
@@ -12689,6 +12731,9 @@ else
 		fd|rp|反代)
 			shift
 			ldnmp_Proxy "$@"
+			close_port $port
+	  		find_container_by_host_port "$port"
+	  		clear_container_rules "$docker_name" "$ipv4_address"
 			;;
 
 		loadbalance|负载均衡)
