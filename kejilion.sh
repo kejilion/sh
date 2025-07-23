@@ -2470,7 +2470,6 @@ block_container_port() {
 	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
 
 	if [ -z "$container_ip" ]; then
-		echo "错误：无法获取容器 $container_name_or_id 的 IP 地址。请检查容器名称或ID是否正确。"
 		return 1
 	fi
 
@@ -2529,7 +2528,6 @@ clear_container_rules() {
 	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
 
 	if [ -z "$container_ip" ]; then
-		echo "错误：无法获取容器 $container_name_or_id 的 IP 地址。请检查容器名称或ID是否正确。"
 		return 1
 	fi
 
@@ -3323,9 +3321,6 @@ find_container_by_host_port() {
 		fi
 	done)
 
-	if [ -n "$docker_name" ]; then
-		echo "$docker_name"
-	fi
 }
 
 
