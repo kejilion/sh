@@ -11551,6 +11551,11 @@ EOF
 		  root_use
 		  send_stats "ssh防御"
 		  while true; do
+			if [ -x "$(command -v fail2ban-client)" ] ; then
+				clear
+				remove fail2ban
+				rm -rf /etc/fail2ban
+			else
 				clear
 				docker_name="fail2ban"
 				check_docker_app
@@ -11570,26 +11575,33 @@ EOF
 				read -e -p "请输入你的选择: " sub_choice
 				case $sub_choice in
 					1)
-						install fail2ban
+						install_docker
+						f2b_install_sshd
+
+						cd ~
+						f2b_status
+						break_end
 						;;
 					2)
 						echo "------------------------"
-						fail2ban-client status sshd
+						f2b_sshd
 						echo "------------------------"
 						break_end
 						;;
 					3)
-						tail -f /var/log/fail2ban.log
+						tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
 						break
 						;;
 					9)
-						remove fail2ban
+						docker rm -f fail2ban
+						rm -rf /path/to/fail2ban
 						echo "Fail2Ban防御程序已卸载"
 						;;
 					*)
 						break
 						;;
 				esac
+			fi
 		  done
 			  ;;
 
@@ -12867,4 +12879,3 @@ else
 			;;
 	esac
 fi
-
