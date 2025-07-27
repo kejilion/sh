@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.2"
+sh_v="4.0.3"
 
 
 gl_hui='\e[37m'
@@ -140,7 +140,28 @@ CheckFirstRun_false
 
 ip_address() {
 
-ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
+get_public_ip() {
+	curl -s https://ipinfo.io/ip && echo
+}
+
+get_local_ip() {
+	ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \K[^ ]+' || \
+	hostname -I 2>/dev/null | awk '{print $1}' || \
+	ifconfig 2>/dev/null | grep -E 'inet [0-9]' | grep -v '127.0.0.1' | awk '{print $2}' | head -n1
+}
+
+public_ip=$(get_public_ip)
+isp_info=$(curl -s --max-time 3 http://ipinfo.io/org)
+
+
+if echo "$isp_info" | grep -Eiq 'china|mobile|unicom|telecom'; then
+  ipv4_address=$(get_local_ip)
+else
+  ipv4_address="$public_ip"
+fi
+
+
+# ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
 ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
 
 }
@@ -495,6 +516,8 @@ while true; do
 	echo "11. 進入指定容器           12. 查看容器日誌"
 	echo "13. 查看容器網絡           14. 查看容器佔用"
 	echo "------------------------"
+	echo "15. 開啟容器端口訪問       16. 關閉容器端口訪問"
+	echo "------------------------"
 	echo "0. 返回上一級選單"
 	echo "------------------------"
 	read -e -p "請輸入你的選擇:" sub_choice
@@ -585,6 +608,27 @@ while true; do
 			docker stats --no-stream
 			break_end
 			;;
+
+		15)
+			send_stats "允許容器端口訪問"
+			read -e -p "請輸入容器名:" docker_name
+			ip_address
+			clear_container_rules "$docker_name" "$ipv4_address"
+			local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
+			check_docker_app_ip
+			break_end
+			;;
+
+		16)
+			send_stats "阻止容器端口訪問"
+			read -e -p "請輸入容器名:" docker_name
+			ip_address
+			block_container_port "$docker_name" "$ipv4_address"
+			local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
+			check_docker_app_ip
+			break_end
+			;;
+
 		*)
 			break  # 跳出循环，退出菜单
 			;;
@@ -2343,6 +2387,9 @@ check_docker_app_ip() {
 echo "------------------------"
 echo "訪問地址:"
 ip_address
+
+
+
 if [ -n "$ipv4_address" ]; then
 	echo "http://$ipv4_address:${docker_port}"
 fi
@@ -2423,7 +2470,6 @@ block_container_port() {
 	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
 
 	if [ -z "$container_ip" ]; then
-		echo "錯誤：無法獲取容器$container_name_or_id的 IP 地址。請檢查容器名稱或ID是否正確。"
 		return 1
 	fi
 
@@ -2482,7 +2528,6 @@ clear_container_rules() {
 	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
 
 	if [ -z "$container_ip" ]; then
-		echo "錯誤：無法獲取容器$container_name_or_id的 IP 地址。請檢查容器名稱或ID是否正確。"
 		return 1
 	fi
 
@@ -3263,6 +3308,18 @@ ldnmp_Proxy_backend() {
 	nginx_http_on
 	docker exec nginx nginx -s reload
 	nginx_web_on
+}
+
+
+
+find_container_by_host_port() {
+	port="$1"
+	docker_name=$(docker ps --format '{{.ID}} {{.Names}}' | while read id name; do
+		if docker port "$id" | grep -q ":$port"; then
+			echo "$name"
+			break
+		fi
+	done)
 }
 
 
@@ -7881,6 +7938,15 @@ linux_ldnmp() {
 
 	  23)
 	  ldnmp_Proxy
+	  find_container_by_host_port "$port"
+	  if [ -z "$docker_name" ]; then
+		close_port "$port"
+		echo "已阻止IP+端口訪問該服務"
+	  else
+	  	ip_address
+		block_container_port "$docker_name" "$ipv4_address"
+	  fi
+
 		;;
 
 	  24)
@@ -8247,7 +8313,7 @@ linux_ldnmp() {
 			  docker exec php mkdir -p /usr/local/bin/
 			  docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
 			  docker exec php chmod +x /usr/local/bin/install-php-extensions
-			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis imagick
+			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis imagick soap
 
 
 			  docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
@@ -12665,6 +12731,14 @@ else
 		fd|rp|反代)
 			shift
 			ldnmp_Proxy "$@"
+	  		find_container_by_host_port "$port"
+	  		if [ -z "$docker_name" ]; then
+	  		  close_port "$port"
+			  echo "已阻止IP+端口訪問該服務"
+	  		else
+			  ip_address
+	  		  block_container_port "$docker_name" "$ipv4_address"
+	  		fi
 			;;
 
 		loadbalance|负载均衡)

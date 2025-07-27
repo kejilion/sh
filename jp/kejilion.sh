@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.2"
+sh_v="4.0.3"
 
 
 gl_hui='\e[37m'
@@ -140,7 +140,28 @@ CheckFirstRun_false
 
 ip_address() {
 
-ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
+get_public_ip() {
+	curl -s https://ipinfo.io/ip && echo
+}
+
+get_local_ip() {
+	ip route get 8.8.8.8 2>/dev/null | grep -oP 'src \K[^ ]+' || \
+	hostname -I 2>/dev/null | awk '{print $1}' || \
+	ifconfig 2>/dev/null | grep -E 'inet [0-9]' | grep -v '127.0.0.1' | awk '{print $2}' | head -n1
+}
+
+public_ip=$(get_public_ip)
+isp_info=$(curl -s --max-time 3 http://ipinfo.io/org)
+
+
+if echo "$isp_info" | grep -Eiq 'china|mobile|unicom|telecom'; then
+  ipv4_address=$(get_local_ip)
+else
+  ipv4_address="$public_ip"
+fi
+
+
+# ipv4_address=$(curl -s https://ipinfo.io/ip && echo)
 ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
 
 }
@@ -495,6 +516,8 @@ while true; do
 	echo "11。指定されたコンテナを入力します12。コンテナログを表示します"
 	echo "13.コンテナネットワークを表示14。コンテナ占有を表示します"
 	echo "------------------------"
+	echo "15.コンテナポートアクセスをオンにする16.コンテナポートアクセスをオフにする"
+	echo "------------------------"
 	echo "0。前のメニューに戻ります"
 	echo "------------------------"
 	read -e -p "選択を入力してください：" sub_choice
@@ -585,6 +608,27 @@ while true; do
 			docker stats --no-stream
 			break_end
 			;;
+
+		15)
+			send_stats "コンテナポートアクセスを許可します"
+			read -e -p "コンテナ名を入力してください：" docker_name
+			ip_address
+			clear_container_rules "$docker_name" "$ipv4_address"
+			local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
+			check_docker_app_ip
+			break_end
+			;;
+
+		16)
+			send_stats "コンテナポートアクセスをブロックします"
+			read -e -p "コンテナ名を入力してください：" docker_name
+			ip_address
+			block_container_port "$docker_name" "$ipv4_address"
+			local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
+			check_docker_app_ip
+			break_end
+			;;
+
 		*)
 			break  # 跳出循环，退出菜单
 			;;
@@ -1694,7 +1738,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# モードパラメーターに従ってWAFをオンまたはオフにすることを決定します
+	# モードパラメーターに従ってWAFをオンまたはオフにすることにしました
 	if [ "$mode" == "on" ]; then
 		# WAFをオンにしてください：コメントを削除します
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -2073,7 +2117,7 @@ web_security() {
 
 				  22)
 					  send_stats "5秒シールドでの高負荷"
-					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷の検出に達すると、シールドが自動的にオンになり、低負荷が5秒間自動的にオフになります。${gl_bai}"
+					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷が検出されると、シールドが自動的にオンになり、低負荷が5秒間自動的にオフになります。${gl_bai}"
 					  echo "--------------"
 					  echo "CFパラメーターを取得します："
 					  echo -e "CFバックグラウンドの右上隅に移動し、左側のAPIトークンを選択して、取得します${gl_huang}Global API Key${gl_bai}"
@@ -2343,6 +2387,9 @@ check_docker_app_ip() {
 echo "------------------------"
 echo "アクセスアドレス："
 ip_address
+
+
+
 if [ -n "$ipv4_address" ]; then
 	echo "http://$ipv4_address:${docker_port}"
 fi
@@ -2423,7 +2470,6 @@ block_container_port() {
 	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
 
 	if [ -z "$container_ip" ]; then
-		echo "エラー：コンテナを取得できません$container_name_or_idIPアドレス。コンテナ名またはIDが正しいかどうかを確認してください。"
 		return 1
 	fi
 
@@ -2482,7 +2528,6 @@ clear_container_rules() {
 	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
 
 	if [ -z "$container_ip" ]; then
-		echo "エラー：コンテナを取得できません$container_name_or_idIPアドレス。コンテナ名またはIDが正しいかどうかを確認してください。"
 		return 1
 	fi
 
@@ -3267,6 +3312,18 @@ ldnmp_Proxy_backend() {
 
 
 
+find_container_by_host_port() {
+	port="$1"
+	docker_name=$(docker ps --format '{{.ID}} {{.Names}}' | while read id name; do
+		if docker port "$id" | grep -q ":$port"; then
+			echo "$name"
+			break
+		fi
+	done)
+}
+
+
+
 
 ldnmp_web_status() {
 	root_use
@@ -3343,7 +3400,7 @@ ldnmp_web_status() {
 				install_ssltls
 				certs_status
 
-				# MySQLの交換
+				# mysql替换
 				add_db
 
 				local odd_dbname=$(echo "$oddyuming" | sed -e 's/[^A-Za-z0-9]/_/g')
@@ -3604,7 +3661,7 @@ add_forwarding_service() {
 	read -e -p "イントラネットIPを入力してください[デフォルト127.0.0.1を入力]：" local_ip
 	local local_ip=${local_ip:-127.0.0.1}
 	read -e -p "イントラネットポートを入力してください：" local_port
-	read -e -p "请输入外网端口: " remote_port
+	read -e -p "外部ネットワークポートを入力してください：" remote_port
 
 	# ユーザー入力を構成ファイルに書き込みます
 	cat <<EOF >> /home/frp/frpc.toml
@@ -3858,7 +3915,7 @@ frps_panel() {
 			8)
 				send_stats "IPアクセスをブロックします"
 				echo "アンチジェネレーションドメイン名にアクセスした場合、この関数を使用して、より安全なIP+ポートアクセスをブロックできます。"
-				read -e -p "请输入需要阻止的端口: " frps_port
+				read -e -p "ブロックする必要があるポートを入力してください。" frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
 
@@ -4032,7 +4089,7 @@ yt_menu_pro() {
 					-a "$URL_FILE" \
 					-o "$VIDEO_DIR/%(title)s/%(title)s.%(ext)s" \
 					--no-overwrites --no-post-overwrites
-				read -e -p "批量下载完成，按任意键继续..." ;;
+				read -e -p "バッチのダウンロードが完了し、任意のキーを押して続行します..." ;;
 			7)
 				send_stats "カスタムビデオのダウンロード"
 				read -e -p "完全なYT-DLPパラメーター（YT-DLPを除く）を入力してください。" custom
@@ -4814,7 +4871,7 @@ bbrv3() {
 		  echo "ビデオの紹介：https：//www.bilibili.com/video/bv14k421x7bs?t=0.1"
 		  echo "------------------------------------------------"
 		  echo "Debian/Ubuntuのみをサポートします"
-		  echo "请备份数据，将为你升级Linux内核开启BBR3"
+		  echo "データをバックアップしてください。Linuxカーネルをアップグレードできるようになります。"
 		  echo "VPSには512mのメモリがあります。メモリが不十分なため、接触の欠落を防ぐために、事前に1G仮想メモリを追加してください！"
 		  echo "------------------------------------------------"
 		  read -e -p "必ず続行しますか？ （y/n）：" choice
@@ -5564,7 +5621,7 @@ create_backup() {
 	echo "- 単一のディレクトリをバックアップします： /var /www"
 	echo "- バックアップ複数のディレクトリ： /etc /home /var /log"
 	echo "-directEnterはデフォルトのディレクトリ（ /etc /usr /home）を使用します"
-	read -r -p "ディレクトリを入力してバックアップしてください（複数のディレクトリがスペースで区切られています。直接入力する場合は、デフォルトのディレクトリを使用してください）：" input
+	read -r -p "请输入要备份的目录（多个目录用空格分隔，直接回车则使用默认目录）：" input
 
 	# ユーザーがディレクトリを入力しない場合は、デフォルトのディレクトリを使用します
 	if [ -z "$input" ]; then
@@ -5615,7 +5672,7 @@ create_backup() {
 # バックアップを復元します
 restore_backup() {
 	send_stats "バックアップを復元します"
-	# 復元するバックアップを選択します
+	# 选择要恢复的备份
 	read -e -p "復元するには、バックアップファイル名を入力してください。" BACKUP_NAME
 
 	# バックアップファイルが存在するかどうかを確認します
@@ -6447,7 +6504,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}9.   ${gl_bai}TMUXマルチチャネルバックグラウンドランニングツール${gl_kjlan}10.  ${gl_bai}Live StreamingツールをエンコードするFFMPEGビデオ"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}BTOPモダン監視ツール${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}範囲ファイル管理ツール"
-	  echo -e "${gl_kjlan}13.  ${gl_bai}NCDUディスク職業視聴ツール${gl_kjlan}14.  ${gl_bai}fzf 全局搜索工具"
+	  echo -e "${gl_kjlan}13.  ${gl_bai}NCDUディスク職業視聴ツール${gl_kjlan}14.  ${gl_bai}FZFグローバル検索ツール"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}VIMテキストエディター${gl_kjlan}16.  ${gl_bai}ナノテキストエディター${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}17.  ${gl_bai}gitバージョン制御システム"
 	  echo -e "${gl_kjlan}------------------------"
@@ -7237,7 +7294,7 @@ linux_Oracle() {
 				  read -e -p "メモリの使用率を入力してください[デフォルト：$DEFAULT_MEM_UTIL]: " mem_util
 				  local mem_util=${mem_util:-$DEFAULT_MEM_UTIL}
 
-				  read -e -p "SpeedTest間隔時間（秒）を入力してください[デフォルト：$DEFAULT_SPEEDTEST_INTERVAL]: " speedtest_interval
+				  read -e -p "请输入Speedtest间隔时间（秒） [默认: $DEFAULT_SPEEDTEST_INTERVAL]: " speedtest_interval
 				  local speedtest_interval=${speedtest_interval:-$DEFAULT_SPEEDTEST_INTERVAL}
 
 				  # Dockerコンテナを実行します
@@ -7881,6 +7938,15 @@ linux_ldnmp() {
 
 	  23)
 	  ldnmp_Proxy
+	  find_container_by_host_port "$port"
+	  if [ -z "$docker_name" ]; then
+		close_port "$port"
+		echo "IP+ポートは、サービスへのアクセスをブロックされています"
+	  else
+	  	ip_address
+		block_container_port "$docker_name" "$ipv4_address"
+	  fi
+
 		;;
 
 	  24)
@@ -8247,7 +8313,7 @@ linux_ldnmp() {
 			  docker exec php mkdir -p /usr/local/bin/
 			  docker cp /usr/local/bin/install-php-extensions php:/usr/local/bin/
 			  docker exec php chmod +x /usr/local/bin/install-php-extensions
-			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis imagick
+			  docker exec php install-php-extensions mysqli pdo_mysql gd intl zip exif bcmath opcache redis imagick soap
 
 
 			  docker exec php sh -c 'echo "upload_max_filesize=50M " > /usr/local/etc/php/conf.d/uploads.ini' > /dev/null 2>&1
@@ -10761,7 +10827,7 @@ linux_Settings() {
 
 	while true; do
 	  clear
-	  # send_stats "系统工具"
+	  # send_stats「システムツール」
 	  echo -e "システムツール"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}スクリプトの起動ショートカットキーを設定します${gl_kjlan}2.   ${gl_bai}ログインパスワードを変更します"
@@ -10783,8 +10849,8 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}29.  ${gl_bai}ウイルススキャンツール${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}ファイルマネージャー"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}システム言語を切り替えます${gl_kjlan}32.  ${gl_bai}コマンドラインの美化ツール${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}システムリサイクルビンをセットアップします${gl_kjlan}34.  ${gl_bai}システムのバックアップと回復"
-	  echo -e "${gl_kjlan}35.  ${gl_bai}SSHリモート接続ツール${gl_kjlan}36.  ${gl_bai}ハードディスクパーティション管理ツール"
+	  echo -e "${gl_kjlan}33.  ${gl_bai}システムリサイクルビンをセットアップします${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
+	  echo -e "${gl_kjlan}35.  ${gl_bai}SSHリモート接続ツール${gl_kjlan}36.  ${gl_bai}硬盘分区管理工具"
 	  echo -e "${gl_kjlan}37.  ${gl_bai}コマンドラインの履歴${gl_kjlan}38.  ${gl_bai}RSYNCリモート同期ツール"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}メッセージボード${gl_kjlan}66.  ${gl_bai}ワンストップシステムの最適化${gl_huang}★${gl_bai}"
@@ -11151,7 +11217,7 @@ EOF
 						  ;;
 					  4)
 					   read -e -p "ユーザー名を入力してください：" username
-					   # sudoersファイルからユーザーのsudoアクセス許可を削除します
+					   # sudoersファイルからユーザーのsudo許可を削除します
 					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
 						  ;;
@@ -11415,7 +11481,7 @@ EOF
 								  (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  3)
-								  read -e -p "毎日タスクを実行する時間を選択しますか？ （時間、0-23）：" hour
+								  read -e -p "毎日タスクを実行する時期を選択しますか？ （時間、0-23）：" hour
 								  (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  4)
@@ -11923,7 +11989,7 @@ EOF
 					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
 					  echo "コレクションは閉じた"
-					  send_stats "プライバシーとセキュリティは収集のために閉鎖されています"
+					  send_stats "隐私与安全已关闭采集"
 					  ;;
 				  *)
 					  break
@@ -11942,7 +12008,7 @@ EOF
 			  send_stats "テックライオンスクリプトをアンインストールします"
 			  echo "テックライオンスクリプトをアンインストールします"
 			  echo "------------------------------------------------"
-			  echo "Kejilionスクリプトを完全にアンインストールし、他の機能には影響しません"
+			  echo "将彻底卸载kejilion脚本，不影响你其他功能"
 			  read -e -p "必ず続行しますか？ （y/n）：" choice
 
 			  case "$choice" in
@@ -12665,6 +12731,14 @@ else
 		fd|rp|反代)
 			shift
 			ldnmp_Proxy "$@"
+	  		find_container_by_host_port "$port"
+	  		if [ -z "$docker_name" ]; then
+	  		  close_port "$port"
+			  echo "IP+ポートは、サービスへのアクセスをブロックされています"
+	  		else
+			  ip_address
+	  		  block_container_port "$docker_name" "$ipv4_address"
+	  		fi
 			;;
 
 		loadbalance|负载均衡)
