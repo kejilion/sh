@@ -1998,6 +1998,8 @@ web_security() {
 			rm -rf /etc/fail2ban
 		else
 			  clear
+			  rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
+			  docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
 			  docker_name="fail2ban"
 			  check_docker_app
 			  echo -e "サーバーWebサイト防衛プログラム${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
@@ -3400,7 +3402,7 @@ ldnmp_web_status() {
 				install_ssltls
 				certs_status
 
-				# mysql替换
+				# MySQLの交換
 				add_db
 
 				local odd_dbname=$(echo "$oddyuming" | sed -e 's/[^A-Za-z0-9]/_/g')
@@ -5181,7 +5183,7 @@ optimize_high_performance() {
 	echo -e "${gl_lv}その他の最適化...${gl_bai}"
 	# レイテンシを減らすために、大きな透明なページを無効にします
 	echo never > /sys/kernel/mm/transparent_hugepage/enabled
-	# numaバランスを無効にします
+	# 禁用 NUMA balancing
 	sysctl -w kernel.numa_balancing=0 2>/dev/null
 
 
@@ -5621,7 +5623,7 @@ create_backup() {
 	echo "- 単一のディレクトリをバックアップします： /var /www"
 	echo "- バックアップ複数のディレクトリ： /etc /home /var /log"
 	echo "-directEnterはデフォルトのディレクトリ（ /etc /usr /home）を使用します"
-	read -r -p "请输入要备份的目录（多个目录用空格分隔，直接回车则使用默认目录）：" input
+	read -r -p "ディレクトリを入力してバックアップしてください（複数のディレクトリがスペースで区切られています。直接入力する場合は、デフォルトのディレクトリを使用してください）：" input
 
 	# ユーザーがディレクトリを入力しない場合は、デフォルトのディレクトリを使用します
 	if [ -z "$input" ]; then
@@ -5672,7 +5674,7 @@ create_backup() {
 # バックアップを復元します
 restore_backup() {
 	send_stats "バックアップを復元します"
-	# 选择要恢复的备份
+	# 復元するバックアップを選択します
 	read -e -p "復元するには、バックアップファイル名を入力してください。" BACKUP_NAME
 
 	# バックアップファイルが存在するかどうかを確認します
@@ -7294,7 +7296,7 @@ linux_Oracle() {
 				  read -e -p "メモリの使用率を入力してください[デフォルト：$DEFAULT_MEM_UTIL]: " mem_util
 				  local mem_util=${mem_util:-$DEFAULT_MEM_UTIL}
 
-				  read -e -p "请输入Speedtest间隔时间（秒） [默认: $DEFAULT_SPEEDTEST_INTERVAL]: " speedtest_interval
+				  read -e -p "SpeedTest間隔時間（秒）を入力してください[デフォルト：$DEFAULT_SPEEDTEST_INTERVAL]: " speedtest_interval
 				  local speedtest_interval=${speedtest_interval:-$DEFAULT_SPEEDTEST_INTERVAL}
 
 				  # Dockerコンテナを実行します
@@ -7683,13 +7685,13 @@ linux_ldnmp() {
 
 	  docker exec php composer create-project flarum/flarum /var/www/html/$yuming
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum-lang/chinese-simplified"
+	  docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum/extension-manager:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/polls"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/sitemap"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/oauth"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/best-answer:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require v17development/flarum-seo"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require clarkwinkelmann/flarum-ext-emojionearea"
-
 
 	  restart_ldnmp
 
@@ -10849,8 +10851,8 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}29.  ${gl_bai}ウイルススキャンツール${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}ファイルマネージャー"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}システム言語を切り替えます${gl_kjlan}32.  ${gl_bai}コマンドラインの美化ツール${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}システムリサイクルビンをセットアップします${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
-	  echo -e "${gl_kjlan}35.  ${gl_bai}SSHリモート接続ツール${gl_kjlan}36.  ${gl_bai}硬盘分区管理工具"
+	  echo -e "${gl_kjlan}33.  ${gl_bai}システムリサイクルビンをセットアップします${gl_kjlan}34.  ${gl_bai}システムのバックアップと回復"
+	  echo -e "${gl_kjlan}35.  ${gl_bai}SSHリモート接続ツール${gl_kjlan}36.  ${gl_bai}ハードディスクパーティション管理ツール"
 	  echo -e "${gl_kjlan}37.  ${gl_bai}コマンドラインの履歴${gl_kjlan}38.  ${gl_bai}RSYNCリモート同期ツール"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}メッセージボード${gl_kjlan}66.  ${gl_bai}ワンストップシステムの最適化${gl_huang}★${gl_bai}"
@@ -11217,7 +11219,7 @@ EOF
 						  ;;
 					  4)
 					   read -e -p "ユーザー名を入力してください：" username
-					   # sudoersファイルからユーザーのsudo許可を削除します
+					   # sudoersファイルからユーザーのsudoアクセス許可を削除します
 					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
 						  ;;
@@ -11481,7 +11483,7 @@ EOF
 								  (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  3)
-								  read -e -p "毎日タスクを実行する時期を選択しますか？ （時間、0-23）：" hour
+								  read -e -p "毎日タスクを実行する時間を選択しますか？ （時間、0-23）：" hour
 								  (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  4)
@@ -11557,6 +11559,8 @@ EOF
 				rm -rf /etc/fail2ban
 			else
 				clear
+				rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
+				docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
 				docker_name="fail2ban"
 				check_docker_app
 				echo -e "SSH防衛プログラム$check_docker"
@@ -11989,7 +11993,7 @@ EOF
 					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
 					  echo "コレクションは閉じた"
-					  send_stats "隐私与安全已关闭采集"
+					  send_stats "プライバシーとセキュリティは収集のために閉鎖されています"
 					  ;;
 				  *)
 					  break
@@ -12008,7 +12012,7 @@ EOF
 			  send_stats "テックライオンスクリプトをアンインストールします"
 			  echo "テックライオンスクリプトをアンインストールします"
 			  echo "------------------------------------------------"
-			  echo "将彻底卸载kejilion脚本，不影响你其他功能"
+			  echo "Kejilionスクリプトを完全にアンインストールし、他の機能には影響しません"
 			  read -e -p "必ず続行しますか？ （y/n）：" choice
 
 			  case "$choice" in
@@ -12879,4 +12883,3 @@ else
 			;;
 	esac
 fi
-

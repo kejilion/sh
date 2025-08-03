@@ -57,7 +57,7 @@ CheckFirstRun_true() {
 
 
 
-# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 컴퓨터 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
+# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 기계 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
 # 이 기능을 설계 해야하는 이유는 무엇입니까? 목적은 사용자가 사용하는 기능을 더 잘 이해하고 기능을 더욱 최적화하여 사용자 요구를 충족시키는 더 많은 기능을 시작하는 것입니다.
 # 전체 텍스트의 경우 Send_Stats 기능 호출 위치, 투명 및 오픈 소스를 검색 할 수 있으며 우려 사항이 있으면 사용을 거부 할 수 있습니다.
 
@@ -111,7 +111,7 @@ CheckFirstRun_false() {
 	fi
 }
 
-# 提示用户同意条款
+# 사용자에게 이용 약관에 동의하라는 메시지
 UserLicenseAgreement() {
 	clear
 	echo -e "${gl_kjlan}Tech Lion Script Toolbox에 오신 것을 환영합니다${gl_bai}"
@@ -1662,7 +1662,7 @@ cf_purge_cache() {
 	# Zone_ids를 배열로 변환합니다
 	ZONE_IDS=($ZONE_IDS)
   else
-	# 캐시 청소 여부를 사용자에게 프롬프트하십시오
+	# 캐시 청소 여부를 사용자에게 프롬프트합니다
 	read -e -p "CloudFlare의 캐시를 청소해야합니까? (Y/N) :" answer
 	if [[ "$answer" == "y" ]]; then
 	  echo "CF 정보가 저장됩니다$CONFIG_FILE, 나중에 CF 정보를 수정할 수 있습니다"
@@ -1998,6 +1998,8 @@ web_security() {
 			rm -rf /etc/fail2ban
 		else
 			  clear
+			  rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
+			  docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
 			  docker_name="fail2ban"
 			  check_docker_app
 			  echo -e "서버 웹 사이트 방어 프로그램${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
@@ -5412,7 +5414,7 @@ update_locale() {
 				break_end
 				;;
 			*)
-				echo "不支持的系统: $ID"
+				echo "지원되지 않는 시스템 :$ID"
 				break_end
 				;;
 		esac
@@ -6451,7 +6453,7 @@ linux_ps() {
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}호스트 이름 :${gl_bai}$hostname"
 	echo -e "${gl_kjlan}시스템 버전 :${gl_bai}$os_info"
-	echo -e "${gl_kjlan}Linux版本:    ${gl_bai}$kernel_version"
+	echo -e "${gl_kjlan}리눅스 버전 :${gl_bai}$kernel_version"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}CPU 아키텍처 :${gl_bai}$cpu_arch"
 	echo -e "${gl_kjlan}CPU 모델 :${gl_bai}$cpu_info"
@@ -7461,7 +7463,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}1.   ${gl_bai}LDNMP 환경을 설치하십시오${gl_huang}★${gl_bai}                   ${gl_huang}2.   ${gl_bai}WordPress를 설치하십시오${gl_huang}★${gl_bai}"
 	echo -e "${gl_huang}3.   ${gl_bai}Discuz 포럼을 설치하십시오${gl_huang}4.   ${gl_bai}Kadao 클라우드 데스크탑을 설치하십시오"
 	echo -e "${gl_huang}5.   ${gl_bai}Apple CMS 영화 및 텔레비전 방송국을 설치하십시오${gl_huang}6.   ${gl_bai}유니콘 디지털 카드 네트워크를 설치하십시오"
-	echo -e "${gl_huang}7.   ${gl_bai}Flarum Forum 웹 사이트를 설치하십시오${gl_huang}8.   ${gl_bai}安装typecho轻量博客网站"
+	echo -e "${gl_huang}7.   ${gl_bai}Flarum Forum 웹 사이트를 설치하십시오${gl_huang}8.   ${gl_bai}Typecho Lightweight 블로그 웹 사이트를 설치하십시오"
 	echo -e "${gl_huang}9.   ${gl_bai}LinkStack 공유 링크 플랫폼을 설치하십시오${gl_huang}20.  ${gl_bai}동적 사이트를 사용자 정의합니다"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}21.  ${gl_bai}nginx 만 설치하십시오${gl_huang}★${gl_bai}                     ${gl_huang}22.  ${gl_bai}사이트 리디렉션"
@@ -7683,13 +7685,13 @@ linux_ldnmp() {
 
 	  docker exec php composer create-project flarum/flarum /var/www/html/$yuming
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum-lang/chinese-simplified"
+	  docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum/extension-manager:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/polls"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/sitemap"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/oauth"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/best-answer:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require v17development/flarum-seo"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require clarkwinkelmann/flarum-ext-emojionearea"
-
 
 	  restart_ldnmp
 
@@ -11481,7 +11483,7 @@ EOF
 								  (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  3)
-								  read -e -p "매일 작업을 수행 할시기를 선택 하시겠습니까? (시간, 0-23) :" hour
+								  read -e -p "매일 작업을 수행 할 시간을 선택하십시오. (시간, 0-23) :" hour
 								  (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  4)
@@ -11557,6 +11559,8 @@ EOF
 				rm -rf /etc/fail2ban
 			else
 				clear
+				rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
+				docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
 				docker_name="fail2ban"
 				check_docker_app
 				echo -e "SSH 방어 프로그램$check_docker"
@@ -12187,7 +12191,7 @@ linux_file() {
 
 				# -r 옵션을 사용하여 디렉토리를 재귀 적으로 복사하십시오
 				cp -r "$src_path" "$dest_path" && echo "파일 또는 디렉토리가 복사되었습니다$dest_path" || echo "파일이나 디렉토리를 복사하지 못했습니다"
-				send_stats "파일 또는 디렉토리를 복사합니다"
+				send_stats "파일 또는 디렉토리를 복사하십시오"
 				;;
 
 
@@ -12361,7 +12365,7 @@ while true; do
 			  clear
 			  send_stats "클러스터를 복원하십시오"
 			  echo "servers.py를 업로드하고 키를 눌러 업로드를 시작하십시오!"
-			  echo -e "请上传您的 ${gl_huang}servers.py${gl_bai}파일로${gl_huang}/root/cluster/${gl_bai}복원을 완료하십시오!"
+			  echo -e "업로드하십시오${gl_huang}servers.py${gl_bai}파일로${gl_huang}/root/cluster/${gl_bai}복원을 완료하십시오!"
 			  break_end
 			  ;;
 
@@ -12797,7 +12801,7 @@ else
 
 		status|状态)
 			shift
-			send_stats "软件状态查看"
+			send_stats "소프트웨어 상태보기"
 			status "$@"
 			;;
 		start|启动)
@@ -12879,4 +12883,3 @@ else
 			;;
 	esac
 fi
-

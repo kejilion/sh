@@ -1998,6 +1998,8 @@ web_security() {
 			rm -rf /etc/fail2ban
 		else
 			  clear
+			  rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
+			  docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
 			  docker_name="fail2ban"
 			  check_docker_app
 			  echo -e "Server website defense program${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
@@ -4942,7 +4944,7 @@ elrepo_install() {
 	fi
 	# Print detected operating system information
 	echo "Operating system detected:$os_name $os_version"
-	# Install the corresponding ELRepo warehouse configuration according to the system version
+	# 根据系统版本安装对应的 ELRepo 仓库配置
 	if [[ "$os_version" == 8 ]]; then
 		echo "Install ELRepo repository configuration (version 8)..."
 		yum -y install https://www.elrepo.org/elrepo-release-8.el8.elrepo.noarch.rpm
@@ -6505,8 +6507,8 @@ linux_tools() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}btop modern monitoring tools${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}range file management tool"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}ncdu disk occupation viewing tool${gl_kjlan}14.  ${gl_bai}fzf global search tool"
-	  echo -e "${gl_kjlan}15.  ${gl_bai}vim text editor${gl_kjlan}16.  ${gl_bai}nano 文本编辑器 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}git 版本控制系统"
+	  echo -e "${gl_kjlan}15.  ${gl_bai}vim text editor${gl_kjlan}16.  ${gl_bai}nano text editor${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}17.  ${gl_bai}git version control system"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}The Matrix Screen Guarantee${gl_kjlan}22.  ${gl_bai}Train screen security"
 	  echo -e "${gl_kjlan}26.  ${gl_bai}Tetris game${gl_kjlan}27.  ${gl_bai}Snake-eating game"
@@ -7683,13 +7685,13 @@ linux_ldnmp() {
 
 	  docker exec php composer create-project flarum/flarum /var/www/html/$yuming
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum-lang/chinese-simplified"
+	  docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum/extension-manager:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/polls"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/sitemap"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/oauth"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/best-answer:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require v17development/flarum-seo"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require clarkwinkelmann/flarum-ext-emojionearea"
-
 
 	  restart_ldnmp
 
@@ -11481,7 +11483,7 @@ EOF
 								  (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  3)
-								  read -e -p "Choose when to perform tasks every day? (Hours, 0-23):" hour
+								  read -e -p "Choose what time to perform tasks every day? (Hours, 0-23):" hour
 								  (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  4)
@@ -11536,7 +11538,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -e -p "Please enter the keywords of parsing content that need to be deleted:" delhost
+						  read -e -p "Please enter the keywords for parsing content that need to be deleted:" delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "Local host parsing and deletion"
 						  ;;
@@ -11557,6 +11559,8 @@ EOF
 				rm -rf /etc/fail2ban
 			else
 				clear
+				rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
+				docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
 				docker_name="fail2ban"
 				check_docker_app
 				echo -e "SSH Defense Program$check_docker"
@@ -12660,7 +12664,7 @@ echo "Install load balancing k loadbalance |k load balancing"
 echo "Firewall panel k fhq |k firewall"
 echo "Open port k dkdk 8080 |k Open port 8080"
 echo "Close port k gbdk 7800 |k Close port 7800"
-echo "Release IP k fxip 127.0.0.0/8 |k Release IP 127.0.0.0/8"
+echo "放行IP              k fxip 127.0.0.0/8 |k 放行IP 127.0.0.0/8"
 echo "Block IP k zzip 177.5.25.36 |k Block IP 177.5.25.36"
 
 
@@ -12879,4 +12883,3 @@ else
 			;;
 	esac
 fi
-

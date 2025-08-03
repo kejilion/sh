@@ -1998,6 +1998,8 @@ web_security() {
 			rm -rf /etc/fail2ban
 		else
 			  clear
+			  rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
+			  docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
 			  docker_name="fail2ban"
 			  check_docker_app
 			  echo -e "服務器網站防禦程序${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
@@ -7683,13 +7685,13 @@ linux_ldnmp() {
 
 	  docker exec php composer create-project flarum/flarum /var/www/html/$yuming
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum-lang/chinese-simplified"
+	  docker exec php sh -c "cd /var/www/html/$yuming && composer require flarum/extension-manager:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/polls"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/sitemap"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/oauth"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require fof/best-answer:*"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require v17development/flarum-seo"
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require clarkwinkelmann/flarum-ext-emojionearea"
-
 
 	  restart_ldnmp
 
@@ -11557,6 +11559,8 @@ EOF
 				rm -rf /etc/fail2ban
 			else
 				clear
+				rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
+				docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
 				docker_name="fail2ban"
 				check_docker_app
 				echo -e "SSH防禦程序$check_docker"
@@ -12879,4 +12883,3 @@ else
 			;;
 	esac
 fi
-
