@@ -4082,18 +4082,24 @@ yt_menu_pro() {
 				install ffmpeg
 				sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 				sudo chmod a+rx /usr/local/bin/yt-dlp
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "安装完成。按任意键继续..."
 				read ;;
 			2)
 				send_stats "正在更新 yt-dlp..."
 				echo "正在更新 yt-dlp..."
 				sudo yt-dlp -U
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "更新完成。按任意键继续..."
 				read ;;
 			3)
 				send_stats "正在卸载 yt-dlp..."
 				echo "正在卸载 yt-dlp..."
 				sudo rm -f /usr/local/bin/yt-dlp
+				local app_no=$sub_choice
+				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 				echo "卸载完成。按任意键继续..."
 				read ;;
 			5)
@@ -8833,6 +8839,9 @@ linux_panel() {
 							--restart=always \
 							-d analogic/poste.io
 
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
 						clear
 						echo "poste.io已经安装完成"
 						echo "------------------------"
@@ -8854,6 +8863,10 @@ linux_panel() {
 							-h "$yuming" \
 							--restart=always \
 							-d analogic/poste.i
+
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
 						clear
 						echo "poste.io已经安装完成"
 						echo "------------------------"
@@ -8866,6 +8879,8 @@ linux_panel() {
 						docker rmi -f analogic/poste.io
 						rm /home/docker/mail.txt
 						rm -rf /home/docker/mail
+						local app_no=$sub_choice
+						sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 						echo "应用已卸载"
 						;;
 
@@ -9181,6 +9196,8 @@ linux_panel() {
 						install_docker
 						check_disk_space 5
 						bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 						clear
 						echo "雷池WAF面板已经安装完成"
 						check_docker_app_ip
@@ -9192,6 +9209,8 @@ linux_panel() {
 						bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
 						docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
 						echo ""
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 						clear
 						echo "雷池WAF面板已经更新完成"
 						check_docker_app_ip
@@ -9202,6 +9221,8 @@ linux_panel() {
 					4)
 						cd /data/safeline
 						docker compose down --rmi all
+						local app_no=$sub_choice
+						sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 						echo "如果你是默认安装目录那现在项目已经卸载。如果你是自定义安装目录你需要到安装目录下自行执行:"
 						echo "docker compose down && docker compose down --rmi all"
 						;;
