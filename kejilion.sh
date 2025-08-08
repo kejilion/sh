@@ -2371,18 +2371,25 @@ web_optimization() {
 
 
 
-
-
-
 check_docker_app() {
-
-if docker inspect "$docker_name" &>/dev/null; then
-	check_docker="${gl_lv}已安装${gl_bai}"
-else
-	check_docker="${gl_hui}未安装${gl_bai}"
-fi
-
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+		check_docker="${gl_lv}已安装${gl_bai}"
+	else
+		check_docker="${gl_hui}未安装${gl_bai}"
+	fi
 }
+
+
+
+# check_docker_app() {
+
+# if docker inspect "$docker_name" &>/dev/null; then
+# 	check_docker="${gl_lv}已安装${gl_bai}"
+# else
+# 	check_docker="${gl_hui}未安装${gl_bai}"
+# fi
+
+# }
 
 
 check_docker_app_ip() {
@@ -8515,6 +8522,8 @@ linux_panel() {
 	  echo -e "${gl_kjlan}77.  ${color77}迅雷离线下载工具                    ${gl_kjlan}78.  ${color78}PandaWiki智能文档管理系统"
 	  echo -e "${gl_kjlan}79.  ${color79}Beszel服务器监控                    ${gl_kjlan}80.  ${color80}linkwarden书签管理"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet视频会议"
+	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
@@ -10690,7 +10699,7 @@ linux_panel() {
 
 
 		  80)
-			  local app_name="linkwarden 书签管理"
+			  local app_name="linkwarden书签管理"
 			  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
 			  local app_url="官方网站: https://linkwarden.app/"
 			  local docker_name="linkwarden-linkwarden-1"
@@ -10698,7 +10707,7 @@ linux_panel() {
 			  local app_size="3"
 
 			  docker_app_install() {
-				  install git curl openssl
+				  install git openssl
 				  mkdir -p /home/docker/linkwarden && cd /home/docker/linkwarden
 
 				  # 下载官方 docker-compose 和 env 文件
@@ -10724,7 +10733,7 @@ linux_panel() {
 				  docker compose up -d
 
 				  clear
-				  echo "Linkwarden 已经安装完成"
+				  echo "已经安装完成"
 			  	  check_docker_app_ip
 
 			  }
@@ -10757,6 +10766,56 @@ linux_panel() {
 			  docker_app_plus
 
 			  ;;
+
+
+
+		  81)
+			  local app_name="JitsiMeet视频会议"
+			  local app_text="一个开源的安全视频会议解决方案，支持多人在线会议、屏幕共享与加密通信。"
+			  local app_url="官方网站: https://jitsi.org/"
+			  local docker_name="jitsi"
+			  local docker_port="8081"
+			  local app_size="3"
+
+			  docker_app_install() {
+
+				  add_yuming
+				  mkdir -p /home/docker/jitsi && cd /home/docker/jitsi
+				  wget $(wget -q -O - https://api.github.com/repos/jitsi/docker-jitsi-meet/releases/latest | grep zip | cut -d\" -f4)
+				  unzip "$(ls -t | head -n 1)"
+				  cd "$(ls -dt */ | head -n 1)"
+				  cp env.example .env
+				  ./gen-passwords.sh
+				  mkdir -p ~/.jitsi-meet-cfg/{web,transcripts,prosody/config,prosody/prosody-plugins-custom,jicofo,jvb,jigasi,jibri}
+				  sed -i "s|^HTTP_PORT=.*|HTTP_PORT=${docker_port}|" .env
+				  sed -i "s|^#PUBLIC_URL=https://meet.example.com:\${HTTPS_PORT}|PUBLIC_URL=https://$yuming:443|" .env
+				  docker compose up -d
+
+				  ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+				  block_container_port "$docker_name" "$ipv4_address"
+
+			  }
+
+			  docker_app_update() {
+				  cd /home/docker/jitsi
+				  cd "$(ls -dt */ | head -n 1)"
+				  docker compose down --rmi all
+				  docker compose up -d
+
+			  }
+
+			  docker_app_uninstall() {
+				  cd /home/docker/jitsi
+				  cd "$(ls -dt */ | head -n 1)"
+				  docker compose down --rmi all
+				  rm -rf /home/docker/jitsi
+				  echo "应用已卸载"
+			  }
+
+			  docker_app_plus
+
+			  ;;
+
 
 
 
