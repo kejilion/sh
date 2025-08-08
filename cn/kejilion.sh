@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.4"
+sh_v="4.0.5"
 
 
 gl_hui='\e[37m'
@@ -8513,7 +8513,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}73.  ${color73}LibreTV私有影视                     ${gl_kjlan}74.  ${color74}MoonTV私有影视"
 	  echo -e "${gl_kjlan}75.  ${color75}Melody音乐精灵                      ${gl_kjlan}76.  ${color76}在线DOS老游戏"
 	  echo -e "${gl_kjlan}77.  ${color77}迅雷离线下载工具                    ${gl_kjlan}78.  ${color78}PandaWiki智能文档管理系统"
-	  echo -e "${gl_kjlan}79.  ${color79}Beszel服务器监控"
+	  echo -e "${gl_kjlan}79.  ${color79}Beszel服务器监控                    ${gl_kjlan}80.  ${color80}linkwarden书签管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -10687,6 +10687,77 @@ linux_panel() {
 			docker_app
 
 			  ;;
+
+
+		  80)
+			  local app_name="linkwarden 书签管理"
+			  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
+			  local app_url="官方网站: https://linkwarden.app/"
+			  local docker_name="linkwarden-linkwarden-1"
+			  local docker_port="8080"
+			  local app_size="3"
+
+			  docker_app_install() {
+				  install git curl openssl
+				  mkdir -p /home/docker/linkwarden && cd /home/docker/linkwarden
+
+				  # 下载官方 docker-compose 和 env 文件
+				  curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
+				  curl -L ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample -o ".env"
+
+				  # 生成随机密钥与密码
+				  local ADMIN_EMAIL="admin@example.com"
+				  local ADMIN_PASSWORD=$(openssl rand -hex 8)
+
+				  sed -i "s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=http://localhost:${docker_port}/api/v1/auth|g" .env
+				  sed -i "s|^NEXTAUTH_SECRET=.*|NEXTAUTH_SECRET=$(openssl rand -hex 32)|g" .env
+				  sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 16)|g" .env
+				  sed -i "s|^MEILI_MASTER_KEY=.*|MEILI_MASTER_KEY=$(openssl rand -hex 32)|g" .env
+
+				  # 追加管理员账号信息
+				  echo "ADMIN_EMAIL=${ADMIN_EMAIL}" >> .env
+				  echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}" >> .env
+
+				  sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
+
+				  # 启动容器
+				  docker compose up -d
+
+				  clear
+				  echo "Linkwarden 已经安装完成"
+			  	  check_docker_app_ip
+
+			  }
+
+			  docker_app_update() {
+				  cd /home/docker/linkwarden && docker compose down --rmi all
+				  curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
+				  curl -L ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample -o ".env.new"
+
+				  # 保留原本的变量
+				  source .env
+				  mv .env.new .env
+				  echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env
+				  echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env
+				  echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
+				  echo "MEILI_MASTER_KEY=$MEILI_MASTER_KEY" >> .env
+				  echo "ADMIN_EMAIL=$ADMIN_EMAIL" >> .env
+				  echo "ADMIN_PASSWORD=$ADMIN_PASSWORD" >> .env
+				  sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
+
+				  docker compose up -d
+			  }
+
+			  docker_app_uninstall() {
+				  cd /home/docker/linkwarden && docker compose down --rmi all
+				  rm -rf /home/docker/linkwarden
+				  echo "应用已卸载"
+			  }
+
+			  docker_app_plus
+
+			  ;;
+
 
 
 		  0)
