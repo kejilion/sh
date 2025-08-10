@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.5"
+sh_v="4.0.6"
 
 
 gl_hui='\e[37m'
@@ -4573,8 +4573,8 @@ dd_xitong() {
 			echo -e "${gl_hong}注意: ${gl_bai}重装有风险失联，不放心者慎用。重装预计花费15分钟，请提前备份数据。"
 			echo -e "${gl_hui}感谢MollyLau大佬和bin456789大佬的脚本支持！${gl_bai} "
 			echo "------------------------"
-			echo "1. Debian 12                  2. Debian 11"
-			echo "3. Debian 10                  4. Debian 9"
+			echo "1. Debian 13                  2. Debian 12"
+			echo "3. Debian 11                  4. Debian 10"
 			echo "------------------------"
 			echo "11. Ubuntu 24.04              12. Ubuntu 22.04"
 			echo "13. Ubuntu 20.04              14. Ubuntu 18.04"
@@ -4598,31 +4598,34 @@ dd_xitong() {
 			echo "------------------------"
 			read -e -p "请选择要重装的系统: " sys_choice
 			case "$sys_choice" in
+
+
 			  1)
+				send_stats "重装debian 13"
+				dd_xitong_3
+				bash reinstall.sh debian 13
+				reboot
+				exit
+				;;
+
+			  2)
 				send_stats "重装debian 12"
 				dd_xitong_1
 				bash InstallNET.sh -debian 12
 				reboot
 				exit
 				;;
-			  2)
+			  3)
 				send_stats "重装debian 11"
 				dd_xitong_1
 				bash InstallNET.sh -debian 11
 				reboot
 				exit
 				;;
-			  3)
+			  4)
 				send_stats "重装debian 10"
 				dd_xitong_1
 				bash InstallNET.sh -debian 10
-				reboot
-				exit
-				;;
-			  4)
-				send_stats "重装debian 9"
-				dd_xitong_1
-				bash InstallNET.sh -debian 9
 				reboot
 				exit
 				;;
