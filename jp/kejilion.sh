@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.3"
+sh_v="4.0.5"
 
 
 gl_hui='\e[37m'
@@ -1556,7 +1556,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "最初にドメイン名をローカルIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "最初にドメイン名をネイティブIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IPまたは解決されたドメイン名を入力してください：" yuming
 }
 
@@ -1738,7 +1738,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# モードパラメーターに従ってWAFをオンまたはオフにすることにしました
+	# モードパラメーターに従ってWAFをオンまたはオフにすることを決定します
 	if [ "$mode" == "on" ]; then
 		# WAFをオンにしてください：コメントを削除します
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -2371,18 +2371,25 @@ web_optimization() {
 
 
 
-
-
-
 check_docker_app() {
-
-if docker inspect "$docker_name" &>/dev/null; then
-	check_docker="${gl_lv}已安装${gl_bai}"
-else
-	check_docker="${gl_hui}未安装${gl_bai}"
-fi
-
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+		check_docker="${gl_lv}已安装${gl_bai}"
+	else
+		check_docker="${gl_hui}未安装${gl_bai}"
+	fi
 }
+
+
+
+# check_docker_app() {
+
+# if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+# check_docker = "$ {gl_lv} $ {gl_bai}インストール"
+# else
+# check_docker = "$ {gl_hui} $ {gl_bai}はインストールされていません"
+# fi
+
+# }
 
 
 check_docker_app_ip() {
@@ -2720,7 +2727,7 @@ while true; do
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
-	if docker inspect "$docker_name" &>/dev/null; then
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			docker_port=${docker_port:-0000}
@@ -2751,6 +2758,8 @@ while true; do
 			docker_rum
 			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+			local app_no=$sub_choice
+			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 
 			clear
 			echo "$docker_nameインストール"
@@ -2764,6 +2773,9 @@ while true; do
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
 			docker_rum
+			local app_no=$sub_choice
+			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
 			clear
 			echo "$docker_nameインストール"
 			check_docker_app_ip
@@ -2777,6 +2789,8 @@ while true; do
 			docker rmi -f "$docker_img"
 			rm -rf "/home/docker/$docker_name"
 			rm -f /home/docker/${docker_name}_port.conf
+			local app_no=$sub_choice
+			sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 			echo "アプリはアンインストールされています"
 			send_stats "アンインストール$docker_name"
 			;;
@@ -2817,7 +2831,6 @@ done
 
 
 
-
 docker_app_plus() {
 	send_stats "$app_name"
 	while true; do
@@ -2827,7 +2840,7 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
-		if docker inspect "$docker_name" &>/dev/null; then
+		if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
@@ -2857,13 +2870,20 @@ docker_app_plus() {
 				docker_app_install
 				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				;;
 			2)
 				docker_app_update
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				;;
 			3)
 				docker_app_uninstall
 				rm -f /home/docker/${docker_name}_port.conf
+				local app_no=$sub_choice
+				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
 				;;
 			5)
 				echo "${docker_name}ドメインアクセス設定"
@@ -3538,15 +3558,21 @@ while true; do
 			install wget
 			iptables_open
 			panel_app_install
+			local app_no=$sub_choice
+			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 			send_stats "${panelname}インストール"
 			;;
 		2)
 			panel_app_manage
+			local app_no=$sub_choice
+			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 			send_stats "${panelname}コントロール"
 
 			;;
 		3)
 			panel_app_uninstall
+			local app_no=$sub_choice
+			sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 			send_stats "${panelname}アンインストール"
 			;;
 		*)
@@ -3875,6 +3901,8 @@ frps_panel() {
 				install jq grep ss
 				install_docker
 				generate_frps_config
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "FRPサーバーがインストールされています"
 				;;
 			2)
@@ -3883,6 +3911,8 @@ frps_panel() {
 				docker rm -f frps && docker rmi kjlion/frp:alpine >/dev/null 2>&1
 				[ -f /home/frp/frps.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
 				donlond_frp frps
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "FRPサーバーが更新されました"
 				;;
 			3)
@@ -3892,7 +3922,8 @@ frps_panel() {
 				rm -rf /home/frp
 
 				close_port 8055 8056
-
+				local app_no=$sub_choice
+				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 				echo "アプリはアンインストールされています"
 				;;
 			5)
@@ -3916,7 +3947,7 @@ frps_panel() {
 
 			8)
 				send_stats "IPアクセスをブロックします"
-				echo "アンチジェネレーションドメイン名にアクセスした場合、この関数を使用して、より安全なIP+ポートアクセスをブロックできます。"
+				echo "アンチジェネレーションドメイン名にアクセスした場合は、この関数を使用して、より安全なIP+ポートアクセスをブロックします。"
 				read -e -p "ブロックする必要があるポートを入力してください。" frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
@@ -3966,6 +3997,8 @@ frpc_panel() {
 				install jq grep ss
 				install_docker
 				configure_frpc
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "FRPクライアントがインストールされています"
 				;;
 			2)
@@ -3974,6 +4007,8 @@ frpc_panel() {
 				docker rm -f frpc && docker rmi kjlion/frp:alpine >/dev/null 2>&1
 				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
 				donlond_frp frpc
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "FRPクライアントが更新されました"
 				;;
 
@@ -3983,6 +4018,8 @@ frpc_panel() {
 				docker rm -f frpc && docker rmi kjlion/frp:alpine
 				rm -rf /home/frp
 				close_port 8055
+				local app_no=$sub_choice
+				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 				echo "アプリはアンインストールされています"
 				;;
 
@@ -4052,18 +4089,24 @@ yt_menu_pro() {
 				install ffmpeg
 				sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 				sudo chmod a+rx /usr/local/bin/yt-dlp
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "インストールが完了しました。任意のキーを押して続行します..."
 				read ;;
 			2)
 				send_stats "yt-dlpを更新..."
 				echo "yt-dlpを更新..."
 				sudo yt-dlp -U
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "更新が完了しました。任意のキーを押して続行します..."
 				read ;;
 			3)
 				send_stats "yt-dlpのアンインストール..."
 				echo "yt-dlpのアンインストール..."
 				sudo rm -f /usr/local/bin/yt-dlp
+				local app_no=$sub_choice
+				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 				echo "アンインストールが完了しました。任意のキーを押して続行します..."
 				read ;;
 			5)
@@ -5183,7 +5226,7 @@ optimize_high_performance() {
 	echo -e "${gl_lv}その他の最適化...${gl_bai}"
 	# レイテンシを減らすために、大きな透明なページを無効にします
 	echo never > /sys/kernel/mm/transparent_hugepage/enabled
-	# 禁用 NUMA balancing
+	# numaバランスを無効にします
 	sysctl -w kernel.numa_balancing=0 2>/dev/null
 
 
@@ -8411,58 +8454,75 @@ linux_ldnmp() {
 
 linux_panel() {
 
+
+
+
+
 	while true; do
 	  clear
-	  # send_stats「アプリマーケット」
 	  echo -e "アプリケーション市場"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}Baotaパネルの公式バージョン${gl_kjlan}2.   ${gl_bai}Aapanel International Edition"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}1パネルの新世代管理パネル${gl_kjlan}4.   ${gl_bai}nginxproxymanagerビジュアルパネル"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}OpenListマルチストアファイルリストプログラム${gl_kjlan}6.   ${gl_bai}UbuntuリモートデスクトップWebエディション"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}Nezha Probe VPS監視パネル${gl_kjlan}8.   ${gl_bai}QBオフラインBT磁気ダウンロードパネル"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}poste.ioメールサーバープログラム${gl_kjlan}10.  ${gl_bai}Rocketchatマルチプレイヤーオンラインチャットシステム"
+
+	  local app_numbers=$([ -f /home/docker/appno.txt ] && cat /home/docker/appno.txt || echo "")
+
+	  # ループで色を設定します
+	  for i in {1..100}; do
+		  if echo "$app_numbers" | grep -q "^$i$"; then
+			  declare "color$i=${gl_lv}"
+		  else
+			  declare "color$i=${gl_bai}"
+		  fi
+	  done
+
+	  echo -e "${gl_kjlan}1.   ${color1}Baotaパネルの公式バージョン${gl_kjlan}2.   ${color2}Aapanel International Edition"
+	  echo -e "${gl_kjlan}3.   ${color3}1パネルの新世代管理パネル${gl_kjlan}4.   ${color4}nginxproxymanagerビジュアルパネル"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenListマルチストアファイルリストプログラム${gl_kjlan}6.   ${color6}UbuntuリモートデスクトップWebエディション"
+	  echo -e "${gl_kjlan}7.   ${color7}Nezha Probe VPS監視パネル${gl_kjlan}8.   ${color8}QBオフラインBT磁気ダウンロードパネル"
+	  echo -e "${gl_kjlan}9.   ${color9}poste.ioメールサーバープログラム${gl_kjlan}10.  ${color10}Rocketchatマルチプレイヤーオンラインチャットシステム"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}11.  ${gl_bai}Zendaoプロジェクト管理ソフトウェア${gl_kjlan}12.  ${gl_bai}Qinglongパネルの時限タスク管理プラットフォーム"
-	  echo -e "${gl_kjlan}13.  ${gl_bai}CloudReveネットワークディスク${gl_huang}★${gl_bai}                     ${gl_kjlan}14.  ${gl_bai}シンプルな写真ベッド画像管理プログラム"
-	  echo -e "${gl_kjlan}15.  ${gl_bai}Emby Multimedia Management System${gl_kjlan}16.  ${gl_bai}SpeedTest速度テストパネル"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}AdGuardhomeアドウェア${gl_kjlan}18.  ${gl_bai}唯一のオフィスオンラインオフィスオフィス"
-	  echo -e "${gl_kjlan}19.  ${gl_bai}サンダープールWAFファイアウォールパネル${gl_kjlan}20.  ${gl_bai}Portainerコンテナ管理パネル"
+	  echo -e "${gl_kjlan}11.  ${color11}Zendaoプロジェクト管理ソフトウェア${gl_kjlan}12.  ${color12}Qinglongパネルの時限タスク管理プラットフォーム"
+	  echo -e "${gl_kjlan}13.  ${color13}CloudReveネットワークディスク${gl_huang}★${gl_bai}                     ${gl_kjlan}14.  ${color14}シンプルな写真ベッド画像管理プログラム"
+	  echo -e "${gl_kjlan}15.  ${color15}Emby Multimedia Management System${gl_kjlan}16.  ${color16}SpeedTest速度テストパネル"
+	  echo -e "${gl_kjlan}17.  ${color17}AdGuardhomeアドウェア${gl_kjlan}18.  ${color18}唯一のオフィスオンラインオフィスオフィス"
+	  echo -e "${gl_kjlan}19.  ${color19}サンダープールWAFファイアウォールパネル${gl_kjlan}20.  ${color20}Portainerコンテナ管理パネル"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}vscode webバージョン${gl_kjlan}22.  ${gl_bai}UptimeKuma監視ツール"
-	  echo -e "${gl_kjlan}23.  ${gl_bai}メモWebページメモ${gl_kjlan}24.  ${gl_bai}webtopリモートデスクトップWebエディション${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}25.  ${gl_bai}NextCloudネットワークディスク${gl_kjlan}26.  ${gl_bai}QD-Todayタイミングタスク管理フレームワーク"
-	  echo -e "${gl_kjlan}27.  ${gl_bai}Dockge Container Stack Managementパネル${gl_kjlan}28.  ${gl_bai}librespeed速度テストツール"
-	  echo -e "${gl_kjlan}29.  ${gl_bai}searxng集約検索サイト${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${gl_bai}フォトプリズムプライベートアルバムシステム"
+	  echo -e "${gl_kjlan}21.  ${color21}vscode webバージョン${gl_kjlan}22.  ${color22}UptimeKuma監視ツール"
+	  echo -e "${gl_kjlan}23.  ${color23}メモWebページメモ${gl_kjlan}24.  ${color24}webtopリモートデスクトップWebエディション${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}25.  ${color25}NextCloudネットワークディスク${gl_kjlan}26.  ${color26}QD-Todayタイミングタスク管理フレームワーク"
+	  echo -e "${gl_kjlan}27.  ${color27}Dockge Container Stack Managementパネル${gl_kjlan}28.  ${color28}librespeed速度テストツール"
+	  echo -e "${gl_kjlan}29.  ${color29}searxng集約検索サイト${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${color30}フォトプリズムプライベートアルバムシステム"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}31.  ${gl_bai}StirlingPDFツールコレクション${gl_kjlan}32.  ${gl_bai}Drawio無料のオンラインチャートソフトウェア${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}サンパネルナビゲーションパネル${gl_kjlan}34.  ${gl_bai}Pingvin-Shareファイル共有プラットフォーム"
-	  echo -e "${gl_kjlan}35.  ${gl_bai}友達のミニマリストのサークル${gl_kjlan}36.  ${gl_bai}Lobechataiチャット集約Webサイト"
-	  echo -e "${gl_kjlan}37.  ${gl_bai}MyIPツールボックス${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${gl_bai}Xiaoya alistファミリーバケット"
-	  echo -e "${gl_kjlan}39.  ${gl_bai}Bililive Live Broadcast Recording Tool${gl_kjlan}40.  ${gl_bai}WebSH WebバージョンSSH接続ツール"
+	  echo -e "${gl_kjlan}31.  ${color31}StirlingPDFツールコレクション${gl_kjlan}32.  ${color32}Drawio無料のオンラインチャートソフトウェア${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}33.  ${color33}サンパネルナビゲーションパネル${gl_kjlan}34.  ${color34}Pingvin-Shareファイル共有プラットフォーム"
+	  echo -e "${gl_kjlan}35.  ${color35}友達のミニマリストのサークル${gl_kjlan}36.  ${color36}Lobechataiチャット集約Webサイト"
+	  echo -e "${gl_kjlan}37.  ${color37}MyIPツールボックス${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${color38}Xiaoya alistファミリーバケット"
+	  echo -e "${gl_kjlan}39.  ${color39}Bililive Live Broadcast Recording Tool${gl_kjlan}40.  ${color40}WebSH WebバージョンSSH接続ツール"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}41.  ${gl_bai}マウス管理パネル${gl_kjlan}42.  ${gl_bai}NEXTEリモート接続ツール"
-	  echo -e "${gl_kjlan}43.  ${gl_bai}Rustdeskリモートデスク（サーバー）${gl_huang}★${gl_bai}          ${gl_kjlan}44.  ${gl_bai}Rustdeskリモートデスク（リレー）${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}45.  ${gl_bai}Docker加速ステーション${gl_kjlan}46.  ${gl_bai}GitHubアクセラレーションステーション${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}47.  ${gl_bai}プロメテウス監視${gl_kjlan}48.  ${gl_bai}プロメテウス（ホスト監視）"
-	  echo -e "${gl_kjlan}49.  ${gl_bai}プロメテウス（コンテナ監視）${gl_kjlan}50.  ${gl_bai}補充監視ツール"
+	  echo -e "${gl_kjlan}41.  ${color41}マウス管理パネル${gl_kjlan}42.  ${color42}NEXTEリモート接続ツール"
+	  echo -e "${gl_kjlan}43.  ${color43}Rustdeskリモートデスク（サーバー）${gl_huang}★${gl_bai}          ${gl_kjlan}44.  ${color44}Rustdeskリモートデスク（リレー）${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}45.  ${color45}Docker加速ステーション${gl_kjlan}46.  ${color46}GitHubアクセラレーションステーション${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}47.  ${color47}プロメテウス監視${gl_kjlan}48.  ${color48}プロメテウス（ホスト監視）"
+	  echo -e "${gl_kjlan}49.  ${color49}プロメテウス（コンテナ監視）${gl_kjlan}50.  ${color50}補充監視ツール"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}51.  ${gl_bai}PVEチキンパネル${gl_kjlan}52.  ${gl_bai}dPanelコンテナ管理パネル"
-	  echo -e "${gl_kjlan}53.  ${gl_bai}llama3チャットAIモデル${gl_kjlan}54.  ${gl_bai}AMHホストWebサイトビルディングマネジメントパネル"
-	  echo -e "${gl_kjlan}55.  ${gl_bai}FRPイントラネット浸透（サーバー側）${gl_huang}★${gl_bai}	         ${gl_kjlan}56.  ${gl_bai}FRPイントラネット浸透（クライアント）${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}57.  ${gl_bai}deepseekチャットaiビッグモデル${gl_kjlan}58.  ${gl_bai}Dify Big Model Knowledge Base${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}59.  ${gl_bai}Newapi Big Model Asset Management${gl_kjlan}60.  ${gl_bai}Jumpserverオープンソースバス剤マシン"
+	  echo -e "${gl_kjlan}51.  ${color51}PVEチキンパネル${gl_kjlan}52.  ${color52}dPanelコンテナ管理パネル"
+	  echo -e "${gl_kjlan}53.  ${color53}llama3チャットAIモデル${gl_kjlan}54.  ${color54}AMHホストWebサイトビルディングマネジメントパネル"
+	  echo -e "${gl_kjlan}55.  ${color55}FRPイントラネット浸透（サーバー側）${gl_huang}★${gl_bai}	         ${gl_kjlan}56.  ${color56}FRPイントラネット浸透（クライアント）${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}57.  ${color57}deepseekチャットaiビッグモデル${gl_kjlan}58.  ${color58}Dify Big Model Knowledge Base${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}59.  ${color59}Newapi Big Model Asset Management${gl_kjlan}60.  ${color60}Jumpserverオープンソースバス剤マシン"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}61.  ${gl_bai}オンライン翻訳サーバー${gl_kjlan}62.  ${gl_bai}Ragflow Big Model Knowledge Base"
-	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebui自己ホストAIプラットフォーム${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${gl_bai}IT-Toolsツールボックス"
-	  echo -e "${gl_kjlan}65.  ${gl_bai}N8Nオートメーションワークフロープラットフォーム${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${gl_bai}YT-DLPビデオダウンロードツール"
-	  echo -e "${gl_kjlan}67.  ${gl_bai}DDNS-GOダイナミックDNS管理ツール${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${gl_bai}AllinsSL証明書管理プラットフォーム"
-	  echo -e "${gl_kjlan}69.  ${gl_bai}SFTPGOファイル転送ツール${gl_kjlan}70.  ${gl_bai}アストロボットチャットロボットフレームワーク"
+	  echo -e "${gl_kjlan}61.  ${color61}オンライン翻訳サーバー${gl_kjlan}62.  ${color62}Ragflow Big Model Knowledge Base"
+	  echo -e "${gl_kjlan}63.  ${color63}OpenWebui自己ホストAIプラットフォーム${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${color64}IT-Toolsツールボックス"
+	  echo -e "${gl_kjlan}65.  ${color65}N8Nオートメーションワークフロープラットフォーム${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${color66}YT-DLPビデオダウンロードツール"
+	  echo -e "${gl_kjlan}67.  ${color67}DDNS-GOダイナミックDNS管理ツール${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${color68}AllinsSL証明書管理プラットフォーム"
+	  echo -e "${gl_kjlan}69.  ${color69}SFTPGOファイル転送ツール${gl_kjlan}70.  ${color70}アストロボットチャットロボットフレームワーク"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}71.  ${gl_bai}Navidromeプライベートミュージックサーバー${gl_kjlan}72.  ${gl_bai}Bitwardenパスワードマネージャー${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}73.  ${gl_bai}libretvプライベート映画とテレビ${gl_kjlan}74.  ${gl_bai}MOONTVプライベート映画"
-	  echo -e "${gl_kjlan}75.  ${gl_bai}メロディーミュージックエルフ${gl_kjlan}76.  ${gl_bai}オンラインDOS古いゲーム"
-	  echo -e "${gl_kjlan}77.  ${gl_bai}サンダーオフラインダウンロードツール${gl_kjlan}78.  ${gl_bai}Pandawikiインテリジェントドキュメント管理システム"
-	  echo -e "${gl_kjlan}79.  ${gl_bai}Beszelサーバーの監視"
+	  echo -e "${gl_kjlan}71.  ${color71}Navidromeプライベートミュージックサーバー${gl_kjlan}72.  ${color72}Bitwardenパスワードマネージャー${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}73.  ${color73}libretvプライベート映画とテレビ${gl_kjlan}74.  ${color74}MOONTVプライベート映画"
+	  echo -e "${gl_kjlan}75.  ${color75}メロディーミュージックエルフ${gl_kjlan}76.  ${color76}オンラインDOS古いゲーム"
+	  echo -e "${gl_kjlan}77.  ${color77}サンダーオフラインダウンロードツール${gl_kjlan}78.  ${color78}Pandawikiインテリジェントドキュメント管理システム"
+	  echo -e "${gl_kjlan}79.  ${color79}Beszelサーバーの監視${gl_kjlan}80.  ${color80}Linkwardenブックマーク管理"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}81.  ${color81}Jitsimeetビデオ会議"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}メインメニューに戻ります"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -8652,7 +8712,7 @@ linux_panel() {
 				echo -e "Nezhaの監視$check_docker $update_status"
 				echo "オープンソース、軽量で使いやすいサーバーの監視と操作およびメンテナンスツール"
 				echo "公式ウェブサイトの建設文書：https：//nezha.wiki/guide/dashboard.html"
-				if docker inspect "$docker_name" &>/dev/null; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 					check_docker_app_ip
 				fi
@@ -8742,7 +8802,7 @@ linux_panel() {
 				fi
 				echo ""
 
-				if docker inspect "$docker_name" &>/dev/null; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 					yuming=$(cat /home/docker/mail.txt)
 					echo "アクセスアドレス："
 					echo "https://$yuming"
@@ -8788,6 +8848,9 @@ linux_panel() {
 							--restart=always \
 							-d analogic/poste.io
 
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
 						clear
 						echo "Poste.ioがインストールされています"
 						echo "------------------------"
@@ -8809,6 +8872,10 @@ linux_panel() {
 							-h "$yuming" \
 							--restart=always \
 							-d analogic/poste.i
+
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
 						clear
 						echo "Poste.ioがインストールされています"
 						echo "------------------------"
@@ -8821,6 +8888,8 @@ linux_panel() {
 						docker rmi -f analogic/poste.io
 						rm /home/docker/mail.txt
 						rm -rf /home/docker/mail
+						local app_no=$sub_choice
+						sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 						echo "アプリはアンインストールされています"
 						;;
 
@@ -9119,7 +9188,7 @@ linux_panel() {
 				echo -e "サンダープールサービス$check_docker"
 				echo "Lei Chiは、Changting Technologyによって開発されたWAFサイトファイアウォールプログラムパネルであり、自動防衛のために代理店サイトを逆転させることができます。"
 				echo "ビデオの紹介：https：//www.bilibili.com/video/bv1mz421t74c?t=0.1"
-				if docker inspect "$docker_name" &>/dev/null; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 					check_docker_app_ip
 				fi
 				echo ""
@@ -9136,6 +9205,8 @@ linux_panel() {
 						install_docker
 						check_disk_space 5
 						bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 						clear
 						echo "サンダープールWAFパネルがインストールされています"
 						check_docker_app_ip
@@ -9147,6 +9218,8 @@ linux_panel() {
 						bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
 						docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
 						echo ""
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 						clear
 						echo "サンダープールWAFパネルが更新されました"
 						check_docker_app_ip
@@ -9157,6 +9230,8 @@ linux_panel() {
 					4)
 						cd /data/safeline
 						docker compose down --rmi all
+						local app_no=$sub_choice
+						sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 						echo "デフォルトのインストールディレクトリである場合、プロジェクトはアンインストールされました。インストールディレクトリをカスタマイズする場合は、インストールディレクトリにアクセスして自分で実行する必要があります。"
 						echo "docker compose down && docker compose down --rmi all"
 						;;
@@ -10623,6 +10698,127 @@ linux_panel() {
 			  ;;
 
 
+		  80)
+			  local app_name="linkwarden书签管理"
+			  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
+			  local app_url="官方网站: https://linkwarden.app/"
+			  local docker_name="linkwarden-linkwarden-1"
+			  local docker_port="8080"
+			  local app_size="3"
+
+			  docker_app_install() {
+				  install git openssl
+				  mkdir -p /home/docker/linkwarden && cd /home/docker/linkwarden
+
+				  # 公式のDocker-ComposeおよびEnvファイルをダウンロードします
+				  curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
+				  curl -L ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample -o ".env"
+
+				  # ランダムキーとパスワードを生成します
+				  local ADMIN_EMAIL="admin@example.com"
+				  local ADMIN_PASSWORD=$(openssl rand -hex 8)
+
+				  sed -i "s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=http://localhost:${docker_port}/api/v1/auth|g" .env
+				  sed -i "s|^NEXTAUTH_SECRET=.*|NEXTAUTH_SECRET=$(openssl rand -hex 32)|g" .env
+				  sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 16)|g" .env
+				  sed -i "s|^MEILI_MASTER_KEY=.*|MEILI_MASTER_KEY=$(openssl rand -hex 32)|g" .env
+
+				  # 管理者アカウント情報を追加します
+				  echo "ADMIN_EMAIL=${ADMIN_EMAIL}" >> .env
+				  echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}" >> .env
+
+				  sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
+
+				  # コンテナを起動します
+				  docker compose up -d
+
+				  clear
+				  echo "インストール"
+			  	  check_docker_app_ip
+
+			  }
+
+			  docker_app_update() {
+				  cd /home/docker/linkwarden && docker compose down --rmi all
+				  curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
+				  curl -L ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample -o ".env.new"
+
+				  # 元の変数を保持します
+				  source .env
+				  mv .env.new .env
+				  echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env
+				  echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env
+				  echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
+				  echo "MEILI_MASTER_KEY=$MEILI_MASTER_KEY" >> .env
+				  echo "ADMIN_EMAIL=$ADMIN_EMAIL" >> .env
+				  echo "ADMIN_PASSWORD=$ADMIN_PASSWORD" >> .env
+				  sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
+
+				  docker compose up -d
+			  }
+
+			  docker_app_uninstall() {
+				  cd /home/docker/linkwarden && docker compose down --rmi all
+				  rm -rf /home/docker/linkwarden
+				  echo "アプリはアンインストールされています"
+			  }
+
+			  docker_app_plus
+
+			  ;;
+
+
+
+		  81)
+			  local app_name="JitsiMeet视频会议"
+			  local app_text="一个开源的安全视频会议解决方案，支持多人在线会议、屏幕共享与加密通信。"
+			  local app_url="官方网站: https://jitsi.org/"
+			  local docker_name="jitsi"
+			  local docker_port="8081"
+			  local app_size="3"
+
+			  docker_app_install() {
+
+				  add_yuming
+				  mkdir -p /home/docker/jitsi && cd /home/docker/jitsi
+				  wget $(wget -q -O - https://api.github.com/repos/jitsi/docker-jitsi-meet/releases/latest | grep zip | cut -d\" -f4)
+				  unzip "$(ls -t | head -n 1)"
+				  cd "$(ls -dt */ | head -n 1)"
+				  cp env.example .env
+				  ./gen-passwords.sh
+				  mkdir -p ~/.jitsi-meet-cfg/{web,transcripts,prosody/config,prosody/prosody-plugins-custom,jicofo,jvb,jigasi,jibri}
+				  sed -i "s|^HTTP_PORT=.*|HTTP_PORT=${docker_port}|" .env
+				  sed -i "s|^#PUBLIC_URL=https://meet.example.com:\${HTTPS_PORT}|PUBLIC_URL=https://$yuming:443|" .env
+				  docker compose up -d
+
+				  ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+				  block_container_port "$docker_name" "$ipv4_address"
+
+			  }
+
+			  docker_app_update() {
+				  cd /home/docker/jitsi
+				  cd "$(ls -dt */ | head -n 1)"
+				  docker compose down --rmi all
+				  docker compose up -d
+
+			  }
+
+			  docker_app_uninstall() {
+				  cd /home/docker/jitsi
+				  cd "$(ls -dt */ | head -n 1)"
+				  docker compose down --rmi all
+				  rm -rf /home/docker/jitsi
+				  echo "アプリはアンインストールされています"
+			  }
+
+			  docker_app_plus
+
+			  ;;
+
+
+
+
 		  0)
 			  kejilion
 			  ;;
@@ -10844,9 +11040,9 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}ファイアウォール上級マネージャー${gl_kjlan}18.  ${gl_bai}ホスト名を変更します"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}システムの更新ソースを切り替えます${gl_kjlan}20.  ${gl_bai}タイミングタスク管理"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}ネイティブホストの解析${gl_kjlan}22.  ${gl_bai}SSH防衛プログラム"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}ネイティブホスト分析${gl_kjlan}22.  ${gl_bai}SSH防衛プログラム"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}電流制限の自動シャットダウン${gl_kjlan}24.  ${gl_bai}ルート秘密キーログインモード"
-	  echo -e "${gl_kjlan}25.  ${gl_bai}TGボットシステムの監視と早期警告${gl_kjlan}26.  ${gl_bai}opensshの高リスクの脆弱性（xiuyuan）を修正"
+	  echo -e "${gl_kjlan}25.  ${gl_bai}TGボットシステムの監視と早期警告${gl_kjlan}26.  ${gl_bai}OpenSSHの高リスクの脆弱性を修正します"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linuxカーネルのアップグレード${gl_kjlan}28.  ${gl_bai}Linuxシステムにおけるカーネルパラメーターの最適化${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}ウイルススキャンツール${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}ファイルマネージャー"
 	  echo -e "${gl_kjlan}------------------------"
@@ -10854,6 +11050,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}33.  ${gl_bai}システムリサイクルビンをセットアップします${gl_kjlan}34.  ${gl_bai}システムのバックアップと回復"
 	  echo -e "${gl_kjlan}35.  ${gl_bai}SSHリモート接続ツール${gl_kjlan}36.  ${gl_bai}ハードディスクパーティション管理ツール"
 	  echo -e "${gl_kjlan}37.  ${gl_bai}コマンドラインの履歴${gl_kjlan}38.  ${gl_bai}RSYNCリモート同期ツール"
+	  echo -e "${gl_kjlan}39.  ${gl_bai}コマンドのお気に入り${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}メッセージボード${gl_kjlan}66.  ${gl_bai}ワンストップシステムの最適化${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}99.  ${gl_bai}サーバーを再起動します${gl_kjlan}100. ${gl_bai}プライバシーとセキュリティ"
@@ -11219,7 +11416,7 @@ EOF
 						  ;;
 					  4)
 					   read -e -p "ユーザー名を入力してください：" username
-					   # sudoersファイルからユーザーのsudoアクセス許可を削除します
+					   # sudoersファイルからユーザーのsudo許可を削除します
 					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
 						  ;;
@@ -11852,6 +12049,12 @@ EOF
 			  rsync_manager
 			  ;;
 
+
+		  39)
+			  clear
+			  send_stats "コマンドラインの履歴"
+			  bash <(curl -l -s ${gh_proxy}raw.githubusercontent.com/byJoey/cmdbox/refs/heads/main/install.sh)
+			  ;;
 
 		  41)
 			clear

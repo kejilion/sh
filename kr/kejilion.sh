@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.3"
+sh_v="4.0.5"
 
 
 gl_hui='\e[37m'
@@ -1185,7 +1185,7 @@ iptables_panel() {
 
 			  5)
 				  # IP 화이트리스트
-				  read -e -p "릴리스하려면 IP 또는 IP 세그먼트를 입력하십시오." o_ip
+				  read -e -p "해제 할 IP 또는 IP 세그먼트를 입력하십시오." o_ip
 				  allow_ip $o_ip
 				  ;;
 			  6)
@@ -1556,7 +1556,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "먼저 도메인 이름을 로컬 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "먼저 도메인 이름을 기본 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IP 또는 해결 된 도메인 이름을 입력하십시오." yuming
 }
 
@@ -2371,18 +2371,25 @@ web_optimization() {
 
 
 
-
-
-
 check_docker_app() {
-
-if docker inspect "$docker_name" &>/dev/null; then
-	check_docker="${gl_lv}已安装${gl_bai}"
-else
-	check_docker="${gl_hui}未安装${gl_bai}"
-fi
-
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+		check_docker="${gl_lv}已安装${gl_bai}"
+	else
+		check_docker="${gl_hui}未安装${gl_bai}"
+	fi
 }
+
+
+
+# check_docker_app() {
+
+# if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+# check_docker = "$ {gl_lv} $ {gl_bai} 설치"
+# else
+# check_docker = "$ {gl_hui} $ {gl_bai}가 설치되지 않았다"
+# fi
+
+# }
 
 
 check_docker_app_ip() {
@@ -2720,7 +2727,7 @@ while true; do
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
-	if docker inspect "$docker_name" &>/dev/null; then
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			docker_port=${docker_port:-0000}
@@ -2751,6 +2758,8 @@ while true; do
 			docker_rum
 			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+			local app_no=$sub_choice
+			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 
 			clear
 			echo "$docker_name설치"
@@ -2764,6 +2773,9 @@ while true; do
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
 			docker_rum
+			local app_no=$sub_choice
+			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
 			clear
 			echo "$docker_name설치"
 			check_docker_app_ip
@@ -2777,6 +2789,8 @@ while true; do
 			docker rmi -f "$docker_img"
 			rm -rf "/home/docker/$docker_name"
 			rm -f /home/docker/${docker_name}_port.conf
+			local app_no=$sub_choice
+			sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 			echo "앱이 제거되었습니다"
 			send_stats "제거하십시오$docker_name"
 			;;
@@ -2817,7 +2831,6 @@ done
 
 
 
-
 docker_app_plus() {
 	send_stats "$app_name"
 	while true; do
@@ -2827,7 +2840,7 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
-		if docker inspect "$docker_name" &>/dev/null; then
+		if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
@@ -2857,13 +2870,20 @@ docker_app_plus() {
 				docker_app_install
 				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				;;
 			2)
 				docker_app_update
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				;;
 			3)
 				docker_app_uninstall
 				rm -f /home/docker/${docker_name}_port.conf
+				local app_no=$sub_choice
+				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
 				;;
 			5)
 				echo "${docker_name}도메인 액세스 설정"
@@ -3538,15 +3558,21 @@ while true; do
 			install wget
 			iptables_open
 			panel_app_install
+			local app_no=$sub_choice
+			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 			send_stats "${panelname}설치하다"
 			;;
 		2)
 			panel_app_manage
+			local app_no=$sub_choice
+			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 			send_stats "${panelname}제어"
 
 			;;
 		3)
 			panel_app_uninstall
+			local app_no=$sub_choice
+			sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 			send_stats "${panelname}제거하십시오"
 			;;
 		*)
@@ -3875,6 +3901,8 @@ frps_panel() {
 				install jq grep ss
 				install_docker
 				generate_frps_config
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "FRP 서버가 설치되었습니다"
 				;;
 			2)
@@ -3883,6 +3911,8 @@ frps_panel() {
 				docker rm -f frps && docker rmi kjlion/frp:alpine >/dev/null 2>&1
 				[ -f /home/frp/frps.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
 				donlond_frp frps
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "FRP 서버가 업데이트되었습니다"
 				;;
 			3)
@@ -3892,7 +3922,8 @@ frps_panel() {
 				rm -rf /home/frp
 
 				close_port 8055 8056
-
+				local app_no=$sub_choice
+				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 				echo "앱이 제거되었습니다"
 				;;
 			5)
@@ -3916,7 +3947,7 @@ frps_panel() {
 
 			8)
 				send_stats "IP 액세스를 차단하십시오"
-				echo "반세기 도메인 이름에 액세스 한 경우이 기능을 사용하여 IP+ 포트 액세스를 차단할 수 있습니다."
+				echo "반세기 도메인 이름에 액세스 한 경우이 기능을 사용하여 IP+ 포트 액세스를 차단하십시오."
 				read -e -p "차단 해야하는 포트를 입력하십시오." frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
@@ -3966,6 +3997,8 @@ frpc_panel() {
 				install jq grep ss
 				install_docker
 				configure_frpc
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "FRP 클라이언트가 설치되었습니다"
 				;;
 			2)
@@ -3974,6 +4007,8 @@ frpc_panel() {
 				docker rm -f frpc && docker rmi kjlion/frp:alpine >/dev/null 2>&1
 				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
 				donlond_frp frpc
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "FRP 클라이언트가 업데이트되었습니다"
 				;;
 
@@ -3983,6 +4018,8 @@ frpc_panel() {
 				docker rm -f frpc && docker rmi kjlion/frp:alpine
 				rm -rf /home/frp
 				close_port 8055
+				local app_no=$sub_choice
+				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 				echo "앱이 제거되었습니다"
 				;;
 
@@ -4052,18 +4089,24 @@ yt_menu_pro() {
 				install ffmpeg
 				sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 				sudo chmod a+rx /usr/local/bin/yt-dlp
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "설치가 완료되었습니다. 계속하려면 키를 누르십시오 ..."
 				read ;;
 			2)
 				send_stats "yt-dlp 업데이트 ..."
 				echo "yt-dlp 업데이트 ..."
 				sudo yt-dlp -U
+				local app_no=$sub_choice
+				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "업데이트가 완료되었습니다. 계속하려면 키를 누르십시오 ..."
 				read ;;
 			3)
 				send_stats "yt-dlp 제거 ..."
 				echo "yt-dlp 제거 ..."
 				sudo rm -f /usr/local/bin/yt-dlp
+				local app_no=$sub_choice
+				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 				echo "제거가 완료되었습니다. 계속하려면 키를 누르십시오 ..."
 				read ;;
 			5)
@@ -8411,58 +8454,75 @@ linux_ldnmp() {
 
 linux_panel() {
 
+
+
+
+
 	while true; do
 	  clear
-	  # Send_stats "앱 시장"
 	  echo -e "응용 프로그램 시장"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}Baota 패널의 공식 버전${gl_kjlan}2.   ${gl_bai}Aapanel International Edition"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}1 파넬 신세대 관리 패널${gl_kjlan}4.   ${gl_bai}nginxproxymanager 시각적 패널"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}OpenList 멀티 스토어 파일 목록 프로그램${gl_kjlan}6.   ${gl_bai}우분투 원격 데스크탑 웹 에디션"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}Nezha 프로브 VPS 모니터링 패널${gl_kjlan}8.   ${gl_bai}QB 오프라인 BT 자기 다운로드 패널"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}Poste.io 메일 서버 프로그램${gl_kjlan}10.  ${gl_bai}Rocketchat 멀티 플레이어 온라인 채팅 시스템"
+
+	  local app_numbers=$([ -f /home/docker/appno.txt ] && cat /home/docker/appno.txt || echo "")
+
+	  # 루프로 색상을 설정하십시오
+	  for i in {1..100}; do
+		  if echo "$app_numbers" | grep -q "^$i$"; then
+			  declare "color$i=${gl_lv}"
+		  else
+			  declare "color$i=${gl_bai}"
+		  fi
+	  done
+
+	  echo -e "${gl_kjlan}1.   ${color1}Baota 패널의 공식 버전${gl_kjlan}2.   ${color2}Aapanel International Edition"
+	  echo -e "${gl_kjlan}3.   ${color3}1 파넬 신세대 관리 패널${gl_kjlan}4.   ${color4}nginxproxymanager 시각적 패널"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList 멀티 스토어 파일 목록 프로그램${gl_kjlan}6.   ${color6}우분투 원격 데스크탑 웹 에디션"
+	  echo -e "${gl_kjlan}7.   ${color7}Nezha 프로브 VPS 모니터링 패널${gl_kjlan}8.   ${color8}QB 오프라인 BT 자기 다운로드 패널"
+	  echo -e "${gl_kjlan}9.   ${color9}Poste.io 메일 서버 프로그램${gl_kjlan}10.  ${color10}Rocketchat 멀티 플레이어 온라인 채팅 시스템"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}11.  ${gl_bai}Zendao 프로젝트 관리 소프트웨어${gl_kjlan}12.  ${gl_bai}Qinglong 패널 시간 작업 관리 플랫폼"
-	  echo -e "${gl_kjlan}13.  ${gl_bai}CloudReve 네트워크 디스크${gl_huang}★${gl_bai}                     ${gl_kjlan}14.  ${gl_bai}간단한 그림 침대 그림 관리 프로그램"
-	  echo -e "${gl_kjlan}15.  ${gl_bai}EMBY 멀티미디어 관리 시스템${gl_kjlan}16.  ${gl_bai}스피드 테스트 속도 테스트 패널"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}Adguardhome Adware${gl_kjlan}18.  ${gl_bai}Office Office Online Office Office"
-	  echo -e "${gl_kjlan}19.  ${gl_bai}썬더 풀 WAF 방화벽 패널${gl_kjlan}20.  ${gl_bai}Portainer 컨테이너 관리 패널"
+	  echo -e "${gl_kjlan}11.  ${color11}Zendao 프로젝트 관리 소프트웨어${gl_kjlan}12.  ${color12}Qinglong 패널 시간 작업 관리 플랫폼"
+	  echo -e "${gl_kjlan}13.  ${color13}CloudReve 네트워크 디스크${gl_huang}★${gl_bai}                     ${gl_kjlan}14.  ${color14}간단한 그림 침대 그림 관리 프로그램"
+	  echo -e "${gl_kjlan}15.  ${color15}EMBY 멀티미디어 관리 시스템${gl_kjlan}16.  ${color16}스피드 테스트 속도 테스트 패널"
+	  echo -e "${gl_kjlan}17.  ${color17}Adguardhome Adware${gl_kjlan}18.  ${color18}Office Office Online Office Office"
+	  echo -e "${gl_kjlan}19.  ${color19}썬더 풀 WAF 방화벽 패널${gl_kjlan}20.  ${color20}Portainer 컨테이너 관리 패널"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}VSCODE 웹 버전${gl_kjlan}22.  ${gl_bai}Uptimekuma 모니터링 도구"
-	  echo -e "${gl_kjlan}23.  ${gl_bai}메모 웹 페이지 메모${gl_kjlan}24.  ${gl_bai}WebTop 원격 데스크탑 웹 에디션${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}25.  ${gl_bai}NextCloud 네트워크 디스크${gl_kjlan}26.  ${gl_bai}QD-Today 타이밍 작업 관리 프레임 워크"
-	  echo -e "${gl_kjlan}27.  ${gl_bai}도크 컨테이너 스택 관리 패널${gl_kjlan}28.  ${gl_bai}Librespeed 속도 테스트 도구"
-	  echo -e "${gl_kjlan}29.  ${gl_bai}searxng 집계 검색 사이트${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${gl_bai}Photoprism 개인 앨범 시스템"
+	  echo -e "${gl_kjlan}21.  ${color21}VSCODE 웹 버전${gl_kjlan}22.  ${color22}Uptimekuma 모니터링 도구"
+	  echo -e "${gl_kjlan}23.  ${color23}메모 웹 페이지 메모${gl_kjlan}24.  ${color24}WebTop 원격 데스크탑 웹 에디션${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}25.  ${color25}NextCloud 네트워크 디스크${gl_kjlan}26.  ${color26}QD-Today 타이밍 작업 관리 프레임 워크"
+	  echo -e "${gl_kjlan}27.  ${color27}도크 컨테이너 스택 관리 패널${gl_kjlan}28.  ${color28}Librespeed 속도 테스트 도구"
+	  echo -e "${gl_kjlan}29.  ${color29}searxng 집계 검색 사이트${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${color30}Photoprism 개인 앨범 시스템"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}31.  ${gl_bai}Stirlingpdf 도구 컬렉션${gl_kjlan}32.  ${gl_bai}Drawio 무료 온라인 차트 소프트웨어${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}썬 패널 탐색 패널${gl_kjlan}34.  ${gl_bai}Pingvin-Share 파일 공유 플랫폼"
-	  echo -e "${gl_kjlan}35.  ${gl_bai}미니멀리스트 친구들${gl_kjlan}36.  ${gl_bai}LobeChatai 채팅 집계 웹 사이트"
-	  echo -e "${gl_kjlan}37.  ${gl_bai}MYIP 도구 상자${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${gl_bai}Xiaoya Alist 가족 버킷"
-	  echo -e "${gl_kjlan}39.  ${gl_bai}Bilililive 라이브 방송 녹음 도구${gl_kjlan}40.  ${gl_bai}Websh 웹 버전 SSH 연결 도구"
+	  echo -e "${gl_kjlan}31.  ${color31}Stirlingpdf 도구 컬렉션${gl_kjlan}32.  ${color32}Drawio 무료 온라인 차트 소프트웨어${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}33.  ${color33}썬 패널 탐색 패널${gl_kjlan}34.  ${color34}Pingvin-Share 파일 공유 플랫폼"
+	  echo -e "${gl_kjlan}35.  ${color35}미니멀리스트 친구들${gl_kjlan}36.  ${color36}LobeChatai 채팅 집계 웹 사이트"
+	  echo -e "${gl_kjlan}37.  ${color37}MYIP 도구 상자${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${color38}Xiaoya Alist 가족 버킷"
+	  echo -e "${gl_kjlan}39.  ${color39}Bilililive 라이브 방송 녹음 도구${gl_kjlan}40.  ${color40}Websh 웹 버전 SSH 연결 도구"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}41.  ${gl_bai}마우스 관리 패널${gl_kjlan}42.  ${gl_bai}Nexte 원격 연결 도구"
-	  echo -e "${gl_kjlan}43.  ${gl_bai}Rustdesk 원격 책상 (서버)${gl_huang}★${gl_bai}          ${gl_kjlan}44.  ${gl_bai}Rustdesk 원격 책상 (릴레이)${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}45.  ${gl_bai}도커 가속 스테이션${gl_kjlan}46.  ${gl_bai}Github Acceleration Station${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}47.  ${gl_bai}프로 메테우스 모니터링${gl_kjlan}48.  ${gl_bai}프로 메테우스 (호스트 모니터링)"
-	  echo -e "${gl_kjlan}49.  ${gl_bai}Prometheus (컨테이너 모니터링)${gl_kjlan}50.  ${gl_bai}보충 모니터링 도구"
+	  echo -e "${gl_kjlan}41.  ${color41}마우스 관리 패널${gl_kjlan}42.  ${color42}Nexte 원격 연결 도구"
+	  echo -e "${gl_kjlan}43.  ${color43}Rustdesk 원격 책상 (서버)${gl_huang}★${gl_bai}          ${gl_kjlan}44.  ${color44}Rustdesk 원격 책상 (릴레이)${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}45.  ${color45}도커 가속 스테이션${gl_kjlan}46.  ${color46}Github Acceleration Station${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}47.  ${color47}프로 메테우스 모니터링${gl_kjlan}48.  ${color48}프로 메테우스 (호스트 모니터링)"
+	  echo -e "${gl_kjlan}49.  ${color49}Prometheus (컨테이너 모니터링)${gl_kjlan}50.  ${color50}보충 모니터링 도구"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}51.  ${gl_bai}PVE 치킨 패널${gl_kjlan}52.  ${gl_bai}DPANEL 컨테이너 관리 패널"
-	  echo -e "${gl_kjlan}53.  ${gl_bai}llama3 채팅 AI 모델${gl_kjlan}54.  ${gl_bai}AMH 호스트 웹 사이트 빌딩 관리 패널"
-	  echo -e "${gl_kjlan}55.  ${gl_bai}FRP 인트라넷 침투 (서버 측)${gl_huang}★${gl_bai}	         ${gl_kjlan}56.  ${gl_bai}FRP 인트라넷 침투 (클라이언트)${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}57.  ${gl_bai}DeepSeek 채팅 AI 큰 모델${gl_kjlan}58.  ${gl_bai}Dify Big Model 지식 기반${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}59.  ${gl_bai}Newapi 큰 모델 자산 관리${gl_kjlan}60.  ${gl_bai}점프 서버 오픈 소스 요새 기계"
+	  echo -e "${gl_kjlan}51.  ${color51}PVE 치킨 패널${gl_kjlan}52.  ${color52}DPANEL 컨테이너 관리 패널"
+	  echo -e "${gl_kjlan}53.  ${color53}llama3 채팅 AI 모델${gl_kjlan}54.  ${color54}AMH 호스트 웹 사이트 빌딩 관리 패널"
+	  echo -e "${gl_kjlan}55.  ${color55}FRP 인트라넷 침투 (서버 측)${gl_huang}★${gl_bai}	         ${gl_kjlan}56.  ${color56}FRP 인트라넷 침투 (클라이언트)${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}57.  ${color57}DeepSeek 채팅 AI 큰 모델${gl_kjlan}58.  ${color58}Dify Big Model 지식 기반${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}59.  ${color59}Newapi 큰 모델 자산 관리${gl_kjlan}60.  ${color60}점프 서버 오픈 소스 요새 기계"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}61.  ${gl_bai}온라인 번역 서버${gl_kjlan}62.  ${gl_bai}래그 플로 큰 모델 지식 기반"
-	  echo -e "${gl_kjlan}63.  ${gl_bai}OpenWebui 자체 호스팅 AI 플랫폼${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${gl_bai}it-tools 도구 상자"
-	  echo -e "${gl_kjlan}65.  ${gl_bai}N8N 자동화 워크 플로 플랫폼${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${gl_bai}YT-DLP 비디오 다운로드 도구"
-	  echo -e "${gl_kjlan}67.  ${gl_bai}DDNS-GO 동적 DNS 관리 도구${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${gl_bai}AllInsSL 인증서 관리 플랫폼"
-	  echo -e "${gl_kjlan}69.  ${gl_bai}sftpgo 파일 전송 도구${gl_kjlan}70.  ${gl_bai}Astrbot 채팅 로봇 프레임 워크"
+	  echo -e "${gl_kjlan}61.  ${color61}온라인 번역 서버${gl_kjlan}62.  ${color62}래그 플로 큰 모델 지식 기반"
+	  echo -e "${gl_kjlan}63.  ${color63}OpenWebui 자체 호스팅 AI 플랫폼${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${color64}it-tools 도구 상자"
+	  echo -e "${gl_kjlan}65.  ${color65}N8N 자동화 워크 플로 플랫폼${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${color66}YT-DLP 비디오 다운로드 도구"
+	  echo -e "${gl_kjlan}67.  ${color67}DDNS-GO 동적 DNS 관리 도구${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${color68}AllInsSL 인증서 관리 플랫폼"
+	  echo -e "${gl_kjlan}69.  ${color69}sftpgo 파일 전송 도구${gl_kjlan}70.  ${color70}Astrbot 채팅 로봇 프레임 워크"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}71.  ${gl_bai}Navidrome 개인 음악 서버${gl_kjlan}72.  ${gl_bai}Bitwarden 비밀번호 관리자${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}73.  ${gl_bai}Libretv 개인 영화 및 텔레비전${gl_kjlan}74.  ${gl_bai}Moontv 개인 영화"
-	  echo -e "${gl_kjlan}75.  ${gl_bai}멜로디 음악 엘프${gl_kjlan}76.  ${gl_bai}온라인 dos 오래된 게임"
-	  echo -e "${gl_kjlan}77.  ${gl_bai}천둥 오프라인 다운로드 도구${gl_kjlan}78.  ${gl_bai}Pandawiki 지능형 문서 관리 시스템"
-	  echo -e "${gl_kjlan}79.  ${gl_bai}Beszel 서버 모니터링"
+	  echo -e "${gl_kjlan}71.  ${color71}Navidrome 개인 음악 서버${gl_kjlan}72.  ${color72}Bitwarden 비밀번호 관리자${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}73.  ${color73}Libretv 개인 영화 및 텔레비전${gl_kjlan}74.  ${color74}Moontv 개인 영화"
+	  echo -e "${gl_kjlan}75.  ${color75}멜로디 음악 엘프${gl_kjlan}76.  ${color76}온라인 dos 오래된 게임"
+	  echo -e "${gl_kjlan}77.  ${color77}천둥 오프라인 다운로드 도구${gl_kjlan}78.  ${color78}Pandawiki 지능형 문서 관리 시스템"
+	  echo -e "${gl_kjlan}79.  ${color79}Beszel 서버 모니터링${gl_kjlan}80.  ${color80}Linkwarden 북마크 관리"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}81.  ${color81}Jitsimeet 화상 회의"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}메인 메뉴로 돌아갑니다"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -8652,7 +8712,7 @@ linux_panel() {
 				echo -e "Nezha 모니터링$check_docker $update_status"
 				echo "오픈 소스, 가볍고 사용하기 쉬운 서버 모니터링 및 작동 및 유지 보수 도구"
 				echo "공식 웹 사이트 구성 문서 : https://nezha.wiki/guide/dashboard.html"
-				if docker inspect "$docker_name" &>/dev/null; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 					check_docker_app_ip
 				fi
@@ -8742,7 +8802,7 @@ linux_panel() {
 				fi
 				echo ""
 
-				if docker inspect "$docker_name" &>/dev/null; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 					yuming=$(cat /home/docker/mail.txt)
 					echo "액세스 주소 :"
 					echo "https://$yuming"
@@ -8788,6 +8848,9 @@ linux_panel() {
 							--restart=always \
 							-d analogic/poste.io
 
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
 						clear
 						echo "Poste.io가 설치되었습니다"
 						echo "------------------------"
@@ -8809,6 +8872,10 @@ linux_panel() {
 							-h "$yuming" \
 							--restart=always \
 							-d analogic/poste.i
+
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
 						clear
 						echo "Poste.io가 설치되었습니다"
 						echo "------------------------"
@@ -8821,6 +8888,8 @@ linux_panel() {
 						docker rmi -f analogic/poste.io
 						rm /home/docker/mail.txt
 						rm -rf /home/docker/mail
+						local app_no=$sub_choice
+						sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 						echo "앱이 제거되었습니다"
 						;;
 
@@ -9119,7 +9188,7 @@ linux_panel() {
 				echo -e "썬더 풀 서비스$check_docker"
 				echo "Lei Chi는 변경 기술이 개발 한 WAF 사이트 방화벽 프로그램 패널로, 자동 방어를 위해 대행사 사이트를 역전시킬 수 있습니다."
 				echo "비디오 소개 : https://www.bilibili.com/video/bv1mz421t74c?t=0.1"
-				if docker inspect "$docker_name" &>/dev/null; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
 					check_docker_app_ip
 				fi
 				echo ""
@@ -9136,6 +9205,8 @@ linux_panel() {
 						install_docker
 						check_disk_space 5
 						bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 						clear
 						echo "Thunder Pool WAF 패널이 설치되었습니다"
 						check_docker_app_ip
@@ -9147,6 +9218,8 @@ linux_panel() {
 						bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
 						docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
 						echo ""
+						local app_no=$sub_choice
+						grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 						clear
 						echo "Thunder Pool WAF 패널이 업데이트되었습니다"
 						check_docker_app_ip
@@ -9157,6 +9230,8 @@ linux_panel() {
 					4)
 						cd /data/safeline
 						docker compose down --rmi all
+						local app_no=$sub_choice
+						sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 						echo "기본 설치 디렉토리 인 경우 프로젝트가 제거되었습니다. 설치 디렉토리를 사용자 정의하는 경우 직접 실행하려면 설치 디렉토리로 이동해야합니다."
 						echo "docker compose down && docker compose down --rmi all"
 						;;
@@ -10623,6 +10698,127 @@ linux_panel() {
 			  ;;
 
 
+		  80)
+			  local app_name="linkwarden书签管理"
+			  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
+			  local app_url="官方网站: https://linkwarden.app/"
+			  local docker_name="linkwarden-linkwarden-1"
+			  local docker_port="8080"
+			  local app_size="3"
+
+			  docker_app_install() {
+				  install git openssl
+				  mkdir -p /home/docker/linkwarden && cd /home/docker/linkwarden
+
+				  # 공식 Docker-Compose 및 ENV 파일을 다운로드하십시오
+				  curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
+				  curl -L ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample -o ".env"
+
+				  # 임의의 키와 암호를 생성합니다
+				  local ADMIN_EMAIL="admin@example.com"
+				  local ADMIN_PASSWORD=$(openssl rand -hex 8)
+
+				  sed -i "s|^NEXTAUTH_URL=.*|NEXTAUTH_URL=http://localhost:${docker_port}/api/v1/auth|g" .env
+				  sed -i "s|^NEXTAUTH_SECRET=.*|NEXTAUTH_SECRET=$(openssl rand -hex 32)|g" .env
+				  sed -i "s|^POSTGRES_PASSWORD=.*|POSTGRES_PASSWORD=$(openssl rand -hex 16)|g" .env
+				  sed -i "s|^MEILI_MASTER_KEY=.*|MEILI_MASTER_KEY=$(openssl rand -hex 32)|g" .env
+
+				  # 관리자 계정 정보를 추가하십시오
+				  echo "ADMIN_EMAIL=${ADMIN_EMAIL}" >> .env
+				  echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}" >> .env
+
+				  sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
+
+				  # 컨테이너를 시작하십시오
+				  docker compose up -d
+
+				  clear
+				  echo "설치"
+			  	  check_docker_app_ip
+
+			  }
+
+			  docker_app_update() {
+				  cd /home/docker/linkwarden && docker compose down --rmi all
+				  curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
+				  curl -L ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample -o ".env.new"
+
+				  # 원래 변수를 유지하십시오
+				  source .env
+				  mv .env.new .env
+				  echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env
+				  echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env
+				  echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env
+				  echo "MEILI_MASTER_KEY=$MEILI_MASTER_KEY" >> .env
+				  echo "ADMIN_EMAIL=$ADMIN_EMAIL" >> .env
+				  echo "ADMIN_PASSWORD=$ADMIN_PASSWORD" >> .env
+				  sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
+
+				  docker compose up -d
+			  }
+
+			  docker_app_uninstall() {
+				  cd /home/docker/linkwarden && docker compose down --rmi all
+				  rm -rf /home/docker/linkwarden
+				  echo "앱이 제거되었습니다"
+			  }
+
+			  docker_app_plus
+
+			  ;;
+
+
+
+		  81)
+			  local app_name="JitsiMeet视频会议"
+			  local app_text="一个开源的安全视频会议解决方案，支持多人在线会议、屏幕共享与加密通信。"
+			  local app_url="官方网站: https://jitsi.org/"
+			  local docker_name="jitsi"
+			  local docker_port="8081"
+			  local app_size="3"
+
+			  docker_app_install() {
+
+				  add_yuming
+				  mkdir -p /home/docker/jitsi && cd /home/docker/jitsi
+				  wget $(wget -q -O - https://api.github.com/repos/jitsi/docker-jitsi-meet/releases/latest | grep zip | cut -d\" -f4)
+				  unzip "$(ls -t | head -n 1)"
+				  cd "$(ls -dt */ | head -n 1)"
+				  cp env.example .env
+				  ./gen-passwords.sh
+				  mkdir -p ~/.jitsi-meet-cfg/{web,transcripts,prosody/config,prosody/prosody-plugins-custom,jicofo,jvb,jigasi,jibri}
+				  sed -i "s|^HTTP_PORT=.*|HTTP_PORT=${docker_port}|" .env
+				  sed -i "s|^#PUBLIC_URL=https://meet.example.com:\${HTTPS_PORT}|PUBLIC_URL=https://$yuming:443|" .env
+				  docker compose up -d
+
+				  ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+				  block_container_port "$docker_name" "$ipv4_address"
+
+			  }
+
+			  docker_app_update() {
+				  cd /home/docker/jitsi
+				  cd "$(ls -dt */ | head -n 1)"
+				  docker compose down --rmi all
+				  docker compose up -d
+
+			  }
+
+			  docker_app_uninstall() {
+				  cd /home/docker/jitsi
+				  cd "$(ls -dt */ | head -n 1)"
+				  docker compose down --rmi all
+				  rm -rf /home/docker/jitsi
+				  echo "앱이 제거되었습니다"
+			  }
+
+			  docker_app_plus
+
+			  ;;
+
+
+
+
 		  0)
 			  kejilion
 			  ;;
@@ -10844,9 +11040,9 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}방화벽 고급 관리자${gl_kjlan}18.  ${gl_bai}호스트 이름을 수정하십시오"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}스위치 시스템 업데이트 소스${gl_kjlan}20.  ${gl_bai}타이밍 작업 관리"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 구문 분석${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 분석${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}현재 한도의 자동 종료${gl_kjlan}24.  ${gl_bai}루트 비공개 키 로그인 모드"
-	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-BOT 시스템 모니터링 및 조기 경고${gl_kjlan}26.  ${gl_bai}OpenSsh 고위험 취약점 수정 (Xiuyuan)"
+	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-BOT 시스템 모니터링 및 조기 경고${gl_kjlan}26.  ${gl_bai}OpenSsh 고위험 취약점을 수정하십시오"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linux 커널 업그레이드${gl_kjlan}28.  ${gl_bai}Linux 시스템에서 커널 매개 변수의 최적화${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}바이러스 스캐닝 도구${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}파일 관리자"
 	  echo -e "${gl_kjlan}------------------------"
@@ -10854,6 +11050,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}33.  ${gl_bai}시스템 재활용 빈을 설정하십시오${gl_kjlan}34.  ${gl_bai}시스템 백업 및 복구"
 	  echo -e "${gl_kjlan}35.  ${gl_bai}SSH 원격 연결 도구${gl_kjlan}36.  ${gl_bai}하드 디스크 파티션 관리 도구"
 	  echo -e "${gl_kjlan}37.  ${gl_bai}명령 줄 기록${gl_kjlan}38.  ${gl_bai}RSYNC 원격 동기화 도구"
+	  echo -e "${gl_kjlan}39.  ${gl_bai}명령 즐겨 찾기${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${gl_bai}게시판${gl_kjlan}66.  ${gl_bai}원 스톱 시스템 최적화${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}99.  ${gl_bai}서버를 다시 시작하십시오${gl_kjlan}100. ${gl_bai}개인 정보 및 보안"
@@ -10874,7 +11071,7 @@ linux_Settings() {
 				  fi
 				  find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/k" && rm -f {}' \;
 				  ln -s /usr/local/bin/k /usr/local/bin/$kuaijiejian
-				  echo "바로 가기 키가 설정되어 있습니다"
+				  echo "바로 가기 키가 설정되었습니다"
 				  send_stats "스크립트 바로 가기 키가 설정되었습니다"
 				  break_end
 				  linux_Settings
@@ -11852,6 +12049,12 @@ EOF
 			  rsync_manager
 			  ;;
 
+
+		  39)
+			  clear
+			  send_stats "명령 줄 기록"
+			  bash <(curl -l -s ${gh_proxy}raw.githubusercontent.com/byJoey/cmdbox/refs/heads/main/install.sh)
+			  ;;
 
 		  41)
 			clear
