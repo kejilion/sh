@@ -34,7 +34,7 @@ quanju_canshu
 
 
 
-# コマンドを実行する関数を定義します
+# 定义一个函数来执行命令
 run_command() {
 	if [ "$zhushi" -eq 0 ]; then
 		"$@"
@@ -57,9 +57,9 @@ CheckFirstRun_true() {
 
 
 
-# 関数の埋もポイント情報を収集し、現在のスクリプトバージョン番号、使用時間、システムバージョン、CPUアーキテクチャ、マシンの国、ユーザーが使用する関数名を記録する関数。彼らは絶対に機密情報を伴わない、安心してください！私を信じてください！
-# なぜこの関数を設計する必要があるのですか？目的は、ユーザーが使用する機能をよりよく理解し、関数をさらに最適化して、ユーザーのニーズを満たすより多くの関数を起動することです。
-# 全文の場合、send_stats関数の呼び出し場所、透明性、オープンソースを検索できます。懸念がある場合は、使用を拒否できます。
+# 收集功能埋点信息的函数，记录当前脚本版本号，使用时间，系统版本，CPU架构，机器所在国家和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
+# 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求的功能。
+# 全文可搜搜 send_stats 函数调用位置，透明开源，如有顾虑可拒绝使用。
 
 
 
@@ -111,22 +111,22 @@ CheckFirstRun_false() {
 	fi
 }
 
-# ユーザーに条件に同意するように促します
+# 提示用户同意条款
 UserLicenseAgreement() {
 	clear
-	echo -e "${gl_kjlan}Tech Lion Script Toolboxへようこそ${gl_bai}"
-	echo "スクリプトを初めて使用して、ユーザーライセンス契約を読んで同意してください。"
-	echo "ユーザーライセンス契約：https：//blog.kejilion.pro/user-license-agreement/"
+	echo -e "${gl_kjlan}欢迎使用科技lion脚本工具箱${gl_bai}"
+	echo "首次使用脚本，请先阅读并同意用户许可协议。"
+	echo "用户许可协议: https://blog.kejilion.pro/user-license-agreement/"
 	echo -e "----------------------"
-	read -r -p "上記の条件に同意しますか？ （y/n）：" user_input
+	read -r -p "是否同意以上条款？(y/n): " user_input
 
 
 	if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
-		send_stats "ライセンスの同意"
+		send_stats "许可同意"
 		sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
 		sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
 	else
-		send_stats "許可の拒否"
+		send_stats "许可拒绝"
 		clear
 		exit
 	fi
@@ -170,13 +170,13 @@ ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
 
 install() {
 	if [ $# -eq 0 ]; then
-		echo "パッケージパラメーターは提供されていません！"
+		echo "未提供软件包参数!"
 		return 1
 	fi
 
 	for package in "$@"; do
 		if ! command -v "$package" &>/dev/null; then
-			echo -e "${gl_huang}インストール$package...${gl_bai}"
+			echo -e "${gl_huang}正在安装 $package...${gl_bai}"
 			if command -v dnf &>/dev/null; then
 				dnf -y update
 				dnf install -y epel-release
@@ -204,7 +204,7 @@ install() {
 				pkg update
 				pkg install -y "$package"
 			else
-				echo "不明なパッケージマネージャー！"
+				echo "未知的包管理器!"
 				return 1
 			fi
 		fi
@@ -219,11 +219,11 @@ check_disk_space() {
 	available_space_mb=$(df -m / | awk 'NR==2 {print $4}')
 
 	if [ $available_space_mb -lt $required_space_mb ]; then
-		echo -e "${gl_huang}ヒント：${gl_bai}ディスクスペースが不十分です！"
-		echo "現在利用可能なスペース：$（（available_space_mb/1024））g"
-		echo "最小需要スペース：${required_gb}G"
-		echo "インストールは継続できません。ディスクスペースを掃除して、もう一度お試しください。"
-		send_stats "ディスクスペースが不十分です"
+		echo -e "${gl_huang}提示: ${gl_bai}磁盘空间不足！"
+		echo "当前可用空间: $((available_space_mb/1024))G"
+		echo "最小需求空间: ${required_gb}G"
+		echo "无法继续安装，请清理磁盘空间后重试。"
+		send_stats "磁盘空间不足"
 		break_end
 		kejilion
 	fi
@@ -236,12 +236,12 @@ install_dependency() {
 
 remove() {
 	if [ $# -eq 0 ]; then
-		echo "パッケージパラメーターは提供されていません！"
+		echo "未提供软件包参数!"
 		return 1
 	fi
 
 	for package in "$@"; do
-		echo -e "${gl_huang}アンインストール$package...${gl_bai}"
+		echo -e "${gl_huang}正在卸载 $package...${gl_bai}"
 		if command -v dnf &>/dev/null; then
 			dnf remove -y "$package"
 		elif command -v yum &>/dev/null; then
@@ -259,14 +259,14 @@ remove() {
 		elif command -v pkg &>/dev/null; then
 			pkg delete -y "$package"
 		else
-			echo "不明なパッケージマネージャー！"
+			echo "未知的包管理器!"
 			return 1
 		fi
 	done
 }
 
 
-# さまざまな分布に適したUniversal SystemCTL関数
+# 通用 systemctl 函数，适用于各种发行版
 systemctl() {
 	local COMMAND="$1"
 	local SERVICE_NAME="$2"
@@ -279,43 +279,43 @@ systemctl() {
 }
 
 
-# サービスを再起動します
+# 重启服务
 restart() {
 	systemctl restart "$1"
 	if [ $? -eq 0 ]; then
-		echo "$1サービスは再開されました。"
+		echo "$1 服务已重启。"
 	else
-		echo "エラー：再起動$1サービスは失敗しました。"
+		echo "错误：重启 $1 服务失败。"
 	fi
 }
 
-# サービスを開始します
+# 启动服务
 start() {
 	systemctl start "$1"
 	if [ $? -eq 0 ]; then
-		echo "$1サービスが開始されました。"
+		echo "$1 服务已启动。"
 	else
-		echo "エラー：開始$1サービスは失敗しました。"
+		echo "错误：启动 $1 服务失败。"
 	fi
 }
 
-# サービスを停止します
+# 停止服务
 stop() {
 	systemctl stop "$1"
 	if [ $? -eq 0 ]; then
-		echo "$1サービスは停止しました。"
+		echo "$1 服务已停止。"
 	else
-		echo "エラー：停止します$1サービスは失敗しました。"
+		echo "错误：停止 $1 服务失败。"
 	fi
 }
 
-# サービスのステータスを確認します
+# 查看服务状态
 status() {
 	systemctl status "$1"
 	if [ $? -eq 0 ]; then
-		echo "$1サービスステータスが表示されます。"
+		echo "$1 服务状态已显示。"
 	else
-		echo "エラー：表示できません$1サービスステータス。"
+		echo "错误：无法显示 $1 服务状态。"
 	fi
 }
 
@@ -328,14 +328,14 @@ enable() {
 	   /bin/systemctl enable "$SERVICE_NAME"
 	fi
 
-	echo "$SERVICE_NAME電源を入れるように設定します。"
+	echo "$SERVICE_NAME 已设置为开机自启。"
 }
 
 
 
 break_end() {
-	  echo -e "${gl_lv}操作が完了しました${gl_bai}"
-	  echo "任意のキーを押して続行します..."
+	  echo -e "${gl_lv}操作完成${gl_bai}"
+	  echo "按任意键继续..."
 	  read -n 1 -s -r -p ""
 	  echo ""
 	  clear
@@ -425,7 +425,7 @@ install_add_docker_cn
 
 
 install_add_docker() {
-	echo -e "${gl_huang}Docker環境のインストール...${gl_bai}"
+	echo -e "${gl_huang}正在安装docker环境...${gl_bai}"
 	if  [ -f /etc/os-release ] && grep -q "Fedora" /etc/os-release; then
 		install_add_docker_guanfang
 	elif command -v dnf &>/dev/null; then
@@ -500,63 +500,63 @@ install_docker() {
 docker_ps() {
 while true; do
 	clear
-	send_stats "Dockerコンテナ管理"
-	echo "Dockerコンテナリスト"
+	send_stats "Docker容器管理"
+	echo "Docker容器列表"
 	docker ps -a --format "table {{.ID}}\t{{.Names}}\t{{.Status}}\t{{.Ports}}"
 	echo ""
-	echo "コンテナ操作"
+	echo "容器操作"
 	echo "------------------------"
-	echo "1.新しいコンテナを作成します"
+	echo "1. 创建新的容器"
 	echo "------------------------"
-	echo "2。指定されたコンテナを起動します。6。すべての容器を起動します"
-	echo "3.指定された容器を停止します7。すべての容器を停止します"
-	echo "4.指定されたコンテナ8を削除します。すべてのコンテナを削除します"
-	echo "5。指定されたコンテナを再起動9。すべてのコンテナを再起動します"
+	echo "2. 启动指定容器             6. 启动所有容器"
+	echo "3. 停止指定容器             7. 停止所有容器"
+	echo "4. 删除指定容器             8. 删除所有容器"
+	echo "5. 重启指定容器             9. 重启所有容器"
 	echo "------------------------"
-	echo "11。指定されたコンテナを入力します12。コンテナログを表示します"
-	echo "13.コンテナネットワークを表示14。コンテナ占有を表示します"
+	echo "11. 进入指定容器           12. 查看容器日志"
+	echo "13. 查看容器网络           14. 查看容器占用"
 	echo "------------------------"
-	echo "15.コンテナポートアクセスをオンにする16.コンテナポートアクセスをオフにする"
+	echo "15. 开启容器端口访问       16. 关闭容器端口访问"
 	echo "------------------------"
-	echo "0。前のメニューに戻ります"
+	echo "0. 返回上一级选单"
 	echo "------------------------"
-	read -e -p "選択を入力してください：" sub_choice
+	read -e -p "请输入你的选择: " sub_choice
 	case $sub_choice in
 		1)
-			send_stats "新しいコンテナを作成します"
-			read -e -p "作成コマンドを入力してください：" dockername
+			send_stats "新建容器"
+			read -e -p "请输入创建命令: " dockername
 			$dockername
 			;;
 		2)
-			send_stats "指定された容器を起動します"
-			read -e -p "コンテナ名（スペースで区切られた複数のコンテナ名）を入力してください。" dockername
+			send_stats "启动指定容器"
+			read -e -p "请输入容器名（多个容器名请用空格分隔）: " dockername
 			docker start $dockername
 			;;
 		3)
-			send_stats "指定された容器を停止します"
-			read -e -p "コンテナ名（スペースで区切られた複数のコンテナ名）を入力してください。" dockername
+			send_stats "停止指定容器"
+			read -e -p "请输入容器名（多个容器名请用空格分隔）: " dockername
 			docker stop $dockername
 			;;
 		4)
-			send_stats "指定されたコンテナを削除します"
-			read -e -p "コンテナ名（スペースで区切られた複数のコンテナ名）を入力してください。" dockername
+			send_stats "删除指定容器"
+			read -e -p "请输入容器名（多个容器名请用空格分隔）: " dockername
 			docker rm -f $dockername
 			;;
 		5)
-			send_stats "指定された容器を再起動します"
-			read -e -p "コンテナ名（スペースで区切られた複数のコンテナ名）を入力してください。" dockername
+			send_stats "重启指定容器"
+			read -e -p "请输入容器名（多个容器名请用空格分隔）: " dockername
 			docker restart $dockername
 			;;
 		6)
-			send_stats "すべてのコンテナを起動します"
+			send_stats "启动所有容器"
 			docker start $(docker ps -a -q)
 			;;
 		7)
-			send_stats "すべてのコンテナを停止します"
+			send_stats "停止所有容器"
 			docker stop $(docker ps -q)
 			;;
 		8)
-			send_stats "すべてのコンテナを削除します"
+			send_stats "删除所有容器"
 			read -e -p "$(echo -e "${gl_hong}注意: ${gl_bai}确定删除所有容器吗？(Y/N): ")" choice
 			case "$choice" in
 			  [Yy])
@@ -565,28 +565,28 @@ while true; do
 			  [Nn])
 				;;
 			  *)
-				echo "無効な選択、yまたはnを入力してください。"
+				echo "无效的选择，请输入 Y 或 N。"
 				;;
 			esac
 			;;
 		9)
-			send_stats "すべてのコンテナを再起動します"
+			send_stats "重启所有容器"
 			docker restart $(docker ps -q)
 			;;
 		11)
 			send_stats "进入容器"
-			read -e -p "コンテナ名を入力してください：" dockername
+			read -e -p "请输入容器名: " dockername
 			docker exec -it $dockername /bin/sh
 			break_end
 			;;
 		12)
-			send_stats "コンテナログを表示します"
-			read -e -p "コンテナ名を入力してください：" dockername
+			send_stats "查看容器日志"
+			read -e -p "请输入容器名: " dockername
 			docker logs $dockername
 			break_end
 			;;
 		13)
-			send_stats "コンテナネットワークを表示します"
+			send_stats "查看容器网络"
 			echo ""
 			container_ids=$(docker ps -q)
 			echo "------------------------------------------------------------"
@@ -604,13 +604,13 @@ while true; do
 			break_end
 			;;
 		14)
-			send_stats "コンテナの占有を表示します"
+			send_stats "查看容器占用"
 			docker stats --no-stream
 			break_end
 			;;
 
 		15)
-			send_stats "コンテナポートアクセスを許可します"
+			send_stats "允许容器端口访问"
 			read -e -p "请输入容器名: " docker_name
 			ip_address
 			clear_container_rules "$docker_name" "$ipv4_address"
@@ -620,8 +620,8 @@ while true; do
 			;;
 
 		16)
-			send_stats "コンテナポートアクセスをブロックします"
-			read -e -p "コンテナ名を入力してください：" docker_name
+			send_stats "阻止容器端口访问"
+			read -e -p "请输入容器名: " docker_name
 			ip_address
 			block_container_port "$docker_name" "$ipv4_address"
 			local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
@@ -640,7 +640,7 @@ done
 docker_image() {
 while true; do
 	clear
-	send_stats "Docker画像管理"
+	send_stats "Docker镜像管理"
 	echo "Docker镜像列表"
 	docker image ls
 	echo ""
@@ -4076,8 +4076,8 @@ yt_menu_pro() {
 				send_stats "正在安装 yt-dlp..."
 				echo "正在安装 yt-dlp..."
 				install ffmpeg
-				sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-				sudo chmod a+rx /usr/local/bin/yt-dlp
+				curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+				chmod a+rx /usr/local/bin/yt-dlp
 				local app_no=$sub_choice
 				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "安装完成。按任意键继续..."
@@ -4085,7 +4085,7 @@ yt_menu_pro() {
 			2)
 				send_stats "正在更新 yt-dlp..."
 				echo "正在更新 yt-dlp..."
-				sudo yt-dlp -U
+				yt-dlp -U
 				local app_no=$sub_choice
 				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "更新完成。按任意键继续..."
@@ -4093,7 +4093,7 @@ yt_menu_pro() {
 			3)
 				send_stats "正在卸载 yt-dlp..."
 				echo "正在卸载 yt-dlp..."
-				sudo rm -f /usr/local/bin/yt-dlp
+				rm -f /usr/local/bin/yt-dlp
 				local app_no=$sub_choice
 				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 				echo "卸载完成。按任意键继续..."
@@ -10409,7 +10409,7 @@ linux_panel() {
 
 				mkdir -p /home/docker/astrbot/data
 
-				sudo docker run -d \
+				docker run -d \
 				  -p ${docker_port}:6185 \
 				  -p 6195:6195 \
 				  -p 6196:6196 \
@@ -11237,6 +11237,8 @@ EOF
 
 			useradd -m -s /bin/bash "$new_username"
 			passwd "$new_username"
+
+			install sudo
 
 			echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 

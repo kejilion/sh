@@ -4076,8 +4076,8 @@ yt_menu_pro() {
 				send_stats "正在安裝 yt-dlp..."
 				echo "正在安裝 yt-dlp..."
 				install ffmpeg
-				sudo curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
-				sudo chmod a+rx /usr/local/bin/yt-dlp
+				curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
+				chmod a+rx /usr/local/bin/yt-dlp
 				local app_no=$sub_choice
 				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "安裝完成。按任意鍵繼續..."
@@ -4085,7 +4085,7 @@ yt_menu_pro() {
 			2)
 				send_stats "正在更新 yt-dlp..."
 				echo "正在更新 yt-dlp..."
-				sudo yt-dlp -U
+				yt-dlp -U
 				local app_no=$sub_choice
 				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
 				echo "更新完成。按任意鍵繼續..."
@@ -4093,7 +4093,7 @@ yt_menu_pro() {
 			3)
 				send_stats "正在卸載 yt-dlp..."
 				echo "正在卸載 yt-dlp..."
-				sudo rm -f /usr/local/bin/yt-dlp
+				rm -f /usr/local/bin/yt-dlp
 				local app_no=$sub_choice
 				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
 				echo "卸載完成。按任意鍵繼續..."
@@ -10409,7 +10409,7 @@ linux_panel() {
 
 				mkdir -p /home/docker/astrbot/data
 
-				sudo docker run -d \
+				docker run -d \
 				  -p ${docker_port}:6185 \
 				  -p 6195:6195 \
 				  -p 6196:6196 \
@@ -11237,6 +11237,8 @@ EOF
 
 			useradd -m -s /bin/bash "$new_username"
 			passwd "$new_username"
+
+			install sudo
 
 			echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
