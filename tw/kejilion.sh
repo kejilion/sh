@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 canshu="default"
-permission_granted="true"
+permission_granted="false"
 ENABLE_STATS="true"
 
 
@@ -2363,8 +2363,16 @@ web_optimization() {
 }
 
 
+
+
+
+
+
+
+
+
 check_docker_app() {
-	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1 ; then
 		check_docker="${gl_lv}已安装${gl_bai}"
 	else
 		check_docker="${gl_hui}未安装${gl_bai}"
@@ -2375,7 +2383,7 @@ check_docker_app() {
 
 # check_docker_app() {
 
-# if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+# if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 # check_docker="${gl_lv}已安裝${gl_bai}"
 # else
 # check_docker="${gl_hui}未安裝${gl_bai}"
@@ -2719,7 +2727,7 @@ while true; do
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
-	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			docker_port=${docker_port:-0000}
@@ -2832,7 +2840,7 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
-		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+		if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
@@ -3225,8 +3233,6 @@ ldnmp_wp() {
   mkdir $yuming
   cd $yuming
   wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
-  # wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
-  # wget -O latest.zip https://wordpress.org/latest.zip
   unzip latest.zip
   rm latest.zip
   echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
@@ -3238,11 +3244,6 @@ ldnmp_wp() {
 
   restart_ldnmp
   nginx_web_on
-# echo "數據庫名: $dbname"
-# echo "用戶名: $dbuse"
-# echo "密碼: $dbusepasswd"
-# echo "數據庫地址: mysql"
-# echo "表前綴: wp_"
 
 }
 
@@ -3293,7 +3294,6 @@ ldnmp_Proxy_backend() {
 		add_yuming
 	fi
 
-	# 獲取用戶輸入的多個IP:端口（用空格分隔）
 	if [ -z "$reverseproxy_port" ]; then
 		read -e -p "請輸入你的多個反代IP+端口用空格隔開（例如 127.0.0.1:3000 127.0.0.1:3002）：" reverseproxy_port
 	fi
@@ -3310,13 +3310,11 @@ ldnmp_Proxy_backend() {
 
 	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
-	# 動態生成 upstream 配置
 	upstream_servers=""
 	for server in $reverseproxy_port; do
 		upstream_servers="$upstream_servers    server $server;\n"
 	done
 
-	# 替換模板中的佔位符
 	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
 
 	nginx_http_on
@@ -3343,11 +3341,11 @@ ldnmp_web_status() {
 	root_use
 	while true; do
 		local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
-		local output="站点: ${gl_lv}${cert_count}${gl_bai}"
+		local output="${gl_lv}${cert_count}${gl_bai}"
 
 		local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 		local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)
-		local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
+		local db_output="${gl_lv}${db_count}${gl_bai}"
 
 		clear
 		send_stats "LDNMP站點管理"
@@ -3355,8 +3353,7 @@ ldnmp_web_status() {
 		echo "------------------------"
 		ldnmp_v
 
-		# ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
-		echo -e "${output}證書到期時間"
+		echo -e "站點:${output}證書到期時間"
 		echo -e "------------------------"
 		for cert_file in /home/web/certs/*_cert.pem; do
 		  local domain=$(basename "$cert_file" | sed 's/_cert.pem//')
@@ -3369,7 +3366,7 @@ ldnmp_web_status() {
 
 		echo "------------------------"
 		echo ""
-		echo -e "${db_output}"
+		echo -e "資料庫:${db_output}"
 		echo -e "------------------------"
 		local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys"
@@ -7453,20 +7450,20 @@ docker_tato() {
 
 ldnmp_tato() {
 local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
-local output="站点: ${gl_lv}${cert_count}${gl_bai}"
+local output="${gl_lv}${cert_count}${gl_bai}"
 
 local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml 2>/dev/null | tr -d '[:space:]')
 if [ -n "$dbrootpasswd" ]; then
 	local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2>/dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)
 fi
 
-local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
+local db_output="${gl_lv}${db_count}${gl_bai}"
 
 
 if command -v docker &>/dev/null; then
 	if docker ps --filter "name=nginx" --filter "status=running" | grep -q nginx; then
 		echo -e "${gl_huang}------------------------"
-		echo -e "${gl_lv}環境已安裝${gl_bai}  $output  $db_output"
+		echo -e "${gl_lv}環境已安裝${gl_bai}站點:$output資料庫:$db_output"
 	fi
 fi
 
@@ -8707,7 +8704,7 @@ linux_panel() {
 				echo -e "哪吒監控$check_docker $update_status"
 				echo "開源、輕量、易用的服務器監控與運維工具"
 				echo "官網搭建文檔: https://nezha.wiki/guide/dashboard.html"
-				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 					check_docker_app_ip
 				fi
@@ -8797,7 +8794,7 @@ linux_panel() {
 				fi
 				echo ""
 
-				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 					yuming=$(cat /home/docker/mail.txt)
 					echo "訪問地址:"
 					echo "https://$yuming"
@@ -9183,7 +9180,7 @@ linux_panel() {
 				echo -e "雷池服務$check_docker"
 				echo "雷池是長亭科技開發的WAF站點防火牆程序面板，可以反代站點進行自動化防禦"
 				echo "視頻介紹: https://www.bilibili.com/video/BV1mZ421T74c?t=0.1"
-				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 					check_docker_app_ip
 				fi
 				echo ""

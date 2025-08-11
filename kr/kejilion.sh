@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 canshu="default"
-permission_granted="true"
+permission_granted="false"
 ENABLE_STATS="true"
 
 
@@ -57,7 +57,7 @@ CheckFirstRun_true() {
 
 
 
-# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 컴퓨터 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
+# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 기계 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
 # 이 기능을 설계 해야하는 이유는 무엇입니까? 목적은 사용자가 사용하는 기능을 더 잘 이해하고 기능을 더욱 최적화하여 사용자 요구를 충족시키는 더 많은 기능을 시작하는 것입니다.
 # 전체 텍스트의 경우 Send_Stats 기능 호출 위치, 투명 및 오픈 소스를 검색 할 수 있으며 우려 사항이 있으면 사용을 거부 할 수 있습니다.
 
@@ -1185,7 +1185,7 @@ iptables_panel() {
 
 			  5)
 				  # IP 화이트리스트
-				  read -e -p "해제 할 IP 또는 IP 세그먼트를 입력하십시오." o_ip
+				  read -e -p "릴리스하려면 IP 또는 IP 세그먼트를 입력하십시오." o_ip
 				  allow_ip $o_ip
 				  ;;
 			  6)
@@ -1298,7 +1298,7 @@ check_swap() {
 
 local swap_total=$(free -m | awk 'NR==3{print $2}')
 
-# 가상 메모리를 생성 해야하는지 확인하십시오
+# 가상 메모리를 만들어야하는지 확인하십시오
 [ "$swap_total" -gt 0 ] || add_swap 1024
 
 
@@ -1556,7 +1556,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "먼저 도메인 이름을 기본 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "먼저 도메인 이름을 로컬 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IP 또는 해결 된 도메인 이름을 입력하십시오." yuming
 }
 
@@ -2119,7 +2119,7 @@ web_security() {
 
 				  22)
 					  send_stats "5 초 방패의 높은 하중"
-					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 하중의 감지에 도달하면 방패가 자동으로 켜지고 낮은 부하가 자동으로 5 초 동안 꺼집니다.${gl_bai}"
+					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 부하가 감지되면 방패가 자동으로 켜지고 5 초 동안 낮은 부하가 자동으로 꺼집니다.${gl_bai}"
 					  echo "--------------"
 					  echo "CF 매개 변수 가져 오기 :"
 					  echo -e "CF 배경의 오른쪽 상단 모서리로 이동하여 왼쪽의 API 토큰을 선택하고 얻습니다.${gl_huang}Global API Key${gl_bai}"
@@ -2363,8 +2363,16 @@ web_optimization() {
 }
 
 
+
+
+
+
+
+
+
+
 check_docker_app() {
-	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1 ; then
 		check_docker="${gl_lv}已安装${gl_bai}"
 	else
 		check_docker="${gl_hui}未安装${gl_bai}"
@@ -2375,7 +2383,7 @@ check_docker_app() {
 
 # check_docker_app() {
 
-# if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+# if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 # check_docker = "$ {gl_lv} $ {gl_bai} 설치"
 # else
 # check_docker = "$ {gl_hui} $ {gl_bai}가 설치되지 않았다"
@@ -2719,7 +2727,7 @@ while true; do
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
-	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			docker_port=${docker_port:-0000}
@@ -2832,7 +2840,7 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
-		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+		if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
@@ -3225,8 +3233,6 @@ ldnmp_wp() {
   mkdir $yuming
   cd $yuming
   wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
-  # wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
-  # wget -O latest.zip https://wordpress.org/latest.zip
   unzip latest.zip
   rm latest.zip
   echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
@@ -3238,11 +3244,6 @@ ldnmp_wp() {
 
   restart_ldnmp
   nginx_web_on
-# Echo "데이터베이스 이름 : $ dbname"
-# Echo "사용자 이름 : $ dbuse"
-# echo "비밀번호 : $ dbusepasswd"
-# Echo "데이터베이스 주소 : mysql"
-# 에코 "테이블 접두사 : wp_"
 
 }
 
@@ -3293,7 +3294,6 @@ ldnmp_Proxy_backend() {
 		add_yuming
 	fi
 
-	# 사용자가 입력 한 여러 IP를 얻습니다 : 포트 (공간별로 분리)
 	if [ -z "$reverseproxy_port" ]; then
 		read -e -p "공간으로 분리 된 여러 반세대 IP+ 포트를 입력하십시오 (예 : 127.0.0.1:3000 127.0.1:3002) :" reverseproxy_port
 	fi
@@ -3310,13 +3310,11 @@ ldnmp_Proxy_backend() {
 
 	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
-	# 상류 구성을 동적으로 생성합니다
 	upstream_servers=""
 	for server in $reverseproxy_port; do
 		upstream_servers="$upstream_servers    server $server;\n"
 	done
 
-	# 템플릿의 자리 표시자를 교체하십시오
 	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
 
 	nginx_http_on
@@ -3343,11 +3341,11 @@ ldnmp_web_status() {
 	root_use
 	while true; do
 		local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
-		local output="站点: ${gl_lv}${cert_count}${gl_bai}"
+		local output="${gl_lv}${cert_count}${gl_bai}"
 
 		local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 		local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)
-		local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
+		local db_output="${gl_lv}${db_count}${gl_bai}"
 
 		clear
 		send_stats "LDNMP 사이트 관리"
@@ -3355,8 +3353,7 @@ ldnmp_web_status() {
 		echo "------------------------"
 		ldnmp_v
 
-		# ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
-		echo -e "${output}인증서 만료 시간"
+		echo -e "대지:${output}인증서 만료 시간"
 		echo -e "------------------------"
 		for cert_file in /home/web/certs/*_cert.pem; do
 		  local domain=$(basename "$cert_file" | sed 's/_cert.pem//')
@@ -3369,7 +3366,7 @@ ldnmp_web_status() {
 
 		echo "------------------------"
 		echo ""
-		echo -e "${db_output}"
+		echo -e "데이터 베이스:${db_output}"
 		echo -e "------------------------"
 		local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys"
@@ -3939,7 +3936,7 @@ frps_panel() {
 
 			8)
 				send_stats "IP 액세스를 차단하십시오"
-				echo "반세기 도메인 이름에 액세스 한 경우이 기능을 사용하여 IP+ 포트 액세스를 차단하십시오."
+				echo "반세기 도메인 이름에 액세스 한 경우이 기능을 사용하여 IP+ 포트 액세스를 차단할 수 있습니다."
 				read -e -p "차단 해야하는 포트를 입력하십시오." frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
@@ -5807,7 +5804,7 @@ list_connections() {
 # 새 연결을 추가하십시오
 add_connection() {
 	send_stats "새 연결을 추가하십시오"
-	echo "새 연결 예제 :"
+	echo "새 연결을 만드는 예 :"
 	echo "- 연결 이름 : my_server"
 	echo "-IP 주소 : 192.168.1.100"
 	echo "- 사용자 이름 : 루트"
@@ -6550,7 +6547,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}매트릭스 화면 보증${gl_kjlan}22.  ${gl_bai}열차 스크린 보안"
 	  echo -e "${gl_kjlan}26.  ${gl_bai}테트리스 게임${gl_kjlan}27.  ${gl_bai}뱀 먹는 게임"
-	  echo -e "${gl_kjlan}28.  ${gl_bai}우주 침입자 게임"
+	  echo -e "${gl_kjlan}28.  ${gl_bai}우주 침략자 게임"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}모두 설치하십시오${gl_kjlan}32.  ${gl_bai}모든 설치 (스크린 세이버 및 게임 제외)${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${gl_bai}모든 것을 제거하십시오"
@@ -6749,7 +6746,7 @@ linux_tools() {
 
 		  32)
 			  clear
-			  send_stats "모든 설치 (게임 및 스크린 세이버 제외)"
+			  send_stats "모든 설치 (게임 및 화면 보호기 제외)"
 			  install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger ncdu fzf vim nano git
 			  ;;
 
@@ -7453,20 +7450,20 @@ docker_tato() {
 
 ldnmp_tato() {
 local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
-local output="站点: ${gl_lv}${cert_count}${gl_bai}"
+local output="${gl_lv}${cert_count}${gl_bai}"
 
 local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml 2>/dev/null | tr -d '[:space:]')
 if [ -n "$dbrootpasswd" ]; then
 	local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2>/dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)
 fi
 
-local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
+local db_output="${gl_lv}${db_count}${gl_bai}"
 
 
 if command -v docker &>/dev/null; then
 	if docker ps --filter "name=nginx" --filter "status=running" | grep -q nginx; then
 		echo -e "${gl_huang}------------------------"
-		echo -e "${gl_lv}환경이 설치됩니다${gl_bai}  $output  $db_output"
+		echo -e "${gl_lv}환경이 설치됩니다${gl_bai}대지:$output데이터 베이스:$db_output"
 	fi
 fi
 
@@ -7682,7 +7679,7 @@ linux_ldnmp() {
 	  echo "Redis Port : 6379"
 	  echo ""
 	  echo "웹 사이트 URL : https : //$yuming"
-	  echo "백그라운드 로그인 경로 : /admin"
+	  echo "백엔드 로그인 경로 : /admin"
 	  echo "------------------------"
 	  echo "사용자 이름 : 관리자"
 	  echo "비밀번호 : 관리자"
@@ -7913,7 +7910,7 @@ linux_ldnmp() {
 			  ;;
 		  2)
 			  echo "데이터베이스 백업은 .gz-end 압축 패키지 여야합니다. Pagoda/1Panel의 백업 데이터 가져 오기를 지원하려면/홈/디렉토리에 넣으십시오."
-			  read -e -p "다운로드 링크를 입력하여 백업 데이터를 원격으로 다운로드 할 수도 있습니다. 원격 다운로드를 건너 뛰려면 Enter를 직접 누르십시오." url_download_db
+			  read -e -p "다운로드 링크를 입력하여 백업 데이터를 원격으로 다운로드 할 수도 있습니다. Enter가 직접 누르면 원격 다운로드를 건너 뜁니다." url_download_db
 
 			  cd /home/
 			  if [ -n "$url_download_db" ]; then
@@ -8707,7 +8704,7 @@ linux_panel() {
 				echo -e "Nezha 모니터링$check_docker $update_status"
 				echo "오픈 소스, 가볍고 사용하기 쉬운 서버 모니터링 및 작동 및 유지 보수 도구"
 				echo "공식 웹 사이트 구성 문서 : https://nezha.wiki/guide/dashboard.html"
-				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 					check_docker_app_ip
 				fi
@@ -8797,7 +8794,7 @@ linux_panel() {
 				fi
 				echo ""
 
-				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 					yuming=$(cat /home/docker/mail.txt)
 					echo "액세스 주소 :"
 					echo "https://$yuming"
@@ -9183,7 +9180,7 @@ linux_panel() {
 				echo -e "썬더 풀 서비스$check_docker"
 				echo "Lei Chi는 변경 기술이 개발 한 WAF 사이트 방화벽 프로그램 패널로, 자동 방어를 위해 대행사 사이트를 역전시킬 수 있습니다."
 				echo "비디오 소개 : https://www.bilibili.com/video/bv1mz421t74c?t=0.1"
-				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 					check_docker_app_ip
 				fi
 				echo ""
@@ -11066,7 +11063,7 @@ linux_Settings() {
 				  fi
 				  find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/k" && rm -f {}' \;
 				  ln -s /usr/local/bin/k /usr/local/bin/$kuaijiejian
-				  echo "바로 가기 키가 설정되었습니다"
+				  echo "바로 가기 키가 설정되어 있습니다"
 				  send_stats "스크립트 바로 가기 키가 설정되었습니다"
 				  break_end
 				  linux_Settings

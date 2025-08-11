@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 canshu="default"
-permission_granted="true"
+permission_granted="false"
 ENABLE_STATS="true"
 
 
@@ -1185,7 +1185,7 @@ iptables_panel() {
 
 			  5)
 				  # IP whitelist
-				  read -e -p "Please enter the IP or IP segment to be released:" o_ip
+				  read -e -p "Please enter the IP or IP segment to release:" o_ip
 				  allow_ip $o_ip
 				  ;;
 			  6)
@@ -1556,7 +1556,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "First resolve the domain name to the native IP:${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "First resolve the domain name to the local IP:${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "Please enter your IP or the resolved domain name:" yuming
 }
 
@@ -1738,7 +1738,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# Decide to turn on or off WAF according to mode parameters
+	# Decide to turn on or off WAF according to the mode parameter
 	if [ "$mode" == "on" ]; then
 		# Turn on WAF: Remove comments
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -2119,7 +2119,7 @@ web_security() {
 
 				  22)
 					  send_stats "High load on 5 seconds shield"
-					  echo -e "${gl_huang}The website automatically detects every 5 minutes. When it reaches the detection of a high load, the shield will be automatically turned on, and the low load will be automatically turned off for 5 seconds.${gl_bai}"
+					  echo -e "${gl_huang}The website automatically detects every 5 minutes. When high load is detected, the shield will be automatically turned on, and low load will be automatically turned off for 5 seconds.${gl_bai}"
 					  echo "--------------"
 					  echo "Get CF parameters:"
 					  echo -e "Go to the upper right corner of the cf background, select the API token on the left, and obtain it${gl_huang}Global API Key${gl_bai}"
@@ -2363,8 +2363,16 @@ web_optimization() {
 }
 
 
+
+
+
+
+
+
+
+
 check_docker_app() {
-	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1 ; then
 		check_docker="${gl_lv}已安装${gl_bai}"
 	else
 		check_docker="${gl_hui}未安装${gl_bai}"
@@ -2375,7 +2383,7 @@ check_docker_app() {
 
 # check_docker_app() {
 
-# if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+# if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 # check_docker="${gl_lv}${gl_bai} installed"
 # else
 # check_docker="${gl_hui}${gl_bai} is not installed"
@@ -2719,7 +2727,7 @@ while true; do
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
-	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			docker_port=${docker_port:-0000}
@@ -2832,7 +2840,7 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
-		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+		if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
@@ -3225,8 +3233,6 @@ ldnmp_wp() {
   mkdir $yuming
   cd $yuming
   wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
-  # wget -O latest.zip https://cn.wordpress.org/latest-zh_CN.zip
-  # wget -O latest.zip https://wordpress.org/latest.zip
   unzip latest.zip
   rm latest.zip
   echo "define('FS_METHOD', 'direct'); define('WP_REDIS_HOST', 'redis'); define('WP_REDIS_PORT', '6379');" >> /home/web/html/$yuming/wordpress/wp-config-sample.php
@@ -3238,11 +3244,6 @@ ldnmp_wp() {
 
   restart_ldnmp
   nginx_web_on
-# echo "Database name: $dbname"
-# echo "Username: $dbuse"
-# echo "Password: $dbusepasswd"
-# echo "Database address: mysql"
-# echo "Table prefix: wp_"
 
 }
 
@@ -3293,7 +3294,6 @@ ldnmp_Proxy_backend() {
 		add_yuming
 	fi
 
-	# Get multiple IPs entered by the user: ports (separated by spaces)
 	if [ -z "$reverseproxy_port" ]; then
 		read -e -p "Please enter your multiple anti-generation IP+ ports separated by spaces (for example, 127.0.0.1:3000 127.0.0.1:3002):" reverseproxy_port
 	fi
@@ -3310,13 +3310,11 @@ ldnmp_Proxy_backend() {
 
 	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 
-	# Dynamically generate upstream configuration
 	upstream_servers=""
 	for server in $reverseproxy_port; do
 		upstream_servers="$upstream_servers    server $server;\n"
 	done
 
-	# Replace placeholders in templates
 	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
 
 	nginx_http_on
@@ -3343,11 +3341,11 @@ ldnmp_web_status() {
 	root_use
 	while true; do
 		local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
-		local output="站点: ${gl_lv}${cert_count}${gl_bai}"
+		local output="${gl_lv}${cert_count}${gl_bai}"
 
 		local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 		local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)
-		local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
+		local db_output="${gl_lv}${db_count}${gl_bai}"
 
 		clear
 		send_stats "LDNMP site management"
@@ -3355,8 +3353,7 @@ ldnmp_web_status() {
 		echo "------------------------"
 		ldnmp_v
 
-		# ls -t /home/web/conf.d | sed 's/\.[^.]*$//'
-		echo -e "${output}Certificate expiration time"
+		echo -e "Site:${output}Certificate expiration time"
 		echo -e "------------------------"
 		for cert_file in /home/web/certs/*_cert.pem; do
 		  local domain=$(basename "$cert_file" | sed 's/_cert.pem//')
@@ -3369,7 +3366,7 @@ ldnmp_web_status() {
 
 		echo "------------------------"
 		echo ""
-		echo -e "${db_output}"
+		echo -e "database:${db_output}"
 		echo -e "------------------------"
 		local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys"
@@ -3939,7 +3936,7 @@ frps_panel() {
 
 			8)
 				send_stats "Block IP access"
-				echo "If you have accessed the anti-generation domain name, use this function to block IP+ port access, which is more secure."
+				echo "If you have accessed the anti-generation domain name, you can use this function to block IP+ port access, which is more secure."
 				read -e -p "Please enter the port you need to block:" frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
@@ -5807,7 +5804,7 @@ list_connections() {
 # Add a new connection
 add_connection() {
 	send_stats "Add a new connection"
-	echo "Create a new connection example:"
+	echo "Example to create a new connection:"
 	echo "- Connection name: my_server"
 	echo "- IP address: 192.168.1.100"
 	echo "- Username: root"
@@ -5948,7 +5945,7 @@ ssh_manager() {
 	while true; do
 		clear
 		echo "SSH Remote Connection Tool"
-		echo "Can connect to other Linux systems via SSH"
+		echo "Can be connected to other Linux systems via SSH"
 		echo "------------------------"
 		list_connections
 		echo "1. Create a new connection 2. Use a connection 3. Delete a connection"
@@ -7453,20 +7450,20 @@ docker_tato() {
 
 ldnmp_tato() {
 local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
-local output="站点: ${gl_lv}${cert_count}${gl_bai}"
+local output="${gl_lv}${cert_count}${gl_bai}"
 
 local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml 2>/dev/null | tr -d '[:space:]')
 if [ -n "$dbrootpasswd" ]; then
 	local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2>/dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)
 fi
 
-local db_output="数据库: ${gl_lv}${db_count}${gl_bai}"
+local db_output="${gl_lv}${db_count}${gl_bai}"
 
 
 if command -v docker &>/dev/null; then
 	if docker ps --filter "name=nginx" --filter "status=running" | grep -q nginx; then
 		echo -e "${gl_huang}------------------------"
-		echo -e "${gl_lv}The environment is installed${gl_bai}  $output  $db_output"
+		echo -e "${gl_lv}The environment is installed${gl_bai}Site:$outputdatabase:$db_output"
 	fi
 fi
 
@@ -7682,7 +7679,7 @@ linux_ldnmp() {
 	  echo "Redis port: 6379"
 	  echo ""
 	  echo "Website url: https://$yuming"
-	  echo "Background login path: /admin"
+	  echo "Backend login path: /admin"
 	  echo "------------------------"
 	  echo "Username: admin"
 	  echo "Password: admin"
@@ -7913,7 +7910,7 @@ linux_ldnmp() {
 			  ;;
 		  2)
 			  echo "The database backup must be a .gz-end compressed package. Please put it in the /home/ directory to support the import of backup data of Pagoda/1panel."
-			  read -e -p "You can also enter the download link to remotely download the backup data. Directly press Enter to skip remote download:" url_download_db
+			  read -e -p "You can also enter the download link to remotely download the backup data. Directly press Enter will skip remote download:" url_download_db
 
 			  cd /home/
 			  if [ -n "$url_download_db" ]; then
@@ -8707,7 +8704,7 @@ linux_panel() {
 				echo -e "Nezha Monitoring$check_docker $update_status"
 				echo "Open source, lightweight and easy-to-use server monitoring and operation and maintenance tools"
 				echo "Official website construction document: https://nezha.wiki/guide/dashboard.html"
-				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 					check_docker_app_ip
 				fi
@@ -8797,7 +8794,7 @@ linux_panel() {
 				fi
 				echo ""
 
-				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 					yuming=$(cat /home/docker/mail.txt)
 					echo "Access address:"
 					echo "https://$yuming"
@@ -9183,7 +9180,7 @@ linux_panel() {
 				echo -e "Thunder Pool Service$check_docker"
 				echo "Lei Chi is a WAF site firewall program panel developed by Changting Technology, which can reverse the agency site for automated defense."
 				echo "Video introduction: https://www.bilibili.com/video/BV1mZ421T74c?t=0.1"
-				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
 					check_docker_app_ip
 				fi
 				echo ""
@@ -11066,7 +11063,7 @@ linux_Settings() {
 				  fi
 				  find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/k" && rm -f {}' \;
 				  ln -s /usr/local/bin/k /usr/local/bin/$kuaijiejian
-				  echo "Shortcut keys have been set"
+				  echo "Shortcut keys are set"
 				  send_stats "Script shortcut keys have been set"
 				  break_end
 				  linux_Settings
@@ -12168,7 +12165,7 @@ EOF
 
 			  echo "Privacy and Security"
 			  echo "The script will collect data on user functions, optimize the script experience, and create more fun and useful functions."
-			  echo "Will collect the script version number, usage time, system version, CPU architecture, country of the machine and the name of the functions used,"
+			  echo "Will collect the script version number, usage time, system version, CPU architecture, country of the machine and the name of the function used,"
 			  echo "------------------------------------------------"
 			  echo -e "Current status:$status_message"
 			  echo "--------------------"
