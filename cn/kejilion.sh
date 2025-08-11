@@ -11238,6 +11238,8 @@ EOF
 			useradd -m -s /bin/bash "$new_username"
 			passwd "$new_username"
 
+			install sudo
+
 			echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
 			passwd -l root
