@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 canshu="CN"
-permission_granted="false"
+permission_granted="true"
 ENABLE_STATS="true"
 
 
@@ -2363,16 +2363,8 @@ web_optimization() {
 }
 
 
-
-
-
-
-
-
-
-
 check_docker_app() {
-	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1 ; then
+	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 		check_docker="${gl_lv}已安装${gl_bai}"
 	else
 		check_docker="${gl_hui}未安装${gl_bai}"
@@ -2383,7 +2375,7 @@ check_docker_app() {
 
 # check_docker_app() {
 
-# if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+# if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 # 	check_docker="${gl_lv}已安装${gl_bai}"
 # else
 # 	check_docker="${gl_hui}未安装${gl_bai}"
@@ -2727,7 +2719,7 @@ while true; do
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
-	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			docker_port=${docker_port:-0000}
@@ -2840,7 +2832,7 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
-		if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
@@ -8715,7 +8707,7 @@ linux_panel() {
 				echo -e "哪吒监控 $check_docker $update_status"
 				echo "开源、轻量、易用的服务器监控与运维工具"
 				echo "官网搭建文档: https://nezha.wiki/guide/dashboard.html"
-				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 					check_docker_app_ip
 				fi
@@ -8805,7 +8797,7 @@ linux_panel() {
 				fi
 				echo ""
 
-				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 					yuming=$(cat /home/docker/mail.txt)
 					echo "访问地址: "
 					echo "https://$yuming"
@@ -9191,7 +9183,7 @@ linux_panel() {
 				echo -e "雷池服务 $check_docker"
 				echo "雷池是长亭科技开发的WAF站点防火墙程序面板，可以反代站点进行自动化防御"
 				echo "视频介绍: https://www.bilibili.com/video/BV1mZ421T74c?t=0.1"
-				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 					check_docker_app_ip
 				fi
 				echo ""
