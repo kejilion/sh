@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.5"
+sh_v="4.0.6"
 
 
 gl_hui='\e[37m'
@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 canshu="default"
-permission_granted="false"
+permission_granted="true"
 ENABLE_STATS="true"
 
 
@@ -57,7 +57,7 @@ CheckFirstRun_true() {
 
 
 
-# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 기계 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
+# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 컴퓨터 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
 # 이 기능을 설계 해야하는 이유는 무엇입니까? 목적은 사용자가 사용하는 기능을 더 잘 이해하고 기능을 더욱 최적화하여 사용자 요구를 충족시키는 더 많은 기능을 시작하는 것입니다.
 # 전체 텍스트의 경우 Send_Stats 기능 호출 위치, 투명 및 오픈 소스를 검색 할 수 있으며 우려 사항이 있으면 사용을 거부 할 수 있습니다.
 
@@ -1298,7 +1298,7 @@ check_swap() {
 
 local swap_total=$(free -m | awk 'NR==3{print $2}')
 
-# 가상 메모리를 만들어야하는지 확인하십시오
+# 가상 메모리를 생성 해야하는지 확인하십시오
 [ "$swap_total" -gt 0 ] || add_swap 1024
 
 
@@ -2119,7 +2119,7 @@ web_security() {
 
 				  22)
 					  send_stats "5 초 방패의 높은 하중"
-					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 부하가 감지되면 방패가 자동으로 켜지고 5 초 동안 낮은 부하가 자동으로 꺼집니다.${gl_bai}"
+					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 하중의 감지에 도달하면 방패가 자동으로 켜지고 낮은 부하가 자동으로 5 초 동안 꺼집니다.${gl_bai}"
 					  echo "--------------"
 					  echo "CF 매개 변수 가져 오기 :"
 					  echo -e "CF 배경의 오른쪽 상단 모서리로 이동하여 왼쪽의 API 토큰을 선택하고 얻습니다.${gl_huang}Global API Key${gl_bai}"
@@ -2363,16 +2363,8 @@ web_optimization() {
 }
 
 
-
-
-
-
-
-
-
-
 check_docker_app() {
-	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 		check_docker="${gl_lv}已安装${gl_bai}"
 	else
 		check_docker="${gl_hui}未安装${gl_bai}"
@@ -2383,7 +2375,7 @@ check_docker_app() {
 
 # check_docker_app() {
 
-# if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+# if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 # check_docker = "$ {gl_lv} $ {gl_bai} 설치"
 # else
 # check_docker = "$ {gl_hui} $ {gl_bai}가 설치되지 않았다"
@@ -2727,7 +2719,7 @@ while true; do
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
-	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			docker_port=${docker_port:-0000}
@@ -2840,7 +2832,7 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
-		if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
@@ -4571,10 +4563,10 @@ dd_xitong() {
 			echo "시스템을 다시 설치하십시오"
 			echo "--------------------------------"
 			echo -e "${gl_hong}알아채다:${gl_bai}다시 설치는 접촉을 잃을 위험이 있으며 걱정하는 사람들은 그것을주의해서 사용해야합니다. 재설치는 15 분이 걸릴 것으로 예상됩니다. 데이터를 미리 백업하십시오."
-			echo -e "${gl_hui}스크립트 지원을 위해 Mollylau 및 Bin456789에게 감사드립니다!${gl_bai} "
+			echo -e "${gl_hui}Leitbogioro 및 Bin456789의 스크립트 지원 덕분에!${gl_bai} "
 			echo "------------------------"
-			echo "1. Debian 12                  2. Debian 11"
-			echo "3. Debian 10                  4. Debian 9"
+			echo "1. Debian 13                  2. Debian 12"
+			echo "3. Debian 11                  4. Debian 10"
 			echo "------------------------"
 			echo "11. Ubuntu 24.04              12. Ubuntu 22.04"
 			echo "13. Ubuntu 20.04              14. Ubuntu 18.04"
@@ -4598,31 +4590,34 @@ dd_xitong() {
 			echo "------------------------"
 			read -e -p "다시 설치할 시스템을 선택하십시오." sys_choice
 			case "$sys_choice" in
+
+
 			  1)
+				send_stats "데비안 13을 다시 설치하십시오"
+				dd_xitong_3
+				bash reinstall.sh debian 13
+				reboot
+				exit
+				;;
+
+			  2)
 				send_stats "데비안 12를 다시 설치하십시오"
 				dd_xitong_1
 				bash InstallNET.sh -debian 12
 				reboot
 				exit
 				;;
-			  2)
+			  3)
 				send_stats "데비안 11을 다시 설치하십시오"
 				dd_xitong_1
 				bash InstallNET.sh -debian 11
 				reboot
 				exit
 				;;
-			  3)
+			  4)
 				send_stats "데비안 10을 다시 설치하십시오"
 				dd_xitong_1
 				bash InstallNET.sh -debian 10
-				reboot
-				exit
-				;;
-			  4)
-				send_stats "데비안 9를 다시 설치하십시오"
-				dd_xitong_1
-				bash InstallNET.sh -debian 9
 				reboot
 				exit
 				;;
@@ -4986,7 +4981,7 @@ elrepo_install() {
 		linux_Settings
 	fi
 	# 감지 된 운영 체제 정보를 인쇄합니다
-	echo "운영 체제 감지 :$os_name $os_version"
+	echo "감지 된 운영 체제 :$os_name $os_version"
 	# 시스템 버전에 따라 해당 Elrepo 창고 구성을 설치하십시오.
 	if [[ "$os_version" == 8 ]]; then
 		echo "Elrepo 저장소 구성 (버전 8)을 설치하십시오 ..."
@@ -5812,7 +5807,7 @@ list_connections() {
 # 새 연결을 추가하십시오
 add_connection() {
 	send_stats "새 연결을 추가하십시오"
-	echo "새 연결을 만드는 예 :"
+	echo "새 연결 예제 :"
 	echo "- 연결 이름 : my_server"
 	echo "-IP 주소 : 192.168.1.100"
 	echo "- 사용자 이름 : 루트"
@@ -6555,7 +6550,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}매트릭스 화면 보증${gl_kjlan}22.  ${gl_bai}열차 스크린 보안"
 	  echo -e "${gl_kjlan}26.  ${gl_bai}테트리스 게임${gl_kjlan}27.  ${gl_bai}뱀 먹는 게임"
-	  echo -e "${gl_kjlan}28.  ${gl_bai}우주 침략자 게임"
+	  echo -e "${gl_kjlan}28.  ${gl_bai}우주 침입자 게임"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}모두 설치하십시오${gl_kjlan}32.  ${gl_bai}모든 설치 (스크린 세이버 및 게임 제외)${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${gl_bai}모든 것을 제거하십시오"
@@ -6754,7 +6749,7 @@ linux_tools() {
 
 		  32)
 			  clear
-			  send_stats "모든 설치 (게임 및 화면 보호기 제외)"
+			  send_stats "모든 설치 (게임 및 스크린 세이버 제외)"
 			  install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger ncdu fzf vim nano git
 			  ;;
 
@@ -7918,7 +7913,7 @@ linux_ldnmp() {
 			  ;;
 		  2)
 			  echo "데이터베이스 백업은 .gz-end 압축 패키지 여야합니다. Pagoda/1Panel의 백업 데이터 가져 오기를 지원하려면/홈/디렉토리에 넣으십시오."
-			  read -e -p "다운로드 링크를 입력하여 백업 데이터를 원격으로 다운로드 할 수도 있습니다. Enter가 직접 누르면 원격 다운로드를 건너 뜁니다." url_download_db
+			  read -e -p "다운로드 링크를 입력하여 백업 데이터를 원격으로 다운로드 할 수도 있습니다. 원격 다운로드를 건너 뛰려면 Enter를 직접 누르십시오." url_download_db
 
 			  cd /home/
 			  if [ -n "$url_download_db" ]; then
@@ -8712,7 +8707,7 @@ linux_panel() {
 				echo -e "Nezha 모니터링$check_docker $update_status"
 				echo "오픈 소스, 가볍고 사용하기 쉬운 서버 모니터링 및 작동 및 유지 보수 도구"
 				echo "공식 웹 사이트 구성 문서 : https://nezha.wiki/guide/dashboard.html"
-				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 					local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 					check_docker_app_ip
 				fi
@@ -8802,7 +8797,7 @@ linux_panel() {
 				fi
 				echo ""
 
-				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 					yuming=$(cat /home/docker/mail.txt)
 					echo "액세스 주소 :"
 					echo "https://$yuming"
@@ -9188,7 +9183,7 @@ linux_panel() {
 				echo -e "썬더 풀 서비스$check_docker"
 				echo "Lei Chi는 변경 기술이 개발 한 WAF 사이트 방화벽 프로그램 패널로, 자동 방어를 위해 대행사 사이트를 역전시킬 수 있습니다."
 				echo "비디오 소개 : https://www.bilibili.com/video/bv1mz421t74c?t=0.1"
-				if docker ps -a --format '{{.Names}}' | grep -q "$docker_name"; then
+				if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 					check_docker_app_ip
 				fi
 				echo ""
@@ -11040,7 +11035,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}방화벽 고급 관리자${gl_kjlan}18.  ${gl_bai}호스트 이름을 수정하십시오"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}스위치 시스템 업데이트 소스${gl_kjlan}20.  ${gl_bai}타이밍 작업 관리"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 분석${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 구문 분석${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}현재 한도의 자동 종료${gl_kjlan}24.  ${gl_bai}루트 비공개 키 로그인 모드"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-BOT 시스템 모니터링 및 조기 경고${gl_kjlan}26.  ${gl_bai}OpenSsh 고위험 취약점을 수정하십시오"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linux 커널 업그레이드${gl_kjlan}28.  ${gl_bai}Linux 시스템에서 커널 매개 변수의 최적화${gl_huang}★${gl_bai}"
@@ -12394,7 +12389,7 @@ linux_file() {
 
 				# -r 옵션을 사용하여 디렉토리를 재귀 적으로 복사하십시오
 				cp -r "$src_path" "$dest_path" && echo "파일 또는 디렉토리가 복사되었습니다$dest_path" || echo "파일이나 디렉토리를 복사하지 못했습니다"
-				send_stats "파일 또는 디렉토리를 복사하십시오"
+				send_stats "파일 또는 디렉토리를 복사합니다"
 				;;
 
 
