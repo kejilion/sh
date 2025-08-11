@@ -10820,7 +10820,7 @@ linux_panel() {
 
 				mkdir -p /home/docker/gpt-load && \
 				docker run -d --name gpt-load \
-					-p 3001:3001 \
+					-p ${docker_port}:3001 \
 					-e AUTH_KEY=sk-123456 \
 					-v "/home/docker/gpt-load/data":/app/data \
 					tbphp/gpt-load:latest
