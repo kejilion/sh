@@ -8514,7 +8514,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}77.  ${color77}迅雷离线下载工具                    ${gl_kjlan}78.  ${color78}PandaWiki智能文档管理系统"
 	  echo -e "${gl_kjlan}79.  ${color79}Beszel服务器监控                    ${gl_kjlan}80.  ${color80}linkwarden书签管理"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet视频会议"
+	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet视频会议                   ${gl_kjlan}82.  ${color80}gpt-load高性能AI透明代理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -10808,6 +10808,33 @@ linux_panel() {
 
 			  ;;
 
+
+
+		  82)
+
+			local docker_name="gpt-load"
+			local docker_img="tbphp/gpt-load:latest"
+			local docker_port=8082
+
+			docker_rum() {
+
+				mkdir -p /home/docker/gpt-load && \
+				docker run -d --name gpt-load \
+					-p 3001:3001 \
+					-e AUTH_KEY=sk-123456 \
+					-v "/home/docker/gpt-load/data":/app/data \
+					tbphp/gpt-load:latest
+
+			}
+
+			local docker_describe="高性能AI接口透明代理服务"
+			local docker_url="官网介绍: https://www.gpt-load.com/"
+			local docker_use="echo \"默认管理密钥: sk-123456\""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
 
 
 
