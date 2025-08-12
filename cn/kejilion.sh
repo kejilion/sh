@@ -8515,6 +8515,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}79.  ${color79}Beszel服务器监控                    ${gl_kjlan}80.  ${color80}linkwarden书签管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet视频会议                   ${gl_kjlan}82.  ${color82}gpt-load高性能AI透明代理"
+	  echo -e "${gl_kjlan}83.  ${color83}komari服务器监控工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -10836,6 +10837,36 @@ linux_panel() {
 
 			  ;;
 
+
+
+		  83)
+
+			local docker_name="komari"
+			local docker_img="ghcr.io/komari-monitor/komari:latest"
+			local docker_port=8083
+
+			docker_rum() {
+
+				mkdir -p /home/docker/komari && \
+				docker run -d \
+				  --name komari \
+				  -p ${docker_port}:25774 \
+				  -v /home/docker/komari:/app/data \
+				  -e ADMIN_USERNAME=admin \
+				  -e ADMIN_PASSWORD=1212156 \
+				  --restart=always \
+				  ghcr.io/komari-monitor/komari:latest
+
+			}
+
+			local docker_describe="轻量级的自托管服务器监控工具"
+			local docker_url="官网介绍: https://github.com/komari-monitor/komari/tree/main"
+			local docker_use="echo \"默认账号: admin  默认密码: 1212156\""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
 
 
 		  0)
