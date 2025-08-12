@@ -11458,6 +11458,8 @@ EOF
 					   # 赋予新用户sudo权限
 					   echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
+					   install sudo
+
 					   echo "操作已完成。"
 
 						  ;;
@@ -11465,6 +11467,8 @@ EOF
 					   read -e -p "请输入用户名: " username
 					   # 赋予新用户sudo权限
 					   echo "$username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
+
+					   install sudo
 						  ;;
 					  4)
 					   read -e -p "请输入用户名: " username
