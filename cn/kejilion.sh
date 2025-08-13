@@ -8519,6 +8519,7 @@ linux_panel() {
 	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet视频会议                   ${gl_kjlan}82.  ${color82}gpt-load高性能AI透明代理"
 	  echo -e "${gl_kjlan}83.  ${color83}komari服务器监控工具                ${gl_kjlan}84.  ${color84}Wallos个人财务管理工具"
 	  echo -e "${gl_kjlan}85.  ${color85}immich图片视频管理器                ${gl_kjlan}86.  ${color86}jellyfin媒体管理系统"
+	  echo -e "${gl_kjlan}87.  ${color87}SyncTV一起看片神器                  ${gl_kjlan}88.  ${color88}Owncast自托管直播平台"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -10976,6 +10977,63 @@ linux_panel() {
 			docker_app
 
 			  ;;
+
+
+		  87)
+
+			local docker_name="synctv"
+			local docker_img="synctvorg/synctv"
+			local docker_port=8087
+
+			docker_rum() {
+
+				docker run -d \
+  					--name synctv \
+  					-v /home/docker/synctv:/root/.synctv \
+  					-p ${docker_port}:8080 \
+  					--restart=always \
+  					synctvorg/synctv
+
+			}
+
+			local docker_describe="远程一起观看电影和直播的程序。它提供了同步观影、直播、聊天等功能"
+			local docker_url="官网介绍: https://github.com/synctv-org/synctv"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+		  88)
+
+			local docker_name="owncast"
+			local docker_img="owncast/owncast:latest"
+			local docker_port=8088
+
+			docker_rum() {
+
+				docker run -d \
+  					--name owncast \
+  					-p ${docker_port}:8080 \
+  					-p 1935:1935 \
+  					-v /home/docker/owncast/data:/app/data \
+  					--restart=always \
+  					owncast/owncast:latest
+
+
+			}
+
+			local docker_describe="开源、免费的自建直播平台"
+			local docker_url="官网介绍: https://owncast.online"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
 
 		  0)
 			  kejilion
