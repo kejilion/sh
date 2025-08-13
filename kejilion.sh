@@ -10998,7 +10998,7 @@ linux_panel() {
 
 			local docker_describe="远程一起观看电影和直播的程序。它提供了同步观影、直播、聊天等功能"
 			local docker_url="官网介绍: https://github.com/synctv-org/synctv"
-			local docker_use=""
+			local docker_use="echo \"初始账号和密码: root  登陆后请及时修改登录密码\""
 			local docker_passwd=""
 			local app_size="1"
 			docker_app
@@ -11027,8 +11027,8 @@ linux_panel() {
 
 			local docker_describe="开源、免费的自建直播平台"
 			local docker_url="官网介绍: https://owncast.online"
-			local docker_use=""
-			local docker_passwd=""
+			local docker_use="echo \"访问地址后面带 /admin 访问管理员页面\""
+			local docker_passwd="echo \"初始账号: admin  初始密码: abc123  登陆后请及时修改登录密码\""
 			local app_size="1"
 			docker_app
 
