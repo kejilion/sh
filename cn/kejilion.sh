@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.6"
+sh_v="4.0.7"
 
 
 gl_hui='\e[37m'
@@ -8517,7 +8517,8 @@ linux_panel() {
 	  echo -e "${gl_kjlan}79.  ${color79}Beszel服务器监控                    ${gl_kjlan}80.  ${color80}linkwarden书签管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet视频会议                   ${gl_kjlan}82.  ${color82}gpt-load高性能AI透明代理"
-	  echo -e "${gl_kjlan}83.  ${color83}komari服务器监控工具"
+	  echo -e "${gl_kjlan}83.  ${color83}komari服务器监控工具                ${gl_kjlan}84.  ${color84}Wallos个人财务管理工具"
+	  echo -e "${gl_kjlan}85.  ${color85}immich图片视频管理器                ${gl_kjlan}86.  ${color86}jellyfin媒体管理系统"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9835,7 +9836,7 @@ linux_panel() {
 
 			docker_rum() {
 
-				docker run -d --name ghproxy --restart always -p ${docker_port}:8080 wjqserver/ghproxy:latest
+				docker run -d --name ghproxy --restart always -p ${docker_port}:8080 -v /home/docker/ghproxy/config:/data/ghproxy/config wjqserver/ghproxy:latest
 
 			}
 
@@ -10870,6 +10871,111 @@ linux_panel() {
 
 			  ;;
 
+
+
+		  84)
+
+			local docker_name="wallos"
+			local docker_img="bellamy/wallos:latest"
+			local docker_port=8084
+
+			docker_rum() {
+
+				mkdir -p /home/docker/wallos && \
+				docker run -d --name wallos \
+				  -v /home/docker/wallos/db:/var/www/html/db \
+				  -v /home/docker/wallos/logos:/var/www/html/images/uploads/logos \
+				  -e TZ=UTC \
+				  -p ${docker_port}:80 \
+				  --restart unless-stopped \
+				  bellamy/wallos:latest
+
+			}
+
+			local docker_describe="开源个人订阅追踪器，可用于财务管理"
+			local docker_url="官网介绍: https://github.com/ellite/Wallos"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+		  85)
+
+			  local app_name="immich图片视频管理器"
+			  local app_text="高性能自托管照片和视频管理解决方案。"
+			  local app_url="官网介绍: https://github.com/immich-app/immich"
+			  local docker_name="immich"
+			  local docker_port="8085"
+			  local app_size="3"
+
+			  docker_app_install() {
+				  install git openssl
+				  mkdir -p /home/docker/${docker_name} && cd /home/docker/${docker_name}
+
+				  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
+				  wget -O .env ${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env
+				  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/cloud/docker-compose.yml
+
+				  docker compose up -d
+
+				  clear
+				  echo "已经安装完成"
+			  	  check_docker_app_ip
+
+			  }
+
+			  docker_app_update() {
+					cd /home/docker/${docker_name} && docker compose down --rmi all
+					docker_app_install
+			  }
+
+			  docker_app_uninstall() {
+				  cd /home/docker/${docker_name} && docker compose down --rmi all
+				  rm -rf /home/docker/${docker_name}
+				  echo "应用已卸载"
+			  }
+
+			  docker_app_plus
+
+
+			  ;;
+
+
+		  86)
+
+			local docker_name="jellyfin"
+			local docker_img="jellyfin/jellyfin"
+			local docker_port=8086
+
+			docker_rum() {
+
+				mkdir -p /home/docker/jellyfin/media
+				chmod -R 777 /home/docker/jellyfin
+
+				docker run -d \
+				  --name jellyfin \
+				  --user root \
+				  --volume /home/docker/jellyfin/config:/config \
+				  --volume /home/docker/jellyfin/cache:/cache \
+				  --mount type=bind,source=/home/docker/jellyfin/media,target=/media \
+				  -p ${docker_port}:8096 \
+				  -p 7359:7359/udp \
+				  --restart=unless-stopped \
+				  jellyfin/jellyfin
+
+
+			}
+
+			local docker_describe="是一款开源媒体服务器软件"
+			local docker_url="官网介绍: https://jellyfin.org/"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
 
 		  0)
 			  kejilion
