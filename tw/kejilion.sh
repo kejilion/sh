@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.6"
+sh_v="4.0.7"
 
 
 gl_hui='\e[37m'
@@ -1428,7 +1428,9 @@ install_ssltls() {
 	  local file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
 	  if [ ! -f "$file_path" ]; then
 		 	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
-	  		local ipv6_pattern='^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))))$'
+			local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
+			# local ipv6_pattern='^([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}$'
+	  		# local ipv6_pattern='^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))))$'
 			if [[ ($yuming =~ $ipv4_pattern || $yuming =~ $ipv6_pattern) ]]; then
 				mkdir -p /etc/letsencrypt/live/$yuming/
 				if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
@@ -8514,7 +8516,10 @@ linux_panel() {
 	  echo -e "${gl_kjlan}77.  ${color77}迅雷離線下載工具${gl_kjlan}78.  ${color78}PandaWiki智能文檔管理系統"
 	  echo -e "${gl_kjlan}79.  ${color79}Beszel服務器監控${gl_kjlan}80.  ${color80}linkwarden書籤管理"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet視頻會議"
+	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet視頻會議${gl_kjlan}82.  ${color82}gpt-load高性能AI透明代理"
+	  echo -e "${gl_kjlan}83.  ${color83}komari服務器監控工具${gl_kjlan}84.  ${color84}Wallos個人財務管理工具"
+	  echo -e "${gl_kjlan}85.  ${color85}immich圖片視頻管理器${gl_kjlan}86.  ${color86}jellyfin媒體管理系統"
+	  echo -e "${gl_kjlan}87.  ${color87}SyncTV一起看片神器${gl_kjlan}88.  ${color88}Owncast自託管直播平台"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜單"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -9832,7 +9837,7 @@ linux_panel() {
 
 			docker_rum() {
 
-				docker run -d --name ghproxy --restart always -p ${docker_port}:8080 wjqserver/ghproxy:latest
+				docker run -d --name ghproxy --restart always -p ${docker_port}:8080 -v /home/docker/ghproxy/config:/data/ghproxy/config wjqserver/ghproxy:latest
 
 			}
 
@@ -10810,6 +10815,225 @@ linux_panel() {
 
 
 
+		  82)
+
+			local docker_name="gpt-load"
+			local docker_img="tbphp/gpt-load:latest"
+			local docker_port=8082
+
+			docker_rum() {
+
+				mkdir -p /home/docker/gpt-load && \
+				docker run -d --name gpt-load \
+					-p ${docker_port}:3001 \
+					-e AUTH_KEY=sk-123456 \
+					-v "/home/docker/gpt-load/data":/app/data \
+					tbphp/gpt-load:latest
+
+			}
+
+			local docker_describe="高性能AI接口透明代理服务"
+			local docker_url="官网介绍: https://www.gpt-load.com/"
+			local docker_use="echo \"默认管理密钥: sk-123456\""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+
+		  83)
+
+			local docker_name="komari"
+			local docker_img="ghcr.io/komari-monitor/komari:latest"
+			local docker_port=8083
+
+			docker_rum() {
+
+				mkdir -p /home/docker/komari && \
+				docker run -d \
+				  --name komari \
+				  -p ${docker_port}:25774 \
+				  -v /home/docker/komari:/app/data \
+				  -e ADMIN_USERNAME=admin \
+				  -e ADMIN_PASSWORD=1212156 \
+				  --restart=always \
+				  ghcr.io/komari-monitor/komari:latest
+
+			}
+
+			local docker_describe="轻量级的自托管服务器监控工具"
+			local docker_url="官网介绍: https://github.com/komari-monitor/komari/tree/main"
+			local docker_use="echo \"默认账号: admin  默认密码: 1212156\""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+
+		  84)
+
+			local docker_name="wallos"
+			local docker_img="bellamy/wallos:latest"
+			local docker_port=8084
+
+			docker_rum() {
+
+				mkdir -p /home/docker/wallos && \
+				docker run -d --name wallos \
+				  -v /home/docker/wallos/db:/var/www/html/db \
+				  -v /home/docker/wallos/logos:/var/www/html/images/uploads/logos \
+				  -e TZ=UTC \
+				  -p ${docker_port}:80 \
+				  --restart unless-stopped \
+				  bellamy/wallos:latest
+
+			}
+
+			local docker_describe="开源个人订阅追踪器，可用于财务管理"
+			local docker_url="官网介绍: https://github.com/ellite/Wallos"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+		  85)
+
+			  local app_name="immich图片视频管理器"
+			  local app_text="高性能自托管照片和视频管理解决方案。"
+			  local app_url="官网介绍: https://github.com/immich-app/immich"
+			  local docker_name="immich"
+			  local docker_port="8085"
+			  local app_size="3"
+
+			  docker_app_install() {
+				  install git openssl
+				  mkdir -p /home/docker/${docker_name} && cd /home/docker/${docker_name}
+
+				  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
+				  wget -O .env ${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env
+				  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/cloud/docker-compose.yml
+
+				  docker compose up -d
+
+				  clear
+				  echo "已經安裝完成"
+			  	  check_docker_app_ip
+
+			  }
+
+			  docker_app_update() {
+					cd /home/docker/${docker_name} && docker compose down --rmi all
+					docker_app_install
+			  }
+
+			  docker_app_uninstall() {
+				  cd /home/docker/${docker_name} && docker compose down --rmi all
+				  rm -rf /home/docker/${docker_name}
+				  echo "應用已卸載"
+			  }
+
+			  docker_app_plus
+
+
+			  ;;
+
+
+		  86)
+
+			local docker_name="jellyfin"
+			local docker_img="jellyfin/jellyfin"
+			local docker_port=8086
+
+			docker_rum() {
+
+				mkdir -p /home/docker/jellyfin/media
+				chmod -R 777 /home/docker/jellyfin
+
+				docker run -d \
+				  --name jellyfin \
+				  --user root \
+				  --volume /home/docker/jellyfin/config:/config \
+				  --volume /home/docker/jellyfin/cache:/cache \
+				  --mount type=bind,source=/home/docker/jellyfin/media,target=/media \
+				  -p ${docker_port}:8096 \
+				  -p 7359:7359/udp \
+				  --restart=unless-stopped \
+				  jellyfin/jellyfin
+
+
+			}
+
+			local docker_describe="是一款开源媒体服务器软件"
+			local docker_url="官网介绍: https://jellyfin.org/"
+			local docker_use=""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+		  87)
+
+			local docker_name="synctv"
+			local docker_img="synctvorg/synctv"
+			local docker_port=8087
+
+			docker_rum() {
+
+				docker run -d \
+  					--name synctv \
+  					-v /home/docker/synctv:/root/.synctv \
+  					-p ${docker_port}:8080 \
+  					--restart=always \
+  					synctvorg/synctv
+
+			}
+
+			local docker_describe="远程一起观看电影和直播的程序。它提供了同步观影、直播、聊天等功能"
+			local docker_url="官网介绍: https://github.com/synctv-org/synctv"
+			local docker_use="echo \"初始账号和密码: root  登陆后请及时修改登录密码\""
+			local docker_passwd=""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
+
+		  88)
+
+			local docker_name="owncast"
+			local docker_img="owncast/owncast:latest"
+			local docker_port=8088
+
+			docker_rum() {
+
+				docker run -d \
+  					--name owncast \
+  					-p ${docker_port}:8080 \
+  					-p 1935:1935 \
+  					-v /home/docker/owncast/data:/app/data \
+  					--restart=always \
+  					owncast/owncast:latest
+
+
+			}
+
+			local docker_describe="开源、免费的自建直播平台"
+			local docker_url="官网介绍: https://owncast.online"
+			local docker_use="echo \"访问地址后面带 /admin 访问管理员页面\""
+			local docker_passwd="echo \"初始账号: admin  初始密码: abc123  登陆后请及时修改登录密码\""
+			local app_size="1"
+			docker_app
+
+			  ;;
+
 
 		  0)
 			  kejilion
@@ -11400,6 +11624,8 @@ EOF
 					   # 賦予新用戶sudo權限
 					   echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
+					   install sudo
+
 					   echo "操作已完成。"
 
 						  ;;
@@ -11407,6 +11633,8 @@ EOF
 					   read -e -p "請輸入用戶名:" username
 					   # 賦予新用戶sudo權限
 					   echo "$username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
+
+					   install sudo
 						  ;;
 					  4)
 					   read -e -p "請輸入用戶名:" username
