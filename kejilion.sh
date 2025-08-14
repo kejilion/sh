@@ -10706,7 +10706,7 @@ while true; do
 		  local app_name="linkwarden书签管理"
 		  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
 		  local app_url="官方网站: https://linkwarden.app/"
-		  local docker_name="linkwarden"
+		  local docker_name="linkwarden-linkwarden-1"
 		  local docker_port="8080"
 		  local app_size="3"
 
@@ -10914,7 +10914,7 @@ while true; do
 		  local app_name="immich图片视频管理器"
 		  local app_text="高性能自托管照片和视频管理解决方案。"
 		  local app_url="官网介绍: https://github.com/immich-app/immich"
-		  local docker_name="immich"
+		  local docker_name="immich_server"
 		  local docker_port="8085"
 		  local app_size="3"
 
