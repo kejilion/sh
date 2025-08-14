@@ -8532,7 +8532,7 @@ while true; do
 	fi
 
 	case $sub_choice in
-	  1|bt)
+	  1|bt|baota)
 
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="宝塔面板"
@@ -8580,7 +8580,7 @@ while true; do
 		install_panel
 
 		  ;;
-	  3|1panel)
+	  3|1p|1panel)
 
 		local lujing="command -v 1pctl"
 		local panelname="1Panel"
@@ -8746,7 +8746,7 @@ while true; do
 		done
 		  ;;
 
-	  8|qb)
+	  8|qb|QB)
 
 		local docker_name="qbittorrent"
 		local docker_img="lscr.io/linuxserver/qbittorrent:latest"
@@ -10924,7 +10924,7 @@ while true; do
 
 			  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
 			  wget -O .env ${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env
-			  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/cloud/docker-compose.yml
+			  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/${docker_name}/docker-compose.yml
 
 			  docker compose up -d
 
