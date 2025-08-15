@@ -2760,8 +2760,8 @@ while true; do
 			docker_rum
 			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
-			local app_no=$sub_choice
-			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+			grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 
 			clear
 			echo "$docker_name 已经安装完成"
@@ -2775,8 +2775,8 @@ while true; do
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
 			docker_rum
-			local app_no=$sub_choice
-			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+			grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 
 			clear
 			echo "$docker_name 已经安装完成"
@@ -2791,8 +2791,8 @@ while true; do
 			docker rmi -f "$docker_img"
 			rm -rf "/home/docker/$docker_name"
 			rm -f /home/docker/${docker_name}_port.conf
-			local app_no=$sub_choice
-			sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 			echo "应用已卸载"
 			send_stats "卸载$docker_name"
 			;;
@@ -2872,19 +2872,19 @@ docker_app_plus() {
 				docker_app_install
 				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 				;;
 			2)
 				docker_app_update
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 				;;
 			3)
 				docker_app_uninstall
 				rm -f /home/docker/${docker_name}_port.conf
-				local app_no=$sub_choice
-				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 
 				;;
 			5)
@@ -3549,21 +3549,21 @@ while true; do
 			install wget
 			iptables_open
 			panel_app_install
-			local app_no=$sub_choice
-			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+			grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 			send_stats "${panelname}安装"
 			;;
 		2)
 			panel_app_manage
-			local app_no=$sub_choice
-			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+			grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 			send_stats "${panelname}控制"
 
 			;;
 		3)
 			panel_app_uninstall
-			local app_no=$sub_choice
-			sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 			send_stats "${panelname}卸载"
 			;;
 		*)
@@ -3862,6 +3862,7 @@ frps_main_ports() {
 
 frps_panel() {
 	send_stats "FRP服务端"
+	local app_id="55"
 	local docker_name="frps"
 	local docker_port=8056
 	while true; do
@@ -3892,8 +3893,8 @@ frps_panel() {
 				install jq grep ss
 				install_docker
 				generate_frps_config
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 				echo "FRP服务端已经安装完成"
 				;;
 			2)
@@ -3902,8 +3903,8 @@ frps_panel() {
 				docker rm -f frps && docker rmi kjlion/frp:alpine >/dev/null 2>&1
 				[ -f /home/frp/frps.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
 				donlond_frp frps
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 				echo "FRP服务端已经更新完成"
 				;;
 			3)
@@ -3913,8 +3914,8 @@ frps_panel() {
 				rm -rf /home/frp
 
 				close_port 8055 8056
-				local app_no=$sub_choice
-				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 				echo "应用已卸载"
 				;;
 			5)
@@ -3959,6 +3960,7 @@ frps_panel() {
 
 frpc_panel() {
 	send_stats "FRP客户端"
+	local app_id="56"
 	local docker_name="frpc"
 	local docker_port=8055
 	while true; do
@@ -3988,8 +3990,8 @@ frpc_panel() {
 				install jq grep ss
 				install_docker
 				configure_frpc
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 				echo "FRP客户端已经安装完成"
 				;;
 			2)
@@ -3998,8 +4000,8 @@ frpc_panel() {
 				docker rm -f frpc && docker rmi kjlion/frp:alpine >/dev/null 2>&1
 				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
 				donlond_frp frpc
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 				echo "FRP客户端已经更新完成"
 				;;
 
@@ -4009,8 +4011,8 @@ frpc_panel() {
 				docker rm -f frpc && docker rmi kjlion/frp:alpine
 				rm -rf /home/frp
 				close_port 8055
-				local app_no=$sub_choice
-				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 				echo "应用已卸载"
 				;;
 
@@ -4041,6 +4043,7 @@ frpc_panel() {
 
 yt_menu_pro() {
 
+	local app_id="66"
 	local VIDEO_DIR="/home/yt-dlp"
 	local URL_FILE="$VIDEO_DIR/urls.txt"
 	local ARCHIVE_FILE="$VIDEO_DIR/archive.txt"
@@ -4080,24 +4083,24 @@ yt_menu_pro() {
 				install ffmpeg
 				curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 				chmod a+rx /usr/local/bin/yt-dlp
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 				echo "安装完成。按任意键继续..."
 				read ;;
 			2)
 				send_stats "正在更新 yt-dlp..."
 				echo "正在更新 yt-dlp..."
 				yt-dlp -U
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 				echo "更新完成。按任意键继续..."
 				read ;;
 			3)
 				send_stats "正在卸载 yt-dlp..."
 				echo "正在卸载 yt-dlp..."
 				rm -f /usr/local/bin/yt-dlp
-				local app_no=$sub_choice
-				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 				echo "卸载完成。按任意键继续..."
 				read ;;
 			5)
@@ -4911,7 +4914,6 @@ bbrv3() {
 		  echo "------------------------------------------------"
 		  echo "仅支持Debian/Ubuntu"
 		  echo "请备份数据，将为你升级Linux内核开启BBR3"
-		  echo "VPS是512M内存的，请提前添加1G虚拟内存，防止因内存不足失联！"
 		  echo "------------------------------------------------"
 		  read -e -p "确定继续吗？(Y/N): " choice
 
@@ -8533,7 +8535,7 @@ while true; do
 
 	case $sub_choice in
 	  1|bt|baota)
-
+		local app_id="1"
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="宝塔面板"
 		local panelurl="https://www.bt.cn/new/index.html"
@@ -8559,6 +8561,8 @@ while true; do
 		  ;;
 	  2|aapanel)
 
+
+		local app_id="2"
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="aapanel"
 		local panelurl="https://www.aapanel.com/new/index.html"
@@ -8582,6 +8586,7 @@ while true; do
 		  ;;
 	  3|1p|1panel)
 
+		local app_id="3"
 		local lujing="command -v 1pctl"
 		local panelname="1Panel"
 		local panelurl="https://1panel.cn/"
@@ -8605,6 +8610,7 @@ while true; do
 		  ;;
 	  4|npm)
 
+		local app_id="4"
 		local docker_name="npm"
 		local docker_img="jc21/nginx-proxy-manager:latest"
 		local docker_port=81
@@ -8636,6 +8642,7 @@ while true; do
 
 	  5|openlist)
 
+		local app_id="5"
 		local docker_name="openlist"
 		local docker_img="openlistteam/openlist:latest-aria2"
 		local docker_port=5244
@@ -8666,6 +8673,7 @@ while true; do
 
 	  6|webtop-ubuntu)
 
+		local app_id="6"
 		local docker_name="webtop-ubuntu"
 		local docker_img="lscr.io/linuxserver/webtop:ubuntu-kde"
 		local docker_port=3006
@@ -8706,6 +8714,8 @@ while true; do
 	  7|nezha)
 		clear
 		send_stats "搭建哪吒"
+
+		local app_id="7"
 		local docker_name="nezha-dashboard"
 		local docker_port=8008
 		while true; do
@@ -8748,6 +8758,7 @@ while true; do
 
 	  8|qb|QB)
 
+		local app_id="8"
 		local docker_name="qbittorrent"
 		local docker_img="lscr.io/linuxserver/qbittorrent:latest"
 		local docker_port=8081
@@ -8784,6 +8795,7 @@ while true; do
 		send_stats "搭建邮局"
 		clear
 		install telnet
+		local app_id="9"
 		local docker_name=“mailserver”
 		while true; do
 			check_docker_app
@@ -8851,8 +8863,8 @@ while true; do
 						--restart=always \
 						-d analogic/poste.io
 
-					local app_no=$sub_choice
-					grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+					grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 
 					clear
 					echo "poste.io已经安装完成"
@@ -8876,8 +8888,8 @@ while true; do
 						--restart=always \
 						-d analogic/poste.i
 
-					local app_no=$sub_choice
-					grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+					grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 
 					clear
 					echo "poste.io已经安装完成"
@@ -8891,8 +8903,8 @@ while true; do
 					docker rmi -f analogic/poste.io
 					rm /home/docker/mail.txt
 					rm -rf /home/docker/mail
-					local app_no=$sub_choice
-					sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 					echo "应用已卸载"
 					;;
 
@@ -8908,6 +8920,7 @@ while true; do
 
 	  10|rocketchat)
 
+		local app_id="10"
 		local app_name="Rocket.Chat聊天系统"
 		local app_text="Rocket.Chat 是一个开源的团队通讯平台，支持实时聊天、音视频通话、文件共享等多种功能，"
 		local app_url="官方介绍: https://www.rocket.chat/"
@@ -8955,6 +8968,7 @@ while true; do
 
 
 	  11|zentao)
+		local app_id="11"
 		local docker_name="zentao-server"
 		local docker_img="idoop/zentao:latest"
 		local docker_port=82
@@ -8985,6 +8999,7 @@ while true; do
 		  ;;
 
 	  12|qinglong)
+		local app_id="12"
 		local docker_name="qinglong"
 		local docker_img="whyour/qinglong:latest"
 		local docker_port=5700
@@ -9013,6 +9028,7 @@ while true; do
 		  ;;
 	  13|cloudreve)
 
+		local app_id="13"
 		local app_name="cloudreve网盘"
 		local app_text="cloudreve是一个支持多家云存储的网盘系统"
 		local app_url="视频介绍: https://www.bilibili.com/video/BV13F4m1c7h7?t=0.1"
@@ -9048,6 +9064,7 @@ while true; do
 		  ;;
 
 	  14|easyimage)
+		local app_id="14"
 		local docker_name="easyimage"
 		local docker_img="ddsderek/easyimage:latest"
 		local docker_port=8014
@@ -9075,6 +9092,7 @@ while true; do
 		  ;;
 
 	  15|emby)
+		local app_id="15"
 		local docker_name="emby"
 		local docker_img="linuxserver/emby:latest"
 		local docker_port=8015
@@ -9102,6 +9120,7 @@ while true; do
 		  ;;
 
 	  16|looking)
+		local app_id="16"
 		local docker_name="looking-glass"
 		local docker_img="wikihostinc/looking-glass-server"
 		local docker_port=8016
@@ -9123,6 +9142,7 @@ while true; do
 		  ;;
 	  17|adguardhome)
 
+		local app_id="17"
 		local docker_name="adguardhome"
 		local docker_img="adguard/adguardhome"
 		local docker_port=8017
@@ -9155,6 +9175,7 @@ while true; do
 
 	  18|onlyoffice)
 
+		local app_id="18"
 		local docker_name="onlyoffice"
 		local docker_img="onlyoffice/documentserver"
 		local docker_port=8018
@@ -9183,6 +9204,7 @@ while true; do
 	  19|safeline)
 		send_stats "搭建雷池"
 
+		local app_id="19"
 		local docker_name=safeline-mgt
 		local docker_port=9443
 		while true; do
@@ -9208,8 +9230,8 @@ while true; do
 					install_docker
 					check_disk_space 5
 					bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
-					local app_no=$sub_choice
-					grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+					grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 					clear
 					echo "雷池WAF面板已经安装完成"
 					check_docker_app_ip
@@ -9221,8 +9243,8 @@ while true; do
 					bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
 					docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
 					echo ""
-					local app_no=$sub_choice
-					grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+					grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
 					clear
 					echo "雷池WAF面板已经更新完成"
 					check_docker_app_ip
@@ -9233,8 +9255,8 @@ while true; do
 				4)
 					cd /data/safeline
 					docker compose down --rmi all
-					local app_no=$sub_choice
-					sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 					echo "如果你是默认安装目录那现在项目已经卸载。如果你是自定义安装目录你需要到安装目录下自行执行:"
 					echo "docker compose down && docker compose down --rmi all"
 					;;
@@ -9249,6 +9271,7 @@ while true; do
 		  ;;
 
 	  20|portainer)
+		local app_id="20"
 		local docker_name="portainer"
 		local docker_img="portainer/portainer"
 		local docker_port=8020
@@ -9276,6 +9299,7 @@ while true; do
 		  ;;
 
 	  21|vscode)
+		local app_id="21"
 		local docker_name="vscode-web"
 		local docker_img="codercom/code-server"
 		local docker_port=8021
@@ -9298,6 +9322,7 @@ while true; do
 
 
 	  22|uptime-kuma)
+		local app_id="22"
 		local docker_name="uptime-kuma"
 		local docker_img="louislam/uptime-kuma:latest"
 		local docker_port=8022
@@ -9324,6 +9349,7 @@ while true; do
 		  ;;
 
 	  23|memos)
+		local app_id="23"
 		local docker_name="memos"
 		local docker_img="ghcr.io/usememos/memos:latest"
 		local docker_port=8023
@@ -9343,6 +9369,7 @@ while true; do
 		  ;;
 
 	  24|webtop)
+		local app_id="24"
 		local docker_name="webtop"
 		local docker_img="lscr.io/linuxserver/webtop:latest"
 		local docker_port=8024
@@ -9383,6 +9410,7 @@ while true; do
 		  ;;
 
 	  25|nextcloud)
+		local app_id="25"
 		local docker_name="nextcloud"
 		local docker_img="nextcloud:latest"
 		local docker_port=8025
@@ -9403,6 +9431,7 @@ while true; do
 		  ;;
 
 	  26|qd)
+		local app_id="26"
 		local docker_name="qd"
 		local docker_img="qdtoday/qd:latest"
 		local docker_port=8026
@@ -9422,6 +9451,7 @@ while true; do
 		  ;;
 
 	  27|dockge)
+		local app_id="27"
 		local docker_name="dockge"
 		local docker_img="louislam/dockge:latest"
 		local docker_port=8027
@@ -9441,6 +9471,7 @@ while true; do
 		  ;;
 
 	  28|speedtest)
+		local app_id="28"
 		local docker_name="speedtest"
 		local docker_img="ghcr.io/librespeed/speedtest"
 		local docker_port=8028
@@ -9460,6 +9491,7 @@ while true; do
 		  ;;
 
 	  29|searxng)
+		local app_id="29"
 		local docker_name="searxng"
 		local docker_img="searxng/searxng"
 		local docker_port=8029
@@ -9484,6 +9516,7 @@ while true; do
 		  ;;
 
 	  30|photoprism)
+		local app_id="30"
 		local docker_name="photoprism"
 		local docker_img="photoprism/photoprism:latest"
 		local docker_port=8030
@@ -9516,6 +9549,7 @@ while true; do
 
 
 	  31|s-pdf)
+		local app_id="31"
 		local docker_name="s-pdf"
 		local docker_img="frooodle/s-pdf:latest"
 		local docker_port=8031
@@ -9542,6 +9576,7 @@ while true; do
 		  ;;
 
 	  32|drawio)
+		local app_id="32"
 		local docker_name="drawio"
 		local docker_img="jgraph/drawio"
 		local docker_port=8032
@@ -9562,6 +9597,7 @@ while true; do
 		  ;;
 
 	  33|sun-panel)
+		local app_id="33"
 		local docker_name="sun-panel"
 		local docker_img="hslr/sun-panel"
 		local docker_port=8033
@@ -9586,6 +9622,7 @@ while true; do
 		  ;;
 
 	  34|pingvin-share)
+		local app_id="34"
 		local docker_name="pingvin-share"
 		local docker_img="stonith404/pingvin-share"
 		local docker_port=8034
@@ -9610,6 +9647,7 @@ while true; do
 
 
 	  35|moments)
+		local app_id="35"
 		local docker_name="moments"
 		local docker_img="kingwrcy/moments:latest"
 		local docker_port=8035
@@ -9637,6 +9675,7 @@ while true; do
 
 
 	  36|lobe-chat)
+		local app_id="36"
 		local docker_name="lobe-chat"
 		local docker_img="lobehub/lobe-chat:latest"
 		local docker_port=8036
@@ -9658,6 +9697,7 @@ while true; do
 		  ;;
 
 	  37|myip)
+		local app_id="37"
 		local docker_name="myip"
 		local docker_img="jason5ng32/myip:latest"
 		local docker_port=8037
@@ -9692,6 +9732,7 @@ while true; do
 			wget -O /home/docker/bililive-go/config.yml ${gh_proxy}raw.githubusercontent.com/hr3lxphr6j/bililive-go/master/config.yml > /dev/null 2>&1
 		fi
 
+		local app_id="39"
 		local docker_name="bililive-go"
 		local docker_img="chigusa/bililive-go"
 		local docker_port=8039
@@ -9711,6 +9752,7 @@ while true; do
 		  ;;
 
 	  40|webssh)
+		local app_id="40"
 		local docker_name="webssh"
 		local docker_img="jrohy/webssh"
 		local docker_port=8040
@@ -9728,6 +9770,7 @@ while true; do
 
 	  41|haozi)
 
+		local app_id="41"
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="耗子面板"
 		local panelurl="官方地址: ${gh_proxy}github.com/TheTNB/panel"
@@ -9752,6 +9795,7 @@ while true; do
 
 
 	  42|nexterm)
+		local app_id="42"
 		local docker_name="nexterm"
 		local docker_img="germannewsmaker/nexterm:latest"
 		local docker_port=8042
@@ -9776,6 +9820,7 @@ while true; do
 		  ;;
 
 	  43|hbbs)
+		local app_id="43"
 		local docker_name="hbbs"
 		local docker_img="rustdesk/rustdesk-server"
 		local docker_port=0000
@@ -9796,6 +9841,7 @@ while true; do
 		  ;;
 
 	  44|hbbr)
+		local app_id="44"
 		local docker_name="hbbr"
 		local docker_img="rustdesk/rustdesk-server"
 		local docker_port=0000
@@ -9815,6 +9861,7 @@ while true; do
 		  ;;
 
 	  45|registry)
+		local app_id="45"
 		local docker_name="registry"
 		local docker_img="registry:2"
 		local docker_port=8045
@@ -9840,6 +9887,7 @@ while true; do
 		  ;;
 
 	  46|ghproxy)
+		local app_id="46"
 		local docker_name="ghproxy"
 		local docker_img="wjqserver/ghproxy:latest"
 		local docker_port=8046
@@ -9860,6 +9908,7 @@ while true; do
 
 	  47|prometheus|grafana)
 
+		local app_id="47"
 		local app_name="普罗米修斯监控"
 		local app_text="Prometheus+Grafana企业级监控系统"
 		local app_url="官网介绍: https://prometheus.io"
@@ -9898,6 +9947,7 @@ while true; do
 		  ;;
 
 	  48|node-exporter)
+		local app_id="48"
 		local docker_name="node-exporter"
 		local docker_img="prom/node-exporter"
 		local docker_port=8048
@@ -9922,6 +9972,7 @@ while true; do
 		  ;;
 
 	  49|cadvisor)
+		local app_id="49"
 		local docker_name="cadvisor"
 		local docker_img="gcr.io/cadvisor/cadvisor:latest"
 		local docker_port=8049
@@ -9952,6 +10003,7 @@ while true; do
 
 
 	  50|changedetection)
+		local app_id="50"
 		local docker_name="changedetection"
 		local docker_img="dgtlmoon/changedetection.io:latest"
 		local docker_port=8050
@@ -9982,6 +10034,7 @@ while true; do
 
 
 	  52|dpanel)
+		local app_id="52"
 		local docker_name="dpanel"
 		local docker_img="dpanel/dpanel:lite"
 		local docker_port=8052
@@ -10005,6 +10058,7 @@ while true; do
 		  ;;
 
 	  53|llama3)
+		local app_id="53"
 		local docker_name="ollama"
 		local docker_img="ghcr.io/open-webui/open-webui:ollama"
 		local docker_port=8053
@@ -10025,6 +10079,7 @@ while true; do
 
 	  54|amh)
 
+		local app_id="54"
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="AMH面板"
 		local panelurl="官方地址: https://amh.sh/index.htm?amh"
@@ -10047,7 +10102,7 @@ while true; do
 
 
 	  55|frps)
-	  	frps_panel
+		frps_panel
 		  ;;
 
 	  56|frpc)
@@ -10055,6 +10110,7 @@ while true; do
 		  ;;
 
 	  57|deepseek)
+		local app_id="57"
 		local docker_name="ollama"
 		local docker_img="ghcr.io/open-webui/open-webui:ollama"
 		local docker_port=8053
@@ -10075,6 +10131,7 @@ while true; do
 
 
 	  58|dify)
+		local app_id="58"
 		local app_name="Dify知识库"
 		local app_text="是一款开源的大语言模型(LLM) 应用开发平台。自托管训练数据用于AI生成"
 		local app_url="官方网站: https://docs.dify.ai/zh-hans"
@@ -10113,7 +10170,8 @@ while true; do
 		  ;;
 
 	  59|new-api)
-		local app_name="New API"
+		local app_id="59"
+		local app_name="NewAPI"
 		local app_text="新一代大模型网关与AI资产管理系统"
 		local app_url="官方网站: https://github.com/Calcium-Ion/new-api"
 		local docker_name="new-api"
@@ -10165,6 +10223,7 @@ while true; do
 
 	  60|jms)
 
+		local app_id="60"
 		local app_name="JumpServer开源堡垒机"
 		local app_text="是一个开源的特权访问管理 (PAM) 工具，该程序占用80端口不支持添加域名访问了"
 		local app_url="官方介绍: https://github.com/jumpserver/jumpserver"
@@ -10202,6 +10261,7 @@ while true; do
 		  ;;
 
 	  61|libretranslate)
+		local app_id="61"
 		local docker_name="libretranslate"
 		local docker_img="libretranslate/libretranslate:latest"
 		local docker_port=8061
@@ -10227,6 +10287,7 @@ while true; do
 
 
 	  62|ragflow)
+		local app_id="62"
 		local app_name="RAGFlow知识库"
 		local app_text="基于深度文档理解的开源 RAG（检索增强生成）引擎"
 		local app_url="官方网站: https://github.com/infiniflow/ragflow"
@@ -10265,6 +10326,7 @@ while true; do
 
 
 	  63|open-webui)
+		local app_id="63"
 		local docker_name="open-webui"
 		local docker_img="ghcr.io/open-webui/open-webui:main"
 		local docker_port=8063
@@ -10284,6 +10346,7 @@ while true; do
 		  ;;
 
 	  64|it-tools)
+		local app_id="64"
 		local docker_name="it-tools"
 		local docker_img="corentinth/it-tools:latest"
 		local docker_port=8064
@@ -10302,6 +10365,7 @@ while true; do
 
 
 	  65|n8n)
+		local app_id="65"
 		local docker_name="n8n"
 		local docker_img="docker.n8n.io/n8nio/n8n"
 		local docker_port=8065
@@ -10341,6 +10405,7 @@ while true; do
 
 
 	  67|ddns)
+		local app_id="67"
 		local docker_name="ddns-go"
 		local docker_img="jeessy/ddns-go"
 		local docker_port=8067
@@ -10364,6 +10429,7 @@ while true; do
 		  ;;
 
 	  68|allinssl)
+		local app_id="68"
 		local docker_name="allinssl"
 		local docker_img="allinssl/allinssl:latest"
 		local docker_port=8068
@@ -10382,6 +10448,7 @@ while true; do
 
 
 	  69|sftpgo)
+		local app_id="69"
 		local docker_name="sftpgo"
 		local docker_img="drakkan/sftpgo:latest"
 		local docker_port=8069
@@ -10413,6 +10480,7 @@ while true; do
 
 
 	  70|astrbot)
+		local app_id="70"
 		local docker_name="astrbot"
 		local docker_img="soulter/astrbot:latest"
 		local docker_port=8070
@@ -10444,6 +10512,7 @@ while true; do
 
 
 	  71|navidrome)
+		local app_id="71"
 		local docker_name="navidrome"
 		local docker_img="deluan/navidrome:latest"
 		local docker_port=8071
@@ -10473,6 +10542,7 @@ while true; do
 
 	  72|bitwarden)
 
+		local app_id="72"
 		local docker_name="bitwarden"
 		local docker_img="vaultwarden/server"
 		local docker_port=8072
@@ -10502,6 +10572,7 @@ while true; do
 
 	  73|libretv)
 
+		local app_id="73"
 		local docker_name="libretv"
 		local docker_img="bestzwei/libretv:latest"
 		local docker_port=8073
@@ -10531,6 +10602,7 @@ while true; do
 
 	  74|moontv)
 
+		local app_id="74"
 		local docker_name="moontv"
 		local docker_img="ghcr.io/senshinya/moontv:latest"
 		local docker_port=8074
@@ -10560,6 +10632,7 @@ while true; do
 
 	  75|melody)
 
+		local app_id="75"
 		local docker_name="melody"
 		local docker_img="foamzou/melody:latest"
 		local docker_port=8075
@@ -10589,6 +10662,7 @@ while true; do
 
 	  76|dosgame)
 
+		local app_id="76"
 		local docker_name="dosgame"
 		local docker_img="oldiy/dosgame-web-docker:latest"
 		local docker_port=8076
@@ -10614,6 +10688,7 @@ while true; do
 
 	  77|xunlei)
 
+		local app_id="77"
 		local docker_name="xunlei"
 		local docker_img="cnk3x/xunlei"
 		local docker_port=8077
@@ -10649,6 +10724,7 @@ while true; do
 
 	  78|PandaWiki)
 
+		local app_id="78"
 		local app_name="PandaWiki"
 		local app_text="PandaWiki是一款AI大模型驱动的开源智能文档管理系统，强烈建议不要自定义端口部署。"
 		local app_url="官方介绍: https://github.com/chaitin/PandaWiki"
@@ -10676,6 +10752,7 @@ while true; do
 
 	  79|beszel)
 
+		local app_id="79"
 		local docker_name="beszel"
 		local docker_img="henrygd/beszel"
 		local docker_port=8079
@@ -10703,6 +10780,8 @@ while true; do
 
 
 	  80|linkwarden)
+
+		  local app_id="80"
 		  local app_name="linkwarden书签管理"
 		  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
 		  local app_url="官方网站: https://linkwarden.app/"
@@ -10774,6 +10853,7 @@ while true; do
 
 
 	  81|jitsi)
+		  local app_id="81"
 		  local app_name="JitsiMeet视频会议"
 		  local app_text="一个开源的安全视频会议解决方案，支持多人在线会议、屏幕共享与加密通信。"
 		  local app_url="官方网站: https://jitsi.org/"
@@ -10824,6 +10904,7 @@ while true; do
 
 	  82|gpt-load)
 
+		local app_id="82"
 		local docker_name="gpt-load"
 		local docker_img="tbphp/gpt-load:latest"
 		local docker_port=8082
@@ -10852,6 +10933,7 @@ while true; do
 
 	  83|komari)
 
+		local app_id="83"
 		local docker_name="komari"
 		local docker_img="ghcr.io/komari-monitor/komari:latest"
 		local docker_port=8083
@@ -10883,6 +10965,7 @@ while true; do
 
 	  84|wallos)
 
+		local app_id="84"
 		local docker_name="wallos"
 		local docker_img="bellamy/wallos:latest"
 		local docker_port=8084
@@ -10911,6 +10994,7 @@ while true; do
 
 	  85|immich)
 
+		  local app_id="85"
 		  local app_name="immich图片视频管理器"
 		  local app_text="高性能自托管照片和视频管理解决方案。"
 		  local app_url="官网介绍: https://github.com/immich-app/immich"
@@ -10953,6 +11037,7 @@ while true; do
 
 	  86|jellyfin)
 
+		local app_id="86"
 		local docker_name="jellyfin"
 		local docker_img="jellyfin/jellyfin"
 		local docker_port=8086
@@ -10988,6 +11073,7 @@ while true; do
 
 	  87|synctv)
 
+		local app_id="87"
 		local docker_name="synctv"
 		local docker_img="synctvorg/synctv"
 		local docker_port=8087
@@ -11015,6 +11101,7 @@ while true; do
 
 	  88|owncast)
 
+		local app_id="88"
 		local docker_name="owncast"
 		local docker_img="owncast/owncast:latest"
 		local docker_port=8088
