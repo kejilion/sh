@@ -1624,7 +1624,7 @@ nginx_upgrade() {
   docker restart $ldnmp_pods > /dev/null 2>&1
 
   send_stats "renew$ldnmp_pods"
-  echo "renew${ldnmp_pods}Finish"
+  echo "renew${ldnmp_pods}Finished"
 
 }
 
@@ -2720,7 +2720,7 @@ setup_docker_dir() {
 
 
 docker_app() {
-send_stats "${docker_name}manage"
+send_stats "${docker_name}Management"
 
 while true; do
 	clear
@@ -3377,7 +3377,7 @@ ldnmp_web_status() {
 		echo ""
 		echo "Site Directory"
 		echo "------------------------"
-		echo -e "data${gl_hui}/home/web/html${gl_bai}Certificate${gl_hui}/home/web/certs${gl_bai}Configuration${gl_hui}/home/web/conf.d${gl_bai}"
+		echo -e "Data${gl_hui}/home/web/html${gl_bai}Certificate${gl_hui}/home/web/certs${gl_bai}Configuration${gl_hui}/home/web/conf.d${gl_bai}"
 		echo "------------------------"
 		echo ""
 		echo "operate"
@@ -3709,7 +3709,7 @@ delete_forwarding_service() {
 	read -e -p "Please enter the service name that needs to be deleted:" service_name
 	# Use sed to delete the service and its related configurations
 	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frpc.toml
-	echo "Serve$service_nameDeleted successfully from frpc.toml"
+	echo "Service$service_nameDeleted successfully from frpc.toml"
 
 	docker restart frpc
 
@@ -8532,7 +8532,7 @@ while true; do
 	fi
 
 	case $sub_choice in
-	  1|bt)
+	  1|bt|baota)
 
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="宝塔面板"
@@ -8580,7 +8580,7 @@ while true; do
 		install_panel
 
 		  ;;
-	  3|1panel)
+	  3|1p|1panel)
 
 		local lujing="command -v 1pctl"
 		local panelname="1Panel"
@@ -8746,7 +8746,7 @@ while true; do
 		done
 		  ;;
 
-	  8|qb)
+	  8|qb|QB)
 
 		local docker_name="qbittorrent"
 		local docker_img="lscr.io/linuxserver/qbittorrent:latest"
@@ -10706,7 +10706,7 @@ while true; do
 		  local app_name="linkwarden书签管理"
 		  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
 		  local app_url="官方网站: https://linkwarden.app/"
-		  local docker_name="linkwarden"
+		  local docker_name="linkwarden-linkwarden-1"
 		  local docker_port="8080"
 		  local app_size="3"
 
@@ -10914,7 +10914,7 @@ while true; do
 		  local app_name="immich图片视频管理器"
 		  local app_text="高性能自托管照片和视频管理解决方案。"
 		  local app_url="官网介绍: https://github.com/immich-app/immich"
-		  local docker_name="immich"
+		  local docker_name="immich_server"
 		  local docker_port="8085"
 		  local app_size="3"
 
@@ -10924,7 +10924,7 @@ while true; do
 
 			  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
 			  wget -O .env ${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env
-			  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/cloud/docker-compose.yml
+			  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/${docker_name}/docker-compose.yml
 
 			  docker compose up -d
 

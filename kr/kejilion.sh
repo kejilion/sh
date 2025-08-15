@@ -8532,7 +8532,7 @@ while true; do
 	fi
 
 	case $sub_choice in
-	  1|bt)
+	  1|bt|baota)
 
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="宝塔面板"
@@ -8580,7 +8580,7 @@ while true; do
 		install_panel
 
 		  ;;
-	  3|1panel)
+	  3|1p|1panel)
 
 		local lujing="command -v 1pctl"
 		local panelname="1Panel"
@@ -8746,7 +8746,7 @@ while true; do
 		done
 		  ;;
 
-	  8|qb)
+	  8|qb|QB)
 
 		local docker_name="qbittorrent"
 		local docker_img="lscr.io/linuxserver/qbittorrent:latest"
@@ -10706,7 +10706,7 @@ while true; do
 		  local app_name="linkwarden书签管理"
 		  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
 		  local app_url="官方网站: https://linkwarden.app/"
-		  local docker_name="linkwarden"
+		  local docker_name="linkwarden-linkwarden-1"
 		  local docker_port="8080"
 		  local app_size="3"
 
@@ -10914,7 +10914,7 @@ while true; do
 		  local app_name="immich图片视频管理器"
 		  local app_text="高性能自托管照片和视频管理解决方案。"
 		  local app_url="官网介绍: https://github.com/immich-app/immich"
-		  local docker_name="immich"
+		  local docker_name="immich_server"
 		  local docker_port="8085"
 		  local app_size="3"
 
@@ -10924,7 +10924,7 @@ while true; do
 
 			  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
 			  wget -O .env ${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env
-			  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/cloud/docker-compose.yml
+			  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/${docker_name}/docker-compose.yml
 
 			  docker compose up -d
 
@@ -13064,7 +13064,7 @@ echo "스크립트 시작 k"
 echo "소프트웨어 패키지 설치 K 설치 나노 wget | K 추가 나노 wget | K Nano wget을 설치하십시오"
 echo "패키지 k 제거 나노 wget | K del nano wget | k 제거 나노 wget | K를 제거하십시오"
 echo "업데이트 시스템 K 업데이트 | K 업데이트"
-echo "깨끗한 시스템 쓰레기 K Clean | k 청소"
+echo "깨끗한 시스템 쓰레기 K Clean | K 청소"
 echo "시스템 패널 k dd |를 다시 설치하십시오 K 재설치"
 echo "BBR3 제어판 K BBR3 | K bbrv3"
 echo "커널 튜닝 패널 K nhyh | K 커널 최적화"

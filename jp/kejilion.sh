@@ -5729,7 +5729,7 @@ restore_backup() {
 	if [ $? -eq 0 ]; then
 		echo "バックアップと復元を正常に！"
 	else
-		echo "バックアップリカバリに失敗しました！"
+		echo "バックアップリカバリが失敗しました！"
 		exit 1
 	fi
 }
@@ -5901,7 +5901,7 @@ use_connection() {
 
 	IFS='|' read -r name ip user port password_or_key <<< "$connection"
 
-	echo "接続$name ($ip)..."
+	echo "に接続します$name ($ip)..."
 	if [[ -f "$password_or_key" ]]; then
 		# キーに接続します
 		ssh -o StrictHostKeyChecking=no -i "$password_or_key" -p "$port" "$user@$ip"
@@ -6282,7 +6282,7 @@ run_task() {
 
 	IFS='|' read -r name local_path remote remote_path port options auth_method password_or_key <<< "$task"
 
-	# 同期の方向に従ってソースとターゲットのパスを調整します
+	# 同期方向に従ってソースとターゲットパスを調整します
 	if [[ "$direction" == "pull" ]]; then
 		echo "同期をローカルに引く：$remote:$local_path -> $remote_path"
 		source="$remote:$local_path"
@@ -6362,7 +6362,7 @@ schedule_task() {
 
 	# 同じタスクが既に存在するかどうかを確認してください
 	if crontab -l | grep -q "k rsync_run $num"; then
-		echo "错误: 该任务的定时同步已存在！"
+		echo "エラー：このタスクのタイミング同期はすでに存在しています！"
 		return
 	fi
 
@@ -8532,7 +8532,7 @@ while true; do
 	fi
 
 	case $sub_choice in
-	  1|bt)
+	  1|bt|baota)
 
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="宝塔面板"
@@ -8580,7 +8580,7 @@ while true; do
 		install_panel
 
 		  ;;
-	  3|1panel)
+	  3|1p|1panel)
 
 		local lujing="command -v 1pctl"
 		local panelname="1Panel"
@@ -8746,7 +8746,7 @@ while true; do
 		done
 		  ;;
 
-	  8|qb)
+	  8|qb|QB)
 
 		local docker_name="qbittorrent"
 		local docker_img="lscr.io/linuxserver/qbittorrent:latest"
@@ -10706,7 +10706,7 @@ while true; do
 		  local app_name="linkwarden书签管理"
 		  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
 		  local app_url="官方网站: https://linkwarden.app/"
-		  local docker_name="linkwarden"
+		  local docker_name="linkwarden-linkwarden-1"
 		  local docker_port="8080"
 		  local app_size="3"
 
@@ -10914,7 +10914,7 @@ while true; do
 		  local app_name="immich图片视频管理器"
 		  local app_text="高性能自托管照片和视频管理解决方案。"
 		  local app_url="官网介绍: https://github.com/immich-app/immich"
-		  local docker_name="immich"
+		  local docker_name="immich_server"
 		  local docker_port="8085"
 		  local app_size="3"
 
@@ -10924,7 +10924,7 @@ while true; do
 
 			  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
 			  wget -O .env ${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env
-			  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/cloud/docker-compose.yml
+			  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/${docker_name}/docker-compose.yml
 
 			  docker compose up -d
 
@@ -12306,7 +12306,7 @@ EOF
 			  echo -e "6。電源を入れます${gl_huang}BBR${gl_bai}加速します"
 			  echo -e "7.タイムゾーンをに設定します${gl_huang}上海${gl_bai}"
 			  echo -e "8。DNSアドレスを自動的に最適化します${gl_huang}海外：1.1.1.1 8.8.8.8国内：223.5.5.5${gl_bai}"
-			  echo -e "9.基本ツールをインストールします${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
+			  echo -e "9.基本的なツールをインストールします${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 			  echo -e "10。Linuxシステムのカーネルパラメーター最適化に切り替えます${gl_huang}バランスの取れた最適化モード${gl_bai}"
 			  echo "------------------------------------------------"
 			  read -e -p "ワンクリックメンテナンスは必ずありますか？ （y/n）：" choice
@@ -12752,7 +12752,7 @@ while true; do
 	  echo -e "${gl_kjlan}4.  ${gl_bai}バックアップクラスター${gl_kjlan}5.  ${gl_bai}クラスターを復元します"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}バッチでタスクを実行します${gl_bai}"
-	  echo -e "${gl_kjlan}11. ${gl_bai}Tech Lionスクリプトをインストールします${gl_kjlan}12. ${gl_bai}システムを更新します${gl_kjlan}13. ${gl_bai}システムを掃除します"
+	  echo -e "${gl_kjlan}11. ${gl_bai}Tech Lionスクリプトをインストールします${gl_kjlan}12. ${gl_bai}システムを更新します${gl_kjlan}13. ${gl_bai}システムをきれいにします"
 	  echo -e "${gl_kjlan}14. ${gl_bai}Dockerをインストールします${gl_kjlan}15. ${gl_bai}BBR3をインストールします${gl_kjlan}16. ${gl_bai}1G仮想メモリをセットアップします"
 	  echo -e "${gl_kjlan}17. ${gl_bai}タイムゾーンを上海に設定します${gl_kjlan}18. ${gl_bai}すべてのポートを開きます${gl_kjlan}51. ${gl_bai}カスタムコマンド"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
