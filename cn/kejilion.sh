@@ -2717,6 +2717,13 @@ setup_docker_dir() {
 }
 
 
+add_app_id() {
+mkdir -p /home/docker
+touch /home/docker/appno.txt
+grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+
+}
+
 
 
 docker_app() {
@@ -2761,7 +2768,7 @@ while true; do
 			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
-			touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 
 			clear
 			echo "$docker_name 已经安装完成"
@@ -2776,7 +2783,7 @@ while true; do
 			docker rmi -f "$docker_img"
 			docker_rum
 
-			touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 
 			clear
 			echo "$docker_name 已经安装完成"
@@ -2873,12 +2880,12 @@ docker_app_plus() {
 				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
-				touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				;;
 			2)
 				docker_app_update
 
-				touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				;;
 			3)
 				docker_app_uninstall
@@ -3550,13 +3557,13 @@ while true; do
 			iptables_open
 			panel_app_install
 
-			touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 			send_stats "${panelname}安装"
 			;;
 		2)
 			panel_app_manage
 
-			touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 			send_stats "${panelname}控制"
 
 			;;
@@ -3894,7 +3901,7 @@ frps_panel() {
 				install_docker
 				generate_frps_config
 
-				touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "FRP服务端已经安装完成"
 				;;
 			2)
@@ -3904,7 +3911,7 @@ frps_panel() {
 				[ -f /home/frp/frps.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
 				donlond_frp frps
 
-				touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "FRP服务端已经更新完成"
 				;;
 			3)
@@ -3991,7 +3998,7 @@ frpc_panel() {
 				install_docker
 				configure_frpc
 
-				touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "FRP客户端已经安装完成"
 				;;
 			2)
@@ -4001,7 +4008,7 @@ frpc_panel() {
 				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
 				donlond_frp frpc
 
-				touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "FRP客户端已经更新完成"
 				;;
 
@@ -4084,7 +4091,7 @@ yt_menu_pro() {
 				curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 				chmod a+rx /usr/local/bin/yt-dlp
 
-				touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "安装完成。按任意键继续..."
 				read ;;
 			2)
@@ -4092,7 +4099,7 @@ yt_menu_pro() {
 				echo "正在更新 yt-dlp..."
 				yt-dlp -U
 
-				touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "更新完成。按任意键继续..."
 				read ;;
 			3)
@@ -8864,7 +8871,7 @@ while true; do
 						-d analogic/poste.io
 
 
-					touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 
 					clear
 					echo "poste.io已经安装完成"
@@ -8889,7 +8896,7 @@ while true; do
 						-d analogic/poste.i
 
 
-					touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 
 					clear
 					echo "poste.io已经安装完成"
@@ -9231,7 +9238,7 @@ while true; do
 					check_disk_space 5
 					bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
 
-					touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 					clear
 					echo "雷池WAF面板已经安装完成"
 					check_docker_app_ip
@@ -9244,7 +9251,7 @@ while true; do
 					docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
 					echo ""
 
-					touch /home/docker/appno.txt; grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 					clear
 					echo "雷池WAF面板已经更新完成"
 					check_docker_app_ip
