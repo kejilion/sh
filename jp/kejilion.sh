@@ -1558,7 +1558,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "最初にドメイン名をローカルIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "最初にドメイン名をネイティブIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IPまたは解決されたドメイン名を入力してください：" yuming
 }
 
@@ -1740,7 +1740,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# モードパラメーターに従ってWAFをオンまたはオフにすることにしました
+	# モードパラメーターに従ってWAFをオンまたはオフにすることを決定します
 	if [ "$mode" == "on" ]; then
 		# WAFをオンにしてください：コメントを削除します
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -2101,7 +2101,7 @@ web_security() {
 					  echo "CF背景の右上隅に移動し、左側のAPIトークンを選択し、グローバルAPIキーを取得します"
 					  echo "https://dash.cloudflare.com/login"
 					  read -e -p "CFアカウント番号を入力します：" cfuser
-					  read -e -p "CFのグローバルAPIキーを入力してください：" cftoken
+					  read -e -p "CFのグローバルAPIキーを入力してください。" cftoken
 
 					  wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf
 					  docker exec nginx nginx -s reload
@@ -2129,7 +2129,7 @@ web_security() {
 					  echo "https://dash.cloudflare.com/login"
 					  echo "--------------"
 					  read -e -p "CFアカウント番号を入力します：" cfuser
-					  read -e -p "CFのグローバルAPIキーを入力してください：" cftoken
+					  read -e -p "CFのグローバルAPIキーを入力してください。" cftoken
 					  read -e -p "CFにドメイン名の領域IDを入力します。" cfzonID
 
 					  cd ~
@@ -2717,6 +2717,13 @@ setup_docker_dir() {
 }
 
 
+add_app_id() {
+mkdir -p /home/docker
+touch /home/docker/appno.txt
+grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+
+}
+
 
 
 docker_app() {
@@ -2760,8 +2767,8 @@ while true; do
 			docker_rum
 			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
-			local app_no=$sub_choice
-			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 
 			clear
 			echo "$docker_nameインストール"
@@ -2775,8 +2782,8 @@ while true; do
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
 			docker_rum
-			local app_no=$sub_choice
-			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 
 			clear
 			echo "$docker_nameインストール"
@@ -2791,8 +2798,8 @@ while true; do
 			docker rmi -f "$docker_img"
 			rm -rf "/home/docker/$docker_name"
 			rm -f /home/docker/${docker_name}_port.conf
-			local app_no=$sub_choice
-			sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 			echo "アプリはアンインストールされています"
 			send_stats "アンインストール$docker_name"
 			;;
@@ -2872,19 +2879,19 @@ docker_app_plus() {
 				docker_app_install
 				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				;;
 			2)
 				docker_app_update
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				;;
 			3)
 				docker_app_uninstall
 				rm -f /home/docker/${docker_name}_port.conf
-				local app_no=$sub_choice
-				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 
 				;;
 			5)
@@ -3549,21 +3556,21 @@ while true; do
 			install wget
 			iptables_open
 			panel_app_install
-			local app_no=$sub_choice
-			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 			send_stats "${panelname}インストール"
 			;;
 		2)
 			panel_app_manage
-			local app_no=$sub_choice
-			grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 			send_stats "${panelname}コントロール"
 
 			;;
 		3)
 			panel_app_uninstall
-			local app_no=$sub_choice
-			sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 			send_stats "${panelname}アンインストール"
 			;;
 		*)
@@ -3682,7 +3689,7 @@ add_forwarding_service() {
 	read -e -p "イントラネットポートを入力してください：" local_port
 	read -e -p "外部ネットワークポートを入力してください：" remote_port
 
-	# ユーザー入力を構成ファイルに書き込みます
+	# 構成ファイルにユーザー入力を書き込みます
 	cat <<EOF >> /home/frp/frpc.toml
 [$service_name]
 type = ${service_type}
@@ -3862,6 +3869,7 @@ frps_main_ports() {
 
 frps_panel() {
 	send_stats "FRPサーバー"
+	local app_id="55"
 	local docker_name="frps"
 	local docker_port=8056
 	while true; do
@@ -3869,7 +3877,7 @@ frps_panel() {
 		check_frp_app
 		check_docker_image_update $docker_name
 		echo -e "FRPサーバー$check_frp $update_status"
-		echo "FRPイントラネット侵入サービス環境を構築して、パブリックIPなしでインターネットにデバイスを公開する"
+		echo "FRPイントラネット浸透サービス環境を構築して、パブリックIPなしでインターネットにデバイスを公開する"
 		echo "公式ウェブサイトの紹介：https：//github.com/fatedier/frp/"
 		echo "ビデオ教育：https：//www.bilibili.com/video/bv1ymw6e2ewl?t=124.0"
 		if [ -d "/home/frp/" ]; then
@@ -3892,8 +3900,8 @@ frps_panel() {
 				install jq grep ss
 				install_docker
 				generate_frps_config
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "FRPサーバーがインストールされています"
 				;;
 			2)
@@ -3902,8 +3910,8 @@ frps_panel() {
 				docker rm -f frps && docker rmi kjlion/frp:alpine >/dev/null 2>&1
 				[ -f /home/frp/frps.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
 				donlond_frp frps
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "FRPサーバーが更新されました"
 				;;
 			3)
@@ -3913,8 +3921,8 @@ frps_panel() {
 				rm -rf /home/frp
 
 				close_port 8055 8056
-				local app_no=$sub_choice
-				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 				echo "アプリはアンインストールされています"
 				;;
 			5)
@@ -3959,6 +3967,7 @@ frps_panel() {
 
 frpc_panel() {
 	send_stats "FRPクライアント"
+	local app_id="56"
 	local docker_name="frpc"
 	local docker_port=8055
 	while true; do
@@ -3988,8 +3997,8 @@ frpc_panel() {
 				install jq grep ss
 				install_docker
 				configure_frpc
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "FRPクライアントがインストールされています"
 				;;
 			2)
@@ -3998,8 +4007,8 @@ frpc_panel() {
 				docker rm -f frpc && docker rmi kjlion/frp:alpine >/dev/null 2>&1
 				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
 				donlond_frp frpc
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "FRPクライアントが更新されました"
 				;;
 
@@ -4009,8 +4018,8 @@ frpc_panel() {
 				docker rm -f frpc && docker rmi kjlion/frp:alpine
 				rm -rf /home/frp
 				close_port 8055
-				local app_no=$sub_choice
-				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 				echo "アプリはアンインストールされています"
 				;;
 
@@ -4041,6 +4050,7 @@ frpc_panel() {
 
 yt_menu_pro() {
 
+	local app_id="66"
 	local VIDEO_DIR="/home/yt-dlp"
 	local URL_FILE="$VIDEO_DIR/urls.txt"
 	local ARCHIVE_FILE="$VIDEO_DIR/archive.txt"
@@ -4080,24 +4090,24 @@ yt_menu_pro() {
 				install ffmpeg
 				curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 				chmod a+rx /usr/local/bin/yt-dlp
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "インストールが完了しました。任意のキーを押して続行します..."
 				read ;;
 			2)
 				send_stats "yt-dlpを更新..."
 				echo "yt-dlpを更新..."
 				yt-dlp -U
-				local app_no=$sub_choice
-				grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 				echo "更新が完了しました。任意のキーを押して続行します..."
 				read ;;
 			3)
 				send_stats "yt-dlpのアンインストール..."
 				echo "yt-dlpのアンインストール..."
 				rm -f /usr/local/bin/yt-dlp
-				local app_no=$sub_choice
-				sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 				echo "アンインストールが完了しました。任意のキーを押して続行します..."
 				read ;;
 			5)
@@ -4511,7 +4521,7 @@ echo -e "${gl_lv}ルートログインがセットアップされます！${gl_b
 
 root_use() {
 clear
-[ "$EUID" -ne 0 ] && echo -e "${gl_huang}ヒント：${gl_bai}この機能には、ルートユーザーを実行する必要があります！" && break_end && kejilion
+[ "$EUID" -ne 0 ] && echo -e "${gl_huang}ヒント：${gl_bai}この機能では、ルートユーザーを実行する必要があります！" && break_end && kejilion
 }
 
 
@@ -4860,7 +4870,7 @@ bbrv3() {
 				  echo ""
 				  echo "カーネル管理"
 				  echo "------------------------"
-				  echo "1。BBRV3カーネルを更新する2。BBRV3カーネルをアンインストールします"
+				  echo "1。BBRV3カーネルを更新します2。BBRV3カーネルをアンインストールします"
 				  echo "------------------------"
 				  echo "0。前のメニューに戻ります"
 				  echo "------------------------"
@@ -4911,7 +4921,6 @@ bbrv3() {
 		  echo "------------------------------------------------"
 		  echo "Debian/Ubuntuのみをサポートします"
 		  echo "データをバックアップしてください。Linuxカーネルをアップグレードできるようになります。"
-		  echo "VPSには512mのメモリがあります。メモリが不十分なため、接触の欠落を防ぐために、事前に1G仮想メモリを追加してください！"
 		  echo "------------------------------------------------"
 		  read -e -p "必ず続行しますか？ （y/n）：" choice
 
@@ -5364,7 +5373,7 @@ Kernel_optimize() {
 	  echo "--------------------"
 	  echo "1.高性能最適化モード：システムパフォーマンスを最大化し、ファイル記述子、仮想メモリ、ネットワーク設定、キャッシュ管理、CPU設定を最適化します。"
 	  echo "2。バランスの取れた最適化モード：毎日の使用に適したパフォーマンスとリソース消費のバランス。"
-	  echo "3.ウェブサイトの最適化モード：Webサイトサーバーを最適化して、接続処理機能、応答速度、全体的なパフォーマンスを同時に改善します。"
+	  echo "3.ウェブサイトの最適化モード：Webサイトサーバーを最適化して、接続処理機能、応答速度、全体的なパフォーマンスを並行します。"
 	  echo "4。ライブブロードキャスト最適化モード：ライブブロードキャストストリーミングの特別なニーズを最適化して、遅延を減らし、伝送パフォーマンスを向上させます。"
 	  echo "5。ゲームサーバーの最適化モード：ゲームサーバーを最適化して、同時処理機能と応答速度を改善します。"
 	  echo "6.デフォルト設定を復元します：システム設定をデフォルトの構成に復元します。"
@@ -5729,7 +5738,7 @@ restore_backup() {
 	if [ $? -eq 0 ]; then
 		echo "バックアップと復元を正常に！"
 	else
-		echo "バックアップリカバリが失敗しました！"
+		echo "バックアップリカバリに失敗しました！"
 		exit 1
 	fi
 }
@@ -5809,7 +5818,7 @@ list_connections() {
 # 新しい接続を追加します
 add_connection() {
 	send_stats "新しい接続を追加します"
-	echo "新しい接続を作成する例："
+	echo "新しい接続例を作成します："
 	echo "- 接続名：my_server"
 	echo "-  IPアドレス：192.168.1.100"
 	echo "- ユーザー名：root"
@@ -5901,7 +5910,7 @@ use_connection() {
 
 	IFS='|' read -r name ip user port password_or_key <<< "$connection"
 
-	echo "に接続します$name ($ip)..."
+	echo "接続$name ($ip)..."
 	if [[ -f "$password_or_key" ]]; then
 		# キーに接続します
 		ssh -o StrictHostKeyChecking=no -i "$password_or_key" -p "$port" "$user@$ip"
@@ -6282,7 +6291,7 @@ run_task() {
 
 	IFS='|' read -r name local_path remote remote_path port options auth_method password_or_key <<< "$task"
 
-	# 同期方向に従ってソースとターゲットパスを調整します
+	# 同期の方向に従ってソースとターゲットのパスを調整します
 	if [[ "$direction" == "pull" ]]; then
 		echo "同期をローカルに引く：$remote:$local_path -> $remote_path"
 		source="$remote:$local_path"
@@ -6360,7 +6369,7 @@ schedule_task() {
 	local cron_job="$cron_time k rsync_run $num"
 	local cron_job="$cron_time k rsync_run $num"
 
-	# 同じタスクが既に存在するかどうかを確認してください
+	# 同じタスクがすでに存在するかどうかを確認してください
 	if crontab -l | grep -q "k rsync_run $num"; then
 		echo "エラー：このタスクのタイミング同期はすでに存在しています！"
 		return
@@ -6640,7 +6649,7 @@ linux_tools() {
 			  clear
 			  echo "ツールがインストールされており、使用方法は次のとおりです。"
 			  ffmpeg --help
-			  send_stats "ffmpegをインストールします"
+			  send_stats "FFMPEGをインストールします"
 			  ;;
 
 			11)
@@ -6970,7 +6979,7 @@ linux_docker() {
 					  3)
 						  send_stats "インターネットに参加してください"
 						  read -e -p "出口ネットワーク名：" dockernetwork
-						  read -e -p "これらのコンテナはネットワークを終了します（複数のコンテナ名はスペースで区切られています）：" dockernames
+						  read -e -p "これらのコンテナはネットワークを出ます（複数のコンテナ名はスペースで区切られています）：" dockernames
 
 						  for dockername in $dockernames; do
 							  docker network disconnect $dockernetwork $dockername
@@ -7162,7 +7171,7 @@ linux_test() {
 	  case $sub_choice in
 		  1)
 			  clear
-			  send_stats "CHATGPTはステータス検出のロックを解除します"
+			  send_stats "CHATGPTステータス検出のロックを解除します"
 			  bash <(curl -Ls https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh)
 			  ;;
 		  2)
@@ -7684,7 +7693,7 @@ linux_ldnmp() {
 	  echo "Redisポート：6379"
 	  echo ""
 	  echo "ウェブサイトURL：https：//$yuming"
-	  echo "バックグラウンドログインパス： /admin"
+	  echo "バックエンドログインパス： /admin"
 	  echo "------------------------"
 	  echo "ユーザー名：admin"
 	  echo "パスワード：管理者"
@@ -7915,7 +7924,7 @@ linux_ldnmp() {
 			  ;;
 		  2)
 			  echo "データベースのバックアップは、.GZ-endコンプレッションパッケージである必要があります。 Pagoda/1panelのバックアップデータのインポートをサポートするために、/home/directoryに入れてください。"
-			  read -e -p "ダウンロードリンクを入力して、バックアップデータをリモートでダウンロードすることもできます。 Enterを直接押して、リモートダウンロードをスキップします：" url_download_db
+			  read -e -p "ダウンロードリンクを入力して、バックアップデータをリモートでダウンロードすることもできます。 Enterを直接押してリモートダウンロードをスキップします。" url_download_db
 
 			  cd /home/
 			  if [ -n "$url_download_db" ]; then
@@ -8304,7 +8313,7 @@ linux_ldnmp() {
 		  fi
 		  echo "------------------------"
 		  echo
-		  echo "1。更新nginx2。mysql3を更新します。php4を更新します。redisを更新します"
+		  echo "1.更新nginx2。mysql3を更新します。php4を更新します。redisを更新します"
 		  echo "------------------------"
 		  echo "5。完全な環境を更新します"
 		  echo "------------------------"
@@ -8499,7 +8508,7 @@ while true; do
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}41.  ${color41}マウス管理パネル${gl_kjlan}42.  ${color42}NEXTEリモート接続ツール"
 	  echo -e "${gl_kjlan}43.  ${color43}Rustdeskリモートデスク（サーバー）${gl_huang}★${gl_bai}          ${gl_kjlan}44.  ${color44}Rustdeskリモートデスク（リレー）${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}45.  ${color45}Docker加速ステーション${gl_kjlan}46.  ${color46}GitHubアクセラレーションステーション${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}45.  ${color45}Docker加速ステーション${gl_kjlan}46.  ${color46}GitHub加速ステーション${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}47.  ${color47}プロメテウス監視${gl_kjlan}48.  ${color48}プロメテウス（ホスト監視）"
 	  echo -e "${gl_kjlan}49.  ${color49}プロメテウス（コンテナ監視）${gl_kjlan}50.  ${color50}補充監視ツール"
 	  echo -e "${gl_kjlan}------------------------"
@@ -8533,7 +8542,7 @@ while true; do
 
 	case $sub_choice in
 	  1|bt|baota)
-
+		local app_id="1"
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="宝塔面板"
 		local panelurl="https://www.bt.cn/new/index.html"
@@ -8559,6 +8568,8 @@ while true; do
 		  ;;
 	  2|aapanel)
 
+
+		local app_id="2"
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="aapanel"
 		local panelurl="https://www.aapanel.com/new/index.html"
@@ -8582,6 +8593,7 @@ while true; do
 		  ;;
 	  3|1p|1panel)
 
+		local app_id="3"
 		local lujing="command -v 1pctl"
 		local panelname="1Panel"
 		local panelurl="https://1panel.cn/"
@@ -8605,6 +8617,7 @@ while true; do
 		  ;;
 	  4|npm)
 
+		local app_id="4"
 		local docker_name="npm"
 		local docker_img="jc21/nginx-proxy-manager:latest"
 		local docker_port=81
@@ -8636,6 +8649,7 @@ while true; do
 
 	  5|openlist)
 
+		local app_id="5"
 		local docker_name="openlist"
 		local docker_img="openlistteam/openlist:latest-aria2"
 		local docker_port=5244
@@ -8666,6 +8680,7 @@ while true; do
 
 	  6|webtop-ubuntu)
 
+		local app_id="6"
 		local docker_name="webtop-ubuntu"
 		local docker_img="lscr.io/linuxserver/webtop:ubuntu-kde"
 		local docker_port=3006
@@ -8706,6 +8721,8 @@ while true; do
 	  7|nezha)
 		clear
 		send_stats "ネザを作る"
+
+		local app_id="7"
 		local docker_name="nezha-dashboard"
 		local docker_port=8008
 		while true; do
@@ -8748,6 +8765,7 @@ while true; do
 
 	  8|qb|QB)
 
+		local app_id="8"
 		local docker_name="qbittorrent"
 		local docker_img="lscr.io/linuxserver/qbittorrent:latest"
 		local docker_port=8081
@@ -8784,6 +8802,7 @@ while true; do
 		send_stats "郵便局を建設します"
 		clear
 		install telnet
+		local app_id="9"
 		local docker_name=“mailserver”
 		while true; do
 			check_docker_app
@@ -8851,8 +8870,8 @@ while true; do
 						--restart=always \
 						-d analogic/poste.io
 
-					local app_no=$sub_choice
-					grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 
 					clear
 					echo "Poste.ioがインストールされています"
@@ -8876,8 +8895,8 @@ while true; do
 						--restart=always \
 						-d analogic/poste.i
 
-					local app_no=$sub_choice
-					grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 
 					clear
 					echo "Poste.ioがインストールされています"
@@ -8891,8 +8910,8 @@ while true; do
 					docker rmi -f analogic/poste.io
 					rm /home/docker/mail.txt
 					rm -rf /home/docker/mail
-					local app_no=$sub_choice
-					sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 					echo "アプリはアンインストールされています"
 					;;
 
@@ -8908,6 +8927,7 @@ while true; do
 
 	  10|rocketchat)
 
+		local app_id="10"
 		local app_name="Rocket.Chat聊天系统"
 		local app_text="Rocket.Chat 是一个开源的团队通讯平台，支持实时聊天、音视频通话、文件共享等多种功能，"
 		local app_url="官方介绍: https://www.rocket.chat/"
@@ -8955,6 +8975,7 @@ while true; do
 
 
 	  11|zentao)
+		local app_id="11"
 		local docker_name="zentao-server"
 		local docker_img="idoop/zentao:latest"
 		local docker_port=82
@@ -8985,6 +9006,7 @@ while true; do
 		  ;;
 
 	  12|qinglong)
+		local app_id="12"
 		local docker_name="qinglong"
 		local docker_img="whyour/qinglong:latest"
 		local docker_port=5700
@@ -9013,6 +9035,7 @@ while true; do
 		  ;;
 	  13|cloudreve)
 
+		local app_id="13"
 		local app_name="cloudreve网盘"
 		local app_text="cloudreve是一个支持多家云存储的网盘系统"
 		local app_url="视频介绍: https://www.bilibili.com/video/BV13F4m1c7h7?t=0.1"
@@ -9048,6 +9071,7 @@ while true; do
 		  ;;
 
 	  14|easyimage)
+		local app_id="14"
 		local docker_name="easyimage"
 		local docker_img="ddsderek/easyimage:latest"
 		local docker_port=8014
@@ -9075,6 +9099,7 @@ while true; do
 		  ;;
 
 	  15|emby)
+		local app_id="15"
 		local docker_name="emby"
 		local docker_img="linuxserver/emby:latest"
 		local docker_port=8015
@@ -9102,6 +9127,7 @@ while true; do
 		  ;;
 
 	  16|looking)
+		local app_id="16"
 		local docker_name="looking-glass"
 		local docker_img="wikihostinc/looking-glass-server"
 		local docker_port=8016
@@ -9123,6 +9149,7 @@ while true; do
 		  ;;
 	  17|adguardhome)
 
+		local app_id="17"
 		local docker_name="adguardhome"
 		local docker_img="adguard/adguardhome"
 		local docker_port=8017
@@ -9155,6 +9182,7 @@ while true; do
 
 	  18|onlyoffice)
 
+		local app_id="18"
 		local docker_name="onlyoffice"
 		local docker_img="onlyoffice/documentserver"
 		local docker_port=8018
@@ -9183,6 +9211,7 @@ while true; do
 	  19|safeline)
 		send_stats "サンダープールを構築します"
 
+		local app_id="19"
 		local docker_name=safeline-mgt
 		local docker_port=9443
 		while true; do
@@ -9208,8 +9237,8 @@ while true; do
 					install_docker
 					check_disk_space 5
 					bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
-					local app_no=$sub_choice
-					grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 					clear
 					echo "サンダープールWAFパネルがインストールされています"
 					check_docker_app_ip
@@ -9221,8 +9250,8 @@ while true; do
 					bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/upgrade.sh)"
 					docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
 					echo ""
-					local app_no=$sub_choice
-					grep -qxF "${app_no}" /home/docker/appno.txt || echo "${app_no}" >> /home/docker/appno.txt
+
+					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
 					clear
 					echo "サンダープールWAFパネルが更新されました"
 					check_docker_app_ip
@@ -9233,8 +9262,8 @@ while true; do
 				4)
 					cd /data/safeline
 					docker compose down --rmi all
-					local app_no=$sub_choice
-					sed -i "/\b${app_no}\b/d" /home/docker/appno.txt
+
+					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 					echo "デフォルトのインストールディレクトリである場合、プロジェクトはアンインストールされました。インストールディレクトリをカスタマイズする場合は、インストールディレクトリにアクセスして自分で実行する必要があります。"
 					echo "docker compose down && docker compose down --rmi all"
 					;;
@@ -9249,6 +9278,7 @@ while true; do
 		  ;;
 
 	  20|portainer)
+		local app_id="20"
 		local docker_name="portainer"
 		local docker_img="portainer/portainer"
 		local docker_port=8020
@@ -9276,6 +9306,7 @@ while true; do
 		  ;;
 
 	  21|vscode)
+		local app_id="21"
 		local docker_name="vscode-web"
 		local docker_img="codercom/code-server"
 		local docker_port=8021
@@ -9298,6 +9329,7 @@ while true; do
 
 
 	  22|uptime-kuma)
+		local app_id="22"
 		local docker_name="uptime-kuma"
 		local docker_img="louislam/uptime-kuma:latest"
 		local docker_port=8022
@@ -9324,6 +9356,7 @@ while true; do
 		  ;;
 
 	  23|memos)
+		local app_id="23"
 		local docker_name="memos"
 		local docker_img="ghcr.io/usememos/memos:latest"
 		local docker_port=8023
@@ -9343,6 +9376,7 @@ while true; do
 		  ;;
 
 	  24|webtop)
+		local app_id="24"
 		local docker_name="webtop"
 		local docker_img="lscr.io/linuxserver/webtop:latest"
 		local docker_port=8024
@@ -9383,6 +9417,7 @@ while true; do
 		  ;;
 
 	  25|nextcloud)
+		local app_id="25"
 		local docker_name="nextcloud"
 		local docker_img="nextcloud:latest"
 		local docker_port=8025
@@ -9403,6 +9438,7 @@ while true; do
 		  ;;
 
 	  26|qd)
+		local app_id="26"
 		local docker_name="qd"
 		local docker_img="qdtoday/qd:latest"
 		local docker_port=8026
@@ -9422,6 +9458,7 @@ while true; do
 		  ;;
 
 	  27|dockge)
+		local app_id="27"
 		local docker_name="dockge"
 		local docker_img="louislam/dockge:latest"
 		local docker_port=8027
@@ -9441,6 +9478,7 @@ while true; do
 		  ;;
 
 	  28|speedtest)
+		local app_id="28"
 		local docker_name="speedtest"
 		local docker_img="ghcr.io/librespeed/speedtest"
 		local docker_port=8028
@@ -9460,6 +9498,7 @@ while true; do
 		  ;;
 
 	  29|searxng)
+		local app_id="29"
 		local docker_name="searxng"
 		local docker_img="searxng/searxng"
 		local docker_port=8029
@@ -9484,6 +9523,7 @@ while true; do
 		  ;;
 
 	  30|photoprism)
+		local app_id="30"
 		local docker_name="photoprism"
 		local docker_img="photoprism/photoprism:latest"
 		local docker_port=8030
@@ -9516,6 +9556,7 @@ while true; do
 
 
 	  31|s-pdf)
+		local app_id="31"
 		local docker_name="s-pdf"
 		local docker_img="frooodle/s-pdf:latest"
 		local docker_port=8031
@@ -9542,6 +9583,7 @@ while true; do
 		  ;;
 
 	  32|drawio)
+		local app_id="32"
 		local docker_name="drawio"
 		local docker_img="jgraph/drawio"
 		local docker_port=8032
@@ -9562,6 +9604,7 @@ while true; do
 		  ;;
 
 	  33|sun-panel)
+		local app_id="33"
 		local docker_name="sun-panel"
 		local docker_img="hslr/sun-panel"
 		local docker_port=8033
@@ -9586,6 +9629,7 @@ while true; do
 		  ;;
 
 	  34|pingvin-share)
+		local app_id="34"
 		local docker_name="pingvin-share"
 		local docker_img="stonith404/pingvin-share"
 		local docker_port=8034
@@ -9610,6 +9654,7 @@ while true; do
 
 
 	  35|moments)
+		local app_id="35"
 		local docker_name="moments"
 		local docker_img="kingwrcy/moments:latest"
 		local docker_port=8035
@@ -9637,6 +9682,7 @@ while true; do
 
 
 	  36|lobe-chat)
+		local app_id="36"
 		local docker_name="lobe-chat"
 		local docker_img="lobehub/lobe-chat:latest"
 		local docker_port=8036
@@ -9658,6 +9704,7 @@ while true; do
 		  ;;
 
 	  37|myip)
+		local app_id="37"
 		local docker_name="myip"
 		local docker_img="jason5ng32/myip:latest"
 		local docker_port=8037
@@ -9692,6 +9739,7 @@ while true; do
 			wget -O /home/docker/bililive-go/config.yml ${gh_proxy}raw.githubusercontent.com/hr3lxphr6j/bililive-go/master/config.yml > /dev/null 2>&1
 		fi
 
+		local app_id="39"
 		local docker_name="bililive-go"
 		local docker_img="chigusa/bililive-go"
 		local docker_port=8039
@@ -9711,6 +9759,7 @@ while true; do
 		  ;;
 
 	  40|webssh)
+		local app_id="40"
 		local docker_name="webssh"
 		local docker_img="jrohy/webssh"
 		local docker_port=8040
@@ -9728,6 +9777,7 @@ while true; do
 
 	  41|haozi)
 
+		local app_id="41"
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="耗子面板"
 		local panelurl="官方地址: ${gh_proxy}github.com/TheTNB/panel"
@@ -9752,6 +9802,7 @@ while true; do
 
 
 	  42|nexterm)
+		local app_id="42"
 		local docker_name="nexterm"
 		local docker_img="germannewsmaker/nexterm:latest"
 		local docker_port=8042
@@ -9776,6 +9827,7 @@ while true; do
 		  ;;
 
 	  43|hbbs)
+		local app_id="43"
 		local docker_name="hbbs"
 		local docker_img="rustdesk/rustdesk-server"
 		local docker_port=0000
@@ -9796,6 +9848,7 @@ while true; do
 		  ;;
 
 	  44|hbbr)
+		local app_id="44"
 		local docker_name="hbbr"
 		local docker_img="rustdesk/rustdesk-server"
 		local docker_port=0000
@@ -9815,6 +9868,7 @@ while true; do
 		  ;;
 
 	  45|registry)
+		local app_id="45"
 		local docker_name="registry"
 		local docker_img="registry:2"
 		local docker_port=8045
@@ -9840,6 +9894,7 @@ while true; do
 		  ;;
 
 	  46|ghproxy)
+		local app_id="46"
 		local docker_name="ghproxy"
 		local docker_img="wjqserver/ghproxy:latest"
 		local docker_port=8046
@@ -9860,6 +9915,7 @@ while true; do
 
 	  47|prometheus|grafana)
 
+		local app_id="47"
 		local app_name="普罗米修斯监控"
 		local app_text="Prometheus+Grafana企业级监控系统"
 		local app_url="官网介绍: https://prometheus.io"
@@ -9898,6 +9954,7 @@ while true; do
 		  ;;
 
 	  48|node-exporter)
+		local app_id="48"
 		local docker_name="node-exporter"
 		local docker_img="prom/node-exporter"
 		local docker_port=8048
@@ -9922,6 +9979,7 @@ while true; do
 		  ;;
 
 	  49|cadvisor)
+		local app_id="49"
 		local docker_name="cadvisor"
 		local docker_img="gcr.io/cadvisor/cadvisor:latest"
 		local docker_port=8049
@@ -9952,6 +10010,7 @@ while true; do
 
 
 	  50|changedetection)
+		local app_id="50"
 		local docker_name="changedetection"
 		local docker_img="dgtlmoon/changedetection.io:latest"
 		local docker_port=8050
@@ -9982,6 +10041,7 @@ while true; do
 
 
 	  52|dpanel)
+		local app_id="52"
 		local docker_name="dpanel"
 		local docker_img="dpanel/dpanel:lite"
 		local docker_port=8052
@@ -10005,6 +10065,7 @@ while true; do
 		  ;;
 
 	  53|llama3)
+		local app_id="53"
 		local docker_name="ollama"
 		local docker_img="ghcr.io/open-webui/open-webui:ollama"
 		local docker_port=8053
@@ -10025,6 +10086,7 @@ while true; do
 
 	  54|amh)
 
+		local app_id="54"
 		local lujing="[ -d "/www/server/panel" ]"
 		local panelname="AMH面板"
 		local panelurl="官方地址: https://amh.sh/index.htm?amh"
@@ -10047,7 +10109,7 @@ while true; do
 
 
 	  55|frps)
-	  	frps_panel
+		frps_panel
 		  ;;
 
 	  56|frpc)
@@ -10055,6 +10117,7 @@ while true; do
 		  ;;
 
 	  57|deepseek)
+		local app_id="57"
 		local docker_name="ollama"
 		local docker_img="ghcr.io/open-webui/open-webui:ollama"
 		local docker_port=8053
@@ -10075,6 +10138,7 @@ while true; do
 
 
 	  58|dify)
+		local app_id="58"
 		local app_name="Dify知识库"
 		local app_text="是一款开源的大语言模型(LLM) 应用开发平台。自托管训练数据用于AI生成"
 		local app_url="官方网站: https://docs.dify.ai/zh-hans"
@@ -10113,7 +10177,8 @@ while true; do
 		  ;;
 
 	  59|new-api)
-		local app_name="New API"
+		local app_id="59"
+		local app_name="NewAPI"
 		local app_text="新一代大模型网关与AI资产管理系统"
 		local app_url="官方网站: https://github.com/Calcium-Ion/new-api"
 		local docker_name="new-api"
@@ -10165,6 +10230,7 @@ while true; do
 
 	  60|jms)
 
+		local app_id="60"
 		local app_name="JumpServer开源堡垒机"
 		local app_text="是一个开源的特权访问管理 (PAM) 工具，该程序占用80端口不支持添加域名访问了"
 		local app_url="官方介绍: https://github.com/jumpserver/jumpserver"
@@ -10202,6 +10268,7 @@ while true; do
 		  ;;
 
 	  61|libretranslate)
+		local app_id="61"
 		local docker_name="libretranslate"
 		local docker_img="libretranslate/libretranslate:latest"
 		local docker_port=8061
@@ -10227,6 +10294,7 @@ while true; do
 
 
 	  62|ragflow)
+		local app_id="62"
 		local app_name="RAGFlow知识库"
 		local app_text="基于深度文档理解的开源 RAG（检索增强生成）引擎"
 		local app_url="官方网站: https://github.com/infiniflow/ragflow"
@@ -10265,6 +10333,7 @@ while true; do
 
 
 	  63|open-webui)
+		local app_id="63"
 		local docker_name="open-webui"
 		local docker_img="ghcr.io/open-webui/open-webui:main"
 		local docker_port=8063
@@ -10284,6 +10353,7 @@ while true; do
 		  ;;
 
 	  64|it-tools)
+		local app_id="64"
 		local docker_name="it-tools"
 		local docker_img="corentinth/it-tools:latest"
 		local docker_port=8064
@@ -10302,6 +10372,7 @@ while true; do
 
 
 	  65|n8n)
+		local app_id="65"
 		local docker_name="n8n"
 		local docker_img="docker.n8n.io/n8nio/n8n"
 		local docker_port=8065
@@ -10319,7 +10390,7 @@ while true; do
 			  -e N8N_HOST=${yuming} \
 			  -e N8N_PORT=5678 \
 			  -e N8N_PROTOCOL=https \
-			  -e N8N_WEBHOOK_URL=https://${yuming}/ \
+			  -e WEBHOOK_URL=https://${yuming}/ \
 			  docker.n8n.io/n8nio/n8n
 
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
@@ -10341,6 +10412,7 @@ while true; do
 
 
 	  67|ddns)
+		local app_id="67"
 		local docker_name="ddns-go"
 		local docker_img="jeessy/ddns-go"
 		local docker_port=8067
@@ -10364,6 +10436,7 @@ while true; do
 		  ;;
 
 	  68|allinssl)
+		local app_id="68"
 		local docker_name="allinssl"
 		local docker_img="allinssl/allinssl:latest"
 		local docker_port=8068
@@ -10382,6 +10455,7 @@ while true; do
 
 
 	  69|sftpgo)
+		local app_id="69"
 		local docker_name="sftpgo"
 		local docker_img="drakkan/sftpgo:latest"
 		local docker_port=8069
@@ -10413,6 +10487,7 @@ while true; do
 
 
 	  70|astrbot)
+		local app_id="70"
 		local docker_name="astrbot"
 		local docker_img="soulter/astrbot:latest"
 		local docker_port=8070
@@ -10444,6 +10519,7 @@ while true; do
 
 
 	  71|navidrome)
+		local app_id="71"
 		local docker_name="navidrome"
 		local docker_img="deluan/navidrome:latest"
 		local docker_port=8071
@@ -10473,6 +10549,7 @@ while true; do
 
 	  72|bitwarden)
 
+		local app_id="72"
 		local docker_name="bitwarden"
 		local docker_img="vaultwarden/server"
 		local docker_port=8072
@@ -10502,6 +10579,7 @@ while true; do
 
 	  73|libretv)
 
+		local app_id="73"
 		local docker_name="libretv"
 		local docker_img="bestzwei/libretv:latest"
 		local docker_port=8073
@@ -10531,6 +10609,7 @@ while true; do
 
 	  74|moontv)
 
+		local app_id="74"
 		local docker_name="moontv"
 		local docker_img="ghcr.io/senshinya/moontv:latest"
 		local docker_port=8074
@@ -10560,6 +10639,7 @@ while true; do
 
 	  75|melody)
 
+		local app_id="75"
 		local docker_name="melody"
 		local docker_img="foamzou/melody:latest"
 		local docker_port=8075
@@ -10589,6 +10669,7 @@ while true; do
 
 	  76|dosgame)
 
+		local app_id="76"
 		local docker_name="dosgame"
 		local docker_img="oldiy/dosgame-web-docker:latest"
 		local docker_port=8076
@@ -10614,6 +10695,7 @@ while true; do
 
 	  77|xunlei)
 
+		local app_id="77"
 		local docker_name="xunlei"
 		local docker_img="cnk3x/xunlei"
 		local docker_port=8077
@@ -10649,6 +10731,7 @@ while true; do
 
 	  78|PandaWiki)
 
+		local app_id="78"
 		local app_name="PandaWiki"
 		local app_text="PandaWiki是一款AI大模型驱动的开源智能文档管理系统，强烈建议不要自定义端口部署。"
 		local app_url="官方介绍: https://github.com/chaitin/PandaWiki"
@@ -10676,6 +10759,7 @@ while true; do
 
 	  79|beszel)
 
+		local app_id="79"
 		local docker_name="beszel"
 		local docker_img="henrygd/beszel"
 		local docker_port=8079
@@ -10703,6 +10787,8 @@ while true; do
 
 
 	  80|linkwarden)
+
+		  local app_id="80"
 		  local app_name="linkwarden书签管理"
 		  local app_text="一个开源的自托管书签管理平台，支持标签、搜索和团队协作。"
 		  local app_url="官方网站: https://linkwarden.app/"
@@ -10774,6 +10860,7 @@ while true; do
 
 
 	  81|jitsi)
+		  local app_id="81"
 		  local app_name="JitsiMeet视频会议"
 		  local app_text="一个开源的安全视频会议解决方案，支持多人在线会议、屏幕共享与加密通信。"
 		  local app_url="官方网站: https://jitsi.org/"
@@ -10824,6 +10911,7 @@ while true; do
 
 	  82|gpt-load)
 
+		local app_id="82"
 		local docker_name="gpt-load"
 		local docker_img="tbphp/gpt-load:latest"
 		local docker_port=8082
@@ -10852,6 +10940,7 @@ while true; do
 
 	  83|komari)
 
+		local app_id="83"
 		local docker_name="komari"
 		local docker_img="ghcr.io/komari-monitor/komari:latest"
 		local docker_port=8083
@@ -10883,6 +10972,7 @@ while true; do
 
 	  84|wallos)
 
+		local app_id="84"
 		local docker_name="wallos"
 		local docker_img="bellamy/wallos:latest"
 		local docker_port=8084
@@ -10911,6 +11001,7 @@ while true; do
 
 	  85|immich)
 
+		  local app_id="85"
 		  local app_name="immich图片视频管理器"
 		  local app_text="高性能自托管照片和视频管理解决方案。"
 		  local app_url="官网介绍: https://github.com/immich-app/immich"
@@ -10953,6 +11044,7 @@ while true; do
 
 	  86|jellyfin)
 
+		local app_id="86"
 		local docker_name="jellyfin"
 		local docker_img="jellyfin/jellyfin"
 		local docker_port=8086
@@ -10988,6 +11080,7 @@ while true; do
 
 	  87|synctv)
 
+		local app_id="87"
 		local docker_name="synctv"
 		local docker_img="synctvorg/synctv"
 		local docker_port=8087
@@ -11015,6 +11108,7 @@ while true; do
 
 	  88|owncast)
 
+		local app_id="88"
 		local docker_name="owncast"
 		local docker_img="owncast/owncast:latest"
 		local docker_port=8088
@@ -11259,13 +11353,13 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}ポートの職業ステータスを確認してください${gl_kjlan}12.  ${gl_bai}仮想メモリサイズを変更します"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}ユーザー管理${gl_kjlan}14.  ${gl_bai}ユーザー/パスワードジェネレーター"
-	  echo -e "${gl_kjlan}15.  ${gl_bai}システムタイムゾーンの調整${gl_kjlan}16.  ${gl_bai}BBR3加速度をセットアップします"
+	  echo -e "${gl_kjlan}15.  ${gl_bai}システムタイムゾーンの調整${gl_kjlan}16.  ${gl_bai}BBR3加速度を設定します"
 	  echo -e "${gl_kjlan}17.  ${gl_bai}ファイアウォール上級マネージャー${gl_kjlan}18.  ${gl_bai}ホスト名を変更します"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}システムの更新ソースを切り替えます${gl_kjlan}20.  ${gl_bai}タイミングタスク管理"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}ネイティブホストの解析${gl_kjlan}22.  ${gl_bai}SSH防衛プログラム"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}ネイティブホスト分析${gl_kjlan}22.  ${gl_bai}SSH防衛プログラム"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}電流制限の自動シャットダウン${gl_kjlan}24.  ${gl_bai}ルート秘密キーログインモード"
-	  echo -e "${gl_kjlan}25.  ${gl_bai}TGボットシステムの監視と早期警告${gl_kjlan}26.  ${gl_bai}OpenSSHの高リスクの脆弱性を修正します"
+	  echo -e "${gl_kjlan}25.  ${gl_bai}TGボットシステムの監視と早期警告${gl_kjlan}26.  ${gl_bai}OpenSSHハイリスクの脆弱性を修正します"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linuxカーネルのアップグレード${gl_kjlan}28.  ${gl_bai}Linuxシステムにおけるカーネルパラメーターの最適化${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}ウイルススキャンツール${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}ファイルマネージャー"
 	  echo -e "${gl_kjlan}------------------------"
@@ -11287,7 +11381,7 @@ linux_Settings() {
 		  1)
 			  while true; do
 				  clear
-				  read -e -p "ショートカットキーを入力してください（出口に0を入力してください）：" kuaijiejian
+				  read -e -p "ショートカットキーを入力してください（0を入力して終了してください）：" kuaijiejian
 				  if [ "$kuaijiejian" == "0" ]; then
 					   break_end
 					   linux_Settings
@@ -11747,7 +11841,7 @@ EOF
 				echo "------------------------"
 				echo "アメリカ"
 				echo "21。WesternTime22。東部時間"
-				echo "23。カナダ時間24。メキシコの時間"
+				echo "23. 加拿大时间               24. 墨西哥时间"
 				echo "25。ブラジル時間26。アルゼンチン時間"
 				echo "------------------------"
 				echo "31。UTCグローバル標準時間"
@@ -11920,7 +12014,7 @@ EOF
 								  break  # 跳出
 								  ;;
 						  esac
-						  send_stats "時限タスクを追加します"
+						  send_stats "タイムされたタスクを追加します"
 						  ;;
 					  2)
 						  read -e -p "削除する必要があるキーワードを入力してください。" kquest
@@ -12073,7 +12167,7 @@ EOF
 				case "$Limiting" in
 				  1)
 					# 新しい仮想メモリサイズを入力します
-					echo "実際のサーバーに100gのトラフィックがある場合、しきい値を95gに設定し、事前に電源をシャットダウンして、トラフィックエラーやオーバーフローを回避できます。"
+					echo "実際のサーバーに100gのトラフィックがある場合、しきい値を95gに設定し、事前に電源を停止して、トラフィックエラーやオーバーフローを避けることができます。"
 					read -e -p "着信トラフィックのしきい値を入力してください（ユニットはG、デフォルトは100gです）：" rx_threshold_gb
 					rx_threshold_gb=${rx_threshold_gb:-100}
 					read -e -p "アウトバウンドトラフィックのしきい値を入力してください（ユニットはG、デフォルトは100gです）：" tx_threshold_gb
@@ -12099,7 +12193,7 @@ EOF
 					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
 					crontab -l | grep -v 'reboot' | crontab -
 					rm ~/Limiting_Shut_down.sh
-					echo "現在の制限シャットダウン関数はオフになっています"
+					echo "電流制限シャットダウン機能はオフになっています"
 					;;
 				  *)
 					break
@@ -12120,7 +12214,7 @@ EOF
 			  	  echo "------------------------------------------------"
 			  	  echo "キーペアが生成され、SSHログインのより安全な方法"
 				  echo "------------------------"
-				  echo "1.新しいキーを生成する2。既存のキーをインポートする3。ネイティブキーを表示します"
+				  echo "1.新しいキーを生成する2。既存のキーをインポートする3。ネイティブキーを表示"
 				  echo "------------------------"
 				  echo "0。前のメニューに戻ります"
 				  echo "------------------------"
@@ -12306,7 +12400,7 @@ EOF
 			  echo -e "6。電源を入れます${gl_huang}BBR${gl_bai}加速します"
 			  echo -e "7.タイムゾーンをに設定します${gl_huang}上海${gl_bai}"
 			  echo -e "8。DNSアドレスを自動的に最適化します${gl_huang}海外：1.1.1.1 8.8.8.8国内：223.5.5.5${gl_bai}"
-			  echo -e "9.基本的なツールをインストールします${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
+			  echo -e "9.基本ツールをインストールします${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 			  echo -e "10。Linuxシステムのカーネルパラメーター最適化に切り替えます${gl_huang}バランスの取れた最適化モード${gl_bai}"
 			  echo "------------------------------------------------"
 			  read -e -p "ワンクリックメンテナンスは必ずありますか？ （y/n）：" choice
@@ -12401,7 +12495,7 @@ EOF
 
 			  echo "プライバシーとセキュリティ"
 			  echo "スクリプトは、ユーザー機能に関するデータを収集し、スクリプトエクスペリエンスを最適化し、より楽しく便利な機能を作成します。"
-			  echo "スクリプトバージョン番号、使用時間、システムバージョン、CPUアーキテクチャ、マシンの国、および使用される関数の名前を収集します。"
+			  echo "スクリプトバージョン番号、使用時間、システムバージョン、CPUアーキテクチャ、マシンの国、使用される機能の名前を収集します。"
 			  echo "------------------------------------------------"
 			  echo -e "現在のステータス：$status_message"
 			  echo "--------------------"
@@ -12525,7 +12619,7 @@ linux_file() {
 				;;
 			3)  # 修改目录权限
 				read -e -p "ディレクトリ名を入力してください：" dirname
-				read -e -p "許可を入力してください（755など）：" perm
+				read -e -p "許可（755など）を入力してください。" perm
 				chmod "$perm" "$dirname" && echo "許可が変更されました" || echo "変更に失敗しました"
 				send_stats "ディレクトリ権限を変更します"
 				;;
@@ -12557,7 +12651,7 @@ linux_file() {
 				;;
 			13) # 修改文件权限
 				read -e -p "ファイル名を入力してください：" filename
-				read -e -p "許可を入力してください（755など）：" perm
+				read -e -p "許可（755など）を入力してください。" perm
 				chmod "$perm" "$filename" && echo "許可が変更されました" || echo "変更に失敗しました"
 				send_stats "ファイル権限を変更します"
 				;;
@@ -12589,7 +12683,7 @@ linux_file() {
 				read -e -p "移動するには、ファイルまたはディレクトリパスを入力してください。" src_path
 				if [ ! -e "$src_path" ]; then
 					echo "エラー：ファイルまたはディレクトリは存在しません。"
-					send_stats "ファイルまたはディレクトリの移動に失敗しました：ファイルまたはディレクトリは存在しません"
+					send_stats "ファイルまたはディレクトリの移動に失敗しました：ファイルまたはディレクトリが存在しません"
 					continue
 				fi
 
@@ -12752,7 +12846,7 @@ while true; do
 	  echo -e "${gl_kjlan}4.  ${gl_bai}バックアップクラスター${gl_kjlan}5.  ${gl_bai}クラスターを復元します"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}バッチでタスクを実行します${gl_bai}"
-	  echo -e "${gl_kjlan}11. ${gl_bai}Tech Lionスクリプトをインストールします${gl_kjlan}12. ${gl_bai}システムを更新します${gl_kjlan}13. ${gl_bai}システムをきれいにします"
+	  echo -e "${gl_kjlan}11. ${gl_bai}Tech Lionスクリプトをインストールします${gl_kjlan}12. ${gl_bai}システムを更新します${gl_kjlan}13. ${gl_bai}システムを掃除します"
 	  echo -e "${gl_kjlan}14. ${gl_bai}Dockerをインストールします${gl_kjlan}15. ${gl_bai}BBR3をインストールします${gl_kjlan}16. ${gl_bai}1G仮想メモリをセットアップします"
 	  echo -e "${gl_kjlan}17. ${gl_bai}タイムゾーンを上海に設定します${gl_kjlan}18. ${gl_bai}すべてのポートを開きます${gl_kjlan}51. ${gl_bai}カスタムコマンド"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -12868,7 +12962,7 @@ echo "------------------------"
 echo -e "${gl_lan}dmit四半期あたり28ドルUS CN2GIA 1コア2Gメモリ20Gハードドライブ800gトラフィック${gl_bai}"
 echo -e "${gl_bai}ウェブサイト：https：//www.dmit.io/aff.php?aff = 4966&pid=100${gl_bai}"
 echo "------------------------"
-echo -e "${gl_zi}V.PS月額6.9 $ 6.9東京ソフトバンク2コア1Gメモリ20gハードドライブ1Tトラフィック${gl_bai}"
+echo -e "${gl_zi}V.PS月額6.9 $ 6.9東京ソフトバンク2コア1Gメモリ20gハードドライブ1tトラフィック${gl_bai}"
 echo -e "${gl_bai}ウェブサイト：https：//vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?faffid=1355 &? affid=1355${gl_bai}"
 echo "------------------------"
 echo -e "${gl_kjlan}より人気のあるVPSオファー${gl_bai}"
@@ -13087,11 +13181,11 @@ echo "ドメイン名証明書の有効期限クエリK SSL PS"
 echo "Docker Environment Installation K Dockerインストール| K Dockerのインストール"
 echo "Docker Container Management K Docker PS | K Dockerコンテナ"
 echo "Docker Image Management K Docker IMG | K Docker画像"
-echo "LDNMPサイト管理k Web"
+echo "LDNMPサイト管理K Web"
 echo "LDNMPキャッシュクリーンアップK Webキャッシュ"
 echo "WordPress k wp | k wordpress | k wp xxx.comをインストールします"
 echo "リバースプロキシk fd | k rp | k抗ジェネレーション| k fd xxx.comをインストールする"
-echo "ロードバランスkロードバランス| kロードバランシングをインストールします"
+echo "ロードバランシングkロードバランス| kロードバランシングをインストールします"
 echo "ファイアウォールパネルk fhq | kファイアウォール"
 echo "オープンポートK DKDK 8080 | Kオープンポート8080"
 echo "ポートK GBDK 7800を閉じる| kポート7800を閉じます"
@@ -13151,7 +13245,7 @@ else
 
 		rsync_run)
 			shift
-			send_stats "タイム付きRSYNC同期"
+			send_stats "タイミング付きRSYNC同期"
 			run_task "$@"
 			;;
 
