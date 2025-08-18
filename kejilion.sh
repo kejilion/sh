@@ -10920,12 +10920,12 @@ while true; do
 
 		docker_rum() {
 
-			read -e -p "设置${docker_name}的登录密钥（字母和数字组合）: " app_passwd
+			read -e -p "设置${docker_name}的登录密钥（sk-开头字母和数字组合）如: sk-159kejilionyyds163: " app_passwd
 
 			mkdir -p /home/docker/gpt-load && \
 			docker run -d --name gpt-load \
 				-p ${docker_port}:3001 \
-				-e AUTH_KEY=sk-${app_passwd} \
+				-e AUTH_KEY=${app_passwd} \
 				-v "/home/docker/gpt-load/data":/app/data \
 				tbphp/gpt-load:latest
 
