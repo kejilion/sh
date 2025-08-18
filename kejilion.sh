@@ -10920,10 +10920,12 @@ while true; do
 
 		docker_rum() {
 
+			read -e -p "设置${docker_name}的登录密钥（字母和数字组合）: " app_passwd
+
 			mkdir -p /home/docker/gpt-load && \
 			docker run -d --name gpt-load \
 				-p ${docker_port}:3001 \
-				-e AUTH_KEY=sk-123456 \
+				-e AUTH_KEY=sk-${app_passwd} \
 				-v "/home/docker/gpt-load/data":/app/data \
 				tbphp/gpt-load:latest
 
@@ -10931,7 +10933,7 @@ while true; do
 
 		local docker_describe="高性能AI接口透明代理服务"
 		local docker_url="官网介绍: https://www.gpt-load.com/"
-		local docker_use="echo \"默认管理密钥: sk-123456\""
+		local docker_use=""
 		local docker_passwd=""
 		local app_size="1"
 		docker_app
