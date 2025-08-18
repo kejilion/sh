@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.8"
+sh_v="4.0.9"
 
 
 gl_hui='\e[37m'
@@ -8535,6 +8535,8 @@ while true; do
 	  echo -e "${gl_kjlan}85.  ${color85}immich图片视频管理器                ${gl_kjlan}86.  ${color86}jellyfin媒体管理系统"
 	  echo -e "${gl_kjlan}87.  ${color87}SyncTV一起看片神器                  ${gl_kjlan}88.  ${color88}Owncast自托管直播平台"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${color88}还原全部应用数据"
+	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
@@ -11135,6 +11137,73 @@ while true; do
 
 		  ;;
 
+	  b)
+	  	clear
+	  	send_stats "全部应用备份"
+
+	  	local backup_filename="app_$(date +"%Y%m%d%H%M%S").tar.gz"
+	  	echo -e "${gl_huang}正在备份 $backup_filename ...${gl_bai}"
+	  	cd / && tar czvf "$backup_filename" home
+
+	  	while true; do
+			clear
+			echo "备份文件已创建: /$backup_filename"
+			read -e -p "要传送备份数据到远程服务器吗？(Y/N): " choice
+			case "$choice" in
+			  [Yy])
+				read -e -p "请输入远端服务器IP:  " remote_ip
+				if [ -z "$remote_ip" ]; then
+				  echo "错误: 请输入远端服务器IP。"
+				  continue
+				fi
+				local latest_tar=$(ls -t /app*.tar.gz | head -1)
+				if [ -n "$latest_tar" ]; then
+				  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
+				  sleep 2  # 添加等待时间
+				  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
+				  echo "文件已传送至远程服务器/根目录。"
+				else
+				  echo "未找到要传送的文件。"
+				fi
+				break
+				;;
+			  *)
+				echo "注意: 目前备份仅包含docker项目，不包含宝塔，1panel等建站面板的数据备份。"
+				break
+				;;
+			esac
+	  	done
+
+		  ;;
+
+	  r)
+	  	root_use
+	  	send_stats "全部应用还原"
+	  	echo "可用的应用备份"
+	  	echo "-------------------------"
+	  	ls -lt /app*.gz | awk '{print $NF}'
+	  	echo ""
+	  	read -e -p  "回车键还原最新的备份，输入备份文件名还原指定的备份，输入0退出：" filename
+
+	  	if [ "$filename" == "0" ]; then
+			  break_end
+			  linux_panel
+	  	fi
+
+	  	# 如果用户没有输入文件名，使用最新的压缩包
+	  	if [ -z "$filename" ]; then
+			  local filename=$(ls -t /app*.tar.gz | head -1)
+	  	fi
+
+	  	if [ -n "$filename" ]; then
+		  	  echo -e "${gl_huang}正在解压 $filename ...${gl_bai}"
+		  	  cd / && tar -xzf "$filename"
+			  echo "应用数据已还原，目前请手动进入指定应用菜单，更新应用，即可还原应用。"
+	  	else
+			  echo "没有找到压缩包。"
+	  	fi
+
+		  ;;
 
 	  0)
 		  kejilion
