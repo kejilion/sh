@@ -8534,6 +8534,7 @@ while true; do
 	  echo -e "${gl_kjlan}83.  ${color83}komari服务器监控工具                ${gl_kjlan}84.  ${color84}Wallos个人财务管理工具"
 	  echo -e "${gl_kjlan}85.  ${color85}immich图片视频管理器                ${gl_kjlan}86.  ${color86}jellyfin媒体管理系统"
 	  echo -e "${gl_kjlan}87.  ${color87}SyncTV一起看片神器                  ${gl_kjlan}88.  ${color88}Owncast自托管直播平台"
+	  echo -e "${gl_kjlan}89.  ${color89}FileCodeBox文件快递                 ${gl_kjlan}90.  ${color90}matrix去中心化聊天协议"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${color88}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -11138,6 +11139,94 @@ while true; do
 		docker_app
 
 		  ;;
+
+
+
+	  89|file-code-box)
+
+		local app_id="89"
+		local docker_name="file-code-box"
+		local docker_img="lanol/filecodebox:latest"
+		local docker_port=8089
+
+		docker_rum() {
+
+			docker run -d \
+			  --name file-code-box \
+			  -p ${docker_port}:12345 \
+			  -v /home/docker/file-code-box/data:/app/data \
+			  --restart unless-stopped \
+			  lanol/filecodebox:latest
+
+		}
+
+		local docker_describe="匿名口令分享文本和文件，像拿快递一样取文件"
+		local docker_url="官网介绍: https://github.com/vastsa/FileCodeBox"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+
+
+	  90|matrix)
+
+		local app_id="90"
+		local docker_name="matrix"
+		local docker_img="matrixdotorg/synapse:latest"
+		local docker_port=8090
+
+		docker_rum() {
+
+			add_yuming
+
+			if [ ! -d /home/docker/matrix/data ]; then
+				docker run -it --rm \
+				  -v /home/docker/matrix/data:/data \
+				  -e SYNAPSE_SERVER_NAME=${yuming} \
+				  -e SYNAPSE_REPORT_STATS=yes \
+				  --name matrix \
+				  matrixdotorg/synapse:latest generate
+			fi
+
+			docker run -d \
+			  --name matrix \
+			  -v /home/docker/matrix/data:/data \
+			  -p ${docker_port}:8008 \
+			  --restart unless-stopped \
+			  matrixdotorg/synapse:latest
+
+			echo "创建初始用户或管理员。请设置以下内容用户名和密码以及是否为管理员。"
+			docker exec -it matrix register_new_matrix_user \
+			  http://localhost:8008 \
+			  -c /data/homeserver.yaml
+
+			sed -i '/^enable_registration:/d' /home/docker/matrix/data/homeserver.yaml
+			sed -i '/^# vim:ft=yaml/i enable_registration: true' /home/docker/matrix/data/homeserver.yaml
+			sed -i '/^enable_registration_without_verification:/d' /home/docker/matrix/data/homeserver.yaml
+			sed -i '/^# vim:ft=yaml/i enable_registration_without_verification: true' /home/docker/matrix/data/homeserver.yaml
+
+			docker restart matrix
+
+			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+			block_container_port "$docker_name" "$ipv4_address"
+
+		}
+
+		local docker_describe="Matrix是一个去中心化的聊天协议"
+		local docker_url="官网介绍: https://matrix.org/"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+
 
 	  b)
 	  	clear
