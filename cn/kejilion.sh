@@ -9414,8 +9414,8 @@ while true; do
 
 		local docker_describe="webtop基于Alpine的中文版容器。若IP无法访问，请添加域名访问。"
 		local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
-		local docker_use="echo \"用户名: webtop-abc\""
-		local docker_passwd="echo \"密码: webtopABC123\""
+		local docker_use=""
+		local docker_passwd=""
 		local app_size="2"
 		docker_app
 		  ;;
