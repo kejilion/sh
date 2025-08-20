@@ -10610,32 +10610,53 @@ while true; do
 		  ;;
 
 
+
 	  74|moontv)
 
 		local app_id="74"
-		local docker_name="moontv"
-		local docker_img="ghcr.io/senshinya/moontv:latest"
-		local docker_port=8074
 
-		docker_rum() {
+		local app_name="moontv私有影视"
+		local app_text="免费在线视频搜索与观看平台"
+		local app_url="视频介绍: https://github.com/MoonTechLab/LunaTV"
+		local docker_name="moontv-core"
+		local docker_port="8074"
+		local app_size="2"
 
-			read -e -p "设置MoonTV的登录密码: " app_passwd
+		docker_app_install() {
+			read -e -p "设置登录用户名: " admin
+			read -e -p "设置登录用户密码: " admin_password
 
-				docker run -d \
-				  --name moontv \
-				  --restart unless-stopped \
-				  -p ${docker_port}:3000 \
-				  -e PASSWORD=${app_passwd} \
-				  ghcr.io/senshinya/moontv:latest
+			mkdir -p /home/docker/moontv
+			mkdir -p /home/docker/moontv/config
+			mkdir -p /home/docker/moontv/data
+			cd /home/docker/moontv
 
+			curl -o /home/docker/moontv/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/moontv-docker-compose.yml
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/moontv/docker-compose.yml
+			sed -i "s/admin/${admin}/g" /home/docker/moontv/docker-compose.yml
+			sed -i "s/admin_password/${admin_password}/g" /home/docker/moontv/docker-compose.yml
+
+			cd /home/docker/moontv/
+			docker compose up -d
+			clear
+			echo "已经安装完成"
+			check_docker_app_ip
 		}
 
-		local docker_describe="免费在线视频搜索与观看平台"
-		local docker_url="官网介绍: https://github.com/senshinya/MoonTV"
-		local docker_use=""
-		local docker_passwd=""
-		local app_size="1"
-		docker_app
+
+		docker_app_update() {
+			cd /home/docker/moontv/ && docker compose down --rmi all
+			cd /home/docker/moontv/ && docker compose up -d
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/moontv/ && docker compose down --rmi all
+			rm -rf /home/docker/moontv
+			echo "应用已卸载"
+		}
+
+		docker_app_plus
 
 		  ;;
 
