@@ -8690,7 +8690,8 @@ while true; do
 
 		docker_rum() {
 
-
+			read -e -p "设置登录用户名: " admin
+			read -e -p "设置登录用户密码: " admin_password
 			docker run -d \
 			  --name=webtop-ubuntu \
 			  --security-opt seccomp=unconfined \
@@ -8699,8 +8700,8 @@ while true; do
 			  -e TZ=Etc/UTC \
 			  -e SUBFOLDER=/ \
 			  -e TITLE=Webtop \
-			  -e CUSTOM_USER=ubuntu-abc \
-			  -e PASSWORD=ubuntuABC123 \
+			  -e CUSTOM_USER=${admin} \
+			  -e PASSWORD=${admin_password} \
 			  -p ${docker_port}:3000 \
 			  -v /home/docker/webtop/data:/config \
 			  -v /var/run/docker.sock:/var/run/docker.sock \
@@ -8714,8 +8715,8 @@ while true; do
 
 		local docker_describe="webtop基于Ubuntu的容器。若IP无法访问，请添加域名访问。"
 		local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
-		local docker_use="echo \"用户名: ubuntu-abc\""
-		local docker_passwd="echo \"密码: ubuntuABC123\""
+		local docker_use=""
+		local docker_passwd=""
 		local app_size="2"
 		docker_app
 
@@ -9386,7 +9387,8 @@ while true; do
 
 		docker_rum() {
 
-
+			read -e -p "设置登录用户名: " admin
+			read -e -p "设置登录用户密码: " admin_password
 			docker run -d \
 			  --name=webtop \
 			  --security-opt seccomp=unconfined \
@@ -9395,8 +9397,8 @@ while true; do
 			  -e TZ=Etc/UTC \
 			  -e SUBFOLDER=/ \
 			  -e TITLE=Webtop \
-			  -e CUSTOM_USER=webtop-abc \
-			  -e PASSWORD=webtopABC123 \
+			  -e CUSTOM_USER=${admin} \
+			  -e PASSWORD=${admin_password} \
 			  -e LC_ALL=zh_CN.UTF-8 \
 			  -e DOCKER_MODS=linuxserver/mods:universal-package-install \
 			  -e INSTALL_PACKAGES=font-noto-cjk \
@@ -9406,7 +9408,6 @@ while true; do
 			  --shm-size="1gb" \
 			  --restart unless-stopped \
 			  lscr.io/linuxserver/webtop:latest
-
 
 		}
 
@@ -10726,8 +10727,8 @@ while true; do
 
 		docker_rum() {
 
-			read -e -p "设置${docker_name}的登录用户名: " app_use
-			read -e -p "设置${docker_name}的登录密码: " app_passwd
+			read -e -p "设置登录用户名: " app_use
+			read -e -p "设置登录密码: " app_passwd
 
 			docker run -d \
 			  --name xunlei \
