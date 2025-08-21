@@ -10626,6 +10626,8 @@ while true; do
 		docker_app_install() {
 			read -e -p "设置登录用户名: " admin
 			read -e -p "设置登录用户密码: " admin_password
+			read -e -p "输入授权码: " shouquanma
+
 
 			mkdir -p /home/docker/moontv
 			mkdir -p /home/docker/moontv/config
@@ -10636,7 +10638,7 @@ while true; do
 			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/moontv/docker-compose.yml
 			sed -i "s/admin/${admin}/g" /home/docker/moontv/docker-compose.yml
 			sed -i "s/admin_password/${admin_password}/g" /home/docker/moontv/docker-compose.yml
-
+			sed -i "s/shouquanma/${shouquanma}/g" /home/docker/moontv/docker-compose.yml
 			cd /home/docker/moontv/
 			docker compose up -d
 			clear
