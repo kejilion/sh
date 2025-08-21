@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.9"
+sh_v="4.0.10"
 
 
 gl_hui='\e[37m'
@@ -8536,6 +8536,8 @@ while true; do
 	  echo -e "${gl_kjlan}87.  ${color87}SyncTV一起看片神器                  ${gl_kjlan}88.  ${color88}Owncast自托管直播平台"
 	  echo -e "${gl_kjlan}89.  ${color89}FileCodeBox文件快递                 ${gl_kjlan}90.  ${color90}matrix去中心化聊天协议"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}91.  ${color91}gitea私有代码仓库                   ${gl_kjlan}92.  ${color92}FileBrowser文件管理器"
+	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
@@ -11249,6 +11251,84 @@ while true; do
 
 		  ;;
 
+
+
+	  91|gitea)
+
+		local app_id="91"
+
+		local app_name="gitea私有代码仓库"
+		local app_text="免费新一代的代码托管平台，提供接近 GitHub 的使用体验。"
+		local app_url="视频介绍: https://github.com/go-gitea/gitea"
+		local docker_name="gitea"
+		local docker_port="8091"
+		local app_size="2"
+
+		docker_app_install() {
+
+			mkdir -p /home/docker/gitea
+			mkdir -p /home/docker/gitea/gitea
+			mkdir -p /home/docker/gitea/data
+			mkdir -p /home/docker/gitea/postgres
+			cd /home/docker/gitea
+
+			curl -o /home/docker/gitea/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/gitea-docker-compose.yml
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/gitea/docker-compose.yml
+			cd /home/docker/gitea/
+			docker compose up -d
+			clear
+			echo "已经安装完成"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/gitea/ && docker compose down --rmi all
+			cd /home/docker/gitea/ && docker compose up -d
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/gitea/ && docker compose down --rmi all
+			rm -rf /home/docker/gitea
+			echo "应用已卸载"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
+
+	  92|filebrowser)
+
+		local app_id="92"
+		local docker_name="filebrowser"
+		local docker_img="hurlenko/filebrowser"
+		local docker_port=8092
+
+		docker_rum() {
+
+			docker run -d \
+				--name filebrowser \
+				--restart unless-stopped \
+				-p ${docker_port}:8080 \
+				-v /home/docker/filebrowser/data:/data \
+				-v /home/docker/filebrowser/config:/config \
+				-e FB_BASEURL=/filebrowser \
+				hurlenko/filebrowser
+
+		}
+
+		local docker_describe="是一个基于Web的文件管理器"
+		local docker_url="官网介绍: https://filebrowser.org/"
+		local docker_use="docker logs filebrowser"
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
 
 
 
