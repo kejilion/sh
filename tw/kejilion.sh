@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.8"
+sh_v="4.0.10"
 
 
 gl_hui='\e[37m'
@@ -3682,7 +3682,7 @@ add_forwarding_service() {
 	send_stats "添加frp內網服務"
 	# 提示用戶輸入服務名稱和轉發信息
 	read -e -p "請輸入服務名稱:" service_name
-	read -e -p "請輸入轉發類型 (tcp/udp) [回車默認tcp]:" service_type
+	read -e -p "請輸入轉發類型 (tcp/udp) [回​​車默認tcp]:" service_type
 	local service_type=${service_type:-tcp}
 	read -e -p "請輸入內網IP [回車默認127.0.0.1]:" local_ip
 	local local_ip=${local_ip:-127.0.0.1}
@@ -8534,6 +8534,11 @@ while true; do
 	  echo -e "${gl_kjlan}83.  ${color83}komari服務器監控工具${gl_kjlan}84.  ${color84}Wallos個人財務管理工具"
 	  echo -e "${gl_kjlan}85.  ${color85}immich圖片視頻管理器${gl_kjlan}86.  ${color86}jellyfin媒體管理系統"
 	  echo -e "${gl_kjlan}87.  ${color87}SyncTV一起看片神器${gl_kjlan}88.  ${color88}Owncast自託管直播平台"
+	  echo -e "${gl_kjlan}89.  ${color89}FileCodeBox文件快遞${gl_kjlan}90.  ${color90}matrix去中心化聊天協議"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}91.  ${color91}gitea私有代碼倉庫${gl_kjlan}92.  ${color92}FileBrowser文件管理器"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}b.   ${gl_bai}備份全部應用數據${gl_kjlan}r.   ${gl_bai}還原全部應用數據"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜單"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -8687,7 +8692,8 @@ while true; do
 
 		docker_rum() {
 
-
+			read -e -p "設置登錄用戶名:" admin
+			read -e -p "設置登錄用戶密碼:" admin_password
 			docker run -d \
 			  --name=webtop-ubuntu \
 			  --security-opt seccomp=unconfined \
@@ -8696,8 +8702,8 @@ while true; do
 			  -e TZ=Etc/UTC \
 			  -e SUBFOLDER=/ \
 			  -e TITLE=Webtop \
-			  -e CUSTOM_USER=ubuntu-abc \
-			  -e PASSWORD=ubuntuABC123 \
+			  -e CUSTOM_USER=${admin} \
+			  -e PASSWORD=${admin_password} \
 			  -p ${docker_port}:3000 \
 			  -v /home/docker/webtop/data:/config \
 			  -v /var/run/docker.sock:/var/run/docker.sock \
@@ -8711,8 +8717,8 @@ while true; do
 
 		local docker_describe="webtop基于Ubuntu的容器。若IP无法访问，请添加域名访问。"
 		local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
-		local docker_use="echo \"用户名: ubuntu-abc\""
-		local docker_passwd="echo \"密码: ubuntuABC123\""
+		local docker_use=""
+		local docker_passwd=""
 		local app_size="2"
 		docker_app
 
@@ -9383,7 +9389,8 @@ while true; do
 
 		docker_rum() {
 
-
+			read -e -p "設置登錄用戶名:" admin
+			read -e -p "設置登錄用戶密碼:" admin_password
 			docker run -d \
 			  --name=webtop \
 			  --security-opt seccomp=unconfined \
@@ -9392,8 +9399,8 @@ while true; do
 			  -e TZ=Etc/UTC \
 			  -e SUBFOLDER=/ \
 			  -e TITLE=Webtop \
-			  -e CUSTOM_USER=webtop-abc \
-			  -e PASSWORD=webtopABC123 \
+			  -e CUSTOM_USER=${admin} \
+			  -e PASSWORD=${admin_password} \
 			  -e LC_ALL=zh_CN.UTF-8 \
 			  -e DOCKER_MODS=linuxserver/mods:universal-package-install \
 			  -e INSTALL_PACKAGES=font-noto-cjk \
@@ -9404,14 +9411,13 @@ while true; do
 			  --restart unless-stopped \
 			  lscr.io/linuxserver/webtop:latest
 
-
 		}
 
 
 		local docker_describe="webtop基于Alpine的中文版容器。若IP无法访问，请添加域名访问。"
 		local docker_url="官网介绍: https://docs.linuxserver.io/images/docker-webtop/"
-		local docker_use="echo \"用户名: webtop-abc\""
-		local docker_passwd="echo \"密码: webtopABC123\""
+		local docker_use=""
+		local docker_passwd=""
 		local app_size="2"
 		docker_app
 		  ;;
@@ -10607,32 +10613,55 @@ while true; do
 		  ;;
 
 
+
 	  74|moontv)
 
 		local app_id="74"
-		local docker_name="moontv"
-		local docker_img="ghcr.io/senshinya/moontv:latest"
-		local docker_port=8074
 
-		docker_rum() {
+		local app_name="moontv私有影视"
+		local app_text="免费在线视频搜索与观看平台"
+		local app_url="视频介绍: https://github.com/MoonTechLab/LunaTV"
+		local docker_name="moontv-core"
+		local docker_port="8074"
+		local app_size="2"
 
-			read -e -p "設置MoonTV的登錄密碼:" app_passwd
+		docker_app_install() {
+			read -e -p "設置登錄用戶名:" admin
+			read -e -p "設置登錄用戶密碼:" admin_password
+			read -e -p "輸入授權碼:" shouquanma
 
-				docker run -d \
-				  --name moontv \
-				  --restart unless-stopped \
-				  -p ${docker_port}:3000 \
-				  -e PASSWORD=${app_passwd} \
-				  ghcr.io/senshinya/moontv:latest
 
+			mkdir -p /home/docker/moontv
+			mkdir -p /home/docker/moontv/config
+			mkdir -p /home/docker/moontv/data
+			cd /home/docker/moontv
+
+			curl -o /home/docker/moontv/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/moontv-docker-compose.yml
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/moontv/docker-compose.yml
+			sed -i "s/admin/${admin}/g" /home/docker/moontv/docker-compose.yml
+			sed -i "s/admin_password/${admin_password}/g" /home/docker/moontv/docker-compose.yml
+			sed -i "s/shouquanma/${shouquanma}/g" /home/docker/moontv/docker-compose.yml
+			cd /home/docker/moontv/
+			docker compose up -d
+			clear
+			echo "已經安裝完成"
+			check_docker_app_ip
 		}
 
-		local docker_describe="免费在线视频搜索与观看平台"
-		local docker_url="官网介绍: https://github.com/senshinya/MoonTV"
-		local docker_use=""
-		local docker_passwd=""
-		local app_size="1"
-		docker_app
+
+		docker_app_update() {
+			cd /home/docker/moontv/ && docker compose down --rmi all
+			cd /home/docker/moontv/ && docker compose up -d
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/moontv/ && docker compose down --rmi all
+			rm -rf /home/docker/moontv
+			echo "應用已卸載"
+		}
+
+		docker_app_plus
 
 		  ;;
 
@@ -10702,8 +10731,8 @@ while true; do
 
 		docker_rum() {
 
-			read -e -p "設定${docker_name}的登錄用戶名:" app_use
-			read -e -p "設定${docker_name}的登錄密碼:" app_passwd
+			read -e -p "設置登錄用戶名:" app_use
+			read -e -p "設置登錄密碼:" app_passwd
 
 			docker run -d \
 			  --name xunlei \
@@ -10918,10 +10947,12 @@ while true; do
 
 		docker_rum() {
 
+			read -e -p "設定${docker_name}的登錄密鑰（sk-開頭字母和數字組合）如: sk-159kejilionyyds163:" app_passwd
+
 			mkdir -p /home/docker/gpt-load && \
 			docker run -d --name gpt-load \
 				-p ${docker_port}:3001 \
-				-e AUTH_KEY=sk-123456 \
+				-e AUTH_KEY=${app_passwd} \
 				-v "/home/docker/gpt-load/data":/app/data \
 				tbphp/gpt-load:latest
 
@@ -10929,7 +10960,7 @@ while true; do
 
 		local docker_describe="高性能AI接口透明代理服务"
 		local docker_url="官网介绍: https://www.gpt-load.com/"
-		local docker_use="echo \"默认管理密钥: sk-123456\""
+		local docker_use=""
 		local docker_passwd=""
 		local app_size="1"
 		docker_app
@@ -11136,6 +11167,239 @@ while true; do
 		  ;;
 
 
+
+	  89|file-code-box)
+
+		local app_id="89"
+		local docker_name="file-code-box"
+		local docker_img="lanol/filecodebox:latest"
+		local docker_port=8089
+
+		docker_rum() {
+
+			docker run -d \
+			  --name file-code-box \
+			  -p ${docker_port}:12345 \
+			  -v /home/docker/file-code-box/data:/app/data \
+			  --restart unless-stopped \
+			  lanol/filecodebox:latest
+
+		}
+
+		local docker_describe="匿名口令分享文本和文件，像拿快递一样取文件"
+		local docker_url="官网介绍: https://github.com/vastsa/FileCodeBox"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+
+
+	  90|matrix)
+
+		local app_id="90"
+		local docker_name="matrix"
+		local docker_img="matrixdotorg/synapse:latest"
+		local docker_port=8090
+
+		docker_rum() {
+
+			add_yuming
+
+			if [ ! -d /home/docker/matrix/data ]; then
+				docker run -it --rm \
+				  -v /home/docker/matrix/data:/data \
+				  -e SYNAPSE_SERVER_NAME=${yuming} \
+				  -e SYNAPSE_REPORT_STATS=yes \
+				  --name matrix \
+				  matrixdotorg/synapse:latest generate
+			fi
+
+			docker run -d \
+			  --name matrix \
+			  -v /home/docker/matrix/data:/data \
+			  -p ${docker_port}:8008 \
+			  --restart unless-stopped \
+			  matrixdotorg/synapse:latest
+
+			echo "創建初始用戶或管理員。請設置以下內容用戶名和密碼以及是否為管理員。"
+			docker exec -it matrix register_new_matrix_user \
+			  http://localhost:8008 \
+			  -c /data/homeserver.yaml
+
+			sed -i '/^enable_registration:/d' /home/docker/matrix/data/homeserver.yaml
+			sed -i '/^# vim:ft=yaml/i enable_registration: true' /home/docker/matrix/data/homeserver.yaml
+			sed -i '/^enable_registration_without_verification:/d' /home/docker/matrix/data/homeserver.yaml
+			sed -i '/^# vim:ft=yaml/i enable_registration_without_verification: true' /home/docker/matrix/data/homeserver.yaml
+
+			docker restart matrix
+
+			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+			block_container_port "$docker_name" "$ipv4_address"
+
+		}
+
+		local docker_describe="Matrix是一个去中心化的聊天协议"
+		local docker_url="官网介绍: https://matrix.org/"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+
+	  91|gitea)
+
+		local app_id="91"
+
+		local app_name="gitea私有代码仓库"
+		local app_text="免费新一代的代码托管平台，提供接近 GitHub 的使用体验。"
+		local app_url="视频介绍: https://github.com/go-gitea/gitea"
+		local docker_name="gitea"
+		local docker_port="8091"
+		local app_size="2"
+
+		docker_app_install() {
+
+			mkdir -p /home/docker/gitea
+			mkdir -p /home/docker/gitea/gitea
+			mkdir -p /home/docker/gitea/data
+			mkdir -p /home/docker/gitea/postgres
+			cd /home/docker/gitea
+
+			curl -o /home/docker/gitea/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/gitea-docker-compose.yml
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/gitea/docker-compose.yml
+			cd /home/docker/gitea/
+			docker compose up -d
+			clear
+			echo "已經安裝完成"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/gitea/ && docker compose down --rmi all
+			cd /home/docker/gitea/ && docker compose up -d
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/gitea/ && docker compose down --rmi all
+			rm -rf /home/docker/gitea
+			echo "應用已卸載"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
+
+	  92|filebrowser)
+
+		local app_id="92"
+		local docker_name="filebrowser"
+		local docker_img="hurlenko/filebrowser"
+		local docker_port=8092
+
+		docker_rum() {
+
+			docker run -d \
+				--name filebrowser \
+				--restart unless-stopped \
+				-p ${docker_port}:8080 \
+				-v /home/docker/filebrowser/data:/data \
+				-v /home/docker/filebrowser/config:/config \
+				-e FB_BASEURL=/filebrowser \
+				hurlenko/filebrowser
+
+		}
+
+		local docker_describe="是一个基于Web的文件管理器"
+		local docker_url="官网介绍: https://filebrowser.org/"
+		local docker_use="docker logs filebrowser"
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+
+	  b)
+	  	clear
+	  	send_stats "全部應用備份"
+
+	  	local backup_filename="app_$(date +"%Y%m%d%H%M%S").tar.gz"
+	  	echo -e "${gl_huang}正在備份$backup_filename ...${gl_bai}"
+	  	cd / && tar czvf "$backup_filename" home
+
+	  	while true; do
+			clear
+			echo "備份文件已創建: /$backup_filename"
+			read -e -p "要傳送備份數據到遠程服務器嗎？ (Y/N):" choice
+			case "$choice" in
+			  [Yy])
+				read -e -p "請輸入遠端服務器IP:" remote_ip
+				if [ -z "$remote_ip" ]; then
+				  echo "錯誤: 請輸入遠端服務器IP。"
+				  continue
+				fi
+				local latest_tar=$(ls -t /app*.tar.gz | head -1)
+				if [ -n "$latest_tar" ]; then
+				  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
+				  sleep 2  # 添加等待时间
+				  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
+				  echo "文件已傳送至遠程服務器/根目錄。"
+				else
+				  echo "未找到要傳送的文件。"
+				fi
+				break
+				;;
+			  *)
+				echo "注意: 目前備份僅包含docker項目，不包含寶塔，1panel等建站面板的數據備份。"
+				break
+				;;
+			esac
+	  	done
+
+		  ;;
+
+	  r)
+	  	root_use
+	  	send_stats "全部應用還原"
+	  	echo "可用的應用備份"
+	  	echo "-------------------------"
+	  	ls -lt /app*.gz | awk '{print $NF}'
+	  	echo ""
+	  	read -e -p  "回車鍵還原最新的備份，輸入備份文件名還原指定的備份，輸入0退出：" filename
+
+	  	if [ "$filename" == "0" ]; then
+			  break_end
+			  linux_panel
+	  	fi
+
+	  	# 如果用戶沒有輸入文件名，使用最新的壓縮包
+	  	if [ -z "$filename" ]; then
+			  local filename=$(ls -t /app*.tar.gz | head -1)
+	  	fi
+
+	  	if [ -n "$filename" ]; then
+		  	  echo -e "${gl_huang}正在解壓$filename ...${gl_bai}"
+		  	  cd / && tar -xzf "$filename"
+			  echo "應用數據已還原，目前請手動進入指定應用菜單，更新應用，即可還原應用。"
+	  	else
+			  echo "沒有找到壓縮包。"
+	  	fi
+
+		  ;;
+
 	  0)
 		  kejilion
 		  ;;
@@ -11295,7 +11559,7 @@ linux_work() {
 			  ;;
 
 		  22)
-			  read -e -p "請輸入你創建或進入的工作區名稱，如1001 kj001 work1:" SESSION_NAME
+			  read -e -p "請輸入你創建或進入的工作區名稱，如1​​001 kj001 work1:" SESSION_NAME
 			  tmux_run
 			  send_stats "自定義工作區"
 			  ;;
