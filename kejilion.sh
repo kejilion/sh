@@ -7089,7 +7089,7 @@ docker_ssh_migration() {
 		if [ -f "$BACKUP_DIR/home_docker_files.tar.gz" ]; then
 			echo -e "${BLUE}正在还原 /home/docker 下的文件...${NC}"
 			mkdir -p /home/docker
-			tar -xzf "$BACKUP_DIR/home_docker_files.tar.gz" -C /home/docker/
+			tar -xzf "$BACKUP_DIR/home_docker_files.tar.gz" -C /
 			echo -e "${GREEN}/home/docker 下的文件已还原完成${NC}"
 		else
 			echo -e "${YELLOW}未找到 /home/docker 下文件的备份，跳过...${NC}"
