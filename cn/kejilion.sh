@@ -6869,7 +6869,7 @@ docker_ssh_migration() {
 
 	list_backups() {
 		echo -e "${BLUE}当前备份列表:${NC}"
-		ls -dt ${BACKUP_ROOT}/docker_backup_* 2>/dev/null || echo "无备份"
+		ls -1dt ${BACKUP_ROOT}/docker_backup_* 2>/dev/null || echo "无备份"
 	}
 
 
@@ -6878,7 +6878,9 @@ docker_ssh_migration() {
 	# 备份
 	# ----------------------------
 	backup_docker() {
+
 		echo -e "${YELLOW}正在备份 Docker 容器...${NC}"
+		docker ps --format '{{.Names}}'
 		read -p "请输入要备份的容器名（多个空格分隔，回车备份全部运行中容器）: " containers
 
 		install tar jq gzip
@@ -6985,7 +6987,6 @@ docker_ssh_migration() {
 	# 还原
 	# ----------------------------
 	restore_docker() {
-		list_backups
 		read -p "请输入要还原的备份目录: " BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}备份目录不存在${NC}"; return; }
 
@@ -7103,8 +7104,7 @@ docker_ssh_migration() {
 	# 迁移
 	# ----------------------------
 	migrate_docker() {
-		ensure_jq
-		list_backups
+		install jq
 		read -p "请输入要迁移的备份目录: " BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}备份目录不存在${NC}"; return; }
 
