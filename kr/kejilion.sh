@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.10"
+sh_v="4.1.0"
 
 
 gl_hui='\e[37m'
@@ -57,7 +57,7 @@ CheckFirstRun_true() {
 
 
 
-# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 기계 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
+# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 컴퓨터 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
 # 이 기능을 설계 해야하는 이유는 무엇입니까? 목적은 사용자가 사용하는 기능을 더 잘 이해하고 기능을 더욱 최적화하여 사용자 요구를 충족시키는 더 많은 기능을 시작하는 것입니다.
 # 전체 텍스트의 경우 Send_Stats 기능 호출 위치, 투명 및 오픈 소스를 검색 할 수 있으며 우려 사항이 있으면 사용을 거부 할 수 있습니다.
 
@@ -1185,7 +1185,7 @@ iptables_panel() {
 
 			  5)
 				  # IP 화이트리스트
-				  read -e -p "해제 할 IP 또는 IP 세그먼트를 입력하십시오." o_ip
+				  read -e -p "릴리스하려면 IP 또는 IP 세그먼트를 입력하십시오." o_ip
 				  allow_ip $o_ip
 				  ;;
 			  6)
@@ -2121,7 +2121,7 @@ web_security() {
 
 				  22)
 					  send_stats "5 초 방패의 높은 하중"
-					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 하중의 감지에 도달하면 방패가 자동으로 켜지고 낮은 부하가 자동으로 5 초 동안 꺼집니다.${gl_bai}"
+					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 부하가 감지되면 방패가 자동으로 켜지고 5 초 동안 낮은 부하가 자동으로 꺼집니다.${gl_bai}"
 					  echo "--------------"
 					  echo "CF 매개 변수 가져 오기 :"
 					  echo -e "CF 배경의 오른쪽 상단 모서리로 이동하여 왼쪽의 API 토큰을 선택하고 얻습니다.${gl_huang}Global API Key${gl_bai}"
@@ -4989,7 +4989,7 @@ elrepo_install() {
 		linux_Settings
 	fi
 	# 감지 된 운영 체제 정보를 인쇄합니다
-	echo "감지 된 운영 체제 :$os_name $os_version"
+	echo "운영 체제 감지 :$os_name $os_version"
 	# 시스템 버전에 따라 해당 Elrepo 창고 구성을 설치하십시오.
 	if [[ "$os_version" == 8 ]]; then
 		echo "Elrepo 저장소 구성 (버전 8)을 설치하십시오 ..."
@@ -5845,7 +5845,7 @@ add_connection() {
 			echo "키 내용을 붙여 넣으십시오 (붙여 넣기 후 Enter Enter를 두 번 누릅니다) :"
 			local password_or_key=""
 			while IFS= read -r line; do
-				# 입력이 비어 있고 키 컨텐츠에 이미 시작이 포함 된 경우 입력이 끝납니다.
+				# 입력이 비어 있고 키 컨텐츠에 이미 시작이 포함되어 있으면 입력이 끝납니다.
 				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
 					break
 				fi
@@ -6617,7 +6617,7 @@ linux_tools() {
 			  install iftop
 			  clear
 			  iftop
-			  send_stats "Iftop을 설치하십시오"
+			  send_stats "iftop을 설치하십시오"
 			  ;;
 			7)
 			  clear
@@ -6760,7 +6760,7 @@ linux_tools() {
 
 		  32)
 			  clear
-			  send_stats "모든 설치 (게임 및 스크린 세이버 제외)"
+			  send_stats "모든 설치 (게임 및 화면 보호기 제외)"
 			  install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger ncdu fzf vim nano git
 			  ;;
 
@@ -6850,6 +6850,310 @@ linux_bbr() {
 
 
 
+docker_ssh_migration() {
+
+	GREEN='\033[0;32m'
+	RED='\033[0;31m'
+	YELLOW='\033[1;33m'
+	BLUE='\033[0;36m'
+	NC='\033[0m'
+
+	BACKUP_ROOT="/tmp"
+	DATE_STR=$(date +%Y%m%d_%H%M%S)
+
+	check_root() {
+		[[ "$EUID" -ne 0 ]] && { echo -e "${RED}루트 권한을 사용하여 스크립트를 실행하십시오!${NC}"; exit 1; }
+	}
+
+	ensure_docker() {
+		command -v docker &>/dev/null || { echo -e "${RED}Docker가 설치되지 않았습니다!${NC}"; exit 1; }
+	}
+
+	ensure_jq() {
+		command -v jq &>/dev/null || { echo -e "${RED}JQ가 설치되지 않았습니다!${NC}"; exit 1; }
+	}
+
+	is_compose_container() {
+		local container=$1
+		docker inspect "$container" | jq -e '.[0].Config.Labels["com.docker.compose.project"]' >/dev/null 2>&1
+	}
+
+	list_backups() {
+		echo -e "${BLUE}현재 백업 목록 :${NC}"
+		ls -dt ${BACKUP_ROOT}/docker_backup_* 2>/dev/null || echo "백업 없음"
+	}
+
+
+
+	# ----------------------------
+	# 지원
+	# ----------------------------
+	backup_docker() {
+		echo -e "${YELLOW}Docker 컨테이너 백업 ...${NC}"
+		read -p "백업 할 컨테이너 이름을 입력하십시오 (여러 공간으로 분리하면 입력 백업이 모두 실행 중입니다)." containers
+		local TARGET_CONTAINERS=()
+		if [ -z "$containers" ]; then
+			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
+		else
+			read -ra TARGET_CONTAINERS <<< "$containers"
+		fi
+		[[ ${#TARGET_CONTAINERS[@]} -eq 0 ]] && { echo -e "${RED}컨테이너가 없습니다${NC}"; return; }
+
+		local BACKUP_DIR="${BACKUP_ROOT}/docker_backup_${DATE_STR}"
+		mkdir -p "$BACKUP_DIR"
+
+		local RESTORE_SCRIPT="${BACKUP_DIR}/docker_restore.sh"
+		echo "#!/bin/bash" > "$RESTORE_SCRIPT"
+		echo "set -e" >> "$RESTORE_SCRIPT"
+		echo "# 자동으로 생성 된 복원 스크립트" >> "$RESTORE_SCRIPT"
+
+		# 중복 포장을 피하기 위해 패키지 작곡 프로젝트의 경로를 기록하십시오.
+		declare -A PACKED_COMPOSE_PATHS=()
+
+		for c in "${TARGET_CONTAINERS[@]}"; do
+			echo -e "${GREEN}백업 컨테이너 :$c${NC}"
+			local inspect_file="${BACKUP_DIR}/${c}_inspect.json"
+			docker inspect "$c" > "$inspect_file"
+
+			if is_compose_container "$c"; then
+				echo -e "${BLUE}감지$c예, Docker-compose 컨테이너${NC}"
+				local project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
+				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
+
+				if [ -z "$project_dir" ]; then
+					read -p "Compose 디렉토리가 감지되지 않으므로 수동으로 경로를 입력하십시오." project_dir
+				fi
+
+				# Compose 프로젝트가 포장 된 경우 건너 뛰십시오
+				if [[ -n "${PACKED_COMPOSE_PATHS[$project_dir]}" ]]; then
+					echo -e "${YELLOW}작곡 프로젝트 [$project_name] 백업, 중복 포장을 건너 뛰십시오 ...${NC}"
+					continue
+				fi
+
+				if [ -f "$project_dir/docker-compose.yml" ]; then
+					echo "compose" > "${BACKUP_DIR}/backup_type_${project_name}"
+					echo "$project_dir" > "${BACKUP_DIR}/compose_path_${project_name}.txt"
+					tar -czf "${BACKUP_DIR}/compose_project_${project_name}.tar.gz" -C "$project_dir" .
+					echo "# Docker-Compose Recovery :$project_name" >> "$RESTORE_SCRIPT"
+					echo "cd \"$project_dir\" && docker compose up -d" >> "$RESTORE_SCRIPT"
+					PACKED_COMPOSE_PATHS["$project_dir"]=1
+					echo -e "${GREEN}작곡 프로젝트 [$project_name] 포장 :${project_dir}${NC}"
+				else
+					echo -e "${RED}docker-compose.yml을 찾을 수 없고이 컨테이너를 건너 뛰십시오 ...${NC}"
+				fi
+			else
+				# 일반 컨테이너 백업 볼륨
+				local VOL_PATHS
+				VOL_PATHS=$(docker inspect "$c" --format '{{range .Mounts}}{{.Source}} {{end}}')
+				for path in $VOL_PATHS; do
+					echo "포장 롤 :$path"
+					tar -czpf "${BACKUP_DIR}/${c}_$(basename $path).tar.gz" -C / "$(echo $path | sed 's/^\///')"
+				done
+
+				# 포트
+				local PORT_ARGS=""
+				mapfile -t PORTS < <(jq -r '.[0].HostConfig.PortBindings | to_entries[] | "\(.value[0].HostPort):\(.key | split("/")[0])"' "$inspect_file" 2>/dev/null)
+				for p in "${PORTS[@]}"; do PORT_ARGS+="-p $p "; done
+
+				# 환경 변수
+				local ENV_VARS=""
+				mapfile -t ENVS < <(jq -r '.[0].Config.Env[] | @sh' "$inspect_file")
+				for e in "${ENVS[@]}"; do ENV_VARS+="-e $e "; done
+
+				# 볼륨 매핑
+				local VOL_ARGS=""
+				for path in $VOL_PATHS; do VOL_ARGS+="-v $path:$path "; done
+
+				# 거울
+				local IMAGE
+				IMAGE=$(jq -r '.[0].Config.Image' "$inspect_file")
+
+				echo -e "\ n# 복원 컨테이너 :$c" >> "$RESTORE_SCRIPT"
+				echo "docker run -d --name $c $PORT_ARGS $VOL_ARGS $ENV_VARS $IMAGE" >> "$RESTORE_SCRIPT"
+			fi
+		done
+
+		chmod +x "$RESTORE_SCRIPT"
+		echo -e "${GREEN}백업이 완료되었습니다.${BACKUP_DIR}${NC}"
+		echo -e "${GREEN}사용 가능한 복원 스크립트 :${RESTORE_SCRIPT}${NC}"
+	}
+
+	# ----------------------------
+	# 절감
+	# ----------------------------
+	restore_docker() {
+		list_backups
+		read -p "복원하려면 백업 디렉토리를 입력하십시오." BACKUP_DIR
+		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}백업 디렉토리가 존재하지 않습니다${NC}"; return; }
+
+		echo -e "${BLUE}복원 작업 시작 ...${NC}"
+
+		install_docker
+
+		# -----------------------------
+		for f in "$BACKUP_DIR"/backup_type_*; do
+			[[ ! -f "$f" ]] && continue
+			if grep -q "compose" "$f"; then
+				project_name=$(basename "$f" | sed 's/backup_type_//')
+				path_file="$BACKUP_DIR/compose_path_${project_name}.txt"
+				[[ -f "$path_file" ]] && original_path=$(cat "$path_file") || original_path=""
+				[[ -z "$original_path" ]] && read -p "원래 경로는 찾을 수 없었습니다. 복원 디렉토리 경로를 입력하십시오." original_path
+
+				# Compose 프로젝트 용 컨테이너가 이미 실행 중인지 확인하십시오.
+				running_count=$(docker ps --filter "label=com.docker.compose.project=$project_name" --format '{{.Names}}' | wc -l)
+				if [[ "$running_count" -gt 0 ]]; then
+					echo -e "${YELLOW}작곡 프로젝트 [$project_name] 이미 컨테이너가 실행 중입니다. 스킵 복원 ...${NC}"
+					continue
+				fi
+
+				read -p "Compose 프로젝트 복원 확인 [$project_name] 경로로 [$original_path] ? (y/n): " confirm
+				[[ "$confirm" != "y" ]] && read -p "새로운 복원 경로를 입력하십시오 :" original_path
+
+				mkdir -p "$original_path"
+				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
+				echo -e "${GREEN}작곡 프로젝트 [$project_name] 압축 압축 : :$original_path${NC}"
+
+				cd "$original_path" || exit 1
+				docker compose down || true
+				docker compose up -d
+				echo -e "${GREEN}작곡 프로젝트 [$project_name] 복원이 완료되었습니다!${NC}"
+			fi
+		done
+
+		# -----------------------------
+		echo -e "${BLUE}일반적인 도커 컨테이너를 확인하고 복원하십시오 ...${NC}"
+		local has_container=false
+		for json in "$BACKUP_DIR"/*_inspect.json; do
+			[[ ! -f "$json" ]] && continue
+			has_container=true
+			container=$(basename "$json" | sed 's/_inspect.json//')
+			echo -e "${GREEN}처리 컨테이너 :$container${NC}"
+
+			# 컨테이너가 이미 존재하고 실행 중인지 확인하십시오
+			if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+				echo -e "${YELLOW}컨테이너 [$container]는 실행 중입니다. 회복을 건너 뛰십시오 ...${NC}"
+				continue
+			fi
+
+			IMAGE=$(jq -r '.[0].Config.Image' "$json")
+			[[ -z "$IMAGE" || "$IMAGE" == "null" ]] && { echo -e "${RED}거울 정보는 찾을 수 없었습니다.$container${NC}"; continue; }
+
+			# 포트 매핑
+			PORT_ARGS=""
+			mapfile -t PORTS < <(jq -r '.[0].HostConfig.PortBindings | to_entries[]? | "\(.value[0].HostPort):\(.key | split("/")[0])"' "$json")
+			for p in "${PORTS[@]}"; do
+				[[ -n "$p" ]] && PORT_ARGS="$PORT_ARGS -p $p"
+			done
+
+			# 환경 변수
+			ENV_ARGS=""
+			mapfile -t ENVS < <(jq -r '.[0].Config.Env[]' "$json")
+			for e in "${ENVS[@]}"; do
+				ENV_ARGS="$ENV_ARGS -e \"$e\""
+			done
+
+			# 볼륨 매핑 + 볼륨 데이터 복구
+			VOL_ARGS=""
+			mapfile -t VOLS < <(jq -r '.[0].Mounts[] | "\(.Source):\(.Destination)"' "$json")
+			for v in "${VOLS[@]}"; do
+				VOL_SRC=$(echo "$v" | cut -d':' -f1)
+				VOL_DST=$(echo "$v" | cut -d':' -f2)
+				mkdir -p "$VOL_SRC"
+				VOL_ARGS="$VOL_ARGS -v $VOL_SRC:$VOL_DST"
+
+				VOL_FILE="$BACKUP_DIR/${container}_$(basename $VOL_SRC).tar.gz"
+				if [[ -f "$VOL_FILE" ]]; then
+					echo "볼륨 데이터 복구 :$VOL_SRC"
+					tar -xzf "$VOL_FILE" -C /
+				fi
+			done
+
+			# 기존이지만 실행되지 않은 컨테이너를 삭제하십시오
+			if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+				echo -e "${YELLOW}컨테이너 [$container] 존재하지만 실행되지 않고 오래된 컨테이너를 삭제합니다 ...${NC}"
+				docker rm -f "$container"
+			fi
+
+			# 컨테이너를 시작하십시오
+			echo "복원 명령 실행 : docker run -d --name \"$container\" $PORT_ARGS $VOL_ARGS $ENV_ARGS \"$IMAGE\""
+			eval "docker run -d --name \"$container\" $PORT_ARGS $VOL_ARGS $ENV_ARGS \"$IMAGE\""
+		done
+
+		[[ "$has_container" == false ]] && echo -e "${YELLOW}일반 컨테이너에 대한 백업 정보는 발견되지 않았습니다${NC}"
+	}
+
+
+	# ----------------------------
+	# 마이그레이션
+	# ----------------------------
+	migrate_docker() {
+		ensure_jq
+		list_backups
+		read -p "마이그레이션하려면 백업 디렉토리를 입력하십시오." BACKUP_DIR
+		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}백업 디렉토리가 존재하지 않습니다${NC}"; return; }
+
+		read -p "대상 서버 IP :" TARGET_IP
+		read -p "대상 서버 SSH 사용자 이름 :" TARGET_USER
+
+		LATEST_TAR="$BACKUP_DIR"  # 这里直接传整个目录
+
+		echo -e "${YELLOW}백업 전송 ...${NC}"
+		if [[ -z "$TARGET_PASS" ]]; then
+			# 키로 로그인하십시오
+			scp -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
+		fi
+
+	}
+
+	# ----------------------------
+	# 백업을 삭제하십시오
+	# ----------------------------
+	delete_backup() {
+		list_backups
+		read -p "삭제하려면 백업 디렉토리를 입력하십시오." BACKUP_DIR
+		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}백업 디렉토리가 존재하지 않습니다${NC}"; return; }
+		rm -rf "$BACKUP_DIR"
+		echo -e "${GREEN}삭제 된 백업 :${BACKUP_DIR}${NC}"
+	}
+
+	# ----------------------------
+	# 메인 메뉴
+	# ----------------------------
+	main_menu() {
+
+		check_root
+		ensure_docker
+		ensure_jq
+		while true; do
+			clear
+			echo -e "\n${BLUE}-----------------------------------------${NC}"
+			echo -e "도커 백업/마이그레이션/복원 도구 v1.4"
+			echo -e "${BLUE}-----------------------------------------${NC}"
+			list_backups
+			echo -e "\ n1. 백업 도커 프로젝트"
+			echo -e "2. Docker 프로젝트를 마이그레이션합니다"
+			echo -e "3. Docker 프로젝트를 복원하십시오"
+			echo -e "4. Docker 프로젝트의 백업 파일을 삭제하십시오"
+			echo -e "0. 메인 메뉴 / 종료로 돌아갑니다"
+			read -p "선택하십시오 :" choice
+			case $choice in
+				1) backup_docker ;;
+				2) migrate_docker ;;
+				3) restore_docker ;;
+				4) delete_backup ;;
+				0) exit 0 ;;
+				*) echo -e "${RED}잘못된 옵션${NC}" ;;
+			esac
+		done
+	}
+
+	main_menu
+}
+
+
+
+
+
 linux_docker() {
 
 	while true; do
@@ -6875,6 +7179,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}Docker-IPV6 액세스를 활성화하십시오"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}Docker-IPV6 액세스를 닫습니다"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}19.  ${gl_bai}백업/복원/Docker 환경을 마이그레이션합니다"
 	  echo -e "${gl_kjlan}20.  ${gl_bai}Docker 환경을 제거하십시오"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}메인 메뉴로 돌아갑니다"
@@ -7082,6 +7387,9 @@ linux_docker() {
 			  restart docker
 			  ;;
 
+
+
+
 		  11)
 			  clear
 			  send_stats "Docker V6 열기"
@@ -7093,6 +7401,11 @@ linux_docker() {
 			  send_stats "Docker V6 레벨"
 			  docker_ipv6_off
 			  ;;
+
+		  19)
+			  docker_ssh_migration
+			  ;;
+
 
 		  20)
 			  clear
@@ -7924,7 +8237,7 @@ linux_ldnmp() {
 			  ;;
 		  2)
 			  echo "데이터베이스 백업은 .gz-end 압축 패키지 여야합니다. Pagoda/1Panel의 백업 데이터 가져 오기를 지원하려면/홈/디렉토리에 넣으십시오."
-			  read -e -p "다운로드 링크를 입력하여 백업 데이터를 원격으로 다운로드 할 수도 있습니다. 원격 다운로드를 건너 뛰려면 Enter를 직접 누르십시오." url_download_db
+			  read -e -p "다운로드 링크를 입력하여 백업 데이터를 원격으로 다운로드 할 수도 있습니다. Enter가 직접 누르면 원격 다운로드를 건너 뜁니다." url_download_db
 
 			  cd /home/
 			  if [ -n "$url_download_db" ]; then
@@ -9815,8 +10128,10 @@ while true; do
 
 		docker_rum() {
 
+			ENCRYPTION_KEY=$(openssl rand -hex 32)
 			docker run -d \
 			  --name nexterm \
+			  -e ENCRYPTION_KEY=${ENCRYPTION_KEY} \
 			  -p ${docker_port}:6989 \
 			  -v /home/docker/nexterm:/app/data \
 			  --restart unless-stopped \
@@ -11331,7 +11646,6 @@ while true; do
 		  ;;
 
 
-
 	  b)
 	  	clear
 	  	send_stats "모든 응용 프로그램 백업"
@@ -11399,6 +11713,7 @@ while true; do
 	  	fi
 
 		  ;;
+
 
 	  0)
 		  kejilion
@@ -12758,7 +13073,7 @@ EOF
 			  fi
 
 			  echo "개인 정보 및 보안"
-			  echo "脚本将收集用户使用功能的数据，优化脚本体验，制作更多好玩好用的功能"
+			  echo "스크립트는 사용자 기능에 대한 데이터를 수집하고 스크립트 경험을 최적화하며보다 재미 있고 유용한 기능을 만듭니다."
 			  echo "스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 기계 국가 및 사용 된 기능의 이름을 수집합니다."
 			  echo "------------------------------------------------"
 			  echo -e "현재 상태 :$status_message"
@@ -12954,7 +13269,7 @@ linux_file() {
 				read -e -p "대상 경로를 입력하십시오 (새 파일 이름 또는 디렉토리 이름 포함) :" dest_path
 				if [ -z "$dest_path" ]; then
 					echo "오류 : 대상 경로를 입력하십시오."
-					send_stats "이동 파일 또는 디렉토리 실패 : 대상 경로가 지정되지 않았습니다."
+					send_stats "움직이는 파일 또는 디렉토리 실패 : 대상 경로가 지정되지 않았습니다."
 					continue
 				fi
 
@@ -13443,7 +13758,7 @@ echo "소프트웨어 부트 K 활성화 Docker | K autostart docke | K 스타�
 echo "도메인 이름 인증서 응용 프로그램 K SSL"
 echo "도메인 이름 인증서 만료 쿼리 K SSL PS"
 echo "도커 환경 설치 K 도커 설치 | K 도커 설치"
-echo "Docker Container Management K Docker PS | K 도커 컨테이너"
+echo "도커 컨테이너 관리 K 도커 PS | K 도커 컨테이너"
 echo "Docker Image Management K Docker img | K Docker Image"
 echo "LDNMP 사이트 관리 K 웹"
 echo "LDNMP 캐시 정리 K 웹 캐시"

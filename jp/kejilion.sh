@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.0.10"
+sh_v="4.1.0"
 
 
 gl_hui='\e[37m'
@@ -285,7 +285,7 @@ restart() {
 	if [ $? -eq 0 ]; then
 		echo "$1サービスは再開されました。"
 	else
-		echo "エラー：再起動$1サービスに失敗しました。"
+		echo "エラー：再起動$1サービスは失敗しました。"
 	fi
 }
 
@@ -295,7 +295,7 @@ start() {
 	if [ $? -eq 0 ]; then
 		echo "$1サービスが開始されました。"
 	else
-		echo "エラー：開始$1サービスに失敗しました。"
+		echo "エラー：開始$1サービスは失敗しました。"
 	fi
 }
 
@@ -305,7 +305,7 @@ stop() {
 	if [ $? -eq 0 ]; then
 		echo "$1サービスは停止しました。"
 	else
-		echo "エラー：停止します$1サービスに失敗しました。"
+		echo "エラー：停止します$1サービスは失敗しました。"
 	fi
 }
 
@@ -816,7 +816,7 @@ docker_ipv6_off() {
 		return
 	fi
 
-	# 現在の構成を読み取ります
+	# 現在の構成をお読みください
 	local ORIGINAL_CONFIG=$(<"$CONFIG_FILE")
 
 	# JQを使用して、構成ファイルの更新を処理します
@@ -1668,7 +1668,7 @@ cf_purge_cache() {
 	read -e -p "CloudFlareのキャッシュをきれいにする必要がありますか？ （y/n）：" answer
 	if [[ "$answer" == "y" ]]; then
 	  echo "CF情報が保存されます$CONFIG_FILE、後でCF情報を変更できます"
-	  read -e -p "请输入你的 API_TOKEN: " API_TOKEN
+	  read -e -p "API_TOKENを入力してください：" API_TOKEN
 	  read -e -p "CFユーザ​​ー名を入力してください：" EMAIL
 	  read -e -p "ゾーン_id（スペースで区切られた複数）を入力してください。" -a ZONE_IDS
 
@@ -1679,7 +1679,7 @@ cf_purge_cache() {
 
   # 各ZONE_IDをループして、Clear Cacheコマンドを実行します
   for ZONE_ID in "${ZONE_IDS[@]}"; do
-	echo "ゾーン_IDのキャッシュのクリア：$ZONE_ID"
+	echo "ゾーン_idのキャッシュのクリア：$ZONE_ID"
 	curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
 	-H "X-Auth-Email: $EMAIL" \
 	-H "X-Auth-Key: $API_TOKEN" \
@@ -2121,10 +2121,10 @@ web_security() {
 
 				  22)
 					  send_stats "5秒シールドでの高負荷"
-					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷の検出に達すると、シールドが自動的にオンになり、低負荷が自動的に5秒間オフになります。${gl_bai}"
+					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷が検出されると、シールドが自動的にオンになり、低負荷が5秒間自動的にオフになります。${gl_bai}"
 					  echo "--------------"
 					  echo "CFパラメーターを取得します："
-					  echo -e "CFの背景の右上隅に移動し、左側のAPIトークンを選択して、取得します${gl_huang}Global API Key${gl_bai}"
+					  echo -e "CFバックグラウンドの右上隅に移動し、左側のAPIトークンを選択して、取得します${gl_huang}Global API Key${gl_bai}"
 					  echo -e "CFバックグラウンドドメイン名の概要ページの右下に移動して${gl_huang}リージョンID${gl_bai}"
 					  echo "https://dash.cloudflare.com/login"
 					  echo "--------------"
@@ -6369,7 +6369,7 @@ schedule_task() {
 	local cron_job="$cron_time k rsync_run $num"
 	local cron_job="$cron_time k rsync_run $num"
 
-	# 同じタスクがすでに存在するかどうかを確認してください
+	# 同じタスクが既に存在するかどうかを確認してください
 	if crontab -l | grep -q "k rsync_run $num"; then
 		echo "エラー：このタスクのタイミング同期はすでに存在しています！"
 		return
@@ -6418,7 +6418,7 @@ rsync_manager() {
 		echo
 		echo "1.新しいタスクを作成します2。タスクを削除します"
 		echo "3.リモートエンドにローカル同期を実行する4。ローカルエンドにリモート同期を実行する"
-		echo "5.タイミングタスクを作成6.タイミングタスクを削除します"
+		echo "5.タイミングタスクを作成6。タイミングタスクを削除します"
 		echo "---------------------------------"
 		echo "0。前のメニューに戻ります"
 		echo "---------------------------------"
@@ -6551,7 +6551,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}1.   ${gl_bai}カールダウンロードツール${gl_huang}★${gl_bai}                   ${gl_kjlan}2.   ${gl_bai}WGETダウンロードツール${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}SUDOスーパー管理許可ツール${gl_kjlan}4.   ${gl_bai}Socat Communication Connection Tool"
 	  echo -e "${gl_kjlan}5.   ${gl_bai}HTOPシステム監視ツール${gl_kjlan}6.   ${gl_bai}IFTOPネットワークトラフィック監視ツール"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}zip zip圧縮減圧ツールを解凍します${gl_kjlan}8.   ${gl_bai}TAR GZ圧縮減圧ツール"
+	  echo -e "${gl_kjlan}7.   ${gl_bai}ジップzip圧縮減圧ツールを解凍します${gl_kjlan}8.   ${gl_bai}TAR GZ圧縮減圧ツール"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}TMUXマルチチャネルバックグラウンドランニングツール${gl_kjlan}10.  ${gl_bai}Live StreamingツールをエンコードするFFMPEGビデオ"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}BTOPモダン監視ツール${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}範囲ファイル管理ツール"
@@ -6850,6 +6850,310 @@ linux_bbr() {
 
 
 
+docker_ssh_migration() {
+
+	GREEN='\033[0;32m'
+	RED='\033[0;31m'
+	YELLOW='\033[1;33m'
+	BLUE='\033[0;36m'
+	NC='\033[0m'
+
+	BACKUP_ROOT="/tmp"
+	DATE_STR=$(date +%Y%m%d_%H%M%S)
+
+	check_root() {
+		[[ "$EUID" -ne 0 ]] && { echo -e "${RED}ルートアクセス許可を使用してスクリプトを実行してください！${NC}"; exit 1; }
+	}
+
+	ensure_docker() {
+		command -v docker &>/dev/null || { echo -e "${RED}Dockerがインストールされていません！${NC}"; exit 1; }
+	}
+
+	ensure_jq() {
+		command -v jq &>/dev/null || { echo -e "${RED}JQがインストールされていません！${NC}"; exit 1; }
+	}
+
+	is_compose_container() {
+		local container=$1
+		docker inspect "$container" | jq -e '.[0].Config.Labels["com.docker.compose.project"]' >/dev/null 2>&1
+	}
+
+	list_backups() {
+		echo -e "${BLUE}現在のバックアップリスト：${NC}"
+		ls -dt ${BACKUP_ROOT}/docker_backup_* 2>/dev/null || echo "バックアップなし"
+	}
+
+
+
+	# ----------------------------
+	# バックアップ
+	# ----------------------------
+	backup_docker() {
+		echo -e "${YELLOW}Dockerコンテナのバックアップ...${NC}"
+		read -p "バックアップするコンテナの名前を入力してください（複数のスペースで区切られていて、Enterバックアップはすべて実行中のコンテナです）：" containers
+		local TARGET_CONTAINERS=()
+		if [ -z "$containers" ]; then
+			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
+		else
+			read -ra TARGET_CONTAINERS <<< "$containers"
+		fi
+		[[ ${#TARGET_CONTAINERS[@]} -eq 0 ]] && { echo -e "${RED}コンテナは見つかりません${NC}"; return; }
+
+		local BACKUP_DIR="${BACKUP_ROOT}/docker_backup_${DATE_STR}"
+		mkdir -p "$BACKUP_DIR"
+
+		local RESTORE_SCRIPT="${BACKUP_DIR}/docker_restore.sh"
+		echo "#!/bin/bash" > "$RESTORE_SCRIPT"
+		echo "set -e" >> "$RESTORE_SCRIPT"
+		echo "＃自動的に生成された復元スクリプト" >> "$RESTORE_SCRIPT"
+
+		# パッケージ化されたプロジェクトのパスを記録して、パッケージの重複を避ける
+		declare -A PACKED_COMPOSE_PATHS=()
+
+		for c in "${TARGET_CONTAINERS[@]}"; do
+			echo -e "${GREEN}バックアップコンテナ：$c${NC}"
+			local inspect_file="${BACKUP_DIR}/${c}_inspect.json"
+			docker inspect "$c" > "$inspect_file"
+
+			if is_compose_container "$c"; then
+				echo -e "${BLUE}検出されました$cはい、Docker-Composeコンテナ${NC}"
+				local project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
+				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
+
+				if [ -z "$project_dir" ]; then
+					read -p "Compose Directoryは検出されません。手動でパスを入力してください。" project_dir
+				fi
+
+				# Composeプロジェクトがパッケージ化されている場合は、スキップしてください
+				if [[ -n "${PACKED_COMPOSE_PATHS[$project_dir]}" ]]; then
+					echo -e "${YELLOW}プロジェクトを作成する[$project_name]バックアップ、複製パッケージをスキップ...${NC}"
+					continue
+				fi
+
+				if [ -f "$project_dir/docker-compose.yml" ]; then
+					echo "compose" > "${BACKUP_DIR}/backup_type_${project_name}"
+					echo "$project_dir" > "${BACKUP_DIR}/compose_path_${project_name}.txt"
+					tar -czf "${BACKUP_DIR}/compose_project_${project_name}.tar.gz" -C "$project_dir" .
+					echo "＃docker-compose Recovery：$project_name" >> "$RESTORE_SCRIPT"
+					echo "cd \"$project_dir\" && docker compose up -d" >> "$RESTORE_SCRIPT"
+					PACKED_COMPOSE_PATHS["$project_dir"]=1
+					echo -e "${GREEN}プロジェクトを作成する[$project_name]パック：${project_dir}${NC}"
+				else
+					echo -e "${RED}docker-compose.ymlが見つかりません、このコンテナをスキップしてください...${NC}"
+				fi
+			else
+				# 通常のコンテナバックアップボリューム
+				local VOL_PATHS
+				VOL_PATHS=$(docker inspect "$c" --format '{{range .Mounts}}{{.Source}} {{end}}')
+				for path in $VOL_PATHS; do
+					echo "梱包ロール：$path"
+					tar -czpf "${BACKUP_DIR}/${c}_$(basename $path).tar.gz" -C / "$(echo $path | sed 's/^\///')"
+				done
+
+				# ポート
+				local PORT_ARGS=""
+				mapfile -t PORTS < <(jq -r '.[0].HostConfig.PortBindings | to_entries[] | "\(.value[0].HostPort):\(.key | split("/")[0])"' "$inspect_file" 2>/dev/null)
+				for p in "${PORTS[@]}"; do PORT_ARGS+="-p $p "; done
+
+				# 環境変数
+				local ENV_VARS=""
+				mapfile -t ENVS < <(jq -r '.[0].Config.Env[] | @sh' "$inspect_file")
+				for e in "${ENVS[@]}"; do ENV_VARS+="-e $e "; done
+
+				# ボリュームマッピング
+				local VOL_ARGS=""
+				for path in $VOL_PATHS; do VOL_ARGS+="-v $path:$path "; done
+
+				# 鏡
+				local IMAGE
+				IMAGE=$(jq -r '.[0].Config.Image' "$inspect_file")
+
+				echo -e "\ n＃復元コンテナ：$c" >> "$RESTORE_SCRIPT"
+				echo "docker run -d --name $c $PORT_ARGS $VOL_ARGS $ENV_VARS $IMAGE" >> "$RESTORE_SCRIPT"
+			fi
+		done
+
+		chmod +x "$RESTORE_SCRIPT"
+		echo -e "${GREEN}バックアップが完了しました：${BACKUP_DIR}${NC}"
+		echo -e "${GREEN}利用可能な復元スクリプト：${RESTORE_SCRIPT}${NC}"
+	}
+
+	# ----------------------------
+	# 削減
+	# ----------------------------
+	restore_docker() {
+		list_backups
+		read -p "復元するには、バックアップディレクトリを入力してください。" BACKUP_DIR
+		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}バックアップディレクトリは存在しません${NC}"; return; }
+
+		echo -e "${BLUE}復元操作を開始します...${NC}"
+
+		install_docker
+
+		# ------------------------------
+		for f in "$BACKUP_DIR"/backup_type_*; do
+			[[ ! -f "$f" ]] && continue
+			if grep -q "compose" "$f"; then
+				project_name=$(basename "$f" | sed 's/backup_type_//')
+				path_file="$BACKUP_DIR/compose_path_${project_name}.txt"
+				[[ -f "$path_file" ]] && original_path=$(cat "$path_file") || original_path=""
+				[[ -z "$original_path" ]] && read -p "元のパスが見つかりませんでした。復元ディレクトリパスを入力してください。" original_path
+
+				# Composeプロジェクトのコンテナがすでに実行されているかどうかを確認します
+				running_count=$(docker ps --filter "label=com.docker.compose.project=$project_name" --format '{{.Names}}' | wc -l)
+				if [[ "$running_count" -gt 0 ]]; then
+					echo -e "${YELLOW}プロジェクトを作成する[$project_name]すでにコンテナが走っています、復元をスキップします...${NC}"
+					continue
+				fi
+
+				read -p "Composeプロジェクトの復元を確認します[$project_name]パスへ[$original_path] ? (y/n): " confirm
+				[[ "$confirm" != "y" ]] && read -p "新しい復元パスを入力してください：" original_path
+
+				mkdir -p "$original_path"
+				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
+				echo -e "${GREEN}プロジェクトを作成する[$project_name]減圧：$original_path${NC}"
+
+				cd "$original_path" || exit 1
+				docker compose down || true
+				docker compose up -d
+				echo -e "${GREEN}プロジェクトを作成する[$project_name]復元が完了しました！${NC}"
+			fi
+		done
+
+		# ------------------------------
+		echo -e "${BLUE}通常のDockerコンテナを確認して復元します...${NC}"
+		local has_container=false
+		for json in "$BACKUP_DIR"/*_inspect.json; do
+			[[ ! -f "$json" ]] && continue
+			has_container=true
+			container=$(basename "$json" | sed 's/_inspect.json//')
+			echo -e "${GREEN}コンテナの処理：$container${NC}"
+
+			# 容器が既に存在し、実行中かどうかを確認してください
+			if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
+				echo -e "${YELLOW}容器 [$container]走っています、復元をスキップします...${NC}"
+				continue
+			fi
+
+			IMAGE=$(jq -r '.[0].Config.Image' "$json")
+			[[ -z "$IMAGE" || "$IMAGE" == "null" ]] && { echo -e "${RED}ミラー情報は見つかりませんでした、スキップ：$container${NC}"; continue; }
+
+			# ポートマッピング
+			PORT_ARGS=""
+			mapfile -t PORTS < <(jq -r '.[0].HostConfig.PortBindings | to_entries[]? | "\(.value[0].HostPort):\(.key | split("/")[0])"' "$json")
+			for p in "${PORTS[@]}"; do
+				[[ -n "$p" ]] && PORT_ARGS="$PORT_ARGS -p $p"
+			done
+
+			# 環境変数
+			ENV_ARGS=""
+			mapfile -t ENVS < <(jq -r '.[0].Config.Env[]' "$json")
+			for e in "${ENVS[@]}"; do
+				ENV_ARGS="$ENV_ARGS -e \"$e\""
+			done
+
+			# ボリュームマッピング +ボリュームデータリカバリ
+			VOL_ARGS=""
+			mapfile -t VOLS < <(jq -r '.[0].Mounts[] | "\(.Source):\(.Destination)"' "$json")
+			for v in "${VOLS[@]}"; do
+				VOL_SRC=$(echo "$v" | cut -d':' -f1)
+				VOL_DST=$(echo "$v" | cut -d':' -f2)
+				mkdir -p "$VOL_SRC"
+				VOL_ARGS="$VOL_ARGS -v $VOL_SRC:$VOL_DST"
+
+				VOL_FILE="$BACKUP_DIR/${container}_$(basename $VOL_SRC).tar.gz"
+				if [[ -f "$VOL_FILE" ]]; then
+					echo "ボリュームデータの回復：$VOL_SRC"
+					tar -xzf "$VOL_FILE" -C /
+				fi
+			done
+
+			# 既存のが実行されていないコンテナを削除します
+			if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+				echo -e "${YELLOW}容器 [$container]存在しますが、実行していません。古いコンテナを削除してください...${NC}"
+				docker rm -f "$container"
+			fi
+
+			# コンテナを起動します
+			echo "restoreコマンドを実行します：docker run -d  -  name \"$container\" $PORT_ARGS $VOL_ARGS $ENV_ARGS \"$IMAGE\""
+			eval "docker run -d --name \"$container\" $PORT_ARGS $VOL_ARGS $ENV_ARGS \"$IMAGE\""
+		done
+
+		[[ "$has_container" == false ]] && echo -e "${YELLOW}通常のコンテナのバックアップ情報は見つかりませんでした${NC}"
+	}
+
+
+	# ----------------------------
+	# 移動します
+	# ----------------------------
+	migrate_docker() {
+		ensure_jq
+		list_backups
+		read -p "移行するには、バックアップディレクトリを入力してください。" BACKUP_DIR
+		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}バックアップディレクトリは存在しません${NC}"; return; }
+
+		read -p "ターゲットサーバーIP：" TARGET_IP
+		read -p "ターゲットサーバーSSHユーザー名：" TARGET_USER
+
+		LATEST_TAR="$BACKUP_DIR"  # 这里直接传整个目录
+
+		echo -e "${YELLOW}バックアップを転送...${NC}"
+		if [[ -z "$TARGET_PASS" ]]; then
+			# キーでログインします
+			scp -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
+		fi
+
+	}
+
+	# ----------------------------
+	# バックアップを削除します
+	# ----------------------------
+	delete_backup() {
+		list_backups
+		read -p "削除するには、バックアップディレクトリを入力してください。" BACKUP_DIR
+		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}バックアップディレクトリは存在しません${NC}"; return; }
+		rm -rf "$BACKUP_DIR"
+		echo -e "${GREEN}削除されたバックアップ：${BACKUP_DIR}${NC}"
+	}
+
+	# ----------------------------
+	# メインメニュー
+	# ----------------------------
+	main_menu() {
+
+		check_root
+		ensure_docker
+		ensure_jq
+		while true; do
+			clear
+			echo -e "\n${BLUE}-----------------------------------------${NC}"
+			echo -e "Dockerバックアップ/移行/復元ツールv1.4"
+			echo -e "${BLUE}-----------------------------------------${NC}"
+			list_backups
+			echo -e "\ n1。バックアップDockerプロジェクト"
+			echo -e "2。Dockerプロジェクトを移行します"
+			echo -e "3. Dockerプロジェクトを復元します"
+			echo -e "4. Dockerプロジェクトのバックアップファイルを削除します"
+			echo -e "0。メインメニュー /終了に戻ります"
+			read -p "選択してください：" choice
+			case $choice in
+				1) backup_docker ;;
+				2) migrate_docker ;;
+				3) restore_docker ;;
+				4) delete_backup ;;
+				0) exit 0 ;;
+				*) echo -e "${RED}無効なオプション${NC}" ;;
+			esac
+		done
+	}
+
+	main_menu
+}
+
+
+
+
+
 linux_docker() {
 
 	while true; do
@@ -6875,6 +7179,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}docker-ipv6アクセスを有効にします"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}docker-ipv6アクセスを閉じます"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}19.  ${gl_bai}Docker環境をバックアップ/復元/移行します"
 	  echo -e "${gl_kjlan}20.  ${gl_bai}Docker環境をアンインストールします"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}メインメニューに戻ります"
@@ -7082,6 +7387,9 @@ linux_docker() {
 			  restart docker
 			  ;;
 
+
+
+
 		  11)
 			  clear
 			  send_stats "Docker V6が開いています"
@@ -7093,6 +7401,11 @@ linux_docker() {
 			  send_stats "Docker V6レベル"
 			  docker_ipv6_off
 			  ;;
+
+		  19)
+			  docker_ssh_migration
+			  ;;
+
 
 		  20)
 			  clear
@@ -7580,7 +7893,7 @@ linux_ldnmp() {
 
 	  4)
 	  clear
-	  # ケダオクラウドデスクトップ
+	  # Kedao Cloudデスクトップ
 	  webname="可道云桌面"
 	  send_stats "インストール$webname"
 	  echo "展開を開始します$webname"
@@ -7924,7 +8237,7 @@ linux_ldnmp() {
 			  ;;
 		  2)
 			  echo "データベースのバックアップは、.GZ-endコンプレッションパッケージである必要があります。 Pagoda/1panelのバックアップデータのインポートをサポートするために、/home/directoryに入れてください。"
-			  read -e -p "ダウンロードリンクを入力して、バックアップデータをリモートでダウンロードすることもできます。 Enterを直接押してリモートダウンロードをスキップします。" url_download_db
+			  read -e -p "ダウンロードリンクを入力して、バックアップデータをリモートでダウンロードすることもできます。 Enterを直接押して、リモートダウンロードをスキップします：" url_download_db
 
 			  cd /home/
 			  if [ -n "$url_download_db" ]; then
@@ -8221,7 +8534,7 @@ linux_ldnmp() {
 	  case $dingshi in
 		  1)
 			  check_crontab_installed
-			  read -e -p "毎週のバックアップの曜日を選択します（0-6、0は日曜日を表します）：" weekday
+			  read -e -p "毎週のバックアップ（0-6、0は日曜日を表す）の曜日を選択します。" weekday
 			  (crontab -l ; echo "0 0 * * $weekday ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
 		  2)
@@ -8805,7 +9118,7 @@ while true; do
 		  ;;
 
 	  9|mail)
-		send_stats "搭建邮局"
+		send_stats "郵便局を建設します"
 		clear
 		install telnet
 		local app_id="9"
@@ -8815,8 +9128,8 @@ while true; do
 			check_docker_image_update $docker_name
 
 			clear
-			echo -e "邮局服务 $check_docker $update_status"
-			echo "poste.io 是一个开源的邮件服务器解决方案，"
+			echo -e "郵便局サービス$check_docker $update_status"
+			echo "Poste.ioはオープンソースメールサーバーソリューションです。"
 			echo "ビデオの紹介：https：//www.bilibili.com/video/bv1wv421c71t?t=0.1"
 
 			echo ""
@@ -9731,7 +10044,7 @@ while true; do
 		  ;;
 
 	  38|xiaoya)
-		send_stats "Xiaoyaファミリーバケツ"
+		send_stats "Xiaoyaファミリーバケット"
 		clear
 		install_docker
 		check_disk_space 1
@@ -9815,8 +10128,10 @@ while true; do
 
 		docker_rum() {
 
+			ENCRYPTION_KEY=$(openssl rand -hex 32)
 			docker run -d \
 			  --name nexterm \
+			  -e ENCRYPTION_KEY=${ENCRYPTION_KEY} \
 			  -p ${docker_port}:6989 \
 			  -v /home/docker/nexterm:/app/data \
 			  --restart unless-stopped \
@@ -11331,7 +11646,6 @@ while true; do
 		  ;;
 
 
-
 	  b)
 	  	clear
 	  	send_stats "すべてのアプリケーションバックアップ"
@@ -11399,6 +11713,7 @@ while true; do
 	  	fi
 
 		  ;;
+
 
 	  0)
 		  kejilion
@@ -11684,11 +11999,11 @@ linux_Settings() {
 			echo "推奨バージョン：3.12 3.11 3.10 3.9 3.8 2.7"
 			echo "クエリの詳細：https：//www.python.org/downloads/"
 			echo "------------"
-			read -e -p "输入你要安装的python版本号（输入0退出）: " py_new_v
+			read -e -p "インストールするPythonバージョン番号を入力します（Enter 0からExit）：" py_new_v
 
 
 			if [[ "$py_new_v" == "0" ]]; then
-				send_stats "脚本PY管理"
+				send_stats "スクリプトPy管理"
 				break_end
 				linux_Settings
 			fi
@@ -11751,7 +12066,7 @@ EOF
 
 			local VERSION=$(python -V 2>&1 | awk '{print $2}')
 			echo -e "現在のPythonバージョン番号：${gl_huang}$VERSION${gl_bai}"
-			send_stats "脚本PY版本切换"
+			send_stats "スイッチスクリプトPyバージョン"
 
 			  ;;
 
@@ -12003,7 +12318,7 @@ EOF
 						  ;;
 					  4)
 					   read -e -p "ユーザー名を入力してください：" username
-					   # sudoersファイルからユーザーのsudo許可を削除します
+					   # sudoersファイルからユーザーのsudoアクセス許可を削除します
 					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
 						  ;;
@@ -12104,7 +12419,7 @@ EOF
 				echo "15。オランダのユトレヒト時間16。スペインでのマドリード時間"
 				echo "------------------------"
 				echo "アメリカ"
-				echo "21. 美国西部时间             22. 美国东部时间"
+				echo "21。WesternTime22。東部時間"
 				echo "23。カナダ時間24。メキシコの時間"
 				echo "25。ブラジル時間26。アルゼンチン時間"
 				echo "------------------------"
@@ -12523,7 +12838,7 @@ EOF
 			  echo "TG-BOTモニタリングと早期警告機能"
 			  echo "ビデオの紹介：https：//youtu.be/vll-eb3z_ty"
 			  echo "------------------------------------------------"
-			  echo "ネイティブCPU、メモリ、ハードディスク、トラフィック、SSHログインのリアルタイム監視と早期警告を実現するために、TG Robot APIとユーザーIDを構成する必要があります。"
+			  echo "ネイティブCPU、メモリ、ハードディスク、トラフィック、およびSSHログインのリアルタイム監視と早期警告を実現するために、TG Robot APIとユーザーIDを構成する必要があります。"
 			  echo "しきい値に達した後、ユーザーはユーザーに送信されます"
 			  echo -e "${gl_hui}- トラフィックに関しては、サーバーの再起動が再計算されます -${gl_bai}"
 			  read -e -p "必ず続行しますか？ （y/n）：" choice
@@ -12759,7 +13074,7 @@ EOF
 
 			  echo "プライバシーとセキュリティ"
 			  echo "スクリプトは、ユーザー機能に関するデータを収集し、スクリプトエクスペリエンスを最適化し、より楽しく便利な機能を作成します。"
-			  echo "スクリプトバージョン番号、使用時間、システムバージョン、CPUアーキテクチャ、マシンの国、および使用される関数の名前を収集します。"
+			  echo "スクリプトバージョン番号、使用時間、システムバージョン、CPUアーキテクチャ、マシンの国、使用される機能の名前を収集します。"
 			  echo "------------------------------------------------"
 			  echo -e "現在のステータス：$status_message"
 			  echo "--------------------"
@@ -12857,7 +13172,7 @@ linux_file() {
 		echo "------------------------"
 		ls --color=auto -x
 		echo "------------------------"
-		echo "1。ディレクトリを入力します2。ディレクトリを作成3。ディレクトリアクセス許可を変更する4。ディレクトリの名前を変更します"
+		echo "1.ディレクトリ2を入力します。ディレクトリを作成3。ディレクトリアクセス許可を変更します。4。ディレクトリの名前を変更します"
 		echo "5.ディレクトリを削除6。前のメニューディレクトリに戻ります"
 		echo "------------------------"
 		echo "11。ファイルを作成する12。ファイル13を編集します。ファイル許可を変更14。ファイルの名前を変更します"
@@ -12958,7 +13273,7 @@ linux_file() {
 					continue
 				fi
 
-				mv "$src_path" "$dest_path" && echo "ファイルまたはディレクトリは移動されました$dest_path" || echo "ファイルやディレクトリの移動に失敗しました"
+				mv "$src_path" "$dest_path" && echo "ファイルまたはディレクトリが移動されました$dest_path" || echo "ファイルやディレクトリの移動に失敗しました"
 				send_stats "ファイルまたはディレクトリを移動します"
 				;;
 
