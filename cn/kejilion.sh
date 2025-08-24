@@ -6972,10 +6972,10 @@ docker_ssh_migration() {
 		# 备份 /home/docker 下的所有文件（不含子目录）
 		if [ -d "/home/docker" ]; then
 			echo -e "${BLUE}备份 /home/docker 下的文件...${NC}"
-			find /home/docker -maxdepth 1 -type f -print0 | tar --null -czf "${BACKUP_DIR}/home_docker_files.tar.gz" --files-from -
+			find /home/docker -maxdepth 1 -type f | tar -czf "${BACKUP_DIR}/home_docker_files.tar.gz" -T -
 			echo -e "${GREEN}/home/docker 下的文件已打包到: ${BACKUP_DIR}/home_docker_files.tar.gz${NC}"
 		fi
-
+		
 		chmod +x "$RESTORE_SCRIPT"
 		echo -e "${GREEN}备份完成: ${BACKUP_DIR}${NC}"
 		echo -e "${GREEN}可用还原脚本: ${RESTORE_SCRIPT}${NC}"
