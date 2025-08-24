@@ -6861,17 +6861,6 @@ docker_ssh_migration() {
 	BACKUP_ROOT="/tmp"
 	DATE_STR=$(date +%Y%m%d_%H%M%S)
 
-	check_root() {
-		[[ "$EUID" -ne 0 ]] && { echo -e "${RED}루트 권한을 사용하여 스크립트를 실행하십시오!${NC}"; exit 1; }
-	}
-
-	ensure_docker() {
-		command -v docker &>/dev/null || { echo -e "${RED}Docker가 설치되지 않았습니다!${NC}"; exit 1; }
-	}
-
-	ensure_jq() {
-		command -v jq &>/dev/null || { echo -e "${RED}JQ가 설치되지 않았습니다!${NC}"; exit 1; }
-	}
 
 	is_compose_container() {
 		local container=$1
@@ -6891,6 +6880,10 @@ docker_ssh_migration() {
 	backup_docker() {
 		echo -e "${YELLOW}Docker 컨테이너 백업 ...${NC}"
 		read -p "백업 할 컨테이너 이름을 입력하십시오 (여러 공간으로 분리하면 입력 백업이 모두 실행 중입니다)." containers
+
+		install tar jq gzip
+		install_docker
+
 		local TARGET_CONTAINERS=()
 		if [ -z "$containers" ]; then
 			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
@@ -6973,9 +6966,19 @@ docker_ssh_migration() {
 			fi
 		done
 
+
+		# /home /docker 아래의 모든 파일을 백업 (하위 디렉터 제외)
+		if [ -d "/home/docker" ]; then
+			echo -e "${BLUE}/home /docker 아래 파일을 백업 ...${NC}"
+			find /home/docker -maxdepth 1 -type f -print0 | tar --null -czf "${BACKUP_DIR}/home_docker_files.tar.gz" --files-from -
+			echo -e "${GREEN}/home /docker의 파일은 다음과 같이 포장되었습니다.${BACKUP_DIR}/home_docker_files.tar.gz${NC}"
+		fi
+
 		chmod +x "$RESTORE_SCRIPT"
 		echo -e "${GREEN}백업이 완료되었습니다.${BACKUP_DIR}${NC}"
 		echo -e "${GREEN}사용 가능한 복원 스크립트 :${RESTORE_SCRIPT}${NC}"
+
+
 	}
 
 	# ----------------------------
@@ -6988,6 +6991,7 @@ docker_ssh_migration() {
 
 		echo -e "${BLUE}복원 작업 시작 ...${NC}"
 
+		install tar jq gzip
 		install_docker
 
 		# -----------------------------
@@ -7013,7 +7017,7 @@ docker_ssh_migration() {
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
 				echo -e "${GREEN}작곡 프로젝트 [$project_name] 압축 압축 : :$original_path${NC}"
 
-				cd "$original_path" || exit 1
+				cd "$original_path" || return
 				docker compose down || true
 				docker compose up -d
 				echo -e "${GREEN}작곡 프로젝트 [$project_name] 복원이 완료되었습니다!${NC}"
@@ -7080,6 +7084,18 @@ docker_ssh_migration() {
 		done
 
 		[[ "$has_container" == false ]] && echo -e "${YELLOW}일반 컨테이너에 대한 백업 정보는 발견되지 않았습니다${NC}"
+
+		# /home /docker에서 파일을 복원하십시오
+		if [ -f "$BACKUP_DIR/home_docker_files.tar.gz" ]; then
+			echo -e "${BLUE}/home /docker에서 파일을 복원 ...${NC}"
+			mkdir -p /home/docker
+			tar -xzf "$BACKUP_DIR/home_docker_files.tar.gz" -C /
+			echo -e "${GREEN}/home /docker의 파일이 복원되었습니다${NC}"
+		else
+			echo -e "${YELLOW}/home /docker 아래 파일의 백업이 발견되지 않았습니다.${NC}"
+		fi
+
+
 	}
 
 
@@ -7120,28 +7136,28 @@ docker_ssh_migration() {
 	# 메인 메뉴
 	# ----------------------------
 	main_menu() {
-
-		check_root
-		ensure_docker
-		ensure_jq
 		while true; do
 			clear
-			echo -e "\n${BLUE}-----------------------------------------${NC}"
-			echo -e "도커 백업/마이그레이션/복원 도구 v1.4"
-			echo -e "${BLUE}-----------------------------------------${NC}"
+			echo "------------------------"
+			echo -e "도커 백업/마이그레이션/복원 도구"
+			echo "------------------------"
 			list_backups
-			echo -e "\ n1. 백업 도커 프로젝트"
+			echo -e ""
+			echo "------------------------"
+			echo -e "1. Docker 프로젝트를 백업하십시오"
 			echo -e "2. Docker 프로젝트를 마이그레이션합니다"
 			echo -e "3. Docker 프로젝트를 복원하십시오"
 			echo -e "4. Docker 프로젝트의 백업 파일을 삭제하십시오"
-			echo -e "0. 메인 메뉴 / 종료로 돌아갑니다"
+			echo "------------------------"
+			echo -e "0. 이전 메뉴로 돌아갑니다"
+			echo "------------------------"
 			read -p "선택하십시오 :" choice
 			case $choice in
 				1) backup_docker ;;
 				2) migrate_docker ;;
 				3) restore_docker ;;
 				4) delete_backup ;;
-				0) exit 0 ;;
+				0) return ;;
 				*) echo -e "${RED}잘못된 옵션${NC}" ;;
 			esac
 		done
@@ -7179,7 +7195,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}Docker-IPV6 액세스를 활성화하십시오"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}Docker-IPV6 액세스를 닫습니다"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}19.  ${gl_bai}백업/복원/Docker 환경을 마이그레이션합니다"
+	  echo -e "${gl_kjlan}19.  ${gl_bai}백업/마이그레이션/복원 Docker 환경"
 	  echo -e "${gl_kjlan}20.  ${gl_bai}Docker 환경을 제거하십시오"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}메인 메뉴로 돌아갑니다"

@@ -6861,17 +6861,6 @@ docker_ssh_migration() {
 	BACKUP_ROOT="/tmp"
 	DATE_STR=$(date +%Y%m%d_%H%M%S)
 
-	check_root() {
-		[[ "$EUID" -ne 0 ]] && { echo -e "${RED}ルートアクセス許可を使用してスクリプトを実行してください！${NC}"; exit 1; }
-	}
-
-	ensure_docker() {
-		command -v docker &>/dev/null || { echo -e "${RED}Dockerがインストールされていません！${NC}"; exit 1; }
-	}
-
-	ensure_jq() {
-		command -v jq &>/dev/null || { echo -e "${RED}JQがインストールされていません！${NC}"; exit 1; }
-	}
 
 	is_compose_container() {
 		local container=$1
@@ -6891,6 +6880,10 @@ docker_ssh_migration() {
 	backup_docker() {
 		echo -e "${YELLOW}Dockerコンテナのバックアップ...${NC}"
 		read -p "バックアップするコンテナの名前を入力してください（複数のスペースで区切られていて、Enterバックアップはすべて実行中のコンテナです）：" containers
+
+		install tar jq gzip
+		install_docker
+
 		local TARGET_CONTAINERS=()
 		if [ -z "$containers" ]; then
 			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
@@ -6973,9 +6966,19 @@ docker_ssh_migration() {
 			fi
 		done
 
+
+		# /home /dockerのすべてのファイルをバックアップします（サブディレクトリを除く）
+		if [ -d "/home/docker" ]; then
+			echo -e "${BLUE}/home /dockerの下のファイルをバックアップ...${NC}"
+			find /home/docker -maxdepth 1 -type f -print0 | tar --null -czf "${BACKUP_DIR}/home_docker_files.tar.gz" --files-from -
+			echo -e "${GREEN}/home /dockerの下のファイルは次のようにパッケージ化されています。${BACKUP_DIR}/home_docker_files.tar.gz${NC}"
+		fi
+
 		chmod +x "$RESTORE_SCRIPT"
 		echo -e "${GREEN}バックアップが完了しました：${BACKUP_DIR}${NC}"
 		echo -e "${GREEN}利用可能な復元スクリプト：${RESTORE_SCRIPT}${NC}"
+
+
 	}
 
 	# ----------------------------
@@ -6988,6 +6991,7 @@ docker_ssh_migration() {
 
 		echo -e "${BLUE}復元操作を開始します...${NC}"
 
+		install tar jq gzip
 		install_docker
 
 		# ------------------------------
@@ -7013,7 +7017,7 @@ docker_ssh_migration() {
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
 				echo -e "${GREEN}プロジェクトを作成する[$project_name]減圧：$original_path${NC}"
 
-				cd "$original_path" || exit 1
+				cd "$original_path" || return
 				docker compose down || true
 				docker compose up -d
 				echo -e "${GREEN}プロジェクトを作成する[$project_name]復元が完了しました！${NC}"
@@ -7080,6 +7084,18 @@ docker_ssh_migration() {
 		done
 
 		[[ "$has_container" == false ]] && echo -e "${YELLOW}通常のコンテナのバックアップ情報は見つかりませんでした${NC}"
+
+		# /home /dockerの下でファイルを復元します
+		if [ -f "$BACKUP_DIR/home_docker_files.tar.gz" ]; then
+			echo -e "${BLUE}/home /dockerの下でファイルを復元します...${NC}"
+			mkdir -p /home/docker
+			tar -xzf "$BACKUP_DIR/home_docker_files.tar.gz" -C /
+			echo -e "${GREEN}/home /dockerの下のファイルが復元されました${NC}"
+		else
+			echo -e "${YELLOW}/home /dockerの下のファイルのバックアップは見つかりませんでした、スキップ...${NC}"
+		fi
+
+
 	}
 
 
@@ -7120,28 +7136,28 @@ docker_ssh_migration() {
 	# メインメニュー
 	# ----------------------------
 	main_menu() {
-
-		check_root
-		ensure_docker
-		ensure_jq
 		while true; do
 			clear
-			echo -e "\n${BLUE}-----------------------------------------${NC}"
-			echo -e "Dockerバックアップ/移行/復元ツールv1.4"
-			echo -e "${BLUE}-----------------------------------------${NC}"
+			echo "------------------------"
+			echo -e "Dockerバックアップ/移行/復元ツール"
+			echo "------------------------"
 			list_backups
-			echo -e "\ n1。バックアップDockerプロジェクト"
+			echo -e ""
+			echo "------------------------"
+			echo -e "1。Dockerプロジェクトをバックアップします"
 			echo -e "2。Dockerプロジェクトを移行します"
 			echo -e "3. Dockerプロジェクトを復元します"
 			echo -e "4. Dockerプロジェクトのバックアップファイルを削除します"
-			echo -e "0。メインメニュー /終了に戻ります"
+			echo "------------------------"
+			echo -e "0。前のメニューに戻ります"
+			echo "------------------------"
 			read -p "選択してください：" choice
 			case $choice in
 				1) backup_docker ;;
 				2) migrate_docker ;;
 				3) restore_docker ;;
 				4) delete_backup ;;
-				0) exit 0 ;;
+				0) return ;;
 				*) echo -e "${RED}無効なオプション${NC}" ;;
 			esac
 		done
@@ -7179,7 +7195,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}docker-ipv6アクセスを有効にします"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}docker-ipv6アクセスを閉じます"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}19.  ${gl_bai}Docker環境をバックアップ/復元/移行します"
+	  echo -e "${gl_kjlan}19.  ${gl_bai}バックアップ/移行/復元Docker環境"
 	  echo -e "${gl_kjlan}20.  ${gl_bai}Docker環境をアンインストールします"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}メインメニューに戻ります"

@@ -6861,17 +6861,6 @@ docker_ssh_migration() {
 	BACKUP_ROOT="/tmp"
 	DATE_STR=$(date +%Y%m%d_%H%M%S)
 
-	check_root() {
-		[[ "$EUID" -ne 0 ]] && { echo -e "${RED}Please use root permissions to run the script!${NC}"; exit 1; }
-	}
-
-	ensure_docker() {
-		command -v docker &>/dev/null || { echo -e "${RED}Docker not installed!${NC}"; exit 1; }
-	}
-
-	ensure_jq() {
-		command -v jq &>/dev/null || { echo -e "${RED}jq not installed!${NC}"; exit 1; }
-	}
 
 	is_compose_container() {
 		local container=$1
@@ -6891,6 +6880,10 @@ docker_ssh_migration() {
 	backup_docker() {
 		echo -e "${YELLOW}Backing up Docker container...${NC}"
 		read -p "Please enter the name of the container to be backed up (separated by multiple spaces, and the Enter backup is all running containers):" containers
+
+		install tar jq gzip
+		install_docker
+
 		local TARGET_CONTAINERS=()
 		if [ -z "$containers" ]; then
 			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
@@ -6973,9 +6966,19 @@ docker_ssh_migration() {
 			fi
 		done
 
+
+		# Backup all files under /home/docker (excluding subdirectories)
+		if [ -d "/home/docker" ]; then
+			echo -e "${BLUE}Backup the files under /home/docker...${NC}"
+			find /home/docker -maxdepth 1 -type f -print0 | tar --null -czf "${BACKUP_DIR}/home_docker_files.tar.gz" --files-from -
+			echo -e "${GREEN}The file under /home/docker has been packaged to:${BACKUP_DIR}/home_docker_files.tar.gz${NC}"
+		fi
+
 		chmod +x "$RESTORE_SCRIPT"
 		echo -e "${GREEN}Backup is complete:${BACKUP_DIR}${NC}"
 		echo -e "${GREEN}Available restore scripts:${RESTORE_SCRIPT}${NC}"
+
+
 	}
 
 	# ----------------------------
@@ -6988,6 +6991,7 @@ docker_ssh_migration() {
 
 		echo -e "${BLUE}Start the restore operation...${NC}"
 
+		install tar jq gzip
 		install_docker
 
 		# -------------------------
@@ -7013,7 +7017,7 @@ docker_ssh_migration() {
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
 				echo -e "${GREEN}Compose project [$project_name] Decompressed to:$original_path${NC}"
 
-				cd "$original_path" || exit 1
+				cd "$original_path" || return
 				docker compose down || true
 				docker compose up -d
 				echo -e "${GREEN}Compose project [$project_name] Restore is complete!${NC}"
@@ -7080,6 +7084,18 @@ docker_ssh_migration() {
 		done
 
 		[[ "$has_container" == false ]] && echo -e "${YELLOW}No backup information for normal containers was found${NC}"
+
+		# Restore the file under /home/docker
+		if [ -f "$BACKUP_DIR/home_docker_files.tar.gz" ]; then
+			echo -e "${BLUE}Restore the file under /home/docker...${NC}"
+			mkdir -p /home/docker
+			tar -xzf "$BACKUP_DIR/home_docker_files.tar.gz" -C /
+			echo -e "${GREEN}The file under /home/docker has been restored${NC}"
+		else
+			echo -e "${YELLOW}No backup of the file under /home/docker was found, skip...${NC}"
+		fi
+
+
 	}
 
 
@@ -7120,28 +7136,28 @@ docker_ssh_migration() {
 	# Main Menu
 	# ----------------------------
 	main_menu() {
-
-		check_root
-		ensure_docker
-		ensure_jq
 		while true; do
 			clear
-			echo -e "\n${BLUE}-----------------------------------------${NC}"
-			echo -e "Docker Backup/Migration/Restore Tool v1.4"
-			echo -e "${BLUE}-----------------------------------------${NC}"
+			echo "------------------------"
+			echo -e "Docker backup/migration/restore tool"
+			echo "------------------------"
 			list_backups
-			echo -e "\n1. Backup docker project"
+			echo -e ""
+			echo "------------------------"
+			echo -e "1. Backup the docker project"
 			echo -e "2. Migrate docker projects"
 			echo -e "3. Restore the docker project"
 			echo -e "4. Delete the backup file of the docker project"
-			echo -e "0. Return to main menu / Exit"
+			echo "------------------------"
+			echo -e "0. Return to the previous menu"
+			echo "------------------------"
 			read -p "Please select:" choice
 			case $choice in
 				1) backup_docker ;;
 				2) migrate_docker ;;
 				3) restore_docker ;;
 				4) delete_backup ;;
-				0) exit 0 ;;
+				0) return ;;
 				*) echo -e "${RED}Invalid option${NC}" ;;
 			esac
 		done
@@ -7179,7 +7195,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}Enable Docker-ipv6 access"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}Close Docker-ipv6 access"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}19.  ${gl_bai}Backup/restore/migrate Docker environment"
+	  echo -e "${gl_kjlan}19.  ${gl_bai}Backup/Migration/Restore Docker Environment"
 	  echo -e "${gl_kjlan}20.  ${gl_bai}Uninstall the Docker environment"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}Return to main menu"

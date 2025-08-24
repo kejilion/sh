@@ -6861,17 +6861,6 @@ docker_ssh_migration() {
 	BACKUP_ROOT="/tmp"
 	DATE_STR=$(date +%Y%m%d_%H%M%S)
 
-	check_root() {
-		[[ "$EUID" -ne 0 ]] && { echo -e "${RED}請使用 root 權限運行腳本！${NC}"; exit 1; }
-	}
-
-	ensure_docker() {
-		command -v docker &>/dev/null || { echo -e "${RED}Docker 未安裝！${NC}"; exit 1; }
-	}
-
-	ensure_jq() {
-		command -v jq &>/dev/null || { echo -e "${RED}jq 未安裝！${NC}"; exit 1; }
-	}
 
 	is_compose_container() {
 		local container=$1
@@ -6891,6 +6880,10 @@ docker_ssh_migration() {
 	backup_docker() {
 		echo -e "${YELLOW}正在備份 Docker 容器...${NC}"
 		read -p "請輸入要備份的容器名（多個空格分隔，回車備份全部運行中容器）:" containers
+
+		install tar jq gzip
+		install_docker
+
 		local TARGET_CONTAINERS=()
 		if [ -z "$containers" ]; then
 			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
@@ -6973,9 +6966,19 @@ docker_ssh_migration() {
 			fi
 		done
 
+
+		# 備份 /home/docker 下的所有文件（不含子目錄）
+		if [ -d "/home/docker" ]; then
+			echo -e "${BLUE}備份 /home/docker 下的文件...${NC}"
+			find /home/docker -maxdepth 1 -type f -print0 | tar --null -czf "${BACKUP_DIR}/home_docker_files.tar.gz" --files-from -
+			echo -e "${GREEN}/home/docker 下的文件已打包到:${BACKUP_DIR}/home_docker_files.tar.gz${NC}"
+		fi
+
 		chmod +x "$RESTORE_SCRIPT"
 		echo -e "${GREEN}備份完成:${BACKUP_DIR}${NC}"
 		echo -e "${GREEN}可用還原腳本:${RESTORE_SCRIPT}${NC}"
+
+
 	}
 
 	# ----------------------------
@@ -6988,6 +6991,7 @@ docker_ssh_migration() {
 
 		echo -e "${BLUE}開始執行還原操作...${NC}"
 
+		install tar jq gzip
 		install_docker
 
 		# --------- 優先還原 Compose 項目 ---------
@@ -7013,7 +7017,7 @@ docker_ssh_migration() {
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
 				echo -e "${GREEN}Compose 項目 [$project_name] 已解壓到:$original_path${NC}"
 
-				cd "$original_path" || exit 1
+				cd "$original_path" || return
 				docker compose down || true
 				docker compose up -d
 				echo -e "${GREEN}Compose 項目 [$project_name] 還原完成！${NC}"
@@ -7080,6 +7084,18 @@ docker_ssh_migration() {
 		done
 
 		[[ "$has_container" == false ]] && echo -e "${YELLOW}未找到普通容器的備份信息${NC}"
+
+		# 還原 /home/docker 下的文件
+		if [ -f "$BACKUP_DIR/home_docker_files.tar.gz" ]; then
+			echo -e "${BLUE}正在還原 /home/docker 下的文件...${NC}"
+			mkdir -p /home/docker
+			tar -xzf "$BACKUP_DIR/home_docker_files.tar.gz" -C /
+			echo -e "${GREEN}/home/docker 下的文件已還原完成${NC}"
+		else
+			echo -e "${YELLOW}未找到 /home/docker 下文件的備份，跳過...${NC}"
+		fi
+
+
 	}
 
 
@@ -7120,28 +7136,28 @@ docker_ssh_migration() {
 	# 主菜單
 	# ----------------------------
 	main_menu() {
-
-		check_root
-		ensure_docker
-		ensure_jq
 		while true; do
 			clear
-			echo -e "\n${BLUE}-----------------------------------------${NC}"
-			echo -e "Docker 備份 / 遷移 / 還原 工具 v1.4"
-			echo -e "${BLUE}-----------------------------------------${NC}"
+			echo "------------------------"
+			echo -e "Docker備份/遷移/還原工具"
+			echo "------------------------"
 			list_backups
-			echo -e "\n1. 備份docker項目"
+			echo -e ""
+			echo "------------------------"
+			echo -e "1. 備份docker項目"
 			echo -e "2. 遷移docker項目"
 			echo -e "3. 還原docker項目"
 			echo -e "4. 刪除docker項目的備份文件"
-			echo -e "0. 返回主菜單 / 退出"
+			echo "------------------------"
+			echo -e "0. 返回上一級菜單"
+			echo "------------------------"
 			read -p "請選擇:" choice
 			case $choice in
 				1) backup_docker ;;
 				2) migrate_docker ;;
 				3) restore_docker ;;
 				4) delete_backup ;;
-				0) exit 0 ;;
+				0) return ;;
 				*) echo -e "${RED}無效選項${NC}" ;;
 			esac
 		done
@@ -7179,7 +7195,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}開啟Docker-ipv6訪問"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}關閉Docker-ipv6訪問"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}19.  ${gl_bai}備份/還原/遷移Docker環境"
+	  echo -e "${gl_kjlan}19.  ${gl_bai}備份/遷移/還原Docker環境"
 	  echo -e "${gl_kjlan}20.  ${gl_bai}卸載Docker環境"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜單"
