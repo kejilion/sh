@@ -7125,7 +7125,6 @@ docker_ssh_migration() {
 	# 删除备份
 	# ----------------------------
 	delete_backup() {
-		list_backups
 		read -p "请输入要删除的备份目录: " BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}备份目录不存在${NC}"; return; }
 		rm -rf "$BACKUP_DIR"
@@ -7160,6 +7159,7 @@ docker_ssh_migration() {
 				0) return ;;
 				*) echo -e "${RED}无效选项${NC}" ;;
 			esac
+		break_end
 		done
 	}
 
