@@ -6878,6 +6878,7 @@ docker_ssh_migration() {
 	# 备份
 	# ----------------------------
 	backup_docker() {
+		send_stats "Docker备份"
 
 		echo -e "${YELLOW}正在备份 Docker 容器...${NC}"
 		docker ps --format '{{.Names}}'
@@ -6975,7 +6976,7 @@ docker_ssh_migration() {
 			find /home/docker -maxdepth 1 -type f | tar -czf "${BACKUP_DIR}/home_docker_files.tar.gz" -T -
 			echo -e "${GREEN}/home/docker 下的文件已打包到: ${BACKUP_DIR}/home_docker_files.tar.gz${NC}"
 		fi
-		
+
 		chmod +x "$RESTORE_SCRIPT"
 		echo -e "${GREEN}备份完成: ${BACKUP_DIR}${NC}"
 		echo -e "${GREEN}可用还原脚本: ${RESTORE_SCRIPT}${NC}"
@@ -6987,6 +6988,8 @@ docker_ssh_migration() {
 	# 还原
 	# ----------------------------
 	restore_docker() {
+
+		send_stats "Docker还原"
 		read -p "请输入要还原的备份目录: " BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}备份目录不存在${NC}"; return; }
 
@@ -7104,6 +7107,7 @@ docker_ssh_migration() {
 	# 迁移
 	# ----------------------------
 	migrate_docker() {
+		send_stats "Docker迁移"
 		install jq
 		read -p "请输入要迁移的备份目录: " BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}备份目录不存在${NC}"; return; }
@@ -7125,6 +7129,7 @@ docker_ssh_migration() {
 	# 删除备份
 	# ----------------------------
 	delete_backup() {
+		send_stats "Docker备份文件删除"
 		read -p "请输入要删除的备份目录: " BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}备份目录不存在${NC}"; return; }
 		rm -rf "$BACKUP_DIR"
@@ -7135,6 +7140,7 @@ docker_ssh_migration() {
 	# 主菜单
 	# ----------------------------
 	main_menu() {
+		send_stats "Docker备份迁移还原"
 		while true; do
 			clear
 			echo "------------------------"
