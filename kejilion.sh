@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.0"
+sh_v="4.1.1"
 
 
 gl_hui='\e[37m'
@@ -8872,6 +8872,8 @@ while true; do
 	  echo -e "${gl_kjlan}89.  ${color89}FileCodeBox文件快递                 ${gl_kjlan}90.  ${color90}matrix去中心化聊天协议"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}91.  ${color91}gitea私有代码仓库                   ${gl_kjlan}92.  ${color92}FileBrowser文件管理器"
+	  echo -e "${gl_kjlan}93.  ${color93}Dufs极简静态文件服务器              ${gl_kjlan}94.  ${color94}Gopeed高速下载工具"
+	  echo -e "${gl_kjlan}95.  ${color95}paperless文档管理平台"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -11666,6 +11668,114 @@ while true; do
 		docker_app
 
 		  ;;
+
+	93|dufs)
+
+		local app_id="93"
+		local docker_name="dufs"
+		local docker_img="sigoden/dufs"
+		local docker_port=8093
+
+		docker_rum() {
+
+			docker run -d \
+			  --name ${docker_name} \
+			  --restart unless-stopped \
+			  -v /home/docker/${docker_name}:/data \
+			  -p ${docker_port}:5000 \
+			  ${docker_img} /data -A
+
+		}
+
+		local docker_describe="Dufs 极简静态文件服务器，支持上传下载"
+		local docker_url="官网介绍: https://github.com/sigoden/dufs"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		;;
+
+	94|gopeed)
+
+		local app_id="94"
+		local docker_name="gopeed"
+		local docker_img="liwei2633/gopeed"
+		local docker_port=8094
+
+		docker_rum() {
+
+			read -e -p "设置登录用户名: " app_use
+			read -e -p "设置登录密码: " app_passwd
+
+			docker run -d \
+			  --name ${docker_name} \
+			  --restart unless-stopped \
+			  -v /home/docker/${docker_name}/downloads:/app/Downloads \
+			  -v /home/docker/${docker_name}/storage:/app/storage \
+			  -p ${docker_port}:9999 \
+			  ${docker_img} -u ${app_use} -p ${app_passwd}
+
+		}
+
+		local docker_describe="Gopeed 分布式高速下载工具，支持多种协议"
+		local docker_url="官网介绍: https://github.com/GopeedLab/gopeed"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		;;
+
+
+
+	  95|paperless)
+
+		local app_id="95"
+
+		local app_name="paperless文档管理平台"
+		local app_text="开源的电子文档管理系统，它的主要用途是把你的纸质文件数字化并管理起来。"
+		local app_url="视频介绍: https://docs.paperless-ngx.com/"
+		local docker_name="paperless-webserver-1"
+		local docker_port="8095"
+		local app_size="2"
+
+		docker_app_install() {
+
+			mkdir -p /home/docker/paperless
+			mkdir -p /home/docker/paperless/export
+			mkdir -p /home/docker/paperless/consume
+			cd /home/docker/paperless
+
+			curl -o /home/docker/paperless/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/docker-compose.postgres-tika.yml
+			curl -o /home/docker/paperless/docker-compose.env ${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/.env
+
+			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/paperless/docker-compose.yml
+			cd /home/docker/paperless
+			docker compose up -d
+			clear
+			echo "已经安装完成"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/paperless/ && docker compose down --rmi all
+			docker_app_install
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/paperless/ && docker compose down --rmi all
+			rm -rf /home/docker/paperless
+			echo "应用已卸载"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
 
 
 	  b)
