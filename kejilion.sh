@@ -10981,8 +10981,8 @@ while true; do
 
 			curl -o /home/docker/moontv/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/moontv-docker-compose.yml
 			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/moontv/docker-compose.yml
-			sed -i "s|admin|${admin}|g" /home/docker/moontv/docker-compose.yml
 			sed -i "s|admin_password|${admin_password}|g" /home/docker/moontv/docker-compose.yml
+			sed -i "s|admin|${admin}|g" /home/docker/moontv/docker-compose.yml
 			sed -i "s|shouquanma|${shouquanma}|g" /home/docker/moontv/docker-compose.yml
 			cd /home/docker/moontv/
 			docker compose up -d
