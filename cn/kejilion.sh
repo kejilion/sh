@@ -8874,6 +8874,7 @@ while true; do
 	  echo -e "${gl_kjlan}91.  ${color91}gitea私有代码仓库                   ${gl_kjlan}92.  ${color92}FileBrowser文件管理器"
 	  echo -e "${gl_kjlan}93.  ${color93}Dufs极简静态文件服务器              ${gl_kjlan}94.  ${color94}Gopeed高速下载工具"
 	  echo -e "${gl_kjlan}95.  ${color95}paperless文档管理平台"
+	  echo -e "${gl_kjlan}97.  ${color97}WireGuard组网(服务端)              ${gl_kjlan}98.  ${color98}WireGuard组网(客户端)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -8997,6 +8998,9 @@ while true; do
 		local docker_port=5244
 
 		docker_rum() {
+
+			mkdir -p /home/docker/openlist
+			chmod -R 777 /home/docker/openlist
 
 			docker run -d \
 				--restart=always \
@@ -10977,9 +10981,9 @@ while true; do
 
 			curl -o /home/docker/moontv/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/moontv-docker-compose.yml
 			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/moontv/docker-compose.yml
-			sed -i "s/admin/${admin}/g" /home/docker/moontv/docker-compose.yml
-			sed -i "s/admin_password/${admin_password}/g" /home/docker/moontv/docker-compose.yml
-			sed -i "s/shouquanma/${shouquanma}/g" /home/docker/moontv/docker-compose.yml
+			sed -i "s|admin|${admin}|g" /home/docker/moontv/docker-compose.yml
+			sed -i "s|admin_password|${admin_password}|g" /home/docker/moontv/docker-compose.yml
+			sed -i "s|shouquanma|${shouquanma}|g" /home/docker/moontv/docker-compose.yml
 			cd /home/docker/moontv/
 			docker compose up -d
 			clear
@@ -11687,7 +11691,7 @@ while true; do
 
 		}
 
-		local docker_describe="Dufs 极简静态文件服务器，支持上传下载"
+		local docker_describe="极简静态文件服务器，支持上传下载"
 		local docker_url="官网介绍: https://github.com/sigoden/dufs"
 		local docker_use=""
 		local docker_passwd=""
@@ -11718,7 +11722,7 @@ while true; do
 
 		}
 
-		local docker_describe="Gopeed 分布式高速下载工具，支持多种协议"
+		local docker_describe="分布式高速下载工具，支持多种协议"
 		local docker_url="官网介绍: https://github.com/GopeedLab/gopeed"
 		local docker_use=""
 		local docker_passwd=""
@@ -11774,6 +11778,77 @@ while true; do
 		docker_app_plus
 
 		  ;;
+
+
+	97|wgs|wireguard)
+
+		local app_id="97"
+		local docker_name="wireguard"
+		local docker_img="lscr.io/linuxserver/wireguard:latest"
+		local docker_port=51820
+
+		docker_rum() {
+
+		read -p "请输入组网的客户端数量 (默认 5): " COUNT
+		COUNT=${COUNT:-5}
+
+		PEERS=$(seq -f "wg%02g" 1 "$COUNT" | paste -sd,)
+
+		ip_address
+		docker run -d \
+		  --name=wireguard \
+		  --network host \
+		  --cap-add=NET_ADMIN \
+		  --cap-add=SYS_MODULE \
+		  -e PUID=1000 \
+		  -e PGID=1000 \
+		  -e TZ=Etc/UTC \
+		  -e SERVERURL=${ipv4_address} \
+		  -e SERVERPORT=${docker_port} \
+		  -e PEERS=${PEERS} \
+		  -e INTERNAL_SUBNET=10.13.13.0 \
+		  -e ALLOWEDIPS=10.13.13.0/24 \
+		  -e PERSISTENTKEEPALIVE_PEERS=all \
+		  -e SERVER_ALLOWEDIPS_PEER_myPhone="192.168.1.0/24,192.168.2.0/24,192.168.100.0/24" \
+		  -e LOG_CONFS=true \
+		  -v /home/docker/wireguard/config:/config \
+		  -v /lib/modules:/lib/modules \
+		  --restart unless-stopped \
+		  lscr.io/linuxserver/wireguard:latest
+
+
+		sleep 5
+		docker exec wireguard sh -c 'for d in /config/peer_*; do sed -i "/^DNS *= *10\.13\.13\.1$/d" "$d"/*.conf; done'
+		docker exec wireguard sh -c '
+		for d in /config/peer_*; do
+		  for f in "$d"/*.conf; do
+			grep -q "^PersistentKeepalive *= *25$" "$f" || \
+			sed -i "/^AllowedIPs *= *10\.13\.13\.0\/24$/a PersistentKeepalive = 25" "$f"
+		  done
+		done
+		'
+
+		docker exec -it wireguard bash -c 'for i in $(ls /config | grep peer_ | sed "s/peer_//"); do echo "--- $i ---"; /app/show-peer $i; done'
+		sleep 3
+		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "===== $(basename $d) ====="; cat $d/*.conf; echo; done'
+		sleep 3
+		echo -e "${gl_lv}${COUNT}个客户端配置全部输出，使用方法如下：${gl_bai}"
+		echo -e "${gl_lv}1. 手机下载wg的APP，扫描上方二维码，可以快速连接网络${gl_bai}"
+		echo -e "${gl_lv}2. Windows下载客户端，复制配置代码连接网络。${gl_bai}"
+		echo -e "${gl_lv}3. Linux用脚本部署WG客户端，复制配置代码连接网络。${gl_bai}"
+		echo -e "${gl_lv}官方客户端下载方式: https://www.wireguard.com/install/${gl_bai}"
+		break_end
+
+		}
+
+		local docker_describe="现代化、高性能的虚拟专用网络工具"
+		local docker_url="官网介绍: https://www.wireguard.com/"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		;;
 
 
 
