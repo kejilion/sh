@@ -11809,7 +11809,6 @@ while true; do
 		  -e INTERNAL_SUBNET=10.13.13.0 \
 		  -e ALLOWEDIPS=10.13.13.0/24 \
 		  -e PERSISTENTKEEPALIVE_PEERS=all \
-		  -e SERVER_ALLOWEDIPS_PEER_myPhone="192.168.1.0/24,192.168.2.0/24,192.168.100.0/24" \
 		  -e LOG_CONFS=true \
 		  -v /home/docker/wireguard/config:/config \
 		  -v /lib/modules:/lib/modules \
@@ -14285,4 +14284,3 @@ else
 			;;
 	esac
 fi
-
