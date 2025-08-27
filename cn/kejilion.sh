@@ -11805,7 +11805,7 @@ while true; do
 		  -e PGID=1000 \
 		  -e TZ=Etc/UTC \
 		  -e SERVERURL=${ipv4_address} \
-		  -e SERVERPORT=${docker_port} \
+		  -e SERVERPORT=51820 \
 		  -e PEERS=${PEERS} \
 		  -e INTERNAL_SUBNET=10.13.13.0 \
 		  -e ALLOWEDIPS=10.13.13.0/24 \
