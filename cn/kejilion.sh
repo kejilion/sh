@@ -11828,10 +11828,21 @@ while true; do
 		done
 		'
 
+		docker exec -it wireguard bash -c '
+		for d in /config/peer_*; do
+		  cd "$d" || continue
+		  conf_file=$(ls *.conf)
+		  base_name="${conf_file%.conf}"
+		  echo "生成二维码: $base_name.png"
+		  qrencode -o "$base_name.png" < "$conf_file"
+		done
+		'
+
+		sleep 2
 		docker exec -it wireguard bash -c 'for i in $(ls /config | grep peer_ | sed "s/peer_//"); do echo "--- $i ---"; /app/show-peer $i; done'
-		sleep 3
+		sleep 2
 		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "===== $(basename $d) ====="; cat $d/*.conf; echo; done'
-		sleep 3
+		sleep 2
 		echo -e "${gl_lv}${COUNT}个客户端配置全部输出，使用方法如下：${gl_bai}"
 		echo -e "${gl_lv}1. 手机下载wg的APP，扫描上方二维码，可以快速连接网络${gl_bai}"
 		echo -e "${gl_lv}2. Windows下载客户端，复制配置代码连接网络。${gl_bai}"
