@@ -352,10 +352,11 @@ kejilion() {
 stop_containers_or_kill_process() {
 	local port=$1
 	local containers=$(docker ps --filter "publish=$port" --format "{{.ID}}" 2>/dev/null)
-	install lsof
+
 	if [ -n "$containers" ]; then
 		docker stop $containers
 	else
+		install lsof
 		for pid in $(lsof -t -i:$port); do
 			kill -9 $pid
 		done
@@ -11792,8 +11793,8 @@ while true; do
 		COUNT=${COUNT:-5}
 
 		PEERS=$(seq -f "wg%02g" 1 "$COUNT" | paste -sd,)
-
-		stop_containers_or_kill_process 51820 &>/dev/null
+		
+		ip link delete wg0 &>/dev/null
 
 		ip_address
 		docker run -d \
