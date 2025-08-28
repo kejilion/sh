@@ -11824,7 +11824,6 @@ while true; do
 
 		docker exec wireguard sh -c "
 		f='/config/wg_confs/wg0.conf'
-		# 全局替换所有 51820 为新端口
 		sed -i 's/51820/${docker_port}/g' \$f
 		"
 
@@ -11834,12 +11833,18 @@ while true; do
 		done
 		"
 
-		docker exec wireguard sh -c 'for d in /config/peer_*; do sed -i "/^DNS *= *10\.13\.13\.1$/d" "$d"/*.conf; done'
+		docker exec wireguard sh -c '
+		for d in /config/peer_*; do
+		  sed -i "/^DNS/i MTU = 1420" "$d"/*.conf
+		  sed -i "/^DNS/d" "$d"/*.conf
+		done
+		'
+
 		docker exec wireguard sh -c '
 		for d in /config/peer_*; do
 		  for f in "$d"/*.conf; do
-			grep -q "^PersistentKeepalive *= *25$" "$f" || \
-			sed -i "/^AllowedIPs *= *10\.13\.13\.0\/24$/a PersistentKeepalive = 25" "$f"
+			grep -q "^PersistentKeepalive" "$f" || \
+			sed -i "/^AllowedIPs/ a PersistentKeepalive = 25" "$f"
 		  done
 		done
 		'
@@ -11849,7 +11854,6 @@ while true; do
 		  cd "$d" || continue
 		  conf_file=$(ls *.conf)
 		  base_name="${conf_file%.conf}"
-		  echo "生成二维码: $base_name.png"
 		  qrencode -o "$base_name.png" < "$conf_file"
 		done
 		'
