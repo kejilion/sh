@@ -11785,15 +11785,17 @@ while true; do
 		local app_id="97"
 		local docker_name="wireguard"
 		local docker_img="lscr.io/linuxserver/wireguard:latest"
-		local docker_port=51820
+		local docker_port=8097
 
 		docker_rum() {
 
 		read -p "请输入组网的客户端数量 (默认 5): " COUNT
 		COUNT=${COUNT:-5}
+		read -p "请输入 WireGuard 网段 (默认 10.13.13.0): " NETWORK
+		NETWORK=${NETWORK:-10.13.13.0}
 
 		PEERS=$(seq -f "wg%02g" 1 "$COUNT" | paste -sd,)
-		
+
 		ip link delete wg0 &>/dev/null
 
 		ip_address
@@ -11808,8 +11810,8 @@ while true; do
 		  -e SERVERURL=${ipv4_address} \
 		  -e SERVERPORT=51820 \
 		  -e PEERS=${PEERS} \
-		  -e INTERNAL_SUBNET=10.13.13.0 \
-		  -e ALLOWEDIPS=10.13.13.0/24 \
+		  -e INTERNAL_SUBNET=${NETWORK} \
+		  -e ALLOWEDIPS=${NETWORK}/24 \
 		  -e PERSISTENTKEEPALIVE_PEERS=all \
 		  -e LOG_CONFS=true \
 		  -v /home/docker/wireguard/config:/config \
@@ -11819,6 +11821,19 @@ while true; do
 
 
 		sleep 3
+
+		docker exec wireguard sh -c "
+		f='/config/wg_confs/wg0.conf'
+		# 全局替换所有 51820 为新端口
+		sed -i 's/51820/${docker_port}/g' \$f
+		"
+
+		docker exec wireguard sh -c "
+		for d in /config/peer_*; do
+		  sed -i 's/51820/${docker_port}/g' \$d/*.conf
+		done
+		"
+
 		docker exec wireguard sh -c 'for d in /config/peer_*; do sed -i "/^DNS *= *10\.13\.13\.1$/d" "$d"/*.conf; done'
 		docker exec wireguard sh -c '
 		for d in /config/peer_*; do
@@ -11839,10 +11854,12 @@ while true; do
 		done
 		'
 
+		docker restart wireguard
+
 		sleep 2
 		docker exec -it wireguard bash -c 'for i in $(ls /config | grep peer_ | sed "s/peer_//"); do echo "--- $i ---"; /app/show-peer $i; done'
 		sleep 2
-		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "===== $(basename $d) ====="; cat $d/*.conf; echo; done'
+		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "# $(basename $d) "; cat $d/*.conf; echo; done'
 		sleep 2
 		echo -e "${gl_lv}${COUNT}个客户端配置全部输出，使用方法如下：${gl_bai}"
 		echo -e "${gl_lv}1. 手机下载wg的APP，扫描上方二维码，可以快速连接网络${gl_bai}"
