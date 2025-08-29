@@ -11927,6 +11927,8 @@ while true; do
 
 			echo "客户端配置已保存到 $CONFIG_FILE"
 
+			ip link delete wg0 &>/dev/null
+
 			docker run -d \
 			  --name wireguardc \
 			  --network host \
