@@ -11835,7 +11835,6 @@ while true; do
 
 		docker exec wireguard sh -c '
 		for d in /config/peer_*; do
-		  sed -i "/^DNS/i MTU = 1420" "$d"/*.conf
 		  sed -i "/^DNS/d" "$d"/*.conf
 		done
 		'
