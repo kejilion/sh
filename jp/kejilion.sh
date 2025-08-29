@@ -793,7 +793,7 @@ docker_ipv6_on() {
 			UPDATED_CONFIG=$(echo "$ORIGINAL_CONFIG" | jq '. + {"fixed-cidr-v6": "2001:db8:1::/64"}')
 		fi
 
-		# 元の構成と新しい構成を比較します
+		# 元の構成を新しい構成と比較します
 		if [[ "$ORIGINAL_CONFIG" == "$UPDATED_CONFIG" ]]; then
 			echo -e "${gl_huang}現在、IPv6アクセスが有効になっています${gl_bai}"
 		else
@@ -2949,7 +2949,7 @@ docker network create $NETWORK_NAME
 docker run -d \
   --name=node-exporter \
   --network $NETWORK_NAME \
-  --restart unless-stopped \
+  --restart=always \
   prom/node-exporter
 
 # Run Prometheus container
@@ -2958,7 +2958,7 @@ docker run -d \
   -v $PROMETHEUS_DIR/prometheus.yml:/etc/prometheus/prometheus.yml \
   -v $PROMETHEUS_DIR/data:/prometheus \
   --network $NETWORK_NAME \
-  --restart unless-stopped \
+  --restart=always \
   --user 0:0 \
   prom/prometheus:latest
 
@@ -2968,7 +2968,7 @@ docker run -d \
   -p ${docker_port}:3000 \
   -v $GRAFANA_DIR:/var/lib/grafana \
   --network $NETWORK_NAME \
-  --restart unless-stopped \
+  --restart=always \
   grafana/grafana:latest
 
 }
@@ -3037,7 +3037,7 @@ f2b_install_sshd() {
 		-v /path/to/fail2ban/config:/config \
 		-v /var/log:/var/log:ro \
 		-v /home/web/log/nginx/:/remotelogs/nginx:ro \
-		--restart unless-stopped \
+		--restart=always \
 		lscr.io/linuxserver/fail2ban:latest
 
 	sleep 3
@@ -6557,7 +6557,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}BTOPモダン監視ツール${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}範囲ファイル管理ツール"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}NCDUディスク職業視聴ツール${gl_kjlan}14.  ${gl_bai}FZFグローバル検索ツール"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}VIMテキストエディター${gl_kjlan}16.  ${gl_bai}ナノテキストエディター${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}Gitバージョン制御システム"
+	  echo -e "${gl_kjlan}17.  ${gl_bai}gitバージョン制御システム"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}マトリックス画面保証${gl_kjlan}22.  ${gl_bai}列車のスクリーンのセキュリティ"
 	  echo -e "${gl_kjlan}26.  ${gl_bai}テトリスゲーム${gl_kjlan}27.  ${gl_bai}ヘビを食べるゲーム"
@@ -9049,7 +9049,7 @@ while true; do
 			  -v /home/docker/webtop/data:/config \
 			  -v /var/run/docker.sock:/var/run/docker.sock \
 			  --shm-size="1gb" \
-			  --restart unless-stopped \
+			  --restart=always \
 			  lscr.io/linuxserver/webtop:ubuntu-kde
 
 
@@ -9131,7 +9131,7 @@ while true; do
 			  -p 56881:56881/udp \
 			  -v /home/docker/qbittorrent/config:/config \
 			  -v /home/docker/qbittorrent/downloads:/downloads \
-			  --restart unless-stopped \
+			  --restart=always \
 			  lscr.io/linuxserver/qbittorrent:latest
 
 		}
@@ -9366,7 +9366,7 @@ while true; do
 			  -p ${docker_port}:5700 \
 			  --name qinglong \
 			  --hostname qinglong \
-			  --restart unless-stopped \
+			  --restart=always \
 			  whyour/qinglong:latest
 
 
@@ -9432,7 +9432,7 @@ while true; do
 			  -e PGID=1000 \
 			  -v /home/docker/easyimage/config:/app/web/config \
 			  -v /home/docker/easyimage/i:/app/web/i \
-			  --restart unless-stopped \
+			  --restart=always \
 			  ddsderek/easyimage:latest
 
 		}
@@ -9749,7 +9749,7 @@ while true; do
 			  -v /home/docker/webtop/data:/config \
 			  -v /var/run/docker.sock:/var/run/docker.sock \
 			  --shm-size="1gb" \
-			  --restart unless-stopped \
+			  --restart=always \
 			  lscr.io/linuxserver/webtop:latest
 
 		}
@@ -9812,7 +9812,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --name dockge --restart unless-stopped -p ${docker_port}:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/home/docker/dockge/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge
+			docker run -d --name dockge --restart=always -p ${docker_port}:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/home/docker/dockge/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge
 
 		}
 
@@ -9854,7 +9854,7 @@ while true; do
 
 			docker run -d \
 			  --name searxng \
-			  --restart unless-stopped \
+			  --restart=always \
 			  -p ${docker_port}:8080 \
 			  -v "/home/docker/searxng:/etc/searxng" \
 			  searxng/searxng
@@ -10008,7 +10008,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --restart unless-stopped \
+			docker run -d --restart=always \
 				-p ${docker_port}:3000 \
 				-v /home/docker/moments/data:/app/data \
 				-v /etc/localtime:/etc/localtime:ro \
@@ -10162,7 +10162,7 @@ while true; do
 			  -e ENCRYPTION_KEY=${ENCRYPTION_KEY} \
 			  -p ${docker_port}:6989 \
 			  -v /home/docker/nexterm:/app/data \
-			  --restart unless-stopped \
+			  --restart=always \
 			  germannewsmaker/nexterm:latest
 
 		}
@@ -10183,7 +10183,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run --name hbbs -v /home/docker/hbbs/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbs
+			docker run --name hbbs -v /home/docker/hbbs/data:/root -td --net=host --restart=always rustdesk/rustdesk-server hbbs
 
 		}
 
@@ -10204,7 +10204,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart unless-stopped rustdesk/rustdesk-server hbbr
+			docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart=always rustdesk/rustdesk-server hbbr
 
 		}
 
@@ -10313,7 +10313,7 @@ while true; do
 			docker run -d \
 				--name=node-exporter \
 				-p ${docker_port}:9100 \
-				--restart unless-stopped \
+				--restart=always \
 				prom/node-exporter
 
 
@@ -10337,7 +10337,7 @@ while true; do
 
 			docker run -d \
 				--name=cadvisor \
-				--restart unless-stopped \
+				--restart=always \
 				-p ${docker_port}:8080 \
 				--volume=/:/rootfs:ro \
 				--volume=/var/run:/var/run:rw \
@@ -10708,7 +10708,7 @@ while true; do
 		local docker_port=8064
 
 		docker_rum() {
-			docker run -d --name it-tools --restart unless-stopped -p ${docker_port}:80 corentinth/it-tools:latest
+			docker run -d --name it-tools --restart=always -p ${docker_port}:80 corentinth/it-tools:latest
 		}
 
 		local docker_describe="对开发人员和 IT 工作者来说非常有用的工具"
@@ -10852,7 +10852,7 @@ while true; do
 			  -p 6199:6199 \
 			  -p 11451:11451 \
 			  -v /home/docker/astrbot/data:/AstrBot/data \
-			  --restart unless-stopped \
+			  --restart=always \
 			  --name astrbot \
 			  soulter/astrbot:latest
 
@@ -10877,7 +10877,7 @@ while true; do
 
 			docker run -d \
 			  --name navidrome \
-			  --restart=unless-stopped \
+			  --restart=always \
 			  --user $(id -u):$(id -g) \
 			  -v /home/docker/navidrome/music:/music \
 			  -v /home/docker/navidrome/data:/data \
@@ -10939,7 +10939,7 @@ while true; do
 
 			docker run -d \
 			  --name libretv \
-			  --restart unless-stopped \
+			  --restart=always \
 			  -p ${docker_port}:8080 \
 			  -e PASSWORD=${app_passwd} \
 			  bestzwei/libretv:latest
@@ -11020,7 +11020,7 @@ while true; do
 
 			docker run -d \
 			  --name melody \
-			  --restart unless-stopped \
+			  --restart=always \
 			  -p ${docker_port}:5566 \
 			  -v /home/docker/melody/.profile:/app/backend/.profile \
 			  foamzou/melody:latest
@@ -11049,7 +11049,7 @@ while true; do
 		docker_rum() {
 			docker run -d \
 				--name dosgame \
-				--restart unless-stopped \
+				--restart=always \
 				-p ${docker_port}:262 \
 				oldiy/dosgame-web-docker:latest
 
@@ -11079,7 +11079,7 @@ while true; do
 
 			docker run -d \
 			  --name xunlei \
-			  --restart unless-stopped \
+			  --restart=always \
 			  --privileged \
 			  -e XL_DASHBOARD_USERNAME=${app_use} \
 			  -e XL_DASHBOARD_PASSWORD=${app_passwd} \
@@ -11141,7 +11141,7 @@ while true; do
 			mkdir -p /home/docker/beszel && \
 			docker run -d \
 			  --name beszel \
-			  --restart=unless-stopped \
+			  --restart=always \
 			  -v /home/docker/beszel:/beszel_data \
 			  -p ${docker_port}:8090 \
 			  henrygd/beszel
@@ -11359,7 +11359,7 @@ while true; do
 			  -v /home/docker/wallos/logos:/var/www/html/images/uploads/logos \
 			  -e TZ=UTC \
 			  -p ${docker_port}:80 \
-			  --restart unless-stopped \
+			  --restart=always \
 			  bellamy/wallos:latest
 
 		}
@@ -11436,7 +11436,7 @@ while true; do
 			  --mount type=bind,source=/home/docker/jellyfin/media,target=/media \
 			  -p ${docker_port}:8096 \
 			  -p 7359:7359/udp \
-			  --restart=unless-stopped \
+			  --restart=always \
 			  jellyfin/jellyfin
 
 
@@ -11524,7 +11524,7 @@ while true; do
 			  --name file-code-box \
 			  -p ${docker_port}:12345 \
 			  -v /home/docker/file-code-box/data:/app/data \
-			  --restart unless-stopped \
+			  --restart=always \
 			  lanol/filecodebox:latest
 
 		}
@@ -11565,7 +11565,7 @@ while true; do
 			  --name matrix \
 			  -v /home/docker/matrix/data:/data \
 			  -p ${docker_port}:8008 \
-			  --restart unless-stopped \
+			  --restart=always \
 			  matrixdotorg/synapse:latest
 
 			echo "初期ユーザーまたは管理者を作成します。次のユーザー名とパスワード、およびあなたが管理者であるかどうかを設定してください。"
@@ -11655,7 +11655,7 @@ while true; do
 
 			docker run -d \
 				--name filebrowser \
-				--restart unless-stopped \
+				--restart=always \
 				-p ${docker_port}:8080 \
 				-v /home/docker/filebrowser/data:/data \
 				-v /home/docker/filebrowser/config:/config \
@@ -11684,7 +11684,7 @@ while true; do
 
 			docker run -d \
 			  --name ${docker_name} \
-			  --restart unless-stopped \
+			  --restart=always \
 			  -v /home/docker/${docker_name}:/data \
 			  -p ${docker_port}:5000 \
 			  ${docker_img} /data -A
@@ -11714,7 +11714,7 @@ while true; do
 
 			docker run -d \
 			  --name ${docker_name} \
-			  --restart unless-stopped \
+			  --restart=always \
 			  -v /home/docker/${docker_name}/downloads:/app/Downloads \
 			  -v /home/docker/${docker_name}/storage:/app/storage \
 			  -p ${docker_port}:9999 \
@@ -11785,15 +11785,17 @@ while true; do
 		local app_id="97"
 		local docker_name="wireguard"
 		local docker_img="lscr.io/linuxserver/wireguard:latest"
-		local docker_port=51820
+		local docker_port=8097
 
 		docker_rum() {
 
 		read -p "ネットワークを形成するためにクライアントの数を入力してください（デフォルト5）：" COUNT
 		COUNT=${COUNT:-5}
+		read -p "WireGuardセグメントを入力してください（デフォルト10.13.13.0）：" NETWORK
+		NETWORK=${NETWORK:-10.13.13.0}
 
 		PEERS=$(seq -f "wg%02g" 1 "$COUNT" | paste -sd,)
-		
+
 		ip link delete wg0 &>/dev/null
 
 		ip_address
@@ -11808,23 +11810,40 @@ while true; do
 		  -e SERVERURL=${ipv4_address} \
 		  -e SERVERPORT=51820 \
 		  -e PEERS=${PEERS} \
-		  -e INTERNAL_SUBNET=10.13.13.0 \
-		  -e ALLOWEDIPS=10.13.13.0/24 \
+		  -e INTERNAL_SUBNET=${NETWORK} \
+		  -e ALLOWEDIPS=${NETWORK}/24 \
 		  -e PERSISTENTKEEPALIVE_PEERS=all \
 		  -e LOG_CONFS=true \
 		  -v /home/docker/wireguard/config:/config \
 		  -v /lib/modules:/lib/modules \
-		  --restart unless-stopped \
+		  --restart=always \
 		  lscr.io/linuxserver/wireguard:latest
 
 
 		sleep 3
-		docker exec wireguard sh -c 'for d in /config/peer_*; do sed -i "/^DNS *= *10\.13\.13\.1$/d" "$d"/*.conf; done'
+
+		docker exec wireguard sh -c "
+		f='/config/wg_confs/wg0.conf'
+		sed -i 's/51820/${docker_port}/g' \$f
+		"
+
+		docker exec wireguard sh -c "
+		for d in /config/peer_*; do
+		  sed -i 's/51820/${docker_port}/g' \$d/*.conf
+		done
+		"
+
+		docker exec wireguard sh -c '
+		for d in /config/peer_*; do
+		  sed -i "/^DNS/d" "$d"/*.conf
+		done
+		'
+
 		docker exec wireguard sh -c '
 		for d in /config/peer_*; do
 		  for f in "$d"/*.conf; do
-			grep -q "^PersistentKeepalive *= *25$" "$f" || \
-			sed -i "/^AllowedIPs *= *10\.13\.13\.0\/24$/a PersistentKeepalive = 25" "$f"
+			grep -q "^PersistentKeepalive" "$f" || \
+			sed -i "/^AllowedIPs/ a PersistentKeepalive = 25" "$f"
 		  done
 		done
 		'
@@ -11834,15 +11853,20 @@ while true; do
 		  cd "$d" || continue
 		  conf_file=$(ls *.conf)
 		  base_name="${conf_file%.conf}"
-		  echo "QRコードを生成します：$base_name.png"
 		  qrencode -o "$base_name.png" < "$conf_file"
 		done
 		'
 
+		docker restart wireguard
+
 		sleep 2
+		echo
+		echo -e "${gl_huang}すべてのクライアントQRコード構成：${gl_bai}"
 		docker exec -it wireguard bash -c 'for i in $(ls /config | grep peer_ | sed "s/peer_//"); do echo "--- $i ---"; /app/show-peer $i; done'
 		sleep 2
-		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "===== $(basename $d) ====="; cat $d/*.conf; echo; done'
+		echo
+		echo -e "${gl_huang}すべてのクライアント構成コード：${gl_bai}"
+		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "# $(basename $d) "; cat $d/*.conf; echo; done'
 		sleep 2
 		echo -e "${gl_lv}${COUNT}すべての出力は各クライアントによって提供されます。使用方法は次のとおりです。${gl_bai}"
 		echo -e "${gl_lv}1.携帯電話にWGのアプリをダウンロードして、上のQRコードをスキャンしてネットワークにすばやく接続します${gl_bai}"
@@ -12229,7 +12253,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}29.  ${gl_bai}ウイルススキャンツール${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}ファイルマネージャー"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}システム言語を切り替えます${gl_kjlan}32.  ${gl_bai}コマンドラインの美化ツール${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}システムリサイクルビンをセットアップします${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
+	  echo -e "${gl_kjlan}33.  ${gl_bai}システムリサイクルビンをセットアップします${gl_kjlan}34.  ${gl_bai}システムのバックアップと回復"
 	  echo -e "${gl_kjlan}35.  ${gl_bai}SSHリモート接続ツール${gl_kjlan}36.  ${gl_bai}ハードディスクパーティション管理ツール"
 	  echo -e "${gl_kjlan}37.  ${gl_bai}コマンドラインの履歴${gl_kjlan}38.  ${gl_bai}RSYNCリモート同期ツール"
 	  echo -e "${gl_kjlan}39.  ${gl_bai}コマンドのお気に入り${gl_huang}★${gl_bai}"
@@ -12393,7 +12417,7 @@ EOF
 						send_stats "SSHポート変更を終了します"
 						break
 					else
-						echo "ポート番号が無効です。1〜65535の数字を入力してください。"
+						echo "ポート番号は無効です。1〜65535の数字を入力してください。"
 						send_stats "無効なSSHポート入力"
 						break_end
 					fi
@@ -12604,7 +12628,7 @@ EOF
 						  ;;
 					  4)
 					   read -e -p "ユーザー名を入力してください：" username
-					   # sudoersファイルからユーザーのsudo許可を削除します
+					   # sudoersファイルからユーザーのsudoアクセス許可を削除します
 					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
 
 						  ;;
