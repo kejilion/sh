@@ -1558,7 +1558,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "First resolve the domain name to the native IP:${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "First resolve the domain name to the local IP:${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "Please enter your IP or the resolved domain name:" yuming
 }
 
@@ -4591,8 +4591,8 @@ dd_xitong() {
 			echo "35. openSUSE Tumbleweed 36. fnos Feiniu public beta version"
 			echo "------------------------"
 			echo "41. Windows 11                42. Windows 10"
-			echo "43. Windows 7                 44. Windows Server 2022"
-			echo "45. Windows Server 2019       46. Windows Server 2016"
+			echo "43. Windows 7                 44. Windows Server 2025"
+			echo "45. Windows Server 2022       46. Windows Server 2019"
 			echo "47. Windows 11 ARM"
 			echo "------------------------"
 			echo "0. Return to the previous menu"
@@ -4788,7 +4788,6 @@ dd_xitong() {
 				exit
 				;;
 
-
 			  41)
 				send_stats "Reinstall windows11"
 				dd_xitong_2
@@ -4796,6 +4795,7 @@ dd_xitong() {
 				reboot
 				exit
 				;;
+
 			  42)
 				dd_xitong_2
 				send_stats "Reinstall Windows 10"
@@ -4803,6 +4803,7 @@ dd_xitong() {
 				reboot
 				exit
 				;;
+
 			  43)
 				send_stats "Reinstall Windows 7"
 				dd_xitong_4
@@ -4812,23 +4813,25 @@ dd_xitong() {
 				;;
 
 			  44)
+				send_stats "Reinstall windows server 25"
+				dd_xitong_2
+				bash InstallNET.sh -windows 2025 -lang "cn"
+				reboot
+				exit
+				;;
+
+			  45)
 				send_stats "Reinstall windows server 22"
 				dd_xitong_2
 				bash InstallNET.sh -windows 2022 -lang "cn"
 				reboot
 				exit
 				;;
-			  45)
+
+			  46)
 				send_stats "Reinstall windows server 19"
 				dd_xitong_2
 				bash InstallNET.sh -windows 2019 -lang "cn"
-				reboot
-				exit
-				;;
-			  46)
-				send_stats "Reinstall windows server 16"
-				dd_xitong_2
-				bash InstallNET.sh -windows 2016 -lang "cn"
 				reboot
 				exit
 				;;
@@ -5818,7 +5821,7 @@ list_connections() {
 # Add a new connection
 add_connection() {
 	send_stats "Add a new connection"
-	echo "Example to create a new connection:"
+	echo "Create a new connection example:"
 	echo "- Connection name: my_server"
 	echo "- IP address: 192.168.1.100"
 	echo "- Username: root"
@@ -6882,7 +6885,7 @@ docker_ssh_migration() {
 
 		echo -e "${YELLOW}Backing up Docker container...${NC}"
 		docker ps --format '{{.Names}}'
-		read -p "Please enter the name of the container to be backed up (separated by multiple spaces, and the Enter backup is all running containers):" containers
+		read -e -p  "Please enter the name of the container to be backed up (separated by multiple spaces, and the Enter backup is all running containers):" containers
 
 		install tar jq gzip
 		install_docker
@@ -6917,7 +6920,7 @@ docker_ssh_migration() {
 				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
 				if [ -z "$project_dir" ]; then
-					read -p "The compose directory is not detected, please enter the path manually:" project_dir
+					read -e -p  "The compose directory is not detected, please enter the path manually:" project_dir
 				fi
 
 				# If the Compose project has been packaged, skip it
@@ -6990,7 +6993,7 @@ docker_ssh_migration() {
 	restore_docker() {
 
 		send_stats "Docker restore"
-		read -p "Please enter the backup directory to restore:" BACKUP_DIR
+		read -e -p  "Please enter the backup directory to restore:" BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}The backup directory does not exist${NC}"; return; }
 
 		echo -e "${BLUE}Start the restore operation...${NC}"
@@ -7005,7 +7008,7 @@ docker_ssh_migration() {
 				project_name=$(basename "$f" | sed 's/backup_type_//')
 				path_file="$BACKUP_DIR/compose_path_${project_name}.txt"
 				[[ -f "$path_file" ]] && original_path=$(cat "$path_file") || original_path=""
-				[[ -z "$original_path" ]] && read -p "The original path was not found, please enter the restore directory path:" original_path
+				[[ -z "$original_path" ]] && read -e -p  "The original path was not found, please enter the restore directory path:" original_path
 
 				# Check if the container for the compose project is already running
 				running_count=$(docker ps --filter "label=com.docker.compose.project=$project_name" --format '{{.Names}}' | wc -l)
@@ -7014,8 +7017,8 @@ docker_ssh_migration() {
 					continue
 				fi
 
-				read -p "Confirm restoring the Compose project [$project_name] to path [$original_path] ? (y/n): " confirm
-				[[ "$confirm" != "y" ]] && read -p "Please enter a new restore path:" original_path
+				read -e -p  "Confirm restoring the Compose project [$project_name] to path [$original_path] ? (y/n): " confirm
+				[[ "$confirm" != "y" ]] && read -e -p  "Please enter a new restore path:" original_path
 
 				mkdir -p "$original_path"
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
@@ -7109,11 +7112,11 @@ docker_ssh_migration() {
 	migrate_docker() {
 		send_stats "Docker migration"
 		install jq
-		read -p "Please enter the backup directory to migrate:" BACKUP_DIR
+		read -e -p  "Please enter the backup directory to migrate:" BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}The backup directory does not exist${NC}"; return; }
 
-		read -p "Target server IP:" TARGET_IP
-		read -p "Target server SSH username:" TARGET_USER
+		read -e -p  "Target server IP:" TARGET_IP
+		read -e -p  "Target server SSH username:" TARGET_USER
 
 		LATEST_TAR="$BACKUP_DIR"  # 这里直接传整个目录
 
@@ -7130,7 +7133,7 @@ docker_ssh_migration() {
 	# ----------------------------
 	delete_backup() {
 		send_stats "Docker backup file deletion"
-		read -p "Please enter the backup directory to delete:" BACKUP_DIR
+		read -e -p  "Please enter the backup directory to delete:" BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}The backup directory does not exist${NC}"; return; }
 		rm -rf "$BACKUP_DIR"
 		echo -e "${GREEN}Deleted backup:${BACKUP_DIR}${NC}"
@@ -7156,7 +7159,7 @@ docker_ssh_migration() {
 			echo "------------------------"
 			echo -e "0. Return to the previous menu"
 			echo "------------------------"
-			read -p "Please select:" choice
+			read -e -p  "Please select:" choice
 			case $choice in
 				1) backup_docker ;;
 				2) migrate_docker ;;
@@ -11789,9 +11792,9 @@ while true; do
 
 		docker_rum() {
 
-		read -p "Please enter the number of clients to form the network (default 5):" COUNT
+		read -e -p  "Please enter the number of clients to form the network (default 5):" COUNT
 		COUNT=${COUNT:-5}
-		read -p "Please enter the WireGuard segment (default 10.13.13.0):" NETWORK
+		read -e -p  "Please enter the WireGuard segment (default 10.13.13.0):" NETWORK
 		NETWORK=${NETWORK:-10.13.13.0}
 
 		PEERS=$(seq -f "wg%02g" 1 "$COUNT" | paste -sd,)
@@ -11868,7 +11871,7 @@ while true; do
 		echo -e "${gl_huang}All client configuration codes:${gl_bai}"
 		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "# $(basename $d) "; cat $d/*.conf; echo; done'
 		sleep 2
-		echo -e "${gl_lv}${COUNT}All outputs are provided by each client. The usage method is as follows:${gl_bai}"
+		echo -e "${gl_lv}${COUNT}All outputs are all configured by each client, and the usage method is as follows:${gl_bai}"
 		echo -e "${gl_lv}1. Download wg's APP on your mobile phone, scan the QR code above to quickly connect to the network${gl_bai}"
 		echo -e "${gl_lv}2. Download the Windows client and copy the configuration code to connect to the network.${gl_bai}"
 		echo -e "${gl_lv}3. Linux uses scripts to deploy WG clients and copy configuration code to connect to the network.${gl_bai}"
@@ -11926,6 +11929,8 @@ while true; do
 			echo "$input" > "$CONFIG_FILE"
 
 			echo "Client configuration has been saved to$CONFIG_FILE"
+
+			ip link delete wg0 &>/dev/null
 
 			docker run -d \
 			  --name wireguardc \

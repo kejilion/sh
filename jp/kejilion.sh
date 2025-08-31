@@ -793,7 +793,7 @@ docker_ipv6_on() {
 			UPDATED_CONFIG=$(echo "$ORIGINAL_CONFIG" | jq '. + {"fixed-cidr-v6": "2001:db8:1::/64"}')
 		fi
 
-		# 元の構成を新しい構成と比較します
+		# 元の構成と新しい構成を比較します
 		if [[ "$ORIGINAL_CONFIG" == "$UPDATED_CONFIG" ]]; then
 			echo -e "${gl_huang}現在、IPv6アクセスが有効になっています${gl_bai}"
 		else
@@ -825,7 +825,7 @@ docker_ipv6_off() {
 	# 現在のIPv6ステータスを確認してください
 	local CURRENT_IPV6=$(echo "$ORIGINAL_CONFIG" | jq -r '.ipv6 // false')
 
-	# 元の構成を新しい構成と比較します
+	# 元の構成と新しい構成を比較します
 	if [[ "$CURRENT_IPV6" == "false" ]]; then
 		echo -e "${gl_huang}IPv6アクセスは現在閉じられています${gl_bai}"
 	else
@@ -1558,7 +1558,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "最初にドメイン名をネイティブIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "最初にドメイン名をローカルIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IPまたは解決されたドメイン名を入力してください：" yuming
 }
 
@@ -3892,7 +3892,7 @@ frps_panel() {
 		echo "------------------------"
 		echo "7. IP+ポートアクセスを許可8。BlockIP+ポートアクセス"
 		echo "------------------------"
-		echo "00。サービスのステータスを更新します。前のメニューに戻ります"
+		echo "00。サービスのステータスを更新します0。前のメニューに戻ります"
 		echo "------------------------"
 		read -e -p "あなたの選択を入力してください：" choice
 		case $choice in
@@ -4147,7 +4147,7 @@ yt_menu_pro() {
 					--no-overwrites --no-post-overwrites
 				read -e -p "実行が完了したら、キーを押して続行します..." ;;
 			8)
-				send_stats "mp3ダウンロード"
+				send_stats "MP3ダウンロード"
 				read -e -p "ビデオリンクを入力してください：" url
 				yt-dlp -P "$VIDEO_DIR" -x --audio-format mp3 \
 					--write-subs --sub-langs all \
@@ -4521,7 +4521,7 @@ echo -e "${gl_lv}ルートログインがセットアップされます！${gl_b
 
 root_use() {
 clear
-[ "$EUID" -ne 0 ] && echo -e "${gl_huang}ヒント：${gl_bai}この機能では、ルートユーザーを実行する必要があります！" && break_end && kejilion
+[ "$EUID" -ne 0 ] && echo -e "${gl_huang}ヒント：${gl_bai}この機能には、ルートユーザーを実行する必要があります！" && break_end && kejilion
 }
 
 
@@ -4591,8 +4591,8 @@ dd_xitong() {
 			echo "35。OpenSuseTumbleWeed36。FNOSFEINIU PUBLIC BETAバージョン"
 			echo "------------------------"
 			echo "41. Windows 11                42. Windows 10"
-			echo "43. Windows 7                 44. Windows Server 2022"
-			echo "45. Windows Server 2019       46. Windows Server 2016"
+			echo "43. Windows 7                 44. Windows Server 2025"
+			echo "45. Windows Server 2022       46. Windows Server 2019"
 			echo "47. Windows 11 ARM"
 			echo "------------------------"
 			echo "0。前のメニューに戻ります"
@@ -4788,7 +4788,6 @@ dd_xitong() {
 				exit
 				;;
 
-
 			  41)
 				send_stats "Windows11を再インストールします"
 				dd_xitong_2
@@ -4796,6 +4795,7 @@ dd_xitong() {
 				reboot
 				exit
 				;;
+
 			  42)
 				dd_xitong_2
 				send_stats "Windows 10を再インストールします"
@@ -4803,6 +4803,7 @@ dd_xitong() {
 				reboot
 				exit
 				;;
+
 			  43)
 				send_stats "Windows 7を再インストールします"
 				dd_xitong_4
@@ -4812,23 +4813,25 @@ dd_xitong() {
 				;;
 
 			  44)
+				send_stats "Windows Server 25を再インストールします"
+				dd_xitong_2
+				bash InstallNET.sh -windows 2025 -lang "cn"
+				reboot
+				exit
+				;;
+
+			  45)
 				send_stats "Windows Server 22を再インストールします"
 				dd_xitong_2
 				bash InstallNET.sh -windows 2022 -lang "cn"
 				reboot
 				exit
 				;;
-			  45)
+
+			  46)
 				send_stats "Windows Server 19を再インストールします"
 				dd_xitong_2
 				bash InstallNET.sh -windows 2019 -lang "cn"
-				reboot
-				exit
-				;;
-			  46)
-				send_stats "Windows Server 16を再インストールします"
-				dd_xitong_2
-				bash InstallNET.sh -windows 2016 -lang "cn"
 				reboot
 				exit
 				;;
@@ -5278,7 +5281,7 @@ optimize_balanced() {
 
 # デフォルト設定関数を復元します
 restore_defaults() {
-	echo -e "${gl_lv}デフォルト設定に復元...${gl_bai}"
+	echo -e "${gl_lv}デフォルト設定に復元します...${gl_bai}"
 
 	echo -e "${gl_lv}ファイル記述子を復元します...${gl_bai}"
 	ulimit -n 1024
@@ -5818,7 +5821,7 @@ list_connections() {
 # 新しい接続を追加します
 add_connection() {
 	send_stats "新しい接続を追加します"
-	echo "新しい接続を作成する例："
+	echo "新しい接続例を作成します："
 	echo "- 接続名：my_server"
 	echo "-  IPアドレス：192.168.1.100"
 	echo "- ユーザー名：root"
@@ -6418,7 +6421,7 @@ rsync_manager() {
 		echo
 		echo "1.新しいタスクを作成します2。タスクを削除します"
 		echo "3.リモートエンドにローカル同期を実行する4。ローカルエンドにリモート同期を実行する"
-		echo "5.タイミングタスクを作成6.タイミングタスクを削除します"
+		echo "5.タイミングタスクを作成6。タイミングタスクを削除します"
 		echo "---------------------------------"
 		echo "0。前のメニューに戻ります"
 		echo "---------------------------------"
@@ -6882,7 +6885,7 @@ docker_ssh_migration() {
 
 		echo -e "${YELLOW}Dockerコンテナのバックアップ...${NC}"
 		docker ps --format '{{.Names}}'
-		read -p "バックアップするコンテナの名前を入力してください（複数のスペースで区切られていて、Enterバックアップはすべて実行中のコンテナです）：" containers
+		read -e -p  "バックアップするコンテナの名前を入力してください（複数のスペースで区切られていて、Enterバックアップはすべて実行中のコンテナです）：" containers
 
 		install tar jq gzip
 		install_docker
@@ -6917,7 +6920,7 @@ docker_ssh_migration() {
 				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
 				if [ -z "$project_dir" ]; then
-					read -p "Compose Directoryは検出されません。手動でパスを入力してください。" project_dir
+					read -e -p  "Compose Directoryは検出されません。手動でパスを入力してください。" project_dir
 				fi
 
 				# Composeプロジェクトがパッケージ化されている場合は、スキップしてください
@@ -6990,7 +6993,7 @@ docker_ssh_migration() {
 	restore_docker() {
 
 		send_stats "Dockerの復元"
-		read -p "復元するには、バックアップディレクトリを入力してください。" BACKUP_DIR
+		read -e -p  "復元するには、バックアップディレクトリを入力してください。" BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}バックアップディレクトリは存在しません${NC}"; return; }
 
 		echo -e "${BLUE}復元操作を開始します...${NC}"
@@ -7005,7 +7008,7 @@ docker_ssh_migration() {
 				project_name=$(basename "$f" | sed 's/backup_type_//')
 				path_file="$BACKUP_DIR/compose_path_${project_name}.txt"
 				[[ -f "$path_file" ]] && original_path=$(cat "$path_file") || original_path=""
-				[[ -z "$original_path" ]] && read -p "元のパスが見つかりませんでした。復元ディレクトリパスを入力してください。" original_path
+				[[ -z "$original_path" ]] && read -e -p  "元のパスが見つかりませんでした。復元ディレクトリパスを入力してください。" original_path
 
 				# Composeプロジェクトのコンテナがすでに実行されているかどうかを確認します
 				running_count=$(docker ps --filter "label=com.docker.compose.project=$project_name" --format '{{.Names}}' | wc -l)
@@ -7014,8 +7017,8 @@ docker_ssh_migration() {
 					continue
 				fi
 
-				read -p "Composeプロジェクトの復元を確認します[$project_name]パスへ[$original_path] ? (y/n): " confirm
-				[[ "$confirm" != "y" ]] && read -p "新しい復元パスを入力してください：" original_path
+				read -e -p  "Composeプロジェクトの復元を確認します[$project_name]パスへ[$original_path] ? (y/n): " confirm
+				[[ "$confirm" != "y" ]] && read -e -p  "新しい復元パスを入力してください：" original_path
 
 				mkdir -p "$original_path"
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
@@ -7109,11 +7112,11 @@ docker_ssh_migration() {
 	migrate_docker() {
 		send_stats "Dockerの移行"
 		install jq
-		read -p "移行するには、バックアップディレクトリを入力してください。" BACKUP_DIR
+		read -e -p  "移行するには、バックアップディレクトリを入力してください。" BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}バックアップディレクトリは存在しません${NC}"; return; }
 
-		read -p "ターゲットサーバーIP：" TARGET_IP
-		read -p "ターゲットサーバーSSHユーザー名：" TARGET_USER
+		read -e -p  "ターゲットサーバーIP：" TARGET_IP
+		read -e -p  "ターゲットサーバーSSHユーザー名：" TARGET_USER
 
 		LATEST_TAR="$BACKUP_DIR"  # 这里直接传整个目录
 
@@ -7130,7 +7133,7 @@ docker_ssh_migration() {
 	# ----------------------------
 	delete_backup() {
 		send_stats "Dockerバックアップファイルの削除"
-		read -p "削除するには、バックアップディレクトリを入力してください。" BACKUP_DIR
+		read -e -p  "削除するには、バックアップディレクトリを入力してください。" BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}バックアップディレクトリは存在しません${NC}"; return; }
 		rm -rf "$BACKUP_DIR"
 		echo -e "${GREEN}削除されたバックアップ：${BACKUP_DIR}${NC}"
@@ -7156,7 +7159,7 @@ docker_ssh_migration() {
 			echo "------------------------"
 			echo -e "0。前のメニューに戻ります"
 			echo "------------------------"
-			read -p "選択してください：" choice
+			read -e -p  "選択してください：" choice
 			case $choice in
 				1) backup_docker ;;
 				2) migrate_docker ;;
@@ -7904,7 +7907,7 @@ linux_ldnmp() {
 
 
 	  ldnmp_web_on
-	  echo "データベースアドレス：MySQL"
+	  echo "データベースアドレス：mysql"
 	  echo "データベース名：$dbname"
 	  echo "ユーザー名：$dbuse"
 	  echo "パスワード：$dbusepasswd"
@@ -7940,7 +7943,7 @@ linux_ldnmp() {
 	  restart_ldnmp
 
 	  ldnmp_web_on
-	  echo "データベースアドレス：MySQL"
+	  echo "データベースアドレス：mysql"
 	  echo "ユーザー名：$dbuse"
 	  echo "パスワード：$dbusepasswd"
 	  echo "データベース名：$dbname"
@@ -7979,7 +7982,7 @@ linux_ldnmp() {
 
 
 	  ldnmp_web_on
-	  echo "データベースアドレス：MySQL"
+	  echo "データベースアドレス：mysql"
 	  echo "データベースポート：3306"
 	  echo "データベース名：$dbname"
 	  echo "ユーザー名：$dbuse"
@@ -8017,7 +8020,7 @@ linux_ldnmp() {
 
 
 	  ldnmp_web_on
-	  echo "データベースアドレス：MySQL"
+	  echo "データベースアドレス：mysql"
 	  echo "データベースポート：3306"
 	  echo "データベース名：$dbname"
 	  echo "ユーザー名：$dbuse"
@@ -8081,7 +8084,7 @@ linux_ldnmp() {
 
 
 	  ldnmp_web_on
-	  echo "データベースアドレス：MySQL"
+	  echo "データベースアドレス：mysql"
 	  echo "データベース名：$dbname"
 	  echo "ユーザー名：$dbuse"
 	  echo "パスワード：$dbusepasswd"
@@ -8120,7 +8123,7 @@ linux_ldnmp() {
 	  clear
 	  ldnmp_web_on
 	  echo "データベースプレフィックス：typecho_"
-	  echo "データベースアドレス：MySQL"
+	  echo "データベースアドレス：mysql"
 	  echo "ユーザー名：$dbuse"
 	  echo "パスワード：$dbusepasswd"
 	  echo "データベース名：$dbname"
@@ -8158,7 +8161,7 @@ linux_ldnmp() {
 
 	  clear
 	  ldnmp_web_on
-	  echo "データベースアドレス：MySQL"
+	  echo "データベースアドレス：mysql"
 	  echo "データベースポート：3306"
 	  echo "データベース名：$dbname"
 	  echo "ユーザー名：$dbuse"
@@ -8284,7 +8287,7 @@ linux_ldnmp() {
 	  restart_ldnmp
 	  ldnmp_web_on
 	  prefix="web$(shuf -i 10-99 -n 1)_"
-	  echo "データベースアドレス：MySQL"
+	  echo "データベースアドレス：mysql"
 	  echo "データベース名：$dbname"
 	  echo "ユーザー名：$dbuse"
 	  echo "パスワード：$dbusepasswd"
@@ -11789,9 +11792,9 @@ while true; do
 
 		docker_rum() {
 
-		read -p "ネットワークを形成するためにクライアントの数を入力してください（デフォルト5）：" COUNT
+		read -e -p  "ネットワークを形成するためにクライアントの数を入力してください（デフォルト5）：" COUNT
 		COUNT=${COUNT:-5}
-		read -p "WireGuardセグメントを入力してください（デフォルト10.13.13.0）：" NETWORK
+		read -e -p  "WireGuardセグメントを入力してください（デフォルト10.13.13.0）：" NETWORK
 		NETWORK=${NETWORK:-10.13.13.0}
 
 		PEERS=$(seq -f "wg%02g" 1 "$COUNT" | paste -sd,)
@@ -11868,7 +11871,7 @@ while true; do
 		echo -e "${gl_huang}すべてのクライアント構成コード：${gl_bai}"
 		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "# $(basename $d) "; cat $d/*.conf; echo; done'
 		sleep 2
-		echo -e "${gl_lv}${COUNT}すべての出力は各クライアントによって提供されます。使用方法は次のとおりです。${gl_bai}"
+		echo -e "${gl_lv}${COUNT}すべての出力はすべて各クライアントによって構成されており、使用方法は次のとおりです。${gl_bai}"
 		echo -e "${gl_lv}1.携帯電話にWGのアプリをダウンロードして、上のQRコードをスキャンしてネットワークにすばやく接続します${gl_bai}"
 		echo -e "${gl_lv}2。Windowsクライアントをダウンロードし、構成コードをコピーしてネットワークに接続します。${gl_bai}"
 		echo -e "${gl_lv}3。Linuxはスクリプトを使用してWGクライアントを展開し、構成コードをコピーしてネットワークに接続します。${gl_bai}"
@@ -11926,6 +11929,8 @@ while true; do
 			echo "$input" > "$CONFIG_FILE"
 
 			echo "クライアントの構成が保存されています$CONFIG_FILE"
+
+			ip link delete wg0 &>/dev/null
 
 			docker run -d \
 			  --name wireguardc \
@@ -12903,7 +12908,7 @@ EOF
 								  break  # 跳出
 								  ;;
 						  esac
-						  send_stats "タイムされたタスクを追加します"
+						  send_stats "時限タスクを追加します"
 						  ;;
 					  2)
 						  read -e -p "削除する必要があるキーワードを入力してください。" kquest
@@ -13148,7 +13153,7 @@ EOF
 			  echo "TG-BOTモニタリングと早期警告機能"
 			  echo "ビデオの紹介：https：//youtu.be/vll-eb3z_ty"
 			  echo "------------------------------------------------"
-			  echo "ネイティブCPU、メモリ、ハードディスク、トラフィック、SSHログインのリアルタイム監視と早期警告を実現するために、TG Robot APIとユーザーIDを構成する必要があります。"
+			  echo "ネイティブCPU、メモリ、ハードディスク、トラフィック、およびSSHログインのリアルタイム監視と早期警告を実現するために、TG Robot APIとユーザーIDを構成する必要があります。"
 			  echo "しきい値に達した後、ユーザーはユーザーに送信されます"
 			  echo -e "${gl_hui}- トラフィックに関しては、サーバーの再起動が再計算されます -${gl_bai}"
 			  read -e -p "必ず続行しますか？ （y/n）：" choice
@@ -13508,7 +13513,7 @@ linux_file() {
 				;;
 			3)  # 修改目录权限
 				read -e -p "ディレクトリ名を入力してください：" dirname
-				read -e -p "許可（755など）を入力してください。" perm
+				read -e -p "許可を入力してください（755など）：" perm
 				chmod "$perm" "$dirname" && echo "許可が変更されました" || echo "変更に失敗しました"
 				send_stats "ディレクトリ権限を変更します"
 				;;
@@ -13540,7 +13545,7 @@ linux_file() {
 				;;
 			13) # 修改文件权限
 				read -e -p "ファイル名を入力してください：" filename
-				read -e -p "許可（755など）を入力してください。" perm
+				read -e -p "許可を入力してください（755など）：" perm
 				chmod "$perm" "$filename" && echo "許可が変更されました" || echo "変更に失敗しました"
 				send_stats "ファイル権限を変更します"
 				;;

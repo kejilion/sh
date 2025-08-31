@@ -1558,7 +1558,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "먼저 도메인 이름을 기본 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "먼저 도메인 이름을 로컬 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IP 또는 해결 된 도메인 이름을 입력하십시오." yuming
 }
 
@@ -4591,8 +4591,8 @@ dd_xitong() {
 			echo "35. OpenSuse Tumbleweed 36. FNOS FEINIU 공개 베타 버전"
 			echo "------------------------"
 			echo "41. Windows 11                42. Windows 10"
-			echo "43. Windows 7                 44. Windows Server 2022"
-			echo "45. Windows Server 2019       46. Windows Server 2016"
+			echo "43. Windows 7                 44. Windows Server 2025"
+			echo "45. Windows Server 2022       46. Windows Server 2019"
 			echo "47. Windows 11 ARM"
 			echo "------------------------"
 			echo "0. 이전 메뉴로 돌아갑니다"
@@ -4788,7 +4788,6 @@ dd_xitong() {
 				exit
 				;;
 
-
 			  41)
 				send_stats "Windows 11을 다시 설치하십시오"
 				dd_xitong_2
@@ -4796,6 +4795,7 @@ dd_xitong() {
 				reboot
 				exit
 				;;
+
 			  42)
 				dd_xitong_2
 				send_stats "Windows 10을 다시 설치하십시오"
@@ -4803,6 +4803,7 @@ dd_xitong() {
 				reboot
 				exit
 				;;
+
 			  43)
 				send_stats "Windows 7을 다시 설치하십시오"
 				dd_xitong_4
@@ -4812,23 +4813,25 @@ dd_xitong() {
 				;;
 
 			  44)
+				send_stats "Windows Server 25를 다시 설치하십시오"
+				dd_xitong_2
+				bash InstallNET.sh -windows 2025 -lang "cn"
+				reboot
+				exit
+				;;
+
+			  45)
 				send_stats "Windows Server 22를 다시 설치하십시오"
 				dd_xitong_2
 				bash InstallNET.sh -windows 2022 -lang "cn"
 				reboot
 				exit
 				;;
-			  45)
+
+			  46)
 				send_stats "Windows Server 19를 다시 설치하십시오"
 				dd_xitong_2
 				bash InstallNET.sh -windows 2019 -lang "cn"
-				reboot
-				exit
-				;;
-			  46)
-				send_stats "Windows Server 16을 다시 설치하십시오"
-				dd_xitong_2
-				bash InstallNET.sh -windows 2016 -lang "cn"
 				reboot
 				exit
 				;;
@@ -5818,7 +5821,7 @@ list_connections() {
 # 새 연결을 추가하십시오
 add_connection() {
 	send_stats "새 연결을 추가하십시오"
-	echo "새 연결을 만드는 예 :"
+	echo "새 연결 예제 :"
 	echo "- 연결 이름 : my_server"
 	echo "-IP 주소 : 192.168.1.100"
 	echo "- 사용자 이름 : 루트"
@@ -6882,7 +6885,7 @@ docker_ssh_migration() {
 
 		echo -e "${YELLOW}Docker 컨테이너 백업 ...${NC}"
 		docker ps --format '{{.Names}}'
-		read -p "백업 할 컨테이너 이름을 입력하십시오 (여러 공간으로 분리하면 입력 백업이 모두 실행 중입니다)." containers
+		read -e -p  "백업 할 컨테이너 이름을 입력하십시오 (여러 공간으로 분리하면 입력 백업이 모두 실행 중입니다)." containers
 
 		install tar jq gzip
 		install_docker
@@ -6917,7 +6920,7 @@ docker_ssh_migration() {
 				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
 				if [ -z "$project_dir" ]; then
-					read -p "Compose 디렉토리가 감지되지 않으므로 수동으로 경로를 입력하십시오." project_dir
+					read -e -p  "Compose 디렉토리가 감지되지 않으므로 수동으로 경로를 입력하십시오." project_dir
 				fi
 
 				# Compose 프로젝트가 포장 된 경우 건너 뛰십시오
@@ -6990,7 +6993,7 @@ docker_ssh_migration() {
 	restore_docker() {
 
 		send_stats "도커 복원"
-		read -p "복원하려면 백업 디렉토리를 입력하십시오." BACKUP_DIR
+		read -e -p  "복원하려면 백업 디렉토리를 입력하십시오." BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}백업 디렉토리가 존재하지 않습니다${NC}"; return; }
 
 		echo -e "${BLUE}복원 작업 시작 ...${NC}"
@@ -7005,7 +7008,7 @@ docker_ssh_migration() {
 				project_name=$(basename "$f" | sed 's/backup_type_//')
 				path_file="$BACKUP_DIR/compose_path_${project_name}.txt"
 				[[ -f "$path_file" ]] && original_path=$(cat "$path_file") || original_path=""
-				[[ -z "$original_path" ]] && read -p "원래 경로는 찾을 수 없었습니다. 복원 디렉토리 경로를 입력하십시오." original_path
+				[[ -z "$original_path" ]] && read -e -p  "원래 경로는 찾을 수 없었습니다. 복원 디렉토리 경로를 입력하십시오." original_path
 
 				# Compose 프로젝트 용 컨테이너가 이미 실행 중인지 확인하십시오.
 				running_count=$(docker ps --filter "label=com.docker.compose.project=$project_name" --format '{{.Names}}' | wc -l)
@@ -7014,8 +7017,8 @@ docker_ssh_migration() {
 					continue
 				fi
 
-				read -p "Compose 프로젝트 복원 확인 [$project_name] 경로로 [$original_path] ? (y/n): " confirm
-				[[ "$confirm" != "y" ]] && read -p "새로운 복원 경로를 입력하십시오 :" original_path
+				read -e -p  "Compose 프로젝트 복원 확인 [$project_name] 경로로 [$original_path] ? (y/n): " confirm
+				[[ "$confirm" != "y" ]] && read -e -p  "새로운 복원 경로를 입력하십시오 :" original_path
 
 				mkdir -p "$original_path"
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
@@ -7109,11 +7112,11 @@ docker_ssh_migration() {
 	migrate_docker() {
 		send_stats "도커 마이그레이션"
 		install jq
-		read -p "마이그레이션하려면 백업 디렉토리를 입력하십시오." BACKUP_DIR
+		read -e -p  "마이그레이션하려면 백업 디렉토리를 입력하십시오." BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}백업 디렉토리가 존재하지 않습니다${NC}"; return; }
 
-		read -p "대상 서버 IP :" TARGET_IP
-		read -p "대상 서버 SSH 사용자 이름 :" TARGET_USER
+		read -e -p  "대상 서버 IP :" TARGET_IP
+		read -e -p  "대상 서버 SSH 사용자 이름 :" TARGET_USER
 
 		LATEST_TAR="$BACKUP_DIR"  # 这里直接传整个目录
 
@@ -7130,7 +7133,7 @@ docker_ssh_migration() {
 	# ----------------------------
 	delete_backup() {
 		send_stats "Docker 백업 파일 삭제"
-		read -p "삭제하려면 백업 디렉토리를 입력하십시오." BACKUP_DIR
+		read -e -p  "삭제하려면 백업 디렉토리를 입력하십시오." BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}백업 디렉토리가 존재하지 않습니다${NC}"; return; }
 		rm -rf "$BACKUP_DIR"
 		echo -e "${GREEN}삭제 된 백업 :${BACKUP_DIR}${NC}"
@@ -7156,7 +7159,7 @@ docker_ssh_migration() {
 			echo "------------------------"
 			echo -e "0. 이전 메뉴로 돌아갑니다"
 			echo "------------------------"
-			read -p "선택하십시오 :" choice
+			read -e -p  "선택하십시오 :" choice
 			case $choice in
 				1) backup_docker ;;
 				2) migrate_docker ;;
@@ -11789,9 +11792,9 @@ while true; do
 
 		docker_rum() {
 
-		read -p "네트워크를 구성하려면 클라이언트 수를 입력하십시오 (기본값 5)." COUNT
+		read -e -p  "네트워크를 구성하려면 클라이언트 수를 입력하십시오 (기본값 5)." COUNT
 		COUNT=${COUNT:-5}
-		read -p "Wireguard 세그먼트를 입력하십시오 (기본값 10.13.13.0) :" NETWORK
+		read -e -p  "Wireguard 세그먼트를 입력하십시오 (기본값 10.13.13.0) :" NETWORK
 		NETWORK=${NETWORK:-10.13.13.0}
 
 		PEERS=$(seq -f "wg%02g" 1 "$COUNT" | paste -sd,)
@@ -11868,7 +11871,7 @@ while true; do
 		echo -e "${gl_huang}모든 클라이언트 구성 코드 :${gl_bai}"
 		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "# $(basename $d) "; cat $d/*.conf; echo; done'
 		sleep 2
-		echo -e "${gl_lv}${COUNT}모든 출력은 각 클라이언트가 제공합니다. 사용법은 다음과 같습니다.${gl_bai}"
+		echo -e "${gl_lv}${COUNT}모든 출력은 모두 각 클라이언트에 의해 구성되며 사용 방법은 다음과 같습니다.${gl_bai}"
 		echo -e "${gl_lv}1. 휴대 전화에서 WG의 앱을 다운로드하고 위의 QR 코드를 스캔하여 네트워크에 빠르게 연결하십시오.${gl_bai}"
 		echo -e "${gl_lv}2. Windows 클라이언트를 다운로드하고 구성 코드를 복사하여 네트워크에 연결하십시오.${gl_bai}"
 		echo -e "${gl_lv}3. Linux는 스크립트를 사용하여 WG 클라이언트를 배포하고 구성 코드를 복사하여 네트워크에 연결합니다.${gl_bai}"
@@ -11926,6 +11929,8 @@ while true; do
 			echo "$input" > "$CONFIG_FILE"
 
 			echo "클라이언트 구성이 저장되었습니다$CONFIG_FILE"
+
+			ip link delete wg0 &>/dev/null
 
 			docker run -d \
 			  --name wireguardc \
