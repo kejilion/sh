@@ -154,7 +154,7 @@ public_ip=$(get_public_ip)
 isp_info=$(curl -s --max-time 3 http://ipinfo.io/org)
 
 
-if echo "$isp_info" | grep -Eiq 'china|mobile|unicom|telecom'; then
+if echo "$isp_info" | grep -Eiq 'mobile|unicom|telecom'; then
   ipv4_address=$(get_local_ip)
 else
   ipv4_address="$public_ip"
@@ -2374,7 +2374,7 @@ web_optimization() {
 
 
 check_docker_app() {
-	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1 ; then
+	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name" ; then
 		check_docker="${gl_lv}已安装${gl_bai}"
 	else
 		check_docker="${gl_hui}未安装${gl_bai}"
@@ -2385,7 +2385,7 @@ check_docker_app() {
 
 # check_docker_app() {
 
-# if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+# if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 # check_docker = "$ {gl_lv} $ {gl_bai} 설치"
 # else
 # check_docker = "$ {gl_hui} $ {gl_bai}가 설치되지 않았다"
@@ -2736,7 +2736,7 @@ while true; do
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
-	if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			docker_port=${docker_port:-0000}
@@ -2768,7 +2768,7 @@ while true; do
 			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
-			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+			add_app_id
 
 			clear
 			echo "$docker_name설치"
@@ -2783,7 +2783,7 @@ while true; do
 			docker rmi -f "$docker_img"
 			docker_rum
 
-			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+			add_app_id
 
 			clear
 			echo "$docker_name설치"
@@ -2849,7 +2849,7 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
-		if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
 				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
@@ -2880,12 +2880,12 @@ docker_app_plus() {
 				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
-				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+				add_app_id
 				;;
 			2)
 				docker_app_update
 
-				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+				add_app_id
 				;;
 			3)
 				docker_app_uninstall
@@ -3557,13 +3557,13 @@ while true; do
 			iptables_open
 			panel_app_install
 
-			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+			add_app_id
 			send_stats "${panelname}설치하다"
 			;;
 		2)
 			panel_app_manage
 
-			mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+			add_app_id
 			send_stats "${panelname}제어"
 
 			;;
@@ -3901,7 +3901,7 @@ frps_panel() {
 				install_docker
 				generate_frps_config
 
-				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+				add_app_id
 				echo "FRP 서버가 설치되었습니다"
 				;;
 			2)
@@ -3911,7 +3911,7 @@ frps_panel() {
 				[ -f /home/frp/frps.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
 				donlond_frp frps
 
-				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+				add_app_id
 				echo "FRP 서버가 업데이트되었습니다"
 				;;
 			3)
@@ -3998,7 +3998,7 @@ frpc_panel() {
 				install_docker
 				configure_frpc
 
-				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+				add_app_id
 				echo "FRP 클라이언트가 설치되었습니다"
 				;;
 			2)
@@ -4008,7 +4008,7 @@ frpc_panel() {
 				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
 				donlond_frp frpc
 
-				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+				add_app_id
 				echo "FRP 클라이언트가 업데이트되었습니다"
 				;;
 
@@ -4091,7 +4091,7 @@ yt_menu_pro() {
 				curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 				chmod a+rx /usr/local/bin/yt-dlp
 
-				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+				add_app_id
 				echo "설치가 완료되었습니다. 계속하려면 키를 누르십시오 ..."
 				read ;;
 			2)
@@ -4099,7 +4099,7 @@ yt_menu_pro() {
 				echo "yt-dlp 업데이트 ..."
 				yt-dlp -U
 
-				mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+				add_app_id
 				echo "업데이트가 완료되었습니다. 계속하려면 키를 누르십시오 ..."
 				read ;;
 			3)
@@ -9082,7 +9082,7 @@ while true; do
 			echo -e "Nezha 모니터링$check_docker $update_status"
 			echo "오픈 소스, 가볍고 사용하기 쉬운 서버 모니터링 및 작동 및 유지 보수 도구"
 			echo "공식 웹 사이트 구성 문서 : https://nezha.wiki/guide/dashboard.html"
-			if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 				local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 				check_docker_app_ip
 			fi
@@ -9174,7 +9174,7 @@ while true; do
 			fi
 			echo ""
 
-			if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 				yuming=$(cat /home/docker/mail.txt)
 				echo "액세스 주소 :"
 				echo "https://$yuming"
@@ -9221,7 +9221,7 @@ while true; do
 						-d analogic/poste.io
 
 
-					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+					add_app_id
 
 					clear
 					echo "Poste.io가 설치되었습니다"
@@ -9246,7 +9246,7 @@ while true; do
 						-d analogic/poste.i
 
 
-					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+					add_app_id
 
 					clear
 					echo "Poste.io가 설치되었습니다"
@@ -9570,7 +9570,7 @@ while true; do
 			echo -e "썬더 풀 서비스$check_docker"
 			echo "Lei Chi는 변경 기술이 개발 한 WAF 사이트 방화벽 프로그램 패널로, 자동 방어를 위해 대행사 사이트를 역전시킬 수 있습니다."
 			echo "비디오 소개 : https://www.bilibili.com/video/bv1mz421t74c?t=0.1"
-			if docker ps -a --format '{{.Names}}' | grep -q "$docker_name" >/dev/null 2>&1; then
+			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 				check_docker_app_ip
 			fi
 			echo ""
@@ -9588,7 +9588,7 @@ while true; do
 					check_disk_space 5
 					bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
 
-					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+					add_app_id
 					clear
 					echo "Thunder Pool WAF 패널이 설치되었습니다"
 					check_docker_app_ip
@@ -9601,7 +9601,7 @@ while true; do
 					docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
 					echo ""
 
-					mkdir -p /home/docker && touch /home/docker/appno.txt && (add_app_id)
+					add_app_id
 					clear
 					echo "Thunder Pool WAF 패널이 업데이트되었습니다"
 					check_docker_app_ip
