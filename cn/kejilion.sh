@@ -8888,7 +8888,7 @@ while true; do
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}91.  ${color91}gitea私有代码仓库                   ${gl_kjlan}92.  ${color92}FileBrowser文件管理器"
 	  echo -e "${gl_kjlan}93.  ${color93}Dufs极简静态文件服务器              ${gl_kjlan}94.  ${color94}Gopeed高速下载工具"
-	  echo -e "${gl_kjlan}95.  ${color95}paperless文档管理平台"
+	  echo -e "${gl_kjlan}95.  ${color95}paperless文档管理平台               ${gl_kjlan}96.  ${color96}2FAuth自托管二步验证器"
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard组网(服务端)               ${gl_kjlan}98.  ${color98}WireGuard组网(客户端)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
@@ -11794,6 +11794,61 @@ while true; do
 		docker_app_plus
 
 		  ;;
+
+
+
+	  96|2fauth)
+
+		local app_id="96"
+
+		local app_name="2FAuth自托管二步验证器"
+		local app_text="自托管的双重身份验证 (2FA) 账户管理和验证码生成工具。"
+		local app_url="官网: https://github.com/Bubka/2FAuth"
+		local docker_name="2fauth"
+		local docker_port="8096"
+		local app_size="1"
+
+		docker_app_install() {
+
+			add_yuming
+
+			mkdir -p /home/docker/2fauth
+			mkdir -p /home/docker/2fauth/data
+			chmod -R 777 /home/docker/2fauth/
+			cd /home/docker/2fauth
+			
+			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
+
+			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
+			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml			
+			cd /home/docker/2fauth
+			docker compose up -d
+
+			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+			block_container_port "$docker_name" "$ipv4_address"			
+
+			clear
+			echo "已经安装完成"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			docker_app_install
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			rm -rf /home/docker/2fauth
+			echo "应用已卸载"
+		}
+
+		docker_app_plus
+
+		  ;;
+
 
 
 	97|wgs)
