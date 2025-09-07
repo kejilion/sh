@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.2"
+sh_v="4.1.3"
 
 
 gl_hui='\e[37m'
@@ -213,12 +213,13 @@ install() {
 
 
 check_disk_space() {
+	local required_gb=$1
+	local path=${2:-/}
 
-	required_gb=$1
-	required_space_mb=$((required_gb * 1024))
-	available_space_mb=$(df -m / | awk 'NR==2 {print $4}')
+	local required_space_mb=$((required_gb * 1024))
+	local available_space_mb=$(df -m "$path" | awk 'NR==2 {print $4}')
 
-	if [ $available_space_mb -lt $required_space_mb ]; then
+	if [ "$available_space_mb" -lt "$required_space_mb" ]; then
 		echo -e "${gl_huang}ヒント：${gl_bai}ディスクスペースが不十分です！"
 		echo "現在利用可能なスペース：$（（available_space_mb/1024））g"
 		echo "最小需要スペース：${required_gb}G"
@@ -228,6 +229,7 @@ check_disk_space() {
 		kejilion
 	fi
 }
+
 
 
 install_dependency() {
@@ -1558,7 +1560,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "最初にドメイン名をローカルIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "最初にドメイン名をネイティブIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IPまたは解決されたドメイン名を入力してください：" yuming
 }
 
@@ -2121,7 +2123,7 @@ web_security() {
 
 				  22)
 					  send_stats "5秒シールドでの高負荷"
-					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷が検出されると、シールドが自動的にオンになり、低負荷が5秒間自動的にオフになります。${gl_bai}"
+					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷の検出に達すると、シールドが自動的にオンになり、低負荷が5秒間自動的にオフになります。${gl_bai}"
 					  echo "--------------"
 					  echo "CFパラメーターを取得します："
 					  echo -e "CFバックグラウンドの右上隅に移動し、左側のAPIトークンを選択して、取得します${gl_huang}Global API Key${gl_bai}"
@@ -2707,13 +2709,23 @@ clear_host_port_rules() {
 
 setup_docker_dir() {
 
-	mkdir -p /home/docker/ 2>/dev/null
+	mkdir -p /home /home/docker 2>/dev/null
+
 	if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
 		cp -f /home/docker /home/docker1 2>/dev/null
 		rm -rf /home/docker 2>/dev/null
 		mkdir -p /vol1/1000/docker 2>/dev/null
 		ln -s /vol1/1000/docker /home/docker 2>/dev/null
 	fi
+
+	if [ -d "/volume1/" ] && [ ! -d "/volume1/docker" ]; then
+		cp -f /home/docker /home/docker1 2>/dev/null
+		rm -rf /home/docker 2>/dev/null
+		mkdir -p /volume1/docker 2>/dev/null
+		ln -s /volume1/docker /home/docker 2>/dev/null
+	fi
+
+
 }
 
 
@@ -2757,7 +2769,8 @@ while true; do
 	read -e -p "選択を入力してください：" choice
 	 case $choice in
 		1)
-			check_disk_space $app_size
+			setup_docker_dir
+			check_disk_space $app_size /home/docker
 			read -e -p "アプリケーション外部サービスポートを入力し、デフォルトを入力します${docker_port}ポート：" app_port
 			local app_port=${app_port:-${docker_port}}
 			local docker_port=$app_port
@@ -2765,7 +2778,6 @@ while true; do
 			install jq
 			install_docker
 			docker_rum
-			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 			add_app_id
@@ -2870,14 +2882,14 @@ docker_app_plus() {
 		read -e -p "あなたの選択を入力してください：" choice
 		case $choice in
 			1)
-				check_disk_space $app_size
+				setup_docker_dir
+				check_disk_space $app_size /home/docker
 				read -e -p "アプリケーション外部サービスポートを入力し、デフォルトを入力します${docker_port}ポート：" app_port
 				local app_port=${app_port:-${docker_port}}
 				local docker_port=$app_port
 				install jq
 				install_docker
 				docker_app_install
-				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 				add_app_id
@@ -3142,7 +3154,7 @@ send_stats "LDNMP環境をインストールします"
 root_use
 clear
 echo -e "${gl_huang}LDNMP環境はインストールされていません。LDNMP環境のインストールを開始します...${gl_bai}"
-check_disk_space 3
+check_disk_space 3 /home
 check_port
 install_dependency
 install_docker
@@ -3159,7 +3171,7 @@ send_stats "Nginx環境をインストールします"
 root_use
 clear
 echo -e "${gl_huang}nginxはインストールされていません、nginx環境のインストールを開始します...${gl_bai}"
-check_disk_space 1
+check_disk_space 1 /home
 check_port
 install_dependency
 install_docker
@@ -4514,7 +4526,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}ルートログインがセットアップされます！${gl_bai}"
+echo -e "${gl_lv}ルートログイン設定が完了しました！${gl_bai}"
 
 }
 
@@ -5821,7 +5833,7 @@ list_connections() {
 # 新しい接続を追加します
 add_connection() {
 	send_stats "新しい接続を追加します"
-	echo "新しい接続例を作成します："
+	echo "新しい接続を作成する例："
 	echo "- 接続名：my_server"
 	echo "-  IPアドレス：192.168.1.100"
 	echo "- ユーザー名：root"
@@ -8031,7 +8043,7 @@ linux_ldnmp() {
 	  echo "Redisポート：6379"
 	  echo ""
 	  echo "ウェブサイトURL：https：//$yuming"
-	  echo "バックグラウンドログインパス： /admin"
+	  echo "バックエンドログインパス： /admin"
 	  echo "------------------------"
 	  echo "ユーザー名：admin"
 	  echo "パスワード：管理者"
@@ -8876,7 +8888,7 @@ while true; do
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}91.  ${color91}Giteaプライベートコードリポジトリ${gl_kjlan}92.  ${color92}FileBrowserファイルマネージャー"
 	  echo -e "${gl_kjlan}93.  ${color93}DUFS Minimalist Static File Server${gl_kjlan}94.  ${color94}ゴープ高速ダウンロードツール"
-	  echo -e "${gl_kjlan}95.  ${color95}ペーパーレスドキュメント管理プラットフォーム"
+	  echo -e "${gl_kjlan}95.  ${color95}ペーパーレスドキュメント管理プラットフォーム${gl_kjlan}96.  ${color96}2Fauth自己ホストの2段階検証装置"
 	  echo -e "${gl_kjlan}97.  ${color97}ワイヤガードネットワーキング（サーバー側）${gl_kjlan}98.  ${color98}ワイヤガードネットワーキング（クライアント）"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}すべてのアプリケーションデータをバックアップします${gl_kjlan}r.   ${gl_bai}すべてのアプリケーションデータを復元します"
@@ -9189,7 +9201,8 @@ while true; do
 
 			case $choice in
 				1)
-					check_disk_space 2
+					setup_docker_dir
+					check_disk_space 2 /home/docker
 					read -e -p "たとえば、mail.yuming.comなど、電子メールドメイン名を設定してください。" yuming
 					mkdir -p /home/docker
 					echo "$yuming" > /home/docker/mail.txt
@@ -11783,6 +11796,61 @@ while true; do
 		  ;;
 
 
+
+	  96|2fauth)
+
+		local app_id="96"
+
+		local app_name="2FAuth自托管二步验证器"
+		local app_text="自托管的双重身份验证 (2FA) 账户管理和验证码生成工具。"
+		local app_url="官网: https://github.com/Bubka/2FAuth"
+		local docker_name="2fauth"
+		local docker_port="8096"
+		local app_size="1"
+
+		docker_app_install() {
+
+			add_yuming
+
+			mkdir -p /home/docker/2fauth
+			mkdir -p /home/docker/2fauth/data
+			chmod -R 777 /home/docker/2fauth/
+			cd /home/docker/2fauth
+			
+			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
+
+			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
+			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml			
+			cd /home/docker/2fauth
+			docker compose up -d
+
+			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+			block_container_port "$docker_name" "$ipv4_address"			
+
+			clear
+			echo "インストール"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			docker_app_install
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			rm -rf /home/docker/2fauth
+			echo "アプリはアンインストールされています"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
 	97|wgs)
 
 		local app_id="97"
@@ -12251,7 +12319,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}ファイアウォール上級マネージャー${gl_kjlan}18.  ${gl_bai}ホスト名を変更します"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}システムの更新ソースを切り替えます${gl_kjlan}20.  ${gl_bai}タイミングタスク管理"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}ネイティブホストの解析${gl_kjlan}22.  ${gl_bai}SSH防衛プログラム"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}ネイティブホスト分析${gl_kjlan}22.  ${gl_bai}SSH防衛プログラム"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}電流制限の自動シャットダウン${gl_kjlan}24.  ${gl_bai}ルート秘密キーログインモード"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TGボットシステムの監視と早期警告${gl_kjlan}26.  ${gl_bai}OpenSSHの高リスクの脆弱性を修正します"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linuxカーネルのアップグレード${gl_kjlan}28.  ${gl_bai}Linuxシステムにおけるカーネルパラメーターの最適化${gl_huang}★${gl_bai}"
@@ -12952,7 +13020,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -e -p "削除する必要があるコンテンツの解析のキーワードを入力してください。" delhost
+						  read -e -p "削除する必要があるコンテンツを解析するために、キーワードを入力してください。" delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "ローカルホストの解析と削除"
 						  ;;

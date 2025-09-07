@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.2"
+sh_v="4.1.3"
 
 
 gl_hui='\e[37m'
@@ -213,12 +213,13 @@ install() {
 
 
 check_disk_space() {
+	local required_gb=$1
+	local path=${2:-/}
 
-	required_gb=$1
-	required_space_mb=$((required_gb * 1024))
-	available_space_mb=$(df -m / | awk 'NR==2 {print $4}')
+	local required_space_mb=$((required_gb * 1024))
+	local available_space_mb=$(df -m "$path" | awk 'NR==2 {print $4}')
 
-	if [ $available_space_mb -lt $required_space_mb ]; then
+	if [ "$available_space_mb" -lt "$required_space_mb" ]; then
 		echo -e "${gl_huang}hint:${gl_bai}Insufficient disk space!"
 		echo "Current available space: $((available_space_mb/1024))G"
 		echo "Minimum demand space:${required_gb}G"
@@ -228,6 +229,7 @@ check_disk_space() {
 		kejilion
 	fi
 }
+
 
 
 install_dependency() {
@@ -1558,7 +1560,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "First resolve the domain name to the local IP:${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "First resolve the domain name to the native IP:${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "Please enter your IP or the resolved domain name:" yuming
 }
 
@@ -2121,7 +2123,7 @@ web_security() {
 
 				  22)
 					  send_stats "High load on 5 seconds shield"
-					  echo -e "${gl_huang}The website automatically detects every 5 minutes. When high load is detected, the shield will be automatically turned on, and low load will be automatically turned off for 5 seconds.${gl_bai}"
+					  echo -e "${gl_huang}The website automatically detects every 5 minutes. When it reaches the detection of a high load, the shield will be automatically turned on, and the low load will be automatically turned off for 5 seconds.${gl_bai}"
 					  echo "--------------"
 					  echo "Get CF parameters:"
 					  echo -e "Go to the upper right corner of the cf background, select the API token on the left, and obtain it${gl_huang}Global API Key${gl_bai}"
@@ -2707,13 +2709,23 @@ clear_host_port_rules() {
 
 setup_docker_dir() {
 
-	mkdir -p /home/docker/ 2>/dev/null
+	mkdir -p /home /home/docker 2>/dev/null
+
 	if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
 		cp -f /home/docker /home/docker1 2>/dev/null
 		rm -rf /home/docker 2>/dev/null
 		mkdir -p /vol1/1000/docker 2>/dev/null
 		ln -s /vol1/1000/docker /home/docker 2>/dev/null
 	fi
+
+	if [ -d "/volume1/" ] && [ ! -d "/volume1/docker" ]; then
+		cp -f /home/docker /home/docker1 2>/dev/null
+		rm -rf /home/docker 2>/dev/null
+		mkdir -p /volume1/docker 2>/dev/null
+		ln -s /volume1/docker /home/docker 2>/dev/null
+	fi
+
+
 }
 
 
@@ -2757,7 +2769,8 @@ while true; do
 	read -e -p "Please enter your selection:" choice
 	 case $choice in
 		1)
-			check_disk_space $app_size
+			setup_docker_dir
+			check_disk_space $app_size /home/docker
 			read -e -p "Enter the application external service port, and enter the default${docker_port}port:" app_port
 			local app_port=${app_port:-${docker_port}}
 			local docker_port=$app_port
@@ -2765,7 +2778,6 @@ while true; do
 			install jq
 			install_docker
 			docker_rum
-			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 			add_app_id
@@ -2870,14 +2882,14 @@ docker_app_plus() {
 		read -e -p "Enter your choice:" choice
 		case $choice in
 			1)
-				check_disk_space $app_size
+				setup_docker_dir
+				check_disk_space $app_size /home/docker
 				read -e -p "Enter the application external service port, and enter the default${docker_port}port:" app_port
 				local app_port=${app_port:-${docker_port}}
 				local docker_port=$app_port
 				install jq
 				install_docker
 				docker_app_install
-				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 				add_app_id
@@ -3142,7 +3154,7 @@ send_stats "Install LDNMP environment"
 root_use
 clear
 echo -e "${gl_huang}The LDNMP environment is not installed, start installing the LDNMP environment...${gl_bai}"
-check_disk_space 3
+check_disk_space 3 /home
 check_port
 install_dependency
 install_docker
@@ -3159,7 +3171,7 @@ send_stats "Install nginx environment"
 root_use
 clear
 echo -e "${gl_huang}nginx is not installed, start installing nginx environment...${gl_bai}"
-check_disk_space 1
+check_disk_space 1 /home
 check_port
 install_dependency
 install_docker
@@ -4514,7 +4526,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}ROOT login is set up!${gl_bai}"
+echo -e "${gl_lv}ROOT login settings are complete!${gl_bai}"
 
 }
 
@@ -4992,7 +5004,7 @@ elrepo_install() {
 		linux_Settings
 	fi
 	# Print detected operating system information
-	echo "Operating system detected:$os_name $os_version"
+	echo "Detected operating systems:$os_name $os_version"
 	# Install the corresponding ELRepo warehouse configuration according to the system version
 	if [[ "$os_version" == 8 ]]; then
 		echo "Install ELRepo repository configuration (version 8)..."
@@ -5821,7 +5833,7 @@ list_connections() {
 # Add a new connection
 add_connection() {
 	send_stats "Add a new connection"
-	echo "Create a new connection example:"
+	echo "Example to create a new connection:"
 	echo "- Connection name: my_server"
 	echo "- IP address: 192.168.1.100"
 	echo "- Username: root"
@@ -8031,7 +8043,7 @@ linux_ldnmp() {
 	  echo "Redis port: 6379"
 	  echo ""
 	  echo "Website url: https://$yuming"
-	  echo "Background login path: /admin"
+	  echo "Backend login path: /admin"
 	  echo "------------------------"
 	  echo "Username: admin"
 	  echo "Password: admin"
@@ -8854,7 +8866,7 @@ while true; do
 	  echo -e "${gl_kjlan}53.  ${color53}llama3 chat AI model${gl_kjlan}54.  ${color54}AMH Host Website Building Management Panel"
 	  echo -e "${gl_kjlan}55.  ${color55}FRP intranet penetration (server side)${gl_huang}★${gl_bai}	         ${gl_kjlan}56.  ${color56}FRP intranet penetration (client)${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}57.  ${color57}Deepseek chat AI big model${gl_kjlan}58.  ${color58}Dify big model knowledge base${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}59.  ${color59}NewAPI big model asset management${gl_kjlan}60.  ${color60}JumpServer open source bastion machine"
+	  echo -e "${gl_kjlan}59.  ${color59}NewAPI Big Model Asset Management${gl_kjlan}60.  ${color60}JumpServer open source bastion machine"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}61.  ${color61}Online translation server${gl_kjlan}62.  ${color62}RAGFlow big model knowledge base"
 	  echo -e "${gl_kjlan}63.  ${color63}OpenWebUI self-hosted AI platform${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${color64}it-tools toolbox"
@@ -8876,7 +8888,7 @@ while true; do
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}91.  ${color91}gitea private code repository${gl_kjlan}92.  ${color92}FileBrowser File Manager"
 	  echo -e "${gl_kjlan}93.  ${color93}Dufs minimalist static file server${gl_kjlan}94.  ${color94}Gopeed high-speed download tool"
-	  echo -e "${gl_kjlan}95.  ${color95}paperless document management platform"
+	  echo -e "${gl_kjlan}95.  ${color95}paperless document management platform${gl_kjlan}96.  ${color96}2FAuth self-hosted two-step validator"
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard networking (server side)${gl_kjlan}98.  ${color98}WireGuard networking (client)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}Back up all application data${gl_kjlan}r.   ${gl_bai}Restore all application data"
@@ -9189,7 +9201,8 @@ while true; do
 
 			case $choice in
 				1)
-					check_disk_space 2
+					setup_docker_dir
+					check_disk_space 2 /home/docker
 					read -e -p "Please set the email domain name, for example, mail.yuming.com:" yuming
 					mkdir -p /home/docker
 					echo "$yuming" > /home/docker/mail.txt
@@ -11783,6 +11796,61 @@ while true; do
 		  ;;
 
 
+
+	  96|2fauth)
+
+		local app_id="96"
+
+		local app_name="2FAuth自托管二步验证器"
+		local app_text="自托管的双重身份验证 (2FA) 账户管理和验证码生成工具。"
+		local app_url="官网: https://github.com/Bubka/2FAuth"
+		local docker_name="2fauth"
+		local docker_port="8096"
+		local app_size="1"
+
+		docker_app_install() {
+
+			add_yuming
+
+			mkdir -p /home/docker/2fauth
+			mkdir -p /home/docker/2fauth/data
+			chmod -R 777 /home/docker/2fauth/
+			cd /home/docker/2fauth
+			
+			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
+
+			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
+			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml			
+			cd /home/docker/2fauth
+			docker compose up -d
+
+			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+			block_container_port "$docker_name" "$ipv4_address"			
+
+			clear
+			echo "Installed"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			docker_app_install
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			rm -rf /home/docker/2fauth
+			echo "The app has been uninstalled"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
 	97|wgs)
 
 		local app_id="97"
@@ -11925,7 +11993,7 @@ while true; do
 				fi
 			done
 
-			# Write to the configuration file
+			# Write to configuration file
 			echo "$input" > "$CONFIG_FILE"
 
 			echo "Client configuration has been saved to$CONFIG_FILE"
@@ -12251,7 +12319,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}Firewall Advanced Manager${gl_kjlan}18.  ${gl_bai}Modify the host name"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}Switch system update source${gl_kjlan}20.  ${gl_bai}Timing task management"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}Native host parsing${gl_kjlan}22.  ${gl_bai}SSH Defense Program"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}Native host analysis${gl_kjlan}22.  ${gl_bai}SSH Defense Program"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}Automatic shutdown of current limit${gl_kjlan}24.  ${gl_bai}ROOT private key login mode"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot system monitoring and early warning${gl_kjlan}26.  ${gl_bai}Fix OpenSSH high-risk vulnerabilities"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linux kernel upgrade${gl_kjlan}28.  ${gl_bai}Optimization of kernel parameters in Linux system${gl_huang}★${gl_bai}"
@@ -12282,7 +12350,7 @@ linux_Settings() {
 				  fi
 				  find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/k" && rm -f {}' \;
 				  ln -s /usr/local/bin/k /usr/local/bin/$kuaijiejian
-				  echo "Shortcut keys are set"
+				  echo "Shortcut keys have been set"
 				  send_stats "Script shortcut keys have been set"
 				  break_end
 				  linux_Settings
@@ -12952,7 +13020,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -e -p "Please enter the keywords of parsing content that need to be deleted:" delhost
+						  read -e -p "Please enter the keywords for parsing content that need to be deleted:" delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "Local host parsing and deletion"
 						  ;;

@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.2"
+sh_v="4.1.3"
 
 
 gl_hui='\e[37m'
@@ -213,12 +213,13 @@ install() {
 
 
 check_disk_space() {
+	local required_gb=$1
+	local path=${2:-/}
 
-	required_gb=$1
-	required_space_mb=$((required_gb * 1024))
-	available_space_mb=$(df -m / | awk 'NR==2 {print $4}')
+	local required_space_mb=$((required_gb * 1024))
+	local available_space_mb=$(df -m "$path" | awk 'NR==2 {print $4}')
 
-	if [ $available_space_mb -lt $required_space_mb ]; then
+	if [ "$available_space_mb" -lt "$required_space_mb" ]; then
 		echo -e "${gl_huang}힌트:${gl_bai}불충분 한 디스크 공간!"
 		echo "현재 사용 가능한 공간 : $ ((uvery_space_mb/1024)) g"
 		echo "최소 수요 공간 :${required_gb}G"
@@ -228,6 +229,7 @@ check_disk_space() {
 		kejilion
 	fi
 }
+
 
 
 install_dependency() {
@@ -1558,7 +1560,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "먼저 도메인 이름을 로컬 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "먼저 도메인 이름을 기본 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IP 또는 해결 된 도메인 이름을 입력하십시오." yuming
 }
 
@@ -1664,7 +1666,7 @@ cf_purge_cache() {
 	# Zone_ids를 배열로 변환합니다
 	ZONE_IDS=($ZONE_IDS)
   else
-	# 캐시 청소 여부를 사용자에게 프롬프트합니다
+	# 캐시 청소 여부를 사용자에게 프롬프트하십시오
 	read -e -p "CloudFlare의 캐시를 청소해야합니까? (Y/N) :" answer
 	if [[ "$answer" == "y" ]]; then
 	  echo "CF 정보가 저장됩니다$CONFIG_FILE, 나중에 CF 정보를 수정할 수 있습니다"
@@ -2121,7 +2123,7 @@ web_security() {
 
 				  22)
 					  send_stats "5 초 방패의 높은 하중"
-					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 부하가 감지되면 방패가 자동으로 켜지고 5 초 동안 낮은 부하가 자동으로 꺼집니다.${gl_bai}"
+					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 하중의 감지에 도달하면 방패가 자동으로 켜지고 낮은 부하가 자동으로 5 초 동안 꺼집니다.${gl_bai}"
 					  echo "--------------"
 					  echo "CF 매개 변수 가져 오기 :"
 					  echo -e "CF 배경의 오른쪽 상단 모서리로 이동하여 왼쪽의 API 토큰을 선택하고 얻습니다.${gl_huang}Global API Key${gl_bai}"
@@ -2707,13 +2709,23 @@ clear_host_port_rules() {
 
 setup_docker_dir() {
 
-	mkdir -p /home/docker/ 2>/dev/null
+	mkdir -p /home /home/docker 2>/dev/null
+
 	if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
 		cp -f /home/docker /home/docker1 2>/dev/null
 		rm -rf /home/docker 2>/dev/null
 		mkdir -p /vol1/1000/docker 2>/dev/null
 		ln -s /vol1/1000/docker /home/docker 2>/dev/null
 	fi
+
+	if [ -d "/volume1/" ] && [ ! -d "/volume1/docker" ]; then
+		cp -f /home/docker /home/docker1 2>/dev/null
+		rm -rf /home/docker 2>/dev/null
+		mkdir -p /volume1/docker 2>/dev/null
+		ln -s /volume1/docker /home/docker 2>/dev/null
+	fi
+
+
 }
 
 
@@ -2757,7 +2769,8 @@ while true; do
 	read -e -p "선택을 입력하십시오 :" choice
 	 case $choice in
 		1)
-			check_disk_space $app_size
+			setup_docker_dir
+			check_disk_space $app_size /home/docker
 			read -e -p "응용 프로그램 외부 서비스 포트를 입력하고 기본값을 입력하십시오.${docker_port}포트:" app_port
 			local app_port=${app_port:-${docker_port}}
 			local docker_port=$app_port
@@ -2765,7 +2778,6 @@ while true; do
 			install jq
 			install_docker
 			docker_rum
-			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 			add_app_id
@@ -2870,14 +2882,14 @@ docker_app_plus() {
 		read -e -p "선택을 입력하십시오 :" choice
 		case $choice in
 			1)
-				check_disk_space $app_size
+				setup_docker_dir
+				check_disk_space $app_size /home/docker
 				read -e -p "응용 프로그램 외부 서비스 포트를 입력하고 기본값을 입력하십시오.${docker_port}포트:" app_port
 				local app_port=${app_port:-${docker_port}}
 				local docker_port=$app_port
 				install jq
 				install_docker
 				docker_app_install
-				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 				add_app_id
@@ -3142,7 +3154,7 @@ send_stats "LDNMP 환경을 설치하십시오"
 root_use
 clear
 echo -e "${gl_huang}LDNMP 환경이 설치되지 않았으며 LDNMP 환경 설치를 시작하십시오 ...${gl_bai}"
-check_disk_space 3
+check_disk_space 3 /home
 check_port
 install_dependency
 install_docker
@@ -3159,7 +3171,7 @@ send_stats "Nginx 환경을 설치하십시오"
 root_use
 clear
 echo -e "${gl_huang}Nginx가 설치되지 않았고 Nginx 환경 설치 시작 ...${gl_bai}"
-check_disk_space 1
+check_disk_space 1 /home
 check_port
 install_dependency
 install_docker
@@ -4514,7 +4526,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}루트 로그인이 설정되었습니다!${gl_bai}"
+echo -e "${gl_lv}루트 로그인 설정이 완료되었습니다!${gl_bai}"
 
 }
 
@@ -4992,7 +5004,7 @@ elrepo_install() {
 		linux_Settings
 	fi
 	# 감지 된 운영 체제 정보를 인쇄합니다
-	echo "운영 체제 감지 :$os_name $os_version"
+	echo "감지 된 운영 체제 :$os_name $os_version"
 	# 시스템 버전에 따라 해당 Elrepo 창고 구성을 설치하십시오.
 	if [[ "$os_version" == 8 ]]; then
 		echo "Elrepo 저장소 구성 (버전 8)을 설치하십시오 ..."
@@ -5821,7 +5833,7 @@ list_connections() {
 # 새 연결을 추가하십시오
 add_connection() {
 	send_stats "새 연결을 추가하십시오"
-	echo "새 연결 예제 :"
+	echo "새 연결을 만드는 예 :"
 	echo "- 연결 이름 : my_server"
 	echo "-IP 주소 : 192.168.1.100"
 	echo "- 사용자 이름 : 루트"
@@ -8031,7 +8043,7 @@ linux_ldnmp() {
 	  echo "Redis Port : 6379"
 	  echo ""
 	  echo "웹 사이트 URL : https : //$yuming"
-	  echo "백그라운드 로그인 경로 : /admin"
+	  echo "백엔드 로그인 경로 : /admin"
 	  echo "------------------------"
 	  echo "사용자 이름 : 관리자"
 	  echo "비밀번호 : 관리자"
@@ -8876,7 +8888,7 @@ while true; do
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}91.  ${color91}Gitea 개인 코드 저장소${gl_kjlan}92.  ${color92}파일 브라우저 파일 관리자"
 	  echo -e "${gl_kjlan}93.  ${color93}DUFS 미니멀리스트 정적 파일 서버${gl_kjlan}94.  ${color94}고속 다운로드 도구"
-	  echo -e "${gl_kjlan}95.  ${color95}종이없는 문서 관리 플랫폼"
+	  echo -e "${gl_kjlan}95.  ${color95}종이없는 문서 관리 플랫폼${gl_kjlan}96.  ${color96}2FAUTH 자체 호스팅 2 단계 유효성 검사기"
 	  echo -e "${gl_kjlan}97.  ${color97}와이어 가드 네트워킹 (서버 측)${gl_kjlan}98.  ${color98}와이어 가드 네트워킹 (클라이언트)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}모든 응용 프로그램 데이터를 백업합니다${gl_kjlan}r.   ${gl_bai}모든 응용 프로그램 데이터를 복원하십시오"
@@ -9189,7 +9201,8 @@ while true; do
 
 			case $choice in
 				1)
-					check_disk_space 2
+					setup_docker_dir
+					check_disk_space 2 /home/docker
 					read -e -p "이메일 도메인 이름 (예 : Mail.yuming.com)을 설정하십시오." yuming
 					mkdir -p /home/docker
 					echo "$yuming" > /home/docker/mail.txt
@@ -11783,6 +11796,61 @@ while true; do
 		  ;;
 
 
+
+	  96|2fauth)
+
+		local app_id="96"
+
+		local app_name="2FAuth自托管二步验证器"
+		local app_text="自托管的双重身份验证 (2FA) 账户管理和验证码生成工具。"
+		local app_url="官网: https://github.com/Bubka/2FAuth"
+		local docker_name="2fauth"
+		local docker_port="8096"
+		local app_size="1"
+
+		docker_app_install() {
+
+			add_yuming
+
+			mkdir -p /home/docker/2fauth
+			mkdir -p /home/docker/2fauth/data
+			chmod -R 777 /home/docker/2fauth/
+			cd /home/docker/2fauth
+			
+			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
+
+			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
+			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml			
+			cd /home/docker/2fauth
+			docker compose up -d
+
+			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+			block_container_port "$docker_name" "$ipv4_address"			
+
+			clear
+			echo "설치"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			docker_app_install
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			rm -rf /home/docker/2fauth
+			echo "앱이 제거되었습니다"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
 	97|wgs)
 
 		local app_id="97"
@@ -11925,7 +11993,7 @@ while true; do
 				fi
 			done
 
-			# 구성 파일에 쓰십시오
+			# 구성 파일에 씁니다
 			echo "$input" > "$CONFIG_FILE"
 
 			echo "클라이언트 구성이 저장되었습니다$CONFIG_FILE"
@@ -12251,7 +12319,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}방화벽 고급 관리자${gl_kjlan}18.  ${gl_bai}호스트 이름을 수정하십시오"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}스위치 시스템 업데이트 소스${gl_kjlan}20.  ${gl_bai}타이밍 작업 관리"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 구문 분석${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 분석${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}현재 한도의 자동 종료${gl_kjlan}24.  ${gl_bai}루트 비공개 키 로그인 모드"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-BOT 시스템 모니터링 및 조기 경고${gl_kjlan}26.  ${gl_bai}OpenSsh 고위험 취약점을 수정하십시오"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linux 커널 업그레이드${gl_kjlan}28.  ${gl_bai}Linux 시스템에서 커널 매개 변수의 최적화${gl_huang}★${gl_bai}"
@@ -12282,7 +12350,7 @@ linux_Settings() {
 				  fi
 				  find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/k" && rm -f {}' \;
 				  ln -s /usr/local/bin/k /usr/local/bin/$kuaijiejian
-				  echo "바로 가기 키가 설정되어 있습니다"
+				  echo "바로 가기 키가 설정되었습니다"
 				  send_stats "스크립트 바로 가기 키가 설정되었습니다"
 				  break_end
 				  linux_Settings
@@ -12952,7 +13020,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -e -p "삭제 해야하는 구문 분석 컨텐츠의 키워드를 입력하십시오." delhost
+						  read -e -p "삭제 해야하는 콘텐츠를 구문 분석하기위한 키워드를 입력하십시오." delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "로컬 호스트 구문 분석 및 삭제"
 						  ;;

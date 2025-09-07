@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.2"
+sh_v="4.1.3"
 
 
 gl_hui='\e[37m'
@@ -213,12 +213,13 @@ install() {
 
 
 check_disk_space() {
+	local required_gb=$1
+	local path=${2:-/}
 
-	required_gb=$1
-	required_space_mb=$((required_gb * 1024))
-	available_space_mb=$(df -m / | awk 'NR==2 {print $4}')
+	local required_space_mb=$((required_gb * 1024))
+	local available_space_mb=$(df -m "$path" | awk 'NR==2 {print $4}')
 
-	if [ $available_space_mb -lt $required_space_mb ]; then
+	if [ "$available_space_mb" -lt "$required_space_mb" ]; then
 		echo -e "${gl_huang}提示:${gl_bai}磁盤空間不足！"
 		echo "當前可用空間: $((available_space_mb/1024))G"
 		echo "最小需求空間:${required_gb}G"
@@ -228,6 +229,7 @@ check_disk_space() {
 		kejilion
 	fi
 }
+
 
 
 install_dependency() {
@@ -2707,13 +2709,23 @@ clear_host_port_rules() {
 
 setup_docker_dir() {
 
-	mkdir -p /home/docker/ 2>/dev/null
+	mkdir -p /home /home/docker 2>/dev/null
+
 	if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
 		cp -f /home/docker /home/docker1 2>/dev/null
 		rm -rf /home/docker 2>/dev/null
 		mkdir -p /vol1/1000/docker 2>/dev/null
 		ln -s /vol1/1000/docker /home/docker 2>/dev/null
 	fi
+
+	if [ -d "/volume1/" ] && [ ! -d "/volume1/docker" ]; then
+		cp -f /home/docker /home/docker1 2>/dev/null
+		rm -rf /home/docker 2>/dev/null
+		mkdir -p /volume1/docker 2>/dev/null
+		ln -s /volume1/docker /home/docker 2>/dev/null
+	fi
+
+
 }
 
 
@@ -2757,7 +2769,8 @@ while true; do
 	read -e -p "請輸入你的選擇:" choice
 	 case $choice in
 		1)
-			check_disk_space $app_size
+			setup_docker_dir
+			check_disk_space $app_size /home/docker
 			read -e -p "輸入應用對外服務端口，回車默認使用${docker_port}端口:" app_port
 			local app_port=${app_port:-${docker_port}}
 			local docker_port=$app_port
@@ -2765,7 +2778,6 @@ while true; do
 			install jq
 			install_docker
 			docker_rum
-			setup_docker_dir
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 			add_app_id
@@ -2870,14 +2882,14 @@ docker_app_plus() {
 		read -e -p "輸入你的選擇:" choice
 		case $choice in
 			1)
-				check_disk_space $app_size
+				setup_docker_dir
+				check_disk_space $app_size /home/docker
 				read -e -p "輸入應用對外服務端口，回車默認使用${docker_port}端口:" app_port
 				local app_port=${app_port:-${docker_port}}
 				local docker_port=$app_port
 				install jq
 				install_docker
 				docker_app_install
-				setup_docker_dir
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 				add_app_id
@@ -3142,7 +3154,7 @@ send_stats "安裝LDNMP環境"
 root_use
 clear
 echo -e "${gl_huang}LDNMP環境未安裝，開始安裝LDNMP環境...${gl_bai}"
-check_disk_space 3
+check_disk_space 3 /home
 check_port
 install_dependency
 install_docker
@@ -3159,7 +3171,7 @@ send_stats "安裝nginx環境"
 root_use
 clear
 echo -e "${gl_huang}nginx未安裝，開始安裝nginx環境...${gl_bai}"
-check_disk_space 1
+check_disk_space 1 /home
 check_port
 install_dependency
 install_docker
@@ -8876,7 +8888,7 @@ while true; do
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}91.  ${color91}gitea私有代碼倉庫${gl_kjlan}92.  ${color92}FileBrowser文件管理器"
 	  echo -e "${gl_kjlan}93.  ${color93}Dufs極簡靜態文件服務器${gl_kjlan}94.  ${color94}Gopeed高速下載工具"
-	  echo -e "${gl_kjlan}95.  ${color95}paperless文檔管理平台"
+	  echo -e "${gl_kjlan}95.  ${color95}paperless文檔管理平台${gl_kjlan}96.  ${color96}2FAuth自託管二步驗證器"
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard組網(服務端)${gl_kjlan}98.  ${color98}WireGuard組網(客戶端)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}備份全部應用數據${gl_kjlan}r.   ${gl_bai}還原全部應用數據"
@@ -9189,7 +9201,8 @@ while true; do
 
 			case $choice in
 				1)
-					check_disk_space 2
+					setup_docker_dir
+					check_disk_space 2 /home/docker
 					read -e -p "請設置郵箱域名 例如 mail.yuming.com :" yuming
 					mkdir -p /home/docker
 					echo "$yuming" > /home/docker/mail.txt
@@ -11781,6 +11794,61 @@ while true; do
 		docker_app_plus
 
 		  ;;
+
+
+
+	  96|2fauth)
+
+		local app_id="96"
+
+		local app_name="2FAuth自托管二步验证器"
+		local app_text="自托管的双重身份验证 (2FA) 账户管理和验证码生成工具。"
+		local app_url="官网: https://github.com/Bubka/2FAuth"
+		local docker_name="2fauth"
+		local docker_port="8096"
+		local app_size="1"
+
+		docker_app_install() {
+
+			add_yuming
+
+			mkdir -p /home/docker/2fauth
+			mkdir -p /home/docker/2fauth/data
+			chmod -R 777 /home/docker/2fauth/
+			cd /home/docker/2fauth
+			
+			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
+
+			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
+			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml			
+			cd /home/docker/2fauth
+			docker compose up -d
+
+			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
+			block_container_port "$docker_name" "$ipv4_address"			
+
+			clear
+			echo "已經安裝完成"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			docker_app_install
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/2fauth/ && docker compose down --rmi all
+			rm -rf /home/docker/2fauth
+			echo "應用已卸載"
+		}
+
+		docker_app_plus
+
+		  ;;
+
 
 
 	97|wgs)
