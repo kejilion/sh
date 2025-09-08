@@ -12559,12 +12559,12 @@ EOF
 
 				case $choice in
 					1)
-						sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null 2>&1
+						grep -q '^precedence ::ffff:0:0/96 100' /etc/gai.conf 2>/dev/null \ || echo 'precedence ::ffff:0:0/96 100' >> /etc/gai.conf
 						echo "已切换为 IPv4 优先"
 						send_stats "已切换为 IPv4 优先"
 						;;
 					2)
-						sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
+						rm -f /etc/gai.conf
 						echo "已切换为 IPv6 优先"
 						send_stats "已切换为 IPv6 优先"
 						;;
