@@ -12542,13 +12542,14 @@ EOF
 				clear
 				echo "设置v4/v6优先级"
 				echo "------------------------"
-				local ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
-				if [ "$ipv6_disabled" -eq 1 ]; then
+
+				if grep -Eq '^\s*precedence\s+::ffff:0:0/96\s+100\s*$' /etc/gai.conf 2>/dev/null; then
 					echo -e "当前网络优先级设置: ${gl_huang}IPv4${gl_bai} 优先"
 				else
 					echo -e "当前网络优先级设置: ${gl_huang}IPv6${gl_bai} 优先"
 				fi
+
 				echo ""
 				echo "------------------------"
 				echo "1. IPv4 优先          2. IPv6 优先          3. IPv6 修复工具"
@@ -12559,7 +12560,8 @@ EOF
 
 				case $choice in
 					1)
-						grep -q '^precedence ::ffff:0:0/96 100' /etc/gai.conf 2>/dev/null \ || echo 'precedence ::ffff:0:0/96 100' >> /etc/gai.conf
+						grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
+  							|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
 						echo "已切换为 IPv4 优先"
 						send_stats "已切换为 IPv4 优先"
 						;;
