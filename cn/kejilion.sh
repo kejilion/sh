@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.3"
+sh_v="4.1.4"
 
 
 gl_hui='\e[37m'
@@ -4334,8 +4334,10 @@ set_dns() {
 
 ip_address
 
+chattr -i /etc/resolv.conf
 rm /etc/resolv.conf
 touch /etc/resolv.conf
+
 
 if [ -n "$ipv4_address" ]; then
 	echo "nameserver $dns1_ipv4" >> /etc/resolv.conf
@@ -4346,6 +4348,8 @@ if [ -n "$ipv6_address" ]; then
 	echo "nameserver $dns1_ipv6" >> /etc/resolv.conf
 	echo "nameserver $dns2_ipv6" >> /etc/resolv.conf
 fi
+
+chattr +i /etc/resolv.conf
 
 }
 
@@ -4391,7 +4395,9 @@ while true; do
 		;;
 	  3)
 		install nano
+		chattr -i /etc/resolv.conf
 		nano /etc/resolv.conf
+		chattr +i /etc/resolv.conf
 		send_stats "手动编辑DNS配置"
 		;;
 	  *)
@@ -11816,16 +11822,16 @@ while true; do
 			mkdir -p /home/docker/2fauth/data
 			chmod -R 777 /home/docker/2fauth/
 			cd /home/docker/2fauth
-			
+
 			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
 
 			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
-			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml			
+			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml
 			cd /home/docker/2fauth
 			docker compose up -d
 
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			block_container_port "$docker_name" "$ipv4_address"			
+			block_container_port "$docker_name" "$ipv4_address"
 
 			clear
 			echo "已经安装完成"
