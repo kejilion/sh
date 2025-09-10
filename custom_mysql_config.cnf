@@ -42,3 +42,4 @@ log_queries_not_using_indexes = 1           # ⭐记录无索引扫描
 # 其他
 sql_mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
 performance_schema=ON                       # ⭐生产环境推荐打开，监控分析好用
+disable-log-bin
