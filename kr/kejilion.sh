@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.3"
+sh_v="4.1.4"
 
 
 gl_hui='\e[37m'
@@ -1560,7 +1560,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "먼저 도메인 이름을 기본 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "먼저 도메인 이름을 로컬 IP로 해결합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IP 또는 해결 된 도메인 이름을 입력하십시오." yuming
 }
 
@@ -2123,7 +2123,7 @@ web_security() {
 
 				  22)
 					  send_stats "5 초 방패의 높은 하중"
-					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 하중의 감지에 도달하면 방패가 자동으로 켜지고 낮은 부하가 자동으로 5 초 동안 꺼집니다.${gl_bai}"
+					  echo -e "${gl_huang}웹 사이트는 5 분마다 자동으로 감지됩니다. 높은 부하가 감지되면 방패가 자동으로 켜지고 5 초 동안 낮은 부하가 자동으로 꺼집니다.${gl_bai}"
 					  echo "--------------"
 					  echo "CF 매개 변수 가져 오기 :"
 					  echo -e "CF 배경의 오른쪽 상단 모서리로 이동하여 왼쪽의 API 토큰을 선택하고 얻습니다.${gl_huang}Global API Key${gl_bai}"
@@ -4334,8 +4334,10 @@ set_dns() {
 
 ip_address
 
+chattr -i /etc/resolv.conf
 rm /etc/resolv.conf
 touch /etc/resolv.conf
+
 
 if [ -n "$ipv4_address" ]; then
 	echo "nameserver $dns1_ipv4" >> /etc/resolv.conf
@@ -4346,6 +4348,8 @@ if [ -n "$ipv6_address" ]; then
 	echo "nameserver $dns1_ipv6" >> /etc/resolv.conf
 	echo "nameserver $dns2_ipv6" >> /etc/resolv.conf
 fi
+
+chattr +i /etc/resolv.conf
 
 }
 
@@ -4391,7 +4395,9 @@ while true; do
 		;;
 	  3)
 		install nano
+		chattr -i /etc/resolv.conf
 		nano /etc/resolv.conf
+		chattr +i /etc/resolv.conf
 		send_stats "DNS 구성을 수동으로 편집합니다"
 		;;
 	  *)
@@ -4526,7 +4532,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}루트 로그인 설정이 완료되었습니다!${gl_bai}"
+echo -e "${gl_lv}루트 로그인이 설정되었습니다!${gl_bai}"
 
 }
 
@@ -5004,7 +5010,7 @@ elrepo_install() {
 		linux_Settings
 	fi
 	# 감지 된 운영 체제 정보를 인쇄합니다
-	echo "감지 된 운영 체제 :$os_name $os_version"
+	echo "운영 체제 감지 :$os_name $os_version"
 	# 시스템 버전에 따라 해당 Elrepo 창고 구성을 설치하십시오.
 	if [[ "$os_version" == 8 ]]; then
 		echo "Elrepo 저장소 구성 (버전 8)을 설치하십시오 ..."
@@ -8890,6 +8896,7 @@ while true; do
 	  echo -e "${gl_kjlan}93.  ${color93}DUFS 미니멀리스트 정적 파일 서버${gl_kjlan}94.  ${color94}고속 다운로드 도구"
 	  echo -e "${gl_kjlan}95.  ${color95}종이없는 문서 관리 플랫폼${gl_kjlan}96.  ${color96}2FAUTH 자체 호스팅 2 단계 유효성 검사기"
 	  echo -e "${gl_kjlan}97.  ${color97}와이어 가드 네트워킹 (서버 측)${gl_kjlan}98.  ${color98}와이어 가드 네트워킹 (클라이언트)"
+	  echo -e "${gl_kjlan}99.  ${color99}DSM Synology Virtual Machine"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}모든 응용 프로그램 데이터를 백업합니다${gl_kjlan}r.   ${gl_bai}모든 응용 프로그램 데이터를 복원하십시오"
 	  echo -e "${gl_kjlan}------------------------"
@@ -11816,16 +11823,16 @@ while true; do
 			mkdir -p /home/docker/2fauth/data
 			chmod -R 777 /home/docker/2fauth/
 			cd /home/docker/2fauth
-			
+
 			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
 
 			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
-			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml			
+			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml
 			cd /home/docker/2fauth
 			docker compose up -d
 
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			block_container_port "$docker_name" "$ipv4_address"			
+			block_container_port "$docker_name" "$ipv4_address"
 
 			clear
 			echo "설치"
@@ -11939,7 +11946,7 @@ while true; do
 		echo -e "${gl_huang}모든 클라이언트 구성 코드 :${gl_bai}"
 		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "# $(basename $d) "; cat $d/*.conf; echo; done'
 		sleep 2
-		echo -e "${gl_lv}${COUNT}모든 출력은 모두 각 클라이언트에 의해 구성되며 사용 방법은 다음과 같습니다.${gl_bai}"
+		echo -e "${gl_lv}${COUNT}모든 출력은 각 클라이언트가 제공합니다. 사용법은 다음과 같습니다.${gl_bai}"
 		echo -e "${gl_lv}1. 휴대 전화에서 WG의 앱을 다운로드하고 위의 QR 코드를 스캔하여 네트워크에 빠르게 연결하십시오.${gl_bai}"
 		echo -e "${gl_lv}2. Windows 클라이언트를 다운로드하고 구성 코드를 복사하여 네트워크에 연결하십시오.${gl_bai}"
 		echo -e "${gl_lv}3. Linux는 스크립트를 사용하여 WG 클라이언트를 배포하고 구성 코드를 복사하여 네트워크에 연결합니다.${gl_bai}"
@@ -11993,7 +12000,7 @@ while true; do
 				fi
 			done
 
-			# 구성 파일에 씁니다
+			# 구성 파일에 쓰십시오
 			echo "$input" > "$CONFIG_FILE"
 
 			echo "클라이언트 구성이 저장되었습니다$CONFIG_FILE"
@@ -12026,6 +12033,64 @@ while true; do
 		docker_app
 
 		;;
+
+
+	  99|dsm)
+
+		local app_id="99"
+
+		local app_name="dsm群晖虚拟机"
+		local app_text="Docker容器中的虚拟DSM"
+		local app_url="官网: https://github.com/vdsm/virtual-dsm"
+		local docker_name="dsm"
+		local docker_port="8099"
+		local app_size="16"
+
+		docker_app_install() {
+
+			read -e -p "CPU 코어 수를 설정 (기본값 2) :" CPU_CORES
+			local CPU_CORES=${CPU_CORES:-2}
+
+			read -e -p "메모리 크기를 설정 (기본 4G) :" RAM_SIZE
+			local RAM_SIZE=${RAM_SIZE:-4}
+
+			mkdir -p /home/docker/dsm
+			mkdir -p /home/docker/dsm/dev
+			chmod -R 777 /home/docker/dsm/
+			cd /home/docker/dsm
+
+			curl -o /home/docker/dsm/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/dsm-docker-compose.yml
+
+			sed -i "s/5000:5000/${docker_port}:5000/g" /home/docker/dsm/docker-compose.yml
+			sed -i "s|CPU_CORES: "2"|CPU_CORES: "${CPU_CORES}"|g" /home/docker/dsm/docker-compose.yml
+			sed -i "s|RAM_SIZE: "2G"|RAM_SIZE: "${RAM_SIZE}G"|g" /home/docker/dsm/docker-compose.yml
+			cd /home/docker/dsm
+			docker compose up -d
+
+			clear
+			echo "설치"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/dsm/ && docker compose down --rmi all
+			docker_app_install
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/dsm/ && docker compose down --rmi all
+			rm -rf /home/docker/dsm
+			echo "앱이 제거되었습니다"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
 
 
 
@@ -12319,7 +12384,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}방화벽 고급 관리자${gl_kjlan}18.  ${gl_bai}호스트 이름을 수정하십시오"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}스위치 시스템 업데이트 소스${gl_kjlan}20.  ${gl_bai}타이밍 작업 관리"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 분석${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 구문 분석${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}현재 한도의 자동 종료${gl_kjlan}24.  ${gl_bai}루트 비공개 키 로그인 모드"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-BOT 시스템 모니터링 및 조기 경고${gl_kjlan}26.  ${gl_bai}OpenSsh 고위험 취약점을 수정하십시오"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linux 커널 업그레이드${gl_kjlan}28.  ${gl_bai}Linux 시스템에서 커널 매개 변수의 최적화${gl_huang}★${gl_bai}"
@@ -12350,7 +12415,7 @@ linux_Settings() {
 				  fi
 				  find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/k" && rm -f {}' \;
 				  ln -s /usr/local/bin/k /usr/local/bin/$kuaijiejian
-				  echo "바로 가기 키가 설정되었습니다"
+				  echo "바로 가기 키가 설정되어 있습니다"
 				  send_stats "스크립트 바로 가기 키가 설정되었습니다"
 				  break_end
 				  linux_Settings
@@ -12542,13 +12607,14 @@ EOF
 				clear
 				echo "V4/V6 우선 순위를 설정하십시오"
 				echo "------------------------"
-				local ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
-				if [ "$ipv6_disabled" -eq 1 ]; then
+
+				if grep -Eq '^\s*precedence\s+::ffff:0:0/96\s+100\s*$' /etc/gai.conf 2>/dev/null; then
 					echo -e "현재 네트워크 우선 순위 설정 :${gl_huang}IPv4${gl_bai}우선 사항"
 				else
 					echo -e "현재 네트워크 우선 순위 설정 :${gl_huang}IPv6${gl_bai}우선 사항"
 				fi
+
 				echo ""
 				echo "------------------------"
 				echo "1. IPv4 우선 순위 2. IPv6 우선 순위 3. IPv6 수리 도구"
@@ -12559,12 +12625,13 @@ EOF
 
 				case $choice in
 					1)
-						sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null 2>&1
+						grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
+  							|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
 						echo "IPv4 우선 순위로 전환되었습니다"
 						send_stats "IPv4 우선 순위로 전환되었습니다"
 						;;
 					2)
-						sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
+						rm -f /etc/gai.conf
 						echo "IPv6 우선 순위로 전환되었습니다"
 						send_stats "IPv6 우선 순위로 전환되었습니다"
 						;;
@@ -12794,7 +12861,7 @@ EOF
 				echo "3. 일본의 도쿄 시간 4. 한국의 서울 시간"
 				echo "5. 싱가포르 시간 6. 인도의 콜카타 시간"
 				echo "7. UAE 8의 두바이 시간. 호주 시드니 시간"
-				echo "9. 태국 방콕에서의 시간"
+				echo "9. 방콕 시간, 태국"
 				echo "------------------------"
 				echo "유럽"
 				echo "11. 영국의 런던 시간 12. 프랑스의 파리 시간"
@@ -13020,7 +13087,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -e -p "삭제 해야하는 콘텐츠를 구문 분석하기위한 키워드를 입력하십시오." delhost
+						  read -e -p "삭제 해야하는 구문 분석 컨텐츠의 키워드를 입력하십시오." delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "로컬 호스트 구문 분석 및 삭제"
 						  ;;

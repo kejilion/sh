@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.3"
+sh_v="4.1.4"
 
 
 gl_hui='\e[37m'
@@ -1560,7 +1560,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "First resolve the domain name to the native IP:${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "First resolve the domain name to the local IP:${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "Please enter your IP or the resolved domain name:" yuming
 }
 
@@ -1742,7 +1742,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# Decide to turn on or off WAF according to mode parameters
+	# Decide to turn on or off WAF according to the mode parameter
 	if [ "$mode" == "on" ]; then
 		# Turn on WAF: Remove comments
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -2123,7 +2123,7 @@ web_security() {
 
 				  22)
 					  send_stats "High load on 5 seconds shield"
-					  echo -e "${gl_huang}The website automatically detects every 5 minutes. When it reaches the detection of a high load, the shield will be automatically turned on, and the low load will be automatically turned off for 5 seconds.${gl_bai}"
+					  echo -e "${gl_huang}The website automatically detects every 5 minutes. When high load is detected, the shield will be automatically turned on, and low load will be automatically turned off for 5 seconds.${gl_bai}"
 					  echo "--------------"
 					  echo "Get CF parameters:"
 					  echo -e "Go to the upper right corner of the cf background, select the API token on the left, and obtain it${gl_huang}Global API Key${gl_bai}"
@@ -4334,8 +4334,10 @@ set_dns() {
 
 ip_address
 
+chattr -i /etc/resolv.conf
 rm /etc/resolv.conf
 touch /etc/resolv.conf
+
 
 if [ -n "$ipv4_address" ]; then
 	echo "nameserver $dns1_ipv4" >> /etc/resolv.conf
@@ -4346,6 +4348,8 @@ if [ -n "$ipv6_address" ]; then
 	echo "nameserver $dns1_ipv6" >> /etc/resolv.conf
 	echo "nameserver $dns2_ipv6" >> /etc/resolv.conf
 fi
+
+chattr +i /etc/resolv.conf
 
 }
 
@@ -4391,7 +4395,9 @@ while true; do
 		;;
 	  3)
 		install nano
+		chattr -i /etc/resolv.conf
 		nano /etc/resolv.conf
+		chattr +i /etc/resolv.conf
 		send_stats "Manually edit DNS configuration"
 		;;
 	  *)
@@ -4526,7 +4532,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}ROOT login settings are complete!${gl_bai}"
+echo -e "${gl_lv}ROOT login is set up!${gl_bai}"
 
 }
 
@@ -5004,7 +5010,7 @@ elrepo_install() {
 		linux_Settings
 	fi
 	# Print detected operating system information
-	echo "Detected operating systems:$os_name $os_version"
+	echo "Operating system detected:$os_name $os_version"
 	# Install the corresponding ELRepo warehouse configuration according to the system version
 	if [[ "$os_version" == 8 ]]; then
 		echo "Install ELRepo repository configuration (version 8)..."
@@ -8866,7 +8872,7 @@ while true; do
 	  echo -e "${gl_kjlan}53.  ${color53}llama3 chat AI model${gl_kjlan}54.  ${color54}AMH Host Website Building Management Panel"
 	  echo -e "${gl_kjlan}55.  ${color55}FRP intranet penetration (server side)${gl_huang}★${gl_bai}	         ${gl_kjlan}56.  ${color56}FRP intranet penetration (client)${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}57.  ${color57}Deepseek chat AI big model${gl_kjlan}58.  ${color58}Dify big model knowledge base${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}59.  ${color59}NewAPI Big Model Asset Management${gl_kjlan}60.  ${color60}JumpServer open source bastion machine"
+	  echo -e "${gl_kjlan}59.  ${color59}NewAPI big model asset management${gl_kjlan}60.  ${color60}JumpServer open source bastion machine"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}61.  ${color61}Online translation server${gl_kjlan}62.  ${color62}RAGFlow big model knowledge base"
 	  echo -e "${gl_kjlan}63.  ${color63}OpenWebUI self-hosted AI platform${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${color64}it-tools toolbox"
@@ -8890,6 +8896,7 @@ while true; do
 	  echo -e "${gl_kjlan}93.  ${color93}Dufs minimalist static file server${gl_kjlan}94.  ${color94}Gopeed high-speed download tool"
 	  echo -e "${gl_kjlan}95.  ${color95}paperless document management platform${gl_kjlan}96.  ${color96}2FAuth self-hosted two-step validator"
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard networking (server side)${gl_kjlan}98.  ${color98}WireGuard networking (client)"
+	  echo -e "${gl_kjlan}99.  ${color99}DSM Synology Virtual Machine"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}Back up all application data${gl_kjlan}r.   ${gl_bai}Restore all application data"
 	  echo -e "${gl_kjlan}------------------------"
@@ -11816,16 +11823,16 @@ while true; do
 			mkdir -p /home/docker/2fauth/data
 			chmod -R 777 /home/docker/2fauth/
 			cd /home/docker/2fauth
-			
+
 			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
 
 			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
-			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml			
+			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml
 			cd /home/docker/2fauth
 			docker compose up -d
 
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			block_container_port "$docker_name" "$ipv4_address"			
+			block_container_port "$docker_name" "$ipv4_address"
 
 			clear
 			echo "Installed"
@@ -11939,7 +11946,7 @@ while true; do
 		echo -e "${gl_huang}All client configuration codes:${gl_bai}"
 		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "# $(basename $d) "; cat $d/*.conf; echo; done'
 		sleep 2
-		echo -e "${gl_lv}${COUNT}All outputs are all configured by each client, and the usage method is as follows:${gl_bai}"
+		echo -e "${gl_lv}${COUNT}All outputs are provided by each client. The usage method is as follows:${gl_bai}"
 		echo -e "${gl_lv}1. Download wg's APP on your mobile phone, scan the QR code above to quickly connect to the network${gl_bai}"
 		echo -e "${gl_lv}2. Download the Windows client and copy the configuration code to connect to the network.${gl_bai}"
 		echo -e "${gl_lv}3. Linux uses scripts to deploy WG clients and copy configuration code to connect to the network.${gl_bai}"
@@ -11993,7 +12000,7 @@ while true; do
 				fi
 			done
 
-			# Write to configuration file
+			# Write to the configuration file
 			echo "$input" > "$CONFIG_FILE"
 
 			echo "Client configuration has been saved to$CONFIG_FILE"
@@ -12026,6 +12033,64 @@ while true; do
 		docker_app
 
 		;;
+
+
+	  99|dsm)
+
+		local app_id="99"
+
+		local app_name="dsm群晖虚拟机"
+		local app_text="Docker容器中的虚拟DSM"
+		local app_url="官网: https://github.com/vdsm/virtual-dsm"
+		local docker_name="dsm"
+		local docker_port="8099"
+		local app_size="16"
+
+		docker_app_install() {
+
+			read -e -p "Set the number of CPU cores (default 2):" CPU_CORES
+			local CPU_CORES=${CPU_CORES:-2}
+
+			read -e -p "Set the memory size (default 4G):" RAM_SIZE
+			local RAM_SIZE=${RAM_SIZE:-4}
+
+			mkdir -p /home/docker/dsm
+			mkdir -p /home/docker/dsm/dev
+			chmod -R 777 /home/docker/dsm/
+			cd /home/docker/dsm
+
+			curl -o /home/docker/dsm/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/dsm-docker-compose.yml
+
+			sed -i "s/5000:5000/${docker_port}:5000/g" /home/docker/dsm/docker-compose.yml
+			sed -i "s|CPU_CORES: "2"|CPU_CORES: "${CPU_CORES}"|g" /home/docker/dsm/docker-compose.yml
+			sed -i "s|RAM_SIZE: "2G"|RAM_SIZE: "${RAM_SIZE}G"|g" /home/docker/dsm/docker-compose.yml
+			cd /home/docker/dsm
+			docker compose up -d
+
+			clear
+			echo "Installed"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/dsm/ && docker compose down --rmi all
+			docker_app_install
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/dsm/ && docker compose down --rmi all
+			rm -rf /home/docker/dsm
+			echo "The app has been uninstalled"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
 
 
 
@@ -12319,7 +12384,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}Firewall Advanced Manager${gl_kjlan}18.  ${gl_bai}Modify the host name"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}Switch system update source${gl_kjlan}20.  ${gl_bai}Timing task management"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}Native host analysis${gl_kjlan}22.  ${gl_bai}SSH Defense Program"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}Native host parsing${gl_kjlan}22.  ${gl_bai}SSH Defense Program"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}Automatic shutdown of current limit${gl_kjlan}24.  ${gl_bai}ROOT private key login mode"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot system monitoring and early warning${gl_kjlan}26.  ${gl_bai}Fix OpenSSH high-risk vulnerabilities"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linux kernel upgrade${gl_kjlan}28.  ${gl_bai}Optimization of kernel parameters in Linux system${gl_huang}★${gl_bai}"
@@ -12350,7 +12415,7 @@ linux_Settings() {
 				  fi
 				  find /usr/local/bin/ -type l -exec bash -c 'test "$(readlink -f {})" = "/usr/local/bin/k" && rm -f {}' \;
 				  ln -s /usr/local/bin/k /usr/local/bin/$kuaijiejian
-				  echo "Shortcut keys have been set"
+				  echo "Shortcut keys are set"
 				  send_stats "Script shortcut keys have been set"
 				  break_end
 				  linux_Settings
@@ -12542,13 +12607,14 @@ EOF
 				clear
 				echo "Set v4/v6 priority"
 				echo "------------------------"
-				local ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
-				if [ "$ipv6_disabled" -eq 1 ]; then
+
+				if grep -Eq '^\s*precedence\s+::ffff:0:0/96\s+100\s*$' /etc/gai.conf 2>/dev/null; then
 					echo -e "Current network priority settings:${gl_huang}IPv4${gl_bai}priority"
 				else
 					echo -e "Current network priority settings:${gl_huang}IPv6${gl_bai}priority"
 				fi
+
 				echo ""
 				echo "------------------------"
 				echo "1. IPv4 priority 2. IPv6 priority 3. IPv6 repair tool"
@@ -12559,12 +12625,13 @@ EOF
 
 				case $choice in
 					1)
-						sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null 2>&1
+						grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
+  							|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
 						echo "Switched to IPv4 priority"
 						send_stats "Switched to IPv4 priority"
 						;;
 					2)
-						sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
+						rm -f /etc/gai.conf
 						echo "Switched to IPv6 priority"
 						send_stats "Switched to IPv6 priority"
 						;;
@@ -12794,7 +12861,7 @@ EOF
 				echo "3. Tokyo time in Japan 4. Seoul time in South Korea"
 				echo "5. Singapore time 6. Kolkata time in India"
 				echo "7. Dubai time in the UAE 8. Sydney time in Australia"
-				echo "9. Time in Bangkok, Thailand"
+				echo "9. Bangkok Time, Thailand"
 				echo "------------------------"
 				echo "Europe"
 				echo "11. London time in the UK 12. Paris time in France"
@@ -13020,7 +13087,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -e -p "Please enter the keywords for parsing content that need to be deleted:" delhost
+						  read -e -p "Please enter the keywords of parsing content that need to be deleted:" delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "Local host parsing and deletion"
 						  ;;

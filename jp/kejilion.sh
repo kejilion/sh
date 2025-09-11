@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.3"
+sh_v="4.1.4"
 
 
 gl_hui='\e[37m'
@@ -1560,7 +1560,7 @@ fi
 
 add_yuming() {
 	  ip_address
-	  echo -e "最初にドメイン名をネイティブIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
+	  echo -e "最初にドメイン名をローカルIPに解決します。${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "IPまたは解決されたドメイン名を入力してください：" yuming
 }
 
@@ -1742,7 +1742,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# モードパラメーターに従ってWAFをオンまたはオフにすることを決定します
+	# モードパラメーターに従ってWAFをオンまたはオフにすることにしました
 	if [ "$mode" == "on" ]; then
 		# WAFをオンにしてください：コメントを削除します
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -2123,7 +2123,7 @@ web_security() {
 
 				  22)
 					  send_stats "5秒シールドでの高負荷"
-					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷の検出に達すると、シールドが自動的にオンになり、低負荷が5秒間自動的にオフになります。${gl_bai}"
+					  echo -e "${gl_huang}ウェブサイトは5分ごとに自動的に検出されます。高負荷が検出されると、シールドが自動的にオンになり、低負荷が5秒間自動的にオフになります。${gl_bai}"
 					  echo "--------------"
 					  echo "CFパラメーターを取得します："
 					  echo -e "CFバックグラウンドの右上隅に移動し、左側のAPIトークンを選択して、取得します${gl_huang}Global API Key${gl_bai}"
@@ -4334,8 +4334,10 @@ set_dns() {
 
 ip_address
 
+chattr -i /etc/resolv.conf
 rm /etc/resolv.conf
 touch /etc/resolv.conf
+
 
 if [ -n "$ipv4_address" ]; then
 	echo "nameserver $dns1_ipv4" >> /etc/resolv.conf
@@ -4346,6 +4348,8 @@ if [ -n "$ipv6_address" ]; then
 	echo "nameserver $dns1_ipv6" >> /etc/resolv.conf
 	echo "nameserver $dns2_ipv6" >> /etc/resolv.conf
 fi
+
+chattr +i /etc/resolv.conf
 
 }
 
@@ -4391,7 +4395,9 @@ while true; do
 		;;
 	  3)
 		install nano
+		chattr -i /etc/resolv.conf
 		nano /etc/resolv.conf
+		chattr +i /etc/resolv.conf
 		send_stats "DNS構成を手動で編集します"
 		;;
 	  *)
@@ -4526,7 +4532,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}ルートログイン設定が完了しました！${gl_bai}"
+echo -e "${gl_lv}ルートログインがセットアップされます！${gl_bai}"
 
 }
 
@@ -8227,7 +8233,7 @@ linux_ldnmp() {
 	  clear
 	  echo -e "[${gl_huang}3/6${gl_bai}] PHPバージョンを選択してください"
 	  echo "-------------"
-	  read -e -p "1。PHPの最新バージョン| 2。Php7.4：" pho_v
+	  read -e -p "1. The latest version of php | 2。Php7.4：" pho_v
 	  case "$pho_v" in
 		1)
 		  sed -i "s#php:9000#php:9000#g" /home/web/conf.d/$yuming.conf
@@ -8274,7 +8280,7 @@ linux_ldnmp() {
 			  ;;
 		  2)
 			  echo "データベースのバックアップは、.GZ-endコンプレッションパッケージである必要があります。 Pagoda/1panelのバックアップデータのインポートをサポートするために、/home/directoryに入れてください。"
-			  read -e -p "ダウンロードリンクを入力して、バックアップデータをリモートでダウンロードすることもできます。 Enterを直接押して、リモートダウンロードをスキップします：" url_download_db
+			  read -e -p "ダウンロードリンクを入力して、バックアップデータをリモートでダウンロードすることもできます。 Enterを直接押してリモートダウンロードをスキップします。" url_download_db
 
 			  cd /home/
 			  if [ -n "$url_download_db" ]; then
@@ -8890,6 +8896,7 @@ while true; do
 	  echo -e "${gl_kjlan}93.  ${color93}DUFS Minimalist Static File Server${gl_kjlan}94.  ${color94}ゴープ高速ダウンロードツール"
 	  echo -e "${gl_kjlan}95.  ${color95}ペーパーレスドキュメント管理プラットフォーム${gl_kjlan}96.  ${color96}2Fauth自己ホストの2段階検証装置"
 	  echo -e "${gl_kjlan}97.  ${color97}ワイヤガードネットワーキング（サーバー側）${gl_kjlan}98.  ${color98}ワイヤガードネットワーキング（クライアント）"
+	  echo -e "${gl_kjlan}99.  ${color99}DSM Synology仮想マシン"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}すべてのアプリケーションデータをバックアップします${gl_kjlan}r.   ${gl_bai}すべてのアプリケーションデータを復元します"
 	  echo -e "${gl_kjlan}------------------------"
@@ -11816,16 +11823,16 @@ while true; do
 			mkdir -p /home/docker/2fauth/data
 			chmod -R 777 /home/docker/2fauth/
 			cd /home/docker/2fauth
-			
+
 			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
 
 			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
-			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml			
+			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml
 			cd /home/docker/2fauth
 			docker compose up -d
 
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			block_container_port "$docker_name" "$ipv4_address"			
+			block_container_port "$docker_name" "$ipv4_address"
 
 			clear
 			echo "インストール"
@@ -11939,7 +11946,7 @@ while true; do
 		echo -e "${gl_huang}すべてのクライアント構成コード：${gl_bai}"
 		docker exec wireguard sh -c 'for d in /config/peer_*; do echo "# $(basename $d) "; cat $d/*.conf; echo; done'
 		sleep 2
-		echo -e "${gl_lv}${COUNT}すべての出力はすべて各クライアントによって構成されており、使用方法は次のとおりです。${gl_bai}"
+		echo -e "${gl_lv}${COUNT}すべての出力は各クライアントによって提供されます。使用方法は次のとおりです。${gl_bai}"
 		echo -e "${gl_lv}1.携帯電話にWGのアプリをダウンロードして、上のQRコードをスキャンしてネットワークにすばやく接続します${gl_bai}"
 		echo -e "${gl_lv}2。Windowsクライアントをダウンロードし、構成コードをコピーしてネットワークに接続します。${gl_bai}"
 		echo -e "${gl_lv}3。Linuxはスクリプトを使用してWGクライアントを展開し、構成コードをコピーしてネットワークに接続します。${gl_bai}"
@@ -12026,6 +12033,64 @@ while true; do
 		docker_app
 
 		;;
+
+
+	  99|dsm)
+
+		local app_id="99"
+
+		local app_name="dsm群晖虚拟机"
+		local app_text="Docker容器中的虚拟DSM"
+		local app_url="官网: https://github.com/vdsm/virtual-dsm"
+		local docker_name="dsm"
+		local docker_port="8099"
+		local app_size="16"
+
+		docker_app_install() {
+
+			read -e -p "CPUコアの数を設定します（デフォルト2）：" CPU_CORES
+			local CPU_CORES=${CPU_CORES:-2}
+
+			read -e -p "メモリサイズを設定します（デフォルト4G）：" RAM_SIZE
+			local RAM_SIZE=${RAM_SIZE:-4}
+
+			mkdir -p /home/docker/dsm
+			mkdir -p /home/docker/dsm/dev
+			chmod -R 777 /home/docker/dsm/
+			cd /home/docker/dsm
+
+			curl -o /home/docker/dsm/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/dsm-docker-compose.yml
+
+			sed -i "s/5000:5000/${docker_port}:5000/g" /home/docker/dsm/docker-compose.yml
+			sed -i "s|CPU_CORES: "2"|CPU_CORES: "${CPU_CORES}"|g" /home/docker/dsm/docker-compose.yml
+			sed -i "s|RAM_SIZE: "2G"|RAM_SIZE: "${RAM_SIZE}G"|g" /home/docker/dsm/docker-compose.yml
+			cd /home/docker/dsm
+			docker compose up -d
+
+			clear
+			echo "インストール"
+			check_docker_app_ip
+		}
+
+
+		docker_app_update() {
+			cd /home/docker/dsm/ && docker compose down --rmi all
+			docker_app_install
+		}
+
+
+		docker_app_uninstall() {
+			cd /home/docker/dsm/ && docker compose down --rmi all
+			rm -rf /home/docker/dsm
+			echo "アプリはアンインストールされています"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
 
 
 
@@ -12542,13 +12607,14 @@ EOF
 				clear
 				echo "V4/V6の優先度を設定します"
 				echo "------------------------"
-				local ipv6_disabled=$(sysctl -n net.ipv6.conf.all.disable_ipv6)
 
-				if [ "$ipv6_disabled" -eq 1 ]; then
+
+				if grep -Eq '^\s*precedence\s+::ffff:0:0/96\s+100\s*$' /etc/gai.conf 2>/dev/null; then
 					echo -e "現在のネットワーク優先設定：${gl_huang}IPv4${gl_bai}優先度"
 				else
 					echo -e "現在のネットワーク優先設定：${gl_huang}IPv6${gl_bai}優先度"
 				fi
+
 				echo ""
 				echo "------------------------"
 				echo "1。IPv4優先度2。IPv6優先度3。IPv6修理ツール"
@@ -12559,12 +12625,13 @@ EOF
 
 				case $choice in
 					1)
-						sysctl -w net.ipv6.conf.all.disable_ipv6=1 > /dev/null 2>&1
+						grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
+  							|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
 						echo "IPv4の優先度に切り替えました"
 						send_stats "IPv4の優先度に切り替えました"
 						;;
 					2)
-						sysctl -w net.ipv6.conf.all.disable_ipv6=0 > /dev/null 2>&1
+						rm -f /etc/gai.conf
 						echo "IPv6の優先度に切り替えました"
 						send_stats "IPv6の優先度に切り替えました"
 						;;
@@ -12794,7 +12861,7 @@ EOF
 				echo "3。日本の東京時間4。韓国のソウル時間"
 				echo "5。シンガポール時間6。インドのコルカタ時間"
 				echo "7。アラブ首長国連邦のドバイ時間8。オーストラリアのシドニー時間"
-				echo "9。タイのバンコクでの時間"
+				echo "9。バンコク・タイム、タイ"
 				echo "------------------------"
 				echo "ヨーロッパ"
 				echo "11。英国のロンドン時間12。パリの時間フランスの時間"
@@ -13020,7 +13087,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -e -p "削除する必要があるコンテンツを解析するために、キーワードを入力してください。" delhost
+						  read -e -p "削除する必要があるコンテンツの解析のキーワードを入力してください。" delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "ローカルホストの解析と削除"
 						  ;;
@@ -13221,7 +13288,7 @@ EOF
 			  echo "TG-BOTモニタリングと早期警告機能"
 			  echo "ビデオの紹介：https：//youtu.be/vll-eb3z_ty"
 			  echo "------------------------------------------------"
-			  echo "ネイティブCPU、メモリ、ハードディスク、トラフィック、およびSSHログインのリアルタイム監視と早期警告を実現するために、TG Robot APIとユーザーIDを構成する必要があります。"
+			  echo "ネイティブCPU、メモリ、ハードディスク、トラフィック、SSHログインのリアルタイム監視と早期警告を実現するために、TG Robot APIとユーザーIDを構成する必要があります。"
 			  echo "しきい値に達した後、ユーザーはユーザーに送信されます"
 			  echo -e "${gl_hui}- トラフィックに関しては、サーバーの再起動が再計算されます -${gl_bai}"
 			  read -e -p "必ず続行しますか？ （y/n）：" choice
