@@ -1051,7 +1051,6 @@ manage_country_rules() {
 				done < "${country_code,,}.zone"
 
 				iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
-				iptables -I OUTPUT -m set --match-set "$ipset_name" dst -j DROP
 
 				echo "已成功阻止 $country_code 的 IP 地址"
 				rm "${country_code,,}.zone"
@@ -1072,8 +1071,9 @@ manage_country_rules() {
 					ipset add "$ipset_name" "$ip" 2>/dev/null
 				done < "${country_code,,}.zone"
 
+
+				iptables -P INPUT DROP 
 				iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
-				iptables -A OUTPUT -m set --match-set "$ipset_name" dst -j ACCEPT
 
 				echo "已成功允许 $country_code 的 IP 地址"
 				rm "${country_code,,}.zone"
@@ -1081,7 +1081,6 @@ manage_country_rules() {
 
 			unblock)
 				iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-				iptables -D OUTPUT -m set --match-set "$ipset_name" dst -j DROP 2>/dev/null
 
 				if ipset list "$ipset_name" &> /dev/null; then
 					ipset destroy "$ipset_name"
