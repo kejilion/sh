@@ -1072,7 +1072,7 @@ manage_country_rules() {
 				done < "${country_code,,}.zone"
 
 
-				iptables -P INPUT DROP 
+				iptables -P INPUT DROP
 				iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
 
 				echo "已成功允许 $country_code 的 IP 地址"
@@ -13401,8 +13401,8 @@ EOF
 		  41)
 			clear
 			send_stats "留言板"
-			echo "科技lion留言板已迁移至官方社区！请在官方社区进行留言噢！"
-			echo "https://bbs.kejilion.pro/"
+			echo "访问科技lion官方留言板，您对脚本有任何想法欢迎留言交流！"
+			echo "https://board.kejilion.pro"
 			  ;;
 
 		  66)
