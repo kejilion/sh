@@ -1027,87 +1027,80 @@ disable_ddos_defense() {
 # 국가 IP 규칙을 관리하는 기능
 manage_country_rules() {
 	local action="$1"
-	local country_code="$2"
-	local ipset_name="${country_code,,}_block"
-	local download_url="http://www.ipdeny.com/ipblocks/data/countries/${country_code,,}.zone"
+	shift  # 去掉第一个参数，剩下的全是国家代码
 
 	install ipset
 
-	case "$action" in
-		block)
-			# IPSET가 존재하지 않는 경우 작성하십시오
-			if ! ipset list "$ipset_name" &> /dev/null; then
-				ipset create "$ipset_name" hash:net
-			fi
+	for country_code in "$@"; do
+		local ipset_name="${country_code,,}_block"
+		local download_url="http://www.ipdeny.com/ipblocks/data/countries/${country_code,,}.zone"
 
-			# IP 영역 파일을 다운로드하십시오
-			if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-				echo "오류 : 다운로드$country_codeIP 영역 파일이 실패했습니다"
-				exit 1
-			fi
+		case "$action" in
+			block)
+				if ! ipset list "$ipset_name" &> /dev/null; then
+					ipset create "$ipset_name" hash:net
+				fi
 
-			# IPSET에 IP를 추가하십시오
-			while IFS= read -r ip; do
-				ipset add "$ipset_name" "$ip"
-			done < "${country_code,,}.zone"
+				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
+					echo "오류 : 다운로드$country_codeIP 영역 파일이 실패했습니다"
+					continue
+				fi
 
-			# iptables와 함께 IP를 차단하십시오
-			iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
-			iptables -I OUTPUT -m set --match-set "$ipset_name" dst -j DROP
+				while IFS= read -r ip; do
+					ipset add "$ipset_name" "$ip" 2>/dev/null
+				done < "${country_code,,}.zone"
 
-			echo "성공적으로 차단되었습니다$country_codeIP 주소"
-			rm "${country_code,,}.zone"
-			;;
+				iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
 
-		allow)
-			# 허용 국가에 대한 IPSET 만들기 (존재하지 않는 경우)
-			if ! ipset list "$ipset_name" &> /dev/null; then
-				ipset create "$ipset_name" hash:net
-			fi
+				echo "성공적으로 차단되었습니다$country_codeIP 주소"
+				rm "${country_code,,}.zone"
+				;;
 
-			# IP 영역 파일을 다운로드하십시오
-			if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-				echo "오류 : 다운로드$country_codeIP 영역 파일이 실패했습니다"
-				exit 1
-			fi
+			allow)
+				if ! ipset list "$ipset_name" &> /dev/null; then
+					ipset create "$ipset_name" hash:net
+				fi
 
-			# 기존 국가 규칙을 삭제합니다
-			iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-			iptables -D OUTPUT -m set --match-set "$ipset_name" dst -j DROP 2>/dev/null
-			ipset flush "$ipset_name"
+				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
+					echo "오류 : 다운로드$country_codeIP 영역 파일이 실패했습니다"
+					continue
+				fi
 
-			# IPSET에 IP를 추가하십시오
-			while IFS= read -r ip; do
-				ipset add "$ipset_name" "$ip"
-			done < "${country_code,,}.zone"
+				ipset flush "$ipset_name"
+				while IFS= read -r ip; do
+					ipset add "$ipset_name" "$ip" 2>/dev/null
+				done < "${country_code,,}.zone"
 
-			# 지정된 국가의 IP 만 허용됩니다
-			iptables -P INPUT DROP
-			iptables -P OUTPUT DROP
-			iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
-			iptables -A OUTPUT -m set --match-set "$ipset_name" dst -j ACCEPT
 
-			echo "성공적으로 만 허용됩니다$country_codeIP 주소"
-			rm "${country_code,,}.zone"
-			;;
+				iptables -P INPUT DROP
+				iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
 
-		unblock)
-			# 국가의 iptables 규칙을 삭제하십시오
-			iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-			iptables -D OUTPUT -m set --match-set "$ipset_name" dst -j DROP 2>/dev/null
+				echo "성공적으로 허용됩니다$country_codeIP 주소"
+				rm "${country_code,,}.zone"
+				;;
 
-			# ipset을 파괴하십시오
-			if ipset list "$ipset_name" &> /dev/null; then
-				ipset destroy "$ipset_name"
-			fi
+			unblock)
+				iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
 
-			echo "성공적으로 해제했습니다$country_codeIP 주소 제한"
-			;;
+				if ipset list "$ipset_name" &> /dev/null; then
+					ipset destroy "$ipset_name"
+				fi
 
-		*)
-			;;
-	esac
+				echo "성공적으로 해제했습니다$country_codeIP 주소 제한"
+				;;
+
+			*)
+				echo "사용법 : manage_country_rules {블록 | 허용 | unblock} <country_code ...>"
+				;;
+		esac
+	done
 }
+
+
+
+
+
+
 
 
 
@@ -1225,18 +1218,18 @@ iptables_panel() {
 				  ;;
 
 			  15)
-				  read -e -p "차단 된 국가 코드 (예 : CN, US, JP)를 입력하십시오." country_code
+				  read -e -p "차단 된 국가 코드를 입력하십시오 (여러 국가 코드는 CN US JP와 같은 공간으로 분리 될 수 있습니다) :" country_code
 				  manage_country_rules block $country_code
 				  send_stats "허용 국가$country_codeIP"
 				  ;;
 			  16)
-				  read -e -p "허용 된 국가 코드 (예 : CN, US, JP)를 입력하십시오." country_code
+				  read -e -p "허용 된 국가 코드를 입력하십시오 (여러 국가 코드는 CN US JP와 같은 공간으로 분리 될 수 있습니다) :" country_code
 				  manage_country_rules allow $country_code
 				  send_stats "나라를 차단하십시오$country_codeIP"
 				  ;;
 
 			  17)
-				  read -e -p "청산 된 국가 코드 (예 : CN, US, JP)를 입력하십시오." country_code
+				  read -e -p "청산 된 국가 코드를 입력하십시오 (여러 국가 코드는 CN US JP와 같은 공간으로 분리 될 수 있습니다) :" country_code
 				  manage_country_rules unblock $country_code
 				  send_stats "나라를 정리하십시오$country_codeIP"
 				  ;;
@@ -1248,8 +1241,6 @@ iptables_panel() {
   done
 
 }
-
-
 
 
 
@@ -8049,7 +8040,7 @@ linux_ldnmp() {
 	  echo "Redis Port : 6379"
 	  echo ""
 	  echo "웹 사이트 URL : https : //$yuming"
-	  echo "백엔드 로그인 경로 : /admin"
+	  echo "백그라운드 로그인 경로 : /admin"
 	  echo "------------------------"
 	  echo "사용자 이름 : 관리자"
 	  echo "비밀번호 : 관리자"
@@ -12861,7 +12852,7 @@ EOF
 				echo "3. 일본의 도쿄 시간 4. 한국의 서울 시간"
 				echo "5. 싱가포르 시간 6. 인도의 콜카타 시간"
 				echo "7. UAE 8의 두바이 시간. 호주 시드니 시간"
-				echo "9. 방콕 시간, 태국"
+				echo "9. 태국 방콕에서의 시간"
 				echo "------------------------"
 				echo "유럽"
 				echo "11. 영국의 런던 시간 12. 프랑스의 파리 시간"
@@ -13410,8 +13401,8 @@ EOF
 		  41)
 			clear
 			send_stats "게시판"
-			echo "Technology Lion 게시판은 공식 커뮤니티로 옮겨졌습니다! 공식 커뮤니티에 메시지를 남겨주세요!"
-			echo "https://bbs.kejilion.pro/"
+			echo "공식 게시위원회의 기술 사자를 방문하십시오. 스크립트에 대한 아이디어가 있으시면 메시지를 남겨두고 의사 소통하십시오!"
+			echo "https://board.kejilion.pro"
 			  ;;
 
 		  66)

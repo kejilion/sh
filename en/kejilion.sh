@@ -1027,87 +1027,80 @@ disable_ddos_defense() {
 # Functions that manage national IP rules
 manage_country_rules() {
 	local action="$1"
-	local country_code="$2"
-	local ipset_name="${country_code,,}_block"
-	local download_url="http://www.ipdeny.com/ipblocks/data/countries/${country_code,,}.zone"
+	shift  # 去掉第一个参数，剩下的全是国家代码
 
 	install ipset
 
-	case "$action" in
-		block)
-			# Create if ipset does not exist
-			if ! ipset list "$ipset_name" &> /dev/null; then
-				ipset create "$ipset_name" hash:net
-			fi
+	for country_code in "$@"; do
+		local ipset_name="${country_code,,}_block"
+		local download_url="http://www.ipdeny.com/ipblocks/data/countries/${country_code,,}.zone"
 
-			# Download IP area file
-			if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-				echo "Error: Download$country_codeIP zone file failed"
-				exit 1
-			fi
+		case "$action" in
+			block)
+				if ! ipset list "$ipset_name" &> /dev/null; then
+					ipset create "$ipset_name" hash:net
+				fi
 
-			# Add IP to ipset
-			while IFS= read -r ip; do
-				ipset add "$ipset_name" "$ip"
-			done < "${country_code,,}.zone"
+				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
+					echo "Error: Download$country_codeIP zone file failed"
+					continue
+				fi
 
-			# Block IP with iptables
-			iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
-			iptables -I OUTPUT -m set --match-set "$ipset_name" dst -j DROP
+				while IFS= read -r ip; do
+					ipset add "$ipset_name" "$ip" 2>/dev/null
+				done < "${country_code,,}.zone"
 
-			echo "Blocked successfully$country_codeIP address"
-			rm "${country_code,,}.zone"
-			;;
+				iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
 
-		allow)
-			# Create an ipset for allowed countries (if not exist)
-			if ! ipset list "$ipset_name" &> /dev/null; then
-				ipset create "$ipset_name" hash:net
-			fi
+				echo "Blocked successfully$country_codeIP address"
+				rm "${country_code,,}.zone"
+				;;
 
-			# Download IP area file
-			if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-				echo "Error: Download$country_codeIP zone file failed"
-				exit 1
-			fi
+			allow)
+				if ! ipset list "$ipset_name" &> /dev/null; then
+					ipset create "$ipset_name" hash:net
+				fi
 
-			# Delete existing national rules
-			iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-			iptables -D OUTPUT -m set --match-set "$ipset_name" dst -j DROP 2>/dev/null
-			ipset flush "$ipset_name"
+				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
+					echo "Error: Download$country_codeIP zone file failed"
+					continue
+				fi
 
-			# Add IP to ipset
-			while IFS= read -r ip; do
-				ipset add "$ipset_name" "$ip"
-			done < "${country_code,,}.zone"
+				ipset flush "$ipset_name"
+				while IFS= read -r ip; do
+					ipset add "$ipset_name" "$ip" 2>/dev/null
+				done < "${country_code,,}.zone"
 
-			# Only IPs in designated countries are allowed
-			iptables -P INPUT DROP
-			iptables -P OUTPUT DROP
-			iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
-			iptables -A OUTPUT -m set --match-set "$ipset_name" dst -j ACCEPT
 
-			echo "Successfully only allowed$country_codeIP address"
-			rm "${country_code,,}.zone"
-			;;
+				iptables -P INPUT DROP
+				iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
 
-		unblock)
-			# Delete the iptables rules for the country
-			iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-			iptables -D OUTPUT -m set --match-set "$ipset_name" dst -j DROP 2>/dev/null
+				echo "Successfully allowed$country_codeIP address"
+				rm "${country_code,,}.zone"
+				;;
 
-			# Destroy ipset
-			if ipset list "$ipset_name" &> /dev/null; then
-				ipset destroy "$ipset_name"
-			fi
+			unblock)
+				iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
 
-			echo "Successfully lifted$country_codeIP address restrictions"
-			;;
+				if ipset list "$ipset_name" &> /dev/null; then
+					ipset destroy "$ipset_name"
+				fi
 
-		*)
-			;;
-	esac
+				echo "Successfully lifted$country_codeIP address restrictions"
+				;;
+
+			*)
+				echo "Usage: manage_country_rules {block|allow|unblock} <country_code...>"
+				;;
+		esac
+	done
 }
+
+
+
+
+
+
 
 
 
@@ -1225,18 +1218,18 @@ iptables_panel() {
 				  ;;
 
 			  15)
-				  read -e -p "Please enter the blocked country code (such as CN, US, JP):" country_code
+				  read -e -p "Please enter the blocked country code (multiple country codes can be separated by spaces such as CN US JP):" country_code
 				  manage_country_rules block $country_code
 				  send_stats "Allowed countries$country_codeIP"
 				  ;;
 			  16)
-				  read -e -p "Please enter the allowed country code (such as CN, US, JP):" country_code
+				  read -e -p "Please enter the allowed country code (multiple country codes can be separated by spaces such as CN US JP):" country_code
 				  manage_country_rules allow $country_code
 				  send_stats "Block the country$country_codeIP"
 				  ;;
 
 			  17)
-				  read -e -p "Please enter the cleared country code (such as CN, US, JP):" country_code
+				  read -e -p "Please enter the cleared country code (multiple country codes can be separated by spaces such as CN US JP):" country_code
 				  manage_country_rules unblock $country_code
 				  send_stats "Clear the country$country_codeIP"
 				  ;;
@@ -1248,8 +1241,6 @@ iptables_panel() {
   done
 
 }
-
-
 
 
 
@@ -5839,7 +5830,7 @@ list_connections() {
 # Add a new connection
 add_connection() {
 	send_stats "Add a new connection"
-	echo "Example to create a new connection:"
+	echo "Create a new connection example:"
 	echo "- Connection name: my_server"
 	echo "- IP address: 192.168.1.100"
 	echo "- Username: root"
@@ -8049,7 +8040,7 @@ linux_ldnmp() {
 	  echo "Redis port: 6379"
 	  echo ""
 	  echo "Website url: https://$yuming"
-	  echo "Backend login path: /admin"
+	  echo "Background login path: /admin"
 	  echo "------------------------"
 	  echo "Username: admin"
 	  echo "Password: admin"
@@ -12861,7 +12852,7 @@ EOF
 				echo "3. Tokyo time in Japan 4. Seoul time in South Korea"
 				echo "5. Singapore time 6. Kolkata time in India"
 				echo "7. Dubai time in the UAE 8. Sydney time in Australia"
-				echo "9. Bangkok Time, Thailand"
+				echo "9. Time in Bangkok, Thailand"
 				echo "------------------------"
 				echo "Europe"
 				echo "11. London time in the UK 12. Paris time in France"
@@ -13410,8 +13401,8 @@ EOF
 		  41)
 			clear
 			send_stats "Message board"
-			echo "The technology lion message board has been moved to the official community! Please leave a message in the official community!"
-			echo "https://bbs.kejilion.pro/"
+			echo "Visit the official message board of Technology lion. If you have any ideas about scripts, please leave a message and communicate!"
+			echo "https://board.kejilion.pro"
 			  ;;
 
 		  66)

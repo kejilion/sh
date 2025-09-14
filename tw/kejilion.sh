@@ -1027,87 +1027,80 @@ disable_ddos_defense() {
 # 管理國家IP規則的函數
 manage_country_rules() {
 	local action="$1"
-	local country_code="$2"
-	local ipset_name="${country_code,,}_block"
-	local download_url="http://www.ipdeny.com/ipblocks/data/countries/${country_code,,}.zone"
+	shift  # 去掉第一个参数，剩下的全是国家代码
 
 	install ipset
 
-	case "$action" in
-		block)
-			# 如果 ipset 不存在則創建
-			if ! ipset list "$ipset_name" &> /dev/null; then
-				ipset create "$ipset_name" hash:net
-			fi
+	for country_code in "$@"; do
+		local ipset_name="${country_code,,}_block"
+		local download_url="http://www.ipdeny.com/ipblocks/data/countries/${country_code,,}.zone"
 
-			# 下載 IP 區域文件
-			if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-				echo "錯誤：下載$country_code的 IP 區域文件失敗"
-				exit 1
-			fi
+		case "$action" in
+			block)
+				if ! ipset list "$ipset_name" &> /dev/null; then
+					ipset create "$ipset_name" hash:net
+				fi
 
-			# 將 IP 添加到 ipset
-			while IFS= read -r ip; do
-				ipset add "$ipset_name" "$ip"
-			done < "${country_code,,}.zone"
+				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
+					echo "錯誤：下載$country_code的 IP 區域文件失敗"
+					continue
+				fi
 
-			# 使用 iptables 阻止 IP
-			iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
-			iptables -I OUTPUT -m set --match-set "$ipset_name" dst -j DROP
+				while IFS= read -r ip; do
+					ipset add "$ipset_name" "$ip" 2>/dev/null
+				done < "${country_code,,}.zone"
 
-			echo "已成功阻止$country_code的 IP 地址"
-			rm "${country_code,,}.zone"
-			;;
+				iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
 
-		allow)
-			# 為允許的國家創建 ipset（如果不存在）
-			if ! ipset list "$ipset_name" &> /dev/null; then
-				ipset create "$ipset_name" hash:net
-			fi
+				echo "已成功阻止$country_code的 IP 地址"
+				rm "${country_code,,}.zone"
+				;;
 
-			# 下載 IP 區域文件
-			if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-				echo "錯誤：下載$country_code的 IP 區域文件失敗"
-				exit 1
-			fi
+			allow)
+				if ! ipset list "$ipset_name" &> /dev/null; then
+					ipset create "$ipset_name" hash:net
+				fi
 
-			# 刪除現有的國家規則
-			iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-			iptables -D OUTPUT -m set --match-set "$ipset_name" dst -j DROP 2>/dev/null
-			ipset flush "$ipset_name"
+				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
+					echo "錯誤：下載$country_code的 IP 區域文件失敗"
+					continue
+				fi
 
-			# 將 IP 添加到 ipset
-			while IFS= read -r ip; do
-				ipset add "$ipset_name" "$ip"
-			done < "${country_code,,}.zone"
+				ipset flush "$ipset_name"
+				while IFS= read -r ip; do
+					ipset add "$ipset_name" "$ip" 2>/dev/null
+				done < "${country_code,,}.zone"
 
-			# 僅允許指定國家的 IP
-			iptables -P INPUT DROP
-			iptables -P OUTPUT DROP
-			iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
-			iptables -A OUTPUT -m set --match-set "$ipset_name" dst -j ACCEPT
 
-			echo "已成功僅允許$country_code的 IP 地址"
-			rm "${country_code,,}.zone"
-			;;
+				iptables -P INPUT DROP
+				iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
 
-		unblock)
-			# 刪除國家的 iptables 規則
-			iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-			iptables -D OUTPUT -m set --match-set "$ipset_name" dst -j DROP 2>/dev/null
+				echo "已成功允許$country_code的 IP 地址"
+				rm "${country_code,,}.zone"
+				;;
 
-			# 銷毀 ipset
-			if ipset list "$ipset_name" &> /dev/null; then
-				ipset destroy "$ipset_name"
-			fi
+			unblock)
+				iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
 
-			echo "已成功解除$country_code的 IP 地址限制"
-			;;
+				if ipset list "$ipset_name" &> /dev/null; then
+					ipset destroy "$ipset_name"
+				fi
 
-		*)
-			;;
-	esac
+				echo "已成功解除$country_code的 IP 地址限制"
+				;;
+
+			*)
+				echo "用法: manage_country_rules {block|allow|unblock} <country_code...>"
+				;;
+		esac
+	done
 }
+
+
+
+
+
+
 
 
 
@@ -1225,18 +1218,18 @@ iptables_panel() {
 				  ;;
 
 			  15)
-				  read -e -p "請輸入阻止的國家代碼（如 CN, US, JP）:" country_code
+				  read -e -p "請輸入阻止的國家代碼（多個國家代碼可用空格隔開如 CN US JP）:" country_code
 				  manage_country_rules block $country_code
 				  send_stats "允許國家$country_code的IP"
 				  ;;
 			  16)
-				  read -e -p "請輸入允許的國家代碼（如 CN, US, JP）:" country_code
+				  read -e -p "請輸入允許的國家代碼（多個國家代碼可用空格隔開如 CN US JP）:" country_code
 				  manage_country_rules allow $country_code
 				  send_stats "阻止國家$country_code的IP"
 				  ;;
 
 			  17)
-				  read -e -p "請輸入清除的國家代碼（如 CN, US, JP）:" country_code
+				  read -e -p "請輸入清除的國家代碼（多個國家代碼可用空格隔開如 CN US JP）:" country_code
 				  manage_country_rules unblock $country_code
 				  send_stats "清除國家$country_code的IP"
 				  ;;
@@ -1248,8 +1241,6 @@ iptables_panel() {
   done
 
 }
-
-
 
 
 
@@ -13410,8 +13401,8 @@ EOF
 		  41)
 			clear
 			send_stats "留言板"
-			echo "科技lion留言板已遷移至官方社區！請在官方社區進行留言噢！"
-			echo "https://bbs.kejilion.pro/"
+			echo "訪問科技lion官方留言板，您對腳本有任何想法歡迎留言交流！"
+			echo "https://board.kejilion.pro"
 			  ;;
 
 		  66)

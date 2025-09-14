@@ -1027,87 +1027,80 @@ disable_ddos_defense() {
 # 国家IPルールを管理する機能
 manage_country_rules() {
 	local action="$1"
-	local country_code="$2"
-	local ipset_name="${country_code,,}_block"
-	local download_url="http://www.ipdeny.com/ipblocks/data/countries/${country_code,,}.zone"
+	shift  # 去掉第一个参数，剩下的全是国家代码
 
 	install ipset
 
-	case "$action" in
-		block)
-			# IPSETが存在しない場合は作成します
-			if ! ipset list "$ipset_name" &> /dev/null; then
-				ipset create "$ipset_name" hash:net
-			fi
+	for country_code in "$@"; do
+		local ipset_name="${country_code,,}_block"
+		local download_url="http://www.ipdeny.com/ipblocks/data/countries/${country_code,,}.zone"
 
-			# IPエリアファイルをダウンロードします
-			if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-				echo "エラー：ダウンロード$country_codeIPゾーンファイルが失敗しました"
-				exit 1
-			fi
+		case "$action" in
+			block)
+				if ! ipset list "$ipset_name" &> /dev/null; then
+					ipset create "$ipset_name" hash:net
+				fi
 
-			# IPSETにIPを追加します
-			while IFS= read -r ip; do
-				ipset add "$ipset_name" "$ip"
-			done < "${country_code,,}.zone"
+				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
+					echo "エラー：ダウンロード$country_codeIPゾーンファイルが失敗しました"
+					continue
+				fi
 
-			# iptablesでIPをブロックします
-			iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
-			iptables -I OUTPUT -m set --match-set "$ipset_name" dst -j DROP
+				while IFS= read -r ip; do
+					ipset add "$ipset_name" "$ip" 2>/dev/null
+				done < "${country_code,,}.zone"
 
-			echo "正常にブロックされました$country_codeIPアドレス"
-			rm "${country_code,,}.zone"
-			;;
+				iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
 
-		allow)
-			# 許可された国のIPSETを作成する（存在しない場合）
-			if ! ipset list "$ipset_name" &> /dev/null; then
-				ipset create "$ipset_name" hash:net
-			fi
+				echo "正常にブロックされました$country_codeIPアドレス"
+				rm "${country_code,,}.zone"
+				;;
 
-			# IPエリアファイルをダウンロードします
-			if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-				echo "エラー：ダウンロード$country_codeIPゾーンファイルが失敗しました"
-				exit 1
-			fi
+			allow)
+				if ! ipset list "$ipset_name" &> /dev/null; then
+					ipset create "$ipset_name" hash:net
+				fi
 
-			# 既存の国家ルールを削除します
-			iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-			iptables -D OUTPUT -m set --match-set "$ipset_name" dst -j DROP 2>/dev/null
-			ipset flush "$ipset_name"
+				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
+					echo "エラー：ダウンロード$country_codeIPゾーンファイルが失敗しました"
+					continue
+				fi
 
-			# IPSETにIPを追加します
-			while IFS= read -r ip; do
-				ipset add "$ipset_name" "$ip"
-			done < "${country_code,,}.zone"
+				ipset flush "$ipset_name"
+				while IFS= read -r ip; do
+					ipset add "$ipset_name" "$ip" 2>/dev/null
+				done < "${country_code,,}.zone"
 
-			# 指定された国のIPのみが許可されています
-			iptables -P INPUT DROP
-			iptables -P OUTPUT DROP
-			iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
-			iptables -A OUTPUT -m set --match-set "$ipset_name" dst -j ACCEPT
 
-			echo "正常に許可されています$country_codeIPアドレス"
-			rm "${country_code,,}.zone"
-			;;
+				iptables -P INPUT DROP
+				iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
 
-		unblock)
-			# 国のiptablesルールを削除します
-			iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-			iptables -D OUTPUT -m set --match-set "$ipset_name" dst -j DROP 2>/dev/null
+				echo "正常に許可されています$country_codeIPアドレス"
+				rm "${country_code,,}.zone"
+				;;
 
-			# Ipsetを破壊します
-			if ipset list "$ipset_name" &> /dev/null; then
-				ipset destroy "$ipset_name"
-			fi
+			unblock)
+				iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
 
-			echo "正常に持ち上げられました$country_codeIPアドレスの制限"
-			;;
+				if ipset list "$ipset_name" &> /dev/null; then
+					ipset destroy "$ipset_name"
+				fi
 
-		*)
-			;;
-	esac
+				echo "正常に持ち上げられました$country_codeIPアドレスの制限"
+				;;
+
+			*)
+				echo "使用法：manage_country_rules {block | lock | block} <country_code ...>"
+				;;
+		esac
+	done
 }
+
+
+
+
+
+
 
 
 
@@ -1225,18 +1218,18 @@ iptables_panel() {
 				  ;;
 
 			  15)
-				  read -e -p "ブロックされた国コード（CN、米国、JPなど）を入力してください。" country_code
+				  read -e -p "ブロックされた国コードを入力してください（複数の国コードは、CN US JPなどのスペースで区切ることができます）：" country_code
 				  manage_country_rules block $country_code
 				  send_stats "許可された国$country_codeIP"
 				  ;;
 			  16)
-				  read -e -p "許可された国コード（CN、米国、JPなど）を入力してください。" country_code
+				  read -e -p "許可された国コードを入力してください（複数の国コードは、CN US JPなどのスペースで区切ることができます）：" country_code
 				  manage_country_rules allow $country_code
 				  send_stats "国をブロックします$country_codeIP"
 				  ;;
 
 			  17)
-				  read -e -p "クリアされた国コード（CN、米国、JPなど）を入力してください。" country_code
+				  read -e -p "クリアされた国コードを入力してください（複数の国コードは、CN US JPなどのスペースで区切ることができます）：" country_code
 				  manage_country_rules unblock $country_code
 				  send_stats "国をきれいにします$country_codeIP"
 				  ;;
@@ -1248,8 +1241,6 @@ iptables_panel() {
   done
 
 }
-
-
 
 
 
@@ -8049,7 +8040,7 @@ linux_ldnmp() {
 	  echo "Redisポート：6379"
 	  echo ""
 	  echo "ウェブサイトURL：https：//$yuming"
-	  echo "バックエンドログインパス： /admin"
+	  echo "バックグラウンドログインパス： /admin"
 	  echo "------------------------"
 	  echo "ユーザー名：admin"
 	  echo "パスワード：管理者"
@@ -8233,7 +8224,7 @@ linux_ldnmp() {
 	  clear
 	  echo -e "[${gl_huang}3/6${gl_bai}] PHPバージョンを選択してください"
 	  echo "-------------"
-	  read -e -p "1. The latest version of php | 2。Php7.4：" pho_v
+	  read -e -p "1。PHPの最新バージョン| 2。Php7.4：" pho_v
 	  case "$pho_v" in
 		1)
 		  sed -i "s#php:9000#php:9000#g" /home/web/conf.d/$yuming.conf
@@ -8280,7 +8271,7 @@ linux_ldnmp() {
 			  ;;
 		  2)
 			  echo "データベースのバックアップは、.GZ-endコンプレッションパッケージである必要があります。 Pagoda/1panelのバックアップデータのインポートをサポートするために、/home/directoryに入れてください。"
-			  read -e -p "ダウンロードリンクを入力して、バックアップデータをリモートでダウンロードすることもできます。 Enterを直接押してリモートダウンロードをスキップします。" url_download_db
+			  read -e -p "ダウンロードリンクを入力して、バックアップデータをリモートでダウンロードすることもできます。 Enterを直接押して、リモートダウンロードをスキップします：" url_download_db
 
 			  cd /home/
 			  if [ -n "$url_download_db" ]; then
@@ -12384,7 +12375,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}17.  ${gl_bai}ファイアウォール上級マネージャー${gl_kjlan}18.  ${gl_bai}ホスト名を変更します"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}システムの更新ソースを切り替えます${gl_kjlan}20.  ${gl_bai}タイミングタスク管理"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}ネイティブホスト分析${gl_kjlan}22.  ${gl_bai}SSH防衛プログラム"
+	  echo -e "${gl_kjlan}21.  ${gl_bai}ネイティブホストの解析${gl_kjlan}22.  ${gl_bai}SSH防衛プログラム"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}電流制限の自動シャットダウン${gl_kjlan}24.  ${gl_bai}ルート秘密キーログインモード"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TGボットシステムの監視と早期警告${gl_kjlan}26.  ${gl_bai}OpenSSHの高リスクの脆弱性を修正します"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linuxカーネルのアップグレード${gl_kjlan}28.  ${gl_bai}Linuxシステムにおけるカーネルパラメーターの最適化${gl_huang}★${gl_bai}"
@@ -12861,7 +12852,7 @@ EOF
 				echo "3。日本の東京時間4。韓国のソウル時間"
 				echo "5。シンガポール時間6。インドのコルカタ時間"
 				echo "7。アラブ首長国連邦のドバイ時間8。オーストラリアのシドニー時間"
-				echo "9。バンコク・タイム、タイ"
+				echo "9。タイのバンコクでの時間"
 				echo "------------------------"
 				echo "ヨーロッパ"
 				echo "11。英国のロンドン時間12。パリの時間フランスの時間"
@@ -13288,7 +13279,7 @@ EOF
 			  echo "TG-BOTモニタリングと早期警告機能"
 			  echo "ビデオの紹介：https：//youtu.be/vll-eb3z_ty"
 			  echo "------------------------------------------------"
-			  echo "ネイティブCPU、メモリ、ハードディスク、トラフィック、SSHログインのリアルタイム監視と早期警告を実現するために、TG Robot APIとユーザーIDを構成する必要があります。"
+			  echo "ネイティブCPU、メモリ、ハードディスク、トラフィック、およびSSHログインのリアルタイム監視と早期警告を実現するために、TG Robot APIとユーザーIDを構成する必要があります。"
 			  echo "しきい値に達した後、ユーザーはユーザーに送信されます"
 			  echo -e "${gl_hui}- トラフィックに関しては、サーバーの再起動が再計算されます -${gl_bai}"
 			  read -e -p "必ず続行しますか？ （y/n）：" choice
@@ -13410,8 +13401,8 @@ EOF
 		  41)
 			clear
 			send_stats "メッセージボード"
-			echo "テクノロジーライオンメッセージボードは公式コミュニティに移動されました！公式コミュニティにメッセージを残してください！"
-			echo "https://bbs.kejilion.pro/"
+			echo "公式のメッセージ技術委員会ライオンをご覧ください。スクリプトについて何かアイデアがある場合は、メッセージを残してコミュニケーションをとってください！"
+			echo "https://board.kejilion.pro"
 			  ;;
 
 		  66)
