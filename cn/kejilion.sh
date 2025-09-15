@@ -6870,16 +6870,13 @@ docker_ssh_migration() {
 	BLUE='\033[0;36m'
 	NC='\033[0m'
 
-	BACKUP_ROOT="/tmp"
-	DATE_STR=$(date +%Y%m%d_%H%M%S)
-
-
 	is_compose_container() {
 		local container=$1
 		docker inspect "$container" | jq -e '.[0].Config.Labels["com.docker.compose.project"]' >/dev/null 2>&1
 	}
 
 	list_backups() {
+		local BACKUP_ROOT="/tmp"
 		echo -e "${BLUE}当前备份列表:${NC}"
 		ls -1dt ${BACKUP_ROOT}/docker_backup_* 2>/dev/null || echo "无备份"
 	}
@@ -6899,6 +6896,8 @@ docker_ssh_migration() {
 		install tar jq gzip
 		install_docker
 
+		local BACKUP_ROOT="/tmp"
+		local DATE_STR=$(date +%Y%m%d_%H%M%S)
 		local TARGET_CONTAINERS=()
 		if [ -z "$containers" ]; then
 			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
