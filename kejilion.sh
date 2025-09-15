@@ -7126,13 +7126,15 @@ docker_ssh_migration() {
 
 		read -e -p  "目标服务器IP: " TARGET_IP
 		read -e -p  "目标服务器SSH用户名: " TARGET_USER
+		read -e -p "目标服务器SSH端口 [默认22]: " TARGET_PORT
+		local TARGET_PORT=${TARGET_PORT:-22}
 
-		LATEST_TAR="$BACKUP_DIR"  # 这里直接传整个目录
+		local LATEST_TAR="$BACKUP_DIR"
 
 		echo -e "${YELLOW}传输备份中...${NC}"
 		if [[ -z "$TARGET_PASS" ]]; then
 			# 使用密钥登录
-			scp -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
+			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
 	}
@@ -8523,6 +8525,8 @@ linux_ldnmp() {
 		case "$choice" in
 		  [Yy])
 			read -e -p "请输入远端服务器IP:  " remote_ip
+			read -e -p "目标服务器SSH端口 [默认22]: " TARGET_PORT
+			local TARGET_PORT=${TARGET_PORT:-22}
 			if [ -z "$remote_ip" ]; then
 			  echo "错误: 请输入远端服务器IP。"
 			  continue
@@ -8531,7 +8535,7 @@ linux_ldnmp() {
 			if [ -n "$latest_tar" ]; then
 			  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
 			  sleep 2  # 添加等待时间
-			  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
+			  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
 			  echo "文件已传送至远程服务器home目录。"
 			else
 			  echo "未找到要传送的文件。"
@@ -12100,6 +12104,9 @@ while true; do
 			case "$choice" in
 			  [Yy])
 				read -e -p "请输入远端服务器IP:  " remote_ip
+				read -e -p "目标服务器SSH端口 [默认22]: " TARGET_PORT
+				local TARGET_PORT=${TARGET_PORT:-22}
+
 				if [ -z "$remote_ip" ]; then
 				  echo "错误: 请输入远端服务器IP。"
 				  continue
@@ -12108,7 +12115,7 @@ while true; do
 				if [ -n "$latest_tar" ]; then
 				  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
 				  sleep 2  # 添加等待时间
-				  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
+				  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
 				  echo "文件已传送至远程服务器/根目录。"
 				else
 				  echo "未找到要传送的文件。"
