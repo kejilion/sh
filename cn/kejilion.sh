@@ -13409,6 +13409,7 @@ EOF
 			send_stats "留言板"
 			echo "访问科技lion官方留言板，您对脚本有任何想法欢迎留言交流！"
 			echo "https://board.kejilion.pro"
+			echo "公共密码: kejilion.sh"
 			  ;;
 
 		  66)
