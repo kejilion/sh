@@ -6457,7 +6457,7 @@ rsync_manager() {
 
 
 
-linux_ps() {
+linux_info() {
 
 	clear
 	send_stats "系统信息查询"
@@ -14146,7 +14146,7 @@ echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -e -p "请输入你的选择: " choice
 
 case $choice in
-  1) linux_ps ;;
+  1) linux_info ;;
   2) clear ; send_stats "系统更新" ; linux_update ;;
   3) clear ; send_stats "系统清理" ; linux_clean ;;
   4) linux_tools ;;
@@ -14222,6 +14222,7 @@ echo "阻止IP              k zzip 177.5.25.36 |k 阻止IP 177.5.25.36"
 echo "命令收藏夹          k fav | k 命令收藏夹"
 echo "应用市场管理        k app"
 echo "应用编号快捷管理    k app 26 | k app 1panel | k app npm"
+echo "显示系统信息    	  k info"
 }
 
 
@@ -14443,6 +14444,10 @@ else
 			linux_panel "$@"
 			;;
 
+
+		info)
+			linux_info
+			;;
 
 		*)
 			k_info
