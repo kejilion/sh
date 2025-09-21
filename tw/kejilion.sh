@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.4"
+sh_v="4.1.5"
 
 
 gl_hui='\e[37m'
@@ -6457,7 +6457,7 @@ rsync_manager() {
 
 
 
-linux_ps() {
+linux_info() {
 
 	clear
 	send_stats "系統信息查詢"
@@ -6870,16 +6870,13 @@ docker_ssh_migration() {
 	BLUE='\033[0;36m'
 	NC='\033[0m'
 
-	BACKUP_ROOT="/tmp"
-	DATE_STR=$(date +%Y%m%d_%H%M%S)
-
-
 	is_compose_container() {
 		local container=$1
 		docker inspect "$container" | jq -e '.[0].Config.Labels["com.docker.compose.project"]' >/dev/null 2>&1
 	}
 
 	list_backups() {
+		local BACKUP_ROOT="/tmp"
 		echo -e "${BLUE}當前備份列表:${NC}"
 		ls -1dt ${BACKUP_ROOT}/docker_backup_* 2>/dev/null || echo "無備份"
 	}
@@ -6899,6 +6896,8 @@ docker_ssh_migration() {
 		install tar jq gzip
 		install_docker
 
+		local BACKUP_ROOT="/tmp"
+		local DATE_STR=$(date +%Y%m%d_%H%M%S)
 		local TARGET_CONTAINERS=()
 		if [ -z "$containers" ]; then
 			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
@@ -7126,13 +7125,15 @@ docker_ssh_migration() {
 
 		read -e -p  "目標服務器IP:" TARGET_IP
 		read -e -p  "目標服務器SSH用戶名:" TARGET_USER
+		read -e -p "目標服務器SSH端口 [默認22]:" TARGET_PORT
+		local TARGET_PORT=${TARGET_PORT:-22}
 
-		LATEST_TAR="$BACKUP_DIR"  # 这里直接传整个目录
+		local LATEST_TAR="$BACKUP_DIR"
 
 		echo -e "${YELLOW}傳輸備份中...${NC}"
 		if [[ -z "$TARGET_PASS" ]]; then
 			# 使用密鑰登錄
-			scp -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
+			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
 	}
@@ -8523,6 +8524,8 @@ linux_ldnmp() {
 		case "$choice" in
 		  [Yy])
 			read -e -p "請輸入遠端服務器IP:" remote_ip
+			read -e -p "目標服務器SSH端口 [默認22]:" TARGET_PORT
+			local TARGET_PORT=${TARGET_PORT:-22}
 			if [ -z "$remote_ip" ]; then
 			  echo "錯誤: 請輸入遠端服務器IP。"
 			  continue
@@ -8531,7 +8534,7 @@ linux_ldnmp() {
 			if [ -n "$latest_tar" ]; then
 			  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
 			  sleep 2  # 添加等待时间
-			  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
+			  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
 			  echo "文件已傳送至遠程服務器home目錄。"
 			else
 			  echo "未找到要傳送的文件。"
@@ -12100,6 +12103,9 @@ while true; do
 			case "$choice" in
 			  [Yy])
 				read -e -p "請輸入遠端服務器IP:" remote_ip
+				read -e -p "目標服務器SSH端口 [默認22]:" TARGET_PORT
+				local TARGET_PORT=${TARGET_PORT:-22}
+
 				if [ -z "$remote_ip" ]; then
 				  echo "錯誤: 請輸入遠端服務器IP。"
 				  continue
@@ -12108,7 +12114,7 @@ while true; do
 				if [ -n "$latest_tar" ]; then
 				  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
 				  sleep 2  # 添加等待时间
-				  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
+				  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
 				  echo "文件已傳送至遠程服務器/根目錄。"
 				else
 				  echo "未找到要傳送的文件。"
@@ -13403,6 +13409,7 @@ EOF
 			send_stats "留言板"
 			echo "訪問科技lion官方留言板，您對腳本有任何想法歡迎留言交流！"
 			echo "https://board.kejilion.pro"
+			echo "公共密碼: kejilion.sh"
 			  ;;
 
 		  66)
@@ -14139,7 +14146,7 @@ echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -e -p "請輸入你的選擇:" choice
 
 case $choice in
-  1) linux_ps ;;
+  1) linux_info ;;
   2) clear ; send_stats "系統更新" ; linux_update ;;
   3) clear ; send_stats "系統清理" ; linux_clean ;;
   4) linux_tools ;;
@@ -14198,6 +14205,7 @@ echo "軟件狀態查看        k status sshd | k 狀態 sshd"
 echo "軟件開機啟動        k enable docker | k autostart docke | k 開機啟動 docker"
 echo "域名證書申請        k ssl"
 echo "域名證書到期查詢    k ssl ps"
+echo "docker管理平面      k docker"
 echo "docker環境安裝      k docker install |k docker 安裝"
 echo "docker容器管理      k docker ps |k docker 容器"
 echo "docker鏡像管理      k docker img |k docker 鏡像"
@@ -14214,6 +14222,7 @@ echo "阻止IP              k zzip 177.5.25.36 |k 阻止IP 177.5.25.36"
 echo "命令收藏夾          k fav | k 命令收藏夾"
 echo "應用市場管理        k app"
 echo "應用編號快捷管理    k app 26 | k app 1panel | k app npm"
+echo "顯示系統信息    	  k info"
 }
 
 
@@ -14408,7 +14417,7 @@ else
 					docker_image
 					;;
 				*)
-					k_info
+					linux_docker
 					;;
 			esac
 			;;
@@ -14435,6 +14444,10 @@ else
 			linux_panel "$@"
 			;;
 
+
+		info)
+			linux_info
+			;;
 
 		*)
 			k_info

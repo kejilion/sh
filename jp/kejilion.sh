@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.4"
+sh_v="4.1.5"
 
 
 gl_hui='\e[37m'
@@ -6457,7 +6457,7 @@ rsync_manager() {
 
 
 
-linux_ps() {
+linux_info() {
 
 	clear
 	send_stats "システム情報クエリ"
@@ -6870,16 +6870,13 @@ docker_ssh_migration() {
 	BLUE='\033[0;36m'
 	NC='\033[0m'
 
-	BACKUP_ROOT="/tmp"
-	DATE_STR=$(date +%Y%m%d_%H%M%S)
-
-
 	is_compose_container() {
 		local container=$1
 		docker inspect "$container" | jq -e '.[0].Config.Labels["com.docker.compose.project"]' >/dev/null 2>&1
 	}
 
 	list_backups() {
+		local BACKUP_ROOT="/tmp"
 		echo -e "${BLUE}現在のバックアップリスト：${NC}"
 		ls -1dt ${BACKUP_ROOT}/docker_backup_* 2>/dev/null || echo "バックアップなし"
 	}
@@ -6899,6 +6896,8 @@ docker_ssh_migration() {
 		install tar jq gzip
 		install_docker
 
+		local BACKUP_ROOT="/tmp"
+		local DATE_STR=$(date +%Y%m%d_%H%M%S)
 		local TARGET_CONTAINERS=()
 		if [ -z "$containers" ]; then
 			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
@@ -7126,13 +7125,15 @@ docker_ssh_migration() {
 
 		read -e -p  "ターゲットサーバーIP：" TARGET_IP
 		read -e -p  "ターゲットサーバーSSHユーザー名：" TARGET_USER
+		read -e -p "ターゲットサーバーSSHポート[デフォルト22]：" TARGET_PORT
+		local TARGET_PORT=${TARGET_PORT:-22}
 
-		LATEST_TAR="$BACKUP_DIR"  # 这里直接传整个目录
+		local LATEST_TAR="$BACKUP_DIR"
 
 		echo -e "${YELLOW}バックアップを転送...${NC}"
 		if [[ -z "$TARGET_PASS" ]]; then
 			# キーでログインします
-			scp -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
+			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
 	}
@@ -8523,6 +8524,8 @@ linux_ldnmp() {
 		case "$choice" in
 		  [Yy])
 			read -e -p "リモートサーバーIPを入力してください：" remote_ip
+			read -e -p "ターゲットサーバーSSHポート[デフォルト22]：" TARGET_PORT
+			local TARGET_PORT=${TARGET_PORT:-22}
 			if [ -z "$remote_ip" ]; then
 			  echo "エラー：リモートサーバーIPを入力してください。"
 			  continue
@@ -8531,7 +8534,7 @@ linux_ldnmp() {
 			if [ -n "$latest_tar" ]; then
 			  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
 			  sleep 2  # 添加等待时间
-			  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
+			  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
 			  echo "このファイルは、リモートサーバーホームディレクトリに転送されました。"
 			else
 			  echo "転送されるファイルは見つかりませんでした。"
@@ -12100,6 +12103,9 @@ while true; do
 			case "$choice" in
 			  [Yy])
 				read -e -p "リモートサーバーIPを入力してください：" remote_ip
+				read -e -p "ターゲットサーバーSSHポート[デフォルト22]：" TARGET_PORT
+				local TARGET_PORT=${TARGET_PORT:-22}
+
 				if [ -z "$remote_ip" ]; then
 				  echo "エラー：リモートサーバーIPを入力してください。"
 				  continue
@@ -12108,7 +12114,7 @@ while true; do
 				if [ -n "$latest_tar" ]; then
 				  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
 				  sleep 2  # 添加等待时间
-				  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
+				  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
 				  echo "ファイルは、リモートサーバー/ルートディレクトリに転送されました。"
 				else
 				  echo "転送されるファイルは見つかりませんでした。"
@@ -13023,7 +13029,7 @@ EOF
 								  (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  3)
-								  read -e -p "毎日タスクを実行する時間を選択しますか？ （時間、0-23）：" hour
+								  read -e -p "毎日タスクを実行する時期を選択しますか？ （時間、0-23）：" hour
 								  (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  4)
@@ -13078,7 +13084,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -e -p "削除する必要があるコンテンツの解析のキーワードを入力してください。" delhost
+						  read -e -p "削除する必要があるコンテンツを解析するために、キーワードを入力してください。" delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "ローカルホストの解析と削除"
 						  ;;
@@ -13403,6 +13409,7 @@ EOF
 			send_stats "メッセージボード"
 			echo "公式のメッセージ技術委員会ライオンをご覧ください。スクリプトについて何かアイデアがある場合は、メッセージを残してコミュニケーションをとってください！"
 			echo "https://board.kejilion.pro"
+			echo "パスワード：kejilion.sh"
 			  ;;
 
 		  66)
@@ -14139,7 +14146,7 @@ echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -e -p "選択を入力してください：" choice
 
 case $choice in
-  1) linux_ps ;;
+  1) linux_info ;;
   2) clear ; send_stats "システムの更新" ; linux_update ;;
   3) clear ; send_stats "システムのクリーンアップ" ; linux_clean ;;
   4) linux_tools ;;
@@ -14198,6 +14205,7 @@ echo "ソフトウェアステータスビューKステータスSSHD | Kステ�
 echo "ソフトウェアブートk dockerを有効にする| K AutoStart Docke | Kスタートアップドッカー"
 echo "ドメイン名証明書アプリケーションK SSL"
 echo "ドメイン名証明書の有効期限クエリK SSL PS"
+echo "Docker Management Plane K Docker"
 echo "Docker Environment Installation K Dockerインストール| K Dockerのインストール"
 echo "Docker Container Management K Docker PS | K Dockerコンテナ"
 echo "Docker Image Management K Docker IMG | K Docker画像"
@@ -14214,6 +14222,7 @@ echo "ブロックIP K ZZIP 177.5.25.36 | KブロックIP 177.5.25.36"
 echo "コマンドお気に入りk fav | Kコマンドのお気に入り"
 echo "アプリ市場管理Kアプリ"
 echo "アプリケーション番号クイックマネジメントKアプリ26 | Kアプリ1Panel | KアプリNPM"
+echo "システム情報を表示k情報"
 }
 
 
@@ -14408,7 +14417,7 @@ else
 					docker_image
 					;;
 				*)
-					k_info
+					linux_docker
 					;;
 			esac
 			;;
@@ -14435,6 +14444,10 @@ else
 			linux_panel "$@"
 			;;
 
+
+		info)
+			linux_info
+			;;
 
 		*)
 			k_info

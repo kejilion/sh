@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.4"
+sh_v="4.1.5"
 
 
 gl_hui='\e[37m'
@@ -5830,7 +5830,7 @@ list_connections() {
 # Add a new connection
 add_connection() {
 	send_stats "Add a new connection"
-	echo "Create a new connection example:"
+	echo "Example to create a new connection:"
 	echo "- Connection name: my_server"
 	echo "- IP address: 192.168.1.100"
 	echo "- Username: root"
@@ -6457,7 +6457,7 @@ rsync_manager() {
 
 
 
-linux_ps() {
+linux_info() {
 
 	clear
 	send_stats "System information query"
@@ -6870,16 +6870,13 @@ docker_ssh_migration() {
 	BLUE='\033[0;36m'
 	NC='\033[0m'
 
-	BACKUP_ROOT="/tmp"
-	DATE_STR=$(date +%Y%m%d_%H%M%S)
-
-
 	is_compose_container() {
 		local container=$1
 		docker inspect "$container" | jq -e '.[0].Config.Labels["com.docker.compose.project"]' >/dev/null 2>&1
 	}
 
 	list_backups() {
+		local BACKUP_ROOT="/tmp"
 		echo -e "${BLUE}Current backup list:${NC}"
 		ls -1dt ${BACKUP_ROOT}/docker_backup_* 2>/dev/null || echo "No backup"
 	}
@@ -6899,6 +6896,8 @@ docker_ssh_migration() {
 		install tar jq gzip
 		install_docker
 
+		local BACKUP_ROOT="/tmp"
+		local DATE_STR=$(date +%Y%m%d_%H%M%S)
 		local TARGET_CONTAINERS=()
 		if [ -z "$containers" ]; then
 			mapfile -t TARGET_CONTAINERS < <(docker ps --format '{{.Names}}')
@@ -7126,13 +7125,15 @@ docker_ssh_migration() {
 
 		read -e -p  "Target server IP:" TARGET_IP
 		read -e -p  "Target server SSH username:" TARGET_USER
+		read -e -p "Target server SSH port [default 22]:" TARGET_PORT
+		local TARGET_PORT=${TARGET_PORT:-22}
 
-		LATEST_TAR="$BACKUP_DIR"  # 这里直接传整个目录
+		local LATEST_TAR="$BACKUP_DIR"
 
 		echo -e "${YELLOW}Transfer backup...${NC}"
 		if [[ -z "$TARGET_PASS" ]]; then
 			# Log in with a key
-			scp -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
+			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
 	}
@@ -8523,6 +8524,8 @@ linux_ldnmp() {
 		case "$choice" in
 		  [Yy])
 			read -e -p "Please enter the remote server IP:" remote_ip
+			read -e -p "Target server SSH port [default 22]:" TARGET_PORT
+			local TARGET_PORT=${TARGET_PORT:-22}
 			if [ -z "$remote_ip" ]; then
 			  echo "Error: Please enter the remote server IP."
 			  continue
@@ -8531,7 +8534,7 @@ linux_ldnmp() {
 			if [ -n "$latest_tar" ]; then
 			  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
 			  sleep 2  # 添加等待时间
-			  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
+			  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
 			  echo "The file has been transferred to the remote server home directory."
 			else
 			  echo "The file to be transferred was not found."
@@ -12100,6 +12103,9 @@ while true; do
 			case "$choice" in
 			  [Yy])
 				read -e -p "Please enter the remote server IP:" remote_ip
+				read -e -p "Target server SSH port [default 22]:" TARGET_PORT
+				local TARGET_PORT=${TARGET_PORT:-22}
+
 				if [ -z "$remote_ip" ]; then
 				  echo "Error: Please enter the remote server IP."
 				  continue
@@ -12108,7 +12114,7 @@ while true; do
 				if [ -n "$latest_tar" ]; then
 				  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
 				  sleep 2  # 添加等待时间
-				  scp -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
+				  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/"
 				  echo "The file has been transferred to the remote server/root directory."
 				else
 				  echo "The file to be transferred was not found."
@@ -13023,7 +13029,7 @@ EOF
 								  (crontab -l ; echo "0 0 * * $weekday $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  3)
-								  read -e -p "Choose what time to perform tasks every day? (Hours, 0-23):" hour
+								  read -e -p "Choose when to perform tasks every day? (Hours, 0-23):" hour
 								  (crontab -l ; echo "0 $hour * * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  4)
@@ -13078,7 +13084,7 @@ EOF
 
 						  ;;
 					  2)
-						  read -e -p "Please enter the keywords of parsing content that need to be deleted:" delhost
+						  read -e -p "Please enter the keywords for parsing content that need to be deleted:" delhost
 						  sed -i "/$delhost/d" /etc/hosts
 						  send_stats "Local host parsing and deletion"
 						  ;;
@@ -13403,6 +13409,7 @@ EOF
 			send_stats "Message board"
 			echo "Visit the official message board of Technology lion. If you have any ideas about scripts, please leave a message and communicate!"
 			echo "https://board.kejilion.pro"
+			echo "Public password: kejilion.sh"
 			  ;;
 
 		  66)
@@ -14139,7 +14146,7 @@ echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -e -p "Please enter your selection:" choice
 
 case $choice in
-  1) linux_ps ;;
+  1) linux_info ;;
   2) clear ; send_stats "System update" ; linux_update ;;
   3) clear ; send_stats "System Cleanup" ; linux_clean ;;
   4) linux_tools ;;
@@ -14198,6 +14205,7 @@ echo "Software status view k status sshd | k status sshd"
 echo "Software boot k enable docker | k autostart docke | k startup docker"
 echo "Domain name certificate application k ssl"
 echo "Domain name certificate expiration query k ssl ps"
+echo "docker management plane k docker"
 echo "docker environment installation k docker install |k docker installation"
 echo "docker container management k docker ps |k docker container"
 echo "docker image management k docker img |k docker image"
@@ -14214,6 +14222,7 @@ echo "Block IP k zzip 177.5.25.36 |k Block IP 177.5.25.36"
 echo "Command favorites k fav | k command favorites"
 echo "App Market Management k app"
 echo "Application number quick management k app 26 | k app 1panel | k app npm"
+echo "Display system information k info"
 }
 
 
@@ -14408,7 +14417,7 @@ else
 					docker_image
 					;;
 				*)
-					k_info
+					linux_docker
 					;;
 			esac
 			;;
@@ -14435,6 +14444,10 @@ else
 			linux_panel "$@"
 			;;
 
+
+		info)
+			linux_info
+			;;
 
 		*)
 			k_info
