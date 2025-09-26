@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.5"
+sh_v="4.1.6"
 
 
 gl_hui='\e[37m'
@@ -8890,7 +8890,7 @@ while true; do
 	  echo -e "${gl_kjlan}93.  ${color93}Dufs极简静态文件服务器              ${gl_kjlan}94.  ${color94}Gopeed高速下载工具"
 	  echo -e "${gl_kjlan}95.  ${color95}paperless文档管理平台               ${gl_kjlan}96.  ${color96}2FAuth自托管二步验证器"
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard组网(服务端)               ${gl_kjlan}98.  ${color98}WireGuard组网(客户端)"
-	  echo -e "${gl_kjlan}99.  ${color99}DSM群晖虚拟机"
+	  echo -e "${gl_kjlan}99.  ${color99}DSM群晖虚拟机                       ${gl_kjlan}100. ${color100}Syncthing点对点文件同步工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12085,8 +12085,37 @@ while true; do
 
 
 
+	100|syncthing)
 
+		local app_id="100"
+		local docker_name="syncthing"
+		local docker_img="syncthing/syncthing:latest"
+		local docker_port=8100
 
+		docker_rum() {
+
+			docker run -d \
+			  --name syncthing \
+			  -p ${docker_port}:8384 \             # Web UI
+			  -p 22000:22000/tcp \       # TCP 文件传输
+			  -p 22000:22000/udp \       # QUIC 文件传输
+			  -p 21027:21027/udp \       # 局域网发现
+			  -v /home/docker/${docker_name}/st-sync:/var/syncthing \
+			  --hostname=my-syncthing \
+			  -e PUID=1000 \
+			  -e PGID=1000 \
+			  syncthing/syncthing:latest
+
+		}
+
+		local docker_describe="开源的点对点文件同步工具，类似于 Dropbox、Resilio Sync，但完全去中心化。"
+		local docker_url="官网介绍: https://github.com/syncthing/syncthing"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		;;
 
 	  b)
 	  	clear
@@ -14222,7 +14251,7 @@ echo "阻止IP              k zzip 177.5.25.36 |k 阻止IP 177.5.25.36"
 echo "命令收藏夹          k fav | k 命令收藏夹"
 echo "应用市场管理        k app"
 echo "应用编号快捷管理    k app 26 | k app 1panel | k app npm"
-echo "显示系统信息    	  k info"
+echo "显示系统信息        k info"
 }
 
 
