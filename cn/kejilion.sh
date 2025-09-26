@@ -8384,7 +8384,7 @@ linux_ldnmp() {
 
 	  docker run -d \
 		--name bitwarden \
-		--restart always \
+		--restart=always \
 		-p 3280:80 \
 		-v /home/web/html/$yuming/bitwarden/data:/data \
 		vaultwarden/server
@@ -8405,7 +8405,7 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 
-	  docker run -d --name halo --restart always -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
+	  docker run -d --name halo --restart=always -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
 	  duankou=8010
 	  reverse_proxy
 
@@ -9499,7 +9499,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --name looking-glass --restart always -p ${docker_port}:80 wikihostinc/looking-glass-server
+			docker run -d --name looking-glass --restart=always -p ${docker_port}:80 wikihostinc/looking-glass-server
 
 		}
 
@@ -9527,7 +9527,7 @@ while true; do
 				-p 53:53/tcp \
 				-p 53:53/udp \
 				-p ${docker_port}:3000/tcp \
-				--restart always \
+				--restart=always \
 				adguard/adguardhome
 
 
@@ -9654,7 +9654,7 @@ while true; do
 				-p ${docker_port}:9000 \
 				-v /var/run/docker.sock:/var/run/docker.sock \
 				-v /home/docker/portainer:/data \
-				--restart always \
+				--restart=always \
 				portainer/portainer
 
 		}
@@ -9678,7 +9678,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d -p ${docker_port}:8080 -v /home/docker/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart always codercom/code-server
+			docker run -d -p ${docker_port}:8080 -v /home/docker/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart=always codercom/code-server
 
 		}
 
@@ -9727,7 +9727,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --name memos -p ${docker_port}:5230 -v /home/docker/memos:/var/opt/memos --restart always ghcr.io/usememos/memos:latest
+			docker run -d --name memos -p ${docker_port}:5230 -v /home/docker/memos:/var/opt/memos --restart=always ghcr.io/usememos/memos:latest
 
 		}
 
@@ -9849,7 +9849,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d -p ${docker_port}:8080 --name speedtest --restart always ghcr.io/librespeed/speedtest
+			docker run -d -p ${docker_port}:8080 --name speedtest --restart=always ghcr.io/librespeed/speedtest
 
 		}
 
@@ -9897,7 +9897,7 @@ while true; do
 
 			docker run -d \
 				--name photoprism \
-				--restart always \
+				--restart=always \
 				--security-opt seccomp=unconfined \
 				--security-opt apparmor=unconfined \
 				-p ${docker_port}:2342 \
@@ -10002,7 +10002,7 @@ while true; do
 
 			docker run -d \
 				--name pingvin-share \
-				--restart always \
+				--restart=always \
 				-p ${docker_port}:3000 \
 				-v /home/docker/pingvin-share/data:/opt/app/backend/data \
 				stonith404/pingvin-share
@@ -10128,7 +10128,7 @@ while true; do
 		local docker_img="jrohy/webssh"
 		local docker_port=8040
 		docker_rum() {
-			docker run -d -p ${docker_port}:5032 --restart always --name webssh -e TZ=Asia/Shanghai jrohy/webssh
+			docker run -d -p ${docker_port}:5032 --restart=always --name webssh -e TZ=Asia/Shanghai jrohy/webssh
 		}
 
 		local docker_describe="简易在线ssh连接工具和sftp工具"
@@ -10246,7 +10246,7 @@ while true; do
 				--name registry \
 				-v /home/docker/registry:/var/lib/registry \
 				-e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
-				--restart always \
+				--restart=always \
 				registry:2
 
 		}
@@ -10267,7 +10267,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --name ghproxy --restart always -p ${docker_port}:8080 -v /home/docker/ghproxy/config:/data/ghproxy/config wjqserver/ghproxy:latest
+			docker run -d --name ghproxy --restart=always -p ${docker_port}:8080 -v /home/docker/ghproxy/config:/data/ghproxy/config wjqserver/ghproxy:latest
 
 		}
 
@@ -10383,7 +10383,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --restart always -p ${docker_port}:5000 \
+			docker run -d --restart=always -p ${docker_port}:5000 \
 				-v /home/docker/datastore:/datastore \
 				--name changedetection dgtlmoon/changedetection.io:latest
 
@@ -10438,7 +10438,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama
+			docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart=always ghcr.io/open-webui/open-webui:ollama
 
 		}
 
@@ -10490,7 +10490,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart always ghcr.io/open-webui/open-webui:ollama
+			docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart=always ghcr.io/open-webui/open-webui:ollama
 
 		}
 
@@ -10706,7 +10706,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d -p ${docker_port}:8080 -v /home/docker/open-webui:/app/backend/data --name open-webui --restart always ghcr.io/open-webui/open-webui:main
+			docker run -d -p ${docker_port}:8080 -v /home/docker/open-webui:/app/backend/data --name open-webui --restart=always ghcr.io/open-webui/open-webui:main
 
 		}
 
@@ -10750,7 +10750,7 @@ while true; do
 			chmod -R 777 /home/docker/n8n
 
 			docker run -d --name n8n \
-			  --restart always \
+			  --restart=always \
 			  -p ${docker_port}:5678 \
 			  -v /home/docker/n8n:/home/node/.n8n \
 			  -e N8N_HOST=${yuming} \
@@ -10924,7 +10924,7 @@ while true; do
 
 			docker run -d \
 				--name bitwarden \
-				--restart always \
+				--restart=always \
 				-p ${docker_port}:80 \
 				-v /home/docker/bitwarden/data:/data \
 				vaultwarden/server
@@ -12008,7 +12008,7 @@ while true; do
 			  --cap-add SYS_MODULE \
 			  -v /home/docker/wireguard/config:/config \
 			  -v /lib/modules:/lib/modules:ro \
-			  --restart always \
+			  --restart=always \
 			  kjlion/wireguard:alpine
 
 			sleep 3
@@ -12093,19 +12093,16 @@ while true; do
 		local docker_port=8100
 
 		docker_rum() {
-
 			docker run -d \
-			  --name syncthing \
-			  -p ${docker_port}:8384 \             # Web UI
-			  -p 22000:22000/tcp \       # TCP 文件传输
-			  -p 22000:22000/udp \       # QUIC 文件传输
-			  -p 21027:21027/udp \       # 局域网发现
-			  -v /home/docker/${docker_name}/st-sync:/var/syncthing \
+			  --name=syncthing \
 			  --hostname=my-syncthing \
-			  -e PUID=1000 \
-			  -e PGID=1000 \
+			  --restart=always \
+			  -p ${docker_port}:8384 \
+			  -p 22000:22000/tcp \
+			  -p 22000:22000/udp \
+			  -p 21027:21027/udp \
+			  -v /home/docker/syncthing:/var/syncthing \
 			  syncthing/syncthing:latest
-
 		}
 
 		local docker_describe="开源的点对点文件同步工具，类似于 Dropbox、Resilio Sync，但完全去中心化。"
