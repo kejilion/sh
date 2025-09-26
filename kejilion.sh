@@ -7765,7 +7765,8 @@ linux_Oracle() {
 
 		  4)
 			  clear
-			  echo "该功能处于开发阶段，敬请期待！"
+			  send_stats "R探长开机脚本"
+			  bash <(wget -qO- https://github.com/Yohann0617/oci-helper/releases/latest/download/sh_oci-helper_install.sh)
 			  ;;
 		  5)
 			  clear
