@@ -3063,7 +3063,7 @@ f2b_install_sshd() {
 	fi
 
 	rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf
-	sed -i 's/action = %(action_)s/action = iptables-multiport/g' /etc/fail2ban/jail.conf
+	sed -i 's/action = %(action_)s/action = iptables-multiport/g' /path/to/fail2ban/config/fail2ban/jail.conf
 
 }
 
