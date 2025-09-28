@@ -1771,7 +1771,7 @@ check_waf_status() {
 
 
 check_cf_mode() {
-	if [ -f "/path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf" ]; then
+	if [ -f "/etc/fail2ban/action.d/cloudflare-docker.conf" ]; then
 		CFmessage=" cf模式已开启"
 	else
 		CFmessage=""
@@ -1985,19 +1985,11 @@ nginx_gzip() {
 web_security() {
 	  send_stats "LDNMP环境防御"
 	  while true; do
+		check_f2b_status
 		check_waf_status
 		check_cf_mode
-		if [ -x "$(command -v fail2ban-client)" ] ; then
-			clear
-			remove fail2ban
-			rm -rf /etc/fail2ban
-		else
 			  clear
-			  rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
-			  docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
-			  docker_name="fail2ban"
-			  check_docker_app
-			  echo -e "服务器网站防御程序 ${check_docker}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
+			  echo -e "服务器网站防御程序 ${check_f2b_status}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
 			  echo "------------------------"
 			  echo "1. 安装防御程序"
 			  echo "------------------------"
@@ -2019,11 +2011,11 @@ web_security() {
 			  case $sub_choice in
 				  1)
 					  f2b_install_sshd
-					  cd /path/to/fail2ban/config/fail2ban/filter.d
+					  cd /etc/fail2ban/filter.d
 					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
-					  cd /path/to/fail2ban/config/fail2ban/jail.d/
+					  cd /etc/fail2ban/jail.d/
 					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
-					  sed -i "/cloudflare/d" /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+					  sed -i "/cloudflare/d" /etc/fail2ban/jail.d/nginx-docker-cc.conf
 					  f2b_status
 					  ;;
 				  5)
@@ -2065,28 +2057,28 @@ web_security() {
 					  ;;
 
 				  7)
-					  docker exec -it fail2ban fail2ban-client status
+					  fail2ban-client status
 					  ;;
 				  8)
-					  tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
+					  tail -f /var/log/fail2ban.log
 
 					  ;;
 				  9)
-					  docker rm -f fail2ban
-					  rm -rf /path/to/fail2ban
+					  remove fail2ban
+					  rm -rf /etc/fail2ban
 					  crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
 					  echo "Fail2Ban防御程序已卸载"
 					  ;;
 
 				  11)
 					  install nano
-					  nano /path/to/fail2ban/config/fail2ban/jail.d/nginx-docker-cc.conf
+					  nano /etc/fail2ban/jail.d/nginx-docker-cc.conf
 					  f2b_status
 					  break
 					  ;;
 
 				  12)
-					  docker exec -it fail2ban fail2ban-client unban --all
+					  fail2ban-client unban --all
 					  ;;
 
 				  21)
@@ -2099,14 +2091,14 @@ web_security() {
 					  wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf
 					  docker exec nginx nginx -s reload
 
-					  cd /path/to/fail2ban/config/fail2ban/jail.d/
+					  cd /etc/fail2ban/jail.d/
 					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
 
-					  cd /path/to/fail2ban/config/fail2ban/action.d
+					  cd /etc/fail2ban/action.d
 					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf
 
-					  sed -i "s/kejilion@outlook.com/$cfuser/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
-					  sed -i "s/APIKEY00000/$cftoken/g" /path/to/fail2ban/config/fail2ban/action.d/cloudflare-docker.conf
+					  sed -i "s/kejilion@outlook.com/$cfuser/g" /etc/fail2ban/action.d/cloudflare-docker.conf
+					  sed -i "s/APIKEY00000/$cftoken/g" /etc/fail2ban/action.d/cloudflare-docker.conf
 					  f2b_status
 
 					  echo "已配置cloudflare模式，可在cf后台，站点-安全性-事件中查看拦截记录"
@@ -2171,7 +2163,6 @@ web_security() {
 					  break
 					  ;;
 			  esac
-		fi
 	  break_end
 	  done
 }
@@ -3017,53 +3008,28 @@ tmux new -d -s "$base_name-$tmuxd_ID" "$tmuxd"
 
 
 f2b_status() {
-	 docker exec -it fail2ban fail2ban-client reload
+	 fail2ban-client reload
 	 sleep 3
-	 docker exec -it fail2ban fail2ban-client status
+	 fail2ban-client status
 }
 
 f2b_status_xxx() {
-	docker exec -it fail2ban fail2ban-client status $xxx
+	fail2ban-client status $xxx
+}
+
+check_f2b_status() {
+	if command -v fail2ban-client >/dev/null 2>&1; then
+		check_f2b_status="已安装"
+	else
+		check_f2b_status="未安装"
+	fi
 }
 
 f2b_install_sshd() {
 
-	docker run -d \
-		--name=fail2ban \
-		--net=host \
-		--cap-add=NET_ADMIN \
-		--cap-add=NET_RAW \
-		-e PUID=1000 \
-		-e PGID=1000 \
-		-e TZ=Etc/UTC \
-		-e VERBOSITY=-vv \
-		-v /path/to/fail2ban/config:/config \
-		-v /var/log:/var/log:ro \
-		-v /home/web/log/nginx/:/remotelogs/nginx:ro \
-		--restart=always \
-		lscr.io/linuxserver/fail2ban:latest
-
-	sleep 3
-	if grep -q 'Alpine' /etc/issue; then
-		cd /path/to/fail2ban/config/fail2ban/filter.d
-		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/alpine-sshd.conf
-		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/alpine-sshd-ddos.conf
-		cd /path/to/fail2ban/config/fail2ban/jail.d/
-		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/alpine-ssh.conf
-	elif command -v dnf &>/dev/null; then
-		cd /path/to/fail2ban/config/fail2ban/jail.d/
-		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
-	else
-		install rsyslog
-		systemctl start rsyslog
-		systemctl enable rsyslog
-		cd /path/to/fail2ban/config/fail2ban/jail.d/
-		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/linux-ssh.conf
-		systemctl restart rsyslog
-	fi
-
-	rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf
-	sed -i 's/action = %(action_)s/action = iptables-multiport/g' /path/to/fail2ban/config/fail2ban/jail.conf
+	install fail2ban
+	start fail2ban
+	enable fail2ban
 
 }
 
@@ -13128,17 +13094,9 @@ EOF
 		  root_use
 		  send_stats "ssh防御"
 		  while true; do
-			if [ -x "$(command -v fail2ban-client)" ] ; then
-				clear
-				remove fail2ban
-				rm -rf /etc/fail2ban
-			else
-				clear
-				rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf > /dev/null 2>&1
-				docker exec -it fail2ban fail2ban-client reload > /dev/null 2>&1
-				docker_name="fail2ban"
-				check_docker_app
-				echo -e "SSH防御程序 $check_docker"
+
+				check_f2b_status
+				echo -e "SSH防御程序 $check_f2b_status"
 				echo "fail2ban是一个SSH防止暴力破解工具"
 				echo "官网介绍: ${gh_proxy}github.com/fail2ban/fail2ban"
 				echo "------------------------"
@@ -13154,7 +13112,6 @@ EOF
 				read -e -p "请输入你的选择: " sub_choice
 				case $sub_choice in
 					1)
-						install_docker
 						f2b_install_sshd
 
 						cd ~
@@ -13168,19 +13125,18 @@ EOF
 						break_end
 						;;
 					3)
-						tail -f /path/to/fail2ban/config/log/fail2ban/fail2ban.log
+						tail -f /var/log/fail2ban.log
 						break
 						;;
 					9)
-						docker rm -f fail2ban
-						rm -rf /path/to/fail2ban
+						remove fail2ban
+						rm -rf /etc/fail2ban
 						echo "Fail2Ban防御程序已卸载"
 						;;
 					*)
 						break
 						;;
 				esac
-			fi
 		  done
 			  ;;
 
