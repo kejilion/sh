@@ -2034,28 +2034,28 @@ web_security() {
 					  local xxx="fail2ban-nginx-cc"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-nginx-418"
+					  local xxx="nginx-418"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-nginx-bad-request"
+					  local xxx="nginx-bad-request"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-nginx-badbots"
+					  local xxx="nginx-badbots"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-nginx-botsearch"
+					  local xxx="nginx-botsearch"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-nginx-deny"
+					  local xxx="nginx-deny"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-nginx-http-auth"
+					  local xxx="nginx-http-auth"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-nginx-unauthorized"
+					  local xxx="nginx-unauthorized"
 					  f2b_status_xxx
 					  echo "------------------------"
-					  local xxx="docker-php-url-fopen"
+					  local xxx="php-url-fopen"
 					  f2b_status_xxx
 					  echo "------------------------"
 
