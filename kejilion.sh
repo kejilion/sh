@@ -2068,6 +2068,7 @@ web_security() {
 					  rm -rf /etc/fail2ban
 					  crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
 					  echo "Fail2Ban防御程序已卸载"
+					  break
 					  ;;
 
 				  11)
@@ -3027,6 +3028,7 @@ check_f2b_status() {
 
 f2b_install_sshd() {
 
+	docker rm -f fail2ban >/dev/null 2>&1
 	install fail2ban
 	start fail2ban
 	enable fail2ban
@@ -13132,6 +13134,7 @@ EOF
 						remove fail2ban
 						rm -rf /etc/fail2ban
 						echo "Fail2Ban防御程序已卸载"
+						break
 						;;
 					*)
 						break
