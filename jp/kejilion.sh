@@ -1733,7 +1733,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# モードパラメーターに従ってWAFをオンまたはオフにすることにしました
+	# モードパラメーターに従ってWAFをオンまたはオフにすることを決定します
 	if [ "$mode" == "on" ]; then
 		# WAFをオンにしてください：コメントを削除します
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -3037,6 +3037,11 @@ f2b_install_sshd() {
 	install fail2ban
 	start fail2ban
 	enable fail2ban
+
+	if command -v dnf &>/dev/null; then
+		cd /etc/fail2ban/jail.d/
+		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
+	fi
 
 }
 
@@ -8017,7 +8022,7 @@ linux_ldnmp() {
 	  echo "Redisポート：6379"
 	  echo ""
 	  echo "ウェブサイトURL：https：//$yuming"
-	  echo "バックグラウンドログインパス： /admin"
+	  echo "バックエンドログインパス： /admin"
 	  echo "------------------------"
 	  echo "ユーザー名：admin"
 	  echo "パスワード：管理者"
@@ -12926,7 +12931,7 @@ EOF
 			  local current_hostname=$(uname -n)
 			  echo -e "現在のホスト名：${gl_huang}$current_hostname${gl_bai}"
 			  echo "------------------------"
-			  read -e -p "新しいホスト名を入力してください（0を入力して終了してください）：" new_hostname
+			  read -e -p "新しいホスト名を入力してください（出口に0を入力してください）：" new_hostname
 			  if [ -n "$new_hostname" ] && [ "$new_hostname" != "0" ]; then
 				  if [ -f /etc/alpine-release ]; then
 					  # Alpine

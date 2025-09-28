@@ -57,7 +57,7 @@ CheckFirstRun_true() {
 
 
 
-# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 기계 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
+# 기능 매장 지점 정보를 수집하는 기능, 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 컴퓨터 국가 및 사용자가 사용하는 기능 이름을 기록합니다. 그들은 절대적으로 민감한 정보를 포함하지 않습니다. 제발 나를 믿으세요!
 # 이 기능을 설계 해야하는 이유는 무엇입니까? 목적은 사용자가 사용하는 기능을 더 잘 이해하고 기능을 더욱 최적화하여 사용자 요구를 충족시키는 더 많은 기능을 시작하는 것입니다.
 # 전체 텍스트의 경우 Send_Stats 기능 호출 위치, 투명 및 오픈 소스를 검색 할 수 있으며 우려 사항이 있으면 사용을 거부 할 수 있습니다.
 
@@ -3037,6 +3037,11 @@ f2b_install_sshd() {
 	install fail2ban
 	start fail2ban
 	enable fail2ban
+
+	if command -v dnf &>/dev/null; then
+		cd /etc/fail2ban/jail.d/
+		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
+	fi
 
 }
 
@@ -8017,7 +8022,7 @@ linux_ldnmp() {
 	  echo "Redis Port : 6379"
 	  echo ""
 	  echo "웹 사이트 URL : https : //$yuming"
-	  echo "백그라운드 로그인 경로 : /admin"
+	  echo "백엔드 로그인 경로 : /admin"
 	  echo "------------------------"
 	  echo "사용자 이름 : 관리자"
 	  echo "비밀번호 : 관리자"
