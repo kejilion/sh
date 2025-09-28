@@ -3063,6 +3063,8 @@ f2b_install_sshd() {
 	fi
 
 	rm -f /path/to/fail2ban/config/fail2ban/jail.d/sshd.conf
+	sed -i 's/action = %(action_)s/action = iptables-multiport/g' /etc/fail2ban/jail.conf
+
 }
 
 f2b_sshd() {
@@ -7766,7 +7768,7 @@ linux_Oracle() {
 		  4)
 			  clear
 			  send_stats "R探长开机脚本"
-			  bash <(wget -qO- https://github.com/Yohann0617/oci-helper/releases/latest/download/sh_oci-helper_install.sh)
+			  bash <(wget -qO- ${gh_proxy}github.com/Yohann0617/oci-helper/releases/latest/download/sh_oci-helper_install.sh)
 			  ;;
 		  5)
 			  clear
