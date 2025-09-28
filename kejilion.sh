@@ -3038,7 +3038,7 @@ f2b_install_sshd() {
 	start fail2ban
 	enable fail2ban
 
-	if grep -q 'dnf' /etc/issue; then
+	if command -v dnf &>/dev/null; then
 		cd /etc/fail2ban/jail.d/
 		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
 	fi
