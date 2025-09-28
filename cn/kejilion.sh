@@ -3020,9 +3020,9 @@ f2b_status_xxx() {
 
 check_f2b_status() {
 	if command -v fail2ban-client >/dev/null 2>&1; then
-		check_f2b_status="已安装"
+		check_f2b_status="${gl_lv}已安装${gl_bai}"
 	else
-		check_f2b_status="未安装"
+		check_f2b_status="${gl_hui}未安装${gl_bai}"
 	fi
 }
 
