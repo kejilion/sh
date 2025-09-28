@@ -2012,7 +2012,21 @@ web_security() {
 				  1)
 					  f2b_install_sshd
 					  cd /etc/fail2ban/filter.d
+
+					  # 下载 fail2ban-nginx-cc.conf
 					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf
+
+					  # 下载 linuxserver 的 nginx 相关 filter
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/linuxserver/fail2ban-confs/master/filter.d/nginx-418.conf
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/linuxserver/fail2ban-confs/master/filter.d/nginx-bad-request.conf
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/linuxserver/fail2ban-confs/master/filter.d/apache-badbots.conf
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/linuxserver/fail2ban-confs/master/filter.d/nginx-botsearch.conf
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/linuxserver/fail2ban-confs/master/filter.d/nginx-deny.conf
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/linuxserver/fail2ban-confs/master/filter.d/nginx-http-auth.conf
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/linuxserver/fail2ban-confs/master/filter.d/nginx-unauthorized.conf
+					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/linuxserver/fail2ban-confs/master/filter.d/php-url-fopen.conf
+
+
 					  cd /etc/fail2ban/jail.d/
 					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf
 					  sed -i "/cloudflare/d" /etc/fail2ban/jail.d/nginx-docker-cc.conf
