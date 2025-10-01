@@ -12159,6 +12159,7 @@ while true; do
 			sed -i "/443:443/d" /home/docker/cloud_manager/docker-compose.yml
 			cp .env.example .env
 			sed -i "s|PANEL_PASSWORD=YourSecurePassword123|PANEL_PASSWORD=$LOGIN_PASSWD|" .env
+			sed -i "s|your.domain.com|${ipv4_address}|" .env
 
 			docker compose up -d
 			clear
