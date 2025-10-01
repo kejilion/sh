@@ -8873,7 +8873,7 @@ while true; do
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard组网(服务端)               ${gl_kjlan}98.  ${color98}WireGuard组网(客户端)"
 	  echo -e "${gl_kjlan}99.  ${color99}DSM群晖虚拟机                       ${gl_kjlan}100. ${color100}Syncthing点对点文件同步工具"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}101. ${color101}AI视频生成工具                      ${gl_kjlan}102. ${color102}AZ/AWS/OCI管理面板"
+	  echo -e "${gl_kjlan}101. ${color101}AI视频生成工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12138,58 +12138,7 @@ while true; do
 
 
 
-	  102|cloud-manager)
-		local app_id="102"
-		local app_name="AZ/AWS/OCI管理面板"
-		local app_text="整合AZ微软云，AWS亚马逊云，OCI甲骨文云一体化管理工具"
-		local app_url="官方网站: https://github.com/SIJULY/cloud_manager"
-		local docker_name="cloud_manager-caddy-1"
-		local docker_port="8102"
-		local app_size="1"
-
-		docker_app_install() {
-
-
-			read -e -p "设置面板登录密码 (默认 123ADMIN123): " LOGIN_PASSWD
-			local LOGIN_PASSWD=${LOGIN_PASSWD:-123ADMIN123}
-
-			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/SIJULY/cloud_manager.git && cd cloud_manager/
-			sed -i "s/80:80/${docker_port}:80/g" /home/docker/cloud_manager/docker-compose.yml
-			sed -i "/443:443/d" /home/docker/cloud_manager/docker-compose.yml
-			cp .env.example .env
-			sed -i "s|PANEL_PASSWORD=YourSecurePassword123|PANEL_PASSWORD=$LOGIN_PASSWD|" .env
-			sed -i "s|your.domain.com|${ipv4_address}|" .env
-
-			docker compose up -d
-			clear
-			echo "已经安装完成"
-			check_docker_app_ip
-		}
-
-		docker_app_update() {
-			cd  /home/docker/cloud_manager/ && docker compose down --rmi all
-			cd  /home/docker/cloud_manager/
-			git pull origin main
-
-			read -e -p "设置面板登录密码 (默认 123ADMIN123)" LOGIN_PASSWD
-			local LOGIN_PASSWD=${LOGIN_PASSWD:-123ADMIN123}
-
-			sed -i "s/80:80/${docker_port}:80/g" /home/docker/cloud_manager/docker-compose.yml
-			sed -i "/443:443/d" /home/docker/cloud_manager/docker-compose.yml
-			cp .env.example .env
-			sed -i "s|PANEL_PASSWORD=YourSecurePassword123|PANEL_PASSWORD=$LOGIN_PASSWD|" .env
-
-			cd  /home/docker/cloud_manager/ && docker compose up -d
-		}
-
-		docker_app_uninstall() {
-			cd  /home/docker/cloud_manager/ && docker compose down --rmi all
-			rm -rf /home/docker/cloud_manager
-			echo "应用已卸载"
-		}
-
-		docker_app_plus
+	  102)
 
 		  ;;
 
