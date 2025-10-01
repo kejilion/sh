@@ -12143,7 +12143,7 @@ while true; do
 		local app_name="AZ/AWS/OCI管理面板"
 		local app_text="整合AZ微软云，AWS亚马逊云，OCI甲骨文云一体化管理工具"
 		local app_url="官方网站: https://github.com/SIJULY/cloud_manager"
-		local docker_name="caddy"
+		local docker_name="cloud_manager-caddy-1"
 		local docker_port="8102"
 		local app_size="1"
 
