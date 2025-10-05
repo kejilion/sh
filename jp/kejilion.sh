@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.6"
+sh_v="4.1.7"
 
 
 gl_hui='\e[37m'
@@ -1733,7 +1733,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# モードパラメーターに従ってWAFをオンまたはオフにすることを決定します
+	# モードパラメーターに従ってWAFをオンまたはオフにすることにしました
 	if [ "$mode" == "on" ]; then
 		# WAFをオンにしてください：コメントを削除します
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -8022,7 +8022,7 @@ linux_ldnmp() {
 	  echo "Redisポート：6379"
 	  echo ""
 	  echo "ウェブサイトURL：https：//$yuming"
-	  echo "バックエンドログインパス： /admin"
+	  echo "バックグラウンドログインパス： /admin"
 	  echo "------------------------"
 	  echo "ユーザー名：admin"
 	  echo "パスワード：管理者"
@@ -8805,7 +8805,7 @@ while true; do
 	  local app_numbers=$([ -f /home/docker/appno.txt ] && cat /home/docker/appno.txt || echo "")
 
 	  # ループで色を設定します
-	  for i in {1..100}; do
+	  for i in {1..150}; do
 		  if echo "$app_numbers" | grep -q "^$i$"; then
 			  declare "color$i=${gl_lv}"
 		  else
@@ -8872,6 +8872,8 @@ while true; do
 	  echo -e "${gl_kjlan}95.  ${color95}ペーパーレスドキュメント管理プラットフォーム${gl_kjlan}96.  ${color96}2Fauth自己ホストの2段階検証装置"
 	  echo -e "${gl_kjlan}97.  ${color97}ワイヤガードネットワーキング（サーバー側）${gl_kjlan}98.  ${color98}ワイヤガードネットワーキング（クライアント）"
 	  echo -e "${gl_kjlan}99.  ${color99}DSM Synology仮想マシン${gl_kjlan}100. ${color100}同期ポイントツーポイントファイル同期ツール"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}101. ${color101}AIビデオ生成ツール"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}すべてのアプリケーションデータをバックアップします${gl_kjlan}r.   ${gl_bai}すべてのアプリケーションデータを復元します"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12094,6 +12096,53 @@ while true; do
 		docker_app
 
 		;;
+
+
+	  101|moneyprinterturbo)
+		local app_id="101"
+		local app_name="AI视频生成工具"
+		local app_text="MoneyPrinterTurbo是一款使用AI大模型合成高清短视频的工具"
+		local app_url="官方网站: https://github.com/harry0703/MoneyPrinterTurbo"
+		local docker_name="moneyprinterturbo"
+		local docker_port="8101"
+		local app_size="3"
+
+		docker_app_install() {
+			install git
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
+			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
+
+			docker compose up -d
+			clear
+			echo "インストール"
+			check_docker_app_ip
+		}
+
+		docker_app_update() {
+			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
+			cd  /home/docker/MoneyPrinterTurbo/
+			git pull origin main
+			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
+			cd  /home/docker/MoneyPrinterTurbo/ && docker compose up -d
+		}
+
+		docker_app_uninstall() {
+			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
+			rm -rf /home/docker/MoneyPrinterTurbo
+			echo "アプリはアンインストールされています"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
+	  102)
+
+		  ;;
+
+
 
 	  b)
 	  	clear

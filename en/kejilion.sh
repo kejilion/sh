@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.6"
+sh_v="4.1.7"
 
 
 gl_hui='\e[37m'
@@ -1733,7 +1733,7 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# Decide to turn on or off WAF according to mode parameters
+	# Decide to turn on or off WAF according to the mode parameter
 	if [ "$mode" == "on" ]; then
 		# Turn on WAF: Remove comments
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -5951,7 +5951,7 @@ ssh_manager() {
 	while true; do
 		clear
 		echo "SSH Remote Connection Tool"
-		echo "Can connect to other Linux systems via SSH"
+		echo "Can be connected to other Linux systems via SSH"
 		echo "------------------------"
 		list_connections
 		echo "1. Create a new connection 2. Use a connection 3. Delete a connection"
@@ -8022,7 +8022,7 @@ linux_ldnmp() {
 	  echo "Redis port: 6379"
 	  echo ""
 	  echo "Website url: https://$yuming"
-	  echo "Backend login path: /admin"
+	  echo "Background login path: /admin"
 	  echo "------------------------"
 	  echo "Username: admin"
 	  echo "Password: admin"
@@ -8805,7 +8805,7 @@ while true; do
 	  local app_numbers=$([ -f /home/docker/appno.txt ] && cat /home/docker/appno.txt || echo "")
 
 	  # Set the color with loop
-	  for i in {1..100}; do
+	  for i in {1..150}; do
 		  if echo "$app_numbers" | grep -q "^$i$"; then
 			  declare "color$i=${gl_lv}"
 		  else
@@ -8872,6 +8872,8 @@ while true; do
 	  echo -e "${gl_kjlan}95.  ${color95}paperless document management platform${gl_kjlan}96.  ${color96}2FAuth self-hosted two-step validator"
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard networking (server side)${gl_kjlan}98.  ${color98}WireGuard networking (client)"
 	  echo -e "${gl_kjlan}99.  ${color99}DSM Synology Virtual Machine${gl_kjlan}100. ${color100}Syncthing point-to-point file synchronization tool"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}101. ${color101}AI video generation tool"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}Back up all application data${gl_kjlan}r.   ${gl_bai}Restore all application data"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12094,6 +12096,53 @@ while true; do
 		docker_app
 
 		;;
+
+
+	  101|moneyprinterturbo)
+		local app_id="101"
+		local app_name="AI视频生成工具"
+		local app_text="MoneyPrinterTurbo是一款使用AI大模型合成高清短视频的工具"
+		local app_url="官方网站: https://github.com/harry0703/MoneyPrinterTurbo"
+		local docker_name="moneyprinterturbo"
+		local docker_port="8101"
+		local app_size="3"
+
+		docker_app_install() {
+			install git
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
+			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
+
+			docker compose up -d
+			clear
+			echo "Installed"
+			check_docker_app_ip
+		}
+
+		docker_app_update() {
+			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
+			cd  /home/docker/MoneyPrinterTurbo/
+			git pull origin main
+			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
+			cd  /home/docker/MoneyPrinterTurbo/ && docker compose up -d
+		}
+
+		docker_app_uninstall() {
+			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
+			rm -rf /home/docker/MoneyPrinterTurbo
+			echo "The app has been uninstalled"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
+	  102)
+
+		  ;;
+
+
 
 	  b)
 	  	clear

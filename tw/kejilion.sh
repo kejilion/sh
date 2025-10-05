@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.6"
+sh_v="4.1.7"
 
 
 gl_hui='\e[37m'
@@ -8805,7 +8805,7 @@ while true; do
 	  local app_numbers=$([ -f /home/docker/appno.txt ] && cat /home/docker/appno.txt || echo "")
 
 	  # 用循環設置顏色
-	  for i in {1..100}; do
+	  for i in {1..150}; do
 		  if echo "$app_numbers" | grep -q "^$i$"; then
 			  declare "color$i=${gl_lv}"
 		  else
@@ -8872,6 +8872,8 @@ while true; do
 	  echo -e "${gl_kjlan}95.  ${color95}paperless文檔管理平台${gl_kjlan}96.  ${color96}2FAuth自託管二步驗證器"
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard組網(服務端)${gl_kjlan}98.  ${color98}WireGuard組網(客戶端)"
 	  echo -e "${gl_kjlan}99.  ${color99}DSM群暉虛擬機${gl_kjlan}100. ${color100}Syncthing點對點文件同步工具"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}101. ${color101}AI視頻生成工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}備份全部應用數據${gl_kjlan}r.   ${gl_bai}還原全部應用數據"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12094,6 +12096,53 @@ while true; do
 		docker_app
 
 		;;
+
+
+	  101|moneyprinterturbo)
+		local app_id="101"
+		local app_name="AI视频生成工具"
+		local app_text="MoneyPrinterTurbo是一款使用AI大模型合成高清短视频的工具"
+		local app_url="官方网站: https://github.com/harry0703/MoneyPrinterTurbo"
+		local docker_name="moneyprinterturbo"
+		local docker_port="8101"
+		local app_size="3"
+
+		docker_app_install() {
+			install git
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
+			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
+
+			docker compose up -d
+			clear
+			echo "已經安裝完成"
+			check_docker_app_ip
+		}
+
+		docker_app_update() {
+			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
+			cd  /home/docker/MoneyPrinterTurbo/
+			git pull origin main
+			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
+			cd  /home/docker/MoneyPrinterTurbo/ && docker compose up -d
+		}
+
+		docker_app_uninstall() {
+			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
+			rm -rf /home/docker/MoneyPrinterTurbo
+			echo "應用已卸載"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
+	  102)
+
+		  ;;
+
+
 
 	  b)
 	  	clear
