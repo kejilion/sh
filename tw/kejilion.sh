@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.7"
+sh_v="4.1.8"
 
 
 gl_hui='\e[37m'
@@ -7890,7 +7890,7 @@ linux_ldnmp() {
 	  cd /home/web/html
 	  mkdir $yuming
 	  cd $yuming
-	  wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20240520.zip
+	  wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20250901.zip
 	  unzip latest.zip
 	  rm latest.zip
 
@@ -8873,7 +8873,7 @@ while true; do
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard組網(服務端)${gl_kjlan}98.  ${color98}WireGuard組網(客戶端)"
 	  echo -e "${gl_kjlan}99.  ${color99}DSM群暉虛擬機${gl_kjlan}100. ${color100}Syncthing點對點文件同步工具"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}101. ${color101}AI視頻生成工具"
+	  echo -e "${gl_kjlan}101. ${color101}AI視頻生成工具${gl_kjlan}102. ${color102}VoceChat多人在線聊天系統"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}備份全部應用數據${gl_kjlan}r.   ${gl_bai}還原全部應用數據"
 	  echo -e "${gl_kjlan}------------------------"
@@ -11531,8 +11531,8 @@ while true; do
 
 		local docker_describe="匿名口令分享文本和文件，像拿快递一样取文件"
 		local docker_url="官网介绍: https://github.com/vastsa/FileCodeBox"
-		local docker_use=""
-		local docker_passwd=""
+		local docker_use="echo \"访问地址后面带 /#/admin 访问管理员页面\""
+		local docker_passwd="echo \"管理员密码: FileCodeBox2023\""
 		local app_size="1"
 		docker_app
 
@@ -12139,6 +12139,28 @@ while true; do
 
 
 	  102)
+
+		local app_id="102"
+		local docker_name="vocechat-server"
+		local docker_img="privoce/vocechat-server:latest"
+		local docker_port=8102
+
+		docker_rum() {
+
+			docker run -d --restart=always \
+			  -p ${docker_port}:3000 \
+			  --name vocechat-server \
+			  -v /home/docker/vocechat/data:/home/vocechat-server/data \
+			  privoce/vocechat-server:latest
+
+		}
+
+		local docker_describe="是一款支持独立部署的个人云社交媒体聊天服务"
+		local docker_url="官网介绍: https://github.com/Privoce/vocechat-web"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
 
 		  ;;
 
