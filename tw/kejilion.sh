@@ -12138,7 +12138,7 @@ while true; do
 
 
 
-	  102)
+	  102|vocechat)
 
 		local app_id="102"
 		local docker_name="vocechat-server"
