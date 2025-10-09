@@ -3421,7 +3421,7 @@ ldnmp_web_status() {
 				done
 
 				# 网站目录替换
-				cp /home/web/html/$oddyuming /home/web/html/$yuming
+				cp -r /home/web/html/$oddyuming /home/web/html/$yuming
 
 				find /home/web/html/$yuming -type f -exec sed -i "s/$odd_dbname/$dbname/g" {} +
 				find /home/web/html/$yuming -type f -exec sed -i "s/$oddyuming/$yuming/g" {} +
