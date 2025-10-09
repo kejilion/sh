@@ -3432,7 +3432,7 @@ ldnmp_web_status() {
 				# rm /home/web/certs/${oddyuming}_key.pem
 				# rm /home/web/certs/${oddyuming}_cert.pem
 
-				docker exec nginx nginx -s reload
+				cd /home/web && docker compose restart
 
 				;;
 
