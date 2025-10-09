@@ -3376,7 +3376,7 @@ ldnmp_web_status() {
 		echo "3.  清理站点缓存                    4.  创建关联站点"
 		echo "5.  查看访问日志                    6.  查看错误日志"
 		echo "7.  编辑全局配置                    8.  编辑站点配置"
-		echo "9.  管理站点数据库		    10. 查看站点分析报告"
+		echo "9.  管理站点数据库                  10. 查看站点分析报告"
 		echo "------------------------"
 		echo "20. 删除指定站点数据"
 		echo "------------------------"
@@ -8873,6 +8873,7 @@ while true; do
 	  echo -e "${gl_kjlan}99.  ${color99}DSM群晖虚拟机                       ${gl_kjlan}100. ${color100}Syncthing点对点文件同步工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}101. ${color101}AI视频生成工具                      ${gl_kjlan}102. ${color102}VoceChat多人在线聊天系统"
+	  echo -e "${gl_kjlan}103. ${color103}Umami网站统计工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12160,6 +12161,47 @@ while true; do
 		local docker_passwd=""
 		local app_size="1"
 		docker_app
+
+		  ;;
+
+
+	  103|umami)
+		local app_id="103"
+		local app_name="Umami网站统计工具"
+		local app_text="开源、轻量、隐私友好的网站分析工具，类似于GoogleAnalytics。"
+		local app_url="官方网站: https://github.com/umami-software/umami"
+		local docker_name="umami-umami-1"
+		local docker_port="8103"
+		local app_size="1"
+
+		docker_app_install() {
+			install git
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/umami-software/umami.git && cd umami
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/umami/docker-compose.yml
+
+			docker compose up -d
+			clear
+			echo "已经安装完成"
+			check_docker_app_ip
+			echo "初始用户名: admin"
+			echo "初始密码: umami"
+		}
+
+		docker_app_update() {
+			cd  /home/docker/umami/ && docker compose down --rmi all
+			cd  /home/docker/umami/
+			git pull origin main
+			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/umami/docker-compose.yml
+			cd  /home/docker/umami/ && docker compose up -d
+		}
+
+		docker_app_uninstall() {
+			cd  /home/docker/umami/ && docker compose down --rmi all
+			rm -rf /home/docker/umami
+			echo "应用已卸载"
+		}
+
+		docker_app_plus
 
 		  ;;
 
