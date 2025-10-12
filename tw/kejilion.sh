@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.1.8"
+sh_v="4.1.9"
 
 
 gl_hui='\e[37m'
@@ -3372,11 +3372,11 @@ ldnmp_web_status() {
 		echo ""
 		echo "操作"
 		echo "------------------------"
-		echo "1.  申請/更新域名證書               2.  更換站點域名"
+		echo "1.  申請/更新域名證書               2.  克隆站點域名"
 		echo "3.  清理站點緩存                    4.  創建關聯站點"
 		echo "5.  查看訪問日誌                    6.  查看錯誤日誌"
 		echo "7.  編輯全局配置                    8.  編輯站點配置"
-		echo "9.  管理站點數據庫		    10. 查看站點分析報告"
+		echo "9.  管理站點數據庫                  10. 查看站點分析報告"
 		echo "------------------------"
 		echo "20. 刪除指定站點數據"
 		echo "------------------------"
@@ -3395,8 +3395,7 @@ ldnmp_web_status() {
 				;;
 
 			2)
-				send_stats "更換站點域名"
-				echo -e "${gl_hong}強烈建議:${gl_bai}先備份好全站數據再更換站點域名！"
+				send_stats "克隆站點域名"
 				read -e -p "請輸入舊域名:" oddyuming
 				read -e -p "請輸入新域名:" yuming
 				install_certbot
@@ -3410,7 +3409,7 @@ ldnmp_web_status() {
 				local odd_dbname="${odd_dbname}"
 
 				docker exec mysql mysqldump -u root -p"$dbrootpasswd" $odd_dbname | docker exec -i mysql mysql -u root -p"$dbrootpasswd" $dbname
-				docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $odd_dbname;"
+				# docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $odd_dbname;"
 
 
 				local tables=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -D $dbname -e "SHOW TABLES;" | awk '{ if (NR>1) print $1 }')
@@ -3422,18 +3421,18 @@ ldnmp_web_status() {
 				done
 
 				# 網站目錄替換
-				mv /home/web/html/$oddyuming /home/web/html/$yuming
+				cp -r /home/web/html/$oddyuming /home/web/html/$yuming
 
 				find /home/web/html/$yuming -type f -exec sed -i "s/$odd_dbname/$dbname/g" {} +
 				find /home/web/html/$yuming -type f -exec sed -i "s/$oddyuming/$yuming/g" {} +
 
-				mv /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
+				cp /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
 				sed -i "s/$oddyuming/$yuming/g" /home/web/conf.d/$yuming.conf
 
-				rm /home/web/certs/${oddyuming}_key.pem
-				rm /home/web/certs/${oddyuming}_cert.pem
+				# rm /home/web/certs/${oddyuming}_key.pem
+				# rm /home/web/certs/${oddyuming}_cert.pem
 
-				docker exec nginx nginx -s reload
+				cd /home/web && docker compose restart
 
 				;;
 
@@ -8874,6 +8873,7 @@ while true; do
 	  echo -e "${gl_kjlan}99.  ${color99}DSM群暉虛擬機${gl_kjlan}100. ${color100}Syncthing點對點文件同步工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}101. ${color101}AI視頻生成工具${gl_kjlan}102. ${color102}VoceChat多人在線聊天系統"
+	  echo -e "${gl_kjlan}103. ${color103}Umami網站統計工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}備份全部應用數據${gl_kjlan}r.   ${gl_bai}還原全部應用數據"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12161,6 +12161,47 @@ while true; do
 		local docker_passwd=""
 		local app_size="1"
 		docker_app
+
+		  ;;
+
+
+	  103|umami)
+		local app_id="103"
+		local app_name="Umami网站统计工具"
+		local app_text="开源、轻量、隐私友好的网站分析工具，类似于GoogleAnalytics。"
+		local app_url="官方网站: https://github.com/umami-software/umami"
+		local docker_name="umami-umami-1"
+		local docker_port="8103"
+		local app_size="1"
+
+		docker_app_install() {
+			install git
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/umami-software/umami.git && cd umami
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/umami/docker-compose.yml
+
+			docker compose up -d
+			clear
+			echo "已經安裝完成"
+			check_docker_app_ip
+			echo "初始用戶名: admin"
+			echo "初始密碼: umami"
+		}
+
+		docker_app_update() {
+			cd  /home/docker/umami/ && docker compose down --rmi all
+			cd  /home/docker/umami/
+			git pull origin main
+			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/umami/docker-compose.yml
+			cd  /home/docker/umami/ && docker compose up -d
+		}
+
+		docker_app_uninstall() {
+			cd  /home/docker/umami/ && docker compose down --rmi all
+			rm -rf /home/docker/umami
+			echo "應用已卸載"
+		}
+
+		docker_app_plus
 
 		  ;;
 
