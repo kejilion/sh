@@ -8873,7 +8873,7 @@ while true; do
 	  echo -e "${gl_kjlan}99.  ${color99}DSM群晖虚拟机                       ${gl_kjlan}100. ${color100}Syncthing点对点文件同步工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}101. ${color101}AI视频生成工具                      ${gl_kjlan}102. ${color102}VoceChat多人在线聊天系统"
-	  echo -e "${gl_kjlan}103. ${color103}Umami网站统计工具"
+	  echo -e "${gl_kjlan}103. ${color103}Umami网站统计工具                   ${gl_kjlan}104. ${color104}VNC驱动的安卓模拟器（x86_64架构）"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -11384,7 +11384,7 @@ while true; do
 		  local app_size="3"
 
 		  docker_app_install() {
-			  install git openssl
+			  install git openssl wget
 			  mkdir -p /home/docker/${docker_name} && cd /home/docker/${docker_name}
 
 			  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
@@ -12205,6 +12205,53 @@ while true; do
 
 		  ;;
 
+	  104|android)
+
+		local app_id="104"
+		local docker_name="android-container"
+		local docker_img="budtmo/docker-android:emulator_11.0"
+		local docker_port=8104
+
+		docker_rum() {
+
+			  read -e -p "设置访问密码: " app_passwd
+
+			  docker run -d \
+				--name android-container \
+				--restart=always \
+				-p ${docker_port}:6080 \
+				-e EMULATOR_DEVICE="Samsung Galaxy S10" \
+				-e WEB_VNC=true \
+				-e VNC_PASSWORD="${app_passwd}" \
+				-v /home/docker/android:/home/androidusr \
+				--device /dev/kvm \
+				budtmo/docker-android:emulator_11.0
+
+			docker volume create android_data
+			docker run -d \
+			  --name android-container \
+			  --restart=always \
+			  -p 6080:6080 \
+			  -e EMULATOR_DEVICE="Samsung Galaxy S10" \
+			  -e WEB_VNC=true \
+			  -e VNC_PASSWORD="mypassword123" \
+			  -v android_data:/home/androidusr \
+			  --device /dev/kvm \
+			  budtmo/docker-android:emulator_11.0
+
+
+
+
+		}
+
+		local docker_describe="是一个基于 Docker 容器的 Android 模拟器环境"
+		local docker_url="官网介绍: https://github.com/budtmo/docker-android"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="3"
+		docker_app
+
+		  ;;
 
 
 	  b)
