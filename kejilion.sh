@@ -9065,6 +9065,7 @@ while true; do
 	  echo -e "${gl_kjlan}101. ${color101}AI视频生成工具                      ${gl_kjlan}102. ${color102}VoceChat多人在线聊天系统"
 	  echo -e "${gl_kjlan}103. ${color103}Umami网站统计工具                   ${gl_kjlan}104. ${color104}Stream四层代理转发工具"
 	  echo -e "${gl_kjlan}105. ${color105}思源笔记                            ${gl_kjlan}106. ${color106}Drawnix开源白板工具"
+	  echo -e "${gl_kjlan}107. ${color107}PanSou网盘搜索"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12437,7 +12438,7 @@ while true; do
 
 	  106|drawnix)
 
-		local app_id="105"
+		local app_id="106"
 		local docker_name="drawnix"
 		local docker_img="pubuzhixing/drawnix"
 		local docker_port=8106
@@ -12460,6 +12461,37 @@ while true; do
 		docker_app
 
 		  ;;
+
+
+	  106|drawnix)
+
+		local app_id="107"
+		local docker_name="pansou"
+		local docker_img="ghcr.io/fish2018/pansou-web"
+		local docker_port=8107
+
+		docker_rum() {
+
+			docker run -d \
+			  --name pansou \
+			  --restart=always \
+			  -p ${docker_port}:80 \
+			  -v /home/docker/pansou/data:/app/data \
+			  -v /home/docker/pansou/logs:/app/logs \
+			  -e ENABLED_PLUGINS="labi,zhizhen,shandian,duoduo,muou,wanou" \
+			  ghcr.io/fish2018/pansou-web
+
+		}
+
+		local docker_describe="PanSou是一个高性能的网盘资源搜索API服务。"
+		local docker_url="官网介绍: https://github.com/fish2018/pansou"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
 
 
 
