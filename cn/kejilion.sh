@@ -12463,7 +12463,7 @@ while true; do
 		  ;;
 
 
-	  106|drawnix)
+	  107|pansou)
 
 		local app_id="107"
 		local docker_name="pansou"
