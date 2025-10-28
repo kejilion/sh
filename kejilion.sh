@@ -2247,9 +2247,11 @@ web_optimization() {
 				  1)
 				  send_stats "站点标准模式"
 
-				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 10240;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 4;/' /home/web/nginx.conf
+				  local cpu_cores=$(nproc)
+				  local connections=$((1024 * ${cpu_cores}))
+				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
+				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
+
 
 				  # php调优
 				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
@@ -2288,8 +2290,10 @@ web_optimization() {
 				  send_stats "站点高性能模式"
 
 				  # nginx调优
-				  sed -i 's/worker_connections.*/worker_connections 20480;/' /home/web/nginx.conf
-				  sed -i 's/worker_processes.*/worker_processes 8;/' /home/web/nginx.conf
+				  local cpu_cores=$(nproc)
+				  local connections=$((2048 * ${cpu_cores}))
+				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
+				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
 
 				  # php调优
 				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
