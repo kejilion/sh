@@ -1407,8 +1407,7 @@ auto_optimize_dns() {
 	# 调用设置 DNS 的函数（需你定义）
 	set_dns "$dns1_ipv4" "$dns2_ipv4" "$dns1_ipv6" "$dns2_ipv6"
 
-	# 打印结果
-	echo -e "[${gl_lv}OK${gl_bai}] 8/10. 自动优化DNS地址${gl_huang}${gl_bai}"
+
 }
 
 
@@ -13915,6 +13914,7 @@ EOF
 
 				  echo "------------------------------------------------"
 				  auto_optimize_dns
+				  echo -e "[${gl_lv}OK${gl_bai}] 8/10. 自动优化DNS地址${gl_huang}${gl_bai}"
 
 				  echo "------------------------------------------------"
 				  install_docker
