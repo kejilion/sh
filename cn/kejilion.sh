@@ -12532,7 +12532,12 @@ while true; do
 			  -p ${docker_port}:80 \
 			  -v /home/docker/pansou/data:/app/data \
 			  -v /home/docker/pansou/logs:/app/logs \
-			  -e ENABLED_PLUGINS="labi,zhizhen,shandian,duoduo,muou,wanou" \
+			  -e ENABLED_PLUGINS="hunhepan,jikepan,panwiki,pansearch,panta,qupansou,
+susu,thepiratebay,wanou,xuexizhinan,panyq,zhizhen,labi,muou,ouge,shandian,
+duoduo,huban,cyg,erxiao,miaoso,fox4k,pianku,clmao,wuji,cldi,xiaozhang,
+libvio,leijing,xb6v,xys,ddys,hdmoli,yuhuage,u3c3,javdb,clxiong,jutoushe,
+sdso,xiaoji,xdyh,haisou,bixin,djgou,nyaa,xinjuc,aikanzy,qupanshe,xdpan,
+discourse,yunsou,ahhhhfs,nsgame,gying" \
 			  ghcr.io/fish2018/pansou-web
 
 		}
