@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.3"
+sh_v="4.2.4"
 
 
 gl_hui='\e[37m'
@@ -9138,7 +9138,7 @@ while true; do
 	  echo -e "${gl_kjlan}103. ${color103}Umami网站统计工具                   ${gl_kjlan}104. ${color104}Stream四层代理转发工具"
 	  echo -e "${gl_kjlan}105. ${color105}思源笔记                            ${gl_kjlan}106. ${color106}Drawnix开源白板工具"
 	  echo -e "${gl_kjlan}107. ${color107}PanSou网盘搜索                      ${gl_kjlan}108. ${color108}LangBot聊天机器人"
-	  echo -e "${gl_kjlan}109. ${color109}ZFile在线网盘"
+	  echo -e "${gl_kjlan}109. ${color109}ZFile在线网盘                       ${gl_kjlan}110. ${color110}Karakeep书签管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -10763,7 +10763,6 @@ while true; do
 		docker_app_install() {
 			install git
 			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
-			# sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
 			sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
 
 			docker compose up -d
@@ -12641,6 +12640,51 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		docker_app
 
 		  ;;
+
+
+	  110|karakeep)
+		local app_id="110"
+		local app_name="karakeep书签管理"
+		local app_text="是一款可自行托管的书签应用，带有人工智能功能，专为数据囤积者而设计。"
+		local app_url="官方网站: https://github.com/karakeep-app/karakeep"
+		local docker_name="docker-web-1"
+		local docker_port="8110"
+		local app_size="1"
+
+		docker_app_install() {
+			install git
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/karakeep-app/karakeep.git && cd karakeep/docker && cp .env.sample .env
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/karakeep/docker/docker-compose.yml
+
+			docker compose up -d
+			clear
+			echo "已经安装完成"
+			check_docker_app_ip
+		}
+
+		docker_app_update() {
+			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
+			cd  /home/docker/karakeep/
+			git pull origin main
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/karakeep/docker/docker-compose.yml
+			cd  /home/docker/karakeep/docker/ && docker compose up -d
+		}
+
+		docker_app_uninstall() {
+			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
+			rm -rf /home/docker/karakeep
+			echo "应用已卸载"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
+
+
+
 
 
 
