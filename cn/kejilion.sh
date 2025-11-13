@@ -1404,8 +1404,7 @@ auto_optimize_dns() {
 		local dns2_ipv6="2001:4860:4860::8888"
 	fi
 
-	# 调用设置 DNS 的函数（需你定义）
-	set_dns "$dns1_ipv4" "$dns2_ipv4" "$dns1_ipv6" "$dns2_ipv6"
+	set_dns
 
 
 }
