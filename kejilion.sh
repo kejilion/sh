@@ -3099,6 +3099,12 @@ f2b_install_sshd() {
 		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
 	fi
 
+	if command -v apt &>/dev/null; then
+		install rsyslog
+		systemctl start rsyslog
+		systemctl enable rsyslog
+	fi
+
 }
 
 f2b_sshd() {
