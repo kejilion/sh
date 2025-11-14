@@ -4547,8 +4547,7 @@ set_dns() {
 ip_address
 
 chattr -i /etc/resolv.conf
-# rm /etc/resolv.conf
-# touch /etc/resolv.conf
+> /etc/resolv.conf
 
 if [ -n "$ipv4_address" ]; then
 	echo "nameserver $dns1_ipv4" >> /etc/resolv.conf
@@ -4558,6 +4557,11 @@ fi
 if [ -n "$ipv6_address" ]; then
 	echo "nameserver $dns1_ipv6" >> /etc/resolv.conf
 	echo "nameserver $dns2_ipv6" >> /etc/resolv.conf
+fi
+
+if [ ! -s /etc/resolv.conf ]; then
+	echo "nameserver 223.5.5.5" >> /etc/resolv.conf
+	echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 fi
 
 chattr +i /etc/resolv.conf
