@@ -1,0 +1,44 @@
+[mysqld]
+
+# 连接和线程管理
+max_connections = 200            # 小机型避免连接风暴
+thread_cache_size = 64
+interactive_timeout = 20
+wait_timeout = 20
+
+# InnoDB设置
+innodb_buffer_pool_size = 512M   # 2G RAM 中最重要的分配，留足系统空间
+innodb_buffer_pool_instances = 1 # 小内存不需要分片
+innodb_log_buffer_size = 8M
+innodb_redo_log_capacity = 64M
+innodb_lock_wait_timeout = 30
+innodb_file_per_table = 1
+innodb_flush_log_at_trx_commit = 1
+innodb_io_capacity = 400          # 普通SSD预期值
+innodb_io_capacity_max = 800
+
+# 缓存和表限制
+table_open_cache = 512
+open_files_limit = 20000
+tmp_table_size = 32M
+max_heap_table_size = 32M
+max_allowed_packet = 32M
+
+# 缓冲区大小
+sort_buffer_size = 2M
+read_buffer_size = 512K
+join_buffer_size = 1M
+
+# 日志管理
+log_error_verbosity = 3
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 1
+log_queries_not_using_indexes = 1
+
+# 其他
+sql_mode=STRICT_TRANS_TABLES,NO_ENGINE_SUBSTITUTION
+performance_schema=ON
+disable-log-bin
+
+

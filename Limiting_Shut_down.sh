@@ -2,10 +2,11 @@
 
 # 获取总的接收和发送流量
 output=$(awk 'BEGIN { rx_total = 0; tx_total = 0 }
-    NR > 2 { rx_total += $2; tx_total += $10 }
+    $1 ~ /^(eth|ens|enp|eno)[0-9]+/ { rx_total += $2; tx_total += $10 }
     END {
         printf("%.0f Bytes %.0f Bytes", rx_total, tx_total);
     }' /proc/net/dev)
+
 
 # 获取接收和发送的流量数据
 rx=$(echo "$output" | awk '{print $1}')
