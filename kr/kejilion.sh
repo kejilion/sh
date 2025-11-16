@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.2"
+sh_v="4.2.4"
 
 
 gl_hui='\e[37m'
@@ -59,7 +59,7 @@ CheckFirstRun_true() {
 
 # 이 기능은 함수에 묻혀있는 정보를 수집하고 사용자가 사용하는 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 시스템 국가 및 기능 이름을 기록합니다. 민감한 정보는 포함되어 있지 않으니 걱정하지 마세요! 저를 믿어주세요!
 # 이 기능은 왜 설계되었나요? 그 목적은 사용자가 사용하고 싶어하는 기능을 더 잘 이해하고, 기능을 더욱 최적화하고 사용자 요구에 맞는 더 많은 기능을 출시하는 것입니다.
-# send_stats 함수 호출 위치에 대한 전문을 검색할 수 있습니다. 투명하고 오픈 소스입니다. 불편하신 점이 있으시면 이용을 거부하실 수 있습니다.
+# send_stats 함수 호출 위치에 대한 전문을 검색할 수 있습니다. 투명하고 오픈 소스입니다. 우려되는 사항이 있는 경우 이용을 거부하실 수 있습니다.
 
 
 
@@ -1404,8 +1404,7 @@ auto_optimize_dns() {
 		local dns2_ipv6="2001:4860:4860::8888"
 	fi
 
-	# DNS를 설정하는 함수 호출(사용자가 정의해야 함)
-	set_dns "$dns1_ipv4" "$dns2_ipv4" "$dns1_ipv6" "$dns2_ipv6"
+	set_dns
 
 
 }
@@ -1439,9 +1438,9 @@ install_ldnmp() {
 	  rm -rf /home/custom_mysql_config.cnf
 
 
-	  
+
 	  restart_ldnmp
-	  
+
 
 
 	  clear
@@ -1630,17 +1629,8 @@ reverse_proxy() {
 }
 
 
-restart_redis() {
-  rm -rf /home/web/redis/*
-  docker exec redis redis-cli FLUSHALL > /dev/null 2>&1
-  # docker exec -it redis redis-cli CONFIG SET maxmemory 1gb > /dev/null 2>&1
-  # docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
-}
-
-
 
 restart_ldnmp() {
-	  restart_redis
 	  docker exec nginx chown -R nginx:nginx /var/www/html > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/fastcgi > /dev/null 2>&1
@@ -1742,7 +1732,6 @@ web_cache() {
   send_stats "사이트 캐시 지우기"
   cf_purge_cache
   cd /home/web && docker compose restart
-  restart_redis
 }
 
 
@@ -2329,7 +2318,6 @@ web_optimization() {
 
 				  cd /home/web && docker compose restart
 
-				  restart_redis
 				  optimize_balanced
 
 
@@ -2370,7 +2358,6 @@ web_optimization() {
 
 				  cd /home/web && docker compose restart
 
-				  restart_redis
 				  optimize_web_server
 
 				  echo "LDNMP 환경이 고성능 모드로 설정되었습니다."
@@ -2597,7 +2584,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p tcp -d "$container_ip" -j DROP
 	fi
 
-	# 특정 IP를 허용하는 규칙 지우기
+	# 지정된 IP를 허용하는 규칙을 지웁니다.
 	if iptables -C DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -2616,7 +2603,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p udp -d "$container_ip" -j DROP
 	fi
 
-	# 특정 IP를 허용하는 규칙 지우기
+	# 지정된 IP를 허용하는 규칙을 지웁니다.
 	if iptables -C DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -2729,7 +2716,7 @@ clear_host_port_rules() {
 	fi
 
 
-	# 다른 모든 IP의 접근을 차단하는 규칙을 삭제하세요.
+	# 다른 모든 IP의 접근을 차단하는 규칙을 해제하세요.
 	if iptables -C INPUT -p udp --dport "$port" -j DROP &>/dev/null; then
 		iptables -D INPUT -p udp --dport "$port" -j DROP
 	fi
@@ -3098,6 +3085,12 @@ f2b_install_sshd() {
 	if command -v dnf &>/dev/null; then
 		cd /etc/fail2ban/jail.d/
 		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
+	fi
+
+	if command -v apt &>/dev/null; then
+		install rsyslog
+		systemctl start rsyslog
+		systemctl enable rsyslog
 	fi
 
 }
@@ -4554,9 +4547,7 @@ set_dns() {
 ip_address
 
 chattr -i /etc/resolv.conf
-rm /etc/resolv.conf
-touch /etc/resolv.conf
-
+> /etc/resolv.conf
 
 if [ -n "$ipv4_address" ]; then
 	echo "nameserver $dns1_ipv4" >> /etc/resolv.conf
@@ -4566,6 +4557,11 @@ fi
 if [ -n "$ipv6_address" ]; then
 	echo "nameserver $dns1_ipv6" >> /etc/resolv.conf
 	echo "nameserver $dns2_ipv6" >> /etc/resolv.conf
+fi
+
+if [ ! -s /etc/resolv.conf ]; then
+	echo "nameserver 223.5.5.5" >> /etc/resolv.conf
+	echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 fi
 
 chattr +i /etc/resolv.conf
@@ -5340,7 +5336,7 @@ clamav_freshclam() {
 
 clamav_scan() {
 	if [ $# -eq 0 ]; then
-		echo "스캔할 디렉터리를 지정하세요."
+		echo "스캔할 디렉터리를 지정하십시오."
 		return
 	fi
 
@@ -7360,7 +7356,7 @@ docker_ssh_migration() {
 
 		echo -e "${YELLOW}백업 전송 중...${NC}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# 키를 사용하여 로그인
+			# 키로 로그인
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -7739,6 +7735,7 @@ linux_test() {
 	  echo -e "${gl_kjlan}종합적인 테스트"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}벤치 성능 테스트"
 	  echo -e "${gl_kjlan}32.  ${gl_bai}spiritysdx 퓨전 몬스터 평가${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}33.  ${gl_bai}Nodequality 융합 몬스터 평가${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}메인 메뉴로 돌아가기"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -7856,8 +7853,16 @@ linux_test() {
 		  32)
 			  send_stats "spiritysdx 퓨전 몬스터 리뷰"
 			  clear
-			  curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
+			  curl -L ${gh_proxy}gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
 			  ;;
+
+		  33)
+			  send_stats "Nodequality 융합 몬스터 평가"
+			  clear
+			  bash <(curl -sL https://run.NodeQuality.com)
+			  ;;
+
+
 
 		  0)
 			  kejilion
@@ -8972,7 +8977,6 @@ linux_ldnmp() {
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
 			  docker restart $ldnmp_pods > /dev/null 2>&1
-			  restart_redis
 			  send_stats "고쳐 쓰다$ldnmp_pods"
 			  echo "고쳐 쓰다${ldnmp_pods}마치다"
 
@@ -9067,7 +9071,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}파고다 패널 공식 버전${gl_kjlan}2.   ${color2}aaPanel Pagoda 국제 버전"
 	  echo -e "${gl_kjlan}3.   ${color3}1패널 차세대 관리 패널${gl_kjlan}4.   ${color4}NginxProxyManager 시각화 패널"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList 다중 저장소 파일 목록 프로그램${gl_kjlan}6.   ${color6}Ubuntu 원격 데스크톱 웹 에디션"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList 다중 저장소 파일 목록 프로그램${gl_kjlan}6.   ${color6}Ubuntu 원격 데스크톱 웹 버전"
 	  echo -e "${gl_kjlan}7.   ${color7}나타 프로브 VPS 모니터링 패널${gl_kjlan}8.   ${color8}QB 오프라인 BT 자기 다운로드 패널"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io 메일 서버 프로그램${gl_kjlan}10.  ${color10}RocketChat 다자간 온라인 채팅 시스템"
 	  echo -e "${gl_kjlan}------------------------"
@@ -9129,6 +9133,7 @@ while true; do
 	  echo -e "${gl_kjlan}103. ${color103}Umami 웹사이트 통계 도구${gl_kjlan}104. ${color104}스트림 4계층 프록시 전달 도구"
 	  echo -e "${gl_kjlan}105. ${color105}쓰위안 노트${gl_kjlan}106. ${color106}Drawix 오픈 소스 화이트보드 도구"
 	  echo -e "${gl_kjlan}107. ${color107}PanSou 네트워크 디스크 검색${gl_kjlan}108. ${color108}LangBot 챗봇"
+	  echo -e "${gl_kjlan}109. ${color109}ZFile 온라인 네트워크 디스크${gl_kjlan}110. ${color110}Karakeep 북마크 관리"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}모든 애플리케이션 데이터 백업${gl_kjlan}r.   ${gl_bai}모든 앱 데이터 복원"
 	  echo -e "${gl_kjlan}------------------------"
@@ -9410,7 +9415,7 @@ while true; do
 			check_docker_image_update $docker_name
 
 			clear
-			echo -e "우정$check_docker $update_status"
+			echo -e "우편 서비스$check_docker $update_status"
 			echo "poste.io는 오픈 소스 메일 서버 솔루션입니다."
 			echo "영상 소개: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 
@@ -10753,7 +10758,6 @@ while true; do
 		docker_app_install() {
 			install git
 			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
-			# sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
 			sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
 
 			docker compose up -d
@@ -12602,6 +12606,82 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  ;;
 
 
+	  109|zfile)
+
+		local app_id="109"
+		local docker_name="zfile"
+		local docker_img="zhaojun1998/zfile:latest"
+		local docker_port=8109
+
+		docker_rum() {
+
+
+			docker run -d --name=zfile --restart=always \
+				-p ${docker_port}:8080 \
+				-v /home/docker/zfile/db:/root/.zfile-v4/db \
+				-v /home/docker/zfile/logs:/root/.zfile-v4/logs \
+				-v /home/docker/zfile/file:/data/file \
+				-v /home/docker/zfile/application.properties:/root/.zfile-v4/application.properties \
+				zhaojun1998/zfile:latest
+
+
+		}
+
+		local docker_describe="是一个适用于个人或小团队的在线网盘程序。"
+		local docker_url="官网介绍: https://github.com/zfile-dev/zfile"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+	  110|karakeep)
+		local app_id="110"
+		local app_name="karakeep书签管理"
+		local app_text="是一款可自行托管的书签应用，带有人工智能功能，专为数据囤积者而设计。"
+		local app_url="官方网站: https://github.com/karakeep-app/karakeep"
+		local docker_name="docker-web-1"
+		local docker_port="8110"
+		local app_size="1"
+
+		docker_app_install() {
+			install git
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/karakeep-app/karakeep.git && cd karakeep/docker && cp .env.sample .env
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/karakeep/docker/docker-compose.yml
+
+			docker compose up -d
+			clear
+			echo "설치 완료"
+			check_docker_app_ip
+		}
+
+		docker_app_update() {
+			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
+			cd  /home/docker/karakeep/
+			git pull origin main
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/karakeep/docker/docker-compose.yml
+			cd  /home/docker/karakeep/docker/ && docker compose up -d
+		}
+
+		docker_app_uninstall() {
+			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
+			rm -rf /home/docker/karakeep
+			echo "앱이 제거되었습니다."
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
+
+
+
+
+
 
 
 	  b)
@@ -12875,6 +12955,43 @@ linux_work() {
 
 
 
+
+# 지능형 스위칭 미러 소스 기능
+switch_mirror() {
+	# 선택적 매개변수, 기본값은 false입니다.
+	local upgrade_software=${1:-false}
+	local clean_cache=${2:-false}
+
+	# 사용자 국가 가져오기
+	local country
+	country=$(curl -s ipinfo.io/country)
+
+	echo "감지된 국가:$country"
+
+	if [ "$country" = "CN" ]; then
+		echo "국내 미러 소스를 사용하세요..."
+		bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+		  --source mirrors.huaweicloud.com \
+		  --protocol https \
+		  --use-intranet-source false \
+		  --backup true \
+		  --upgrade-software "$upgrade_software" \
+		  --clean-cache "$clean_cache" \
+		  --ignore-backup-tips \
+		  --pure-mode
+	else
+		echo "공식 미러 소스를 사용하세요..."
+		bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+		  --use-official-source true \
+		  --protocol https \
+		  --use-intranet-source false \
+		  --backup true \
+		  --upgrade-software "$upgrade_software" \
+		  --clean-cache "$clean_cache" \
+		  --ignore-backup-tips \
+		  --pure-mode
+	fi
+}
 
 
 
@@ -13444,7 +13561,7 @@ EOF
 					  echo "$new_hostname" > /etc/hostname
 					  hostname "$new_hostname"
 				  else
-					  # Debian, Ubuntu, CentOS 등과 같은 다른 시스템
+					  # Debian, Ubuntu, CentOS 등과 같은 기타 시스템
 					  hostnamectl set-hostname "$new_hostname"
 					  sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
 					  systemctl restart systemd-hostnamed
@@ -13479,7 +13596,7 @@ EOF
 		  echo "업데이트 소스 지역 선택"
 		  echo "LinuxMirrors에 액세스하여 시스템 업데이트 소스 전환"
 		  echo "------------------------"
-		  echo "1. 중국 본토 [기본값] 2. 중국 본토 [교육 네트워크] 3. 해외 지역"
+		  echo "1. 중국 본토 [기본값] 2. 중국 본토 [교육 네트워크] 3. 해외 지역 4. 업데이트 소스의 지능형 전환"
 		  echo "------------------------"
 		  echo "0. 이전 메뉴로 돌아가기"
 		  echo "------------------------"
@@ -13498,6 +13615,11 @@ EOF
 				  send_stats "해외 소스"
 				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --abroad
 				  ;;
+			  4)
+				  send_stats "업데이트 소스의 지능적인 전환"
+				  switch_mirror true true
+				  ;;
+
 			  *)
 				  echo "취소"
 				  ;;
@@ -14492,7 +14614,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 월 6.9달러 도쿄 소프트뱅크 2코어 1G 메모리 20G 하드드라이브 월 1T 트래픽${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}더 인기 있는 VPS 거래${gl_bai}"
+echo -e "${gl_kjlan}더 인기 있는 VPS 혜택${gl_bai}"
 echo -e "${gl_bai}홈페이지: https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""

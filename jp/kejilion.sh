@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.2"
+sh_v="4.2.4"
 
 
 gl_hui='\e[37m'
@@ -897,12 +897,12 @@ open_port() {
 
 		if ! iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
 			iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
-			echo "ポートがオープンされました$port"
+			echo "ポートがオープンしました$port"
 		fi
 	done
 
 	save_iptables_rules
-	send_stats "ポートがオープンされました"
+	send_stats "ポートがオープンしました"
 }
 
 
@@ -1404,8 +1404,7 @@ auto_optimize_dns() {
 		local dns2_ipv6="2001:4860:4860::8888"
 	fi
 
-	# DNS を設定する関数を呼び出します (ユーザーが定義する必要があります)
-	set_dns "$dns1_ipv4" "$dns2_ipv4" "$dns1_ipv6" "$dns2_ipv6"
+	set_dns
 
 
 }
@@ -1439,9 +1438,9 @@ install_ldnmp() {
 	  rm -rf /home/custom_mysql_config.cnf
 
 
-	  
+
 	  restart_ldnmp
-	  
+
 
 
 	  clear
@@ -1630,17 +1629,8 @@ reverse_proxy() {
 }
 
 
-restart_redis() {
-  rm -rf /home/web/redis/*
-  docker exec redis redis-cli FLUSHALL > /dev/null 2>&1
-  # docker exec -it redis redis-cli CONFIG SET maxmemory 1gb > /dev/null 2>&1
-  # docker exec -it redis redis-cli CONFIG SET maxmemory-policy allkeys-lru > /dev/null 2>&1
-}
-
-
 
 restart_ldnmp() {
-	  restart_redis
 	  docker exec nginx chown -R nginx:nginx /var/www/html > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/fastcgi > /dev/null 2>&1
@@ -1742,7 +1732,6 @@ web_cache() {
   send_stats "サイトキャッシュをクリアする"
   cf_purge_cache
   cd /home/web && docker compose restart
-  restart_redis
 }
 
 
@@ -2329,7 +2318,6 @@ web_optimization() {
 
 				  cd /home/web && docker compose restart
 
-				  restart_redis
 				  optimize_balanced
 
 
@@ -2370,7 +2358,6 @@ web_optimization() {
 
 				  cd /home/web && docker compose restart
 
-				  restart_redis
 				  optimize_web_server
 
 				  echo "LDNMP 環境が高パフォーマンス モードに設定されている"
@@ -2929,7 +2916,7 @@ docker_app_plus() {
 			1)
 				setup_docker_dir
 				check_disk_space $app_size /home/docker
-				read -e -p "アプリケーションの外部サービス ポートを入力し、Enter キーを押して、それをデフォルトで使用します。${docker_port}ポート：" app_port
+				read -e -p "アプリケーションの外部サービス ポートを入力し、Enter キーを押してデフォルトで使用します。${docker_port}ポート：" app_port
 				local app_port=${app_port:-${docker_port}}
 				local docker_port=$app_port
 				install jq
@@ -3098,6 +3085,12 @@ f2b_install_sshd() {
 	if command -v dnf &>/dev/null; then
 		cd /etc/fail2ban/jail.d/
 		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
+	fi
+
+	if command -v apt &>/dev/null; then
+		install rsyslog
+		systemctl start rsyslog
+		systemctl enable rsyslog
 	fi
 
 }
@@ -3527,7 +3520,7 @@ ldnmp_Proxy_backend_stream() {
 		*) echo "無効な選択"; return 1 ;;
 	esac
 
-	read -e -p "1 つ以上のバックエンド IP + ポートをスペースで区切って入力してください (例: 10.13.0.2:3306 10.13.0.3:3306)。" reverseproxy_port
+	read -e -p "1 つ以上のバックエンド IP + ポートをスペースで区切って入力してください (例: 10.13.0.2:3306 10.13.0.3:3306):" reverseproxy_port
 
 	nginx_install_status
 	cd /home && mkdir -p web/stream.d
@@ -4177,7 +4170,7 @@ frps_panel() {
 
 			8)
 				send_stats "IPアクセスをブロックする"
-				echo "ドメイン名アクセスを反転している場合は、この機能を使用して IP+ポート アクセスをブロックすることができ、より安全です。"
+				echo "ドメイン名アクセスを逆にしている場合は、この機能を使用して IP+ポート アクセスをブロックすることができ、より安全になります。"
 				read -e -p "ブロックするポートを入力してください:" frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
@@ -4554,9 +4547,7 @@ set_dns() {
 ip_address
 
 chattr -i /etc/resolv.conf
-rm /etc/resolv.conf
-touch /etc/resolv.conf
-
+> /etc/resolv.conf
 
 if [ -n "$ipv4_address" ]; then
 	echo "nameserver $dns1_ipv4" >> /etc/resolv.conf
@@ -4566,6 +4557,11 @@ fi
 if [ -n "$ipv6_address" ]; then
 	echo "nameserver $dns1_ipv6" >> /etc/resolv.conf
 	echo "nameserver $dns2_ipv6" >> /etc/resolv.conf
+fi
+
+if [ ! -s /etc/resolv.conf ]; then
+	echo "nameserver 223.5.5.5" >> /etc/resolv.conf
+	echo "nameserver 8.8.8.8" >> /etc/resolv.conf
 fi
 
 chattr +i /etc/resolv.conf
@@ -4751,7 +4747,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}ROOTログインの設定が完了しました！${gl_bai}"
+echo -e "${gl_lv}ROOTログインの設定は完了です！${gl_bai}"
 
 }
 
@@ -5352,7 +5348,7 @@ clamav_scan() {
 		MOUNT_PARAMS+="--mount type=bind,source=${dir},target=/mnt/host${dir} "
 	done
 
-	# clamscan コマンドのパラメータを構築する
+	# clamscan コマンドパラメータを構築する
 	local SCAN_PARAMS=""
 	for dir in "$@"; do
 		SCAN_PARAMS+="/mnt/host${dir} "
@@ -5417,7 +5413,7 @@ clamav() {
 						;;
 					3)
 					  send_stats "カスタムディレクトリスキャン"
-					  read -e -p "スキャンするディレクトリをスペースで区切って入力してください (例: /etc /var /usr /home /root)。" directories
+					  read -e -p "スキャンするディレクトリをスペースで区切って入力してください (例: /etc /var /usr /home /root):" directories
 					  install_docker
 					  clamav_freshclam
 					  clamav_scan $directories
@@ -7151,7 +7147,7 @@ docker_ssh_migration() {
 			docker inspect "$c" > "$inspect_file"
 
 			if is_compose_container "$c"; then
-				echo -e "${BLUE}検出されました$cdocker-composeコンテナです${NC}"
+				echo -e "${BLUE}検出されました$cdocker-compose コンテナーです${NC}"
 				local project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
 				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
@@ -7360,7 +7356,7 @@ docker_ssh_migration() {
 
 		echo -e "${YELLOW}バックアップを転送中...${NC}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# キーを使用してログインする
+			# キーでログイン
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -7739,6 +7735,7 @@ linux_test() {
 	  echo -e "${gl_kjlan}総合的なテスト"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}ベンチパフォーマンステスト"
 	  echo -e "${gl_kjlan}32.  ${gl_bai}Spiritysdx融合モンスターの評価${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}33.  ${gl_bai}ノードクオリティ融合モンスターの評価${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}メインメニューに戻る"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -7856,8 +7853,16 @@ linux_test() {
 		  32)
 			  send_stats "Spiritysdx フュージョンモンスター レビュー"
 			  clear
-			  curl -L https://gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
+			  curl -L ${gh_proxy}gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
 			  ;;
+
+		  33)
+			  send_stats "ノードクオリティ融合モンスターの評価"
+			  clear
+			  bash <(curl -sL https://run.NodeQuality.com)
+			  ;;
+
+
 
 		  0)
 			  kejilion
@@ -8972,7 +8977,6 @@ linux_ldnmp() {
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
 			  docker restart $ldnmp_pods > /dev/null 2>&1
-			  restart_redis
 			  send_stats "更新する$ldnmp_pods"
 			  echo "更新する${ldnmp_pods}仕上げる"
 
@@ -9067,7 +9071,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}パゴダパネル正式版${gl_kjlan}2.   ${color2}aaPanel パゴダ国際版"
 	  echo -e "${gl_kjlan}3.   ${color3}1Panel 新世代管理パネル${gl_kjlan}4.   ${color4}NginxProxyManager 視覚化パネル"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList マルチストア ファイル リスト プログラム${gl_kjlan}6.   ${color6}Ubuntu リモート デスクトップ Web エディション"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList マルチストア ファイル リスト プログラム${gl_kjlan}6.   ${color6}Ubuntu リモート デスクトップ Web バージョン"
 	  echo -e "${gl_kjlan}7.   ${color7}Nezha Probe VPS 監視パネル${gl_kjlan}8.   ${color8}QBオフラインBT磁気ダウンロードパネル"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io メール サーバー プログラム${gl_kjlan}10.  ${color10}RocketChat 複数人オンライン チャット システム"
 	  echo -e "${gl_kjlan}------------------------"
@@ -9129,6 +9133,7 @@ while true; do
 	  echo -e "${gl_kjlan}103. ${color103}Umami ウェブサイト統計ツール${gl_kjlan}104. ${color104}ストリーム 4 層プロキシ転送ツール"
 	  echo -e "${gl_kjlan}105. ${color105}思源ノート${gl_kjlan}106. ${color106}Drawnix オープンソース ホワイトボード ツール"
 	  echo -e "${gl_kjlan}107. ${color107}PanSou ネットワークディスク検索${gl_kjlan}108. ${color108}LangBot チャットボット"
+	  echo -e "${gl_kjlan}109. ${color109}ZFileオンラインネットワークディスク${gl_kjlan}110. ${color110}カラオケのブックマーク管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}すべてのアプリケーション データをバックアップする${gl_kjlan}r.   ${gl_bai}すべてのアプリデータを復元する"
 	  echo -e "${gl_kjlan}------------------------"
@@ -9339,7 +9344,7 @@ while true; do
 			fi
 			echo ""
 			echo "------------------------"
-			echo "1. 使用する"
+			echo "1. 使用方法"
 			echo "------------------------"
 			echo "0. 前のメニューに戻る"
 			echo "------------------------"
@@ -10753,7 +10758,6 @@ while true; do
 		docker_app_install() {
 			install git
 			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
-			# sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
 			sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
 
 			docker compose up -d
@@ -12602,6 +12606,82 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  ;;
 
 
+	  109|zfile)
+
+		local app_id="109"
+		local docker_name="zfile"
+		local docker_img="zhaojun1998/zfile:latest"
+		local docker_port=8109
+
+		docker_rum() {
+
+
+			docker run -d --name=zfile --restart=always \
+				-p ${docker_port}:8080 \
+				-v /home/docker/zfile/db:/root/.zfile-v4/db \
+				-v /home/docker/zfile/logs:/root/.zfile-v4/logs \
+				-v /home/docker/zfile/file:/data/file \
+				-v /home/docker/zfile/application.properties:/root/.zfile-v4/application.properties \
+				zhaojun1998/zfile:latest
+
+
+		}
+
+		local docker_describe="是一个适用于个人或小团队的在线网盘程序。"
+		local docker_url="官网介绍: https://github.com/zfile-dev/zfile"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
+
+
+	  110|karakeep)
+		local app_id="110"
+		local app_name="karakeep书签管理"
+		local app_text="是一款可自行托管的书签应用，带有人工智能功能，专为数据囤积者而设计。"
+		local app_url="官方网站: https://github.com/karakeep-app/karakeep"
+		local docker_name="docker-web-1"
+		local docker_port="8110"
+		local app_size="1"
+
+		docker_app_install() {
+			install git
+			mkdir -p  /home/docker/ && cd /home/docker/ && git clone https://github.com/karakeep-app/karakeep.git && cd karakeep/docker && cp .env.sample .env
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/karakeep/docker/docker-compose.yml
+
+			docker compose up -d
+			clear
+			echo "インストール完了"
+			check_docker_app_ip
+		}
+
+		docker_app_update() {
+			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
+			cd  /home/docker/karakeep/
+			git pull origin main
+			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/karakeep/docker/docker-compose.yml
+			cd  /home/docker/karakeep/docker/ && docker compose up -d
+		}
+
+		docker_app_uninstall() {
+			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
+			rm -rf /home/docker/karakeep
+			echo "アプリがアンインストールされました"
+		}
+
+		docker_app_plus
+
+		  ;;
+
+
+
+
+
+
+
+
 
 
 	  b)
@@ -12875,6 +12955,43 @@ linux_work() {
 
 
 
+
+# インテリジェントスイッチングミラーソース機能
+switch_mirror() {
+	# オプションのパラメータ、デフォルトは false
+	local upgrade_software=${1:-false}
+	local clean_cache=${2:-false}
+
+	# ユーザーの国を取得する
+	local country
+	country=$(curl -s ipinfo.io/country)
+
+	echo "検出された国:$country"
+
+	if [ "$country" = "CN" ]; then
+		echo "国内のミラーソースを使用..."
+		bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+		  --source mirrors.huaweicloud.com \
+		  --protocol https \
+		  --use-intranet-source false \
+		  --backup true \
+		  --upgrade-software "$upgrade_software" \
+		  --clean-cache "$clean_cache" \
+		  --ignore-backup-tips \
+		  --pure-mode
+	else
+		echo "公式ミラーソースを使用してください..."
+		bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+		  --use-official-source true \
+		  --protocol https \
+		  --use-intranet-source false \
+		  --backup true \
+		  --upgrade-software "$upgrade_software" \
+		  --clean-cache "$clean_cache" \
+		  --ignore-backup-tips \
+		  --pure-mode
+	fi
+}
 
 
 
@@ -13371,7 +13488,7 @@ EOF
 				echo "3. 東京、日本時間 4. ソウル、韓国時間"
 				echo "5. シンガポール時間 6. インド、コルカタ時間"
 				echo "7. アラブ首長国連邦、ドバイ時間 8. オーストラリア、シドニー時間"
-				echo "9. タイ・バンコク時間"
+				echo "9.タイ・バンコク時間"
 				echo "------------------------"
 				echo "ヨーロッパ"
 				echo "11. ロンドン、イギリス時間 12. パリ、フランス時間"
@@ -13479,7 +13596,7 @@ EOF
 		  echo "更新元リージョンの選択"
 		  echo "LinuxMirror にアクセスしてシステム アップデート ソースを切り替える"
 		  echo "------------------------"
-		  echo "1. 中国本土 [デフォルト] 2. 中国本土 [教育ネットワーク] 3. 海外地域"
+		  echo "1. 中国本土 [デフォルト] 2. 中国本土 [教育ネットワーク] 3. 海外地域 4. 更新ソースのインテリジェントな切り替え"
 		  echo "------------------------"
 		  echo "0. 前のメニューに戻る"
 		  echo "------------------------"
@@ -13498,6 +13615,11 @@ EOF
 				  send_stats "海外情報源"
 				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --abroad
 				  ;;
+			  4)
+				  send_stats "アップデートソースのインテリジェントな切り替え"
+				  switch_mirror true true
+				  ;;
+
 			  *)
 				  echo "キャンセル"
 				  ;;
@@ -14408,7 +14530,7 @@ while true; do
 
 		  4)
 			  clear
-			  send_stats "バックアップクラスタ"
+			  send_stats "バックアップクラスター"
 			  echo -e "変更してください${gl_huang}/root/cluster/servers.py${gl_bai}ファイルをダウンロードしてバックアップを完了してください。"
 			  break_end
 			  ;;
@@ -14492,7 +14614,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 月額 6.9 ドル 東京ソフトバンク 2 コア 1G メモリ 20G ハードドライブ 月額 1T トラフィック${gl_bai}"
 echo -e "${gl_bai}URL：https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}さらに人気のある VPS セール${gl_bai}"
+echo -e "${gl_kjlan}さらに人気のある VPS オファー${gl_bai}"
 echo -e "${gl_bai}ウェブサイト：https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
