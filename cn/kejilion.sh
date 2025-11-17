@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.4"
+sh_v="4.2.5"
 
 
 gl_hui='\e[37m'
@@ -14758,6 +14758,7 @@ echo -e "${gl_kjlan}14.  ${gl_bai}服务器集群控制"
 echo -e "${gl_kjlan}15.  ${gl_bai}广告专栏"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}p.   ${gl_bai}幻兽帕鲁开服脚本"
+echo -e "${gl_kjlan}m.   ${gl_bai}我的世界开服脚本"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}00.  ${gl_bai}脚本更新"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -14785,6 +14786,10 @@ case $choice in
   15) kejilion_Affiliates ;;
   p) send_stats "幻兽帕鲁开服脚本" ; cd ~
 	 curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh
+	 exit
+	 ;;
+  m) send_stats "我的世界开服脚本" ; cd ~
+	 curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/mc.sh ; chmod +x mc.sh ; ./mc.sh
 	 exit
 	 ;;
   00) kejilion_update ;;
