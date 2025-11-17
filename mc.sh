@@ -2,8 +2,21 @@
 ln -sf ~/minecraft_server.sh /usr/local/bin/mcs
 
 ip_address() {
-ipv4_address=$(curl -s ipv4.ip.sb)
-ipv6_address=$(curl -s --max-time 1 ipv6.ip.sb)
+    # 检测 IPv4 地址
+    ipv4_address=$(curl -s --connect-timeout 5 ipv4.ip.sb 2>/dev/null || echo "")
+    # 检测 IPv6 地址
+    ipv6_address=$(curl -s --connect-timeout 5 ipv6.ip.sb 2>/dev/null || echo "")
+
+    # 设置显示变量
+    if [ -n "$ipv4_address" ] && [ -n "$ipv6_address" ]; then
+        ip_display="\033[93m IPv4: $ipv4_address:25565 IPv6: $ipv6_address:25565 \033[0m"
+    elif [ -n "$ipv4_address" ]; then
+        ip_display="\033[93m IPv4: $ipv4_address:25565 \033[0m"
+    elif [ -n "$ipv6_address" ]; then
+        ip_display="\033[93m IPv6: $ipv6_address:25565 \033[0m"
+    else
+        ip_display="\033[93m 无法获取IP地址 \033[0m"
+    fi
 }
 
 
@@ -95,7 +108,7 @@ mc_start() {
     docker start mcserver > /dev/null 2>&1
     echo -e "\033[0;32mMinecraft服务启动啦！\033[0m"
     echo -e "\033[0;32m游戏下载地址: https://www.xbox.com/zh-cn/games/store/minecraft-java-bedrock-edition-for-pc/9nxp44l49shj\033[0m"
-    echo -e "\033[0;32m进入游戏连接:\033[93m $ipv4_address:25565 $ipv6_address:25565 \033[0;32m开始冒险吧！\033[0m"
+    echo -e "\033[0;32m进入游戏连接:$ip_display\033[0;32m开始冒险吧！\033[0m"
 
 }
 
@@ -117,7 +130,7 @@ mc_install_status() {
   ip_address
   # 检查 Docker 容器是否正在运行
   if docker ps --format "table {{.Names}}" | grep -q "^$CONTAINER_NAME$"; then
-      tmux_status="\e[32m已开服:\033[93m $ipv4_address:25565 $ipv6_address:25565 \e[0m"  # 绿色
+      tmux_status="\e[32m已开服:$ip_display\e[0m"  # 绿色
   else
       tmux_status="\e[90m未开服\e[0m"  # 灰色
   fi
@@ -134,7 +147,7 @@ echo -e "\033[92m██║╚██╔╝██║██║██║╚██╗
 echo -e "\033[92m██║ ╚═╝ ██║██║██║ ╚████║███████╗╚██████╗██║  ██║██║  ██║██║        ██║   \033[0m"
 echo -e "\033[92m╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝        ╚═╝   \033[0m"
 echo -e "\033[92mMinecraft开服一键脚本工具v1.0.1  by AkarinLiu\033[0m"
-echo -e "\033[92m-输入\033[92mp\033[92m可快速启动此脚本-\033[0m"
+echo -e "\033[92m-输入\033[92mmcs\033[92m可快速启动此脚本-\033[0m"
 echo -e "$container_status $tmux_status"
 echo "------------------------"
 echo "1. 安装Minecraft服务"
