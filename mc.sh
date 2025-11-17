@@ -92,7 +92,7 @@ install_docker() {
 
 mc_start() {
     ip_address
-    tmux new -d -s mc1 "docker start mcserver -it"
+    docker start mcserver > /dev/null 2>&1
     echo -e "\033[0;32mMinecraft服务启动啦！\033[0m"
     echo -e "\033[0;32m游戏下载地址: https://www.xbox.com/zh-cn/games/store/minecraft-java-bedrock-edition-for-pc/9nxp44l49shj\033[0m"
     echo -e "\033[0;32m进入游戏连接:\033[93m $ipv4_address:25565 $ipv6_address:25565 \033[0;32m开始冒险吧！\033[0m"
@@ -114,11 +114,9 @@ mc_install_status() {
       container_status="\e[90mMinecraft服务未安装\e[0m"  # 灰色
   fi
 
-  SESSION_NAME="mc1"
-
   ip_address
-  # 检查 tmux 中是否存在指定的工作区
-  if tmux has-session -t $SESSION_NAME 2>/dev/null; then
+  # 检查 Docker 容器是否正在运行
+  if docker ps --format "table {{.Names}}" | grep -q "^$CONTAINER_NAME$"; then
       tmux_status="\e[32m已开服:\033[93m $ipv4_address:25565 $ipv6_address:25565 \e[0m"  # 绿色
   else
       tmux_status="\e[90m未开服\e[0m"  # 灰色
@@ -129,15 +127,14 @@ mc_install_status() {
 while true; do
 clear
 mc_install_status
-echo -e "\033[93m      .            .  ."
-echo "███╗   ███╗██╗███╗   ██╗███████╗ ██████╗██████╗  █████╗ ███████╗████████╗"
-echo "████╗ ████║██║████╗  ██║██╔════╝██╔════╝██╔══██╗██╔══██╗██╔════╝╚══██╔══╝"
-echo "██╔████╔██║██║██╔██╗ ██║█████╗  ██║     ██████╔╝███████║█████╗     ██║   "
-echo "██║╚██╔╝██║██║██║╚██╗██║██╔══╝  ██║     ██╔══██╗██╔══██║██╔══╝     ██║   "
-echo "██║ ╚═╝ ██║██║██║ ╚████║███████╗╚██████╗██║  ██║██║  ██║██║        ██║   "
-echo "╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝        ╚═╝   "
-echo -e "\033[96mMinecraft开服一键脚本工具v1.0.0  by AkarinLiu\033[0m"
-echo -e "\033[96m-输入\033[93mp\033[96m可快速启动此脚本-\033[0m"
+echo -e "\033[92m███╗   ███╗██╗███╗   ██╗███████╗ ██████╗██████╗  █████╗ ███████╗████████╗\033[0m"
+echo -e "\033[92m████╗ ████║██║████╗  ██║██╔════╝██╔════╝██╔══██╗██╔══██╗██╔════╝╚══██╔══╝\033[0m"
+echo -e "\033[92m██╔████╔██║██║██╔██╗ ██║█████╗  ██║     ██████╔╝███████║█████╗     ██║   \033[0m"
+echo -e "\033[92m██║╚██╔╝██║██║██║╚██╗██║██╔══╝  ██║     ██╔══██╗██╔══██║██╔══╝     ██║   \033[0m"
+echo -e "\033[92m██║ ╚═╝ ██║██║██║ ╚████║███████╗╚██████╗██║  ██║██║  ██║██║        ██║   \033[0m"
+echo -e "\033[92m╚═╝     ╚═╝╚═╝╚═╝  ╚═══╝╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═╝        ╚═╝   \033[0m"
+echo -e "\033[92mMinecraft开服一键脚本工具v1.0.1  by AkarinLiu\033[0m"
+echo -e "\033[92m-输入\033[92mp\033[92m可快速启动此脚本-\033[0m"
 echo -e "$container_status $tmux_status"
 echo "------------------------"
 echo "1. 安装Minecraft服务"
@@ -153,6 +150,8 @@ echo "8. 导入游戏存档"
 echo "9. 定时备份游戏存档"
 echo "------------------------"
 echo "10. 修改游戏配置"
+echo "o.  添加管理员权限"
+echo "p.  删除管理员权限"
 echo "------------------------"
 echo "11. 更新Minecraft服务"
 echo "12. 卸载Minecraft服务"
@@ -169,8 +168,7 @@ case $choice in
   1)
     clear
     install_docker
-    install tmux
-    docker create -d --name $CONTAINER_NAME -p 25565:25565/tcp --restart=always -e EULA=true -v mcserver:/data:rw itzg/minecraft-server
+    docker run -d --name mcserver -p 25565:25565/tcp --restart=always -e EULA=true -e CREATE_CONSOLE_IN_PIPE=true -v mcserver:/data:rw itzg/minecraft-server
     clear
     mc_start
     ;;
@@ -183,14 +181,12 @@ case $choice in
 
   3)
     clear
-    tmux kill-session -t mc1
     docker stop $CONTAINER_NAME > /dev/null 2>&1
     echo -e "\033[0;32mMinecraft服务已关闭\033[0m"
     ;;
 
   4)
     clear
-    tmux kill-session -t mc1
     docker restart $CONTAINER_NAME > /dev/null 2>&1
     mc_start
     ;;
@@ -273,15 +269,14 @@ case $choice in
     docker cp $CONTAINER_NAME:/data/world /home/game/mc/ > /dev/null 2>&1
     cd /home/game && tar czvf mcsave_$(date +"%Y%m%d%H%M%S").tar.gz mc > /dev/null 2>&1
     rm -rf /home/game/mc/
-    echo -e "\033[0;32m游戏存档已导出存放在: /home/game/\033[0m"
+    echo -e "\033[0;32m游戏存档已导出存放在: /home/game/mc/\033[0m"
     ;;
   8)
     clear
-    tmux kill-session -t mc1
+    docker stop mcserver > /dev/null 2>&1
     docker exec -it mcserver bash -c "rm -rf /data/world/*"
-    cd /home/game/ && ls -t /home/game/mc/mcsave_*.tar.gz | head -1 | xargs -I {} tar -xzf {}
-    docker cp /home/game/mc/world/* mcserver:
-    docker exec -it -u root $CONTAINER_NAME bash -c "chmod -R 777 /home/steam/Steam/steamapps/common/mcServer/mc/Saved/"
+    cd /home/game/ && ls -t /home/game/mc/*.tar.gz | head -1 | xargs -I {} tar -xzf {}
+    docker cp /home/game/mc/world/* mcserver:/data/world
     rm -rf /home/game/mc/
     echo -e "\033[0;32m游戏存档已导入\033[0m"
     docker restart mcserver > /dev/null 2>&1
@@ -322,43 +317,40 @@ case $choice in
 
   10)
     clear
-    tmux kill-session -t mc1
-    cd ~ && curl -sS -O https://kejilion.pro/mcSettings.ini
-
     echo "配置游戏参数"
     echo "------------------------"
-    read -p "设置加入的密码（回车默认无密码）: " server_password
-    read -p "设置游戏难度: （1. 简单    2. 普通    3. 困难）:" Difficulty
+    read -p "设置游戏难度: （0.和平  1. 简单    2. 普通    3. 困难）:" Difficulty
       case $Difficulty in
+        0)
+            docker exec --user 1000 mcserver mc-send-to-console difficulty peaceful
+            ;;
         1)
-            Difficulty=1
+            docker exec --user 1000 mcserver mc-send-to-console difficulty easy
             ;;
 
         2)
-            Difficulty=2
+            docker exec --user 1000 mcserver mc-send-to-console difficulty normal
             ;;
         3)
-            Difficulty=3
+            docker exec --user 1000 mcserver mc-send-to-console difficulty hard
             ;;
         *)
             echo "-默认设置为普通难度"
-            Difficulty=2
+            docker exec --user 1000 mcserver mc-send-to-console difficulty normal
             ;;
       esac
 
-    read -p "经验值倍率: （回车默认1倍）:" exp_rate
-      ExpRate=${exp_rate:-1}
     read -p "死亡后掉落设置: （1. 掉落    2. 不掉落）:" DeathPenalty
       case $DeathPenalty in
         1)
-            DeathPenalty=All
+            docker exec --user 1000 mcserver mc-send-to-console gamerule KeepInventoy false
             ;;
 
         2)
-            DeathPenalty=None
+            docker exec --user 1000 mcserver mc-send-to-console gamerule KeepInventoy true
             ;;
         *)
-            DeathPenalty=All
+            docker exec --user 1000 mcserver mc-send-to-console gamerule KeepInventoy false
             echo "-默认设置为掉落"
             ;;
       esac
@@ -367,40 +359,25 @@ case $choice in
 
       case $mc_pvp in
         1)
-            mc_pvp=True
+            docker exec --user 1000 mcserver mc-send-to-console gamerule pvp true
             ;;
         2)
-            mc_pvp=False
+            docker exec --user 1000 mcserver mc-send-to-console gamerule pvp false
             ;;
         *)
-            mc_pvp=False
+            docker exec --user 1000 mcserver mc-send-to-console gamerule pvp false
             echo "-默认关闭pvp模式"
             ;;
       esac
 
-    # 更新配置文件
-    sed -i "s/ServerPassword=\"\"/ServerPassword=\"$server_password\"/" ~/mcSettings.ini
-    sed -i "s/Difficulty=2/Difficulty=$Difficulty/" ~/mcSettings.ini
-    sed -i "s/ExpRate=1.000000/ExpRate=$ExpRate/" ~/mcSettings.ini
-    sed -i "s/DeathPenalty=All/DeathPenalty=$DeathPenalty/" ~/mcSettings.ini
-    sed -i "s/bEnablePlayerToPlayerDamage=False/bEnablePlayerToPlayerDamage=$mc_pvp/" ~/mcSettings.ini
-    sed -i "s/bIsPvP=False/bIsPvP=$mc_pvp/" ~/mcSettings.ini
-    echo "------------------------"
-    echo "配置文件已更新"
-
-    docker exec -it mcserver bash -c "rm -f /home/steam/Steam/steamapps/common/mcServer/mc/Saved/Config/LinuxServer/mcSettings.ini"
-    docker cp ~/mcSettings.ini mcserver:/home/steam/Steam/steamapps/common/mcServer/mc/Saved/Config/LinuxServer/ > /dev/null 2>&1
-    docker exec -it -u root $CONTAINER_NAME bash -c "chmod -R 777 /home/steam/Steam/steamapps/common/mcServer/mc/Saved/"
-    rm -f ~/mcSettings.ini
-    echo -e "\033[0;32m游戏配置已导入\033[0m"
-    docker restart mcserver > /dev/null 2>&1
-    mc_start
+    # 更新配置
+    echo -e "\033[0;32m游戏配置已更改\033[0m"
     ;;
 
 
   11)
     clear
-    tmux kill-session -t mc1
+    docker stop mcserver > /dev/null 2>&1
     docker restart mcserver > /dev/null 2>&1
     docker exec -it mcserver bash -c "/home/steam/mcserver/mcserver.sh +login anonymous +app_update 2394010 validate +quit"
     clear
@@ -411,9 +388,16 @@ case $choice in
   12)
     clear
     docker rm -f mcserver
-    docker rmi -f cm2network/mcserver
+    docker rmi -f itzg/minecraft-server
     ;;
-
+  o)
+      read -p "请输入 Minecraft Java 版档案名称:" mc_op
+      docker exec --user 1000 mcserver mc-send-to-console op $mc_op
+      ;;
+  p)
+      read -p "请输入 Minecraft Java 版档案名称:" mc_deop
+      docker exec --user 1000 mcserver mc-send-to-console deop $mc_deop
+      ;;
   k)
     cd ~
     curl -sS -O https://kejilion.pro/kejilion.sh && chmod +x kejilion.sh && ./kejilion.sh
