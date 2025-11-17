@@ -1,5 +1,5 @@
 #!/bin/bash
-ln -sf ~/minecraft_server.sh /usr/local/bin/mcs
+ln -sf ~/mc.sh /usr/local/bin/mcs
 
 ip_address() {
     # 检测 IPv4 地址
