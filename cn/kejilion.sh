@@ -235,11 +235,12 @@ check_disk_space() {
 
 
 install_dependency() {
-	install wget unzip tar jq grep
-
+	switch_mirror true true
+	check_port
 	check_swap
-	auto_optimize_dns
 	prefer_ipv4
+	auto_optimize_dns
+	install wget unzip tar jq grep
 
 }
 
@@ -1638,7 +1639,8 @@ restart_ldnmp() {
 	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi > /dev/null 2>&1
 	  docker exec php chown -R www-data:www-data /var/www/html > /dev/null 2>&1
 	  docker exec php74 chown -R www-data:www-data /var/www/html > /dev/null 2>&1
-	  cd /home/web && docker compose restart nginx php php74
+	  cd /home/web && docker compose restart
+
 
 }
 
@@ -3176,7 +3178,6 @@ root_use
 clear
 echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境...${gl_bai}"
 check_disk_space 3 /home
-check_port
 install_dependency
 install_docker
 install_certbot
@@ -3193,7 +3194,6 @@ root_use
 clear
 echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
 check_disk_space 1 /home
-check_port
 install_dependency
 install_docker
 install_certbot
@@ -8853,7 +8853,6 @@ linux_ldnmp() {
 		  echo -e "${gl_huang}正在解压 $filename ...${gl_bai}"
 		  cd /home/ && tar -xzf "$filename"
 
-		  check_port
 		  install_dependency
 		  install_docker
 		  install_certbot
@@ -8989,7 +8988,6 @@ linux_ldnmp() {
 					cd /home/web/
 					docker compose down --rmi all
 
-					check_port
 					install_dependency
 					install_docker
 					install_certbot
