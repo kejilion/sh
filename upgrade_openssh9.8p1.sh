@@ -64,13 +64,13 @@ install_openssh() {
 
 
     ./configure
-    make -j${nproc}
+    make
     make install
 }
 
 # 重启SSH服务
 restart_ssh() {
-    case $OS 在
+    case $OS in
         ubuntu|debian)
             systemctl restart ssh
             ;;
