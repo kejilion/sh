@@ -14009,7 +14009,7 @@ EOF
 			  echo "一条龙系统调优"
 			  echo "------------------------------------------------"
 			  echo "将对以下内容进行操作与优化"
-			  echo "1. 更新系统到最新"
+			  echo "1. 优化系统更新源，更新系统到最新"
 			  echo "2. 清理系统垃圾文件"
 			  echo -e "3. 设置虚拟内存${gl_huang}1G${gl_bai}"
 			  echo -e "4. 设置SSH端口号为${gl_huang}5522${gl_bai}"
@@ -14029,6 +14029,7 @@ EOF
 				  clear
 				  send_stats "一条龙调优启动"
 				  echo "------------------------------------------------"
+				  switch_mirror true true
 				  linux_update
 				  echo -e "[${gl_lv}OK${gl_bai}] 1/12. 更新系统到最新"
 
