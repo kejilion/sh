@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.5"
+sh_v="4.2.6"
 
 
 gl_hui='\e[37m'
@@ -417,18 +417,31 @@ restart docker
 }
 
 
-install_add_docker_guanfang() {
+
+linuxmirrors_install_docker() {
+
 local country=$(curl -s ipinfo.io/country)
 if [ "$country" = "CN" ]; then
-	cd ~
-	curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/install && chmod +x install
-	sh install --mirror Aliyun
-	rm -f install
+	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	  --source mirrors.huaweicloud.com/docker-ce \
+	  --source-registry docker.1ms.run \
+	  --protocol https \
+	  --use-intranet-source false \
+	  --install-latest true \
+	  --close-firewall false \
+	  --ignore-backup-tips
 else
-	curl -fsSL https://get.docker.com | sh
+	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	  --source download.docker.com \
+	  --source-registry registry.hub.docker.com \
+	  --protocol https \
+	  --use-intranet-source false \
+	  --install-latest true \
+	  --close-firewall false \
+	  --ignore-backup-tips
 fi
-install_add_docker_cn
 
+install_add_docker_cn
 
 }
 
@@ -436,61 +449,8 @@ install_add_docker_cn
 
 install_add_docker() {
 	echo -e "${gl_huang}正在安装docker环境...${gl_bai}"
-	if  [ -f /etc/os-release ] && grep -q "Fedora" /etc/os-release; then
-		install_add_docker_guanfang
-	elif command -v dnf &>/dev/null; then
-		dnf update -y
-		dnf install -y yum-utils device-mapper-persistent-data lvm2
-		rm -f /etc/yum.repos.d/docker*.repo > /dev/null
-		country=$(curl -s ipinfo.io/country)
-		arch=$(uname -m)
-		if [ "$country" = "CN" ]; then
-			curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo | tee /etc/yum.repos.d/docker-ce.repo > /dev/null
-		else
-			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo > /dev/null
-		fi
-		dnf install -y docker-ce docker-ce-cli containerd.io
-		install_add_docker_cn
-
-	elif [ -f /etc/os-release ] && grep -q "Kali" /etc/os-release; then
-		apt update
-		apt upgrade -y
-		apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
-		rm -f /usr/share/keyrings/docker-archive-keyring.gpg
-		local country=$(curl -s ipinfo.io/country)
-		local arch=$(uname -m)
-		if [ "$country" = "CN" ]; then
-			if [ "$arch" = "x86_64" ]; then
-				sed -i '/^deb \[arch=amd64 signed-by=\/etc\/apt\/keyrings\/docker-archive-keyring.gpg\] https:\/\/mirrors.aliyun.com\/docker-ce\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
-				mkdir -p /etc/apt/keyrings
-				curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg > /dev/null
-				echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://mirrors.aliyun.com/docker-ce/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-			elif [ "$arch" = "aarch64" ]; then
-				sed -i '/^deb \[arch=arm64 signed-by=\/etc\/apt\/keyrings\/docker-archive-keyring.gpg\] https:\/\/mirrors.aliyun.com\/docker-ce\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
-				mkdir -p /etc/apt/keyrings
-				curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg > /dev/null
-				echo "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://mirrors.aliyun.com/docker-ce/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-			fi
-		else
-			if [ "$arch" = "x86_64" ]; then
-				sed -i '/^deb \[arch=amd64 signed-by=\/usr\/share\/keyrings\/docker-archive-keyring.gpg\] https:\/\/download.docker.com\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
-				mkdir -p /etc/apt/keyrings
-				curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg > /dev/null
-				echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-			elif [ "$arch" = "aarch64" ]; then
-				sed -i '/^deb \[arch=arm64 signed-by=\/usr\/share\/keyrings\/docker-archive-keyring.gpg\] https:\/\/download.docker.com\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
-				mkdir -p /etc/apt/keyrings
-				curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg > /dev/null
-				echo "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-			fi
-		fi
-		apt update
-		apt install -y docker-ce docker-ce-cli containerd.io
-		install_add_docker_cn
-
-
-	elif command -v apt &>/dev/null || command -v yum &>/dev/null; then
-		install_add_docker_guanfang
+	if command -v apt &>/dev/null || command -v yum &>/dev/null || command -v dnf &>/dev/null; then
+		linuxmirrors_install_docker
 	else
 		install docker docker-compose
 		install_add_docker_cn
