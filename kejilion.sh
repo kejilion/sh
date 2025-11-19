@@ -8109,6 +8109,8 @@ linux_ldnmp() {
 	echo -e "${gl_huang}35.  ${gl_bai}防护LDNMP环境                     ${gl_huang}36.  ${gl_bai}优化LDNMP环境"
 	echo -e "${gl_huang}37.  ${gl_bai}更新LDNMP环境                     ${gl_huang}38.  ${gl_bai}卸载LDNMP环境"
 	echo -e "${gl_huang}------------------------"
+	echo -e "${gl_huang}39.  ${gl_bai}备份账号管理"
+	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}0.   ${gl_bai}返回主菜单"
 	echo -e "${gl_huang}------------------------${gl_bai}"
 	read -e -p "请输入你的选择: " sub_choice
@@ -9029,7 +9031,9 @@ linux_ldnmp() {
 			;;
 		esac
 		;;
-
+	39)
+		root_use
+		rclone config
 	0)
 		kejilion
 	  ;;
