@@ -1846,6 +1846,43 @@ patch_wp_debug() {
 }
 
 
+
+
+patch_wp_url() {
+  local HOME_URL="$1"
+  local SITE_URL="$2"
+  local TARGET_DIR="/home/web/html"
+
+  find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
+	# 删除旧定义
+	sed -i "/define(['\"]WP_HOME['\"].*/d" "$FILE"
+	sed -i "/define(['\"]WP_SITEURL['\"].*/d" "$FILE"
+
+	# 生成插入内容
+	INSERT="
+define('WP_HOME', '$HOME_URL');
+define('WP_SITEURL', '$SITE_URL');
+"
+
+	# 插入到 “Happy publishing” 之前
+	awk -v insert="$INSERT" '
+	  /Happy publishing/ {
+		print insert
+	  }
+	  { print }
+	' "$FILE" > "$FILE.tmp" && mv -f "$FILE.tmp" "$FILE"
+
+	echo "[+] Updated WP_HOME and WP_SITEURL in $FILE"
+  done
+}
+
+
+
+
+
+
+
+
 nginx_br() {
 
 	local mode=$1
@@ -3241,6 +3278,7 @@ ldnmp_wp() {
   sed -i "s|password_here|$dbusepasswd|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|localhost|mysql|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   cp /home/web/html/$yuming/wordpress/wp-config-sample.php /home/web/html/$yuming/wordpress/wp-config.php
+  patch_wp_url "https://$yuming" "https://$yuming"
 
   restart_ldnmp
   nginx_web_on
@@ -3602,15 +3640,12 @@ ldnmp_web_status() {
 				install_ssltls
 				certs_status
 
-				# mysql替换
-				add_db
 
+				add_db
 				local odd_dbname=$(echo "$oddyuming" | sed -e 's/[^A-Za-z0-9]/_/g')
 				local odd_dbname="${odd_dbname}"
 
 				docker exec mysql mysqldump -u root -p"$dbrootpasswd" $odd_dbname | docker exec -i mysql mysql -u root -p"$dbrootpasswd" $dbname
-				# docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $odd_dbname;"
-
 
 				local tables=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -D $dbname -e "SHOW TABLES;" | awk '{ if (NR>1) print $1 }')
 				for table in $tables; do
@@ -3628,9 +3663,6 @@ ldnmp_web_status() {
 
 				cp /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
 				sed -i "s/$oddyuming/$yuming/g" /home/web/conf.d/$yuming.conf
-
-				# rm /home/web/certs/${oddyuming}_key.pem
-				# rm /home/web/certs/${oddyuming}_cert.pem
 
 				cd /home/web && docker compose restart
 
