@@ -235,7 +235,7 @@ check_disk_space() {
 
 
 install_dependency() {
-	switch_mirror true true
+	switch_mirror false false
 	check_port
 	check_swap
 	prefer_ipv4
