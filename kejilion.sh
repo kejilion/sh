@@ -2179,19 +2179,17 @@ web_security() {
 
 
 
-check_nginx_mode() {
+check_ldnmp_mode() {
 
-CONFIG_FILE="/home/web/nginx.conf"
+	local MYSQL_CONTAINER="mysql"
+	local MYSQL_CONF="/etc/mysql/conf.d/custom_mysql_config.cnf"
 
-# 获取当前的 worker_processes 设置值
-current_value=$(grep -E '^\s*worker_processes\s+[0-9]+;' "$CONFIG_FILE" | awk '{print $2}' | tr -d ';')
-
-# 根据值设置模式信息
-if [ "$current_value" = "8" ]; then
-	mode_info=" 高性能模式"
-else
-	mode_info=" 标准模式"
-fi
+	# 检查 MySQL 配置文件中是否包含 4096M
+	if docker exec "$MYSQL_CONTAINER" grep -q "4096M" "$MYSQL_CONF" 2>/dev/null; then
+		mode_info=" 高性能模式"
+	else
+		mode_info=" 标准模式"
+	fi
 
 
 
@@ -2200,7 +2198,7 @@ fi
 
 check_nginx_compression() {
 
-	CONFIG_FILE="/home/web/nginx.conf"
+	local CONFIG_FILE="/home/web/nginx.conf"
 
 	# 检查 zstd 是否开启且未被注释（整行以 zstd on; 开头）
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
@@ -2229,7 +2227,7 @@ check_nginx_compression() {
 
 web_optimization() {
 		  while true; do
-		  	  check_nginx_mode
+		  	  check_ldnmp_mode
 			  check_nginx_compression
 			  clear
 			  send_stats "优化LDNMP环境"
