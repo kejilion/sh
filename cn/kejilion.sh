@@ -2181,8 +2181,8 @@ web_security() {
 
 check_ldnmp_mode() {
 
-	MYSQL_CONTAINER="mysql"
-	MYSQL_CONF="/etc/mysql/conf.d/custom_mysql_config.cnf"
+	local MYSQL_CONTAINER="mysql"
+	local MYSQL_CONF="/etc/mysql/conf.d/custom_mysql_config.cnf"
 
 	# 检查 MySQL 配置文件中是否包含 4096M
 	if docker exec "$MYSQL_CONTAINER" grep -q "4096M" "$MYSQL_CONF" 2>/dev/null; then
