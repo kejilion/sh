@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.4"
+sh_v="4.2.6"
 
 
 gl_hui='\e[37m'
@@ -235,11 +235,12 @@ check_disk_space() {
 
 
 install_dependency() {
-	install wget unzip tar jq grep
-
+	switch_mirror false false
+	check_port
 	check_swap
-	auto_optimize_dns
 	prefer_ipv4
+	auto_optimize_dns
+	install wget unzip tar jq grep
 
 }
 
@@ -416,18 +417,31 @@ restart docker
 }
 
 
-install_add_docker_guanfang() {
+
+linuxmirrors_install_docker() {
+
 local country=$(curl -s ipinfo.io/country)
 if [ "$country" = "CN" ]; then
-	cd ~
-	curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/install && chmod +x install
-	sh install --mirror Aliyun
-	rm -f install
+	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	  --source mirrors.huaweicloud.com/docker-ce \
+	  --source-registry docker.1ms.run \
+	  --protocol https \
+	  --use-intranet-source false \
+	  --install-latest true \
+	  --close-firewall false \
+	  --ignore-backup-tips
 else
-	curl -fsSL https://get.docker.com | sh
+	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	  --source download.docker.com \
+	  --source-registry registry.hub.docker.com \
+	  --protocol https \
+	  --use-intranet-source false \
+	  --install-latest true \
+	  --close-firewall false \
+	  --ignore-backup-tips
 fi
-install_add_docker_cn
 
+install_add_docker_cn
 
 }
 
@@ -435,61 +449,8 @@ install_add_docker_cn
 
 install_add_docker() {
 	echo -e "${gl_huang}正在安裝docker環境...${gl_bai}"
-	if  [ -f /etc/os-release ] && grep -q "Fedora" /etc/os-release; then
-		install_add_docker_guanfang
-	elif command -v dnf &>/dev/null; then
-		dnf update -y
-		dnf install -y yum-utils device-mapper-persistent-data lvm2
-		rm -f /etc/yum.repos.d/docker*.repo > /dev/null
-		country=$(curl -s ipinfo.io/country)
-		arch=$(uname -m)
-		if [ "$country" = "CN" ]; then
-			curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo | tee /etc/yum.repos.d/docker-ce.repo > /dev/null
-		else
-			yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo > /dev/null
-		fi
-		dnf install -y docker-ce docker-ce-cli containerd.io
-		install_add_docker_cn
-
-	elif [ -f /etc/os-release ] && grep -q "Kali" /etc/os-release; then
-		apt update
-		apt upgrade -y
-		apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
-		rm -f /usr/share/keyrings/docker-archive-keyring.gpg
-		local country=$(curl -s ipinfo.io/country)
-		local arch=$(uname -m)
-		if [ "$country" = "CN" ]; then
-			if [ "$arch" = "x86_64" ]; then
-				sed -i '/^deb \[arch=amd64 signed-by=\/etc\/apt\/keyrings\/docker-archive-keyring.gpg\] https:\/\/mirrors.aliyun.com\/docker-ce\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
-				mkdir -p /etc/apt/keyrings
-				curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg > /dev/null
-				echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://mirrors.aliyun.com/docker-ce/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-			elif [ "$arch" = "aarch64" ]; then
-				sed -i '/^deb \[arch=arm64 signed-by=\/etc\/apt\/keyrings\/docker-archive-keyring.gpg\] https:\/\/mirrors.aliyun.com\/docker-ce\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
-				mkdir -p /etc/apt/keyrings
-				curl -fsSL https://mirrors.aliyun.com/docker-ce/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg > /dev/null
-				echo "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://mirrors.aliyun.com/docker-ce/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-			fi
-		else
-			if [ "$arch" = "x86_64" ]; then
-				sed -i '/^deb \[arch=amd64 signed-by=\/usr\/share\/keyrings\/docker-archive-keyring.gpg\] https:\/\/download.docker.com\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
-				mkdir -p /etc/apt/keyrings
-				curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg > /dev/null
-				echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-			elif [ "$arch" = "aarch64" ]; then
-				sed -i '/^deb \[arch=arm64 signed-by=\/usr\/share\/keyrings\/docker-archive-keyring.gpg\] https:\/\/download.docker.com\/linux\/debian bullseye stable/d' /etc/apt/sources.list.d/docker.list > /dev/null
-				mkdir -p /etc/apt/keyrings
-				curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker-archive-keyring.gpg > /dev/null
-				echo "deb [arch=arm64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/debian bullseye stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-			fi
-		fi
-		apt update
-		apt install -y docker-ce docker-ce-cli containerd.io
-		install_add_docker_cn
-
-
-	elif command -v apt &>/dev/null || command -v yum &>/dev/null; then
-		install_add_docker_guanfang
+	if command -v apt &>/dev/null || command -v yum &>/dev/null || command -v dnf &>/dev/null; then
+		linuxmirrors_install_docker
 	else
 		install docker docker-compose
 		install_add_docker_cn
@@ -1466,8 +1427,8 @@ install_certbot() {
 
 
 install_ssltls() {
-	  docker stop nginx > /dev/null 2>&1
 	  check_port > /dev/null 2>&1
+	  docker stop nginx > /dev/null 2>&1
 	  cd ~
 
 	  local file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
@@ -1638,7 +1599,8 @@ restart_ldnmp() {
 	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi > /dev/null 2>&1
 	  docker exec php chown -R www-data:www-data /var/www/html > /dev/null 2>&1
 	  docker exec php74 chown -R www-data:www-data /var/www/html > /dev/null 2>&1
-	  cd /home/web && docker compose restart nginx php php74
+	  cd /home/web && docker compose restart
+
 
 }
 
@@ -1882,6 +1844,43 @@ patch_wp_debug() {
 	echo "[+] Replaced WP_DEBUG settings in $FILE"
   done
 }
+
+
+
+
+patch_wp_url() {
+  local HOME_URL="$1"
+  local SITE_URL="$2"
+  local TARGET_DIR="/home/web/html"
+
+  find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
+	# 刪除舊定義
+	sed -i "/define(['\"]WP_HOME['\"].*/d" "$FILE"
+	sed -i "/define(['\"]WP_SITEURL['\"].*/d" "$FILE"
+
+	# 生成插入內容
+	INSERT="
+define('WP_HOME', '$HOME_URL');
+define('WP_SITEURL', '$SITE_URL');
+"
+
+	# 插入到 “Happy publishing” 之前
+	awk -v insert="$INSERT" '
+	  /Happy publishing/ {
+		print insert
+	  }
+	  { print }
+	' "$FILE" > "$FILE.tmp" && mv -f "$FILE.tmp" "$FILE"
+
+	echo "[+] Updated WP_HOME and WP_SITEURL in $FILE"
+  done
+}
+
+
+
+
+
+
 
 
 nginx_br() {
@@ -2217,19 +2216,17 @@ web_security() {
 
 
 
-check_nginx_mode() {
+check_ldnmp_mode() {
 
-CONFIG_FILE="/home/web/nginx.conf"
+	local MYSQL_CONTAINER="mysql"
+	local MYSQL_CONF="/etc/mysql/conf.d/custom_mysql_config.cnf"
 
-# 獲取當前的 worker_processes 設置值
-current_value=$(grep -E '^\s*worker_processes\s+[0-9]+;' "$CONFIG_FILE" | awk '{print $2}' | tr -d ';')
-
-# 根據值設置模式信息
-if [ "$current_value" = "8" ]; then
-	mode_info=" 高性能模式"
-else
-	mode_info=" 标准模式"
-fi
+	# 檢查 MySQL 配置文件中是否包含 4096M
+	if docker exec "$MYSQL_CONTAINER" grep -q "4096M" "$MYSQL_CONF" 2>/dev/null; then
+		mode_info=" 高性能模式"
+	else
+		mode_info=" 标准模式"
+	fi
 
 
 
@@ -2238,7 +2235,7 @@ fi
 
 check_nginx_compression() {
 
-	CONFIG_FILE="/home/web/nginx.conf"
+	local CONFIG_FILE="/home/web/nginx.conf"
 
 	# 檢查 zstd 是否開啟且未被註釋（整行以 zstd on; 開頭）
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
@@ -2267,7 +2264,7 @@ check_nginx_compression() {
 
 web_optimization() {
 		  while true; do
-		  	  check_nginx_mode
+		  	  check_ldnmp_mode
 			  check_nginx_compression
 			  clear
 			  send_stats "優化LDNMP環境"
@@ -3176,7 +3173,6 @@ root_use
 clear
 echo -e "${gl_huang}LDNMP環境未安裝，開始安裝LDNMP環境...${gl_bai}"
 check_disk_space 3 /home
-check_port
 install_dependency
 install_docker
 install_certbot
@@ -3193,7 +3189,6 @@ root_use
 clear
 echo -e "${gl_huang}nginx未安裝，開始安裝nginx環境...${gl_bai}"
 check_disk_space 1 /home
-check_port
 install_dependency
 install_docker
 install_certbot
@@ -3283,6 +3278,7 @@ ldnmp_wp() {
   sed -i "s|password_here|$dbusepasswd|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|localhost|mysql|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   cp /home/web/html/$yuming/wordpress/wp-config-sample.php /home/web/html/$yuming/wordpress/wp-config.php
+  patch_wp_url "https://$yuming" "https://$yuming"
 
   restart_ldnmp
   nginx_web_on
@@ -3303,7 +3299,8 @@ ldnmp_Proxy() {
 		add_yuming
 	fi
 	if [ -z "$reverseproxy" ]; then
-		read -e -p "請輸入你的反代IP:" reverseproxy
+		read -e -p "請輸入你的反代IP (回車默認本機IP 127.0.0.1):" reverseproxy
+		reverseproxy=${reverseproxy:-127.0.0.1}
 	fi
 
 	if [ -z "$port" ]; then
@@ -3644,15 +3641,12 @@ ldnmp_web_status() {
 				install_ssltls
 				certs_status
 
-				# mysql替換
-				add_db
 
+				add_db
 				local odd_dbname=$(echo "$oddyuming" | sed -e 's/[^A-Za-z0-9]/_/g')
 				local odd_dbname="${odd_dbname}"
 
 				docker exec mysql mysqldump -u root -p"$dbrootpasswd" $odd_dbname | docker exec -i mysql mysql -u root -p"$dbrootpasswd" $dbname
-				# docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE $odd_dbname;"
-
 
 				local tables=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -D $dbname -e "SHOW TABLES;" | awk '{ if (NR>1) print $1 }')
 				for table in $tables; do
@@ -3670,9 +3664,6 @@ ldnmp_web_status() {
 
 				cp /home/web/conf.d/$oddyuming.conf /home/web/conf.d/$yuming.conf
 				sed -i "s/$oddyuming/$yuming/g" /home/web/conf.d/$yuming.conf
-
-				# rm /home/web/certs/${oddyuming}_key.pem
-				# rm /home/web/certs/${oddyuming}_cert.pem
 
 				cd /home/web && docker compose restart
 
@@ -6732,6 +6723,9 @@ linux_info() {
 
 	local timezone=$(current_timezone)
 
+	local tcp_count=$(ss -t | wc -l)
+	local udp_count=$(ss -u | wc -l)
+
 
 	echo ""
 	echo -e "系統信息查詢"
@@ -6747,6 +6741,7 @@ linux_info() {
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}CPU佔用:${gl_bai}$cpu_usage_percent%"
 	echo -e "${gl_kjlan}系統負載:${gl_bai}$load"
+	echo -e "${gl_kjlan}TCP|UDP連接數:${gl_bai}$tcp_count|$udp_count"
 	echo -e "${gl_kjlan}物理內存:${gl_bai}$mem_info"
 	echo -e "${gl_kjlan}虛擬內存:${gl_bai}$swap_info"
 	echo -e "${gl_kjlan}硬盤佔用:${gl_bai}$disk_info"
@@ -8029,6 +8024,9 @@ linux_Oracle() {
 }
 
 
+
+
+
 docker_tato() {
 
 	local container_count=$(docker ps -a -q 2>/dev/null | wc -l)
@@ -8853,7 +8851,6 @@ linux_ldnmp() {
 		  echo -e "${gl_huang}正在解壓$filename ...${gl_bai}"
 		  cd /home/ && tar -xzf "$filename"
 
-		  check_port
 		  install_dependency
 		  install_docker
 		  install_certbot
@@ -8989,7 +8986,6 @@ linux_ldnmp() {
 					cd /home/web/
 					docker compose down --rmi all
 
-					check_port
 					install_dependency
 					install_docker
 					install_certbot
@@ -14044,7 +14040,7 @@ EOF
 			  echo "一條龍系統調優"
 			  echo "------------------------------------------------"
 			  echo "將對以下內容進行操作與優化"
-			  echo "1. 更新系統到最新"
+			  echo "1. 優化系統更新源，更新系統到最新"
 			  echo "2. 清理系統垃圾文件"
 			  echo -e "3. 設置虛擬內存${gl_huang}1G${gl_bai}"
 			  echo -e "4. 設置SSH端口號為${gl_huang}5522${gl_bai}"
@@ -14064,6 +14060,7 @@ EOF
 				  clear
 				  send_stats "一條龍調優啟動"
 				  echo "------------------------------------------------"
+				  switch_mirror true true
 				  linux_update
 				  echo -e "[${gl_lv}OK${gl_bai}] 1/12. 更新系統到最新"
 
@@ -14638,6 +14635,64 @@ echo ""
 
 
 
+games_server_tools() {
+
+	while true; do
+	  clear
+	  echo -e "遊戲開服腳本合集"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}1. ${gl_bai}幻獸帕魯開服腳本"
+	  echo -e "${gl_kjlan}2. ${gl_bai}我的世界開服腳本"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}0. ${gl_bai}返回主菜單"
+	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  read -e -p "請輸入你的選擇:" sub_choice
+
+	  case $sub_choice in
+
+		  1) send_stats "幻獸帕魯開服腳本" ; cd ~
+			 curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh
+			 exit
+			 ;;
+		  2) send_stats "我的世界開服腳本" ; cd ~
+			 curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/mc.sh ; chmod +x mc.sh ; ./mc.sh
+			 exit
+			 ;;
+
+		  0)
+			kejilion
+			;;
+
+		  *)
+			echo "無效的輸入!"
+			;;
+	  esac
+	  break_end
+
+	done
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 kejilion_update() {
 
@@ -14758,8 +14813,7 @@ echo -e "${gl_kjlan}12.  ${gl_bai}後台工作區"
 echo -e "${gl_kjlan}13.  ${gl_bai}系統工具"
 echo -e "${gl_kjlan}14.  ${gl_bai}服務器集群控制"
 echo -e "${gl_kjlan}15.  ${gl_bai}廣告專欄"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}p.   ${gl_bai}幻獸帕魯開服腳本"
+echo -e "${gl_kjlan}16.  ${gl_bai}遊戲開服腳本合集"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}00.  ${gl_bai}腳本更新"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -14785,10 +14839,7 @@ case $choice in
   13) linux_Settings ;;
   14) linux_cluster ;;
   15) kejilion_Affiliates ;;
-  p) send_stats "幻獸帕魯開服腳本" ; cd ~
-	 curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh
-	 exit
-	 ;;
+  16) games_server_tools ;;
   00) kejilion_update ;;
   0) clear ; exit ;;
   *) echo "無效的輸入!" ;;
