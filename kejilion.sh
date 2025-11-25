@@ -13614,7 +13614,7 @@ EOF
 				  ;;
 			  4)
 				  send_stats "智能切换更新源"
-				  switch_mirror true true
+				  switch_mirror false false
 				  ;;
 
 			  *)
@@ -14061,7 +14061,7 @@ EOF
 				  clear
 				  send_stats "一条龙调优启动"
 				  echo "------------------------------------------------"
-				  switch_mirror true true
+				  switch_mirror false false
 				  linux_update
 				  echo -e "[${gl_lv}OK${gl_bai}] 1/12. 更新系统到最新"
 
