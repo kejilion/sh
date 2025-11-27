@@ -4525,9 +4525,8 @@ linux_clean() {
 
 bbr_on() {
 
-cat > /etc/sysctl.conf << EOF
-net.ipv4.tcp_congestion_control=bbr
-EOF
+sed -i '/net.ipv4.tcp_congestion_control=/d' /etc/sysctl.conf
+echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/sysctl.conf
 sysctl -p
 
 }
@@ -7057,7 +7056,7 @@ linux_bbr() {
 					send_stats "alpine开启bbr3"
 					  ;;
 				  2)
-					sed -i '/net.ipv4.tcp_congestion_control=bbr/d' /etc/sysctl.conf
+					sed -i '/net.ipv4.tcp_congestion_control=/d' /etc/sysctl.conf
 					sysctl -p
 					server_reboot
 					  ;;
