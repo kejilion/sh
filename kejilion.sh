@@ -1853,7 +1853,7 @@ patch_wp_url() {
   local SITE_URL="$2"
   local TARGET_DIR="/home/web/html"
 
-  find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
+  find "$TARGET_DIR" -type f -name "wp-config-sample.php" | while read -r FILE; do
 	# 删除旧定义
 	sed -i "/define(['\"]WP_HOME['\"].*/d" "$FILE"
 	sed -i "/define(['\"]WP_SITEURL['\"].*/d" "$FILE"
@@ -3277,8 +3277,9 @@ ldnmp_wp() {
   sed -i "s|username_here|$dbuse|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|password_here|$dbusepasswd|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|localhost|mysql|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
-  cp /home/web/html/$yuming/wordpress/wp-config-sample.php /home/web/html/$yuming/wordpress/wp-config.php
   patch_wp_url "https://$yuming" "https://$yuming"
+  cp /home/web/html/$yuming/wordpress/wp-config-sample.php /home/web/html/$yuming/wordpress/wp-config.php
+
 
   restart_ldnmp
   nginx_web_on
