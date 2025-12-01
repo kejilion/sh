@@ -1401,8 +1401,7 @@ install_ldnmp() {
 
 
 	  restart_ldnmp
-
-
+	  sleep 2
 
 	  clear
 	  echo "LDNMP环境安装完毕"
