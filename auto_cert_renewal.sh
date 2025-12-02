@@ -31,15 +31,19 @@ for cert_file in $certs_directory*_cert.pem; do
 
         docker stop nginx > /dev/null 2>&1
 
-        iptables -P INPUT ACCEPT
-        iptables -P FORWARD ACCEPT
-        iptables -P OUTPUT ACCEPT
-        iptables -F
+        if ! iptables -C INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null; then
+            iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT
+        fi
 
-        ip6tables -P INPUT ACCEPT
-        ip6tables -P FORWARD ACCEPT
-        ip6tables -P OUTPUT ACCEPT
-        ip6tables -F
+        # iptables -P INPUT ACCEPT
+        # iptables -P FORWARD ACCEPT
+        # iptables -P OUTPUT ACCEPT
+        # iptables -F
+
+        # ip6tables -P INPUT ACCEPT
+        # ip6tables -P FORWARD ACCEPT
+        # ip6tables -P OUTPUT ACCEPT
+        # ip6tables -F
 
         docker run --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa  
 
