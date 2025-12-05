@@ -1634,7 +1634,7 @@ phpmyadmin_upgrade() {
   cd /home/web/
   docker rm -f $ldnmp_pods > /dev/null 2>&1
   docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
-  curl -sS -O https://raw.githubusercontent.com/kejilion/docker/refs/heads/main/docker-compose.phpmyadmin.yml
+  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/docker/refs/heads/main/docker-compose.phpmyadmin.yml
   docker compose -f docker-compose.phpmyadmin.yml up -d
   clear
   ip_address
