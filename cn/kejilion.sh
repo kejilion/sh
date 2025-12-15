@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.7"
+sh_v="4.2.8"
 
 
 gl_hui='\e[37m'
@@ -3310,11 +3310,25 @@ ldnmp_Proxy() {
 	nginx_install_status
 	install_ssltls
 	certs_status
+
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+
+	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
+	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf
+
+
 	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-	sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
-	sed -i "s|0000|$port|g" /home/web/conf.d/$yuming.conf
+
+	reverseproxy_port="$reverseproxy:$port"
+	upstream_servers=""
+	for server in $reverseproxy_port; do
+		upstream_servers="$upstream_servers    server $server;\n"
+	done
+
+	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
+	sed -i '/remote_addr/d' /home/web/conf.d/$yuming.conf
+
 	nginx_http_on
 	docker exec nginx nginx -s reload
 	nginx_web_on
