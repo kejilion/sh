@@ -13015,6 +13015,62 @@ switch_mirror() {
 }
 
 
+fail2ban_panel() {
+		  root_use
+		  send_stats "ssh防御"
+		  while true; do
+
+				check_f2b_status
+				echo -e "SSH防御程序 $check_f2b_status"
+				echo "fail2ban是一个SSH防止暴力破解工具"
+				echo "官网介绍: ${gh_proxy}github.com/fail2ban/fail2ban"
+				echo "------------------------"
+				echo "1. 安装防御程序"
+				echo "------------------------"
+				echo "2. 查看SSH拦截记录"
+				echo "3. 日志实时监控"
+				echo "------------------------"
+				echo "9. 卸载防御程序"
+				echo "------------------------"
+				echo "0. 返回上一级选单"
+				echo "------------------------"
+				read -e -p "请输入你的选择: " sub_choice
+				case $sub_choice in
+					1)
+						f2b_install_sshd
+						cd ~
+						f2b_status
+						break_end
+						;;
+					2)
+						echo "------------------------"
+						f2b_sshd
+						echo "------------------------"
+						break_end
+						;;
+					3)
+						tail -f /var/log/fail2ban.log
+						break
+						;;
+					9)
+						remove fail2ban
+						rm -rf /etc/fail2ban
+						echo "Fail2Ban防御程序已卸载"
+						break
+						;;
+					*)
+						break
+						;;
+				esac
+		  done
+
+}
+
+
+
+
+
+
 
 linux_Settings() {
 
@@ -13752,53 +13808,7 @@ EOF
 			  ;;
 
 		  22)
-		  root_use
-		  send_stats "ssh防御"
-		  while true; do
-
-				check_f2b_status
-				echo -e "SSH防御程序 $check_f2b_status"
-				echo "fail2ban是一个SSH防止暴力破解工具"
-				echo "官网介绍: ${gh_proxy}github.com/fail2ban/fail2ban"
-				echo "------------------------"
-				echo "1. 安装防御程序"
-				echo "------------------------"
-				echo "2. 查看SSH拦截记录"
-				echo "3. 日志实时监控"
-				echo "------------------------"
-				echo "9. 卸载防御程序"
-				echo "------------------------"
-				echo "0. 返回上一级选单"
-				echo "------------------------"
-				read -e -p "请输入你的选择: " sub_choice
-				case $sub_choice in
-					1)
-						f2b_install_sshd
-						cd ~
-						f2b_status
-						break_end
-						;;
-					2)
-						echo "------------------------"
-						f2b_sshd
-						echo "------------------------"
-						break_end
-						;;
-					3)
-						tail -f /var/log/fail2ban.log
-						break
-						;;
-					9)
-						remove fail2ban
-						rm -rf /etc/fail2ban
-						echo "Fail2Ban防御程序已卸载"
-						break
-						;;
-					*)
-						break
-						;;
-				esac
-		  done
+			fail2ban_panel
 			  ;;
 
 
@@ -14921,6 +14931,7 @@ echo "阻止IP              k zzip 177.5.25.36 |k 阻止IP 177.5.25.36"
 echo "命令收藏夹          k fav | k 命令收藏夹"
 echo "应用市场管理        k app"
 echo "应用编号快捷管理    k app 26 | k app 1panel | k app npm"
+echo "fail2ban管理        k fail2ban | k f2b"
 echo "显示系统信息        k info"
 }
 
@@ -15153,8 +15164,14 @@ else
 			linux_info
 			;;
 
+		fail2ban|f2b)
+			fail2ban_panel
+			;;
+
 		*)
 			k_info
 			;;
 	esac
 fi
+
+
