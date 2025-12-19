@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.8"
+sh_v="4.2.9"
 
 
 gl_hui='\e[37m'
@@ -1425,6 +1425,13 @@ install_certbot() {
 }
 
 
+
+
+
+
+
+
+
 install_ssltls() {
 	  check_port > /dev/null 2>&1
 	  docker stop nginx > /dev/null 2>&1
@@ -1542,12 +1549,28 @@ certs_status() {
 		echo -e "4. 防火墙限制 ➠ 检查80/443端口是否开放，确保验证可访问"
 		echo -e "5. 申请次数超限 ➠ Let's Encrypt有每周限额(5次/域名/周)"
 		echo -e "6. 国内备案限制 ➠ 中国大陆环境请确认域名是否备案"
-		break_end
-		clear
-		echo "请再次尝试部署 $webname"
-		add_yuming
-		install_ssltls
-		certs_status
+		echo "------------------------"
+		echo "1. 重新申请                  2. 不带证书改用HTTP访问                  0. 退出"
+		echo "------------------------"
+		read -e -p "请输入你的选择: " sub_choice
+		case $sub_choice in
+	  	  1)
+	  	  	send_stats "重新申请"
+		  	echo "请再次尝试部署 $webname"
+		  	add_yuming
+		  	install_ssltls
+		  	certs_status
+	  		  ;;
+	  	  2)
+	  	  	send_stats "不带证书改用HTTP访问"
+		  	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' /home/web/conf.d/${yuming}.conf
+			sed -i '/ssl_certificate/d; /ssl_certificate_key/d' /home/web/conf.d/${yuming}.conf
+			sed -i '/443 ssl/d; /443 quic/d' /home/web/conf.d/${yuming}.conf
+	  		  ;;
+	  	  *)
+	  	  	exit
+	  		  ;;
+		esac
 	fi
 
 }
@@ -1569,6 +1592,40 @@ add_yuming() {
 }
 
 
+check_ip_and_get_access_port() {
+	local yuming="$1"
+
+	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
+	local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
+
+	if [[ "$yuming" =~ $ipv4_pattern || "$yuming" =~ $ipv6_pattern ]]; then
+		read -e -p "请输入访问/监听端口，回车默认使用 80: " access_port
+		access_port=${access_port:-80}
+	fi
+}
+
+
+
+update_nginx_listen_port() {
+	local yuming="$1"
+	local access_port="$2"
+	local conf="/home/web/conf.d/${yuming}.conf"
+
+	# 如果 access_port 为空，则跳过
+	[ -z "$access_port" ] && return 0
+
+	# 删除所有 listen 行
+	sed -i '/^[[:space:]]*listen[[:space:]]\+/d' "$conf"
+
+	# 在 server { 后插入新的 listen
+	sed -i "/server {/a\\
+	listen ${access_port};\\
+	listen [::]:${access_port};
+" "$conf"
+}
+
+
+
 add_db() {
 	  dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
 	  dbname="${dbname}"
@@ -1578,17 +1635,6 @@ add_db() {
 	  dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 	  docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
 }
-
-reverse_proxy() {
-	  ip_address
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s/0.0.0.0/$ipv4_address/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s|0000|$duankou|g" /home/web/conf.d/$yuming.conf
-	  nginx_http_on
-	  docker exec nginx nginx -s reload
-}
-
 
 
 restart_ldnmp() {
@@ -3238,10 +3284,21 @@ ldnmp_web_on() {
 }
 
 nginx_web_on() {
-	  clear
-	  echo "您的 $webname 搭建好了！"
-	  echo "https://$yuming"
+	clear
 
+	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
+	local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
+
+	echo "您的 $webname 搭建好了！"
+
+	if [[ "$yuming" =~ $ipv4_pattern || "$yuming" =~ $ipv6_pattern ]]; then
+		mv /home/web/conf.d/"$yuming".conf /home/web/conf.d/"${yuming}_${access_port}".conf
+		echo "http://$yuming:$access_port"
+	elif grep -q '^[[:space:]]*#.*if (\$scheme = http)' "/home/web/conf.d/"$yuming".conf"; then
+		echo "http://$yuming"
+	else
+		echo "https://$yuming"
+	fi
 }
 
 
@@ -3287,6 +3344,7 @@ ldnmp_wp() {
 }
 
 
+
 ldnmp_Proxy() {
 	clear
 	webname="反向代理-IP+端口"
@@ -3299,6 +3357,9 @@ ldnmp_Proxy() {
 	if [ -z "$yuming" ]; then
 		add_yuming
 	fi
+
+	check_ip_and_get_access_port "$yuming"
+
 	if [ -z "$reverseproxy" ]; then
 		read -e -p "请输入你的反代IP (回车默认本机IP 127.0.0.1): " reverseproxy
 		reverseproxy=${reverseproxy:-127.0.0.1}
@@ -3329,6 +3390,8 @@ ldnmp_Proxy() {
 	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
 	sed -i '/remote_addr/d' /home/web/conf.d/$yuming.conf
 
+	update_nginx_listen_port "$yuming" "$access_port"
+
 	nginx_http_on
 	docker exec nginx nginx -s reload
 	nginx_web_on
@@ -3345,6 +3408,8 @@ ldnmp_Proxy_backend() {
 	if [ -z "$yuming" ]; then
 		add_yuming
 	fi
+
+	check_ip_and_get_access_port "$yuming"
 
 	if [ -z "$reverseproxy_port" ]; then
 		read -e -p "请输入你的多个反代IP+端口用空格隔开（例如 127.0.0.1:3000 127.0.0.1:3002）： " reverseproxy_port
@@ -3368,6 +3433,8 @@ ldnmp_Proxy_backend() {
 	done
 
 	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
+
+	update_nginx_listen_port "$yuming" "$access_port"
 
 	nginx_http_on
 	docker exec nginx nginx -s reload
@@ -3608,6 +3675,11 @@ ldnmp_web_status() {
 			local formatted_date=$(date -d "$expire_date" '+%Y-%m-%d')
 			printf "%-30s%s\n" "$domain" "$formatted_date"
 		  fi
+		done
+
+		for conf_file in /home/web/conf.d/*_*.conf; do
+		  [ -e "$conf_file" ] || continue
+		  basename "$conf_file" .conf
 		done
 
 		echo "------------------------"
@@ -8639,7 +8711,7 @@ linux_ldnmp() {
 		-v /home/web/html/$yuming/bitwarden/data:/data \
 		vaultwarden/server
 	  duankou=3280
-	  reverse_proxy
+	  ldnmp_Proxy 127.0.0.1 $duankou
 
 	  nginx_web_on
 
@@ -8657,7 +8729,7 @@ linux_ldnmp() {
 
 	  docker run -d --name halo --restart=always -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
 	  duankou=8010
-	  reverse_proxy
+	  ldnmp_Proxy 127.0.0.1 $duankou
 
 	  nginx_web_on
 
