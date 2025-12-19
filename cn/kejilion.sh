@@ -3315,13 +3315,15 @@ ldnmp_wp() {
   fi
   repeat_add_yuming
   ldnmp_install_status
-  install_ssltls
-  certs_status
-  add_db
+
   wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
   wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
   sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
   nginx_http_on
+
+  install_ssltls
+  certs_status
+  add_db
 
   cd /home/web/html
   mkdir $yuming
@@ -3369,11 +3371,13 @@ ldnmp_Proxy() {
 		read -e -p "请输入你的反代端口: " port
 	fi
 	nginx_install_status
-	install_ssltls
-	certs_status
 
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+
+	install_ssltls
+	certs_status
+
 
 	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
 	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf
@@ -3416,10 +3420,13 @@ ldnmp_Proxy_backend() {
 	fi
 
 	nginx_install_status
-	install_ssltls
-	certs_status
+
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+
+
+	install_ssltls
+	certs_status
 
 	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
 	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf
@@ -3680,6 +3687,20 @@ ldnmp_web_status() {
 		for conf_file in /home/web/conf.d/*_*.conf; do
 		  [ -e "$conf_file" ] || continue
 		  basename "$conf_file" .conf
+		done
+
+		for conf_file in /home/web/conf.d/*.conf; do
+		  [ -e "$conf_file" ] || continue
+
+		  filename=$(basename "$conf_file")
+
+		  if [ "$filename" = "map.conf" ] || [ "$filename" = "default.conf" ]; then
+			continue
+		  fi
+
+		  if ! grep -q "ssl_certificate" "$conf_file"; then
+			basename "$conf_file" .conf
+		  fi
 		done
 
 		echo "------------------------"
@@ -8216,12 +8237,17 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8253,12 +8279,15 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8288,12 +8317,16 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8331,12 +8364,16 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8379,12 +8416,15 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
@@ -8434,12 +8474,16 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8472,13 +8516,16 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/refs/heads/main/index_php.conf
 	  sed -i "s|/var/www/html/yuming.com/|/var/www/html/yuming.com/linkstack|g" /home/web/conf.d/$yuming.conf
 	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8508,12 +8555,15 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8642,12 +8692,15 @@ linux_ldnmp() {
 	  add_yuming
 	  read -e -p "请输入跳转域名: " reverseproxy
 	  nginx_install_status
-	  install_ssltls
-	  certs_status
+
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+
 	  nginx_http_on
 
 	  docker exec nginx nginx -s reload
@@ -8679,12 +8732,14 @@ linux_ldnmp() {
 	  echo -e "域名格式: ${gl_huang}google.com${gl_bai}"
 	  read -e -p "请输入你的反代域名: " fandai_yuming
 	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  sed -i "s|fandaicom|$fandai_yuming|g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+
 	  nginx_http_on
 
 	  docker exec nginx nginx -s reload
@@ -8700,9 +8755,6 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  echo "开始部署 $webname"
 	  add_yuming
-	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  docker run -d \
 		--name bitwarden \
@@ -8710,10 +8762,10 @@ linux_ldnmp() {
 		-p 3280:80 \
 		-v /home/web/html/$yuming/bitwarden/data:/data \
 		vaultwarden/server
-	  duankou=3280
-	  ldnmp_Proxy 127.0.0.1 $duankou
 
-	  nginx_web_on
+	  duankou=3280
+	  ldnmp_Proxy ${yuming} 127.0.0.1 $duankou
+
 
 		;;
 
@@ -8723,15 +8775,11 @@ linux_ldnmp() {
 	  send_stats "安装$webname"
 	  echo "开始部署 $webname"
 	  add_yuming
-	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  docker run -d --name halo --restart=always -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
-	  duankou=8010
-	  ldnmp_Proxy 127.0.0.1 $duankou
 
-	  nginx_web_on
+	  duankou=8010
+	  ldnmp_Proxy ${yuming} 127.0.0.1 $duankou
 
 		;;
 
@@ -8742,11 +8790,13 @@ linux_ldnmp() {
 	  echo "开始部署 $webname"
 	  add_yuming
 	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8781,11 +8831,13 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+
 	  nginx_http_on
 
 	  cd /home/web/html
