@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.7"
+sh_v="4.2.9"
 
 
 gl_hui='\e[37m'
@@ -251,7 +251,7 @@ remove() {
 	fi
 
 	for package in "$@"; do
-		echo -e "${gl_huang}アンインストールする$package...${gl_bai}"
+		echo -e "${gl_huang}アンインストール中$package...${gl_bai}"
 		if command -v dnf &>/dev/null; then
 			dnf remove -y "$package"
 		elif command -v yum &>/dev/null; then
@@ -546,7 +546,7 @@ while true; do
 		11)
 			send_stats "コンテナに入る"
 			read -e -p "コンテナ名を入力してください:" dockername
-			docker exec -it $dockername /bin/sh
+			docker exec $dockername /bin/sh
 			break_end
 			;;
 		12)
@@ -858,7 +858,7 @@ open_port() {
 
 		if ! iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
 			iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
-			echo "ポートがオープンしました$port"
+			echo "ポートがオープンされました$port"
 		fi
 	done
 
@@ -921,7 +921,7 @@ allow_ip() {
 		# 許可ルールを追加する
 		if ! iptables -C INPUT -s $ip -j ACCEPT 2>/dev/null; then
 			iptables -I INPUT 1 -s $ip -j ACCEPT
-			echo "リリースされたIP$ip"
+			echo "リリース済みIP$ip"
 		fi
 	done
 
@@ -1425,6 +1425,13 @@ install_certbot() {
 }
 
 
+
+
+
+
+
+
+
 install_ssltls() {
 	  check_port > /dev/null 2>&1
 	  docker stop nginx > /dev/null 2>&1
@@ -1446,7 +1453,7 @@ install_ssltls() {
 				if ! iptables -C INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null; then
 					iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT
 				fi
-				docker run -it --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d "$yuming" --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
+				docker run --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d "$yuming" --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
 			fi
 	  fi
 	  mkdir -p /home/web/certs/
@@ -1483,7 +1490,7 @@ if [ -z "$yuming" ]; then
 fi
 install_docker
 install_certbot
-docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
+docker run --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
 install_ssltls
 certs_status
 install_ssltls_text
@@ -1542,12 +1549,28 @@ certs_status() {
 		echo -e "4. ファイアウォールの制限 ➠ ポート 80/443 が開いているかどうかを確認し、アクセス可能であることを確認します。"
 		echo -e "5. アプリケーション数が制限を超えている ➠ Let's Encrypt には週制限あり (5 回/ドメイン名/週)"
 		echo -e "6. 国内登録制限 ➠ 中国本土環境の場合は、ドメイン名が登録されているかをご確認ください。"
-		break_end
-		clear
-		echo "もう一度デプロイしてみてください$webname"
-		add_yuming
-		install_ssltls
-		certs_status
+		echo "------------------------"
+		echo "1. 再適用 2. 証明書なしの HTTP アクセスに切り替える 0. 終了"
+		echo "------------------------"
+		read -e -p "選択肢を入力してください:" sub_choice
+		case $sub_choice in
+	  	  1)
+	  	  	send_stats "再申請"
+		  	echo "もう一度デプロイしてみてください$webname"
+		  	add_yuming
+		  	install_ssltls
+		  	certs_status
+	  		  ;;
+	  	  2)
+	  	  	send_stats "証明書なしの HTTP アクセスに切り替える"
+		  	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' /home/web/conf.d/${yuming}.conf
+			sed -i '/ssl_certificate/d; /ssl_certificate_key/d' /home/web/conf.d/${yuming}.conf
+			sed -i '/443 ssl/d; /443 quic/d' /home/web/conf.d/${yuming}.conf
+	  		  ;;
+	  	  *)
+	  	  	exit
+	  		  ;;
+		esac
 	fi
 
 }
@@ -1569,6 +1592,40 @@ add_yuming() {
 }
 
 
+check_ip_and_get_access_port() {
+	local yuming="$1"
+
+	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
+	local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
+
+	if [[ "$yuming" =~ $ipv4_pattern || "$yuming" =~ $ipv6_pattern ]]; then
+		read -e -p "デフォルトで 80 を使用するには、アクセス/リスニング ポートを入力し、Enter キーを押してください。" access_port
+		access_port=${access_port:-80}
+	fi
+}
+
+
+
+update_nginx_listen_port() {
+	local yuming="$1"
+	local access_port="$2"
+	local conf="/home/web/conf.d/${yuming}.conf"
+
+	# access_port が空の場合はスキップします
+	[ -z "$access_port" ] && return 0
+
+	# すべてのリッスン行を削除します
+	sed -i '/^[[:space:]]*listen[[:space:]]\+/d' "$conf"
+
+	# サーバー { の後に新しいリッスンを挿入します
+	sed -i "/server {/a\\
+	listen ${access_port};\\
+	listen [::]:${access_port};
+" "$conf"
+}
+
+
+
 add_db() {
 	  dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
 	  dbname="${dbname}"
@@ -1578,17 +1635,6 @@ add_db() {
 	  dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 	  docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
 }
-
-reverse_proxy() {
-	  ip_address
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s/0.0.0.0/$ipv4_address/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s|0000|$duankou|g" /home/web/conf.d/$yuming.conf
-	  nginx_http_on
-	  docker exec nginx nginx -s reload
-}
-
 
 
 restart_ldnmp() {
@@ -2037,7 +2083,7 @@ web_security() {
 			  echo "5. SSH 傍受記録の表示 6. Web サイト傍受記録の表示"
 			  echo "7. 防御ルールのリストを表示します。 8. リアルタイム監視のログを表示します。"
 			  echo "------------------------"
-			  echo "11. インターセプトパラメータを設定します。 12. ブロックされたすべての IP をクリアします。"
+			  echo "11. インターセプトパラメータを設定します。 12. ブロックされた IP をすべてクリアします。"
 			  echo "------------------------"
 			  echo "21. クラウドフレア モード 22. 高負荷時に 5 秒間のシールドを有効にする"
 			  echo "------------------------"
@@ -2528,7 +2574,7 @@ block_container_port() {
 		iptables -I DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
 
-	# ローカルネットワーク127.0.0.0/8を確認して許可します。
+	# ローカルネットワーク127.0.0.0/8をチェックして許可します。
 	if ! iptables -C DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -I DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	fi
@@ -2545,7 +2591,7 @@ block_container_port() {
 		iptables -I DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
 
-	# ローカルネットワーク127.0.0.0/8を確認して許可します。
+	# ローカルネットワーク127.0.0.0/8をチェックして許可します。
 	if ! iptables -C DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -I DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	fi
@@ -2913,7 +2959,7 @@ docker_app_plus() {
 			1)
 				setup_docker_dir
 				check_disk_space $app_size /home/docker
-				read -e -p "アプリケーションの外部サービス ポートを入力し、Enter キーを押して、それをデフォルトで使用します。${docker_port}ポート：" app_port
+				read -e -p "アプリケーションの外部サービス ポートを入力し、Enter キーを押してデフォルトで使用します。${docker_port}ポート：" app_port
 				local app_port=${app_port:-${docker_port}}
 				local docker_port=$app_port
 				install jq
@@ -3238,10 +3284,21 @@ ldnmp_web_on() {
 }
 
 nginx_web_on() {
-	  clear
-	  echo "あなたの$webname建てられました！"
-	  echo "https://$yuming"
+	clear
 
+	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
+	local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
+
+	echo "あなたの$webname建てられました！"
+
+	if [[ "$yuming" =~ $ipv4_pattern || "$yuming" =~ $ipv6_pattern ]]; then
+		mv /home/web/conf.d/"$yuming".conf /home/web/conf.d/"${yuming}_${access_port}".conf
+		echo "http://$yuming:$access_port"
+	elif grep -q '^[[:space:]]*#.*if (\$scheme = http)' "/home/web/conf.d/"$yuming".conf"; then
+		echo "http://$yuming"
+	else
+		echo "https://$yuming"
+	fi
 }
 
 
@@ -3258,13 +3315,15 @@ ldnmp_wp() {
   fi
   repeat_add_yuming
   ldnmp_install_status
-  install_ssltls
-  certs_status
-  add_db
+
   wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
   wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
   sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
   nginx_http_on
+
+  install_ssltls
+  certs_status
+  add_db
 
   cd /home/web/html
   mkdir $yuming
@@ -3287,6 +3346,7 @@ ldnmp_wp() {
 }
 
 
+
 ldnmp_Proxy() {
 	clear
 	webname="反向代理-IP+端口"
@@ -3299,6 +3359,9 @@ ldnmp_Proxy() {
 	if [ -z "$yuming" ]; then
 		add_yuming
 	fi
+
+	check_ip_and_get_access_port "$yuming"
+
 	if [ -z "$reverseproxy" ]; then
 		read -e -p "アンチジェネレーション IP を入力してください (Enter キーを押すとデフォルトでローカル IP 127.0.0.1 になります):" reverseproxy
 		reverseproxy=${reverseproxy:-127.0.0.1}
@@ -3308,13 +3371,31 @@ ldnmp_Proxy() {
 		read -e -p "アンチジェネレーションポートを入力してください:" port
 	fi
 	nginx_install_status
+
+	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
+	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+
 	install_ssltls
 	certs_status
-	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy.conf
+
+
+	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
+	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf
+
+
 	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-	sed -i "s/0.0.0.0/$reverseproxy/g" /home/web/conf.d/$yuming.conf
-	sed -i "s|0000|$port|g" /home/web/conf.d/$yuming.conf
+
+	reverseproxy_port="$reverseproxy:$port"
+	upstream_servers=""
+	for server in $reverseproxy_port; do
+		upstream_servers="$upstream_servers    server $server;\n"
+	done
+
+	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
+	sed -i '/remote_addr/d' /home/web/conf.d/$yuming.conf
+
+	update_nginx_listen_port "$yuming" "$access_port"
+
 	nginx_http_on
 	docker exec nginx nginx -s reload
 	nginx_web_on
@@ -3332,15 +3413,20 @@ ldnmp_Proxy_backend() {
 		add_yuming
 	fi
 
+	check_ip_and_get_access_port "$yuming"
+
 	if [ -z "$reverseproxy_port" ]; then
 		read -e -p "複数のアンチジェネレーション IP + ポートをスペースで区切って入力してください (例: 127.0.0.1:3000 127.0.0.1:3002):" reverseproxy_port
 	fi
 
 	nginx_install_status
-	install_ssltls
-	certs_status
+
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+
+
+	install_ssltls
+	certs_status
 
 	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
 	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf
@@ -3354,6 +3440,8 @@ ldnmp_Proxy_backend() {
 	done
 
 	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
+
+	update_nginx_listen_port "$yuming" "$access_port"
 
 	nginx_http_on
 	docker exec nginx nginx -s reload
@@ -3596,6 +3684,25 @@ ldnmp_web_status() {
 		  fi
 		done
 
+		for conf_file in /home/web/conf.d/*_*.conf; do
+		  [ -e "$conf_file" ] || continue
+		  basename "$conf_file" .conf
+		done
+
+		for conf_file in /home/web/conf.d/*.conf; do
+		  [ -e "$conf_file" ] || continue
+
+		  filename=$(basename "$conf_file")
+
+		  if [ "$filename" = "map.conf" ] || [ "$filename" = "default.conf" ]; then
+			continue
+		  fi
+
+		  if ! grep -q "ssl_certificate" "$conf_file"; then
+			basename "$conf_file" .conf
+		  fi
+		done
+
 		echo "------------------------"
 		echo ""
 		echo -e "データベース:${db_output}"
@@ -3628,7 +3735,7 @@ ldnmp_web_status() {
 				send_stats "ドメイン名証明書を申請する"
 				read -e -p "ドメイン名を入力してください:" yuming
 				install_certbot
-				docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
+				docker run --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
 				install_ssltls
 				certs_status
 
@@ -3727,7 +3834,7 @@ ldnmp_web_status() {
 
 			20)
 				web_del
-				docker run -it --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
+				docker run --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n 2>/dev/null
 
 				;;
 			*)
@@ -4162,7 +4269,7 @@ frps_panel() {
 
 			8)
 				send_stats "IPアクセスをブロックする"
-				echo "ドメイン名アクセスを逆にしている場合は、この機能を使用して IP+ポート アクセスをブロックすることができ、より安全になります。"
+				echo "ドメイン名アクセスを反転している場合は、この機能を使用して IP+ポート アクセスをブロックすることができ、より安全です。"
 				read -e -p "ブロックするポートを入力してください:" frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
@@ -4738,7 +4845,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}ROOTログインの設定は完了です！${gl_bai}"
+echo -e "${gl_lv}ROOTログインの設定が完了しました！${gl_bai}"
 
 }
 
@@ -5349,7 +5456,7 @@ clamav_scan() {
 	> /home/docker/clamav/log/scan.log > /dev/null 2>&1
 
 	# Dockerコマンドを実行する
-	docker run -it --rm \
+	docker run --rm \
 		--name clamav \
 		--mount source=clam_db,target=/var/lib/clamav \
 		$MOUNT_PARAMS \
@@ -6242,7 +6349,7 @@ mount_partition() {
 	MOUNT_POINT="/mnt/$PARTITION"
 	mkdir -p "$MOUNT_POINT"
 
-	# パーティションをマウントする
+	# パーティションのマウント
 	mount "/dev/$PARTITION" "$MOUNT_POINT"
 
 	if [ $? -eq 0 ]; then
@@ -6354,7 +6461,7 @@ disk_manager() {
 	send_stats "ハードディスク管理機能"
 	while true; do
 		clear
-		echo "ハードドライブのパーティション管理"
+		echo "ハードディスクのパーティション管理"
 		echo -e "${gl_huang}この機能は内部テスト中であるため、運用環境では使用しないでください。${gl_bai}"
 		echo "------------------------"
 		list_partitions
@@ -7152,7 +7259,7 @@ docker_ssh_migration() {
 
 				# Compose プロジェクトがすでにパッケージ化されている場合は、スキップしてください
 				if [[ -n "${PACKED_COMPOSE_PATHS[$project_dir]}" ]]; then
-					echo -e "${YELLOW}プロジェクトの作成 [$project_name] すでにバックアップされているため、繰り返しのパッケージ化をスキップします...${NC}"
+					echo -e "${YELLOW}プロジェクトの作成 [$project_name] すでにバックアップされているので、繰り返しのパッケージ化をスキップします...${NC}"
 					continue
 				fi
 
@@ -7925,7 +8032,7 @@ linux_Oracle() {
 				  local speedtest_interval=${speedtest_interval:-$DEFAULT_SPEEDTEST_INTERVAL}
 
 				  # Dockerコンテナを実行する
-				  docker run -itd --name=lookbusy --restart=always \
+				  docker run -d --name=lookbusy --restart=always \
 					  -e TZ=Asia/Shanghai \
 					  -e CPU_UTIL="$cpu_util" \
 					  -e CPU_CORE="$cpu_core" \
@@ -8130,12 +8237,17 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8167,12 +8279,15 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8202,12 +8317,16 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8245,12 +8364,16 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8293,12 +8416,15 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
@@ -8348,12 +8474,16 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8386,13 +8516,16 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/refs/heads/main/index_php.conf
 	  sed -i "s|/var/www/html/yuming.com/|/var/www/html/yuming.com/linkstack|g" /home/web/conf.d/$yuming.conf
 	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8422,12 +8555,15 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
-	  install_ssltls
-	  certs_status
-	  add_db
+
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+	  add_db
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8556,12 +8692,15 @@ linux_ldnmp() {
 	  add_yuming
 	  read -e -p "リダイレクト ドメイン名を入力してください:" reverseproxy
 	  nginx_install_status
-	  install_ssltls
-	  certs_status
+
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+
 	  nginx_http_on
 
 	  docker exec nginx nginx -s reload
@@ -8593,12 +8732,14 @@ linux_ldnmp() {
 	  echo -e "ドメイン名の形式:${gl_huang}google.com${gl_bai}"
 	  read -e -p "リバース プロキシ ドメイン名を入力してください:" fandai_yuming
 	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
 	  sed -i "s|fandaicom|$fandai_yuming|g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+
 	  nginx_http_on
 
 	  docker exec nginx nginx -s reload
@@ -8614,9 +8755,6 @@ linux_ldnmp() {
 	  send_stats "インストール$webname"
 	  echo "導入を開始する$webname"
 	  add_yuming
-	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  docker run -d \
 		--name bitwarden \
@@ -8624,10 +8762,10 @@ linux_ldnmp() {
 		-p 3280:80 \
 		-v /home/web/html/$yuming/bitwarden/data:/data \
 		vaultwarden/server
-	  duankou=3280
-	  reverse_proxy
 
-	  nginx_web_on
+	  duankou=3280
+	  ldnmp_Proxy ${yuming} 127.0.0.1 $duankou
+
 
 		;;
 
@@ -8637,15 +8775,11 @@ linux_ldnmp() {
 	  send_stats "インストール$webname"
 	  echo "導入を開始する$webname"
 	  add_yuming
-	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  docker run -d --name halo --restart=always -p 8010:8090 -v /home/web/html/$yuming/.halo2:/root/.halo2 halohub/halo:2
-	  duankou=8010
-	  reverse_proxy
 
-	  nginx_web_on
+	  duankou=8010
+	  ldnmp_Proxy ${yuming} 127.0.0.1 $duankou
 
 		;;
 
@@ -8656,11 +8790,13 @@ linux_ldnmp() {
 	  echo "導入を開始する$webname"
 	  add_yuming
 	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -8695,11 +8831,13 @@ linux_ldnmp() {
 	  add_yuming
 	  repeat_add_yuming
 	  nginx_install_status
-	  install_ssltls
-	  certs_status
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
 	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+
+	  install_ssltls
+	  certs_status
+
 	  nginx_http_on
 
 	  cd /home/web/html
@@ -9071,7 +9209,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}パゴダパネル正式版${gl_kjlan}2.   ${color2}aaPanel パゴダ国際版"
 	  echo -e "${gl_kjlan}3.   ${color3}1Panel 新世代管理パネル${gl_kjlan}4.   ${color4}NginxProxyManager 視覚化パネル"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList マルチストア ファイル リスト プログラム${gl_kjlan}6.   ${color6}Ubuntu リモート デスクトップ Web バージョン"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList マルチストア ファイル リスト プログラム${gl_kjlan}6.   ${color6}Ubuntu リモート デスクトップ Web エディション"
 	  echo -e "${gl_kjlan}7.   ${color7}Nezha Probe VPS 監視パネル${gl_kjlan}8.   ${color8}QBオフラインBT磁気ダウンロードパネル"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io メール サーバー プログラム${gl_kjlan}10.  ${color10}RocketChat 複数人オンライン チャット システム"
 	  echo -e "${gl_kjlan}------------------------"
@@ -9276,7 +9414,7 @@ while true; do
 
 		local docker_describe="一个支持多种存储，支持网页浏览和 WebDAV 的文件列表程序，由 gin 和 Solidjs 驱动"
 		local docker_url="官网介绍: https://github.com/OpenListTeam/OpenList"
-		local docker_use="docker exec -it openlist ./openlist admin random"
+		local docker_use="docker exec openlist ./openlist admin random"
 		local docker_passwd=""
 		local app_size="1"
 		docker_app
@@ -9547,7 +9685,7 @@ while true; do
 				-v /home/docker/mongo/dump:/dump \
 				mongo:latest --replSet rs5 --oplogSize 256
 			sleep 1
-			docker exec -it db mongosh --eval "printjson(rs.initiate())"
+			docker exec db mongosh --eval "printjson(rs.initiate())"
 			sleep 5
 			docker run --name rocketchat --restart=always -p ${docker_port}:3000 --link db --env ROOT_URL=http://localhost --env MONGO_OPLOG_URL=mongodb://db:27017/rs5 -d rocket.chat
 
@@ -10657,7 +10795,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -it -d --name dpanel --restart=always \
+			docker run -d --name dpanel --restart=always \
 				-p ${docker_port}:8080 -e APP_NAME=dpanel \
 				-v /var/run/docker.sock:/var/run/docker.sock \
 				-v /home/docker/dpanel:/dpanel \
@@ -11056,7 +11194,7 @@ while true; do
 		local docker_port=8068
 
 		docker_rum() {
-			docker run -itd --name allinssl -p ${docker_port}:8888 -v /home/docker/allinssl/data:/www/allinssl/data -e ALLINSSL_USER=allinssl -e ALLINSSL_PWD=allinssldocker -e ALLINSSL_URL=allinssl allinssl/allinssl:latest
+			docker run -d --name allinssl -p ${docker_port}:8888 -v /home/docker/allinssl/data:/www/allinssl/data -e ALLINSSL_USER=allinssl -e ALLINSSL_PWD=allinssldocker -e ALLINSSL_URL=allinssl allinssl/allinssl:latest
 		}
 
 		local docker_describe="开源免费的 SSL 证书自动化管理平台"
@@ -11819,7 +11957,7 @@ while true; do
 			add_yuming
 
 			if [ ! -d /home/docker/matrix/data ]; then
-				docker run -it --rm \
+				docker run --rm \
 				  -v /home/docker/matrix/data:/data \
 				  -e SYNAPSE_SERVER_NAME=${yuming} \
 				  -e SYNAPSE_REPORT_STATS=yes \
@@ -12169,7 +12307,7 @@ while true; do
 		done
 		'
 
-		docker exec -it wireguard bash -c '
+		docker exec wireguard bash -c '
 		for d in /config/peer_*; do
 		  cd "$d" || continue
 		  conf_file=$(ls *.conf)
@@ -12183,7 +12321,7 @@ while true; do
 		sleep 2
 		echo
 		echo -e "${gl_huang}すべてのクライアント QR コード構成:${gl_bai}"
-		docker exec -it wireguard bash -c 'for i in $(ls /config | grep peer_ | sed "s/peer_//"); do echo "--- $i ---"; /app/show-peer $i; done'
+		docker exec wireguard bash -c 'for i in $(ls /config | grep peer_ | sed "s/peer_//"); do echo "--- $i ---"; /app/show-peer $i; done'
 		sleep 2
 		echo
 		echo -e "${gl_huang}すべてのクライアント構成コード:${gl_bai}"
@@ -12784,7 +12922,7 @@ linux_work() {
 	  echo -e "バックエンドワークスペース"
 	  echo -e "システムは、バックグラウンドで永続的に実行できるワークスペースを提供し、長期的なタスクを実行するために使用できます。"
 	  echo -e "SSH を切断しても、ワークスペース内のタスクは中断されず、タスクはバックグラウンドで残ります。"
-	  echo -e "${gl_huang}ヒント：${gl_bai}ワークスペースに入ったら、Ctrl+b を使用し、次に d を単独で押してワークスペースを終了します。"
+	  echo -e "${gl_huang}ヒント：${gl_bai}ワークスペースに入ったら、Ctrl+b を使用し、d だけを押してワークスペースを終了します。"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo "現在存在するワークスペースのリスト"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12794,7 +12932,7 @@ linux_work() {
 	  echo -e "${gl_kjlan}2.   ${gl_bai}作業エリア 2"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}作業エリア 3"
 	  echo -e "${gl_kjlan}4.   ${gl_bai}作業エリア 4"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}作業エリア5"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}ワークスペースNo.5"
 	  echo -e "${gl_kjlan}6.   ${gl_bai}作業エリア6"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}作業エリア 7"
 	  echo -e "${gl_kjlan}8.   ${gl_bai}作業エリア8"
@@ -12999,6 +13137,62 @@ switch_mirror() {
 		  --pure-mode
 	fi
 }
+
+
+fail2ban_panel() {
+		  root_use
+		  send_stats "SSH防御"
+		  while true; do
+
+				check_f2b_status
+				echo -e "SSH防御プログラム$check_f2b_status"
+				echo "failed2ban はブルート フォース クラッキングを防ぐ SSH ツールです"
+				echo "公式サイト紹介：${gh_proxy}github.com/fail2ban/fail2ban"
+				echo "------------------------"
+				echo "1. 防御プログラムをインストールする"
+				echo "------------------------"
+				echo "2. SSH インターセプト記録の表示"
+				echo "3. リアルタイムログ監視"
+				echo "------------------------"
+				echo "9. 防御プログラムをアンインストールする"
+				echo "------------------------"
+				echo "0. 前のメニューに戻る"
+				echo "------------------------"
+				read -e -p "選択肢を入力してください:" sub_choice
+				case $sub_choice in
+					1)
+						f2b_install_sshd
+						cd ~
+						f2b_status
+						break_end
+						;;
+					2)
+						echo "------------------------"
+						f2b_sshd
+						echo "------------------------"
+						break_end
+						;;
+					3)
+						tail -f /var/log/fail2ban.log
+						break
+						;;
+					9)
+						remove fail2ban
+						rm -rf /etc/fail2ban
+						echo "Fail2Ban 防御プログラムがアンインストールされました"
+						break
+						;;
+					*)
+						break
+						;;
+				esac
+		  done
+
+}
+
+
+
+
 
 
 
@@ -13266,8 +13460,8 @@ EOF
 						;;
 					2)
 						rm -f /etc/gai.conf
-						echo "IPv6優先に切り替えました"
-						send_stats "IPv6優先に切り替えました"
+						echo "最初にIPv6に切り替えました"
+						send_stats "最初にIPv6に切り替えました"
 						;;
 
 					3)
@@ -13480,7 +13674,7 @@ EOF
 				# 現在のシステムのタイムゾーンを取得する
 				local timezone=$(current_timezone)
 
-				# 現在のシステム時刻を取得する
+				# 現在のシステム時刻を取得します
 				local current_time=$(date +"%Y-%m-%d %H:%M:%S")
 
 				# タイムゾーンと時間を表示する
@@ -13495,7 +13689,7 @@ EOF
 				echo "3. 東京、日本時間 4. ソウル、韓国時間"
 				echo "5. シンガポール時間 6. インド、コルカタ時間"
 				echo "7. アラブ首長国連邦、ドバイ時間 8. オーストラリア、シドニー時間"
-				echo "9. タイ・バンコク時間"
+				echo "9.タイ・バンコク時間"
 				echo "------------------------"
 				echo "ヨーロッパ"
 				echo "11. ロンドン、イギリス時間 12. パリ、フランス時間"
@@ -13738,53 +13932,7 @@ EOF
 			  ;;
 
 		  22)
-		  root_use
-		  send_stats "SSH防御"
-		  while true; do
-
-				check_f2b_status
-				echo -e "SSH防御プログラム$check_f2b_status"
-				echo "failed2ban はブルート フォース クラッキングを防ぐ SSH ツールです"
-				echo "公式サイト紹介：${gh_proxy}github.com/fail2ban/fail2ban"
-				echo "------------------------"
-				echo "1. 防御プログラムをインストールする"
-				echo "------------------------"
-				echo "2. SSH インターセプト記録の表示"
-				echo "3. リアルタイムログ監視"
-				echo "------------------------"
-				echo "9. 防御プログラムをアンインストールする"
-				echo "------------------------"
-				echo "0. 前のメニューに戻る"
-				echo "------------------------"
-				read -e -p "選択肢を入力してください:" sub_choice
-				case $sub_choice in
-					1)
-						f2b_install_sshd
-						cd ~
-						f2b_status
-						break_end
-						;;
-					2)
-						echo "------------------------"
-						f2b_sshd
-						echo "------------------------"
-						break_end
-						;;
-					3)
-						tail -f /var/log/fail2ban.log
-						break
-						;;
-					9)
-						remove fail2ban
-						rm -rf /etc/fail2ban
-						echo "Fail2Ban 防御プログラムがアンインストールされました"
-						break
-						;;
-					*)
-						break
-						;;
-				esac
-		  done
+			fail2ban_panel
 			  ;;
 
 
@@ -14622,7 +14770,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 月額 6.9 ドル 東京ソフトバンク 2 コア 1G メモリ 20G ハードドライブ 月額 1T トラフィック${gl_bai}"
 echo -e "${gl_bai}URL：https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}さらに人気のある VPS セール${gl_bai}"
+echo -e "${gl_kjlan}さらに人気のある VPS オファー${gl_bai}"
 echo -e "${gl_bai}ウェブサイト：https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -14907,6 +15055,7 @@ echo "ブロック IP k zzip 177.5.25.36 |k ブロック IP 177.5.25.36"
 echo "コマンド お気に入り k お気に入り | k コマンドのお気に入り"
 echo "アプリケーションマーケット管理kアプリ"
 echo "申請番号の迅速な管理 k app 26 | kアプリ1パネル | k アプリ npm"
+echo "フェイル 2 バン管理 k フェイル 2 バン | k f2b"
 echo "システム情報を表示 k info"
 }
 
@@ -15139,8 +15288,14 @@ else
 			linux_info
 			;;
 
+		fail2ban|f2b)
+			fail2ban_panel
+			;;
+
 		*)
 			k_info
 			;;
 	esac
 fi
+
+
