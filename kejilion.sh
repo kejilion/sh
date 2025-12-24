@@ -9322,7 +9322,7 @@ while true; do
 	  echo -e "${gl_kjlan}107. ${color107}PanSou网盘搜索                      ${gl_kjlan}108. ${color108}LangBot聊天机器人"
 	  echo -e "${gl_kjlan}109. ${color109}ZFile在线网盘                       ${gl_kjlan}110. ${color110}Karakeep书签管理"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}111. ${color111}多格式文件转换工具"
+	  echo -e "${gl_kjlan}111. ${color111}多格式文件转换工具                  ${gl_kjlan}112. ${color112}Lucky大内网穿透工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12899,7 +12899,32 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  ;;
 
 
+	  112|lucky)
 
+		local app_id="112"
+		local docker_name="lucky"
+		local docker_img="gdy666/lucky:v2"
+		# 由于 Lucky 使用 host 网络模式，这里的端口仅作记录/说明参考，实际由应用自身控制（默认16601）
+		local docker_port=16601
+
+		docker_rum() {
+
+			docker run -d --name=${docker_name} --restart=always \
+				--network host \
+				-v /home/docker/lucky/conf:/app/conf \
+				-v /var/run/docker.sock:/var/run/docker.sock \
+				${docker_img}
+
+		}
+
+		local docker_describe="Lucky 是一个大内网穿透及端口转发管理工具，支持 DDNS、反向代理、WOL 等功能。host模式请不要使用自定义端口。"
+		local docker_url="项目地址: https://github.com/gdy666/lucky"
+		local docker_use="echo \"默认账号密码: 666\""
+		local docker_passwd=""
+		local app_size="1"
+		docker_app
+
+		  ;;
 
 
 	  b)
