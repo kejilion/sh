@@ -2,9 +2,8 @@ name: Weekly Translation Workflow
 
 on:
   schedule:
-    # 每周日 UTC 02:00 执行 (北京时间周日 10:00)
     - cron: '0 2 * * 0'
-  workflow_dispatch: # 允许手动触发
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -47,106 +46,72 @@ jobs:
             return bool(re.search(r'[\u4e00-\u9fff]', text))
         
         def translate_text(text, target_lang):
-            if not text.strip() or not is_chinese(text):
+            if not text or not text.strip() or not is_chinese(text):
                 return text
             try:
+                # 过滤掉仅由符号组成的文本
+                if not re.search(r'[a-zA-Z\u4e00-\u9fff]', text):
+                    return text
                 return GoogleTranslator(source='zh-CN', target=target_lang).translate(text)
             except Exception as e:
                 print(f"\nTranslation error: {e}")
                 return text
         
-        def translate_line_preserving_variables(line, target_lang):
+        def process_content_with_vars(content, target_lang):
             """
-            处理 echo/read/send_stats 等命令中的中文，同时保护其中的 ${var}
+            保护 ${var} 和 $var 不被翻译
             """
-            def repl(match):
-                full_string = match.group(0)
-                quote = full_string[0]
-                content = full_string[1:-1]
-                # 分割出变量，只翻译非变量部分
-                parts = re.split(r'(\$\{?\w+\}?)', content)
-                translated_parts = [
-                    translate_text(p, target_lang) if is_chinese(p) else p
-                    for p in parts
-                ]
-                return quote + ''.join(translated_parts) + quote
-            
-            return re.sub(r'(?:\'[^\']*\'|"[^"]*")', repl, line)
+            # 匹配 ${var} 或 $var (简单变量名)
+            parts = re.split(r'(\$\{?\w+\}?)', content)
+            translated_parts = [
+                translate_text(p, target_lang) if is_chinese(p) else p
+                for p in parts
+            ]
+            return ''.join(translated_parts)
 
-        def translate_assignment_value(line, target_lang):
-            """
-            专门处理变量赋值语句：VAR="中文内容" -> VAR="Translated Content"
-            """
-            # 匹配 key="value" 或 key='value' 格式，且 value 包含中文
-            match = re.match(r'^(\s*[a-zA-Z_][a-zA-Z0-9_]*\s*=\s*)([\'"])(.*)([\'"])(.*)$', line)
-            if match:
-                prefix, quote_open, value, quote_close, suffix = match.groups()
-                if is_chinese(value):
-                    # 同样要保护赋值内容里的 ${var}
-                    parts = re.split(r'(\$\{?\w+\}?)', value)
-                    translated_value = "".join([
-                        translate_text(p, target_lang) if is_chinese(p) else p 
-                        for p in parts
-                    ])
-                    return f"{prefix}{quote_open}{translated_value}{quote_close}{suffix}\n"
-            return line
+        def translate_line(line, target_lang):
+            stripped = line.strip()
+            if not is_chinese(stripped):
+                return line
+
+            # 1. 处理注释 (# 开头)
+            if stripped.startswith('#'):
+                comment_part = line.split('#', 1)
+                return comment_part[0] + '#' + translate_text(comment_part[1], target_lang) + '\n'
+
+            # 2. 处理包含引号的内容 (适用于变量赋值 local var="..." 或 echo "...")
+            # 这个正则会寻找所有被单引号或双引号包裹的部分
+            def quote_replacer(match):
+                quote = match.group(1) # ' 或 "
+                content = match.group(2)
+                return f"{quote}{process_content_with_vars(content, target_lang)}{quote}"
+
+            # 匹配 '...' 或 "..."
+            new_line = re.sub(r'([\'"])(.*?)\1', quote_replacer, line)
+            return new_line
         
         def translate_file(input_file, output_file, target_lang):
             print(f"Translating to {target_lang}...")
-            
-            if not os.path.exists(input_file):
-                print(f"Error: Input file {input_file} not found")
-                return False
+            if not os.path.exists(input_file): return False
             
             with open(input_file, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             
-            total_lines = len(lines)
-            
             with open(output_file, 'w', encoding='utf-8') as f_out:
                 for i, line in enumerate(lines):
-                    progress = (i + 1) / total_lines * 100
-                    print(f"\rProcessing: {progress:.1f}% ({i+1}/{total_lines})", end='')
-                    
-                    leading_space = re.match(r'^(\s*)', line).group(1)
-                    stripped = line.strip()
-                    
-                    # 1. 处理注释
-                    if stripped.startswith('#') and is_chinese(stripped):
-                        comment_text = stripped[1:].strip()
-                        if comment_text:
-                            translated = translate_text(comment_text, target_lang)
-                            f_out.write(f"{leading_space}# {translated}\n")
-                        else:
-                            f_out.write(line)
-                    
-                    # 2. 处理常用交互命令
-                    elif any(cmd in stripped for cmd in ['echo', 'read', 'send_stats']) and is_chinese(stripped):
-                        f_out.write(translate_line_preserving_variables(line, target_lang))
-                    
-                    # 3. 处理变量赋值中的中文 (新增强化)
-                    elif '=' in stripped and is_chinese(stripped):
-                        f_out.write(translate_assignment_value(line, target_lang))
-                    
-                    # 4. 其他行原样保留
-                    else:
-                        f_out.write(line)
+                    # 直接处理每一行，translate_line 内部会判断是否有中文
+                    f_out.write(translate_line(line, target_lang))
             
-            print(f"\nTranslation to {target_lang} completed.")
+            print(f"Done: {target_lang}")
             return True
         
         if __name__ == "__main__":
             input_file = 'kejilion.sh'
             languages = {'en': 'en', 'tw': 'zh-TW', 'kr': 'ko', 'jp': 'ja'}
-            
             success_count = 0
             for dir_name, lang_code in languages.items():
-                output_file = f'{dir_name}/kejilion.sh'
-                if translate_file(input_file, output_file, lang_code):
+                if translate_file(input_file, f'{dir_name}/kejilion.sh', lang_code):
                     success_count += 1
-                    print(f"✓ {dir_name} done")
-                print("-" * 30)
-            
             if success_count == 0: sys.exit(1)
         EOF
     
@@ -172,17 +137,14 @@ jobs:
         git push
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
+
     - name: Create summary
       if: always()
       run: |
         echo "## Translation Summary 📊" >> $GITHUB_STEP_SUMMARY
-        echo "| Language | Directory | Status |" >> $GITHUB_STEP_SUMMARY
-        echo "|----------|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Language | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|----------|--------|" >> $GITHUB_STEP_SUMMARY
         for dir in en tw kr jp; do
-          if [ -f "$dir/kejilion.sh" ]; then
-            echo "| $dir | /$dir/ | ✅ Success |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| $dir | /$dir/ | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
+          [ -f "$dir/kejilion.sh" ] && status="✅ Success" || status="❌ Failed"
+          echo "| $dir | $status |" >> $GITHUB_STEP_SUMMARY
         done
