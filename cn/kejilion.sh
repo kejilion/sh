@@ -1605,7 +1605,7 @@ certs_status() {
 				auth_method="ssl_imported"
 			else
 				echo "错误：无效的证书或私钥格式！"
-				return 1
+				certs_status
 			fi
 
 	  		  ;;
