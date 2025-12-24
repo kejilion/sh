@@ -12915,9 +12915,8 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 				-v /var/run/docker.sock:/var/run/docker.sock \
 				${docker_img}
 
-			sleep 2
-			docker restart lucky
-			sleep 2
+			echo "正在等待 Lucky 初始化..."
+			sleep 10
 			docker exec lucky /app/lucky -rSetHttpAdminPort ${docker_port}
 
 		}
