@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.9"
+sh_v="4.2.10"
 
 
 gl_hui='\e[37m'
@@ -881,7 +881,7 @@ close_port() {
 		iptables -D INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null
 		iptables -D INPUT -p udp --dport $port -j ACCEPT 2>/dev/null
 
-		# Add a shutdown rule
+		# Add shutdown rule
 		if ! iptables -C INPUT -p tcp --dport $port -j DROP 2>/dev/null; then
 			iptables -I INPUT 1 -p tcp --dport $port -j DROP
 		fi
@@ -1550,7 +1550,7 @@ certs_status() {
 		echo -e "5. The number of applications exceeds the limit ➠ Let's Encrypt has a weekly limit (5 times/domain name/week)"
 		echo -e "6. Domestic registration restrictions ➠ For mainland China environment, please confirm whether the domain name is registered"
 		echo "------------------------"
-		echo "1. Reapply 2. Switch to HTTP access without certificate 0. Exit"
+		echo "1. Apply again 2. Import the existing certificate 3. Use HTTP access without certificate 0. Exit"
 		echo "------------------------"
 		read -e -p "Please enter your choice:" sub_choice
 		case $sub_choice in
@@ -1560,15 +1560,64 @@ certs_status() {
 		  	add_yuming
 		  	install_ssltls
 		  	certs_status
+
 	  		  ;;
 	  	  2)
+	  	  	send_stats "Import existing certificate"
+
+			# Define file path
+			local cert_file="/home/web/certs/${yuming}_cert.pem"
+			local key_file="/home/web/certs/${yuming}_key.pem"
+
+			mkdir -p /home/web/certs
+
+			# 1. Enter the certificate (both ECC and RSA certificates start with BEGIN CERTIFICATE)
+			echo "Please paste the certificate (CRT/PEM) content (press Enter twice to end):"
+			local cert_content=""
+			while IFS= read -r line; do
+				[[ -z "$line" && "$cert_content" == *"-----BEGIN"* ]] && break
+				cert_content+="${line}"$'\n'
+			done
+
+			# 2. Enter the private key (compatible with RSA, ECC, PKCS#8)
+			echo "Please paste the certificate private key (Private Key) content (press Enter twice to end):"
+			local key_content=""
+			while IFS= read -r line; do
+				[[ -z "$line" && "$key_content" == *"-----BEGIN"* ]] && break
+				key_content+="${line}"$'\n'
+			done
+
+			# 3. Intelligent verification
+			# Just include "BEGIN CERTIFICATE" and "PRIVATE KEY" to pass
+			if [[ "$cert_content" == *"-----BEGIN CERTIFICATE-----"* && "$key_content" == *"PRIVATE KEY-----"* ]]; then
+				echo -n "$cert_content" > "$cert_file"
+				echo -n "$key_content" > "$key_file"
+
+				chmod 644 "$cert_file"
+				chmod 600 "$key_file"
+
+				# Identify the current certificate type and display it
+				if [[ "$key_content" == *"EC PRIVATE KEY"* ]]; then
+					echo "Detected that the ECC certificate was saved successfully."
+				else
+					echo "Detected that the RSA certificate was saved successfully."
+				fi
+				auth_method="ssl_imported"
+			else
+				echo "Error: Invalid certificate or private key format!"
+				certs_status
+			fi
+
+	  		  ;;
+	  	  3)
 	  	  	send_stats "Switch to HTTP access without a certificate"
 		  	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' /home/web/conf.d/${yuming}.conf
 			sed -i '/ssl_certificate/d; /ssl_certificate_key/d' /home/web/conf.d/${yuming}.conf
 			sed -i '/443 ssl/d; /443 quic/d' /home/web/conf.d/${yuming}.conf
 	  		  ;;
 	  	  *)
-	  	  	exit
+	  	  	send_stats "Withdraw application"
+			exit
 	  		  ;;
 		esac
 	fi
@@ -1813,7 +1862,7 @@ check_waf_status() {
 	if grep -q "^\s*#\s*modsecurity on;" /home/web/nginx.conf; then
 		waf_status=""
 	elif grep -q "modsecurity on;" /home/web/nginx.conf; then
-		waf_status=" WAF已开启"
+		waf_status="WAF is turned on"
 	else
 		waf_status=""
 	fi
@@ -1822,7 +1871,7 @@ check_waf_status() {
 
 check_cf_mode() {
 	if [ -f "/etc/fail2ban/action.d/cloudflare-docker.conf" ]; then
-		CFmessage=" cf模式已开启"
+		CFmessage="cf mode is on"
 	else
 		CFmessage=""
 	fi
@@ -2269,9 +2318,9 @@ check_ldnmp_mode() {
 
 	# Check if MySQL configuration file contains 4096M
 	if docker exec "$MYSQL_CONTAINER" grep -q "4096M" "$MYSQL_CONF" 2>/dev/null; then
-		mode_info=" 高性能模式"
+		mode_info="High performance mode"
 	else
-		mode_info=" 标准模式"
+		mode_info="Standard mode"
 	fi
 
 
@@ -2285,21 +2334,21 @@ check_nginx_compression() {
 
 	# Check whether zstd is on and uncommented (the whole line starts with zstd on;)
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status=" zstd压缩已开启"
+		zstd_status="zstd compression is on"
 	else
 		zstd_status=""
 	fi
 
 	# Check if brotli is enabled and uncommented
 	if grep -qE '^\s*brotli\s+on;' "$CONFIG_FILE"; then
-		br_status=" br压缩已开启"
+		br_status="brCompression is on"
 	else
 		br_status=""
 	fi
 
 	# Check if gzip is enabled and uncommented
 	if grep -qE '^\s*gzip\s+on;' "$CONFIG_FILE"; then
-		gzip_status=" gzip压缩已开启"
+		gzip_status="gzip compression is on"
 	else
 		gzip_status=""
 	fi
@@ -2452,9 +2501,9 @@ web_optimization() {
 
 check_docker_app() {
 	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name" ; then
-		check_docker="${gl_lv}已安装${gl_bai}"
+		check_docker="${gl_lv}Installed${gl_bai}"
 	else
-		check_docker="${gl_hui}未安装${gl_bai}"
+		check_docker="${gl_hui}Not installed${gl_bai}"
 	fi
 }
 
@@ -2537,7 +2586,7 @@ check_docker_image_update() {
 
 		# Compare timestamps
 		if [[ $container_created_ts -lt $last_updated_ts ]]; then
-			update_status="${gl_huang}发现新版本!${gl_bai}"
+			update_status="${gl_huang}New version found!${gl_bai}"
 		else
 			update_status=""
 		fi
@@ -3112,9 +3161,9 @@ f2b_status_xxx() {
 
 check_f2b_status() {
 	if command -v fail2ban-client >/dev/null 2>&1; then
-		check_f2b_status="${gl_lv}已安装${gl_bai}"
+		check_f2b_status="${gl_lv}Installed${gl_bai}"
 	else
-		check_f2b_status="${gl_hui}未安装${gl_bai}"
+		check_f2b_status="${gl_hui}Not installed${gl_bai}"
 	fi
 }
 
@@ -3349,7 +3398,7 @@ ldnmp_wp() {
 
 ldnmp_Proxy() {
 	clear
-	webname="反向代理-IP+端口"
+	webname="Reverse proxy-IP+port"
 	yuming="${1:-}"
 	reverseproxy="${2:-}"
 	port="${3:-}"
@@ -3405,7 +3454,7 @@ ldnmp_Proxy() {
 
 ldnmp_Proxy_backend() {
 	clear
-	webname="反向代理-负载均衡"
+	webname="Reverse proxy-load balancing"
 
 	send_stats "Install$webname"
 	echo "Start deployment$webname"
@@ -3579,7 +3628,7 @@ stream_panel() {
 
 ldnmp_Proxy_backend_stream() {
 	clear
-	webname="Stream四层代理-负载均衡"
+	webname="Stream four-layer proxy-load balancing"
 
 	send_stats "Install$webname"
 	echo "Start deployment$webname"
@@ -3849,7 +3898,7 @@ ldnmp_web_status() {
 
 check_panel_app() {
 if $lujing > /dev/null 2>&1; then
-	check_panel="${gl_lv}已安装${gl_bai}"
+	check_panel="${gl_lv}Installed${gl_bai}"
 else
 	check_panel=""
 fi
@@ -3910,9 +3959,9 @@ done
 check_frp_app() {
 
 if [ -d "/home/frp/" ]; then
-	check_frp="${gl_lv}已安装${gl_bai}"
+	check_frp="${gl_lv}Installed${gl_bai}"
 else
-	check_frp="${gl_hui}未安装${gl_bai}"
+	check_frp="${gl_hui}Not installed${gl_bai}"
 fi
 
 }
@@ -4845,7 +4894,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}ROOT login setup is completed!${gl_bai}"
+echo -e "${gl_lv}ROOT login setup is complete!${gl_bai}"
 
 }
 
@@ -5933,9 +5982,9 @@ linux_trash() {
 
 	local trash_status
 	if ! grep -q "trash-put" "$bashrc_profile"; then
-		trash_status="${gl_hui}未启用${gl_bai}"
+		trash_status="${gl_hui}Not enabled${gl_bai}"
 	else
-		trash_status="${gl_lv}已启用${gl_bai}"
+		trash_status="${gl_lv}Enabled${gl_bai}"
 	fi
 
 	clear
@@ -7297,7 +7346,7 @@ docker_ssh_migration() {
 				local VOL_ARGS=""
 				for path in $VOL_PATHS; do VOL_ARGS+="-v $path:$path "; done
 
-				# Mirror
+				# mirror
 				local IMAGE
 				IMAGE=$(jq -r '.[0].Config.Image' "$inspect_file")
 
@@ -8211,8 +8260,8 @@ linux_ldnmp() {
 	echo -e "${gl_huang}31.  ${gl_bai}Site data management${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}Back up site-wide data"
 	echo -e "${gl_huang}33.  ${gl_bai}Scheduled remote backup${gl_huang}34.  ${gl_bai}Restore whole site data"
 	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}35.  ${gl_bai}Protect LDNMP environments${gl_huang}36.  ${gl_bai}Optimize LDNMP environment"
-	echo -e "${gl_huang}37.  ${gl_bai}Update LDNMP environment${gl_huang}38.  ${gl_bai}Uninstall the LDNMP environment"
+	echo -e "${gl_huang}35.  ${gl_bai}防护LDNMP环境                     ${gl_huang}36.  ${gl_bai}Optimize LDNMP environment"
+	echo -e "${gl_huang}37.  ${gl_bai}更新LDNMP环境                     ${gl_huang}38.  ${gl_bai}Uninstall the LDNMP environment"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}0.   ${gl_bai}Return to main menu"
 	echo -e "${gl_huang}------------------------${gl_bai}"
@@ -8231,7 +8280,7 @@ linux_ldnmp() {
 	  3)
 	  clear
 	  # Discuz Forum
-	  webname="Discuz论坛"
+	  webname="Discuz Forum"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -8273,7 +8322,7 @@ linux_ldnmp() {
 	  4)
 	  clear
 	  # Kedao cloud desktop
-	  webname="可道云桌面"
+	  webname="Kedao cloud desktop"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -8311,7 +8360,7 @@ linux_ldnmp() {
 	  5)
 	  clear
 	  # AppleCMS
-	  webname="苹果CMS"
+	  webname="AppleCMS"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -8358,7 +8407,7 @@ linux_ldnmp() {
 	  6)
 	  clear
 	  # One-legged number card
-	  webname="独脚数卡"
+	  webname="One-legged number card"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -8410,7 +8459,7 @@ linux_ldnmp() {
 	  7)
 	  clear
 	  # flarum forum
-	  webname="flarum论坛"
+	  webname="flarum forum"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -8549,7 +8598,7 @@ linux_ldnmp() {
 
 	  20)
 	  clear
-	  webname="PHP动态站点"
+	  webname="PHP dynamic site"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -8686,7 +8735,7 @@ linux_ldnmp() {
 
 	  22)
 	  clear
-	  webname="站点重定向"
+	  webname="site redirect"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -8725,7 +8774,7 @@ linux_ldnmp() {
 
 	  24)
 	  clear
-	  webname="反向代理-域名"
+	  webname="Reverse proxy-domain name"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -8785,7 +8834,7 @@ linux_ldnmp() {
 
 	  27)
 	  clear
-	  webname="AI绘画提示词生成器"
+	  webname="AI painting prompt word generator"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -8825,7 +8874,7 @@ linux_ldnmp() {
 
 	  30)
 	  clear
-	  webname="静态站点"
+	  webname="static site"
 	  send_stats "Install$webname"
 	  echo "Start deployment$webname"
 	  add_yuming
@@ -9273,6 +9322,8 @@ while true; do
 	  echo -e "${gl_kjlan}107. ${color107}PanSou network disk search${gl_kjlan}108. ${color108}LangBot chatbot"
 	  echo -e "${gl_kjlan}109. ${color109}ZFile online network disk${gl_kjlan}110. ${color110}Karakeep bookmark management"
 	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}111. ${color111}Multi-format file conversion tool"
+	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}Back up all application data${gl_kjlan}r.   ${gl_bai}Restore all app data"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}Return to main menu"
@@ -9553,7 +9604,7 @@ while true; do
 			check_docker_image_update $docker_name
 
 			clear
-			echo -e "postal services$check_docker $update_status"
+			echo -e "postal service$check_docker $update_status"
 			echo "poste.io is an open source mail server solution,"
 			echo "Video introduction: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 
@@ -12822,8 +12873,30 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 
 
+	  111|convertx)
 
+		local app_id="111"
+		local docker_name="convertx"
+		local docker_img="ghcr.io/c4illin/convertx:latest"
+		local docker_port=8111
 
+		docker_rum() {
+
+			docker run -d --name=${docker_name} --restart=always \
+				-p ${docker_port}:3000 \
+				-v /home/docker/convertx:/app/data \
+				${docker_img}
+
+		}
+
+		local docker_describe="是一个功能强大的多格式文件转换工具（支持文档、图像、音频视频等）强烈建议添加域名访问"
+		local docker_url="项目地址: https://github.com/c4illin/ConvertX"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="2"
+		docker_app
+
+		  ;;
 
 
 
@@ -13123,6 +13196,7 @@ switch_mirror() {
 		  --upgrade-software "$upgrade_software" \
 		  --clean-cache "$clean_cache" \
 		  --ignore-backup-tips \
+		  --install-epel true \
 		  --pure-mode
 	else
 		echo "Use official mirror source..."
@@ -13134,6 +13208,7 @@ switch_mirror() {
 		  --upgrade-software "$upgrade_software" \
 		  --clean-cache "$clean_cache" \
 		  --ignore-backup-tips \
+		  --install-epel true \
 		  --pure-mode
 	fi
 }
@@ -13271,7 +13346,7 @@ linux_Settings() {
 			echo "python version management"
 			echo "Video introduction: https://www.bilibili.com/video/BV1Pm42157cK?t=0.1"
 			echo "---------------------------------------"
-			echo "This function can seamlessly install any version officially supported by Python!"
+			echo "This function can seamlessly install any version officially supported by python!"
 			local VERSION=$(python3 -V 2>&1 | awk '{print $2}')
 			echo -e "Current python version number:${gl_huang}$VERSION${gl_bai}"
 			echo "------------"
@@ -14619,7 +14694,7 @@ run_commands_on_servers() {
 		local username=${SERVER_ARRAY[i+3]}
 		local password=${SERVER_ARRAY[i+4]}
 		echo
-		echo -e "${gl_huang}Connect to$name ($hostname)...${gl_bai}"
+		echo -e "${gl_huang}connect to$name ($hostname)...${gl_bai}"
 		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 	done

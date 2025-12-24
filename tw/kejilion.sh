@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.2.9"
+sh_v="4.2.10"
 
 
 gl_hui='\e[37m'
@@ -1550,7 +1550,7 @@ certs_status() {
 		echo -e "5. 申請次數超限 ➠ Let's Encrypt有每週限額(5次/域名/週)"
 		echo -e "6. 國內備案限制 ➠ 中國大陸環境請確認域名是否備案"
 		echo "------------------------"
-		echo "1. 重新申請                  2. 不帶證書改用HTTP訪問                  0. 退出"
+		echo "1. 重新申請        2. 導入已有證書        3. 不帶證書改用HTTP訪問        0. 退出"
 		echo "------------------------"
 		read -e -p "請輸入你的選擇:" sub_choice
 		case $sub_choice in
@@ -1560,15 +1560,64 @@ certs_status() {
 		  	add_yuming
 		  	install_ssltls
 		  	certs_status
+
 	  		  ;;
 	  	  2)
+	  	  	send_stats "導入已有證書"
+
+			# 定義文件路徑
+			local cert_file="/home/web/certs/${yuming}_cert.pem"
+			local key_file="/home/web/certs/${yuming}_key.pem"
+
+			mkdir -p /home/web/certs
+
+			# 1. 輸入證書 (ECC 和 RSA 證書開頭都是 BEGIN CERTIFICATE)
+			echo "請粘貼 證書 (CRT/PEM) 內容 (按兩次回車結束)："
+			local cert_content=""
+			while IFS= read -r line; do
+				[[ -z "$line" && "$cert_content" == *"-----BEGIN"* ]] && break
+				cert_content+="${line}"$'\n'
+			done
+
+			# 2. 輸入私鑰 (兼容 RSA, ECC, PKCS#8)
+			echo "請粘貼 證書私鑰 (Private Key) 內容 (按兩次回車結束)："
+			local key_content=""
+			while IFS= read -r line; do
+				[[ -z "$line" && "$key_content" == *"-----BEGIN"* ]] && break
+				key_content+="${line}"$'\n'
+			done
+
+			# 3. 智能校驗
+			# 只要包含 "BEGIN CERTIFICATE" 和 "PRIVATE KEY" 即可通過
+			if [[ "$cert_content" == *"-----BEGIN CERTIFICATE-----"* && "$key_content" == *"PRIVATE KEY-----"* ]]; then
+				echo -n "$cert_content" > "$cert_file"
+				echo -n "$key_content" > "$key_file"
+
+				chmod 644 "$cert_file"
+				chmod 600 "$key_file"
+
+				# 識別當前證書類型並顯示
+				if [[ "$key_content" == *"EC PRIVATE KEY"* ]]; then
+					echo "檢測到 ECC 證書已成功保存。"
+				else
+					echo "檢測到 RSA 證書已成功保存。"
+				fi
+				auth_method="ssl_imported"
+			else
+				echo "錯誤：無效的證書或私鑰格式！"
+				certs_status
+			fi
+
+	  		  ;;
+	  	  3)
 	  	  	send_stats "不帶證書改用HTTP訪問"
 		  	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' /home/web/conf.d/${yuming}.conf
 			sed -i '/ssl_certificate/d; /ssl_certificate_key/d' /home/web/conf.d/${yuming}.conf
 			sed -i '/443 ssl/d; /443 quic/d' /home/web/conf.d/${yuming}.conf
 	  		  ;;
 	  	  *)
-	  	  	exit
+	  	  	send_stats "退出申請"
+			exit
 	  		  ;;
 		esac
 	fi
@@ -1813,7 +1862,7 @@ check_waf_status() {
 	if grep -q "^\s*#\s*modsecurity on;" /home/web/nginx.conf; then
 		waf_status=""
 	elif grep -q "modsecurity on;" /home/web/nginx.conf; then
-		waf_status=" WAF已开启"
+		waf_status="WAF已開啟"
 	else
 		waf_status=""
 	fi
@@ -1822,7 +1871,7 @@ check_waf_status() {
 
 check_cf_mode() {
 	if [ -f "/etc/fail2ban/action.d/cloudflare-docker.conf" ]; then
-		CFmessage=" cf模式已开启"
+		CFmessage="cf模式已開啟"
 	else
 		CFmessage=""
 	fi
@@ -2269,9 +2318,9 @@ check_ldnmp_mode() {
 
 	# 檢查 MySQL 配置文件中是否包含 4096M
 	if docker exec "$MYSQL_CONTAINER" grep -q "4096M" "$MYSQL_CONF" 2>/dev/null; then
-		mode_info=" 高性能模式"
+		mode_info="高性能模式"
 	else
-		mode_info=" 标准模式"
+		mode_info="標準模式"
 	fi
 
 
@@ -2285,21 +2334,21 @@ check_nginx_compression() {
 
 	# 檢查 zstd 是否開啟且未被註釋（整行以 zstd on; 開頭）
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status=" zstd压缩已开启"
+		zstd_status="zstd壓縮已開啟"
 	else
 		zstd_status=""
 	fi
 
 	# 檢查 brotli 是否開啟且未被註釋
 	if grep -qE '^\s*brotli\s+on;' "$CONFIG_FILE"; then
-		br_status=" br压缩已开启"
+		br_status="br壓縮已開啟"
 	else
 		br_status=""
 	fi
 
 	# 檢查 gzip 是否開啟且未被註釋
 	if grep -qE '^\s*gzip\s+on;' "$CONFIG_FILE"; then
-		gzip_status=" gzip压缩已开启"
+		gzip_status="gzip壓縮已開啟"
 	else
 		gzip_status=""
 	fi
@@ -2452,9 +2501,9 @@ web_optimization() {
 
 check_docker_app() {
 	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name" ; then
-		check_docker="${gl_lv}已安装${gl_bai}"
+		check_docker="${gl_lv}已安裝${gl_bai}"
 	else
-		check_docker="${gl_hui}未安装${gl_bai}"
+		check_docker="${gl_hui}未安裝${gl_bai}"
 	fi
 }
 
@@ -2537,7 +2586,7 @@ check_docker_image_update() {
 
 		# 比較時間戳
 		if [[ $container_created_ts -lt $last_updated_ts ]]; then
-			update_status="${gl_huang}发现新版本!${gl_bai}"
+			update_status="${gl_huang}發現新版本!${gl_bai}"
 		else
 			update_status=""
 		fi
@@ -3112,9 +3161,9 @@ f2b_status_xxx() {
 
 check_f2b_status() {
 	if command -v fail2ban-client >/dev/null 2>&1; then
-		check_f2b_status="${gl_lv}已安装${gl_bai}"
+		check_f2b_status="${gl_lv}已安裝${gl_bai}"
 	else
-		check_f2b_status="${gl_hui}未安装${gl_bai}"
+		check_f2b_status="${gl_hui}未安裝${gl_bai}"
 	fi
 }
 
@@ -3405,7 +3454,7 @@ ldnmp_Proxy() {
 
 ldnmp_Proxy_backend() {
 	clear
-	webname="反向代理-负载均衡"
+	webname="反向代理-負載均衡"
 
 	send_stats "安裝$webname"
 	echo "開始部署$webname"
@@ -3579,7 +3628,7 @@ stream_panel() {
 
 ldnmp_Proxy_backend_stream() {
 	clear
-	webname="Stream四层代理-负载均衡"
+	webname="Stream四層代理-負載均衡"
 
 	send_stats "安裝$webname"
 	echo "開始部署$webname"
@@ -3849,7 +3898,7 @@ ldnmp_web_status() {
 
 check_panel_app() {
 if $lujing > /dev/null 2>&1; then
-	check_panel="${gl_lv}已安装${gl_bai}"
+	check_panel="${gl_lv}已安裝${gl_bai}"
 else
 	check_panel=""
 fi
@@ -3910,9 +3959,9 @@ done
 check_frp_app() {
 
 if [ -d "/home/frp/" ]; then
-	check_frp="${gl_lv}已安装${gl_bai}"
+	check_frp="${gl_lv}已安裝${gl_bai}"
 else
-	check_frp="${gl_hui}未安装${gl_bai}"
+	check_frp="${gl_hui}未安裝${gl_bai}"
 fi
 
 }
@@ -5933,9 +5982,9 @@ linux_trash() {
 
 	local trash_status
 	if ! grep -q "trash-put" "$bashrc_profile"; then
-		trash_status="${gl_hui}未启用${gl_bai}"
+		trash_status="${gl_hui}未啟用${gl_bai}"
 	else
-		trash_status="${gl_lv}已启用${gl_bai}"
+		trash_status="${gl_lv}已啟用${gl_bai}"
 	fi
 
 	clear
@@ -8231,7 +8280,7 @@ linux_ldnmp() {
 	  3)
 	  clear
 	  # Discuz論壇
-	  webname="Discuz论坛"
+	  webname="Discuz論壇"
 	  send_stats "安裝$webname"
 	  echo "開始部署$webname"
 	  add_yuming
@@ -8311,7 +8360,7 @@ linux_ldnmp() {
 	  5)
 	  clear
 	  # 蘋果CMS
-	  webname="苹果CMS"
+	  webname="蘋果CMS"
 	  send_stats "安裝$webname"
 	  echo "開始部署$webname"
 	  add_yuming
@@ -8358,7 +8407,7 @@ linux_ldnmp() {
 	  6)
 	  clear
 	  # 獨腳數卡
-	  webname="独脚数卡"
+	  webname="獨腳數卡"
 	  send_stats "安裝$webname"
 	  echo "開始部署$webname"
 	  add_yuming
@@ -8410,7 +8459,7 @@ linux_ldnmp() {
 	  7)
 	  clear
 	  # flarum論壇
-	  webname="flarum论坛"
+	  webname="flarum論壇"
 	  send_stats "安裝$webname"
 	  echo "開始部署$webname"
 	  add_yuming
@@ -8549,7 +8598,7 @@ linux_ldnmp() {
 
 	  20)
 	  clear
-	  webname="PHP动态站点"
+	  webname="PHP動態站點"
 	  send_stats "安裝$webname"
 	  echo "開始部署$webname"
 	  add_yuming
@@ -8686,7 +8735,7 @@ linux_ldnmp() {
 
 	  22)
 	  clear
-	  webname="站点重定向"
+	  webname="站點重定向"
 	  send_stats "安裝$webname"
 	  echo "開始部署$webname"
 	  add_yuming
@@ -8785,7 +8834,7 @@ linux_ldnmp() {
 
 	  27)
 	  clear
-	  webname="AI绘画提示词生成器"
+	  webname="AI繪畫提示詞生成器"
 	  send_stats "安裝$webname"
 	  echo "開始部署$webname"
 	  add_yuming
@@ -8825,7 +8874,7 @@ linux_ldnmp() {
 
 	  30)
 	  clear
-	  webname="静态站点"
+	  webname="靜態站點"
 	  send_stats "安裝$webname"
 	  echo "開始部署$webname"
 	  add_yuming
@@ -9272,6 +9321,8 @@ while true; do
 	  echo -e "${gl_kjlan}105. ${color105}思源筆記${gl_kjlan}106. ${color106}Drawnix開源白板工具"
 	  echo -e "${gl_kjlan}107. ${color107}PanSou網盤搜索${gl_kjlan}108. ${color108}LangBot聊天機器人"
 	  echo -e "${gl_kjlan}109. ${color109}ZFile在線網盤${gl_kjlan}110. ${color110}Karakeep書籤管理"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}111. ${color111}多格式文件轉換工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}備份全部應用數據${gl_kjlan}r.   ${gl_bai}還原全部應用數據"
 	  echo -e "${gl_kjlan}------------------------"
@@ -12822,8 +12873,30 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 
 
+	  111|convertx)
 
+		local app_id="111"
+		local docker_name="convertx"
+		local docker_img="ghcr.io/c4illin/convertx:latest"
+		local docker_port=8111
 
+		docker_rum() {
+
+			docker run -d --name=${docker_name} --restart=always \
+				-p ${docker_port}:3000 \
+				-v /home/docker/convertx:/app/data \
+				${docker_img}
+
+		}
+
+		local docker_describe="是一个功能强大的多格式文件转换工具（支持文档、图像、音频视频等）强烈建议添加域名访问"
+		local docker_url="项目地址: https://github.com/c4illin/ConvertX"
+		local docker_use=""
+		local docker_passwd=""
+		local app_size="2"
+		docker_app
+
+		  ;;
 
 
 
@@ -13123,6 +13196,7 @@ switch_mirror() {
 		  --upgrade-software "$upgrade_software" \
 		  --clean-cache "$clean_cache" \
 		  --ignore-backup-tips \
+		  --install-epel true \
 		  --pure-mode
 	else
 		echo "使用官方鏡像源..."
@@ -13134,6 +13208,7 @@ switch_mirror() {
 		  --upgrade-software "$upgrade_software" \
 		  --clean-cache "$clean_cache" \
 		  --ignore-backup-tips \
+		  --install-epel true \
 		  --pure-mode
 	fi
 }
