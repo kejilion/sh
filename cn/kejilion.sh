@@ -12916,7 +12916,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 				${docker_img}
 
 			sleep 3	
-			docker exec -it lucky /app/lucky -rSetHttpAdminPort ${docker_port}
+			docker exec lucky /app/lucky -rSetHttpAdminPort ${docker_port}
 
 		}
 
