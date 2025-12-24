@@ -12915,7 +12915,9 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 				-v /var/run/docker.sock:/var/run/docker.sock \
 				${docker_img}
 
-			sleep 3	
+			sleep 2
+			docker restart lucky
+			sleep 2
 			docker exec lucky /app/lucky -rSetHttpAdminPort ${docker_port}
 
 		}
