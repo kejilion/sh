@@ -12914,6 +12914,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 				-v /home/docker/lucky/conf:/app/conf \
 				-v /var/run/docker.sock:/var/run/docker.sock \
 				${docker_img}
+			docker exec -it ${docker_name} /app/lucky -rSetHttpAdminPort ${docker_port}
 
 		}
 
