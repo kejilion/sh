@@ -12,11 +12,12 @@
 
 ```bash
 # --- 基础信息 ---
+local app_id="1000以上"
 local app_name="应用显示名称"
 local app_text="一句话简介，说明应用用途"
 local app_url="示例官网: https://github.com/kejilion/sh/edit/main/apps"
-local docker_name="容器名称"
-local docker_port="暴露端口"
+local docker_name="容器启动后的名称"
+local docker_port="默认访问端口"
 local app_size="占用空间大小 (1-10)设置10代表要求10G空间才能装"
 
 # --- 核心逻辑 ---
