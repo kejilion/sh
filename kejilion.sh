@@ -13051,7 +13051,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		send_stats "搜索第三方应用"
 		cd ~
 		install git
-		if [ ! -d sh/.git ]; then
+		if [ ! -d apps/.git ]; then
 			git clone https://github.com/kejilion/apps.git
 		else
 			cd apps
@@ -13072,7 +13072,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 	  *)
 		cd ~
 		install git
-		if [ ! -d sh/.git ]; then
+		if [ ! -d apps/.git ]; then
 			git clone https://github.com/kejilion/apps.git
 		else
 			cd apps
