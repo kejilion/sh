@@ -9237,9 +9237,16 @@ linux_ldnmp() {
 
 linux_panel() {
 
-
 local sub_choice="$1"
 
+cd ~
+install git
+if [ ! -d apps/.git ]; then
+	git clone https://github.com/kejilion/apps.git
+else
+	cd apps
+	git pull origin main
+fi
 
 while true; do
 
@@ -9337,8 +9344,6 @@ while true; do
 		  echo -e "${gl_kjlan}$base_name${gl_bai} - $app_text"
 	  done
 	  echo -e "${gl_kjlan}-------------------------"
-	  echo -e "${gl_kjlan}s.   ${gl_bai}搜索三方应用                        ${gl_kjlan}d.   ${gl_bai}删除三方应用"
-	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
@@ -13045,26 +13050,6 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 			  echo "没有找到压缩包。"
 	  	fi
 
-		  ;;
-
-
-	  s)
-		send_stats "搜索第三方应用"
-		cd ~
-		install git
-		if [ ! -d apps/.git ]; then
-			git clone https://github.com/kejilion/apps.git
-		else
-			cd apps
-			git pull origin main
-		fi
-		  ;;
-
-
-	  d)
-		send_stats "删除第三方应用"
-		cd ~
-		rm -rf $HOME/apps
 		  ;;
 
 	  0)
