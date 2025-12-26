@@ -9239,6 +9239,7 @@ linux_panel() {
 
 local sub_choice="$1"
 
+clear
 cd ~
 install git
 if [ ! -d apps/.git ]; then
