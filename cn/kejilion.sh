@@ -1328,9 +1328,9 @@ update_docker_compose_with_db_creds() {
   if ! grep -q "stream" /home/web/docker-compose.yml; then
 	wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
 
-  	dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-  	dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
-  	dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+	  dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+	  dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
+	  dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose1.yml | tr -d '[:space:]')
 
 	sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
 	sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
@@ -1338,7 +1338,7 @@ update_docker_compose_with_db_creds() {
   fi
 
   if grep -q "kjlion/nginx:alpine" /home/web/docker-compose1.yml; then
-  	sed -i 's|kjlion/nginx:alpine|nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
+	  sed -i 's|kjlion/nginx:alpine|nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
 	sed -i 's|nginx:alpine|kjlion/nginx:alpine|g' /home/web/docker-compose.yml  > /dev/null 2>&1
   fi
 
@@ -1387,8 +1387,8 @@ install_ldnmp() {
 
 	  cd /home/web && docker compose up -d
 	  sleep 1
-  	  crontab -l 2>/dev/null | grep -v 'logrotate' | crontab -
-  	  (crontab -l 2>/dev/null; echo '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf') | crontab -
+		crontab -l 2>/dev/null | grep -v 'logrotate' | crontab -
+		(crontab -l 2>/dev/null; echo '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf') | crontab -
 
 	  fix_phpfpm_conf php
 	  fix_phpfpm_conf php74
@@ -1439,7 +1439,7 @@ install_ssltls() {
 
 	  local file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
 	  if [ ! -f "$file_path" ]; then
-		 	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
+			 local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
 			local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
 			if [[ ($yuming =~ $ipv4_pattern || $yuming =~ $ipv6_pattern) ]]; then
 				mkdir -p /etc/letsencrypt/live/$yuming/
@@ -1554,16 +1554,16 @@ certs_status() {
 		echo "------------------------"
 		read -e -p "请输入你的选择: " sub_choice
 		case $sub_choice in
-	  	  1)
-	  	  	send_stats "重新申请"
-		  	echo "请再次尝试部署 $webname"
-		  	add_yuming
-		  	install_ssltls
-		  	certs_status
+			1)
+				send_stats "重新申请"
+			  echo "请再次尝试部署 $webname"
+			  add_yuming
+			  install_ssltls
+			  certs_status
 
-	  		  ;;
-	  	  2)
-	  	  	send_stats "导入已有证书"
+				;;
+			2)
+				send_stats "导入已有证书"
 
 			# 定义文件路径
 			local cert_file="/home/web/certs/${yuming}_cert.pem"
@@ -1608,17 +1608,17 @@ certs_status() {
 				certs_status
 			fi
 
-	  		  ;;
-	  	  3)
-	  	  	send_stats "不带证书改用HTTP访问"
-		  	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' /home/web/conf.d/${yuming}.conf
+				;;
+			3)
+				send_stats "不带证书改用HTTP访问"
+			  sed -i '/if (\$scheme = http) {/,/}/s/^/#/' /home/web/conf.d/${yuming}.conf
 			sed -i '/ssl_certificate/d; /ssl_certificate_key/d' /home/web/conf.d/${yuming}.conf
 			sed -i '/443 ssl/d; /443 quic/d' /home/web/conf.d/${yuming}.conf
-	  		  ;;
-	  	  *)
-	  	  	send_stats "退出申请"
+				;;
+			*)
+				send_stats "退出申请"
 			exit
-	  		  ;;
+				;;
 		esac
 	fi
 
@@ -2288,7 +2288,7 @@ web_security() {
 					  ;;
 
 				  32)
-				  	  nginx_waf off
+						nginx_waf off
 					  echo "站点WAF已关闭"
 					  send_stats "站点WAF已关闭"
 					  ;;
@@ -2359,7 +2359,7 @@ check_nginx_compression() {
 
 web_optimization() {
 		  while true; do
-		  	  check_ldnmp_mode
+				check_ldnmp_mode
 			  check_nginx_compression
 			  clear
 			  send_stats "优化LDNMP环境"
@@ -8769,7 +8769,7 @@ linux_ldnmp() {
 		close_port "$port"
 		echo "已阻止IP+端口访问该服务"
 	  else
-	  	ip_address
+		  ip_address
 		block_container_port "$docker_name" "$ipv4_address"
 	  fi
 
@@ -9132,7 +9132,7 @@ linux_ldnmp() {
 			  sed -i "s/image: php:fpm-alpine/image: php:${version}-fpm-alpine/" /home/web/docker-compose.yml
 			  docker rm -f $ldnmp_pods
 			  docker images --filter=reference="$ldnmp_pods*" -q | xargs docker rmi > /dev/null 2>&1
-  			  docker images --filter=reference="kjlion/${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
+				docker images --filter=reference="kjlion/${ldnmp_pods}*" -q | xargs docker rmi > /dev/null 2>&1
 			  docker compose up -d --force-recreate $ldnmp_pods
 			  docker exec php chown -R www-data:www-data /var/www/html
 
@@ -11664,7 +11664,7 @@ while true; do
 
 			  clear
 			  echo "已经安装完成"
-		  	  check_docker_app_ip
+				check_docker_app_ip
 
 		  }
 
@@ -11864,7 +11864,7 @@ while true; do
 
 			  clear
 			  echo "已经安装完成"
-		  	  check_docker_app_ip
+				check_docker_app_ip
 
 		  }
 
@@ -12976,14 +12976,14 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 
 	  b)
-	  	clear
-	  	send_stats "全部应用备份"
+		  clear
+		  send_stats "全部应用备份"
 
-	  	local backup_filename="app_$(date +"%Y%m%d%H%M%S").tar.gz"
-	  	echo -e "${gl_huang}正在备份 $backup_filename ...${gl_bai}"
-	  	cd / && tar czvf "$backup_filename" home
+		  local backup_filename="app_$(date +"%Y%m%d%H%M%S").tar.gz"
+		  echo -e "${gl_huang}正在备份 $backup_filename ...${gl_bai}"
+		  cd / && tar czvf "$backup_filename" home
 
-	  	while true; do
+		  while true; do
 			clear
 			echo "备份文件已创建: /$backup_filename"
 			read -e -p "要传送备份数据到远程服务器吗？(Y/N): " choice
@@ -13013,36 +13013,36 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 				break
 				;;
 			esac
-	  	done
+		  done
 
 		  ;;
 
 	  r)
-	  	root_use
-	  	send_stats "全部应用还原"
-	  	echo "可用的应用备份"
-	  	echo "-------------------------"
-	  	ls -lt /app*.gz | awk '{print $NF}'
-	  	echo ""
-	  	read -e -p  "回车键还原最新的备份，输入备份文件名还原指定的备份，输入0退出：" filename
+		  root_use
+		  send_stats "全部应用还原"
+		  echo "可用的应用备份"
+		  echo "-------------------------"
+		  ls -lt /app*.gz | awk '{print $NF}'
+		  echo ""
+		  read -e -p  "回车键还原最新的备份，输入备份文件名还原指定的备份，输入0退出：" filename
 
-	  	if [ "$filename" == "0" ]; then
+		  if [ "$filename" == "0" ]; then
 			  break_end
 			  linux_panel
-	  	fi
+		  fi
 
-	  	# 如果用户没有输入文件名，使用最新的压缩包
-	  	if [ -z "$filename" ]; then
+		  # 如果用户没有输入文件名，使用最新的压缩包
+		  if [ -z "$filename" ]; then
 			  local filename=$(ls -t /app*.tar.gz | head -1)
-	  	fi
+		  fi
 
-	  	if [ -n "$filename" ]; then
-		  	  echo -e "${gl_huang}正在解压 $filename ...${gl_bai}"
-		  	  cd / && tar -xzf "$filename"
+		  if [ -n "$filename" ]; then
+				echo -e "${gl_huang}正在解压 $filename ...${gl_bai}"
+				cd / && tar -xzf "$filename"
 			  echo "应用数据已还原，目前请手动进入指定应用菜单，更新应用，即可还原应用。"
-	  	else
+		  else
 			  echo "没有找到压缩包。"
-	  	fi
+		  fi
 
 		  ;;
 
@@ -13054,7 +13054,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		if [ ! -d sh/.git ]; then
 			git clone https://github.com/kejilion/apps.git
 		else
-			cd sh
+			cd apps
 			git pull origin main
 		fi
 		  ;;
@@ -13221,12 +13221,12 @@ linux_work() {
 			  read -e -p "请输入你的选择: " gongzuoqu_del
 			  case "$gongzuoqu_del" in
 				1)
-			  	  install tmux
-			  	  local SESSION_NAME="sshd"
-			  	  send_stats "启动工作区$SESSION_NAME"
+					install tmux
+					local SESSION_NAME="sshd"
+					send_stats "启动工作区$SESSION_NAME"
 				  grep -q "tmux attach-session -t sshd" ~/.bashrc || echo -e "\n# 自动进入 tmux 会话\nif [[ -z \"\$TMUX\" ]]; then\n    tmux attach-session -t sshd || tmux new-session -s sshd\nfi" >> ~/.bashrc
 				  source ~/.bashrc
-			  	  tmux_run
+					tmux_run
 				  ;;
 				2)
 				  sed -i '/# 自动进入 tmux 会话/,+4d' ~/.bashrc
@@ -14197,10 +14197,10 @@ EOF
 			  send_stats "私钥登录"
 			  while true; do
 				  clear
-			  	  echo "ROOT私钥登录模式"
-			  	  echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
-			  	  echo "------------------------------------------------"
-			  	  echo "将会生成密钥对，更安全的方式SSH登录"
+					echo "ROOT私钥登录模式"
+					echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
+					echo "------------------------------------------------"
+					echo "将会生成密钥对，更安全的方式SSH登录"
 				  echo "------------------------"
 				  echo "1. 生成新密钥              2. 导入已有密钥              3. 查看本机密钥"
 				  echo "------------------------"
@@ -14210,8 +14210,8 @@ EOF
 
 				  case $host_dns in
 					  1)
-				  		send_stats "生成新密钥"
-				  		add_sshkey
+						  send_stats "生成新密钥"
+						  add_sshkey
 						break_end
 
 						  ;;
@@ -14390,7 +14390,7 @@ EOF
 			  echo -e "7. 开启${gl_huang}BBR${gl_bai}加速"
 			  echo -e "8. 设置时区到${gl_huang}上海${gl_bai}"
 			  echo -e "9. 自动优化DNS地址${gl_huang}海外: 1.1.1.1 8.8.8.8  国内: 223.5.5.5 ${gl_bai}"
-		  	  echo -e "10. 设置网络为${gl_huang}ipv4优先${gl_bai}"
+				echo -e "10. 设置网络为${gl_huang}ipv4优先${gl_bai}"
 			  echo -e "11. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 			  echo -e "12. Linux系统内核参数优化切换到${gl_huang}均衡优化模式${gl_bai}"
 			  echo "------------------------------------------------"
@@ -14473,11 +14473,11 @@ EOF
 			while true; do
 			  clear
 			  if grep -q '^ENABLE_STATS="true"' /usr/local/bin/k > /dev/null 2>&1; then
-			  	local status_message="${gl_lv}正在采集数据${gl_bai}"
+				  local status_message="${gl_lv}正在采集数据${gl_bai}"
 			  elif grep -q '^ENABLE_STATS="false"' /usr/local/bin/k > /dev/null 2>&1; then
-			  	local status_message="${gl_hui}采集已关闭${gl_bai}"
+				  local status_message="${gl_hui}采集已关闭${gl_bai}"
 			  else
-			  	local status_message="无法确定的状态"
+				  local status_message="无法确定的状态"
 			  fi
 
 			  echo "隐私与安全"
@@ -15306,14 +15306,14 @@ else
 		fd|rp|反代)
 			shift
 			ldnmp_Proxy "$@"
-	  		find_container_by_host_port "$port"
-	  		if [ -z "$docker_name" ]; then
-	  		  close_port "$port"
+			  find_container_by_host_port "$port"
+			  if [ -z "$docker_name" ]; then
+				close_port "$port"
 			  echo "已阻止IP+端口访问该服务"
-	  		else
+			  else
 			  ip_address
-	  		  block_container_port "$docker_name" "$ipv4_address"
-	  		fi
+				block_container_port "$docker_name" "$ipv4_address"
+			  fi
 			;;
 
 		loadbalance|负载均衡)
