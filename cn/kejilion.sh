@@ -9328,7 +9328,7 @@ while true; do
 	  echo -e "${gl_kjlan}111. ${color111}多格式文件转换工具                  ${gl_kjlan}112. ${color112}Lucky大内网穿透工具"
 	  echo -e "${gl_kjlan}113. ${color113}Firefox浏览器"
 	  echo -e "${gl_kjlan}-------------------------"
-	  echo -e "${gl_kjlan}第三方应用入驻${gl_bai}"
+	  echo -e "${gl_kjlan}第三方应用列表${gl_bai}"
 	  for f in "$HOME"/apps/*.conf; do
 		  [ -e "$f" ] || continue
 		  local base_name=$(basename "$f" .conf)
@@ -9336,6 +9336,7 @@ while true; do
 		  local app_text=$(grep "app_text=" "$f" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
 		  echo -e "${gl_kjlan}$base_name${gl_bai} - $app_name - $app_text"
 	  done
+	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}s.   ${gl_bai}搜索三方应用                        ${gl_kjlan}d.   ${gl_bai}删除三方应用"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
@@ -15479,5 +15480,3 @@ else
 			;;
 	esac
 fi
-
-
