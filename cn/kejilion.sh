@@ -9329,14 +9329,14 @@ while true; do
 	  echo -e "${gl_kjlan}113. ${color113}Firefox浏览器"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}第三方应用入驻${gl_bai}"
-	  for f in "$HOME"/sh/apps/*.conf; do
+	  for f in "$HOME"/apps/*.conf; do
 		  [ -e "$f" ] || continue
 		  local base_name=$(basename "$f" .conf)
 		  local app_name=$(grep "app_name=" "$f" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
-		  local app_text=$(grep "app_text=" "$f" | cut -d'=' -f2 | tr -d '"' | tr -d "'")	  
+		  local app_text=$(grep "app_text=" "$f" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
 		  echo -e "${gl_kjlan}$base_name${gl_bai} - $app_name - $app_text"
 	  done
-	  echo -e "${gl_kjlan}s.   ${gl_bai}搜索三方应用                        ${gl_kjlan}d.   ${gl_bai}删除三方应用"	  
+	  echo -e "${gl_kjlan}s.   ${gl_bai}搜索三方应用                        ${gl_kjlan}d.   ${gl_bai}删除三方应用"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
@@ -13052,7 +13052,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		cd ~
 		install git
 		if [ ! -d sh/.git ]; then
-			git clone https://github.com/kejilion/sh.git
+			git clone https://github.com/kejilion/apps.git
 		else
 			cd sh
 			git pull origin main
@@ -13063,7 +13063,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 	  d)
 		send_stats "删除第三方应用"
 		cd ~
-		rm -rf $HOME/sh
+		rm -rf $HOME/apps
 		  ;;
 
 	  0)
@@ -13073,12 +13073,12 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		cd ~
 		install git
 		if [ ! -d sh/.git ]; then
-			git clone https://github.com/kejilion/sh.git
+			git clone https://github.com/kejilion/apps.git
 		else
-			cd sh
+			cd apps
 			git pull origin main
 		fi
-		local custom_app="$HOME/sh/apps/${sub_choice}.conf"
+		local custom_app="$HOME/apps/${sub_choice}.conf"
 		if [ -f "$custom_app" ]; then
 			. "$custom_app"
 		else
