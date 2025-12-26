@@ -13054,7 +13054,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		if [ ! -d sh/.git ]; then
 			git clone https://github.com/kejilion/apps.git
 		else
-			cd sh
+			cd apps
 			git pull origin main
 		fi
 		  ;;
