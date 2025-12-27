@@ -9246,7 +9246,7 @@ if [ ! -d apps/.git ]; then
 	git clone https://github.com/kejilion/apps.git
 else
 	cd apps
-	git pull origin main
+	git pull origin main > /dev/null 2>&1
 fi
 
 while true; do
@@ -13063,7 +13063,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 			git clone https://github.com/kejilion/apps.git
 		else
 			cd apps
-			git pull origin main
+			git pull origin main > /dev/null 2>&1
 		fi
 		local custom_app="$HOME/apps/${sub_choice}.conf"
 		if [ -f "$custom_app" ]; then
