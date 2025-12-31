@@ -70,6 +70,8 @@ install_openssh() {
 
 # 重启SSH服务
 restart_ssh() {
+    mv /usr/bin/ssh /usr/bin/ssh.bak
+    ln -s /usr/local/bin/ssh /usr/bin/ssh
     case $OS in
         ubuntu|debian)
             systemctl restart ssh
