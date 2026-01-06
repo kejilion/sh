@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.3.0"
+sh_v="4.3.1"
 
 
 gl_hui='\e[37m'
