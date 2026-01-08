@@ -7120,8 +7120,10 @@ linux_tools() {
 
 			18)
 			  clear
+			  cd ~
 			  curl -fsSL https://opencode.ai/install | bash
 			  source ~/.bashrc
+			  source ~/.profile
 			  opencode
 			  send_stats "安装opencode"
 			  ;;
@@ -7181,6 +7183,8 @@ linux_tools() {
 			  clear
 			  send_stats "全部卸载"
 			  remove htop iftop tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
+			  opencode uninstall
+			  rm -rf ~/.opencode
 			  ;;
 
 		  41)
