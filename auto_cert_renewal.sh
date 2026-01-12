@@ -23,39 +23,79 @@ for cert_file in $certs_directory*_cert.pem; do
     # 计算距离过期还有几天
     days_until_expiry=$(( ($expiration_timestamp - $current_timestamp) / 86400 ))
 
-    # 检查是否需要续签（在满足续签条件的情况下）
     if [ $days_until_expiry -le $days_before_expiry ]; then
+
         echo "证书将在${days_before_expiry}天内过期，正在进行自动续签。"
-        
-        docker run --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
 
-        docker stop nginx > /dev/null 2>&1
+        # 1. 检查目录是否存在
+        docker exec nginx [ -d /var/www/letsencrypt ] && DIR_OK=true || DIR_OK=false
 
-        if ! iptables -C INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null; then
-            iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT
+        # 2. 检查配置文件是否包含关键字
+        # 假设你的配置文件在容器内的 /etc/nginx/conf.d/ 目录下（这是 Nginx 容器的默认路径）
+        docker exec nginx grep -q "letsencrypt" /etc/nginx/conf.d/$yuming.conf && CONF_OK=true || CONF_OK=false
+
+        # 输出结果
+        echo "--- 自动化环境检测报告 ---"
+        if [ "$DIR_OK" = true ]; then echo "✅ 目录检测：/var/www/letsencrypt 存在"; else echo "❌ 目录检测：/var/www/letsencrypt 不存在"; fi
+        if [ "$CONF_OK" = true ]; then echo "✅ 配置检测：$yuming.conf 已包含续签规则"; else echo "❌ 配置检测：$yuming.conf 未发现 letsencrypt 字样"; fi
+
+        if [ "$DIR_OK" = true ] && [ "$CONF_OK" = true ]; then
+            docker run --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
+
+            docker run --rm \
+              -v "/etc/letsencrypt:/etc/letsencrypt" \
+              -v "/var/lib/letsencrypt:/var/lib/letsencrypt" \
+              -v "/var/www/letsencrypt:/var/www/letsencrypt" \
+              certbot/certbot certonly \
+              --webroot \
+              -w /var/www/letsencrypt \
+              -d "lkyjp.kejilion.xyz" \
+              --email your@email.com \
+              --agree-tos \
+              --no-eff-email \
+              --key-type ecdsa \
+              --force-renewal
+
+            mkdir -p /home/web/certs/
+            cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
+            cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
+
+            openssl rand -out /home/web/certs/ticket12.key 48
+            openssl rand -out /home/web/certs/ticket13.key 80
+
+            docker exec nginx nginx -t && docker exec nginx nginx -s reload
+
+        else
+            docker run --rm -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot delete --cert-name "$yuming" -n
+
+            docker stop nginx > /dev/null 2>&1
+
+            if ! iptables -C INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null; then
+                iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT
+            fi
+
+            # iptables -P INPUT ACCEPT
+            # iptables -P FORWARD ACCEPT
+            # iptables -P OUTPUT ACCEPT
+            # iptables -F
+
+            # ip6tables -P INPUT ACCEPT
+            # ip6tables -P FORWARD ACCEPT
+            # ip6tables -P OUTPUT ACCEPT
+            # ip6tables -F
+
+            docker run --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
+
+            mkdir -p /home/web/certs/
+            cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
+            cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
+
+            openssl rand -out /home/web/certs/ticket12.key 48
+            openssl rand -out /home/web/certs/ticket13.key 80
+
+            docker start nginx > /dev/null 2>&1
+
         fi
-
-        # iptables -P INPUT ACCEPT
-        # iptables -P FORWARD ACCEPT
-        # iptables -P OUTPUT ACCEPT
-        # iptables -F
-
-        # ip6tables -P INPUT ACCEPT
-        # ip6tables -P FORWARD ACCEPT
-        # ip6tables -P OUTPUT ACCEPT
-        # ip6tables -F
-
-        docker run --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d $yuming --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa  
-
-        mkdir -p /home/web/certs/
-        cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
-        cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
-
-        openssl rand -out /home/web/certs/ticket12.key 48
-        openssl rand -out /home/web/certs/ticket13.key 80
-        
-        docker start nginx > /dev/null 2>&1
-
 
         echo "证书已成功续签。"
     else
