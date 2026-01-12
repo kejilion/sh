@@ -49,7 +49,7 @@ for cert_file in $certs_directory*_cert.pem; do
               certbot/certbot certonly \
               --webroot \
               -w /var/www/letsencrypt \
-              -d "lkyjp.kejilion.xyz" \
+              -d "$yuming" \
               --email your@email.com \
               --agree-tos \
               --no-eff-email \
