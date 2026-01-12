@@ -413,7 +413,7 @@ fi
 enable docker
 start docker
 restart docker
-
+sleep 5
 }
 
 
