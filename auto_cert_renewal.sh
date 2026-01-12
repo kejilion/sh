@@ -45,7 +45,7 @@ for cert_file in $certs_directory*_cert.pem; do
             docker run --rm \
               -v "/etc/letsencrypt:/etc/letsencrypt" \
               -v "/var/lib/letsencrypt:/var/lib/letsencrypt" \
-              -v "/var/www/letsencrypt:/var/www/letsencrypt" \
+              -v "/home/web/letsencrypt:/var/www/letsencrypt" \
               certbot/certbot certonly \
               --webroot \
               -w /var/www/letsencrypt \
