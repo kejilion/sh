@@ -413,7 +413,7 @@ fi
 enable docker
 start docker
 restart docker
-
+sleep 5
 }
 
 
@@ -3435,6 +3435,9 @@ ldnmp_Proxy() {
 
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+
+	docker exec nginx mkdir -p /var/cache/nginx/proxy/$yuming > /dev/null 2>&1
+	docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy/$yuming > /dev/null 2>&1
 
 	install_ssltls
 	certs_status
