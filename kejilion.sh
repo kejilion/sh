@@ -413,7 +413,7 @@ fi
 enable docker
 start docker
 restart docker
-sleep 5
+
 }
 
 
@@ -1433,6 +1433,7 @@ install_certbot() {
 
 
 install_ssltls() {
+	  sleep 5
 	  check_port > /dev/null 2>&1
 	  docker stop nginx > /dev/null 2>&1
 	  cd ~
