@@ -70,9 +70,9 @@ for cert_file in $certs_directory*_cert.pem; do
 
             docker stop nginx > /dev/null 2>&1
 
-            if ! iptables -C INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null; then
-                iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT
-            fi
+            # if ! iptables -C INPUT -p tcp --dport 80 -j ACCEPT 2>/dev/null; then
+            #     iptables -I INPUT 1 -p tcp --dport 80 -j ACCEPT
+            # fi
 
             # iptables -P INPUT ACCEPT
             # iptables -P FORWARD ACCEPT
