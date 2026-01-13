@@ -1425,15 +1425,9 @@ install_certbot() {
 }
 
 
-
-
-
-
-
-
-
 install_ssltls() {
 	  docker stop nginx > /dev/null 2>&1
+	  check_port > /dev/null 2>&1
 	  cd ~
 
 	  local file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
