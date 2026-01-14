@@ -1611,6 +1611,7 @@ certs_status() {
 	  		  ;;
 	  	  *)
 	  	  	send_stats "退出申请"
+			rm -f /home/web/conf.d/${yuming}.conf
 			exit
 	  		  ;;
 		esac
