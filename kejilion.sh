@@ -8304,6 +8304,8 @@ linux_ldnmp() {
 	echo -e "${gl_huang}35.  ${gl_bai}防护LDNMP环境                     ${gl_huang}36.  ${gl_bai}优化LDNMP环境"
 	echo -e "${gl_huang}37.  ${gl_bai}更新LDNMP环境                     ${gl_huang}38.  ${gl_bai}卸载LDNMP环境"
 	echo -e "${gl_huang}------------------------"
+	echo -e "${gl_huang}39.  ${gl_bai}备份账号管理"
+	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}0.   ${gl_bai}返回主菜单"
 	echo -e "${gl_huang}------------------------${gl_bai}"
 	read -e -p "请输入你的选择: " sub_choice
@@ -8988,27 +8990,12 @@ linux_ldnmp() {
 	  while true; do
 		clear
 		echo "备份文件已创建: /home/$backup_filename"
-		read -e -p "要传送备份数据到远程服务器吗？(Y/N): " choice
+		read -e -p "要传送备份数据到云端存储吗？(Y/N): " choice
 		case "$choice" in
 		  [Yy])
-			read -e -p "请输入远端服务器IP:  " remote_ip
-			read -e -p "目标服务器SSH端口 [默认22]: " TARGET_PORT
-			local TARGET_PORT=${TARGET_PORT:-22}
-			if [ -z "$remote_ip" ]; then
-			  echo "错误: 请输入远端服务器IP。"
-			  continue
-			fi
-			local latest_tar=$(ls -t /home/*.tar.gz | head -1)
-			if [ -n "$latest_tar" ]; then
-			  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
-			  sleep 2  # 添加等待时间
-			  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
-			  echo "文件已传送至远程服务器home目录。"
-			else
-			  echo "未找到要传送的文件。"
-			fi
-			break
-			;;
+			read -e -p "输入云端存储路径(如 rclone:backup/ldnmp )：" backup_path
+			rclone copy $backup_filename "$backup_path"
+			echo "备份文件已上传至云端存储。"
 		  [Nn])
 			break
 			;;
@@ -9022,15 +9009,13 @@ linux_ldnmp() {
 	33)
 	  clear
 	  send_stats "定时远程备份"
-	  read -e -p "输入远程服务器IP: " useip
-	  read -e -p "输入远程服务器密码: " usepasswd
+	  read -e -p "请输入备份路径（如 rclone:backup/ldnmp ）: " use_rclone
 
 	  cd ~
-	  wget -O ${useip}_beifen.sh ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/beifen.sh > /dev/null 2>&1
-	  chmod +x ${useip}_beifen.sh
+	  wget -O ${use_rclone}_beifen.sh ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/beifen.sh > /dev/null 2>&1
+	  chmod +x ${use_rclone}_beifen.sh
 
-	  sed -i "s/0.0.0.0/$useip/g" ${useip}_beifen.sh
-	  sed -i "s/123456/$usepasswd/g" ${useip}_beifen.sh
+	  sed -i "s/rclone:backup/$use_rclone/g" ${use_rclone}_beifen.sh
 
 	  echo "------------------------"
 	  echo "1. 每周备份                 2. 每天备份"
@@ -9040,12 +9025,12 @@ linux_ldnmp() {
 		  1)
 			  check_crontab_installed
 			  read -e -p "选择每周备份的星期几 (0-6，0代表星期日): " weekday
-			  (crontab -l ; echo "0 0 * * $weekday ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
+			  (crontab -l ; echo "0 0 * * $weekday ./${use_rclone}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
 		  2)
 			  check_crontab_installed
 			  read -e -p "选择每天备份的时间（小时，0-23）: " hour
-			  (crontab -l ; echo "0 $hour * * * ./${useip}_beifen.sh") | crontab - > /dev/null 2>&1
+			  (crontab -l ; echo "0 $hour * * * ./${use_rclone}_beifen.sh") | crontab - > /dev/null 2>&1
 			  ;;
 		  *)
 			  break  # 跳出
@@ -9257,7 +9242,9 @@ linux_ldnmp() {
 			;;
 		esac
 		;;
-
+	39)
+		root_use
+		rclone config
 	0)
 		kejilion
 	  ;;
