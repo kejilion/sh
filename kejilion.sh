@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.3.3"
+sh_v="4.3.4"
 
 
 gl_hui='\e[37m'
@@ -4906,6 +4906,123 @@ import_sshkey() {
 	echo -e "${gl_lv}公钥已成功导入，ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
 
 }
+
+
+
+# 函数：从 GitHub 拉取 SSH 公钥并添加到 authorized_keys
+# 用法示例：
+#   fetch_github_ssh_keys
+fetch_github_ssh_keys() {
+
+	local username
+	local keys_url
+	local authorized_keys="${HOME}/.ssh/authorized_keys"
+	local temp_file
+
+	echo "此脚本将从 GitHub 拉取您的 SSH 公钥，并添加到 ${authorized_keys}"
+	echo ""
+	echo "操作前，请确保您已在 GitHub 账户中添加了 SSH 公钥："
+	echo "  1. 登录 https://github.com/settings/keys"
+	echo "  2. 点击 New SSH key 或 Add SSH key"
+	echo "  3. Title 可随意填写（例如：Home Laptop 2026）"
+	echo "  4. 将本地公钥内容（通常是 ~/.ssh/id_ed25519.pub 或 id_rsa.pub 的全部内容）粘贴到 Key 字段"
+	echo "  5. 点击 Add SSH key 完成添加"
+	echo ""
+	echo "添加完成后，GitHub 会公开提供您的所有公钥，地址为："
+	echo "  https://github.com/您的用户名.keys"
+	echo ""
+
+	# 提示用户输入 GitHub 用户名
+	read -r -p "请输入您的 GitHub 用户名（username，不含 @）： " username
+
+	if [[ -z "${username}" ]]; then
+		echo "错误：用户名不能为空" >&2
+		return 1
+	fi
+
+	# 构造 GitHub 公开公钥地址
+	keys_url="https://github.com/${username}.keys"
+
+	echo ""
+	echo "即将从以下地址拉取公钥："
+	echo "  ${keys_url}"
+	echo ""
+
+	# 创建临时文件
+	temp_file=$(mktemp)
+
+	# 尝试下载公钥
+	if command -v curl >/dev/null 2>&1; then
+		curl -fsSL --connect-timeout 10 "${keys_url}" -o "${temp_file}" || {
+			echo "错误：无法从 GitHub 下载公钥（网络问题或用户名不存在）" >&2
+			rm -f "${temp_file}"
+			return 1
+		}
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q --timeout=10 -O "${temp_file}" "${keys_url}" || {
+			echo "错误：无法从 GitHub 下载公钥（网络问题或用户名不存在）" >&2
+			rm -f "${temp_file}"
+			return 1
+		}
+	else
+		echo "错误：系统中未找到 curl 或 wget，无法下载公钥" >&2
+		return 1
+	fi
+
+	# 检查是否下载到有效内容
+	if [[ ! -s "${temp_file}" ]]; then
+		echo "错误：下载到的文件为空，可能是用户名错误或该账户未添加任何公钥" >&2
+		rm -f "${temp_file}"
+		return 1
+	fi
+
+	# 确保 .ssh 目录存在且权限正确
+	mkdir -p "${HOME}/.ssh"
+	chmod 700 "${HOME}/.ssh"
+
+	# 备份原有 authorized_keys（如果存在）
+	if [[ -f "${authorized_keys}" ]]; then
+		cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
+		echo "已备份原有 authorized_keys 文件"
+	fi
+
+	# 追加新公钥（避免重复添加）
+	local added=0
+	while IFS= read -r line; do
+		# 跳过空行和注释行
+		[[ -z "${line}" || "${line}" =~ ^# ]] && continue
+
+		# 检查是否已存在
+		if ! grep -Fxq "${line}" "${authorized_keys}" 2>/dev/null; then
+			echo "${line}" >> "${authorized_keys}"
+			((added++))
+		fi
+	done < "${temp_file}"
+
+	# 清理临时文件
+	rm -f "${temp_file}"
+
+	# 设置正确权限
+	chmod 600 "${authorized_keys}" 2>/dev/null
+
+	echo ""
+	if (( added > 0 )); then
+		echo "成功添加 ${added} 条新的公钥到 ${authorized_keys}"
+		sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
+			   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
+			   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+			   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+
+		rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+		restart_ssh
+	else
+		echo "没有新的公钥需要添加（可能已全部存在）"
+	fi
+
+	echo "操作完成。您现在可以使用对应的私钥通过 SSH 登录此账户。"
+	echo ""
+}
+
 
 
 
@@ -14245,7 +14362,7 @@ EOF
 			  	  echo "------------------------------------------------"
 			  	  echo "将会生成密钥对，更安全的方式SSH登录"
 				  echo "------------------------"
-				  echo "1. 生成新密钥              2. 导入已有密钥              3. 查看本机密钥"
+				  echo "1. 生成新密钥        2. 导入已有密钥        3. 导入GitHub远端密钥        4. 查看本机密钥"
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
@@ -14258,13 +14375,22 @@ EOF
 						break_end
 
 						  ;;
-					  2)
+
+					  3)
 						send_stats "导入已有公钥"
+						fetch_github_ssh_keys
+						break_end
+
+						  ;;
+
+
+					  3)
+						send_stats "导入GitHub远端公钥"
 						import_sshkey
 						break_end
 
 						  ;;
-					  3)
+					  4)
 						send_stats "查看本机密钥"
 						echo "------------------------"
 						echo "公钥信息"
