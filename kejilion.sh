@@ -4941,7 +4941,7 @@ fetch_github_ssh_keys() {
 	fi
 
 	# 构造 GitHub 公开公钥地址
-	keys_url="${gh_proxy}github.com/${username}.keys"
+	keys_url="https://github.com/${username}.keys"
 
 	echo ""
 	echo "即将从以下地址拉取公钥："
