@@ -4976,9 +4976,10 @@ fetch_github_ssh_keys() {
 		return 1
 	fi
 
-	# 确保 .ssh 目录存在且权限正确
-	mkdir -p "${HOME}/.ssh"
-	chmod 700 "${HOME}/.ssh"
+	chmod 700 ~/
+	mkdir -p ~/.ssh
+	chmod 700 ~/.ssh
+	touch ~/.ssh/authorized_keys
 
 	# 备份原有 authorized_keys（如果存在）
 	if [[ -f "${authorized_keys}" ]]; then
@@ -8925,6 +8926,7 @@ linux_ldnmp() {
 		echo "已阻止IP+端口访问该服务"
 	  else
 	  	ip_address
+		close_port "$port"
 		block_container_port "$docker_name" "$ipv4_address"
 	  fi
 
@@ -15481,6 +15483,7 @@ else
 			  echo "已阻止IP+端口访问该服务"
 	  		else
 			  ip_address
+			  close_port "$port"
 	  		  block_container_port "$docker_name" "$ipv4_address"
 	  		fi
 			;;
