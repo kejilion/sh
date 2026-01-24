@@ -15434,6 +15434,8 @@ echo "应用市场管理        k app"
 echo "应用编号快捷管理    k app 26 | k app 1panel | k app npm"
 echo "fail2ban管理        k fail2ban | k f2b"
 echo "显示系统信息        k info"
+echo "SSH公钥导入(URL)    k sshkey https://github.com/torvalds.keys"
+
 }
 
 
@@ -15670,8 +15672,16 @@ else
 			fail2ban_panel
 			;;
 
+
+		sshkey)
+			shift
+			send_stats "导入URL远端公钥"
+			fetch_remote_ssh_keys "$@"
+
 		*)
 			k_info
 			;;
 	esac
 fi
+
+
