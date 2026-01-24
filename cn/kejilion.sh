@@ -14359,7 +14359,16 @@ EOF
 			  send_stats "私钥登录"
 			  while true; do
 				  clear
-			  	  echo "ROOT私钥登录模式"
+
+				  local REAL_STATUS=$(grep -i "^PubkeyAuthentication" /etc/ssh/sshd_config | tr '[:upper:]' '[:lower:]')
+
+				  if [[ "$REAL_STATUS" =~ "yes" ]]; then
+					  IS_KEY_ENABLED="${gl_lv}已启用${gl_bai}"
+				  else
+				  	  IS_KEY_ENABLED="${gl_hui}未启用${gl_bai}"
+				  fi
+
+			  	  echo -e "ROOT私钥登录模式 ${IS_KEY_ENABLED}"
 			  	  echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
 			  	  echo "------------------------------------------------"
 			  	  echo "将会生成密钥对，更安全的方式SSH登录"
