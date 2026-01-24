@@ -15677,6 +15677,7 @@ else
 			shift
 			send_stats "导入URL远端公钥"
 			fetch_remote_ssh_keys "$@"
+			;;
 
 		*)
 			k_info
