@@ -14387,9 +14387,9 @@ EOF
 
 						  ;;
 
-					  3)
+					  2)
 						send_stats "导入已有公钥"
-						fetch_github_ssh_keys
+						import_sshkey
 						break_end
 
 						  ;;
@@ -14397,7 +14397,7 @@ EOF
 
 					  3)
 						send_stats "导入GitHub远端公钥"
-						import_sshkey
+						fetch_github_ssh_keys
 						break_end
 
 						  ;;
