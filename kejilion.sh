@@ -118,7 +118,7 @@ UserLicenseAgreement() {
 	echo "首次使用脚本，请先阅读并同意用户许可协议。"
 	echo "用户许可协议: https://blog.kejilion.pro/user-license-agreement/"
 	echo -e "----------------------"
-	read -r -p "是否同意以上条款？(y/n): " user_input
+	read -e -p "是否同意以上条款？(y/n): " user_input
 
 
 	if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
@@ -4909,102 +4909,78 @@ import_sshkey() {
 
 
 
-# 函数：从 GitHub 拉取 SSH 公钥并添加到 authorized_keys
-# 用法示例：
-#   fetch_github_ssh_keys
-fetch_github_ssh_keys() {
 
-	local username
-	local keys_url
+fetch_remote_ssh_keys() {
+
+	local keys_url="$1"
 	local authorized_keys="${HOME}/.ssh/authorized_keys"
 	local temp_file
 
-	echo "此脚本将从 GitHub 拉取您的 SSH 公钥，并添加到 ${authorized_keys}"
-	echo ""
-	echo "操作前，请确保您已在 GitHub 账户中添加了 SSH 公钥："
-	echo "  1. 登录 https://github.com/settings/keys"
-	echo "  2. 点击 New SSH key 或 Add SSH key"
-	echo "  3. Title 可随意填写（例如：Home Laptop 2026）"
-	echo "  4. 将本地公钥内容（通常是 ~/.ssh/id_ed25519.pub 或 id_rsa.pub 的全部内容）粘贴到 Key 字段"
-	echo "  5. 点击 Add SSH key 完成添加"
-	echo ""
-	echo "添加完成后，GitHub 会公开提供您的所有公钥，地址为："
-	echo "  https://github.com/您的用户名.keys"
-	echo ""
-
-	# 提示用户输入 GitHub 用户名
-	read -r -p "请输入您的 GitHub 用户名（username，不含 @）： " username
-
-	if [[ -z "${username}" ]]; then
-		echo "错误：用户名不能为空" >&2
+	if [[ -z "${keys_url}" ]]; then
+		echo "错误：必须提供公钥 URL"
+		echo "用法示例："
+		echo "  fetch_remote_ssh_keys https://example.com/keys.txt"
 		return 1
 	fi
 
-	# 构造 GitHub 公开公钥地址
-	keys_url="https://github.com/${username}.keys"
-
+	echo "此脚本将从远程 URL 拉取 SSH 公钥，并添加到 ${authorized_keys}"
 	echo ""
-	echo "即将从以下地址拉取公钥："
+	echo "远程公钥地址："
 	echo "  ${keys_url}"
 	echo ""
 
 	# 创建临时文件
 	temp_file=$(mktemp)
 
-	# 尝试下载公钥
+	# 下载公钥
 	if command -v curl >/dev/null 2>&1; then
 		curl -fsSL --connect-timeout 10 "${keys_url}" -o "${temp_file}" || {
-			echo "错误：无法从 GitHub 下载公钥（网络问题或用户名不存在）" >&2
+			echo "错误：无法从 URL 下载公钥（网络问题或地址无效）" >&2
 			rm -f "${temp_file}"
 			return 1
 		}
 	elif command -v wget >/dev/null 2>&1; then
 		wget -q --timeout=10 -O "${temp_file}" "${keys_url}" || {
-			echo "错误：无法从 GitHub 下载公钥（网络问题或用户名不存在）" >&2
+			echo "错误：无法从 URL 下载公钥（网络问题或地址无效）" >&2
 			rm -f "${temp_file}"
 			return 1
 		}
 	else
 		echo "错误：系统中未找到 curl 或 wget，无法下载公钥" >&2
-		return 1
-	fi
-
-	# 检查是否下载到有效内容
-	if [[ ! -s "${temp_file}" ]]; then
-		echo "错误：下载到的文件为空，可能是用户名错误或该账户未添加任何公钥" >&2
 		rm -f "${temp_file}"
 		return 1
 	fi
 
-	chmod 700 ~/
+	# 检查内容是否有效
+	if [[ ! -s "${temp_file}" ]]; then
+		echo "错误：下载到的文件为空，URL 可能不包含任何公钥" >&2
+		rm -f "${temp_file}"
+		return 1
+	fi
+
 	mkdir -p ~/.ssh
 	chmod 700 ~/.ssh
-	touch ~/.ssh/authorized_keys
+	touch "${authorized_keys}"
+	chmod 600 "${authorized_keys}"
 
-	# 备份原有 authorized_keys（如果存在）
+	# 备份原有 authorized_keys
 	if [[ -f "${authorized_keys}" ]]; then
 		cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
 		echo "已备份原有 authorized_keys 文件"
 	fi
 
-	# 追加新公钥（避免重复添加）
+	# 追加公钥（避免重复）
 	local added=0
 	while IFS= read -r line; do
-		# 跳过空行和注释行
 		[[ -z "${line}" || "${line}" =~ ^# ]] && continue
 
-		# 检查是否已存在
 		if ! grep -Fxq "${line}" "${authorized_keys}" 2>/dev/null; then
 			echo "${line}" >> "${authorized_keys}"
 			((added++))
 		fi
 	done < "${temp_file}"
 
-	# 清理临时文件
 	rm -f "${temp_file}"
-
-	# 设置正确权限
-	chmod 600 "${authorized_keys}" 2>/dev/null
 
 	echo ""
 	if (( added > 0 )); then
@@ -5020,8 +4996,37 @@ fetch_github_ssh_keys() {
 		echo "没有新的公钥需要添加（可能已全部存在）"
 	fi
 
-	echo "操作完成。您现在可以使用对应的私钥通过 SSH 登录此账户。"
 	echo ""
+}
+
+
+
+fetch_github_ssh_keys() {
+
+
+	echo "操作前，请确保您已在 GitHub 账户中添加了 SSH 公钥："
+	echo "  1. 登录 https://github.com/settings/keys"
+	echo "  2. 点击 New SSH key 或 Add SSH key"
+	echo "  3. Title 可随意填写（例如：Home Laptop 2026）"
+	echo "  4. 将本地公钥内容（通常是 ~/.ssh/id_ed25519.pub 或 id_rsa.pub 的全部内容）粘贴到 Key 字段"
+	echo "  5. 点击 Add SSH key 完成添加"
+	echo ""
+	echo "添加完成后，GitHub 会公开提供您的所有公钥，地址为："
+	echo "  https://github.com/您的用户名.keys"
+	echo ""
+
+	# 提示用户输入 GitHub 用户名
+	read -e -p "请输入您的 GitHub 用户名（username，不含 @）： " username
+
+	if [[ -z "${username}" ]]; then
+		echo "错误：GitHub 用户名不能为空" >&2
+		return 1
+	fi
+
+	keys_url="https://github.com/${username}.keys"
+
+	fetch_remote_ssh_keys "${keys_url}"
+
 }
 
 
@@ -6200,7 +6205,7 @@ create_backup() {
 	echo "  - 备份单个目录: /var/www"
 	echo "  - 备份多个目录: /etc /home /var/log"
 	echo "  - 直接回车将使用默认目录 (/etc /usr /home)"
-	read -r -p "请输入要备份的目录（多个目录用空格分隔，直接回车则使用默认目录）：" input
+	read -e -p "请输入要备份的目录（多个目录用空格分隔，直接回车则使用默认目录）：" input
 
 	# 如果用户没有输入目录，则使用默认目录
 	if [ -z "$input" ]; then
@@ -9400,11 +9405,11 @@ clear
 cd ~
 install git
 if [ ! -d apps/.git ]; then
-	git clone ${gh_proxy}github.com/kejilion/apps.git
+	timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
 else
 	cd apps
 	# git pull origin main > /dev/null 2>&1
-	git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
+	timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
 fi
 
 while true; do
@@ -13234,11 +13239,11 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		cd ~
 		install git
 		if [ ! -d apps/.git ]; then
-			git clone ${gh_proxy}github.com/kejilion/apps.git
+			timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
 		else
 			cd apps
 			# git pull origin main > /dev/null 2>&1
-			git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
+			timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
 		fi
 		local custom_app="$HOME/apps/${sub_choice}.conf"
 		if [ -f "$custom_app" ]; then
@@ -14373,7 +14378,9 @@ EOF
 			  	  echo "------------------------------------------------"
 			  	  echo "将会生成密钥对，更安全的方式SSH登录"
 				  echo "------------------------"
-				  echo "1. 生成新密钥        2. 导入已有密钥        3. 导入GitHub远端密钥        4. 查看本机密钥"
+				  echo "1. 生成新密钥                    2. 手动输入已有SSH密钥"
+				  echo "3. 从GitHub导入已有密钥          4. 从URL导入已有密钥"
+				  echo "5. 查看本机密钥"
 				  echo "------------------------"
 				  echo "0. 返回上一级选单"
 				  echo "------------------------"
@@ -14401,7 +14408,15 @@ EOF
 						break_end
 
 						  ;;
+
 					  4)
+						send_stats "导入URL远端公钥"
+						read -e -p "请输入您的远端公钥URL： " keys_url
+						fetch_remote_ssh_keys "${keys_url}"
+						break_end
+						  ;;
+
+					  5)
 						send_stats "查看本机密钥"
 						echo "------------------------"
 						echo "公钥信息"
