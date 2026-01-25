@@ -5063,9 +5063,9 @@ sshkey_panel() {
   	  echo "------------------------------------------------"
   	  echo "将会生成密钥对，更安全的方式SSH登录"
 	  echo "------------------------"
-	  echo "1. 生成新密钥                    2. 手动输入已有密钥"
-	  echo "3. 从GitHub导入已有密钥          4. 从URL导入已有密钥"
-	  echo "5. 查看本机密钥"
+	  echo "1. 生成新密钥对                  2. 手动输入已有公钥"
+	  echo "3. 从GitHub导入已有公钥          4. 从URL导入已有公钥"
+	  echo "5. 编辑公钥文件                  6. 查看本机密钥"
 	  echo "------------------------"
 	  echo "0. 返回上一级选单"
 	  echo "------------------------"
@@ -5092,7 +5092,15 @@ sshkey_panel() {
 			fetch_remote_ssh_keys "${keys_url}"
 			break_end
 			  ;;
+
 		  5)
+			send_stats "编辑公钥文件"
+			insatll nano
+			nano ~/.ssh/authorized_keys
+			break_end
+			  ;;
+
+		  6)
 			send_stats "查看本机密钥"
 			echo "------------------------"
 			echo "公钥信息"
