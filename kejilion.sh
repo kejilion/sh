@@ -1602,16 +1602,11 @@ certs_status() {
 			fi
 
 	  		  ;;
-	  	  3)
+	  	  *)
 	  	  	send_stats "不带证书改用HTTP访问"
 		  	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' /home/web/conf.d/${yuming}.conf
 			sed -i '/ssl_certificate/d; /ssl_certificate_key/d' /home/web/conf.d/${yuming}.conf
 			sed -i '/443 ssl/d; /443 quic/d' /home/web/conf.d/${yuming}.conf
-	  		  ;;
-	  	  *)
-	  	  	send_stats "退出申请"
-			rm -f /home/web/conf.d/${yuming}.conf
-			exit
 	  		  ;;
 		esac
 	fi
