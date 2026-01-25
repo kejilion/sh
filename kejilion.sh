@@ -4852,13 +4852,12 @@ new_ssh_port() {
 }
 
 
-
 add_sshkey() {
 	chmod 700 ~/
 	mkdir -p ~/.ssh
 	chmod 700 ~/.ssh
 	touch ~/.ssh/authorized_keys
-	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
+	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f ~/.ssh/sshkey -N ""
 	cat ~/.ssh/sshkey.pub >> ~/.ssh/authorized_keys
 	chmod 600 ~/.ssh/authorized_keys
 
@@ -4917,10 +4916,7 @@ fetch_remote_ssh_keys() {
 	local temp_file
 
 	if [[ -z "${keys_url}" ]]; then
-		echo "错误：必须提供公钥 URL"
-		echo "用法示例："
-		echo "  fetch_remote_ssh_keys https://example.com/keys.txt"
-		return 1
+		read -e -p "请输入您的远端公钥URL： " keys_url
 	fi
 
 	echo "此脚本将从远程 URL 拉取 SSH 公钥，并添加到 ${authorized_keys}"
@@ -5003,6 +4999,7 @@ fetch_remote_ssh_keys() {
 
 fetch_github_ssh_keys() {
 
+	local username="$1"
 
 	echo "操作前，请确保您已在 GitHub 账户中添加了 SSH 公钥："
 	echo "  1. 登录 https://github.com/settings/keys"
@@ -5015,8 +5012,10 @@ fetch_github_ssh_keys() {
 	echo "  https://github.com/您的用户名.keys"
 	echo ""
 
-	# 提示用户输入 GitHub 用户名
-	read -e -p "请输入您的 GitHub 用户名（username，不含 @）： " username
+
+	if [[ -z "${username}" ]]; then
+		read -e -p "请输入您的 GitHub 用户名（username，不含 @）： " username
+	fi
 
 	if [[ -z "${username}" ]]; then
 		echo "错误：GitHub 用户名不能为空" >&2
@@ -5028,6 +5027,77 @@ fetch_github_ssh_keys() {
 	fetch_remote_ssh_keys "${keys_url}"
 
 }
+
+
+
+
+sshkey_panel() {
+
+  root_use
+  send_stats "私钥登录"
+  while true; do
+	  clear
+	  local REAL_STATUS=$(grep -i "^PubkeyAuthentication" /etc/ssh/sshd_config | tr '[:upper:]' '[:lower:]')
+	  if [[ "$REAL_STATUS" =~ "yes" ]]; then
+		  IS_KEY_ENABLED="${gl_lv}已启用${gl_bai}"
+	  else
+	  	  IS_KEY_ENABLED="${gl_hui}未启用${gl_bai}"
+	  fi
+  	  echo -e "ROOT私钥登录模式 ${IS_KEY_ENABLED}"
+  	  echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
+  	  echo "------------------------------------------------"
+  	  echo "将会生成密钥对，更安全的方式SSH登录"
+	  echo "------------------------"
+	  echo "1. 生成新密钥                    2. 手动输入已有密钥"
+	  echo "3. 从GitHub导入已有密钥          4. 从URL导入已有密钥"
+	  echo "5. 查看本机密钥"
+	  echo "------------------------"
+	  echo "0. 返回上一级选单"
+	  echo "------------------------"
+	  read -e -p "请输入你的选择: " host_dns
+	  case $host_dns in
+		  1)
+	  		send_stats "生成新密钥"
+	  		add_sshkey
+			break_end
+			  ;;
+		  2)
+			send_stats "导入已有公钥"
+			import_sshkey
+			break_end
+			  ;;
+		  3)
+			send_stats "导入GitHub远端公钥"
+			fetch_github_ssh_keys
+			break_end
+			  ;;
+		  4)
+			send_stats "导入URL远端公钥"
+			read -e -p "请输入您的远端公钥URL： " keys_url
+			fetch_remote_ssh_keys "${keys_url}"
+			break_end
+			  ;;
+		  5)
+			send_stats "查看本机密钥"
+			echo "------------------------"
+			echo "公钥信息"
+			cat ~/.ssh/authorized_keys
+			echo "------------------------"
+			echo "私钥信息"
+			cat ~/.ssh/sshkey
+			echo "------------------------"
+			break_end
+			  ;;
+		  *)
+			  break  # 跳出循环，退出菜单
+			  ;;
+	  esac
+  done
+
+
+}
+
+
 
 
 
@@ -14359,81 +14429,7 @@ EOF
 
 
 		  24)
-
-			  root_use
-			  send_stats "私钥登录"
-			  while true; do
-				  clear
-
-				  local REAL_STATUS=$(grep -i "^PubkeyAuthentication" /etc/ssh/sshd_config | tr '[:upper:]' '[:lower:]')
-
-				  if [[ "$REAL_STATUS" =~ "yes" ]]; then
-					  IS_KEY_ENABLED="${gl_lv}已启用${gl_bai}"
-				  else
-				  	  IS_KEY_ENABLED="${gl_hui}未启用${gl_bai}"
-				  fi
-
-			  	  echo -e "ROOT私钥登录模式 ${IS_KEY_ENABLED}"
-			  	  echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
-			  	  echo "------------------------------------------------"
-			  	  echo "将会生成密钥对，更安全的方式SSH登录"
-				  echo "------------------------"
-				  echo "1. 生成新密钥                    2. 手动输入已有密钥"
-				  echo "3. 从GitHub导入已有密钥          4. 从URL导入已有密钥"
-				  echo "5. 查看本机密钥"
-				  echo "------------------------"
-				  echo "0. 返回上一级选单"
-				  echo "------------------------"
-				  read -e -p "请输入你的选择: " host_dns
-
-				  case $host_dns in
-					  1)
-				  		send_stats "生成新密钥"
-				  		add_sshkey
-						break_end
-
-						  ;;
-
-					  2)
-						send_stats "导入已有公钥"
-						import_sshkey
-						break_end
-
-						  ;;
-
-
-					  3)
-						send_stats "导入GitHub远端公钥"
-						fetch_github_ssh_keys
-						break_end
-
-						  ;;
-
-					  4)
-						send_stats "导入URL远端公钥"
-						read -e -p "请输入您的远端公钥URL： " keys_url
-						fetch_remote_ssh_keys "${keys_url}"
-						break_end
-						  ;;
-
-					  5)
-						send_stats "查看本机密钥"
-						echo "------------------------"
-						echo "公钥信息"
-						cat ~/.ssh/authorized_keys
-						echo "------------------------"
-						echo "私钥信息"
-						cat ~/.ssh/sshkey
-						echo "------------------------"
-						break_end
-
-						  ;;
-					  *)
-						  break  # 跳出循环，退出菜单
-						  ;;
-				  esac
-			  done
-
+			sshkey_panel
 			  ;;
 
 		  25)
@@ -15434,7 +15430,9 @@ echo "应用市场管理        k app"
 echo "应用编号快捷管理    k app 26 | k app 1panel | k app npm"
 echo "fail2ban管理        k fail2ban | k f2b"
 echo "显示系统信息        k info"
-echo "SSH公钥导入(URL)    k sshkey https://github.com/torvalds.keys"
+echo "ROOT密钥管理        k sshkey"
+echo "SSH公钥导入(URL)    k sshkey <url>"
+echo "SSH公钥导入(GitHub) k sshkey github <user> "
 
 }
 
@@ -15674,11 +15672,34 @@ else
 
 
 		sshkey)
-			shift
-			send_stats "导入URL远端公钥"
-			fetch_remote_ssh_keys "$@"
+			shift		
+			case "$1" in
+				"" )
+					# sshkey → 交互菜单
+					send_stats "SSHKey 交互菜单"
+					sshkey_panel
+					;;
+		
+				github )
+					shift
+					send_stats "从 GitHub 导入 SSH 公钥"
+					fetch_github_ssh_keys "$1"
+					;;
+		
+				http://*|https://* )
+					send_stats "从 URL 导入 SSH 公钥"
+					fetch_remote_ssh_keys "$1"
+					;;
+		
+				* )
+					echo "错误：未知参数 '$1'"
+					echo "用法："
+					echo "  k sshkey                进入交互菜单"
+					echo "  k sshkey <url>          从 URL 导入 SSH 公钥"
+					echo "  k sshkey github <user>  从 GitHub 导入 SSH 公钥"
+					;;
+			esac
 			;;
-
 		*)
 			k_info
 			;;
