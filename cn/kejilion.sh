@@ -5095,7 +5095,7 @@ sshkey_panel() {
 
 		  5)
 			send_stats "编辑公钥文件"
-			insatll nano
+			install nano
 			nano ~/.ssh/authorized_keys
 			break_end
 			  ;;
