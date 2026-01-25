@@ -4879,13 +4879,30 @@ add_sshkey() {
 }
 
 
+
+
+
 import_sshkey() {
 
-	read -e -p "请输入您的SSH公钥内容（通常以 'ssh-rsa' 或 'ssh-ed25519' 开头）: " public_key
+	local public_key="$1"
+
+	if [[ -z "$public_key" ]]; then
+		read -e -p "请输入您的SSH公钥内容（通常以 'ssh-rsa' 或 'ssh-ed25519' 开头）: " public_key
+	fi
 
 	if [[ -z "$public_key" ]]; then
 		echo -e "${gl_hong}错误：未输入公钥内容。${gl_bai}"
 		return 1
+	fi
+
+	if [[ ! "$public_key" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
+		echo -e "${gl_hong}错误：看起来不像合法的 SSH 公钥。${gl_bai}"
+		return 1
+	fi	
+
+	if grep -Fxq "$public_key" ~/.ssh/authorized_keys 2>/dev/null; then
+		echo "该公钥已存在，无需重复添加"
+		return 0
 	fi
 
 	chmod 700 ~/
@@ -4905,8 +4922,6 @@ import_sshkey() {
 	echo -e "${gl_lv}公钥已成功导入，ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
 
 }
-
-
 
 
 fetch_remote_ssh_keys() {
@@ -15690,13 +15705,19 @@ else
 					send_stats "从 URL 导入 SSH 公钥"
 					fetch_remote_ssh_keys "$1"
 					;;
-		
+
+				ssh-rsa*|ssh-ed25519*|ssh-ecdsa* )
+					send_stats "公钥直接导入"
+					import_sshkey "$1"
+					;;
+
 				* )
 					echo "错误：未知参数 '$1'"
 					echo "用法："
-					echo "  k sshkey                进入交互菜单"
-					echo "  k sshkey <url>          从 URL 导入 SSH 公钥"
-					echo "  k sshkey github <user>  从 GitHub 导入 SSH 公钥"
+					echo "  k sshkey                  进入交互菜单"
+					echo "  k sshkey \"<pubkey>\"     直接导入 SSH 公钥"
+					echo "  k sshkey <url>            从 URL 导入 SSH 公钥"
+					echo "  k sshkey github <user>    从 GitHub 导入 SSH 公钥"
 					;;
 			esac
 			;;
