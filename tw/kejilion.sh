@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.3.3"
+sh_v="4.3.4"
 
 
 gl_hui='\e[37m'
@@ -118,7 +118,7 @@ UserLicenseAgreement() {
 	echo "首次使用腳本，請先閱讀並同意用戶許可協議。"
 	echo "用戶許可協議: https://blog.kejilion.pro/user-license-agreement/"
 	echo -e "----------------------"
-	read -r -p "是否同意以上條款？ (y/n):" user_input
+	read -e -p "是否同意以上條款？ (y/n):" user_input
 
 
 	if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
@@ -154,7 +154,7 @@ public_ip=$(get_public_ip)
 isp_info=$(curl -s --max-time 3 http://ipinfo.io/org)
 
 
-if echo "$isp_info" | grep -Eiq 'mobile|unicom|telecom'; then
+if echo "$isp_info" | grep -Eiq 'CHINANET|mobile|unicom|telecom'; then
   ipv4_address=$(get_local_ip)
 else
   ipv4_address="$public_ip"
@@ -3018,7 +3018,7 @@ docker_app_plus() {
 			1)
 				setup_docker_dir
 				check_disk_space $app_size /home/docker
-				
+
 				while true; do
 					read -e -p "輸入應用對外服務端口，回車默認使用${docker_port}端口:" app_port
 					local app_port=${app_port:-${docker_port}}
@@ -4852,13 +4852,12 @@ new_ssh_port() {
 }
 
 
-
 add_sshkey() {
 	chmod 700 ~/
 	mkdir -p ~/.ssh
 	chmod 700 ~/.ssh
 	touch ~/.ssh/authorized_keys
-	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
+	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f ~/.ssh/sshkey -N ""
 	cat ~/.ssh/sshkey.pub >> ~/.ssh/authorized_keys
 	chmod 600 ~/.ssh/authorized_keys
 
@@ -4880,13 +4879,30 @@ add_sshkey() {
 }
 
 
+
+
+
 import_sshkey() {
 
-	read -e -p "請輸入您的SSH公鑰內容（通常以 'ssh-rsa' 或 'ssh-ed25519' 開頭）:" public_key
+	local public_key="$1"
+
+	if [[ -z "$public_key" ]]; then
+		read -e -p "請輸入您的SSH公鑰內容（通常以 'ssh-rsa' 或 'ssh-ed25519' 開頭）:" public_key
+	fi
 
 	if [[ -z "$public_key" ]]; then
 		echo -e "${gl_hong}錯誤：未輸入公鑰內容。${gl_bai}"
 		return 1
+	fi
+
+	if [[ ! "$public_key" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
+		echo -e "${gl_hong}錯誤：看起來不像合法的 SSH 公鑰。${gl_bai}"
+		return 1
+	fi	
+
+	if grep -Fxq "$public_key" ~/.ssh/authorized_keys 2>/dev/null; then
+		echo "該公鑰已存在，無需重複添加"
+		return 0
 	fi
 
 	chmod 700 ~/
@@ -4906,6 +4922,206 @@ import_sshkey() {
 	echo -e "${gl_lv}公鑰已成功導入，ROOT私鑰登錄已開啟，已關閉ROOT密碼登錄，重連將會生效${gl_bai}"
 
 }
+
+
+fetch_remote_ssh_keys() {
+
+	local keys_url="$1"
+	local authorized_keys="${HOME}/.ssh/authorized_keys"
+	local temp_file
+
+	if [[ -z "${keys_url}" ]]; then
+		read -e -p "請輸入您的遠端公鑰URL：" keys_url
+	fi
+
+	echo "此腳本將從遠程 URL 拉取 SSH 公鑰，並添加到${authorized_keys}"
+	echo ""
+	echo "遠程公鑰地址："
+	echo "  ${keys_url}"
+	echo ""
+
+	# 創建臨時文件
+	temp_file=$(mktemp)
+
+	# 下載公鑰
+	if command -v curl >/dev/null 2>&1; then
+		curl -fsSL --connect-timeout 10 "${keys_url}" -o "${temp_file}" || {
+			echo "錯誤：無法從 URL 下載公鑰（網絡問題或地址無效）" >&2
+			rm -f "${temp_file}"
+			return 1
+		}
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q --timeout=10 -O "${temp_file}" "${keys_url}" || {
+			echo "錯誤：無法從 URL 下載公鑰（網絡問題或地址無效）" >&2
+			rm -f "${temp_file}"
+			return 1
+		}
+	else
+		echo "錯誤：系統中未找到 curl 或 wget，無法下載公鑰" >&2
+		rm -f "${temp_file}"
+		return 1
+	fi
+
+	# 檢查內容是否有效
+	if [[ ! -s "${temp_file}" ]]; then
+		echo "錯誤：下載到的文件為空，URL 可能不包含任何公鑰" >&2
+		rm -f "${temp_file}"
+		return 1
+	fi
+
+	mkdir -p ~/.ssh
+	chmod 700 ~/.ssh
+	touch "${authorized_keys}"
+	chmod 600 "${authorized_keys}"
+
+	# 備份原有 authorized_keys
+	if [[ -f "${authorized_keys}" ]]; then
+		cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
+		echo "已備份原有 authorized_keys 文件"
+	fi
+
+	# 追加公鑰（避免重複）
+	local added=0
+	while IFS= read -r line; do
+		[[ -z "${line}" || "${line}" =~ ^# ]] && continue
+
+		if ! grep -Fxq "${line}" "${authorized_keys}" 2>/dev/null; then
+			echo "${line}" >> "${authorized_keys}"
+			((added++))
+		fi
+	done < "${temp_file}"
+
+	rm -f "${temp_file}"
+
+	echo ""
+	if (( added > 0 )); then
+		echo "成功添加${added}條新的公鑰到${authorized_keys}"
+		sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
+			   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
+			   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+			   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+
+		rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+		restart_ssh
+	else
+		echo "沒有新的公鑰需要添加（可能已全部存在）"
+	fi
+
+	echo ""
+}
+
+
+
+fetch_github_ssh_keys() {
+
+	local username="$1"
+
+	echo "操作前，請確保您已在 GitHub 賬戶中添加了 SSH 公鑰："
+	echo "1. 登錄 https://github.com/settings/keys"
+	echo "2. 點擊 New SSH key 或 Add SSH key"
+	echo "3. Title 可隨意填寫（例如：Home Laptop 2026）"
+	echo "4. 將本地公鑰內容（通常是 ~/.ssh/id_ed25519.pub 或 id_rsa.pub 的全部內容）粘貼到 Key 字段"
+	echo "5. 點擊 Add SSH key 完成添加"
+	echo ""
+	echo "添加完成後，GitHub 會公開提供您的所有公鑰，地址為："
+	echo "https://github.com/您的用戶名.keys"
+	echo ""
+
+
+	if [[ -z "${username}" ]]; then
+		read -e -p "請輸入您的 GitHub 用戶名（username，不含 @）：" username
+	fi
+
+	if [[ -z "${username}" ]]; then
+		echo "錯誤：GitHub 用戶名不能為空" >&2
+		return 1
+	fi
+
+	keys_url="https://github.com/${username}.keys"
+
+	fetch_remote_ssh_keys "${keys_url}"
+
+}
+
+
+
+
+sshkey_panel() {
+
+  root_use
+  send_stats "私鑰登錄"
+  while true; do
+	  clear
+	  local REAL_STATUS=$(grep -i "^PubkeyAuthentication" /etc/ssh/sshd_config | tr '[:upper:]' '[:lower:]')
+	  if [[ "$REAL_STATUS" =~ "yes" ]]; then
+		  IS_KEY_ENABLED="${gl_lv}已啟用${gl_bai}"
+	  else
+	  	  IS_KEY_ENABLED="${gl_hui}未啟用${gl_bai}"
+	  fi
+  	  echo -e "ROOT私鑰登錄模式${IS_KEY_ENABLED}"
+  	  echo "視頻介紹: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
+  	  echo "------------------------------------------------"
+  	  echo "將會生成密鑰對，更安全的方式SSH登錄"
+	  echo "------------------------"
+	  echo "1. 生成新密鑰對                  2. 手動輸入已有公鑰"
+	  echo "3. 從GitHub導入已有公鑰          4. 從URL導入已有公鑰"
+	  echo "5. 編輯公鑰文件                  6. 查看本機密鑰"
+	  echo "------------------------"
+	  echo "0. 返回上一級選單"
+	  echo "------------------------"
+	  read -e -p "請輸入你的選擇:" host_dns
+	  case $host_dns in
+		  1)
+	  		send_stats "生成新密鑰"
+	  		add_sshkey
+			break_end
+			  ;;
+		  2)
+			send_stats "導入已有公鑰"
+			import_sshkey
+			break_end
+			  ;;
+		  3)
+			send_stats "導入GitHub遠端公鑰"
+			fetch_github_ssh_keys
+			break_end
+			  ;;
+		  4)
+			send_stats "導入URL遠端公鑰"
+			read -e -p "請輸入您的遠端公鑰URL：" keys_url
+			fetch_remote_ssh_keys "${keys_url}"
+			break_end
+			  ;;
+
+		  5)
+			send_stats "編輯公鑰文件"
+			install nano
+			nano ~/.ssh/authorized_keys
+			break_end
+			  ;;
+
+		  6)
+			send_stats "查看本機密鑰"
+			echo "------------------------"
+			echo "公鑰信息"
+			cat ~/.ssh/authorized_keys
+			echo "------------------------"
+			echo "私鑰信息"
+			cat ~/.ssh/sshkey
+			echo "------------------------"
+			break_end
+			  ;;
+		  *)
+			  break  # 跳出循环，退出菜单
+			  ;;
+	  esac
+  done
+
+
+}
+
+
+
 
 
 
@@ -6082,7 +6298,7 @@ create_backup() {
 	echo "- 備份單個目錄: /var/www"
 	echo "- 備份多個目錄: /etc /home /var/log"
 	echo "- 直接回車將使用默認目錄 (/etc /usr /home)"
-	read -r -p "請輸入要備份的目錄（多個目錄用空格分隔，直接回車則使用默認目錄）：" input
+	read -e -p "請輸入要備份的目錄（多個目錄用空格分隔，直接回車則使用默認目錄）：" input
 
 	# 如果用戶沒有輸入目錄，則使用默認目錄
 	if [ -z "$input" ]; then
@@ -8808,6 +9024,7 @@ linux_ldnmp() {
 		echo "已阻止IP+端口訪問該服務"
 	  else
 	  	ip_address
+		close_port "$port"
 		block_container_port "$docker_name" "$ipv4_address"
 	  fi
 
@@ -9281,11 +9498,11 @@ clear
 cd ~
 install git
 if [ ! -d apps/.git ]; then
-	git clone ${gh_proxy}github.com/kejilion/apps.git
+	timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
 else
 	cd apps
 	# git pull origin main > /dev/null 2>&1
-	git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
+	timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
 fi
 
 while true; do
@@ -13115,11 +13332,11 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		cd ~
 		install git
 		if [ ! -d apps/.git ]; then
-			git clone ${gh_proxy}github.com/kejilion/apps.git
+			timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
 		else
 			cd apps
 			# git pull origin main > /dev/null 2>&1
-			git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
+			timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
 		fi
 		local custom_app="$HOME/apps/${sub_choice}.conf"
 		if [ -f "$custom_app" ]; then
@@ -14235,53 +14452,7 @@ EOF
 
 
 		  24)
-
-			  root_use
-			  send_stats "私鑰登錄"
-			  while true; do
-				  clear
-			  	  echo "ROOT私鑰登錄模式"
-			  	  echo "視頻介紹: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
-			  	  echo "------------------------------------------------"
-			  	  echo "將會生成密鑰對，更安全的方式SSH登錄"
-				  echo "------------------------"
-				  echo "1. 生成新密鑰              2. 導入已有密鑰              3. 查看本機密鑰"
-				  echo "------------------------"
-				  echo "0. 返回上一級選單"
-				  echo "------------------------"
-				  read -e -p "請輸入你的選擇:" host_dns
-
-				  case $host_dns in
-					  1)
-				  		send_stats "生成新密鑰"
-				  		add_sshkey
-						break_end
-
-						  ;;
-					  2)
-						send_stats "導入已有公鑰"
-						import_sshkey
-						break_end
-
-						  ;;
-					  3)
-						send_stats "查看本機密鑰"
-						echo "------------------------"
-						echo "公鑰信息"
-						cat ~/.ssh/authorized_keys
-						echo "------------------------"
-						echo "私鑰信息"
-						cat ~/.ssh/sshkey
-						echo "------------------------"
-						break_end
-
-						  ;;
-					  *)
-						  break  # 跳出循环，退出菜单
-						  ;;
-				  esac
-			  done
-
+			sshkey_panel
 			  ;;
 
 		  25)
@@ -15282,6 +15453,10 @@ echo "應用市場管理        k app"
 echo "應用編號快捷管理    k app 26 | k app 1panel | k app npm"
 echo "fail2ban管理        k fail2ban | k f2b"
 echo "顯示系統信息        k info"
+echo "ROOT密鑰管理        k sshkey"
+echo "SSH公鑰導入(URL)    k sshkey <url>"
+echo "SSH公鑰導入(GitHub) k sshkey github <user>"
+
 }
 
 
@@ -15355,6 +15530,7 @@ else
 			  echo "已阻止IP+端口訪問該服務"
 	  		else
 			  ip_address
+			  close_port "$port"
 	  		  block_container_port "$docker_name" "$ipv4_address"
 	  		fi
 			;;
@@ -15517,8 +15693,46 @@ else
 			fail2ban_panel
 			;;
 
+
+		sshkey)
+			shift		
+			case "$1" in
+				"" )
+					# sshkey → 交互菜單
+					send_stats "SSHKey 交互菜單"
+					sshkey_panel
+					;;
+		
+				github )
+					shift
+					send_stats "從 GitHub 導入 SSH 公鑰"
+					fetch_github_ssh_keys "$1"
+					;;
+		
+				http://*|https://* )
+					send_stats "從 URL 導入 SSH 公鑰"
+					fetch_remote_ssh_keys "$1"
+					;;
+
+				ssh-rsa*|ssh-ed25519*|ssh-ecdsa* )
+					send_stats "公鑰直接導入"
+					import_sshkey "$1"
+					;;
+
+				* )
+					echo "錯誤：未知參數 '$1'"
+					echo "用法："
+					echo "k sshkey                  進入交互菜單"
+					echo "k sshkey \"<pubkey>\"     直接導入 SSH 公鑰"
+					echo "k sshkey <url>            從 URL 導入 SSH 公鑰"
+					echo "k sshkey github <user>    從 GitHub 導入 SSH 公鑰"
+					;;
+			esac
+			;;
 		*)
 			k_info
 			;;
 	esac
 fi
+
+

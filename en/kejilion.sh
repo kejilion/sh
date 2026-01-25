@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.3.3"
+sh_v="4.3.4"
 
 
 gl_hui='\e[37m'
@@ -118,7 +118,7 @@ UserLicenseAgreement() {
 	echo "When using the script for the first time, please read and agree to the User License Agreement."
 	echo "User License Agreement: https://blog.kejilion.pro/user-license-agreement/"
 	echo -e "----------------------"
-	read -r -p "Do you agree to the above terms? (y/n):" user_input
+	read -e -p "Do you agree to the above terms? (y/n):" user_input
 
 
 	if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
@@ -154,7 +154,7 @@ public_ip=$(get_public_ip)
 isp_info=$(curl -s --max-time 3 http://ipinfo.io/org)
 
 
-if echo "$isp_info" | grep -Eiq 'mobile|unicom|telecom'; then
+if echo "$isp_info" | grep -Eiq 'CHINANET|mobile|unicom|telecom'; then
   ipv4_address=$(get_local_ip)
 else
   ipv4_address="$public_ip"
@@ -2328,7 +2328,7 @@ check_nginx_compression() {
 
 	# Check whether zstd is on and uncommented (the whole line starts with zstd on;)
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status="zstd compression is on"
+		zstd_status="zstd compression is enabled"
 	else
 		zstd_status=""
 	fi
@@ -3018,7 +3018,7 @@ docker_app_plus() {
 			1)
 				setup_docker_dir
 				check_disk_space $app_size /home/docker
-				
+
 				while true; do
 					read -e -p "Enter the application external service port and press Enter to use it by default.${docker_port}port:" app_port
 					local app_port=${app_port:-${docker_port}}
@@ -4852,13 +4852,12 @@ new_ssh_port() {
 }
 
 
-
 add_sshkey() {
 	chmod 700 ~/
 	mkdir -p ~/.ssh
 	chmod 700 ~/.ssh
 	touch ~/.ssh/authorized_keys
-	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f /root/.ssh/sshkey -N ""
+	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f ~/.ssh/sshkey -N ""
 	cat ~/.ssh/sshkey.pub >> ~/.ssh/authorized_keys
 	chmod 600 ~/.ssh/authorized_keys
 
@@ -4875,18 +4874,35 @@ add_sshkey() {
 		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 	restart_ssh
-	echo -e "${gl_lv}ROOT private key login has been turned on, ROOT password login has been turned off, reconnection will take effect${gl_bai}"
+	echo -e "${gl_lv}ROOT private key login has been turned on, ROOT password login has been turned off, and reconnection will take effect.${gl_bai}"
 
 }
 
 
+
+
+
 import_sshkey() {
 
-	read -e -p "Please enter the contents of your SSH public key (usually starts with 'ssh-rsa' or 'ssh-ed25519'):" public_key
+	local public_key="$1"
+
+	if [[ -z "$public_key" ]]; then
+		read -e -p "Please enter the contents of your SSH public key (usually starts with 'ssh-rsa' or 'ssh-ed25519'):" public_key
+	fi
 
 	if [[ -z "$public_key" ]]; then
 		echo -e "${gl_hong}Error: Public key content not entered.${gl_bai}"
 		return 1
+	fi
+
+	if [[ ! "$public_key" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
+		echo -e "${gl_hong}Error: Does not look like a legitimate SSH public key.${gl_bai}"
+		return 1
+	fi	
+
+	if grep -Fxq "$public_key" ~/.ssh/authorized_keys 2>/dev/null; then
+		echo "The public key already exists, no need to add it again"
+		return 0
 	fi
 
 	chmod 700 ~/
@@ -4908,6 +4924,206 @@ import_sshkey() {
 }
 
 
+fetch_remote_ssh_keys() {
+
+	local keys_url="$1"
+	local authorized_keys="${HOME}/.ssh/authorized_keys"
+	local temp_file
+
+	if [[ -z "${keys_url}" ]]; then
+		read -e -p "Please enter your remote public key URL:" keys_url
+	fi
+
+	echo "This script will pull the SSH public key from the remote URL and add it to${authorized_keys}"
+	echo ""
+	echo "Remote public key address:"
+	echo "  ${keys_url}"
+	echo ""
+
+	# Create temporary files
+	temp_file=$(mktemp)
+
+	# Download public key
+	if command -v curl >/dev/null 2>&1; then
+		curl -fsSL --connect-timeout 10 "${keys_url}" -o "${temp_file}" || {
+			echo "Error: Unable to download public key from URL (network issue or invalid address)" >&2
+			rm -f "${temp_file}"
+			return 1
+		}
+	elif command -v wget >/dev/null 2>&1; then
+		wget -q --timeout=10 -O "${temp_file}" "${keys_url}" || {
+			echo "Error: Unable to download public key from URL (network issue or invalid address)" >&2
+			rm -f "${temp_file}"
+			return 1
+		}
+	else
+		echo "Error: curl or wget not found in system, unable to download public key" >&2
+		rm -f "${temp_file}"
+		return 1
+	fi
+
+	# Check if content is valid
+	if [[ ! -s "${temp_file}" ]]; then
+		echo "Error: The downloaded file is empty and the URL may not contain any public key" >&2
+		rm -f "${temp_file}"
+		return 1
+	fi
+
+	mkdir -p ~/.ssh
+	chmod 700 ~/.ssh
+	touch "${authorized_keys}"
+	chmod 600 "${authorized_keys}"
+
+	# Back up original authorized_keys
+	if [[ -f "${authorized_keys}" ]]; then
+		cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
+		echo "The original authorized_keys file has been backed up"
+	fi
+
+	# Append public key (avoid duplication)
+	local added=0
+	while IFS= read -r line; do
+		[[ -z "${line}" || "${line}" =~ ^# ]] && continue
+
+		if ! grep -Fxq "${line}" "${authorized_keys}" 2>/dev/null; then
+			echo "${line}" >> "${authorized_keys}"
+			((added++))
+		fi
+	done < "${temp_file}"
+
+	rm -f "${temp_file}"
+
+	echo ""
+	if (( added > 0 )); then
+		echo "successfully added${added}A new public key arrives${authorized_keys}"
+		sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
+			   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
+			   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+			   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+
+		rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+		restart_ssh
+	else
+		echo "No new public keys need to be added (all may already exist)"
+	fi
+
+	echo ""
+}
+
+
+
+fetch_github_ssh_keys() {
+
+	local username="$1"
+
+	echo "Before proceeding, make sure you have added your SSH public key to your GitHub account:"
+	echo "1. Log in to https://github.com/settings/keys"
+	echo "2. Click New SSH key or Add SSH key"
+	echo "3. Title can be filled in as desired (for example: Home Laptop 2026)"
+	echo "4. Paste the contents of the local public key (usually the entire contents of ~/.ssh/id_ed25519.pub or id_rsa.pub) into the Key field"
+	echo "5. Click Add SSH key to complete the addition."
+	echo ""
+	echo "Once added, all your public keys will be publicly available on GitHub at:"
+	echo "https://github.com/yourusername.keys"
+	echo ""
+
+
+	if [[ -z "${username}" ]]; then
+		read -e -p "Please enter your GitHub username (username without @):" username
+	fi
+
+	if [[ -z "${username}" ]]; then
+		echo "Error: GitHub username cannot be empty" >&2
+		return 1
+	fi
+
+	keys_url="https://github.com/${username}.keys"
+
+	fetch_remote_ssh_keys "${keys_url}"
+
+}
+
+
+
+
+sshkey_panel() {
+
+  root_use
+  send_stats "Private key login"
+  while true; do
+	  clear
+	  local REAL_STATUS=$(grep -i "^PubkeyAuthentication" /etc/ssh/sshd_config | tr '[:upper:]' '[:lower:]')
+	  if [[ "$REAL_STATUS" =~ "yes" ]]; then
+		  IS_KEY_ENABLED="${gl_lv}Enabled${gl_bai}"
+	  else
+	  	  IS_KEY_ENABLED="${gl_hui}Not enabled${gl_bai}"
+	  fi
+  	  echo -e "ROOT private key login mode${IS_KEY_ENABLED}"
+  	  echo "Video introduction: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
+  	  echo "------------------------------------------------"
+  	  echo "A key pair will be generated, a more secure way to log in via SSH"
+	  echo "------------------------"
+	  echo "1. Generate a new key pair 2. Manually enter an existing public key"
+	  echo "3. Import the existing public key from GitHub 4. Import the existing public key from the URL"
+	  echo "5. Edit the public key file 6. View the local key"
+	  echo "------------------------"
+	  echo "0. Return to the previous menu"
+	  echo "------------------------"
+	  read -e -p "Please enter your choice:" host_dns
+	  case $host_dns in
+		  1)
+	  		send_stats "Generate new key"
+	  		add_sshkey
+			break_end
+			  ;;
+		  2)
+			send_stats "Import existing public key"
+			import_sshkey
+			break_end
+			  ;;
+		  3)
+			send_stats "Import GitHub remote public key"
+			fetch_github_ssh_keys
+			break_end
+			  ;;
+		  4)
+			send_stats "Import URL remote public key"
+			read -e -p "Please enter your remote public key URL:" keys_url
+			fetch_remote_ssh_keys "${keys_url}"
+			break_end
+			  ;;
+
+		  5)
+			send_stats "Edit public key file"
+			install nano
+			nano ~/.ssh/authorized_keys
+			break_end
+			  ;;
+
+		  6)
+			send_stats "View local key"
+			echo "------------------------"
+			echo "Public key information"
+			cat ~/.ssh/authorized_keys
+			echo "------------------------"
+			echo "Private key information"
+			cat ~/.ssh/sshkey
+			echo "------------------------"
+			break_end
+			  ;;
+		  *)
+			  break  # 跳出循环，退出菜单
+			  ;;
+	  esac
+  done
+
+
+}
+
+
+
+
+
 
 
 add_sshpasswd() {
@@ -4925,7 +5141,7 @@ echo -e "${gl_lv}ROOT login setup is completed!${gl_bai}"
 
 root_use() {
 clear
-[ "$EUID" -ne 0 ] && echo -e "${gl_huang}hint:${gl_bai}This feature requires root user to run!" && break_end && kejilion
+[ "$EUID" -ne 0 ] && echo -e "${gl_huang}hint:${gl_bai}This function requires root user to run!" && break_end && kejilion
 }
 
 
@@ -5809,7 +6025,7 @@ Kernel_optimize() {
 			  cd ~
 			  clear
 			  optimize_web_server
-			  send_stats "Website optimization model"
+			  send_stats "Website optimization mode"
 			  ;;
 		  4)
 			  cd ~
@@ -6072,9 +6288,9 @@ send_stats "Command Favorites"
 bash <(curl -l -s ${gh_proxy}raw.githubusercontent.com/byJoey/cmdbox/refs/heads/main/install.sh)
 }
 
-# Create a backup
+# Create backup
 create_backup() {
-	send_stats "Create a backup"
+	send_stats "Create backup"
 	local TIMESTAMP=$(date +"%Y%m%d%H%M%S")
 
 	# Prompt user for backup directory
@@ -6082,7 +6298,7 @@ create_backup() {
 	echo "- Back up a single directory: /var/www"
 	echo "- Back up multiple directories: /etc /home /var/log"
 	echo "- Press Enter to use the default directory (/etc /usr /home)"
-	read -r -p "Please enter the directory to be backed up (separate multiple directories with spaces, and press Enter to use the default directory):" input
+	read -e -p "Please enter the directory to be backed up (separate multiple directories with spaces, and press Enter to use the default directory):" input
 
 	# If the user does not enter a directory, the default directory is used
 	if [ -z "$input" ]; then
@@ -6116,7 +6332,7 @@ create_backup() {
 		echo "- $path"
 	done
 
-	# Create a backup
+	# Create backup
 	echo "Creating backup$BACKUP_NAME..."
 	install tar
 	tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"
@@ -6537,7 +6753,7 @@ disk_manager() {
 	send_stats "Hard disk management function"
 	while true; do
 		clear
-		echo "Hard drive partition management"
+		echo "Hard disk partition management"
 		echo -e "${gl_huang}This feature is under internal testing and should not be used in a production environment.${gl_bai}"
 		echo "------------------------"
 		list_partitions
@@ -8808,6 +9024,7 @@ linux_ldnmp() {
 		echo "IP+port has been blocked from accessing the service"
 	  else
 	  	ip_address
+		close_port "$port"
 		block_container_port "$docker_name" "$ipv4_address"
 	  fi
 
@@ -9281,11 +9498,11 @@ clear
 cd ~
 install git
 if [ ! -d apps/.git ]; then
-	git clone ${gh_proxy}github.com/kejilion/apps.git
+	timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
 else
 	cd apps
 	# git pull origin main > /dev/null 2>&1
-	git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
+	timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
 fi
 
 while true; do
@@ -9308,7 +9525,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}Pagoda panel official version${gl_kjlan}2.   ${color2}aaPanel Pagoda International Version"
 	  echo -e "${gl_kjlan}3.   ${color3}1Panel new generation management panel${gl_kjlan}4.   ${color4}NginxProxyManager visualization panel"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList multi-store file list program${gl_kjlan}6.   ${color6}Ubuntu Remote Desktop Web Edition"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList multi-store file list program${gl_kjlan}6.   ${color6}Ubuntu Remote Desktop Web Version"
 	  echo -e "${gl_kjlan}7.   ${color7}Nezha Probe VPS Monitoring Panel${gl_kjlan}8.   ${color8}QB offline BT magnetic download panel"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io mail server program${gl_kjlan}10.  ${color10}RocketChat multi-person online chat system"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -13115,11 +13332,11 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		cd ~
 		install git
 		if [ ! -d apps/.git ]; then
-			git clone ${gh_proxy}github.com/kejilion/apps.git
+			timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
 		else
 			cd apps
 			# git pull origin main > /dev/null 2>&1
-			git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
+			timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
 		fi
 		local custom_app="$HOME/apps/${sub_choice}.conf"
 		if [ -f "$custom_app" ]; then
@@ -13685,8 +13902,8 @@ EOF
 						;;
 					2)
 						rm -f /etc/gai.conf
-						echo "Switched to IPv6 first"
-						send_stats "Switched to IPv6 first"
+						echo "Switched to IPv6 priority"
+						send_stats "Switched to IPv6 priority"
 						;;
 
 					3)
@@ -14235,53 +14452,7 @@ EOF
 
 
 		  24)
-
-			  root_use
-			  send_stats "Private key login"
-			  while true; do
-				  clear
-			  	  echo "ROOT private key login mode"
-			  	  echo "Video introduction: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
-			  	  echo "------------------------------------------------"
-			  	  echo "A key pair will be generated, a more secure way to log in via SSH"
-				  echo "------------------------"
-				  echo "1. Generate a new key 2. Import an existing key 3. View the local key"
-				  echo "------------------------"
-				  echo "0. Return to the previous menu"
-				  echo "------------------------"
-				  read -e -p "Please enter your choice:" host_dns
-
-				  case $host_dns in
-					  1)
-				  		send_stats "Generate new key"
-				  		add_sshkey
-						break_end
-
-						  ;;
-					  2)
-						send_stats "Import existing public key"
-						import_sshkey
-						break_end
-
-						  ;;
-					  3)
-						send_stats "View local key"
-						echo "------------------------"
-						echo "Public key information"
-						cat ~/.ssh/authorized_keys
-						echo "------------------------"
-						echo "Private key information"
-						cat ~/.ssh/sshkey
-						echo "------------------------"
-						break_end
-
-						  ;;
-					  *)
-						  break  # 跳出循环，退出菜单
-						  ;;
-				  esac
-			  done
-
+			sshkey_panel
 			  ;;
 
 		  25)
@@ -14433,7 +14604,7 @@ EOF
 			  echo -e "7. Turn on${gl_huang}BBR${gl_bai}accelerate"
 			  echo -e "8. Set time zone to${gl_huang}Shanghai${gl_bai}"
 			  echo -e "9. Automatically optimize DNS addresses${gl_huang}Overseas: 1.1.1.1 8.8.8.8 Domestic: 223.5.5.5${gl_bai}"
-		  	  echo -e "10. Set the network to${gl_huang}ipv4 priority${gl_bai}"
+		  	  echo -e "10. Set the network to${gl_huang}IPv4 priority${gl_bai}"
 			  echo -e "11. Install basic tools${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 			  echo -e "12. Linux system kernel parameter optimization switches to${gl_huang}Balanced optimization mode${gl_bai}"
 			  echo "------------------------------------------------"
@@ -14482,7 +14653,7 @@ EOF
 				  echo -e "[${gl_lv}OK${gl_bai}] 9/12. Automatically optimize DNS address${gl_huang}${gl_bai}"
 				  echo "------------------------------------------------"
 				  prefer_ipv4
-				  echo -e "[${gl_lv}OK${gl_bai}] 10/12. Set the network to${gl_huang}ipv4 priority${gl_bai}}"
+				  echo -e "[${gl_lv}OK${gl_bai}] 10/12. Set the network to${gl_huang}IPv4 priority${gl_bai}}"
 
 				  echo "------------------------------------------------"
 				  install_docker
@@ -14844,7 +15015,7 @@ run_commands_on_servers() {
 		local username=${SERVER_ARRAY[i+3]}
 		local password=${SERVER_ARRAY[i+4]}
 		echo
-		echo -e "${gl_huang}connect to$name ($hostname)...${gl_bai}"
+		echo -e "${gl_huang}Connect to$name ($hostname)...${gl_bai}"
 		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 	done
@@ -15234,7 +15405,7 @@ done
 
 
 k_info() {
-send_stats "k command reference examples"
+send_stats "k command reference use case"
 echo "-------------------"
 echo "Video introduction: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "The following is a reference use case for the k command:"
@@ -15282,6 +15453,10 @@ echo "Application market management k app"
 echo "Quick management of application numbers k app 26 | k app 1panel | k app npm"
 echo "fail2ban management k fail2ban | k f2b"
 echo "Display system information k info"
+echo "ROOT key management k sshkey"
+echo "SSH public key import (URL) k sshkey <url>"
+echo "SSH public key import (GitHub) k sshkey github <user>"
+
 }
 
 
@@ -15355,6 +15530,7 @@ else
 			  echo "IP+port has been blocked from accessing the service"
 	  		else
 			  ip_address
+			  close_port "$port"
 	  		  block_container_port "$docker_name" "$ipv4_address"
 	  		fi
 			;;
@@ -15517,8 +15693,46 @@ else
 			fail2ban_panel
 			;;
 
+
+		sshkey)
+			shift		
+			case "$1" in
+				"" )
+					# sshkey → interactive menu
+					send_stats "SSHKey interactive menu"
+					sshkey_panel
+					;;
+		
+				github )
+					shift
+					send_stats "Import SSH public key from GitHub"
+					fetch_github_ssh_keys "$1"
+					;;
+		
+				http://*|https://* )
+					send_stats "Import SSH public key from URL"
+					fetch_remote_ssh_keys "$1"
+					;;
+
+				ssh-rsa*|ssh-ed25519*|ssh-ecdsa* )
+					send_stats "Directly import the public key"
+					import_sshkey "$1"
+					;;
+
+				* )
+					echo "Error: unknown parameter '$1'"
+					echo "usage:"
+					echo "k sshkey enters the interactive menu"
+					echo "k sshkey \"<pubkey>\" Directly import the SSH public key"
+					echo "k sshkey <url> Import SSH public key from URL"
+					echo "k sshkey github <user> Import SSH public key from GitHub"
+					;;
+			esac
+			;;
 		*)
 			k_info
 			;;
 	esac
 fi
+
+
