@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.3.4"
+sh_v="4.3.5"
 
 
 gl_hui='\e[37m'
@@ -4889,7 +4889,7 @@ import_sshkey() {
 	if [[ ! "$public_key" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
 		echo -e "${gl_hong}错误：看起来不像合法的 SSH 公钥。${gl_bai}"
 		return 1
-	fi	
+	fi
 
 	if grep -Fxq "$public_key" ~/.ssh/authorized_keys 2>/dev/null; then
 		echo "该公钥已存在，无需重复添加"
@@ -7790,7 +7790,7 @@ docker_ssh_migration() {
 			echo -e "3. 还原docker项目"
 			echo -e "4. 删除docker项目的备份文件"
 			echo "------------------------"
-			echo -e "0. 返回上一级菜单"
+			echo -e "0. 返回上一级选单"
 			echo "------------------------"
 			read -e -p  "请选择: " choice
 			case $choice in
@@ -13627,6 +13627,183 @@ fail2ban_panel() {
 
 
 
+net_menu() {
+
+	show_nics() {
+		echo "================ 当前网卡信息 ================"
+		printf "%-18s %-12s %-20s %-26s\n" "网卡名" "状态" "IP地址" "MAC地址"
+		echo "------------------------------------------------"
+		for nic in $(ls /sys/class/net); do
+			state=$(cat /sys/class/net/$nic/operstate 2>/dev/null)
+			ipaddr=$(ip -4 addr show $nic | awk '/inet /{print $2}' | head -n1)
+			mac=$(cat /sys/class/net/$nic/address 2>/dev/null)
+			printf "%-15s %-10s %-18s %-20s\n" "$nic" "$state" "${ipaddr:-无}" "$mac"
+		done
+		echo "================================================"
+	}
+
+	while true; do
+		clear
+		show_nics
+		echo
+		echo "=========== 网卡管理菜单 ==========="
+		echo "1. 启用网卡"
+		echo "2. 禁用网卡"
+		echo "3. 查看网卡详细信息"
+		echo "4. 刷新网卡信息"
+		echo "0. 返回上一级选单"
+		echo "===================================="
+		read -rp "请选择操作: " choice
+
+		case $choice in
+			1)
+				read -rp "请输入要启用的网卡名: " nic
+				if ip link show "$nic" &>/dev/null; then
+					ip link set "$nic" up && echo "✔ 网卡 $nic 已启用"
+				else
+					echo "✘ 网卡不存在"
+				fi
+				read -rp "按回车继续..."
+				;;
+			2)
+				read -rp "请输入要禁用的网卡名: " nic
+				if ip link show "$nic" &>/dev/null; then
+					ip link set "$nic" down && echo "✔ 网卡 $nic 已禁用"
+				else
+					echo "✘ 网卡不存在"
+				fi
+				read -rp "按回车继续..."
+				;;
+			3)
+				read -rp "请输入要查看的网卡名: " nic
+				if ip link show "$nic" &>/dev/null; then
+					echo "========== $nic 详细信息 =========="
+					ip addr show "$nic"
+					ethtool "$nic" 2>/dev/null | head -n 10
+				else
+					echo "✘ 网卡不存在"
+				fi
+				read -rp "按回车继续..."
+				;;
+			4)
+				continue
+				;;
+			0)
+				echo "退出网卡管理菜单"
+				break
+				;;
+			*)
+				echo "无效选项"
+				sleep 1
+				;;
+		esac
+	done
+}
+
+
+
+log_menu() {
+
+	show_log_overview() {
+		echo "============= 系统日志概览 ============="
+		echo "主机名: $(hostname)"
+		echo "系统时间: $(date)"
+		echo
+		echo "[ /var/log 目录占用 ]"
+		du -sh /var/log 2>/dev/null
+		echo
+		echo "[ journal 日志占用 ]"
+		journalctl --disk-usage 2>/dev/null
+		echo "========================================"
+	}
+
+	while true; do
+		clear
+		show_log_overview
+		echo
+		echo "=========== 系统日志管理菜单 ==========="
+		echo "1. 查看最近系统日志（journal）"
+		echo "2. 查看指定服务日志"
+		echo "3. 查看登录/安全日志"
+		echo "4. 实时跟踪日志"
+		echo "5. 清理旧 journal 日志"
+		echo "0. 返回上一级选单"
+		echo "======================================="
+		read -rp "请选择操作: " choice
+
+		case $choice in
+			1)
+				read -rp "查看最近多少行日志？[默认 100]: " lines
+				lines=${lines:-100}
+				journalctl -n "$lines" --no-pager
+				read -rp "按回车继续..."
+				;;
+			2)
+				read -rp "请输入服务名（如 sshd、nginx）: " svc
+				if systemctl list-unit-files | grep -q "^$svc"; then
+					journalctl -u "$svc" -n 100 --no-pager
+				else
+					echo "✘ 服务不存在或无日志"
+				fi
+				read -rp "按回车继续..."
+				;;
+			3)
+				echo "====== 最近登录日志 ======"
+				last -n 10
+				echo
+				echo "====== 认证日志 ======"
+				if [ -f /var/log/secure ]; then
+					tail -n 20 /var/log/secure
+				elif [ -f /var/log/auth.log ]; then
+					tail -n 20 /var/log/auth.log
+				else
+					echo "未找到安全日志文件"
+				fi
+				read -rp "按回车继续..."
+				;;
+			4)
+				echo "1) 系统日志"
+				echo "2) 指定服务日志"
+				read -rp "选择跟踪类型: " t
+				if [ "$t" = "1" ]; then
+					journalctl -f
+				elif [ "$t" = "2" ]; then
+					read -rp "输入服务名: " svc
+					journalctl -u "$svc" -f
+				else
+					echo "无效选择"
+				fi
+				;;
+			5)
+				echo "⚠️ 清理 journal 日志（安全方式）"
+				echo "1) 保留最近 7 天"
+				echo "2) 保留最近 3 天"
+				echo "3) 限制日志最大 500M"
+				read -rp "请选择清理方式: " c
+				case $c in
+					1) journalctl --vacuum-time=7d ;;
+					2) journalctl --vacuum-time=3d ;;
+					3) journalctl --vacuum-size=500M ;;
+					*) echo "无效选项" ;;
+				esac
+				echo "✔ journal 日志清理完成"
+				sleep 2
+				;;
+			0)
+				echo "退出系统日志管理菜单"
+				break
+				;;
+			*)
+				echo "无效选项"
+				sleep 1
+				;;
+		esac
+	done
+}
+
+
+
+
 
 
 linux_Settings() {
@@ -13658,9 +13835,11 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}33.  ${gl_bai}设置系统回收站                     ${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
 	  echo -e "${gl_kjlan}35.  ${gl_bai}ssh远程连接工具                    ${gl_kjlan}36.  ${gl_bai}硬盘分区管理工具"
 	  echo -e "${gl_kjlan}37.  ${gl_bai}命令行历史记录                     ${gl_kjlan}38.  ${gl_bai}rsync远程同步工具"
-	  echo -e "${gl_kjlan}39.  ${gl_bai}命令收藏夹 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}39.  ${gl_bai}命令收藏夹 ${gl_huang}★${gl_bai}                       ${gl_kjlan}40.  ${gl_bai}网卡管理工具"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}41.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}41.  ${gl_bai}系统日志管理工具 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "${gl_kjlan}61.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}99.  ${gl_bai}重启服务器                         ${gl_kjlan}100. ${gl_bai}隐私与安全"
 	  echo -e "${gl_kjlan}101. ${gl_bai}k命令高级用法 ${gl_huang}★${gl_bai}                    ${gl_kjlan}102. ${gl_bai}卸载科技lion脚本"
 	  echo -e "${gl_kjlan}------------------------"
@@ -14571,7 +14750,17 @@ EOF
 			  linux_fav
 			  ;;
 
+		  40)
+			  clear
+			  net_menu
+			  ;;
+
 		  41)
+			  clear
+			  log_menu
+			  ;;
+
+		  61)
 			clear
 			send_stats "留言板"
 			echo "访问科技lion官方留言板，您对脚本有任何想法欢迎留言交流！"
@@ -15686,20 +15875,20 @@ else
 
 
 		sshkey)
-			shift		
+			shift
 			case "$1" in
 				"" )
 					# sshkey → 交互菜单
 					send_stats "SSHKey 交互菜单"
 					sshkey_panel
 					;;
-		
+
 				github )
 					shift
 					send_stats "从 GitHub 导入 SSH 公钥"
 					fetch_github_ssh_keys "$1"
 					;;
-		
+
 				http://*|https://* )
 					send_stats "从 URL 导入 SSH 公钥"
 					fetch_remote_ssh_keys "$1"
@@ -15725,5 +15914,4 @@ else
 			;;
 	esac
 fi
-
 
