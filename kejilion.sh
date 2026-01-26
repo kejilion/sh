@@ -4837,7 +4837,7 @@ new_ssh_port() {
 
 
 sshkey_on() {
-	root_use
+
 	sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
 		   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
 		   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
@@ -5026,7 +5026,7 @@ fetch_github_ssh_keys() {
 
 
 sshkey_panel() {
-
+  root_use
   send_stats "用户密钥登录"
   while true; do
 	  clear
