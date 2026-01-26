@@ -5050,7 +5050,7 @@ sshkey_panel() {
 	  	  IS_KEY_ENABLED="${gl_hui}未启用${gl_bai}"
 	  fi
   	  echo -e "ROOT私钥登录模式 ${IS_KEY_ENABLED}"
-  	  echo "视频介绍: https://www.bilibili.com/video/BV1Q4421X78n?t=209.4"
+  	  echo "进阶玩法: https://blog.kejilion.pro/ssh-key"
   	  echo "------------------------------------------------"
   	  echo "将会生成密钥对，更安全的方式SSH登录"
 	  echo "------------------------"
