@@ -13629,6 +13629,7 @@ fail2ban_panel() {
 
 net_menu() {
 
+	send_stats "网卡管理工具"
 	show_nics() {
 		echo "================ 当前网卡信息 ================"
 		printf "%-18s %-12s %-20s %-26s\n" "网卡名" "状态" "IP地址" "MAC地址"
@@ -13657,6 +13658,7 @@ net_menu() {
 
 		case $choice in
 			1)
+				send_stats "启用网卡"
 				read -rp "请输入要启用的网卡名: " nic
 				if ip link show "$nic" &>/dev/null; then
 					ip link set "$nic" up && echo "✔ 网卡 $nic 已启用"
@@ -13666,6 +13668,7 @@ net_menu() {
 				read -rp "按回车继续..."
 				;;
 			2)
+				send_stats "禁用网卡"
 				read -rp "请输入要禁用的网卡名: " nic
 				if ip link show "$nic" &>/dev/null; then
 					ip link set "$nic" down && echo "✔ 网卡 $nic 已禁用"
@@ -13675,6 +13678,7 @@ net_menu() {
 				read -rp "按回车继续..."
 				;;
 			3)
+				send_stats "查看网卡详情"
 				read -rp "请输入要查看的网卡名: " nic
 				if ip link show "$nic" &>/dev/null; then
 					echo "========== $nic 详细信息 =========="
@@ -13686,15 +13690,11 @@ net_menu() {
 				read -rp "按回车继续..."
 				;;
 			4)
+				send_stats "刷新网卡信息"
 				continue
 				;;
-			0)
-				echo "退出网卡管理菜单"
-				break
-				;;
 			*)
-				echo "无效选项"
-				sleep 1
+				break
 				;;
 		esac
 	done
@@ -13703,6 +13703,7 @@ net_menu() {
 
 
 log_menu() {
+	send_stats "系统日志管理工具"
 
 	show_log_overview() {
 		echo "============= 系统日志概览 ============="
@@ -13733,12 +13734,14 @@ log_menu() {
 
 		case $choice in
 			1)
+				send_stats "查看最近日志"
 				read -rp "查看最近多少行日志？[默认 100]: " lines
 				lines=${lines:-100}
 				journalctl -n "$lines" --no-pager
 				read -rp "按回车继续..."
 				;;
 			2)
+				send_stats "查看指定服务日志"
 				read -rp "请输入服务名（如 sshd、nginx）: " svc
 				if systemctl list-unit-files | grep -q "^$svc"; then
 					journalctl -u "$svc" -n 100 --no-pager
@@ -13748,6 +13751,7 @@ log_menu() {
 				read -rp "按回车继续..."
 				;;
 			3)
+				send_stats "查看登录/安全日志"
 				echo "====== 最近登录日志 ======"
 				last -n 10
 				echo
@@ -13762,6 +13766,7 @@ log_menu() {
 				read -rp "按回车继续..."
 				;;
 			4)
+				send_stats "实时跟踪日志"
 				echo "1) 系统日志"
 				echo "2) 指定服务日志"
 				read -rp "选择跟踪类型: " t
@@ -13775,6 +13780,7 @@ log_menu() {
 				fi
 				;;
 			5)
+				send_stats "清理旧 journal 日志"
 				echo "⚠️ 清理 journal 日志（安全方式）"
 				echo "1) 保留最近 7 天"
 				echo "2) 保留最近 3 天"
@@ -13789,13 +13795,8 @@ log_menu() {
 				echo "✔ journal 日志清理完成"
 				sleep 2
 				;;
-			0)
-				echo "退出系统日志管理菜单"
-				break
-				;;
 			*)
-				echo "无效选项"
-				sleep 1
+				break
 				;;
 		esac
 	done
