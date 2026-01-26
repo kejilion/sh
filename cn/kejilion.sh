@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -4798,39 +4798,31 @@ correct_ssh_config() {
 
 	local sshd_config="/etc/ssh/sshd_config"
 
-	# 如果找到 PasswordAuthentication 设置为 yes
-	if grep -Eq "^PasswordAuthentication\s+yes" "$sshd_config"; then
-		sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' "$sshd_config"
-		sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' "$sshd_config"
-	fi
 
-	# 如果找到 PubkeyAuthentication 设置为 yes
-	if grep -Eq "^PubkeyAuthentication\s+yes" "$sshd_config"; then
+	if grep -Eq "^\s*PasswordAuthentication\s+no" "$sshd_config"; then
 		sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
 			   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
 			   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
 			   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' "$sshd_config"
+	else
+		sed -i -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication yes/' \
+			   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' "$sshd_config"
 	fi
 
-	# 如果 PasswordAuthentication 和 PubkeyAuthentication 都没有匹配，则设置默认值
-	if ! grep -Eq "^PasswordAuthentication\s+yes" "$sshd_config" && ! grep -Eq "^PubkeyAuthentication\s+yes" "$sshd_config"; then
-		sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' "$sshd_config"
-		sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' "$sshd_config"
-	fi
 
+
+	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 }
 
 
 new_ssh_port() {
 
-  # 备份 SSH 配置文件
   cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 
   sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
   sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
 
   correct_ssh_config
-  rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 
   restart_ssh
   open_port $new_port
@@ -4843,30 +4835,40 @@ new_ssh_port() {
 }
 
 
-add_sshkey() {
-	chmod 700 ~/
-	mkdir -p ~/.ssh
-	chmod 700 ~/.ssh
-	touch ~/.ssh/authorized_keys
-	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f ~/.ssh/sshkey -N ""
-	cat ~/.ssh/sshkey.pub >> ~/.ssh/authorized_keys
-	chmod 600 ~/.ssh/authorized_keys
 
-	ip_address
-	echo -e "私钥信息已生成，务必复制保存，可保存成 ${gl_huang}${ipv4_address}_ssh.key${gl_bai} 文件，用于以后的SSH登录"
-
-	echo "--------------------------------"
-	cat ~/.ssh/sshkey
-	echo "--------------------------------"
-
+sshkey_on() {
+	root_use
 	sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
 		   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
 		   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
 		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 	restart_ssh
-	echo -e "${gl_lv}ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
+	echo -e "${gl_lv}用户密钥登录模式已开启，已关闭密码登录模式，重连将会生效${gl_bai}"
 
+}
+
+
+
+add_sshkey() {
+	chmod 700 "${HOME}"
+	mkdir -p "${HOME}/.ssh"
+	chmod 700 "${HOME}/.ssh"
+	touch "${HOME}/.ssh/authorized_keys"
+
+	ssh-keygen -t ed25519 -C "xxxx@gmail.com" -f "${HOME}/.ssh/sshkey" -N ""
+
+	cat "${HOME}/.ssh/sshkey.pub" >> "${HOME}/.ssh/authorized_keys"
+	chmod 600 "${HOME}/.ssh/authorized_keys"
+
+	ip_address
+	echo -e "私钥信息已生成，务必复制保存，可保存成 ${gl_huang}${ipv4_address}_ssh.key${gl_bai} 文件，用于以后的SSH登录"
+
+	echo "--------------------------------"
+	cat "${HOME}/.ssh/sshkey"
+	echo "--------------------------------"
+
+	sshkey_on
 }
 
 
@@ -4876,6 +4878,8 @@ add_sshkey() {
 import_sshkey() {
 
 	local public_key="$1"
+	local ssh_dir="${HOME}/.ssh"
+	local auth_keys="${ssh_dir}/authorized_keys"
 
 	if [[ -z "$public_key" ]]; then
 		read -e -p "请输入您的SSH公钥内容（通常以 'ssh-rsa' 或 'ssh-ed25519' 开头）: " public_key
@@ -4891,28 +4895,21 @@ import_sshkey() {
 		return 1
 	fi
 
-	if grep -Fxq "$public_key" ~/.ssh/authorized_keys 2>/dev/null; then
+	if grep -Fxq "$public_key" "$auth_keys" 2>/dev/null; then
 		echo "该公钥已存在，无需重复添加"
 		return 0
 	fi
 
-	chmod 700 ~/
-	mkdir -p ~/.ssh
-	chmod 700 ~/.ssh
-	touch ~/.ssh/authorized_keys
-	echo "$public_key" >> ~/.ssh/authorized_keys
-	chmod 600 ~/.ssh/authorized_keys
+	chmod 700 "${HOME}"
+	mkdir -p "$ssh_dir"
+	chmod 700 "$ssh_dir"
+	touch "$auth_keys"
+	echo "$public_key" >> "$auth_keys"
+	chmod 600 "$auth_keys"
 
-	sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
-		   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
-		   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
-
-	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
-	restart_ssh
-	echo -e "${gl_lv}公钥已成功导入，ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
-
+	sshkey_on
 }
+
 
 
 fetch_remote_ssh_keys() {
@@ -4960,8 +4957,8 @@ fetch_remote_ssh_keys() {
 		return 1
 	fi
 
-	mkdir -p ~/.ssh
-	chmod 700 ~/.ssh
+	mkdir -p "${HOME}/.ssh"
+	chmod 700 "${HOME}/.ssh"
 	touch "${authorized_keys}"
 	chmod 600 "${authorized_keys}"
 
@@ -4986,14 +4983,7 @@ fetch_remote_ssh_keys() {
 
 	echo ""
 	if (( added > 0 )); then
-		echo "成功添加 ${added} 条新的公钥到 ${authorized_keys}"
-		sed -i -e 's/^\s*#\?\s*PermitRootLogin .*/PermitRootLogin prohibit-password/' \
-			   -e 's/^\s*#\?\s*PasswordAuthentication .*/PasswordAuthentication no/' \
-			   -e 's/^\s*#\?\s*PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-			   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
-
-		rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
-		restart_ssh
+		sshkey_on
 	else
 		echo "没有新的公钥需要添加（可能已全部存在）"
 	fi
@@ -5035,12 +5025,9 @@ fetch_github_ssh_keys() {
 }
 
 
-
-
 sshkey_panel() {
 
-  root_use
-  send_stats "私钥登录"
+  send_stats "用户密钥登录"
   while true; do
 	  clear
 	  local REAL_STATUS=$(grep -i "^PubkeyAuthentication" /etc/ssh/sshd_config | tr '[:upper:]' '[:lower:]')
@@ -5049,7 +5036,7 @@ sshkey_panel() {
 	  else
 	  	  IS_KEY_ENABLED="${gl_hui}未启用${gl_bai}"
 	  fi
-  	  echo -e "ROOT私钥登录模式 ${IS_KEY_ENABLED}"
+  	  echo -e "用户密钥登录模式 ${IS_KEY_ENABLED}"
   	  echo "进阶玩法: https://blog.kejilion.pro/ssh-key"
   	  echo "------------------------------------------------"
   	  echo "将会生成密钥对，更安全的方式SSH登录"
@@ -5087,7 +5074,7 @@ sshkey_panel() {
 		  5)
 			send_stats "编辑公钥文件"
 			install nano
-			nano ~/.ssh/authorized_keys
+			nano ${HOME}/.ssh/authorized_keys
 			break_end
 			  ;;
 
@@ -5095,10 +5082,10 @@ sshkey_panel() {
 			send_stats "查看本机密钥"
 			echo "------------------------"
 			echo "公钥信息"
-			cat ~/.ssh/authorized_keys
+			cat ${HOME}/.ssh/authorized_keys
 			echo "------------------------"
 			echo "私钥信息"
-			cat ~/.ssh/sshkey
+			cat ${HOME}/.ssh/sshkey
 			echo "------------------------"
 			break_end
 			  ;;
@@ -5116,18 +5103,42 @@ sshkey_panel() {
 
 
 
-
 add_sshpasswd() {
 
-echo "设置你的ROOT密码"
-passwd
-sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config;
-sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
-rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
-restart_ssh
-echo -e "${gl_lv}ROOT登录设置完毕！${gl_bai}"
+	root_use
+	send_stats "设置密码登录模式"
+	echo "设置密码登录模式"
 
+	local target_user="$1"
+
+	# 如果没有通过参数传入，则交互输入
+	if [[ -z "$target_user" ]]; then
+		read -e -p "请输入要修改密码的用户名（默认 root）: " target_user
+	fi
+
+	# 回车不输入，默认 root
+	target_user=${target_user:-root}
+
+	# 校验用户是否存在
+	if ! id "$target_user" >/dev/null 2>&1; then
+		echo "错误：用户 $target_user 不存在"
+		return 1
+	fi
+
+	passwd "$target_user"
+
+	if [[ "$target_user" == "root" ]]; then
+		sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config
+	fi
+
+	sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
+
+	restart_ssh
+
+	echo -e "${gl_lv}密码设置完毕，已更改为密码登录模式！${gl_bai}"
 }
+
 
 
 root_use() {
@@ -8403,7 +8414,6 @@ linux_Oracle() {
 		  5)
 			  clear
 			  add_sshpasswd
-
 			  ;;
 		  6)
 			  clear
@@ -13830,7 +13840,7 @@ linux_Settings() {
 	  echo -e "系统工具"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}设置脚本启动快捷键                 ${gl_kjlan}2.   ${gl_bai}修改登录密码"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}ROOT密码登录模式                   ${gl_kjlan}4.   ${gl_bai}安装Python指定版本"
+	  echo -e "${gl_kjlan}3.   ${gl_bai}用户密码登录模式                      ${gl_kjlan}4.   ${gl_bai}安装Python指定版本"
 	  echo -e "${gl_kjlan}5.   ${gl_bai}开放所有端口                       ${gl_kjlan}6.   ${gl_bai}修改SSH连接端口"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}优化DNS地址                        ${gl_kjlan}8.   ${gl_bai}一键重装系统 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}禁用ROOT账户创建新账户             ${gl_kjlan}10.  ${gl_bai}切换优先ipv4/ipv6"
@@ -13842,7 +13852,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}19.  ${gl_bai}切换系统更新源                     ${gl_kjlan}20.  ${gl_bai}定时任务管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}本机host解析                       ${gl_kjlan}22.  ${gl_bai}SSH防御程序"
-	  echo -e "${gl_kjlan}23.  ${gl_bai}限流自动关机                       ${gl_kjlan}24.  ${gl_bai}ROOT私钥登录模式"
+	  echo -e "${gl_kjlan}23.  ${gl_bai}限流自动关机                       ${gl_kjlan}24.  ${gl_bai}用户密钥登录模式"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot系统监控预警                 ${gl_kjlan}26.  ${gl_bai}修复OpenSSH高危漏洞"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}红帽系Linux内核升级                ${gl_kjlan}28.  ${gl_bai}Linux系统内核参数优化 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}文件管理器"
@@ -13888,8 +13898,7 @@ linux_Settings() {
 			  passwd
 			  ;;
 		  3)
-			  root_use
-			  send_stats "root密码模式"
+			  clear
 			  add_sshpasswd
 			  ;;
 
@@ -14047,13 +14056,14 @@ EOF
 			fi
 
 			useradd -m -s /bin/bash "$new_username"
-			passwd "$new_username"
+			add_sshpasswd "$new_username"
 
 			install sudo
 
 			echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
 
 			passwd -l root
+			sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin no/g' /etc/ssh/sshd_config
 
 			echo "操作已完成。"
 			;;
@@ -14194,7 +14204,7 @@ EOF
 
 					   # 创建新用户并设置密码
 					   useradd -m -s /bin/bash "$new_username"
-					   passwd "$new_username"
+					   add_sshpasswd "$new_username"
 
 					   echo "操作已完成。"
 						  ;;
@@ -14205,7 +14215,7 @@ EOF
 
 					   # 创建新用户并设置密码
 					   useradd -m -s /bin/bash "$new_username"
-					   passwd "$new_username"
+					   add_sshpasswd "$new_username"
 
 					   # 赋予新用户sudo权限
 					   echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
@@ -15930,4 +15940,3 @@ else
 			;;
 	esac
 fi
-
