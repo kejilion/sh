@@ -13903,7 +13903,7 @@ EOF
 		chmod 440 "/etc/sudoers.d/$new_username"
 	fi
 
-	passwd -l "$new_username"
+	passwd -l "$new_username" &>/dev/null
 
 	echo "用户 $new_username 创建完成"
 }
@@ -14147,8 +14147,10 @@ EOF
 
 			create_user_with_sshkey $new_username true
 
-			passwd -l root
-			sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin no/g' /etc/ssh/sshd_config
+			ssh-keygen -l -f /home/$new_username/.ssh/authorized_keys &>/dev/null && {
+				passwd -l root &>/dev/null
+				sed -i 's/^[[:space:]]*#\?[[:space:]]*PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+			}
 
 			;;
 
@@ -14325,6 +14327,7 @@ EOF
 						  break  # 跳出循环，退出菜单
 						  ;;
 				  esac
+
 			  done
 			  ;;
 
