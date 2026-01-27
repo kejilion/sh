@@ -13903,7 +13903,10 @@ EOF
 		chmod 440 "/etc/sudoers.d/$new_username"
 	fi
 
+	sed -i '/^\s*#\?\s*UsePAM\s\+/d' /etc/ssh/sshd_config
+	echo 'UsePAM yes' >> /etc/ssh/sshd_config
 	passwd -l "$new_username" &>/dev/null
+
 
 	echo "用户 $new_username 创建完成"
 }
