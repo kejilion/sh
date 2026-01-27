@@ -4878,7 +4878,8 @@ add_sshkey() {
 import_sshkey() {
 
 	local public_key="$1"
-	local ssh_dir="${HOME}/.ssh"
+	local base_dir="${2:-$HOME}"
+	local ssh_dir="${base_dir}/.ssh"
 	local auth_keys="${ssh_dir}/authorized_keys"
 
 	if [[ -z "$public_key" ]]; then
@@ -4900,7 +4901,6 @@ import_sshkey() {
 		return 0
 	fi
 
-	chmod 700 "${HOME}"
 	mkdir -p "$ssh_dir"
 	chmod 700 "$ssh_dir"
 	touch "$auth_keys"
@@ -4915,7 +4915,9 @@ import_sshkey() {
 fetch_remote_ssh_keys() {
 
 	local keys_url="$1"
-	local authorized_keys="${HOME}/.ssh/authorized_keys"
+	local base_dir="${2:-$HOME}"
+	local ssh_dir="${base_dir}/.ssh"
+	local authorized_keys="${ssh_dir}/authorized_keys"
 	local temp_file
 
 	if [[ -z "${keys_url}" ]]; then
@@ -4957,8 +4959,8 @@ fetch_remote_ssh_keys() {
 		return 1
 	fi
 
-	mkdir -p "${HOME}/.ssh"
-	chmod 700 "${HOME}/.ssh"
+	mkdir -p "${ssh_dir}"
+	chmod 700 "${ssh_dir}"
 	touch "${authorized_keys}"
 	chmod 600 "${authorized_keys}"
 
@@ -4993,9 +4995,11 @@ fetch_remote_ssh_keys() {
 
 
 
+
 fetch_github_ssh_keys() {
 
 	local username="$1"
+	local base_dir="${2:-$HOME}"
 
 	echo "操作前，请确保您已在 GitHub 账户中添加了 SSH 公钥："
 	echo "  1. 登录 https://github.com/settings/keys"
@@ -5020,7 +5024,7 @@ fetch_github_ssh_keys() {
 
 	keys_url="https://github.com/${username}.keys"
 
-	fetch_remote_ssh_keys "${keys_url}"
+	fetch_remote_ssh_keys "${keys_url}" "${base_dir}"
 
 }
 
@@ -5141,10 +5145,30 @@ add_sshpasswd() {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
 root_use() {
 clear
 [ "$EUID" -ne 0 ] && echo -e "${gl_huang}提示: ${gl_bai}该功能需要root用户才能运行！" && break_end && kejilion
 }
+
+
+
+
+
+
+
+
+
 
 
 
@@ -13832,6 +13856,72 @@ log_menu() {
 
 
 
+create_user_with_sshkey() {
+	local new_username="$1"
+	local is_sudo="${2:-false}"
+	local sshkey_vl
+
+	if [[ -z "$new_username" ]]; then
+		echo "用法：create_user_with_sshkey <用户名>"
+		return 1
+	fi
+
+	# 创建用户
+	useradd -m -s /bin/bash "$new_username" || return 1
+
+	echo "导入公钥范例："
+	echo "  - URL：      https://github.com/torvalds.keys"
+	echo "  - 直接粘贴： ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI..."
+	read -e -p "请导入 ${new_username} 的公钥: " sshkey_vl
+
+	case "$sshkey_vl" in
+		http://*|https://*)
+			send_stats "从 URL 导入 SSH 公钥"
+			fetch_remote_ssh_keys "$sshkey_vl" "/home/$new_username"
+			;;
+		ssh-rsa*|ssh-ed25519*|ssh-ecdsa*)
+			send_stats "公钥直接导入"
+			import_sshkey "$sshkey_vl" "/home/$new_username"
+			;;
+		*)
+			echo "错误：未知参数 '$sshkey_vl'"
+			return 1
+			;;
+	esac
+
+
+	# 修正权限
+	chown -R "$new_username:$new_username" "/home/$new_username/.ssh"
+
+	install sudo
+
+	# sudo 免密
+	if [[ "$is_sudo" == "true" ]]; then
+		cat >"/etc/sudoers.d/$new_username" <<EOF
+$new_username ALL=(ALL) NOPASSWD:ALL
+EOF
+		chmod 440 "/etc/sudoers.d/$new_username"
+	fi
+
+	passwd -l "$new_username"
+
+	echo "用户 $new_username 创建完成"
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 linux_Settings() {
 
 	while true; do
@@ -14055,17 +14145,11 @@ EOF
 				linux_Settings
 			fi
 
-			useradd -m -s /bin/bash "$new_username"
-			add_sshpasswd "$new_username"
-
-			install sudo
-
-			echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
+			create_user_with_sshkey $new_username true
 
 			passwd -l root
 			sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin no/g' /etc/ssh/sshd_config
 
-			echo "操作已完成。"
 			;;
 
 
@@ -14179,7 +14263,12 @@ EOF
 				printf "%-24s %-34s %-20s %-10s\n" "用户名" "用户权限" "用户组" "sudo权限"
 				while IFS=: read -r username _ userid groupid _ _ homedir shell; do
 					local groups=$(groups "$username" | cut -d : -f 2)
-					local sudo_status=$(sudo -n -lU "$username" 2>/dev/null | grep -q '(ALL : ALL)' && echo "Yes" || echo "No")
+					local sudo_status
+					if sudo -n -lU "$username" 2>/dev/null | grep -q "(ALL) \(NOPASSWD: \)\?ALL"; then
+						sudo_status="Yes"
+					else
+						sudo_status="No"
+					fi
 					printf "%-20s %-30s %-20s %-10s\n" "$username" "$homedir" "$groups" "$sudo_status"
 				done < /etc/passwd
 
@@ -14187,7 +14276,7 @@ EOF
 				  echo ""
 				  echo "账户操作"
 				  echo "------------------------"
-				  echo "1. 创建普通账户             2. 创建高级账户"
+				  echo "1. 创建普通用户             2. 创建高级用户"
 				  echo "------------------------"
 				  echo "3. 赋予最高权限             4. 取消最高权限"
 				  echo "------------------------"
@@ -14201,46 +14290,34 @@ EOF
 					  1)
 					   # 提示用户输入新用户名
 					   read -e -p "请输入新用户名: " new_username
+					   create_user_with_sshkey $new_username false
 
-					   # 创建新用户并设置密码
-					   useradd -m -s /bin/bash "$new_username"
-					   add_sshpasswd "$new_username"
-
-					   echo "操作已完成。"
 						  ;;
 
 					  2)
 					   # 提示用户输入新用户名
 					   read -e -p "请输入新用户名: " new_username
-
-					   # 创建新用户并设置密码
-					   useradd -m -s /bin/bash "$new_username"
-					   add_sshpasswd "$new_username"
-
-					   # 赋予新用户sudo权限
-					   echo "$new_username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
-
-					   install sudo
-
-					   echo "操作已完成。"
+					   create_user_with_sshkey $new_username true
 
 						  ;;
 					  3)
 					   read -e -p "请输入用户名: " username
-					   # 赋予新用户sudo权限
-					   echo "$username ALL=(ALL:ALL) ALL" | tee -a /etc/sudoers
-
 					   install sudo
+					   cat >"/etc/sudoers.d/$username" <<EOF
+$username ALL=(ALL) NOPASSWD:ALL
+EOF
+					  chmod 440 "/etc/sudoers.d/$username"
+
 						  ;;
 					  4)
 					   read -e -p "请输入用户名: " username
-					   # 从sudoers文件中移除用户的sudo权限
-					   sed -i "/^$username\sALL=(ALL:ALL)\sALL/d" /etc/sudoers
-
+				  	   if [[ -f "/etc/sudoers.d/$username" ]]; then
+						   grep -lR "^$username" /etc/sudoers.d/ 2>/dev/null | xargs rm -f
+					   fi
+					   sed -i "/^$username\s*ALL=(ALL)/d" /etc/sudoers
 						  ;;
 					  5)
 					   read -e -p "请输入要删除的用户名: " username
-					   # 删除用户及其主目录
 					   userdel -r "$username"
 						  ;;
 
@@ -15901,6 +15978,7 @@ else
 
 
 		sshkey)
+
 			shift
 			case "$1" in
 				"" )
@@ -15908,23 +15986,19 @@ else
 					send_stats "SSHKey 交互菜单"
 					sshkey_panel
 					;;
-
 				github )
 					shift
 					send_stats "从 GitHub 导入 SSH 公钥"
 					fetch_github_ssh_keys "$1"
 					;;
-
 				http://*|https://* )
 					send_stats "从 URL 导入 SSH 公钥"
 					fetch_remote_ssh_keys "$1"
 					;;
-
 				ssh-rsa*|ssh-ed25519*|ssh-ecdsa* )
 					send_stats "公钥直接导入"
 					import_sshkey "$1"
 					;;
-
 				* )
 					echo "错误：未知参数 '$1'"
 					echo "用法："
@@ -15934,9 +16008,11 @@ else
 					echo "  k sshkey github <user>    从 GitHub 导入 SSH 公钥"
 					;;
 			esac
+
 			;;
 		*)
 			k_info
 			;;
 	esac
 fi
+
