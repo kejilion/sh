@@ -13907,7 +13907,7 @@ EOF
 	sed -i '/^\s*#\?\s*UsePAM\s\+/d' /etc/ssh/sshd_config
 	echo 'UsePAM yes' >> /etc/ssh/sshd_config
 	passwd -l "$new_username" &>/dev/null
-
+	restart_ssh
 
 	echo "用户 $new_username 创建完成"
 }
