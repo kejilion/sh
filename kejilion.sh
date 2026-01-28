@@ -13657,10 +13657,10 @@ switch_mirror() {
 		  --upgrade-software "$upgrade_software" \
 		  --clean-cache "$clean_cache" \
 		  --ignore-backup-tips \
-		  --install-epel true \
+		  --install-epel false \
 		  --pure-mode
 	else
-		echo "使用官方镜像源..."
+		echo "使用海外镜像源..."
 		bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
 		  --source mirrors.xtom.com \
 		  --protocol https \
@@ -13669,7 +13669,7 @@ switch_mirror() {
 		  --upgrade-software "$upgrade_software" \
 		  --clean-cache "$clean_cache" \
 		  --ignore-backup-tips \
-		  --install-epel true \
+		  --install-epel false \
 		  --pure-mode
 	fi
 }
