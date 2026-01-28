@@ -7205,13 +7205,13 @@ linux_tools() {
 	  clear
 	  # send_stats "基础工具"
 	  echo -e "基础工具"
-	  
+
 	  tools=(
 		curl wget sudo socat htop iftop unzip tar tmux ffmpeg
 		btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders
 		vim nano git
 	  )
-	  
+
 	  if command -v apt >/dev/null 2>&1; then
 		PM="apt"
 	  elif command -v dnf >/dev/null 2>&1; then
@@ -7232,10 +7232,10 @@ linux_tools() {
 		echo "❌ 未识别的包管理器"
 		exit 1
 	  fi
-	  
+
 	  echo "📦 使用包管理器: $PM"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  
+
 	  for ((i=0; i<${#tools[@]}; i+=2)); do
 		# 左列
 		if command -v "${tools[i]}" >/dev/null 2>&1; then
@@ -7243,7 +7243,7 @@ linux_tools() {
 		else
 		  left=$(printf "❌ %-12s 未安装" "${tools[i]}")
 		fi
-	  
+
 		# 右列（防止数组越界）
 		if [[ -n "${tools[i+1]}" ]]; then
 		  if command -v "${tools[i+1]}" >/dev/null 2>&1; then
@@ -13662,7 +13662,7 @@ switch_mirror() {
 	else
 		echo "使用官方镜像源..."
 		bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
-		  --use-official-source true \
+		  --source mirrors.xtom.com \
 		  --protocol https \
 		  --use-intranet-source false \
 		  --backup true \
@@ -16078,4 +16078,3 @@ else
 			;;
 	esac
 fi
-
