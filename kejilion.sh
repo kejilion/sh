@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.3.5"
+sh_v="4.3.6"
 
 
 gl_hui='\e[37m'
@@ -177,7 +177,7 @@ install() {
 
 	for package in "$@"; do
 		if ! command -v "$package" &>/dev/null; then
-			echo -e "${gl_huang}正在安装 $package...${gl_bai}"
+			echo -e "${gl_kjlan}正在安装 $package...${gl_bai}"
 			if command -v dnf &>/dev/null; then
 				dnf -y update
 				dnf install -y epel-release
@@ -252,7 +252,7 @@ remove() {
 	fi
 
 	for package in "$@"; do
-		echo -e "${gl_huang}正在卸载 $package...${gl_bai}"
+		echo -e "${gl_kjlan}正在卸载 $package...${gl_bai}"
 		if command -v dnf &>/dev/null; then
 			dnf remove -y "$package"
 		elif command -v yum &>/dev/null; then
@@ -449,7 +449,7 @@ install_add_docker_cn
 
 
 install_add_docker() {
-	echo -e "${gl_huang}正在安装docker环境...${gl_bai}"
+	echo -e "${gl_kjlan}正在安装docker环境...${gl_bai}"
 	if command -v apt &>/dev/null || command -v yum &>/dev/null || command -v dnf &>/dev/null; then
 		linuxmirrors_install_docker
 	else
@@ -628,7 +628,7 @@ while true; do
 			send_stats "拉取镜像"
 			read -e -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
 			for name in $imagenames; do
-				echo -e "${gl_huang}正在获取镜像: $name${gl_bai}"
+				echo -e "${gl_kjlan}正在获取镜像: $name${gl_bai}"
 				docker pull $name
 			done
 			;;
@@ -636,7 +636,7 @@ while true; do
 			send_stats "更新镜像"
 			read -e -p "请输入镜像名（多个镜像名请用空格分隔）: " imagenames
 			for name in $imagenames; do
-				echo -e "${gl_huang}正在更新镜像: $name${gl_bai}"
+				echo -e "${gl_kjlan}正在更新镜像: $name${gl_bai}"
 				docker pull $name
 			done
 			;;
@@ -4592,7 +4592,7 @@ fix_dpkg() {
 
 
 linux_update() {
-	echo -e "${gl_huang}正在系统更新...${gl_bai}"
+	echo -e "${gl_kjlan}正在系统更新...${gl_bai}"
 	if command -v dnf &>/dev/null; then
 		dnf -y update
 	elif command -v yum &>/dev/null; then
@@ -4619,7 +4619,7 @@ linux_update() {
 
 
 linux_clean() {
-	echo -e "${gl_huang}正在系统清理...${gl_bai}"
+	echo -e "${gl_kjlan}正在系统清理...${gl_bai}"
 	if command -v dnf &>/dev/null; then
 		rpm --rebuilddb
 		dnf autoremove -y
@@ -5743,7 +5743,7 @@ elrepo() {
 
 
 clamav_freshclam() {
-	echo -e "${gl_huang}正在更新病毒库...${gl_bai}"
+	echo -e "${gl_kjlan}正在更新病毒库...${gl_bai}"
 	docker run --rm \
 		--name clamav \
 		--mount source=clam_db,target=/var/lib/clamav \
@@ -5757,7 +5757,7 @@ clamav_scan() {
 		return
 	fi
 
-	echo -e "${gl_huang}正在扫描目录$@... ${gl_bai}"
+	echo -e "${gl_kjlan}正在扫描目录$@... ${gl_bai}"
 
 	# 构建 mount 参数
 	local MOUNT_PARAMS=""
@@ -7100,7 +7100,10 @@ rsync_manager() {
 
 linux_info() {
 
+
+
 	clear
+	echo -e "${gl_kjlan}正在查询系统信息……${gl_bai}"
 	send_stats "系统信息查询"
 
 	ip_address
@@ -7575,12 +7578,6 @@ linux_bbr() {
 
 docker_ssh_migration() {
 
-	GREEN='\033[0;32m'
-	RED='\033[0;31m'
-	YELLOW='\033[1;33m'
-	BLUE='\033[0;36m'
-	NC='\033[0m'
-
 	is_compose_container() {
 		local container=$1
 		docker inspect "$container" | jq -e '.[0].Config.Labels["com.docker.compose.project"]' >/dev/null 2>&1
@@ -7588,7 +7585,7 @@ docker_ssh_migration() {
 
 	list_backups() {
 		local BACKUP_ROOT="/tmp"
-		echo -e "${BLUE}当前备份列表:${NC}"
+		echo -e "${gl_kjlan}当前备份列表:${gl_bai}"
 		ls -1dt ${BACKUP_ROOT}/docker_backup_* 2>/dev/null || echo "无备份"
 	}
 
@@ -7600,7 +7597,7 @@ docker_ssh_migration() {
 	backup_docker() {
 		send_stats "Docker备份"
 
-		echo -e "${YELLOW}正在备份 Docker 容器...${NC}"
+		echo -e "${gl_kjlan}正在备份 Docker 容器...${gl_bai}"
 		docker ps --format '{{.Names}}'
 		read -e -p  "请输入要备份的容器名（多个空格分隔，回车备份全部运行中容器）: " containers
 
@@ -7615,7 +7612,7 @@ docker_ssh_migration() {
 		else
 			read -ra TARGET_CONTAINERS <<< "$containers"
 		fi
-		[[ ${#TARGET_CONTAINERS[@]} -eq 0 ]] && { echo -e "${RED}没有找到容器${NC}"; return; }
+		[[ ${#TARGET_CONTAINERS[@]} -eq 0 ]] && { echo -e "${gl_hong}没有找到容器${gl_bai}"; return; }
 
 		local BACKUP_DIR="${BACKUP_ROOT}/docker_backup_${DATE_STR}"
 		mkdir -p "$BACKUP_DIR"
@@ -7629,12 +7626,12 @@ docker_ssh_migration() {
 		declare -A PACKED_COMPOSE_PATHS=()
 
 		for c in "${TARGET_CONTAINERS[@]}"; do
-			echo -e "${GREEN}备份容器: $c${NC}"
+			echo -e "${gl_lv}备份容器: $c${gl_bai}"
 			local inspect_file="${BACKUP_DIR}/${c}_inspect.json"
 			docker inspect "$c" > "$inspect_file"
 
 			if is_compose_container "$c"; then
-				echo -e "${BLUE}检测到 $c 是 docker-compose 容器${NC}"
+				echo -e "${gl_kjlan}检测到 $c 是 docker-compose 容器${gl_bai}"
 				local project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
 				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
@@ -7644,7 +7641,7 @@ docker_ssh_migration() {
 
 				# 如果该 Compose 项目已经打包过，跳过
 				if [[ -n "${PACKED_COMPOSE_PATHS[$project_dir]}" ]]; then
-					echo -e "${YELLOW}Compose 项目 [$project_name] 已备份过，跳过重复打包...${NC}"
+					echo -e "${gl_huang}Compose 项目 [$project_name] 已备份过，跳过重复打包...${gl_bai}"
 					continue
 				fi
 
@@ -7655,9 +7652,9 @@ docker_ssh_migration() {
 					echo "# docker-compose 恢复: $project_name" >> "$RESTORE_SCRIPT"
 					echo "cd \"$project_dir\" && docker compose up -d" >> "$RESTORE_SCRIPT"
 					PACKED_COMPOSE_PATHS["$project_dir"]=1
-					echo -e "${GREEN}Compose 项目 [$project_name] 已打包: ${project_dir}${NC}"
+					echo -e "${gl_lv}Compose 项目 [$project_name] 已打包: ${project_dir}${gl_bai}"
 				else
-					echo -e "${RED}未找到 docker-compose.yml，跳过此容器...${NC}"
+					echo -e "${gl_hong}未找到 docker-compose.yml，跳过此容器...${gl_bai}"
 				fi
 			else
 				# 普通容器备份卷
@@ -7694,14 +7691,14 @@ docker_ssh_migration() {
 
 		# 备份 /home/docker 下的所有文件（不含子目录）
 		if [ -d "/home/docker" ]; then
-			echo -e "${BLUE}备份 /home/docker 下的文件...${NC}"
+			echo -e "${gl_kjlan}备份 /home/docker 下的文件...${gl_bai}"
 			find /home/docker -maxdepth 1 -type f | tar -czf "${BACKUP_DIR}/home_docker_files.tar.gz" -T -
-			echo -e "${GREEN}/home/docker 下的文件已打包到: ${BACKUP_DIR}/home_docker_files.tar.gz${NC}"
+			echo -e "${gl_lv}/home/docker 下的文件已打包到: ${BACKUP_DIR}/home_docker_files.tar.gz${gl_bai}"
 		fi
 
 		chmod +x "$RESTORE_SCRIPT"
-		echo -e "${GREEN}备份完成: ${BACKUP_DIR}${NC}"
-		echo -e "${GREEN}可用还原脚本: ${RESTORE_SCRIPT}${NC}"
+		echo -e "${gl_lv}备份完成: ${BACKUP_DIR}${gl_bai}"
+		echo -e "${gl_lv}可用还原脚本: ${RESTORE_SCRIPT}${gl_bai}"
 
 
 	}
@@ -7713,9 +7710,9 @@ docker_ssh_migration() {
 
 		send_stats "Docker还原"
 		read -e -p  "请输入要还原的备份目录: " BACKUP_DIR
-		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}备份目录不存在${NC}"; return; }
+		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${gl_hong}备份目录不存在${gl_bai}"; return; }
 
-		echo -e "${BLUE}开始执行还原操作...${NC}"
+		echo -e "${gl_kjlan}开始执行还原操作...${gl_bai}"
 
 		install tar jq gzip
 		install_docker
@@ -7732,7 +7729,7 @@ docker_ssh_migration() {
 				# 检查该 compose 项目的容器是否已经在运行
 				running_count=$(docker ps --filter "label=com.docker.compose.project=$project_name" --format '{{.Names}}' | wc -l)
 				if [[ "$running_count" -gt 0 ]]; then
-					echo -e "${YELLOW}Compose 项目 [$project_name] 已有容器在运行，跳过还原...${NC}"
+					echo -e "${gl_huang}Compose 项目 [$project_name] 已有容器在运行，跳过还原...${gl_bai}"
 					continue
 				fi
 
@@ -7741,32 +7738,32 @@ docker_ssh_migration() {
 
 				mkdir -p "$original_path"
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
-				echo -e "${GREEN}Compose 项目 [$project_name] 已解压到: $original_path${NC}"
+				echo -e "${gl_lv}Compose 项目 [$project_name] 已解压到: $original_path${gl_bai}"
 
 				cd "$original_path" || return
 				docker compose down || true
 				docker compose up -d
-				echo -e "${GREEN}Compose 项目 [$project_name] 还原完成！${NC}"
+				echo -e "${gl_lv}Compose 项目 [$project_name] 还原完成！${gl_bai}"
 			fi
 		done
 
 		# --------- 继续还原普通容器 ---------
-		echo -e "${BLUE}检查并还原普通 Docker 容器...${NC}"
+		echo -e "${gl_kjlan}检查并还原普通 Docker 容器...${gl_bai}"
 		local has_container=false
 		for json in "$BACKUP_DIR"/*_inspect.json; do
 			[[ ! -f "$json" ]] && continue
 			has_container=true
 			container=$(basename "$json" | sed 's/_inspect.json//')
-			echo -e "${GREEN}处理容器: $container${NC}"
+			echo -e "${gl_lv}处理容器: $container${gl_bai}"
 
 			# 检查容器是否已经存在且正在运行
 			if docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
-				echo -e "${YELLOW}容器 [$container] 已在运行，跳过还原...${NC}"
+				echo -e "${gl_huang}容器 [$container] 已在运行，跳过还原...${gl_bai}"
 				continue
 			fi
 
 			IMAGE=$(jq -r '.[0].Config.Image' "$json")
-			[[ -z "$IMAGE" || "$IMAGE" == "null" ]] && { echo -e "${RED}未找到镜像信息，跳过: $container${NC}"; continue; }
+			[[ -z "$IMAGE" || "$IMAGE" == "null" ]] && { echo -e "${gl_hong}未找到镜像信息，跳过: $container${gl_bai}"; continue; }
 
 			# 端口映射
 			PORT_ARGS=""
@@ -7800,7 +7797,7 @@ docker_ssh_migration() {
 
 			# 删除已存在但未运行的容器
 			if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
-				echo -e "${YELLOW}容器 [$container] 存在但未运行，删除旧容器...${NC}"
+				echo -e "${gl_huang}容器 [$container] 存在但未运行，删除旧容器...${gl_bai}"
 				docker rm -f "$container"
 			fi
 
@@ -7809,16 +7806,16 @@ docker_ssh_migration() {
 			eval "docker run -d --name \"$container\" $PORT_ARGS $VOL_ARGS $ENV_ARGS \"$IMAGE\""
 		done
 
-		[[ "$has_container" == false ]] && echo -e "${YELLOW}未找到普通容器的备份信息${NC}"
+		[[ "$has_container" == false ]] && echo -e "${gl_huang}未找到普通容器的备份信息${gl_bai}"
 
 		# 还原 /home/docker 下的文件
 		if [ -f "$BACKUP_DIR/home_docker_files.tar.gz" ]; then
-			echo -e "${BLUE}正在还原 /home/docker 下的文件...${NC}"
+			echo -e "${gl_kjlan}正在还原 /home/docker 下的文件...${gl_bai}"
 			mkdir -p /home/docker
 			tar -xzf "$BACKUP_DIR/home_docker_files.tar.gz" -C /
-			echo -e "${GREEN}/home/docker 下的文件已还原完成${NC}"
+			echo -e "${gl_lv}/home/docker 下的文件已还原完成${gl_bai}"
 		else
-			echo -e "${YELLOW}未找到 /home/docker 下文件的备份，跳过...${NC}"
+			echo -e "${gl_huang}未找到 /home/docker 下文件的备份，跳过...${gl_bai}"
 		fi
 
 
@@ -7832,7 +7829,7 @@ docker_ssh_migration() {
 		send_stats "Docker迁移"
 		install jq
 		read -e -p  "请输入要迁移的备份目录: " BACKUP_DIR
-		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}备份目录不存在${NC}"; return; }
+		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${gl_hong}备份目录不存在${gl_bai}"; return; }
 
 		read -e -p  "目标服务器IP: " TARGET_IP
 		read -e -p  "目标服务器SSH用户名: " TARGET_USER
@@ -7841,7 +7838,7 @@ docker_ssh_migration() {
 
 		local LATEST_TAR="$BACKUP_DIR"
 
-		echo -e "${YELLOW}传输备份中...${NC}"
+		echo -e "${gl_huang}传输备份中...${gl_bai}"
 		if [[ -z "$TARGET_PASS" ]]; then
 			# 使用密钥登录
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
@@ -7855,9 +7852,9 @@ docker_ssh_migration() {
 	delete_backup() {
 		send_stats "Docker备份文件删除"
 		read -e -p  "请输入要删除的备份目录: " BACKUP_DIR
-		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${RED}备份目录不存在${NC}"; return; }
+		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${gl_hong}备份目录不存在${gl_bai}"; return; }
 		rm -rf "$BACKUP_DIR"
-		echo -e "${GREEN}已删除备份: ${BACKUP_DIR}${NC}"
+		echo -e "${gl_lv}已删除备份: ${BACKUP_DIR}${gl_bai}"
 	}
 
 	# ----------------------------
@@ -7887,7 +7884,7 @@ docker_ssh_migration() {
 				3) restore_docker ;;
 				4) delete_backup ;;
 				0) return ;;
-				*) echo -e "${RED}无效选项${NC}" ;;
+				*) echo -e "${gl_hong}无效选项${gl_bai}" ;;
 			esac
 		break_end
 		done
@@ -9292,7 +9289,7 @@ linux_ldnmp() {
 	  send_stats "LDNMP环境备份"
 
 	  local backup_filename="web_$(date +"%Y%m%d%H%M%S").tar.gz"
-	  echo -e "${gl_huang}正在备份 $backup_filename ...${gl_bai}"
+	  echo -e "${gl_kjlan}正在备份 $backup_filename ...${gl_bai}"
 	  cd /home/ && tar czvf "$backup_filename" web
 
 	  while true; do
@@ -9390,7 +9387,7 @@ linux_ldnmp() {
 		  docker compose down > /dev/null 2>&1
 		  rm -rf /home/web > /dev/null 2>&1
 
-		  echo -e "${gl_huang}正在解压 $filename ...${gl_bai}"
+		  echo -e "${gl_kjlan}正在解压 $filename ...${gl_bai}"
 		  cd /home/ && tar -xzf "$filename"
 
 		  install_dependency
@@ -9590,6 +9587,7 @@ local sub_choice="$1"
 clear
 cd ~
 install git
+echo -e "${gl_kjlan}正在更新应用列表请稍等……${gl_bai}"
 if [ ! -d apps/.git ]; then
 	timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
 else
@@ -13352,7 +13350,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 	  	send_stats "全部应用备份"
 
 	  	local backup_filename="app_$(date +"%Y%m%d%H%M%S").tar.gz"
-	  	echo -e "${gl_huang}正在备份 $backup_filename ...${gl_bai}"
+	  	echo -e "${gl_kjlan}正在备份 $backup_filename ...${gl_bai}"
 	  	cd / && tar czvf "$backup_filename" home
 
 	  	while true; do
@@ -13409,7 +13407,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 	  	fi
 
 	  	if [ -n "$filename" ]; then
-		  	  echo -e "${gl_huang}正在解压 $filename ...${gl_bai}"
+		  	  echo -e "${gl_kjlan}正在解压 $filename ...${gl_bai}"
 		  	  cd / && tar -xzf "$filename"
 			  echo "应用数据已还原，目前请手动进入指定应用菜单，更新应用，即可还原应用。"
 	  	else
