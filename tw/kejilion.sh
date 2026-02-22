@@ -1260,10 +1260,10 @@ add_swap() {
 		mkswap -f "$partition"
 	done
 
-	# 确保 /swapfile 不再被使用
+	# 確保 /swapfile 不再被使用
 	swapoff /swapfile
 
-	# 删除旧的 /swapfile
+	# 刪除舊的 /swapfile
 	rm -f /swapfile
 
 	# 建立新的 swap 分割區
@@ -1865,7 +1865,7 @@ nginx_br() {
 		sed -i '/brotli_types/,+6 s/^\(\s*\)#\s*/\1/' /home/web/nginx.conf
 
 	elif [ "$mode" == "off" ]; then
-		# 關閉 Brotli：加上註釋
+		# 关闭 Brotli：加上注释
 		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 
@@ -3663,7 +3663,7 @@ EOF
 
 add_forwarding_service() {
 	send_stats "新增frp內網服務"
-	# 提示使用者輸入服務名稱和轉發訊息
+	# 提示用户输入服务名称和转发信息
 	read -e -p "請輸入服務名稱:" service_name
 	read -e -p "請輸入轉送類型 (tcp/udp) [回​​車預設tcp]:" service_type
 	local service_type=${service_type:-tcp}
@@ -4245,9 +4245,9 @@ linux_clean() {
 	elif command -v apk &>/dev/null; then
 		echo "清理包管理器快取..."
 		apk cache clean
-		echo "删除系统日志..."
+		echo "刪除系統日誌..."
 		rm -rf /var/log/*
-		echo "删除APK缓存..."
+		echo "刪除APK快取..."
 		rm -rf /var/cache/apk/*
 		echo "刪除臨時檔案..."
 		rm -rf /tmp/*
@@ -4330,9 +4330,9 @@ root_use
 send_stats "優化DNS"
 while true; do
 	clear
-	echo "优化DNS地址"
+	echo "優化DNS位址"
 	echo "------------------------"
-	echo "当前DNS地址"
+	echo "目前DNS地址"
 	cat /etc/resolv.conf
 	echo "------------------------"
 	echo ""
@@ -4650,7 +4650,7 @@ dd_xitong() {
 
 
 			  21)
-				send_stats "重裝rockylinux10"
+				send_stats "重装rockylinux10"
 				dd_xitong_3
 				bash reinstall.sh rocky
 				reboot
@@ -5262,7 +5262,7 @@ optimize_balanced() {
 	echo -e "${gl_lv}其他優化...${gl_bai}"
 	# 還原透明大頁面
 	echo always > /sys/kernel/mm/transparent_hugepage/enabled
-	# 還原 NUMA balancing
+	# 还原 NUMA balancing
 	sysctl -w kernel.numa_balancing=1 2>/dev/null
 
 
@@ -5357,8 +5357,8 @@ Kernel_optimize() {
 	while true; do
 	  clear
 	  send_stats "Linux核心調優管理"
-	  echo "Linux系统内核参数优化"
-	  echo "视频介绍: https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1"
+	  echo "Linux系統核心參數優化"
+	  echo "影片介紹: https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1"
 	  echo "------------------------------------------------"
 	  echo "提供多種系統參數調優模式，使用者可依自身使用場景進行選擇切換。"
 	  echo -e "${gl_huang}提示:${gl_bai}生產環境請謹慎使用！"
@@ -5438,7 +5438,7 @@ update_locale() {
 				locale-gen
 				echo "LANG=${lang}" > /etc/default/locale
 				export LANG=${lang}
-				echo -e "${gl_lv}系統語言已經修改為:$lang 重新连接SSH生效。${gl_bai}"
+				echo -e "${gl_lv}系統語言已經修改為:$lang重新連線SSH生效。${gl_bai}"
 				hash -r
 				break_end
 
@@ -6088,13 +6088,13 @@ format_partition() {
 	fi
 
 	# 格式化分割區
-	echo "正在格式化分区 /dev/$PARTITION為$FS_TYPE ..."
+	echo "正在格式化分割區 /dev/$PARTITION為$FS_TYPE ..."
 	mkfs.$FS_TYPE "/dev/$PARTITION"
 
 	if [ $? -eq 0 ]; then
 		echo "分割區格式化成功！"
 	else
-		echo "分区格式化失败！"
+		echo "分割區格式化失敗！"
 	fi
 }
 
@@ -8829,9 +8829,9 @@ while true; do
 	  echo -e "${gl_kjlan}23.  ${color23}Memos網頁備忘錄${gl_kjlan}24.  ${color24}Webtop遠端桌面網頁版${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}25.  ${color25}Nextcloud網站${gl_kjlan}26.  ${color26}QD-Today定時任務管理框架"
 	  echo -e "${gl_kjlan}27.  ${color27}Dockge容器堆疊管理面板${gl_kjlan}28.  ${color28}LibreSpeed測速工具"
-	  echo -e "${gl_kjlan}29.  ${color29}searxng聚合搜尋站${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${color30}PhotoPrism私有相册系统"
+	  echo -e "${gl_kjlan}29.  ${color29}searxng聚合搜尋站${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${color30}PhotoPrism私有相簿系統"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}31.  ${color31}StirlingPDF工具大全                 ${gl_kjlan}32.  ${color32}drawio免费的在线图表软件 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}31.  ${color31}StirlingPDF工具大全${gl_kjlan}32.  ${color32}drawio免費的線上圖表軟體${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${color33}Sun-Panel導航面板${gl_kjlan}34.  ${color34}Pingvin-Share文件分享平台"
 	  echo -e "${gl_kjlan}35.  ${color35}極簡朋友圈${gl_kjlan}36.  ${color36}LobeChatAI聊天聚合網站"
 	  echo -e "${gl_kjlan}37.  ${color37}MyIP工具箱${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${color38}小雅alist全家桶"
@@ -11953,7 +11953,7 @@ while true; do
 
 			local CONFIG_FILE="/home/docker/wireguard/config/wg0.conf"
 
-			# 创建目录（如果不存在）
+			# 建立目錄（如果不存在）
 			mkdir -p "$(dirname "$CONFIG_FILE")"
 
 			echo "請貼上你的客戶端配置，連續按兩次回車保存："
@@ -11978,7 +11978,7 @@ while true; do
 			# 寫入設定檔
 			echo "$input" > "$CONFIG_FILE"
 
-			echo "客户端配置已保存到 $CONFIG_FILE"
+			echo "客戶端配置已儲存到$CONFIG_FILE"
 
 			ip link delete wg0 &>/dev/null
 
@@ -12614,7 +12614,7 @@ EOF
 
 
 				if grep -Eq '^\s*precedence\s+::ffff:0:0/96\s+100\s*$' /etc/gai.conf 2>/dev/null; then
-					echo -e "目前網路優先權設定:${gl_huang}IPv4${gl_bai}優先"
+					echo -e "当前网络优先级设置: ${gl_huang}IPv4${gl_bai}優先"
 				else
 					echo -e "目前網路優先權設定:${gl_huang}IPv6${gl_bai}優先"
 				fi
@@ -12971,7 +12971,7 @@ EOF
 		  send_stats "換系統更新來源"
 		  clear
 		  echo "選擇更新來源區域"
-		  echo "接入LinuxMirrors切換系統更新來源"
+		  echo "接入LinuxMirrors切换系统更新源"
 		  echo "------------------------"
 		  echo "1. 中國大陸【預設】 2. 中國大陸【教育網】 3. 海外地區"
 		  echo "------------------------"
@@ -13115,7 +13115,7 @@ EOF
 				echo "1. 安裝防禦程序"
 				echo "------------------------"
 				echo "2. 查看SSH攔截記錄"
-				echo "3. 日志实时监控"
+				echo "3. 日誌即時監控"
 				echo "------------------------"
 				echo "9. 卸載防禦程序"
 				echo "------------------------"
@@ -13947,7 +13947,7 @@ while true; do
 
 		  51)
 			  send_stats "自訂執行命令"
-			  read -e -p "請輸入批次執行的命令:" mingling
+			  read -e -p "请输入批量执行的命令: " mingling
 			  run_commands_on_servers "${mingling}"
 			  ;;
 
