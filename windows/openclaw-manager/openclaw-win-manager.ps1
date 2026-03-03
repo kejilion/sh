@@ -1,34 +1,34 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
-OpenClaw Windows 10/11 standalone manager (ASCII-safe for PowerShell 5.1)
-Run:
+OpenClaw Windows 10/11 独立管理脚本（中文版）
+运行：
   Set-ExecutionPolicy -Scope Process Bypass -Force
   .\openclaw-win-manager.ps1
 #>
 
 $ErrorActionPreference = 'Stop'
 
-function Info($m){ Write-Host "[INFO] $m" -ForegroundColor Cyan }
-function OK($m){ Write-Host "[ OK ] $m" -ForegroundColor Green }
-function Warn($m){ Write-Host "[WARN] $m" -ForegroundColor Yellow }
-function Err($m){ Write-Host "[ERR ] $m" -ForegroundColor Red }
-function PauseBack { ""; Read-Host "Press Enter to continue" | Out-Null }
+function Info($m){ Write-Host "[信息] $m" -ForegroundColor Cyan }
+function OK($m){ Write-Host "[完成] $m" -ForegroundColor Green }
+function Warn($m){ Write-Host "[警告] $m" -ForegroundColor Yellow }
+function Err($m){ Write-Host "[错误] $m" -ForegroundColor Red }
+function PauseBack { ""; Read-Host "按回车继续" | Out-Null }
 
 function HasCmd($n){ return [bool](Get-Command $n -ErrorAction SilentlyContinue) }
 function OC([string]$args){
   try { Invoke-Expression "openclaw $args" }
-  catch { Err "openclaw $args failed"; Err $_.Exception.Message }
+  catch { Err "openclaw $args 执行失败"; Err $_.Exception.Message }
 }
 
 function ConfigPath { Join-Path $env:USERPROFILE ".openclaw\openclaw.json" }
 
-function InstallStatus { if(HasCmd "openclaw"){"Installed"}else{"Not installed"} }
+function InstallStatus { if(HasCmd "openclaw"){"已安装"}else{"未安装"} }
 function RunningStatus {
   try {
     $out = & openclaw gateway status 2>$null | Out-String
-    if($out -match 'running|online|active'){ return "Running" }
+    if($out -match 'running|online|active|运行'){ return "运行中" }
   } catch {}
-  return "Stopped"
+  return "未运行"
 }
 
 function LocalVersion {
@@ -54,39 +54,39 @@ function ShowMenu {
   $run = RunningStatus
   $lv = LocalVersion
   $rv = LatestVersion
-  $verMsg = "Version unknown"
+  $verMsg = "版本未知"
   if($lv -and $rv){
-    if($lv -ne $rv){ $verMsg = "Update available: $rv (current $lv)" }
-    else { $verMsg = "Latest: $lv" }
+    if($lv -ne $rv){ $verMsg = "可更新: $rv (当前 $lv)" }
+    else { $verMsg = "已是最新: $lv" }
   }
 
   Write-Host "==========================================="
-  Write-Host "OpenClaw Windows Manager"
-  Write-Host "Status: $ins | $run | $verMsg"
+  Write-Host "OpenClaw Windows 管理"
+  Write-Host "状态: $ins | $run | $verMsg"
   Write-Host "==========================================="
-  Write-Host "1. Install OpenClaw"
-  Write-Host "2. Start OpenClaw"
-  Write-Host "3. Stop OpenClaw"
-  Write-Host "4. Restart OpenClaw"
-  Write-Host "5. Status + Logs"
-  Write-Host "6. Switch model"
-  Write-Host "7. Add provider (auto models import)"
-  Write-Host "8. Pairing (Telegram/Feishu/WhatsApp)"
-  Write-Host "9. Install plugin"
-  Write-Host "10. Install skill (clawhub)"
-  Write-Host "11. Edit config file"
-  Write-Host "12. Run onboard"
-  Write-Host "13. Run doctor --fix"
-  Write-Host "14. Show WebUI URL"
-  Write-Host "15. Update OpenClaw"
-  Write-Host "16. Uninstall OpenClaw"
-  Write-Host "0. Exit"
+  Write-Host "1. 安装 OpenClaw"
+  Write-Host "2. 启动 OpenClaw"
+  Write-Host "3. 停止 OpenClaw"
+  Write-Host "4. 重启 OpenClaw"
+  Write-Host "5. 状态与日志"
+  Write-Host "6. 切换模型"
+  Write-Host "7. 添加 Provider（自动导入模型）"
+  Write-Host "8. 机器人配对（Telegram/飞书/WhatsApp）"
+  Write-Host "9. 安装插件"
+  Write-Host "10. 安装技能（clawhub）"
+  Write-Host "11. 编辑配置文件"
+  Write-Host "12. 执行 onboard"
+  Write-Host "13. 执行 doctor --fix"
+  Write-Host "14. 查看 WebUI 地址"
+  Write-Host "15. 更新 OpenClaw"
+  Write-Host "16. 卸载 OpenClaw"
+  Write-Host "0. 退出"
   Write-Host "-------------------------------------------"
 }
 
 function InstallNodeIfNeeded {
-  if(HasCmd "node"){ OK "Node.js found: $(& node -v)"; return }
-  Info "Node.js not found, trying auto-install"
+  if(HasCmd "node"){ OK "检测到 Node.js: $(& node -v)"; return }
+  Info "未检测到 Node.js，尝试自动安装"
 
   if(HasCmd "winget"){
     & winget install --id OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
@@ -95,19 +95,19 @@ function InstallNodeIfNeeded {
   if(HasCmd "choco"){ & choco install nodejs-lts -y; return }
   if(HasCmd "scoop"){ & scoop install nodejs-lts; return }
 
-  throw "No winget/choco/scoop found. Install Node.js 20+ manually first."
+  throw "未检测到 winget/choco/scoop，请先手动安装 Node.js 20+"
 }
 
 function InstallOpenClaw {
   try {
     InstallNodeIfNeeded
-    if(-not (HasCmd "npm")){ throw "npm not found after Node install" }
-    Info "Installing openclaw..."
+    if(-not (HasCmd "npm")){ throw "npm 不可用" }
+    Info "正在安装 openclaw..."
     & npm install -g openclaw@latest
-    Info "Running onboard..."
+    Info "正在执行 onboard..."
     OC "onboard --install-daemon"
     OC "gateway restart"
-    OK "Install done"
+    OK "安装完成"
   } catch { Err $_.Exception.Message }
   PauseBack
 }
@@ -128,14 +128,14 @@ function ShowStatusLogs {
 
 function SwitchModel {
   try {
-    Write-Host "`n--- all models ---" -ForegroundColor Magenta
+    Write-Host "`n--- 所有模型 ---" -ForegroundColor Magenta
     OC "models list --all"
-    Write-Host "`n--- current model ---" -ForegroundColor Magenta
+    Write-Host "`n--- 当前模型 ---" -ForegroundColor Magenta
     OC "models list"
-    $m = Read-Host "Target model (provider/model), 0 to cancel"
+    $m = Read-Host "输入目标模型(provider/model)，输入0取消"
     if(-not $m -or $m -eq '0'){ return }
     OC "models set $m"
-    OK "Model switched: $m"
+    OK "模型已切换: $m"
   } catch { Err $_.Exception.Message }
   PauseBack
 }
@@ -150,21 +150,21 @@ function ModelCost([string]$id){
 
 function AddProvider {
   try {
-    $provider = Read-Host "Provider name"
-    if(-not $provider){ throw "Provider name is required" }
-    $base = Read-Host "Base URL (e.g. https://api.xxx.com/v1)"
-    if(-not $base){ throw "Base URL is required" }
+    $provider = Read-Host "输入 Provider 名称"
+    if(-not $provider){ throw "Provider 不能为空" }
+    $base = Read-Host "输入 Base URL（如 https://api.xxx.com/v1）"
+    if(-not $base){ throw "Base URL 不能为空" }
     $base = $base.TrimEnd('/')
-    $key = Read-Host "API key"
-    if(-not $key){ throw "API key is required" }
+    $key = Read-Host "输入 API Key"
+    if(-not $key){ throw "API Key 不能为空" }
 
-    Info "Fetching models from $base/models ..."
+    Info "正在获取模型列表: $base/models"
     $resp = Invoke-RestMethod -Uri "$base/models" -Headers @{Authorization="Bearer $key"} -TimeoutSec 30
     $ids = @($resp.data | ForEach-Object { $_.id } | Where-Object { $_ } | Sort-Object -Unique)
-    if($ids.Count -eq 0){ throw "No models found" }
+    if($ids.Count -eq 0){ throw "未获取到模型" }
 
     for($i=0;$i -lt $ids.Count;$i++){ Write-Host "[$($i+1)] $($ids[$i])" }
-    $pick = Read-Host "Default model (index or id, blank=first)"
+    $pick = Read-Host "输入默认模型（序号或ID，留空=第一个）"
     $default = $ids[0]
     if($pick){
       if($pick -match '^\d+$'){
@@ -174,7 +174,7 @@ function AddProvider {
     }
 
     $cfg = ConfigPath
-    if(-not (Test-Path $cfg)){ throw "Config not found: $cfg. Run onboard first." }
+    if(-not (Test-Path $cfg)){ throw "配置不存在: $cfg，请先执行 onboard" }
 
     Copy-Item $cfg "$cfg.bak.$([DateTimeOffset]::Now.ToUnixTimeSeconds())" -Force
     $json = Get-Content $cfg -Raw | ConvertFrom-Json
@@ -205,7 +205,7 @@ function AddProvider {
     $json | ConvertTo-Json -Depth 20 | Set-Content -Path $cfg -Encoding UTF8
     OC "models set $provider/$default"
     OC "gateway restart"
-    OK "Provider added: $provider, default model: $provider/$default"
+    OK "Provider 添加完成，默认模型: $provider/$default"
   } catch { Err $_.Exception.Message }
   PauseBack
 }
@@ -213,18 +213,18 @@ function AddProvider {
 function PairingMenu {
   while($true){
     Clear-Host
-    Write-Host "=== Pairing ==="
+    Write-Host "=== 机器人配对 ==="
     Write-Host "1. Telegram"
-    Write-Host "2. Feishu/Lark"
+    Write-Host "2. 飞书"
     Write-Host "3. WhatsApp"
-    Write-Host "0. Back"
-    $c = Read-Host "Select"
+    Write-Host "0. 返回"
+    $c = Read-Host "请选择"
     switch($c){
-      '1' { $code=Read-Host "Telegram code"; if($code){ OC "pairing approve telegram $code"; PauseBack } }
-      '2' { $code=Read-Host "Feishu code"; if($code){ OC "pairing approve feishu $code"; PauseBack } }
-      '3' { $code=Read-Host "WhatsApp code"; if($code){ OC "pairing approve whatsapp $code"; PauseBack } }
+      '1' { $code=Read-Host "输入 Telegram 连接码"; if($code){ OC "pairing approve telegram $code"; PauseBack } }
+      '2' { $code=Read-Host "输入飞书连接码"; if($code){ OC "pairing approve feishu $code"; PauseBack } }
+      '3' { $code=Read-Host "输入 WhatsApp 连接码"; if($code){ OC "pairing approve whatsapp $code"; PauseBack } }
       '0' { return }
-      default { Warn "Invalid"; Start-Sleep -Milliseconds 600 }
+      default { Warn "无效选项"; Start-Sleep -Milliseconds 600 }
     }
   }
 }
@@ -232,14 +232,14 @@ function PairingMenu {
 function InstallPlugin {
   try {
     OC "plugins list"
-    $p = Read-Host "Plugin id (e.g. telegram/feishu/@openclaw/discord), 0 cancel"
+    $p = Read-Host "输入插件ID（如 telegram/feishu/@openclaw/discord），0取消"
     if(-not $p -or $p -eq '0'){ return }
     $id = $p -replace '^@openclaw/',''
     OC "plugins enable $id"
     OC "plugins install $p"
     OC "plugins enable $id"
     OC "gateway restart"
-    OK "Plugin processed: $p"
+    OK "插件处理完成: $p"
   } catch { Err $_.Exception.Message }
   PauseBack
 }
@@ -247,21 +247,21 @@ function InstallPlugin {
 function InstallSkill {
   try {
     OC "skills list"
-    $s = Read-Host "Skill name, 0 cancel"
+    $s = Read-Host "输入技能名，0取消"
     if(-not $s -or $s -eq '0'){ return }
-    if(-not (HasCmd "npx")){ throw "npx not found" }
+    if(-not (HasCmd "npx")){ throw "npx 不可用" }
     & npx clawhub install $s
     OC "gateway restart"
-    OK "Skill installed: $s"
+    OK "技能安装完成: $s"
   } catch { Err $_.Exception.Message }
   PauseBack
 }
 
 function EditConfig {
   $p = ConfigPath
-  if(-not (Test-Path $p)){ Warn "Config not found: $p"; PauseBack; return }
+  if(-not (Test-Path $p)){ Warn "配置不存在: $p"; PauseBack; return }
   notepad $p
-  Info "Restart gateway to apply changes"
+  Info "如已修改配置，请重启网关生效"
   PauseBack
 }
 
@@ -287,7 +287,7 @@ function UpdateOpenClaw {
     InstallNodeIfNeeded
     & npm install -g openclaw@latest
     OC "gateway restart"
-    OK "Update done"
+    OK "更新完成"
   } catch { Err $_.Exception.Message }
   PauseBack
 }
@@ -296,14 +296,14 @@ function UninstallOpenClaw {
   try {
     OC "uninstall"
     if(HasCmd "npm"){ & npm uninstall -g openclaw }
-    OK "Uninstalled"
+    OK "卸载完成"
   } catch { Err $_.Exception.Message }
   PauseBack
 }
 
 while($true){
   ShowMenu
-  $c = Read-Host "Select"
+  $c = Read-Host "请选择"
   switch($c){
     '1' { InstallOpenClaw }
     '2' { StartOpenClaw }
@@ -322,6 +322,6 @@ while($true){
     '15' { UpdateOpenClaw }
     '16' { UninstallOpenClaw }
     '0' { break }
-    default { Warn "Invalid option"; Start-Sleep -Milliseconds 500 }
+    default { Warn "无效选项"; Start-Sleep -Milliseconds 500 }
   }
 }

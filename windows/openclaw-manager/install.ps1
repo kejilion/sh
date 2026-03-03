@@ -1,10 +1,12 @@
-# OpenClaw Windows one-liner installer/bootstrap
+﻿# OpenClaw Windows one-liner installer/bootstrap
 # Usage:
 #   iwr -useb https://openclaw.ai/install.ps1 | iex
 # or
 #   irm https://raw.githubusercontent.com/kejilion/sh/main/windows/openclaw-manager/install.ps1 | iex
 
 $ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
+$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $managerUrl = 'https://raw.githubusercontent.com/kejilion/sh/main/windows/openclaw-manager/openclaw-win-manager.ps1'
