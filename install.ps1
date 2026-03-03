@@ -1,0 +1,25 @@
+# OpenClaw Windows one-liner installer/bootstrap
+# Usage:
+#   iwr -useb https://openclaw.ai/install.ps1 | iex
+# or
+#   irm https://raw.githubusercontent.com/kejilion/sh/main/install.ps1 | iex
+
+$ErrorActionPreference = 'Stop'
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+$managerUrl = 'https://raw.githubusercontent.com/kejilion/sh/main/openclaw-win-manager.ps1'
+$targetDir  = Join-Path $env:ProgramData 'kejilion\openclaw'
+$targetFile = Join-Path $targetDir 'openclaw-win-manager.ps1'
+
+Write-Host '[INFO] Preparing directories...' -ForegroundColor Cyan
+New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+
+Write-Host '[INFO] Downloading latest manager script...' -ForegroundColor Cyan
+Invoke-WebRequest -UseBasicParsing -Uri $managerUrl -OutFile $targetFile
+
+if ((Get-Item $targetFile).Length -lt 2000) {
+  throw 'Downloaded file is too small, abort.'
+}
+
+Write-Host '[INFO] Starting OpenClaw Windows Manager...' -ForegroundColor Cyan
+powershell -NoProfile -ExecutionPolicy Bypass -File $targetFile
