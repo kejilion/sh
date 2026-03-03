@@ -5,7 +5,7 @@ setlocal EnableDelayedExpansion
 REM OpenClaw Windows 一键分发版（单文件）
 REM 用法：双击即可，自动拉取最新版 openclaw-win-manager.ps1 再启动
 
-set "RAW_URL=https://raw.githubusercontent.com/kejilion/sh/main/openclaw-win-manager.ps1"
+set "RAW_URL=https://raw.githubusercontent.com/kejilion/sh/main/windows/openclaw-manager/openclaw-win-manager.ps1"
 set "TARGET=%TEMP%\openclaw-win-manager.ps1"
 
 where powershell >nul 2>nul

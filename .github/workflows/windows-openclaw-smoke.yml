@@ -1,0 +1,25 @@
+name: windows-openclaw-smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'windows/openclaw-manager/openclaw-win-manager.ps1'
+      - 'windows/openclaw-manager/openclaw-win-manager.bat'
+      - 'windows/openclaw-manager/openclaw-win-distribute.bat'
+      - 'windows/openclaw-manager/install.ps1'
+      - 'windows/openclaw-manager/windows-smoke-test.ps1'
+      - '.github/workflows/windows-openclaw-smoke.yml'
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run Windows smoke test
+        shell: pwsh
+        run: |
+          Set-ExecutionPolicy -Scope Process Bypass -Force
+          .\windows\openclaw-manager\windows-smoke-test.ps1

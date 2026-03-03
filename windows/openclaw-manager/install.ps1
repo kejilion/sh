@@ -2,12 +2,12 @@
 # Usage:
 #   iwr -useb https://openclaw.ai/install.ps1 | iex
 # or
-#   irm https://raw.githubusercontent.com/kejilion/sh/main/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/kejilion/sh/main/windows/openclaw-manager/install.ps1 | iex
 
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$managerUrl = 'https://raw.githubusercontent.com/kejilion/sh/main/openclaw-win-manager.ps1'
+$managerUrl = 'https://raw.githubusercontent.com/kejilion/sh/main/windows/openclaw-manager/openclaw-win-manager.ps1'
 $targetDir  = Join-Path $env:ProgramData 'kejilion\openclaw'
 $targetFile = Join-Path $targetDir 'openclaw-win-manager.ps1'
 
