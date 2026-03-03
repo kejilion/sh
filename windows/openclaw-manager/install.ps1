@@ -1,12 +1,8 @@
-﻿# OpenClaw Windows one-liner installer/bootstrap
+# OpenClaw Windows bootstrap (ASCII-safe)
 # Usage:
-#   iwr -useb https://openclaw.ai/install.ps1 | iex
-# or
-#   irm https://raw.githubusercontent.com/kejilion/sh/main/windows/openclaw-manager/install.ps1 | iex
+#   Set-ExecutionPolicy -Scope Process Bypass -Force; iwr -useb https://raw.githubusercontent.com/kejilion/sh/main/windows/openclaw-manager/install.ps1 | iex
 
 $ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
-$PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $managerUrl = 'https://raw.githubusercontent.com/kejilion/sh/main/windows/openclaw-manager/openclaw-win-manager.ps1'
@@ -18,7 +14,7 @@ Write-Host '[INFO] Preparing directories...' -ForegroundColor Cyan
 New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
 
 Write-Host '[INFO] Downloading latest manager script...' -ForegroundColor Cyan
-Invoke-WebRequest -UseBasicParsing -Uri $managerUrl -OutFile $targetFile
+Invoke-WebRequest -UseBasicParsing -Headers @{ 'Cache-Control'='no-cache' } -Uri $managerUrl -OutFile $targetFile
 
 if ((Get-Item $targetFile).Length -lt 2000) {
   throw 'Downloaded file is too small, abort.'

@@ -1,4 +1,5 @@
 ﻿#requires -Version 5.1
+# OPENCLAW_WIN_MANAGER_CN_V2
 <#
 OpenClaw Windows 10/11 独立管理脚本（中文版）
 运行：
@@ -85,17 +86,33 @@ function ShowMenu {
 }
 
 function InstallNodeIfNeeded {
-  if(HasCmd "node"){ OK "检测到 Node.js: $(& node -v)"; return }
-  Info "未检测到 Node.js，尝试自动安装"
+  if(HasCmd "node" -and HasCmd "npm"){ OK "检测到 Node.js: $(& node -v)"; return }
+  Info "未检测到 Node.js/npm，尝试自动安装"
 
   if(HasCmd "winget"){
     & winget install --id OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
-    return
   }
-  if(HasCmd "choco"){ & choco install nodejs-lts -y; return }
-  if(HasCmd "scoop"){ & scoop install nodejs-lts; return }
+  elseif(HasCmd "choco"){ & choco install nodejs-lts -y }
+  elseif(HasCmd "scoop"){ & scoop install nodejs-lts }
+  else { throw "未检测到 winget/choco/scoop，请先手动安装 Node.js 20+" }
 
-  throw "未检测到 winget/choco/scoop，请先手动安装 Node.js 20+"
+  # 刷新当前会话 PATH（winget 安装后常见 npm 不在当前会话 PATH）
+  $machinePath = [Environment]::GetEnvironmentVariable('Path','Machine')
+  $userPath = [Environment]::GetEnvironmentVariable('Path','User')
+  $env:Path = "$machinePath;$userPath"
+
+  $extra = @('C:\Program Files\nodejs','C:\Program Files (x86)\nodejs')
+  foreach($e in $extra){
+    if((Test-Path $e) -and ($env:Path -notlike "*$e*")) { $env:Path += ";$e" }
+  }
+
+  if(-not (HasCmd "npm")){
+    Warn "已安装 Node.js，但当前会话未找到 npm。将尝试直接使用 npm.cmd。"
+    $npmCmd = 'C:\Program Files\nodejs\npm.cmd'
+    if(Test-Path $npmCmd){
+      Set-Alias -Name npm -Value $npmCmd -Scope Script
+    }
+  }
 }
 
 function InstallOpenClaw {
