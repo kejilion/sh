@@ -10,6 +10,7 @@ $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 $managerUrl = 'https://raw.githubusercontent.com/kejilion/sh/main/windows/openclaw-manager/openclaw-win-manager.ps1'
+$managerUrl = "$managerUrl?ts=$([DateTimeOffset]::Now.ToUnixTimeSeconds())"
 $targetDir  = Join-Path $env:ProgramData 'kejilion\openclaw'
 $targetFile = Join-Path $targetDir 'openclaw-win-manager.ps1'
 
@@ -21,6 +22,11 @@ Invoke-WebRequest -UseBasicParsing -Uri $managerUrl -OutFile $targetFile
 
 if ((Get-Item $targetFile).Length -lt 2000) {
   throw 'Downloaded file is too small, abort.'
+}
+
+$raw = Get-Content -Path $targetFile -Raw
+if ($raw -notmatch 'OpenClaw Windows 管理') {
+  throw 'Downloaded manager is not the latest Chinese build, abort.'
 }
 
 Write-Host '[INFO] Starting OpenClaw Windows Manager...' -ForegroundColor Cyan
