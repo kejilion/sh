@@ -9820,29 +9820,85 @@ moltbot_menu() {
 
 	send_stats "clawdbot/moltbot管理"
 
-	check_openclaw_update() {
+	get_openclaw_current_version() {
+		local version=""
+
+		if command -v openclaw >/dev/null 2>&1; then
+			version=$(openclaw --version 2>/dev/null | head -n 1 | sed -E 's/[^0-9]*([0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)?).*/\1/')
+		fi
+
+		if [ -z "$version" ] && command -v npm >/dev/null 2>&1; then
+			version=$(npm list -g openclaw --depth=0 --no-update-notifier 2>/dev/null | grep "openclaw@" | tail -n 1 | sed 's/^.*openclaw@//')
+		fi
+
+		echo "$version"
+	}
+
+	get_openclaw_latest_and_recent_versions() {
+		OPENCLAW_LATEST_VERSION=""
+		OPENCLAW_RECENT_VERSIONS=""
+		OPENCLAW_VERSION_QUERY_ERROR=""
+
 		if ! command -v npm >/dev/null 2>&1; then
+			OPENCLAW_VERSION_QUERY_ERROR="未检测到 npm，无法查询 OpenClaw 版本"
 			return 1
 		fi
 
-		# 加上 --no-update-notifier，并确保错误重定向位置正确
-		local_version=$(npm list -g openclaw --depth=0 --no-update-notifier 2>/dev/null | grep openclaw | awk '{print $NF}' | sed 's/^.*@//')
+		local latest_version versions_json recent_versions
 
-		if [ -z "$local_version" ]; then
+		latest_version=$(npm view openclaw version --no-update-notifier 2>/dev/null | tr -d '\r')
+		if [ -n "$latest_version" ]; then
+			OPENCLAW_LATEST_VERSION="$latest_version"
+		fi
+
+		versions_json=$(npm view openclaw versions --json --no-update-notifier 2>/dev/null)
+		recent_versions=$(echo "$versions_json" | tr -d '[]" ' | tr ',' '\n' | sed '/^$/d' | tail -n 10 | awk '{a[NR]=$0} END{for(i=NR;i>=1;i--) print a[i]}')
+
+		if [ -z "$recent_versions" ] && [ -n "$latest_version" ]; then
+			recent_versions="$latest_version"
+			OPENCLAW_VERSION_QUERY_ERROR="最近 10 个版本获取失败，已仅提供最新版本，请稍后重试"
+		elif [ -z "$recent_versions" ]; then
+			OPENCLAW_VERSION_QUERY_ERROR="版本信息获取失败，请稍后重试"
 			return 1
 		fi
 
-		remote_version=$(npm view openclaw version --no-update-notifier 2>/dev/null)
+		OPENCLAW_RECENT_VERSIONS="$recent_versions"
+		return 0
+	}
 
-		if [ -z "$remote_version" ]; then
-			return 1
+	check_openclaw_update() {
+		local current_version latest_version
+		current_version=$(get_openclaw_current_version)
+		get_openclaw_latest_and_recent_versions >/dev/null 2>&1
+		latest_version="$OPENCLAW_LATEST_VERSION"
+
+		[ -z "$current_version" ] && current_version="未安装"
+		[ -z "$latest_version" ] && latest_version="未知"
+
+		if [ "$current_version" = "$latest_version" ] && [ "$current_version" != "未安装" ] && [ "$current_version" != "未知" ]; then
+			echo "${gl_lv}当前版本:$current_version | 最新版本:$latest_version (已最新)${gl_bai}"
+			return 0
 		fi
 
-		if [ "$local_version" != "$remote_version" ]; then
-			echo "${gl_huang}检测到新版本:$remote_version${gl_bai}"
+		if [ -n "$OPENCLAW_VERSION_QUERY_ERROR" ]; then
+			echo "${gl_huang}当前版本:$current_version | 最新版本:$latest_version (${OPENCLAW_VERSION_QUERY_ERROR})${gl_bai}"
 		else
-			echo "${gl_lv}当前版本已是最新:$local_version${gl_bai}"
+			echo "${gl_huang}当前版本:$current_version | 最新版本:$latest_version${gl_bai}"
 		fi
+	}
+
+	install_openclaw_version() {
+		local target_version="$1"
+		[ -z "$target_version" ] && target_version="latest"
+
+		if ! npm install -g "openclaw@${target_version}"; then
+			return 1
+		fi
+
+		openclaw onboard --install-daemon
+		start_gateway
+		hash -r
+		return 0
 	}
 
 
@@ -9932,14 +9988,16 @@ moltbot_menu() {
 		if [[ "$country" == "CN" || "$country" == "HK" ]]; then
 			npm config set registry https://registry.npmmirror.com
 		fi
-		npm install -g openclaw@latest
-		openclaw onboard --install-daemon
-		start_gateway
-		add_app_id
+
+		if install_openclaw_version "latest"; then
+			add_app_id
+			echo "安装完成"
+		else
+			echo "安装失败，请检查网络或 npm 环境后重试"
+		fi
+
 		break_end
-
 	}
-
 
 	start_bot() {
 		echo "启动 OpenClaw..."
@@ -10499,15 +10557,64 @@ EOF
 		echo "更新 OpenClaw..."
 		send_stats "更新 OpenClaw..."
 		install_node_and_tools
-		npm install -g openclaw@latest
-		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
-		start_gateway
-		hash -r
-		add_app_id
-		echo "更新完成"
+
+		country=$(curl -s ipinfo.io/country)
+		if [[ "$country" == "CN" || "$country" == "HK" ]]; then
+			npm config set registry https://registry.npmmirror.com
+		fi
+
+		local current_version selected_version latest_version pick
+		current_version=$(get_openclaw_current_version)
+		[ -z "$current_version" ] && current_version="未安装"
+
+		get_openclaw_latest_and_recent_versions
+		latest_version="$OPENCLAW_LATEST_VERSION"
+		[ -z "$latest_version" ] && latest_version="latest"
+
+		echo "当前版本: $current_version"
+		echo "最新版本: $latest_version"
+		echo "----------------------------------------"
+		echo "最近 10 个版本（输入编号安装/降级，留空默认最新）:"
+
+		declare -A openclaw_version_map
+		local i=1
+		if [ -n "$OPENCLAW_RECENT_VERSIONS" ]; then
+			while read -r v; do
+				[ -z "$v" ] && continue
+				echo "$i) $v"
+				openclaw_version_map[$i]="$v"
+				i=$((i + 1))
+			done <<< "$OPENCLAW_RECENT_VERSIONS"
+		else
+			echo "1) $latest_version"
+			openclaw_version_map[1]="$latest_version"
+		fi
+
+		if [ -n "$OPENCLAW_VERSION_QUERY_ERROR" ]; then
+			echo "⚠️ $OPENCLAW_VERSION_QUERY_ERROR"
+		fi
+
+		read -erp "请输入编号（1-10，直接回车=最新）：" pick
+		if [[ -n "$pick" && "$pick" =~ ^[0-9]+$ && -n "${openclaw_version_map[$pick]}" ]]; then
+			selected_version="${openclaw_version_map[$pick]}"
+		elif [ -n "$pick" ]; then
+			echo "输入无效，已按最新版本处理。"
+			selected_version="$latest_version"
+		else
+			selected_version="$latest_version"
+		fi
+
+		echo "即将安装版本: $selected_version"
+		if install_openclaw_version "$selected_version"; then
+			crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
+			add_app_id
+			echo "更新完成"
+		else
+			echo "更新失败，请检查网络或 npm 环境后重试"
+		fi
+
 		break_end
 	}
-
 
 	uninstall_moltbot() {
 		echo "卸载 OpenClaw..."
