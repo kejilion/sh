@@ -9932,6 +9932,9 @@ moltbot_menu() {
 		if [[ "$country" == "CN" || "$country" == "HK" ]]; then
 			npm config set registry https://registry.npmmirror.com
 		fi
+
+		git config --global --unset url."git@github.com:".insteadOf
+
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
 		start_gateway
