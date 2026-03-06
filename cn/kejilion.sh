@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.4.2"
+sh_v="4.4.3"
 
 
 gl_hui='\e[37m'
@@ -9890,9 +9890,10 @@ moltbot_menu() {
 		echo "11. 配置向导"
 		echo "12. 健康检测与修复"
 		echo "13. WebUI访问与设置"
+		echo "14. TUI命令行对话窗口"
 		echo "--------------------"
-		echo "14. 更新"
-		echo "15. 卸载"
+		echo "15. 更新"
+		echo "16. 卸载"
 		echo "--------------------"
 		echo "0. 返回上一级选单"
 		echo "--------------------"
@@ -10695,6 +10696,10 @@ EOF
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;
+			12) send_stats "TUI命令行对话"
+				openclaw tui
+				break_end
+			 	;;
 			14) update_moltbot ;;
 			15) uninstall_moltbot ;;
 			*) break ;;
