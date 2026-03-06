@@ -10518,6 +10518,7 @@ EOF
 		openclaw uninstall
 		npm uninstall -g openclaw
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
+		rm -rf /root/.openclaw
 		hash -r
 		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 		echo "卸载完成"
