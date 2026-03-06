@@ -9934,10 +9934,12 @@ moltbot_menu() {
 			npm config set registry https://registry.npmmirror.com
 		fi
 
-		git config --global --unset url."git@github.com:".insteadOf
+		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
 
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
+		sed -i 's|"profile": "messaging"|"profile": "full"|g' ~/.openclaw/openclaw.json
 		start_gateway
 		add_app_id
 		break_end
