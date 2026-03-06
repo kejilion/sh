@@ -10696,12 +10696,12 @@ EOF
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;
-			12) send_stats "TUI命令行对话"
+			14) send_stats "TUI命令行对话"
 				openclaw tui
 				break_end
 			 	;;
-			14) update_moltbot ;;
-			15) uninstall_moltbot ;;
+			15) update_moltbot ;;
+			16) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
