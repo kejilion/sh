@@ -3244,6 +3244,8 @@ f2b_basic_config() {
 	cat > /etc/fail2ban/jail.d/sshd.local <<EOF
 [$jail_name]
 # Managed by kejilion.sh
+# Note: enable the jail so these parameters take effect
+enabled = true
 bantime = $bantime
 findtime = $findtime
 maxretry = $maxretry
