@@ -14938,10 +14938,12 @@ fail2ban_panel() {
 						break
 						;;
 					4)
+						send_stats "SSH防御基础参数配置"
 						f2b_basic_config
 						break_end
 						;;
 					5)
+						send_stats "SSH防御编辑配置文件"
 						f2b_edit_config
 						break_end
 						;;
