@@ -28,7 +28,7 @@ bash <(curl -sL kejilion.sh) kr
 
 ## 🖼️ 실제 화면 미리보기 (Preview)
 
-<img src="https://kejilion.sh/kejilionsh_kr.webp" alt="한국어 버전 미리보기" width="75%"/>
+<img src="https://kejilion.sh/img/screenshots/kejilionsh_kr.webp" alt="한국어 버전 미리보기" width="75%"/>
 
 
 

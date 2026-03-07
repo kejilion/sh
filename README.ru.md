@@ -1,6 +1,6 @@
 <br><br><br>
 <div align="center">
-<img src="https://kejilion.sh/kejilionsh_logo.webp?v=2" alt="логотип" width="650">
+<img src="https://kejilion.sh/img/screenshots/kejilionsh_logo.webp?v=2" alt="логотип" width="650">
 </div>
 
 <div align="center" style="margin-top:-200px;">
@@ -90,7 +90,7 @@ bash <(curl -sL kejilion.sh) ru
 <br><br>
 
 ## 🖼️ Предпросмотр интерфейса
-<img src="https://kejilion.sh/kejilionsh_ru.webp" alt="Предпросмотр русской версии" width="75%"/>
+<img src="https://kejilion.sh/img/screenshots/kejilionsh_ru.webp" alt="Предпросмотр русской версии" width="75%"/>
 
 
 

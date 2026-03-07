@@ -27,7 +27,7 @@ bash <(curl -sL kejilion.sh) jp
 ***
 ## 🖼️ 実際のスクリーンショット
 
-<img src="https://kejilion.sh/kejilionsh_jp.webp" alt="日本語版プレビュー" width="75%"/>
+<img src="https://kejilion.sh/img/screenshots/kejilionsh_jp.webp" alt="日本語版プレビュー" width="75%"/>
 
 
 ***
