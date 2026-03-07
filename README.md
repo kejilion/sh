@@ -98,8 +98,8 @@ bash <(curl -sL kejilion.sh) en
 
 ## 🖼️ 效果图预览 (Preview)
 <p>
-  <img src="https://kejilion.sh/kejilionsh.webp" alt="中文版" width="48%" style="display:inline-block; margin-right:10px;"/>
-  <img src="https://kejilion.sh/kejilionsh_en.webp" alt="English Version" width="48%" style="display:inline-block;"/>
+  <img src="https://kejilion.sh/img/screenshots/kejilionsh.webp" alt="中文版" width="48%" style="display:inline-block; margin-right:10px;"/>
+  <img src="https://kejilion.sh/img/screenshots/kejilionsh_en.webp" alt="English Version" width="48%" style="display:inline-block;"/>
 </p>
 
 
