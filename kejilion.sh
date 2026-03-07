@@ -3227,8 +3227,11 @@ f2b_basic_config() {
 	fi
 
 	local jail_name="sshd"
-	if grep -q 'Alpine' /etc/issue 2>/dev/null; then
-		jail_name="alpine-sshd"
+	if grep -qi 'Alpine' /etc/issue 2>/dev/null; then
+		# Alpine 默认 jail 通常为 sshd；仅当检测到自定义 alpine-sshd 规则时才切换
+		if [ -f /etc/fail2ban/filter.d/alpine-sshd.conf ] || [ -f /etc/fail2ban/jail.d/alpine-ssh.conf ] || [ -f /etc/fail2ban/jail.d/alpine-sshd.local ]; then
+			jail_name="alpine-sshd"
+		fi
 	fi
 
 	echo "即将配置 SSH jail：$jail_name"
@@ -3250,6 +3253,14 @@ bantime = $bantime
 findtime = $findtime
 maxretry = $maxretry
 EOF
+
+	# Ensure a logfile exists for sshd jail on Debian/Ubuntu minimal images
+	# (without it, fail2ban-server may refuse to start)
+	if [ "$jail_name" = "sshd" ]; then
+		if [ -f /etc/fail2ban/jail.d/sshd.local ]; then
+			grep -qE '^\s*logpath\s*=' /etc/fail2ban/jail.d/sshd.local || echo 'logpath = /var/log/auth.log' >> /etc/fail2ban/jail.d/sshd.local
+		fi
+	fi
 
 	echo -e "${gl_lv}已写入配置${gl_bai}: /etc/fail2ban/jail.d/sshd.local"
 	fail2ban-client reload >/dev/null 2>&1 || true
