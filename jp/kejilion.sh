@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.4.1"
+sh_v="4.4.3"
 
 
 gl_hui='\e[37m'
@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 canshu="default"
-permission_granted="true"
+permission_granted="false"
 ENABLE_STATS="true"
 
 
@@ -61,7 +61,7 @@ CheckFirstRun_true() {
 
 # この機能は、機能の埋め込み情報を収集し、現在のスクリプトのバージョン番号、使用時間、システム バージョン、CPU アーキテクチャ、マシンの国、およびユーザーが使用した機能名を記録します。機密情報は含まれませんので、ご安心ください。信じてください！
 # なぜこの機能が設計されたのでしょうか?その目的は、ユーザーが使いたい機能をより深く理解し、機能をさらに最適化し、ユーザーのニーズを満たす機能をさらに投入することです。
-# send_stats 関数の呼び出し位置を全文検索できます。これは透明性があり、オープンソースです。ご不安がある場合はご利用をお断りすることも可能です。
+# send_stats 関数の呼び出し位置を全文検索できます。これは透明性があり、オープンソースです。ご心配な場合はご利用をお断りすることも可能です。
 
 
 
@@ -119,7 +119,7 @@ UserLicenseAgreement() {
 	clear
 	echo -e "${gl_kjlan}テクノロジー ライオン スクリプト ツールボックスへようこそ${gl_bai}"
 	echo "初めてスクリプトを使用する場合は、ユーザー使用許諾契約を読み、同意してください。"
-	echo "ユーザー使用許諾契約: https://blog.kejilion.pro/user-license-agreement/"
+	echo "ユーザー使用許諾契約書: https://blog.kejilion.pro/user-license-agreement/"
 	echo -e "----------------------"
 	read -e -p "上記の条件に同意しますか? (y/n):" user_input
 
@@ -1189,7 +1189,7 @@ iptables_panel() {
 				  ;;
 
 			  15)
-				  read -e -p "ブロックされている国コードを入力してください (CN US JP のように、複数の国コードをスペースで区切ることができます)。" country_code
+				  read -e -p "ブロックされている国コードを入力してください (CN US JP のように、複数の国コードをスペースで区切ることができます):" country_code
 				  manage_country_rules block $country_code
 				  send_stats "国を許可する$country_codeIP"
 				  ;;
@@ -1744,7 +1744,7 @@ cf_purge_cache() {
 	# キャッシュをクリアするかどうかをユーザーに確認する
 	read -e -p "Cloudflareのキャッシュをクリアする必要がありますか? (y/n):" answer
 	if [[ "$answer" == "y" ]]; then
-	  echo "CF 情報は次の場所に保存されます。$CONFIG_FILECF 情報は後で変更できます。"
+	  echo "CF情報は以下に保存されます。$CONFIG_FILECF 情報は後で変更できます。"
 	  read -e -p "API_TOKEN を入力してください:" API_TOKEN
 	  read -e -p "CF ユーザー名を入力してください:" EMAIL
 	  read -e -p "zone_id を入力してください (複数の場合はスペースで区切ります):" -a ZONE_IDS
@@ -2318,7 +2318,7 @@ check_nginx_compression() {
 
 	# zstd がオンでコメントが解除されているかどうかを確認します (行全体が zstd on で始まります)。
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status="zstd圧縮が有効になっています"
+		zstd_status="zstd圧縮がオンになっています"
 	else
 		zstd_status=""
 	fi
@@ -3213,6 +3213,80 @@ f2b_sshd() {
 	fi
 }
 
+# 基本パラメータ設定: 禁止期間 (bantime)、時間枠 (findtime)、再試行回数 (maxretry)
+# 例証します:
+# - /etc/fail2ban/jail.d/sshd.local への書き込みを優先します (デフォルトのjail設定を上書きし、アップグレード時に失われにくくなります)
+# - Alpine で、jail 名が異なる場合でも、sshd.local と書き込みます。 Fail2Ban は、jail 名に従って一致します。
+f2b_basic_config() {
+	root_use
+	install nano
+
+	if ! command -v fail2ban-client >/dev/null 2>&1; then
+		echo -e "${gl_hui}failed2ban-client が検出されません。まず、fail2ban をインストールしてください。${gl_bai}"
+		return
+	fi
+
+	local jail_name="sshd"
+	if grep -qi 'Alpine' /etc/issue 2>/dev/null; then
+		# Alpine のデフォルトの刑務所は通常 sshd です。カスタム alpine-sshd ルールが検出された場合にのみ切り替えます
+		if [ -f /etc/fail2ban/filter.d/alpine-sshd.conf ] || [ -f /etc/fail2ban/jail.d/alpine-ssh.conf ] || [ -f /etc/fail2ban/jail.d/alpine-sshd.local ]; then
+			jail_name="alpine-sshd"
+		fi
+	fi
+
+	echo "SSH ジェイルを構成しようとしています:$jail_name"
+	read -e -p "Bantime 禁止時間 (秒/分/時間、3600 または 1 時間など) [デフォルトは 1 時間]:" bantime
+	read -e -p "タイムウィンドウ findtime (秒/分/時間、例: 600 または 10 分) [デフォルトは 10 分]:" findtime
+	read -e -p "再試行回数 maxretry (整数) [デフォルト 5]:" maxretry
+
+	bantime=${bantime:-1h}
+	findtime=${findtime:-10m}
+	maxretry=${maxretry:-5}
+
+	mkdir -p /etc/fail2ban/jail.d
+	cat > /etc/fail2ban/jail.d/sshd.local <<EOF
+[$jail_name]
+# Managed by kejilion.sh
+# Note: enable the jail so these parameters take effect
+enabled = true
+bantime = $bantime
+findtime = $findtime
+maxretry = $maxretry
+EOF
+
+	# Ensure a logfile exists for sshd jail on Debian/Ubuntu minimal images
+	# (without it, fail2ban-server may refuse to start)
+	if [ "$jail_name" = "sshd" ]; then
+		if [ -f /etc/fail2ban/jail.d/sshd.local ]; then
+			grep -qE '^\s*logpath\s*=' /etc/fail2ban/jail.d/sshd.local || echo 'logpath = /var/log/auth.log' >> /etc/fail2ban/jail.d/sshd.local
+		fi
+	fi
+
+	echo -e "${gl_lv}設定が書き込まれました${gl_bai}: /etc/fail2ban/jail.d/sshd.local"
+	fail2ban-client reload >/dev/null 2>&1 || true
+	sleep 2
+	fail2ban-client status $jail_name || true
+}
+
+# メイン構成/オーバーレイ構成エディター (nano) を直接開きます。
+# /etc/fail2ban/jail.d/sshd.local を最初に編集し (より安全です)、存在しない場合は作成します
+f2b_edit_config() {
+	root_use
+	install nano
+
+	if [ ! -d /etc/fail2ban ]; then
+		echo -e "${gl_hui}/etc/fail2ban が存在しません。まず、fail2ban をインストールしてください。${gl_bai}"
+		return
+	fi
+
+	mkdir -p /etc/fail2ban/jail.d
+	local cfg="/etc/fail2ban/jail.d/sshd.local"
+	[ -f "$cfg" ] || printf "[sshd]\n# bantime/findtime/maxretry\n" > "$cfg"
+
+	nano "$cfg"
+	echo -e "${gl_lv}保存されました${gl_bai}、fail2ban をリロードしています..."
+	fail2ban-client reload >/dev/null 2>&1 || true
+}
 
 
 
@@ -3672,7 +3746,7 @@ ldnmp_Proxy_backend_stream() {
 		*) echo "無効な選択"; return 1 ;;
 	esac
 
-	read -e -p "1 つ以上のバックエンド IP + ポートをスペースで区切って入力してください (例: 10.13.0.2:3306 10.13.0.3:3306):" reverseproxy_port
+	read -e -p "1 つ以上のバックエンド IP + ポートをスペースで区切って入力してください (例: 10.13.0.2:3306 10.13.0.3:3306)。" reverseproxy_port
 
 	nginx_install_status
 	cd /home && mkdir -p web/stream.d
@@ -4073,7 +4147,7 @@ add_forwarding_service() {
 	read -e -p "サービス名を入力してください:" service_name
 	read -e -p "転送タイプ (tcp/udp) を入力してください [デフォルトで tcp を入力する]:" service_type
 	local service_type=${service_type:-tcp}
-	read -e -p "イントラネット IP を入力してください [Enter キーを押した場合のデフォルトは 127.0.0.1]:" local_ip
+	read -e -p "イントラネット IP を入力してください [Enter キーを押すときのデフォルトは 127.0.0.1]:" local_ip
 	local local_ip=${local_ip:-127.0.0.1}
 	read -e -p "イントラネット ポートを入力してください:" local_port
 	read -e -p "外部ネットワーク ポートを入力してください:" remote_port
@@ -4699,7 +4773,7 @@ linux_clean() {
 
 bbr_on() {
 
-# カーネルチューニングモジュールとの競合を防ぐためのsysctl.dへの書き込みを統合
+# カーネル チューニング モジュールとの競合を防ぐための sysctl.d への書き込みを統合しました。
 local CONF="/etc/sysctl.d/99-kejilion-bbr.conf"
 mkdir -p /etc/sysctl.d
 echo "net.core.default_qdisc=fq" > "$CONF"
@@ -4758,7 +4832,7 @@ while true; do
 	echo "2.国内DNSの最適化:"
 	echo " v4: 223.5.5.5 183.60.83.19"
 	echo " v6: 2400:3200::1 2400:da00::6666"
-	echo "3. DNS 設定を手動で編集する"
+	echo "3. DNS 構成を手動で編集する"
 	echo "------------------------"
 	echo "0. 前のメニューに戻る"
 	echo "------------------------"
@@ -5841,7 +5915,7 @@ clamav() {
 						;;
 					3)
 					  send_stats "カスタムディレクトリスキャン"
-					  read -e -p "スキャンするディレクトリをスペースで区切って入力してください (例: /etc /var /usr /home /root)。" directories
+					  read -e -p "スキャンするディレクトリをスペースで区切って入力してください (例: /etc /var /usr /home /root):" directories
 					  install_docker
 					  clamav_freshclam
 					  clamav_scan $directories
@@ -6220,7 +6294,7 @@ Kernel_optimize() {
 	  echo -e "${gl_huang}ヒント：${gl_bai}本番環境では注意して使用してください。"
 	  echo -e "--------------------"
 	  echo -e "1. ハイパフォーマンス最適化モード: システムパフォーマンス、積極的なメモリ、およびネットワークパラメータを最大化します。"
-	  echo -e "2. バランスのとれた最適化モード: パフォーマンスとリソース消費のバランスをとり、日常的な使用に適しています。"
+	  echo -e "2. バランスのとれた最適化モード: パフォーマンスとリソース消費のバランスをとり、日常の使用に適しています。"
 	  echo -e "3. Web サイト最適化モード: Web サイトサーバー、超高同時接続キュー用に最適化されています。"
 	  echo -e "4. ライブ ブロードキャスト最適化モード: ライブ ストリーミングの最適化では、遅延を減らすために UDP バッファーが拡大されます。"
 	  echo -e "5. ゲームサーバー最適化モード：低遅延を優先してゲームサーバーに最適化します。"
@@ -6248,7 +6322,7 @@ Kernel_optimize() {
 			  cd ~
 			  clear
 			  optimize_web_server
-			  send_stats "ウェブサイト最適化モデル"
+			  send_stats "ウェブサイト最適化モード"
 			  ;;
 		  4)
 			  cd ~
@@ -6652,7 +6726,7 @@ linux_backup() {
 			3) delete_backup ;;
 			*) break ;;
 		esac
-		read -e -p "Enter を押して続行します..."
+		read -e -p "続行するには Enter キーを押してください..."
 	done
 }
 
@@ -7032,7 +7106,7 @@ disk_manager() {
 			5) check_partition ;;
 			*) break ;;
 		esac
-		read -e -p "Enter を押して続行します..."
+		read -e -p "続行するには Enter キーを押してください..."
 	done
 }
 
@@ -7220,7 +7294,7 @@ run_task() {
 	else
 		echo "同期に失敗しました!以下の点をご確認ください。"
 		echo "1. ネットワーク接続は正常ですか?"
-		echo "2. リモート ホストにアクセスできますか?"
+		echo "2. リモートホストにアクセスできるかどうか"
 		echo "3. 認証情報は正しいですか?"
 		echo "4. ローカル ディレクトリとリモート ディレクトリには正しいアクセス許可がありますか?"
 	fi
@@ -7319,7 +7393,7 @@ rsync_manager() {
 			0) break ;;
 			*) echo "選択が無効です。もう一度お試しください。" ;;
 		esac
-		read -e -p "Enter を押して続行します..."
+		read -e -p "続行するには Enter キーを押してください..."
 	done
 }
 
@@ -7437,7 +7511,7 @@ linux_tools() {
 
   while true; do
 	  clear
-	  # send_stats 「基本ツール」
+	  # send_stats "基本ツール"
 	  echo -e "基本的なツール"
 
 	  tools=(
@@ -7561,7 +7635,7 @@ linux_tools() {
 			  install iftop
 			  clear
 			  iftop
-			  send_stats "iftop をインストールする"
+			  send_stats "iftopをインストールする"
 			  ;;
 			7)
 			  clear
@@ -7863,7 +7937,7 @@ docker_ssh_migration() {
 			docker inspect "$c" > "$inspect_file"
 
 			if is_compose_container "$c"; then
-				echo -e "${gl_kjlan}検出されました$cdocker-composeコンテナです${gl_bai}"
+				echo -e "${gl_kjlan}検出されました$cdocker-compose コンテナーです${gl_bai}"
 				local project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
 				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
@@ -8072,7 +8146,7 @@ docker_ssh_migration() {
 
 		echo -e "${gl_huang}バックアップを転送中...${gl_bai}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# キーでログイン
+			# キーを使用してログインする
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -9883,16 +9957,17 @@ moltbot_menu() {
 		echo "4. ステータスログの表示"
 		echo "5.機種変更"
 		echo "6. 新しいモデル API を追加する"
-		echo "7. TGに接続コードを入力します"
+		echo "7. ロボットの接続とドッキング"
 		echo "8. プラグイン（Feishuなど）をインストールする"
 		echo "9. スキルのインストール"
 		echo "10. メイン設定ファイルを編集します"
 		echo "11. 設定ウィザード"
 		echo "12. 健全性の検出と修復"
 		echo "13. WebUI へのアクセスと設定"
+		echo "14. TUIコマンドラインダイアログウィンドウ"
 		echo "--------------------"
-		echo "14. アップデート"
-		echo "15. アンインストール"
+		echo "15. アップデート"
+		echo "16. アンインストール"
 		echo "--------------------"
 		echo "0. 前のメニューに戻る"
 		echo "--------------------"
@@ -9932,8 +10007,13 @@ moltbot_menu() {
 		if [[ "$country" == "CN" || "$country" == "HK" ]]; then
 			npm config set registry https://registry.npmmirror.com
 		fi
+
+		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
+
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
+		sed -i 's|"profile": "messaging"|"profile": "full"|g' ~/.openclaw/openclaw.json
 		start_gateway
 		add_app_id
 		break_end
@@ -9942,8 +10022,8 @@ moltbot_menu() {
 
 
 	start_bot() {
-		echo "OpenClaw を開始します..."
-		send_stats "OpenClaw を開始します..."
+		echo "OpenClaw を開始しています..."
+		send_stats "OpenClaw を開始しています..."
 		start_gateway
 		break_end
 	}
@@ -10136,7 +10216,7 @@ EOF
 
 		# 5. デフォルトのモデルを選択します
 		echo
-		read -erp "デフォルトのモデル ID (またはシリアル番号、最初のものを使用する場合は空白のままにしておきます) を入力してください:" input_model
+		read -erp "デフォルトのモデル ID (またはシリアル番号。最初のものを使用する場合は空白のままにします) を入力してください。" input_model
 
 		if [[ -z "$input_model" && -n "$available_models" ]]; then
 			default_model=$(echo "$available_models" | head -1)
@@ -10220,78 +10300,7 @@ EOF
 
 
 
-	install_plugin() {
-
-		send_stats "プラグインのインストール"
-		while true; do
-			clear
-			echo "========================================"
-			echo "プラグイン管理（インストール）"
-			echo "========================================"
-			echo "現在インストールされているプラ​​グイン:"
-			openclaw plugins list
-			echo "----------------------------------------"
-
-			# ユーザーがコピーできる推奨実用プラグインのリストを出力します
-			echo "推奨される実用的なプラグイン (名前を直接コピーして入力できます):"
-			echo "feishu # Feishu/Lark 統合 (現在ロード中 ✓)"
-			echo "telegram # Telegram ボットの統合 (現在ロードされています ✓)"
-			echo "Memory-core # コア メモリの強化: ファイルベースのコンテキスト検索 (現在ロードされています ✓)"
-			echo "@openclaw/slack # Slack チャネルと DM 間の深いつながり"
-			echo "@openclaw/bluebubbles # iMessage ブリッジ (macOS ユーザーに推奨)"
-			echo "@openclaw/msteams #Microsoft Teams エンタープライズ コミュニケーションの統合"
-			echo "@openclaw/voice-call # 音声通話プラグイン (Twilio などのバックエンドに基づく)"
-			echo "@openclaw/discord #Discordチャンネル自動管理"
-			echo "@openclaw/nostr # Nostr プロトコル: プライベートで安全な暗号化チャット"
-			echo "lobster # 承認ワークフロー: 人間の介入によるタスクの自動化"
-			echo "Memory-lancedb # 長期記憶強化: ベクトルデータベースに基づく正確な記憶"
-			echo "copilot-proxy # GitHub Copilot プロキシ アクセスの強化"
-			echo "----------------------------------------"
-
-			# ユーザーにプラグイン名の入力を求めるプロンプト
-			read -e -p "インストールするプラグインの名前を入力してください (終了するには 0 を入力します):" plugin_name
-
-			# 1.終了するには0を入力したかどうかを確認します
-			if [ "$plugin_name" = "0" ]; then
-				echo "操作がキャンセルされ、プラグインのインストールが終了しました。"
-				break
-			fi
-
-			# 2. 入力が空であることを確認します
-			if [ -z "$plugin_name" ]; then
-				echo "エラー: プラグイン名を空にすることはできません。再入力してください。"
-				echo ""
-				continue
-			fi
-
-			# 1. 以前の失敗の残骸 (ユーザー ディレクトリ) を完全にクリーンアップします。
-			rm -rf "/root/.openclaw/extensions/$plugin_name"
-
-			# 2. システムがプリインストールされているかどうかを確認します (重複 ID の競合を防ぐため)。
-			if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_name" ]; then
-				echo "💡 プラグインが既にシステム ディレクトリに存在し、直接アクティブ化されていることが検出されました..."
-				openclaw plugins enable "$plugin_name"
-			else
-				echo "📥 公式チャネルを通じてプラグインをダウンロードしてインストールしています..."
-				# openclaw 独自の install コマンドを使用して、package.json の仕様チェックを自動的に処理します。
-				openclaw plugins install "$plugin_name"
-
-				# 3. openclaw のインストールでエラーが報告された場合は、通常の npm パッケージとしてインストールしてみてください (最後の選択肢)
-				if [ $? -ne 0 ]; then
-					echo "⚠️ 公式インストールが失敗しました。npm を介してグローバルにインストールを強制してみてください..."
-					npm install -g "$plugin_name" --unsafe-perm
-				fi
-
-				# 4. 最後に、統合された実行とアクティブ化
-				openclaw plugins enable "$plugin_name"
-			fi
-
-			start_gateway
-			break_end
-		done
-	}
-
-	install_plugin() {
+		install_plugin() {
 		send_stats "プラグインのインストール"
 		while true; do
 			clear
@@ -10332,6 +10341,8 @@ EOF
 			local plugin_full="$raw_input"
 
 			echo "🔍 プラグインのステータスを確認しています..."
+			# ステータス検出用の現在のプラグイン リストを取得する
+			local plugin_list=$(openclaw plugins list 2>/dev/null)
 
 			# 2. すでにリストに含まれていて無効になっているかどうかを確認します (最も一般的なケース)。
 			if echo "$plugin_list" | grep -qw "$plugin_id" && echo "$plugin_list" | grep "$plugin_id" | grep -q "disabled"; then
@@ -10426,14 +10437,29 @@ EOF
 				continue
 			fi
 
-			# 3. インストールコマンドを実行します。
-			echo "スキルのインストール:$skill_name ..."
-			npx clawhub install "$skill_name"
+			# 3. スキルがインストールされているか確認する
+			local skill_found=false
+			if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
+				echo "💡 スキル [$skill_name] がユーザーディレクトリにインストールされます。"
+				skill_found=true
+			elif [ -d "/usr/lib/node_modules/openclaw/skills/${skill_name}" ]; then
+				echo "💡 スキル [$skill_name]がシステムディレクトリにインストールされます。"
+				skill_found=true
+			fi
 
-			# 前のコマンドの終了ステータスを取得する
-			if [ $? -eq 0 ]; then
+			if [ "$skill_found" = true ]; then
+				read -e -p "再インストールしますか? (y/N):" reinstall
+				if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
+					echo "インストールをスキップします。"
+					break_end
+					continue
+				fi
+			fi
+
+			# 4. インストールコマンドを実行します。
+			echo "スキルのインストール:$skill_name ..."
+			if npx clawhub install "$skill_name"; then
 				echo "✅ スキル$skill_nameインストールが成功しました。"
-				# 再起動/サービス開始ロジックの実行
 				start_gateway
 			else
 				echo "❌ インストールに失敗しました。スキル名が正しいか確認するか、ドキュメントを参照してトラブルシューティングを行ってください。"
@@ -10441,29 +10467,56 @@ EOF
 
 			break_end
 		done
-
 	}
 
 
 
 	change_tg_bot_code() {
 		send_stats "ロボットドッキング"
-		read -e -p "TG ロボットが受信した接続コード (例: ペアリング コード: NYA99R2F) を入力してください (終了するには 0 を入力します)。" code
+		while true; do
+			clear
+			echo "========================================"
+			echo "ロボットの接続とドッキング"
+			echo "========================================"
+			echo "1. テレグラムロボットドッキング"
+			echo "2.フェイシュ(ヒバリ)ロボットドッキング"
+			echo "3. WhatsApp ボットのドッキング"
+			echo "----------------------------------------"
+			echo "0. 前のメニューに戻る"
+			echo "----------------------------------------"
+			read -e -p "選択肢を入力してください:" bot_choice
 
-		# 終了するには0が入力されているかどうかを確認してください
-		if [ "$code" = "0" ]; then
-			echo "操作はキャンセルされました。"
-			return 0  # 正常退出函数
-		fi
-
-		# 入力が空であることを確認してください
-		if [ -z "$code" ]; then
-			echo "エラー: 接続コードを空にすることはできません。もう一度試してください。"
-			return 1
-		fi
-
-		openclaw pairing approve telegram $code
-		break_end
+			case $bot_choice in
+				1)
+					read -e -p "TG ロボットが受信した接続コード (NYA99R2F など) を入力してください (終了するには 0 を入力します)。" code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "エラー: 接続コードを空にすることはできません。"; sleep 1; continue; fi
+					openclaw pairing approve telegram "$code"
+					break_end
+					;;
+				2)
+					read -e -p "Feishu Robot が受信した接続コード (例: NYA99R2F) を入力してください (終了するには 0 を入力します)。" code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "エラー: 接続コードを空にすることはできません。"; sleep 1; continue; fi
+					openclaw pairing approve feishu "$code"
+					break_end
+					;;
+				3)
+					read -e -p "WhatsApp で受信した接続コード (例: NYA99R2F) を入力してください (終了するには 0 を入力してください):" code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "エラー: 接続コードを空にすることはできません。"; sleep 1; continue; fi
+					openclaw pairing approve whatsapp "$code"
+					break_end
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "選択が無効です。もう一度お試しください。"
+					sleep 1
+					;;
+			esac
+		done
 	}
 
 
@@ -10487,6 +10540,7 @@ EOF
 		openclaw uninstall
 		npm uninstall -g openclaw
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
+		rm -rf /root/.openclaw
 		hash -r
 		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 		echo "アンインストールが完了しました"
@@ -10570,6 +10624,19 @@ EOF
 		echo "まず URL にアクセスしてデバイス ID をトリガーし、Enter キーを押してペアリングを続行します。"
 		read
 		echo -e "${gl_kjlan}デバイスリストをロード中...${gl_bai}"
+		# ドメイン名を allowedOrigins に自動的に追加する
+		config_file="$HOME/.openclaw/openclaw.json"
+		if [ -f "$config_file" ]; then
+			new_origin="https://${yuming}"
+			# jq を使用して JSON を安全に変更し、構造が存在し、ドメイン名が繰り返し追加されないようにします。
+			if command -v jq >/dev/null 2>&1; then
+				tmp_json=$(mktemp)
+				jq 'if .gateway.controlUi == null then .gateway.controlUi = {"allowedOrigins": ["http://127.0.0.1"]} else . end | if (.gateway.controlUi.allowedOrigins | contains([$origin]) | not) then .gateway.controlUi.allowedOrigins += [$origin] else . end' --arg origin "$new_origin" "$config_file" > "$tmp_json" && mv "$tmp_json" "$config_file"
+				echo -e "${gl_kjlan}ドメイン名は${yuming}allowedOrigins 構成を追加する${gl_bai}"
+				openclaw gateway restart >/dev/null 2>&1
+			fi
+		fi
+
 		openclaw devices list
 
 		read -e -p "Request_Key を入力してください:" Request_Key
@@ -10650,8 +10717,12 @@ EOF
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;
-			14) update_moltbot ;;
-			15) uninstall_moltbot ;;
+			14) send_stats "TUI コマンドラインでの会話"
+				openclaw tui
+				break_end
+			 	;;
+			15) update_moltbot ;;
+			16) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
@@ -10987,7 +11058,7 @@ while true; do
 			check_docker_app
 			check_docker_image_update $docker_name
 			clear
-			echo -e "ネザ監視$check_docker $update_status"
+			echo -e "ネザモニタリング$check_docker $update_status"
 			echo "オープンソースの軽量で使いやすいサーバー監視および運用保守ツール"
 			echo "公式 Web サイト構築ドキュメント: https://nezha.wiki/guide/dashboard.html"
 			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
@@ -10996,7 +11067,7 @@ while true; do
 			fi
 			echo ""
 			echo "------------------------"
-			echo "1. 使用方法"
+			echo "1. 使用する"
 			echo "------------------------"
 			echo "0. 前のメニューに戻る"
 			echo "------------------------"
@@ -11398,7 +11469,7 @@ while true; do
 
 		}
 
-		local docker_describe="Speedtest スピード テスト パネルは、複数のテスト機能を備えた VPS ネットワーク速度テスト ツールで、VPS のインバウンドおよびアウトバウンドのトラフィックをリアルタイムで監視することもできます。"
+		local docker_describe="Speedtest 速度測定パネルは、複数のテスト機能を備えた VPS ネットワーク速度テスト ツールで、VPS のインバウンドおよびアウトバウンドのトラフィックをリアルタイムで監視することもできます。"
 		local docker_url="公式サイト紹介：${gh_proxy}github.com/wikihost-opensource/als"
 		local docker_use=""
 		local docker_passwd=""
@@ -12777,7 +12848,7 @@ while true; do
 
 		}
 
-		local docker_describe="オープンソースの AI チャットボット フレームワーク。WeChat、QQ、TG による AI の大規模モデルへのアクセスをサポート"
+		local docker_describe="オープンソース AI チャットボット フレームワーク。WeChat、QQ、TG による大規模 AI モデルへのアクセスをサポート"
 		local docker_url="公式サイト紹介：https://astrbot.app/"
 		local docker_use="echo \"ユーザー名: astrbot パスワード: astrbot\""
 		local docker_passwd=""
@@ -12833,7 +12904,7 @@ while true; do
 
 		}
 
-		local docker_describe="データを管理できるパスワードマネージャー"
+		local docker_describe="データを管理できるパスワード マネージャー"
 		local docker_url="公式サイト紹介：https://bitwarden.com/"
 		local docker_use=""
 		local docker_passwd=""
@@ -13390,7 +13461,7 @@ while true; do
 
 		}
 
-		local docker_describe="リモートで映画や生放送を一緒に視聴するプログラム。同時視聴、ライブブロードキャスト、チャットなどの機能を提供します"
+		local docker_describe="リモートで映画や生放送を一緒に見るプログラム。同時視聴、ライブブロードキャスト、チャットなどの機能を提供します"
 		local docker_url="公式サイト紹介：${gh_https_url}github.com/synctv-org/synctv"
 		local docker_use="echo \"初期アカウントとパスワード: root。ログイン後、時間内にログイン パスワードを変更してください\""
 		local docker_passwd=""
@@ -14021,7 +14092,7 @@ while true; do
 	  101|moneyprinterturbo)
 		local app_id="101"
 		local app_name="AI動画生成ツール"
-		local app_text="MoneyPrinterTurbo は、AI ラージモデルを使用して高解像度のショートビデオを合成するツールです。"
+		local app_text="MoneyPrinterTurbo は、AI ラージモデルを使用して高解像度のショートビデオを合成するツールです"
 		local app_url="公式ウェブサイト:${gh_https_url}github.com/harry0703/MoneyPrinterTurbo"
 		local docker_name="moneyprinterturbo"
 		local docker_port="8101"
@@ -14538,7 +14609,7 @@ linux_work() {
 	  send_stats "バックエンドワークスペース"
 	  echo -e "バックエンドワークスペース"
 	  echo -e "システムは、バックグラウンドで永続的に実行できるワークスペースを提供し、長期的なタスクを実行するために使用できます。"
-	  echo -e "SSH を切断しても、ワークスペース内のタスクは中断されず、バックグラウンド タスクは継続されます。"
+	  echo -e "SSH を切断しても、ワークスペース内のタスクは中断されず、タスクはバックグラウンドで残ります。"
 	  echo -e "${gl_huang}ヒント：${gl_bai}ワークスペースに入ったら、Ctrl+b を使用し、d だけを押してワークスペースを終了します。"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo "現在存在するワークスペースのリスト"
@@ -14786,6 +14857,9 @@ fail2ban_panel() {
 				echo "2. SSH インターセプト記録の表示"
 				echo "3. リアルタイムログ監視"
 				echo "------------------------"
+				echo "4. 基本パラメータ設定（禁止期間/時間枠/リトライ回数）"
+				echo "5. 設定ファイル(nano)の編集"
+				echo "------------------------"
 				echo "9. 防御プログラムをアンインストールする"
 				echo "------------------------"
 				echo "0. 前のメニューに戻る"
@@ -14807,6 +14881,16 @@ fail2ban_panel() {
 					3)
 						tail -f /var/log/fail2ban.log
 						break
+						;;
+					4)
+						send_stats "SSH防御基本パラメータ設定"
+						f2b_basic_config
+						break_end
+						;;
+					5)
+						send_stats "SSH 防御構成ファイルの編集"
+						f2b_edit_config
+						break_end
 						;;
 					9)
 						remove fail2ban
@@ -14864,7 +14948,7 @@ net_menu() {
 				else
 					echo "✘ ネットワークカードが存在しません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			2)
 				send_stats "ネットワークカードを無効にする"
@@ -14874,7 +14958,7 @@ net_menu() {
 				else
 					echo "✘ ネットワークカードが存在しません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			3)
 				send_stats "ネットワークカードの詳細を表示する"
@@ -14886,7 +14970,7 @@ net_menu() {
 				else
 					echo "✘ ネットワークカードが存在しません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			4)
 				send_stats "ネットワークカード情報を更新する"
@@ -14912,7 +14996,7 @@ log_menu() {
 		echo "[/var/logディレクトリ占有]"
 		du -sh /var/log 2>/dev/null
 		echo
-		echo "【日記帳の職業】"
+		echo "【日記ログ職業】"
 		journalctl --disk-usage 2>/dev/null
 		echo "========================================"
 	}
@@ -14922,7 +15006,7 @@ log_menu() {
 		show_log_overview
 		echo
 		echo "=========== システムログ管理メニュー ==========="
-		echo "1. 最新のシステムログ（ジャーナル）を確認する"
+		echo "1. 最新のシステムログ（ジャーナル）を表示する"
 		echo "2. 指定したサービスログを表示します。"
 		echo "3. ログイン/セキュリティログの表示"
 		echo "4. リアルタイム追跡ログ"
@@ -14934,10 +15018,10 @@ log_menu() {
 		case $choice in
 			1)
 				send_stats "最近のログを表示する"
-				read -erp "最近のログ行を何行表示しましたか? [デフォルト 100]:" lines
+				read -erp "最新のログ行を表示しますか? [デフォルト 100]:" lines
 				lines=${lines:-100}
 				journalctl -n "$lines" --no-pager
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			2)
 				send_stats "指定したサービスログを表示する"
@@ -14947,7 +15031,7 @@ log_menu() {
 				else
 					echo "✘ サービスが存在しないか、ログがありません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			3)
 				send_stats "ログイン/セキュリティログの表示"
@@ -14962,7 +15046,7 @@ log_menu() {
 				else
 					echo "セキュリティログファイルが見つかりません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			4)
 				send_stats "リアルタイム追跡ログ"
@@ -15050,7 +15134,7 @@ env_menu() {
 
 		echo
 		echo "==============================================="
-		read -erp "Enter を押して続行します..."
+		read -erp "続行するには Enter キーを押してください..."
 	}
 
 
@@ -15065,7 +15149,7 @@ env_menu() {
 		else
 			echo "ファイルが存在しません:$file"
 		fi
-		read -erp "Enter を押して続行します..."
+		read -erp "続行するには Enter キーを押してください..."
 	}
 
 	edit_file() {
@@ -15081,7 +15165,7 @@ env_menu() {
 		source "$BASHRC"
 		source "$PROFILE"
 		echo "✔ 環境変数がリロードされました"
-		read -erp "Enter を押して続行します..."
+		read -erp "続行するには Enter キーを押してください..."
 	}
 
 	while true; do
@@ -15204,7 +15288,7 @@ linux_Settings() {
 
 	while true; do
 	  clear
-	  # send_stats「システムツール」
+	  # send_stats 「システムツール」
 	  echo -e "システムツール"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}スクリプト起動のショートカットキーを設定する${gl_kjlan}2.   ${gl_bai}ログインパスワードを変更する"
@@ -15956,7 +16040,7 @@ EOF
 					echo -e "${gl_lv}現在設定されている受信トラフィック制限のしきい値は次のとおりです。${gl_huang}${rx_threshold_gb}${gl_lv}G${gl_bai}"
 					echo -e "${gl_lv}現在設定されている送信トラフィック制限のしきい値は次のとおりです。${gl_huang}${tx_threshold_gb}${gl_lv}GB${gl_bai}"
 				else
-					echo -e "${gl_hui}電流制限シャットダウン機能は現在有効になっていません${gl_bai}"
+					echo -e "${gl_hui}電流制限シャットダウン機能は現在有効になっていません。${gl_bai}"
 				fi
 
 				echo
@@ -16168,7 +16252,7 @@ EOF
 			  echo "ワンストップのシステムチューニング"
 			  echo "------------------------------------------------"
 			  echo "以下のコンテンツを運用・最適化していきます"
-			  echo "1. システムアップデートソースを最適化し、システムを最新の状態にアップデートします。"
+			  echo "1. システムアップデートソースを最適化し、システムを最新にアップデートします。"
 			  echo "2. システムジャンクファイルをクリーンアップする"
 			  echo -e "3. 仮想メモリを設定する${gl_huang}1G${gl_bai}"
 			  echo -e "4. SSH ポート番号を次のように設定します。${gl_huang}5522${gl_bai}"
@@ -16587,7 +16671,7 @@ run_commands_on_servers() {
 		local username=${SERVER_ARRAY[i+3]}
 		local password=${SERVER_ARRAY[i+4]}
 		echo
-		echo -e "${gl_huang}に接続する$name ($hostname)...${gl_bai}"
+		echo -e "${gl_huang}に接続します$name ($hostname)...${gl_bai}"
 		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 	done
@@ -16621,7 +16705,7 @@ while true; do
 	  echo -e "${gl_kjlan}タスクをバッチで実行する${gl_bai}"
 	  echo -e "${gl_kjlan}11. ${gl_bai}テクノロジ ライオン スクリプトをインストールする${gl_kjlan}12. ${gl_bai}アップデートシステム${gl_kjlan}13. ${gl_bai}システムをクリーンアップする"
 	  echo -e "${gl_kjlan}14. ${gl_bai}ドッカーをインストールする${gl_kjlan}15. ${gl_bai}BBR3をインストールする${gl_kjlan}16. ${gl_bai}1Gの仮想メモリを設定する"
-	  echo -e "${gl_kjlan}17. ${gl_bai}タイムゾーンを上海に設定${gl_kjlan}18. ${gl_bai}すべてのポートを開く${gl_kjlan}51. ${gl_bai}カスタムディレクティブ"
+	  echo -e "${gl_kjlan}17. ${gl_bai}タイムゾーンを上海に設定${gl_kjlan}18. ${gl_bai}すべてのポートを開く${gl_kjlan}51. ${gl_bai}カスタム命令"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}0.  ${gl_bai}メインメニューに戻る"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -16738,7 +16822,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 月額 6.9 ドル 東京ソフトバンク 2 コア 1G メモリ 20G ハードドライブ 月額 1T トラフィック${gl_bai}"
 echo -e "${gl_bai}URL：https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}さらに人気のある VPS オファー${gl_bai}"
+echo -e "${gl_kjlan}さらに人気のある VPS セール${gl_bai}"
 echo -e "${gl_bai}ウェブサイト：https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -16977,7 +17061,7 @@ done
 
 
 k_info() {
-send_stats "k コマンドリファレンスの使用例"
+send_stats "k コマンドのリファレンス例"
 echo "-------------------"
 echo "ビデオ紹介: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "以下は、k コマンドの参考使用例です。"
@@ -17012,7 +17096,7 @@ echo "docker イメージ管理 k docker img |k docker image"
 echo "LDNMP サイト管理 k Web"
 echo "LDNMP キャッシュのクリーニング k Web キャッシュ"
 echo "WordPress をインストールします。 kワードプレス | k wp xxx.com"
-echo "リバース プロキシ k fd |k rp |k リバース プロキシ |k fd xxx.com をインストールします。"
+echo "リバース プロキシをインストールします k fd |k rp |k リバース プロキシ |k fd xxx.com"
 echo "ロード バランシングのインストール k ロード バランシング |k ロード バランシング"
 echo "L4 ロード バランシング k ストリーム |k L4 ロード バランシングをインストールする"
 echo "ファイアウォール パネル k fhq |k ファイアウォール"

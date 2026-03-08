@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.4.1"
+sh_v="4.4.3"
 
 
 gl_hui='\e[37m'
@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 canshu="default"
-permission_granted="true"
+permission_granted="false"
 ENABLE_STATS="true"
 
 
@@ -61,7 +61,7 @@ CheckFirstRun_true() {
 
 # 이 기능은 함수에 묻혀있는 정보를 수집하고 사용자가 사용하는 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 시스템 국가 및 기능 이름을 기록합니다. 민감한 정보는 포함되어 있지 않으니 걱정하지 마세요! 저를 믿어주세요!
 # 이 기능은 왜 설계되었나요? 그 목적은 사용자가 사용하고 싶어하는 기능을 더 잘 이해하고, 기능을 더욱 최적화하고 사용자 요구에 맞는 더 많은 기능을 출시하는 것입니다.
-# send_stats 함수 호출 위치에 대한 전문을 검색할 수 있습니다. 투명하고 오픈 소스입니다. 우려되는 사항이 있는 경우 이용을 거부하실 수 있습니다.
+# send_stats 함수 호출 위치에 대한 전문을 검색할 수 있습니다. 투명하고 오픈 소스입니다. 불편하신 점이 있으시면 이용을 거부하실 수 있습니다.
 
 
 
@@ -1262,7 +1262,7 @@ check_swap() {
 
 local swap_total=$(free -m | awk 'NR==3{print $2}')
 
-# 가상 메모리를 생성해야 하는지 결정
+# 가상 메모리를 만들어야 하는지 확인
 [ "$swap_total" -gt 0 ] || add_swap 1024
 
 
@@ -2318,7 +2318,7 @@ check_nginx_compression() {
 
 	# zstd가 켜져 있고 주석 처리가 해제되어 있는지 확인하세요. (전체 줄은 zstd on으로 시작됩니다.)
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status="zstd 압축이 활성화되었습니다"
+		zstd_status="zstd 압축이 켜져 있습니다"
 	else
 		zstd_status=""
 	fi
@@ -2667,7 +2667,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p tcp -d "$container_ip" -j DROP
 	fi
 
-	# 지정된 IP를 허용하는 규칙을 지웁니다.
+	# 특정 IP를 허용하는 규칙 지우기
 	if iptables -C DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -2686,7 +2686,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p udp -d "$container_ip" -j DROP
 	fi
 
-	# 지정된 IP를 허용하는 규칙을 지웁니다.
+	# 특정 IP를 허용하는 규칙 지우기
 	if iptables -C DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -3213,6 +3213,80 @@ f2b_sshd() {
 	fi
 }
 
+# 기본 매개변수 구성: 금지 기간(bantime), 기간(findtime), 재시도 횟수(maxretry)
+# 설명하다:
+# - /etc/fail2ban/jail.d/sshd.local에 쓰기 우선 순위를 지정합니다(기본 감옥 구성을 덮어쓰며 업그레이드 시 손실되기 쉽지 않습니다).
+# - Alpine이고 감옥 이름이 다른 경우에도 sshd.local을 작성하세요. Fail2Ban은 감옥 이름에 따라 일치합니다.
+f2b_basic_config() {
+	root_use
+	install nano
+
+	if ! command -v fail2ban-client >/dev/null 2>&1; then
+		echo -e "${gl_hui}FAIL2BAN-클라이언트가 감지되지 않습니다. 먼저 Fail2ban을 설치하십시오.${gl_bai}"
+		return
+	fi
+
+	local jail_name="sshd"
+	if grep -qi 'Alpine' /etc/issue 2>/dev/null; then
+		# 알파인 기본 감옥은 일반적으로 sshd입니다. 사용자 정의 alpine-sshd 규칙이 감지된 경우에만 전환됩니다.
+		if [ -f /etc/fail2ban/filter.d/alpine-sshd.conf ] || [ -f /etc/fail2ban/jail.d/alpine-ssh.conf ] || [ -f /etc/fail2ban/jail.d/alpine-sshd.local ]; then
+			jail_name="alpine-sshd"
+		fi
+	fi
+
+	echo "SSH 감옥을 구성하려고 합니다:$jail_name"
+	read -e -p "금지 시간 금지 시간(초/분/시간, 예: 3600 또는 1h) [기본값 1h]:" bantime
+	read -e -p "시간 창 찾기 시간(초/분/시간, 예: 600 또는 10m) [기본값 10m]:" findtime
+	read -e -p "재시도 횟수 maxretry(정수) [기본값 5]:" maxretry
+
+	bantime=${bantime:-1h}
+	findtime=${findtime:-10m}
+	maxretry=${maxretry:-5}
+
+	mkdir -p /etc/fail2ban/jail.d
+	cat > /etc/fail2ban/jail.d/sshd.local <<EOF
+[$jail_name]
+# Managed by kejilion.sh
+# Note: enable the jail so these parameters take effect
+enabled = true
+bantime = $bantime
+findtime = $findtime
+maxretry = $maxretry
+EOF
+
+	# Ensure a logfile exists for sshd jail on Debian/Ubuntu minimal images
+	# (without it, fail2ban-server may refuse to start)
+	if [ "$jail_name" = "sshd" ]; then
+		if [ -f /etc/fail2ban/jail.d/sshd.local ]; then
+			grep -qE '^\s*logpath\s*=' /etc/fail2ban/jail.d/sshd.local || echo 'logpath = /var/log/auth.log' >> /etc/fail2ban/jail.d/sshd.local
+		fi
+	fi
+
+	echo -e "${gl_lv}구성이 작성되었습니다.${gl_bai}: /etc/fail2ban/jail.d/sshd.local"
+	fail2ban-client reload >/dev/null 2>&1 || true
+	sleep 2
+	fail2ban-client status $jail_name || true
+}
+
+# 기본 구성/오버레이 구성 편집기(나노)를 직접 엽니다.
+# /etc/fail2ban/jail.d/sshd.local을 먼저 편집하고(보다 안전함) 존재하지 않는 경우 생성합니다.
+f2b_edit_config() {
+	root_use
+	install nano
+
+	if [ ! -d /etc/fail2ban ]; then
+		echo -e "${gl_hui}/etc/fail2ban이 존재하지 않습니다. 먼저 fall2ban을 설치하십시오.${gl_bai}"
+		return
+	fi
+
+	mkdir -p /etc/fail2ban/jail.d
+	local cfg="/etc/fail2ban/jail.d/sshd.local"
+	[ -f "$cfg" ] || printf "[sshd]\n# bantime/findtime/maxretry\n" > "$cfg"
+
+	nano "$cfg"
+	echo -e "${gl_lv}저장됨${gl_bai}, Fail2ban을 다시 로드하는 중..."
+	fail2ban-client reload >/dev/null 2>&1 || true
+}
 
 
 
@@ -3645,7 +3719,7 @@ stream_panel() {
 
 ldnmp_Proxy_backend_stream() {
 	clear
-	webname="스트리밍 4계층 프록시-로드 밸런싱"
+	webname="스트림 4계층 프록시-로드 밸런싱"
 
 	send_stats "설치하다$webname"
 	echo "배포 시작$webname"
@@ -4335,7 +4409,7 @@ frps_panel() {
 
 			8)
 				send_stats "IP 접근 차단"
-				echo "역방향 도메인 이름 접근을 가지고 있는 경우, 이 기능을 사용하면 IP+포트 접근을 차단할 수 있어 더욱 안전합니다."
+				echo "역방향 도메인 이름 접근이 있는 경우, 이 기능을 사용하면 IP+포트 접근을 차단할 수 있어 더욱 안전합니다."
 				read -e -p "차단할 포트를 입력하세요:" frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
@@ -4978,7 +5052,7 @@ fetch_remote_ssh_keys() {
 	# 원본 인증_키 백업
 	if [[ -f "${authorized_keys}" ]]; then
 		cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
-		echo "원래 Authorized_keys 파일이 백업되었습니다."
+		echo "원본 Authorized_keys 파일이 백업되었습니다."
 	fi
 
 	# 공개 키 추가(중복 방지)
@@ -5764,7 +5838,7 @@ clamav_freshclam() {
 
 clamav_scan() {
 	if [ $# -eq 0 ]; then
-		echo "스캔할 디렉터리를 지정하십시오."
+		echo "스캔할 디렉터리를 지정하세요."
 		return
 	fi
 
@@ -6248,7 +6322,7 @@ Kernel_optimize() {
 			  cd ~
 			  clear
 			  optimize_web_server
-			  send_stats "웹사이트 최적화 모델"
+			  send_stats "웹사이트 최적화 모드"
 			  ;;
 		  4)
 			  cd ~
@@ -6707,7 +6781,7 @@ add_connection() {
 				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
 					break
 				fi
-				# 첫 번째 줄이거나 이미 핵심 내용을 입력하기 시작했다면 계속해서 추가하세요.
+				# 첫 번째 줄이거나 이미 핵심 내용 입력을 시작했다면 계속해서 추가하세요.
 				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
 					local password_or_key+="${line}"$'\n'
 				fi
@@ -7083,7 +7157,7 @@ add_task() {
 				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
 					break
 				fi
-				# 첫 번째 줄이거나 이미 핵심 내용을 입력하기 시작했다면 계속해서 추가하세요.
+				# 첫 번째 줄이거나 이미 핵심 내용 입력을 시작했다면 계속해서 추가하세요.
 				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
 					password_or_key+="${line}"$'\n'
 				fi
@@ -7220,7 +7294,7 @@ run_task() {
 	else
 		echo "동기화에 실패했습니다! 다음 사항을 확인하세요."
 		echo "1. 네트워크 연결이 정상인가요?"
-		echo "2. 원격 호스트에 접근할 수 있나요?"
+		echo "2. 원격 호스트에 접근 가능한지 여부"
 		echo "3. 인증정보가 정확합니까?"
 		echo "4. 로컬 및 원격 디렉터리에 올바른 액세스 권한이 있습니까?"
 	fi
@@ -8072,7 +8146,7 @@ docker_ssh_migration() {
 
 		echo -e "${gl_huang}백업 전송 중...${gl_bai}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# 키로 로그인
+			# 키를 사용하여 로그인
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -8259,7 +8333,7 @@ linux_docker() {
 					  3)
 						  send_stats "네트워크에 가입하세요"
 						  read -e -p "종료 네트워크 이름:" dockernetwork
-						  read -e -p "이러한 컨테이너는 네트워크를 종료합니다(여러 컨테이너 이름을 공백으로 구분하세요)." dockernames
+						  read -e -p "해당 컨테이너는 네트워크를 종료합니다(여러 컨테이너 이름을 공백으로 구분하세요)." dockernames
 
 						  for dockername in $dockernames; do
 							  docker network disconnect $dockernetwork $dockername
@@ -8620,7 +8694,7 @@ linux_Oracle() {
 		  1)
 			  clear
 			  echo "활성 스크립트: CPU 사용량 10-20% 메모리 사용량 20%"
-			  read -e -p "정말로 설치하시겠습니까? (예/아니요):" choice
+			  read -e -p "설치하시겠습니까? (예/아니요):" choice
 			  case "$choice" in
 				[Yy])
 
@@ -9883,16 +9957,17 @@ moltbot_menu() {
 		echo "4. 상태 로그 보기"
 		echo "5. 모델 변경"
 		echo "6. 새로운 모델 API 추가"
-		echo "7. TG에 연결 코드를 입력하세요."
+		echo "7. 로봇 연결 및 도킹"
 		echo "8. 플러그인 설치(예: Feishu)"
 		echo "9. 스킬 설치"
 		echo "10. 기본 구성 파일 편집"
 		echo "11. 구성 마법사"
 		echo "12. 건강 상태 감지 및 복구"
 		echo "13. WebUI 접속 및 설정"
+		echo "14. TUI 명령줄 대화 상자 창"
 		echo "--------------------"
-		echo "14. 업데이트"
-		echo "15. 제거"
+		echo "15. 업데이트"
+		echo "16. 제거"
 		echo "--------------------"
 		echo "0. 이전 메뉴로 돌아가기"
 		echo "--------------------"
@@ -9932,8 +10007,13 @@ moltbot_menu() {
 		if [[ "$country" == "CN" || "$country" == "HK" ]]; then
 			npm config set registry https://registry.npmmirror.com
 		fi
+
+		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
+
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
+		sed -i 's|"profile": "messaging"|"profile": "full"|g' ~/.openclaw/openclaw.json
 		start_gateway
 		add_app_id
 		break_end
@@ -9942,8 +10022,8 @@ moltbot_menu() {
 
 
 	start_bot() {
-		echo "OpenClaw를 시작하세요..."
-		send_stats "OpenClaw를 시작하세요..."
+		echo "OpenClaw를 시작하는 중..."
+		send_stats "OpenClaw를 시작하는 중..."
 		start_gateway
 		break_end
 	}
@@ -10220,78 +10300,7 @@ EOF
 
 
 
-	install_plugin() {
-
-		send_stats "플러그인 설치"
-		while true; do
-			clear
-			echo "========================================"
-			echo "플러그인 관리(설치)"
-			echo "========================================"
-			echo "현재 설치된 플러그인:"
-			openclaw plugins list
-			echo "----------------------------------------"
-
-			# 사용자가 복사할 수 있는 권장 실무 플러그인 목록 출력
-			echo "추천 실용 플러그인(이름을 직접 복사하여 입력 가능):"
-			echo "feishu # Feishu/Lark 통합 (현재 로드됨 ✓)"
-			echo "텔레그램 # 텔레그램 봇 통합 (현재 로드됨 ✓)"
-			echo "memory-core # 핵심 메모리 강화: 파일 기반 상황별 검색(현재 로드됨 ✓)"
-			echo "@openclaw/slack # Slack 채널과 DM 간의 깊은 연결"
-			echo "@openclaw/bluebubbles # iMessage 브리지(macOS 사용자에게 선호됨)"
-			echo "@openclaw/msteams #Microsoft Teams 엔터프라이즈 커뮤니케이션 통합"
-			echo "@openclaw/voice-call # 음성 통화 플러그인 (Twilio와 같은 백엔드 기반)"
-			echo "@openclaw/discord # 디스코드 채널 자동관리"
-			echo "@openclaw/nostr # Nostr 프로토콜: 비공개적이고 안전한 암호화된 채팅"
-			echo "랍스터 # 승인 워크플로: 사람의 개입으로 자동화된 작업"
-			echo "memory-lancedb # 장기 기억력 향상: 벡터 데이터베이스 기반의 정확한 재현"
-			echo "copilot-proxy # GitHub Copilot 프록시 액세스 향상"
-			echo "----------------------------------------"
-
-			# 사용자에게 플러그인 이름을 묻는 메시지 표시
-			read -e -p "설치하려는 플러그인의 이름을 입력하십시오(종료하려면 0을 입력하십시오):" plugin_name
-
-			# 1. 0을 입력하여 종료했는지 확인하세요.
-			if [ "$plugin_name" = "0" ]; then
-				echo "작업이 취소되고 플러그인 설치가 종료되었습니다."
-				break
-			fi
-
-			# 2. 입력이 비어 있는지 확인하십시오.
-			if [ -z "$plugin_name" ]; then
-				echo "오류: 플러그인 이름은 비워둘 수 없습니다. 다시 입력하세요."
-				echo ""
-				continue
-			fi
-
-			# 1. 이전 실패의 잔재(사용자 디렉터리)를 완전히 정리합니다.
-			rm -rf "/root/.openclaw/extensions/$plugin_name"
-
-			# 2. 시스템이 사전 설치되어 있는지 확인하세요. (ID 중복 방지를 위해)
-			if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_name" ]; then
-				echo "💡 플러그인이 시스템 디렉터리에 이미 존재하며 직접 활성화되고 있는 것으로 감지되었습니다..."
-				openclaw plugins enable "$plugin_name"
-			else
-				echo "📥 공식 채널을 통해 플러그인 다운로드 및 설치..."
-				# package.json의 사양 확인을 자동으로 처리하는 openclaw의 자체 설치 명령을 사용합니다.
-				openclaw plugins install "$plugin_name"
-
-				# 3. openclaw install에서 오류가 보고되면 일반 npm 패키지로 설치해 보세요(마지막 대안).
-				if [ $? -ne 0 ]; then
-					echo "⚠️ 공식 설치에 실패했습니다. npm을 통해 전역적으로 강제 설치를 시도해보세요..."
-					npm install -g "$plugin_name" --unsafe-perm
-				fi
-
-				# 4. 마지막으로 통합 실행 및 활성화
-				openclaw plugins enable "$plugin_name"
-			fi
-
-			start_gateway
-			break_end
-		done
-	}
-
-	install_plugin() {
+		install_plugin() {
 		send_stats "플러그인 설치"
 		while true; do
 			clear
@@ -10332,6 +10341,8 @@ EOF
 			local plugin_full="$raw_input"
 
 			echo "🔍 플러그인 상태 확인 중..."
+			# 상태 감지를 위한 현재 플러그인 목록 가져오기
+			local plugin_list=$(openclaw plugins list 2>/dev/null)
 
 			# 2. 이미 목록에 있고 비활성화되어 있는지 확인합니다(가장 일반적인 경우).
 			if echo "$plugin_list" | grep -qw "$plugin_id" && echo "$plugin_list" | grep "$plugin_id" | grep -q "disabled"; then
@@ -10426,14 +10437,29 @@ EOF
 				continue
 			fi
 
-			# 3. 설치 명령을 실행합니다.
-			echo "기술 설치:$skill_name ..."
-			npx clawhub install "$skill_name"
+			# 3. 스킬이 설치되어 있는지 확인하세요
+			local skill_found=false
+			if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
+				echo "💡 스킬 [$skill_name]는 사용자 디렉토리에 설치됩니다."
+				skill_found=true
+			elif [ -d "/usr/lib/node_modules/openclaw/skills/${skill_name}" ]; then
+				echo "💡 스킬 [$skill_name]는 시스템 디렉토리에 설치됩니다."
+				skill_found=true
+			fi
 
-			# 이전 명령의 종료 상태를 가져옵니다.
-			if [ $? -eq 0 ]; then
+			if [ "$skill_found" = true ]; then
+				read -e -p "다시 설치하시겠습니까? (예/아니요):" reinstall
+				if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
+					echo "설치를 건너뜁니다."
+					break_end
+					continue
+				fi
+			fi
+
+			# 4. 설치 명령을 실행합니다.
+			echo "기술 설치:$skill_name ..."
+			if npx clawhub install "$skill_name"; then
 				echo "✅ 스킬$skill_name설치가 성공했습니다."
-				# 서비스 재시작/시작 로직 실행
 				start_gateway
 			else
 				echo "❌ 설치에 실패했습니다. 스킬 이름이 올바른지 확인하시거나, 문제 해결을 위해 문서를 참고하시기 바랍니다."
@@ -10441,29 +10467,56 @@ EOF
 
 			break_end
 		done
-
 	}
 
 
 
 	change_tg_bot_code() {
 		send_stats "로봇 도킹"
-		read -e -p "TG 로봇이 수신한 연결 코드(예: 페어링 코드: NYA99R2F)를 입력하세요(종료하려면 0 입력)." code
+		while true; do
+			clear
+			echo "========================================"
+			echo "로봇 연결 및 도킹"
+			echo "========================================"
+			echo "1. 텔레그램 로봇 도킹"
+			echo "2. Feishu(Lark) 로봇 도킹"
+			echo "3. WhatsApp 봇 도킹"
+			echo "----------------------------------------"
+			echo "0. 이전 메뉴로 돌아가기"
+			echo "----------------------------------------"
+			read -e -p "선택사항을 입력하세요:" bot_choice
 
-		# 0을 입력했는지 확인하여 종료하세요.
-		if [ "$code" = "0" ]; then
-			echo "작업이 취소되었습니다."
-			return 0  # 正常退出函数
-		fi
-
-		# 입력이 비어 있는지 확인
-		if [ -z "$code" ]; then
-			echo "오류: 연결 코드는 비워둘 수 없습니다. 다시 시도해 주세요."
-			return 1
-		fi
-
-		openclaw pairing approve telegram $code
-		break_end
+			case $bot_choice in
+				1)
+					read -e -p "TG 로봇이 수신한 연결 코드(예: NYA99R2F)를 입력하세요(종료하려면 0 입력)." code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "오류: 연결 코드는 비워둘 수 없습니다."; sleep 1; continue; fi
+					openclaw pairing approve telegram "$code"
+					break_end
+					;;
+				2)
+					read -e -p "Feishu Robot이 수신한 연결 코드(예: NYA99R2F)를 입력하십시오(종료하려면 0을 입력하십시오)." code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "오류: 연결 코드는 비워둘 수 없습니다."; sleep 1; continue; fi
+					openclaw pairing approve feishu "$code"
+					break_end
+					;;
+				3)
+					read -e -p "WhatsApp에서 받은 연결 코드(예: NYA99R2F)를 입력하세요(종료하려면 0 입력)." code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "오류: 연결 코드는 비워둘 수 없습니다."; sleep 1; continue; fi
+					openclaw pairing approve whatsapp "$code"
+					break_end
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "선택이 잘못되었습니다. 다시 시도해 주세요."
+					sleep 1
+					;;
+			esac
+		done
 	}
 
 
@@ -10487,6 +10540,7 @@ EOF
 		openclaw uninstall
 		npm uninstall -g openclaw
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
+		rm -rf /root/.openclaw
 		hash -r
 		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 		echo "제거가 완료되었습니다."
@@ -10570,6 +10624,19 @@ EOF
 		echo "먼저 URL에 액세스하여 장치 ID를 트리거한 다음 Enter를 눌러 페어링을 진행하세요."
 		read
 		echo -e "${gl_kjlan}기기 목록 로드 중...${gl_bai}"
+		# allowedOrigins에 도메인 이름을 자동으로 추가합니다.
+		config_file="$HOME/.openclaw/openclaw.json"
+		if [ -f "$config_file" ]; then
+			new_origin="https://${yuming}"
+			# 구조가 존재하고 도메인 이름이 반복적으로 추가되지 않도록 jq를 사용하여 JSON을 안전하게 수정하세요.
+			if command -v jq >/dev/null 2>&1; then
+				tmp_json=$(mktemp)
+				jq 'if .gateway.controlUi == null then .gateway.controlUi = {"allowedOrigins": ["http://127.0.0.1"]} else . end | if (.gateway.controlUi.allowedOrigins | contains([$origin]) | not) then .gateway.controlUi.allowedOrigins += [$origin] else . end' --arg origin "$new_origin" "$config_file" > "$tmp_json" && mv "$tmp_json" "$config_file"
+				echo -e "${gl_kjlan}도메인 이름이${yuming}allowedOrigins 구성 추가${gl_bai}"
+				openclaw gateway restart >/dev/null 2>&1
+			fi
+		fi
+
 		openclaw devices list
 
 		read -e -p "Request_Key를 입력하십시오:" Request_Key
@@ -10650,8 +10717,12 @@ EOF
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;
-			14) update_moltbot ;;
-			15) uninstall_moltbot ;;
+			14) send_stats "TUI 명령줄 대화"
+				openclaw tui
+				break_end
+			 	;;
+			15) update_moltbot ;;
+			16) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
@@ -10987,7 +11058,7 @@ while true; do
 			check_docker_app
 			check_docker_image_update $docker_name
 			clear
-			echo -e "나타 모니터링$check_docker $update_status"
+			echo -e "네자 모니터링$check_docker $update_status"
 			echo "오픈 소스, 가볍고 사용하기 쉬운 서버 모니터링 및 운영 및 유지 관리 도구"
 			echo "공식 웹사이트 구축 문서: https://nezha.wiki/guide/dashboard.html"
 			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
@@ -11398,7 +11469,7 @@ while true; do
 
 		}
 
-		local docker_describe="Speedtest 속도 테스트 패널은 다양한 테스트 기능을 갖춘 VPS 네트워크 속도 테스트 도구이며 VPS 인바운드 및 아웃바운드 트래픽을 실시간으로 모니터링할 수도 있습니다."
+		local docker_describe="Speedtest 속도 측정 패널은 다양한 테스트 기능을 갖춘 VPS 네트워크 속도 테스트 도구이며 VPS 인바운드 및 아웃바운드 트래픽을 실시간으로 모니터링할 수도 있습니다."
 		local docker_url="공식 웹사이트 소개:${gh_proxy}github.com/wikihost-opensource/als"
 		local docker_use=""
 		local docker_passwd=""
@@ -12338,7 +12409,7 @@ while true; do
 
 		}
 
-		local docker_describe="OpenWebUI는 새로운 llama3 대규모 언어 모델에 연결된 대규모 언어 모델 웹 페이지 프레임워크입니다."
+		local docker_describe="OpenWebUI는 새로운 llama3 대규모 언어 모델에 연결되는 대규모 언어 모델 웹 페이지 프레임워크입니다."
 		local docker_url="공식 웹사이트 소개:${gh_https_url}github.com/open-webui/open-webui"
 		local docker_use="docker exec ollama ollama run llama3.2:1b"
 		local docker_passwd=""
@@ -12500,7 +12571,7 @@ while true; do
 
 		local app_id="60"
 		local app_name="JumpServer 오픈 소스 요새 머신"
-		local app_text="오픈소스 PAM(Privileged Access Management) 도구입니다. 이 프로그램은 포트 80을 사용하며 액세스를 위한 도메인 이름 추가를 지원하지 않습니다."
+		local app_text="오픈소스 권한 있는 액세스 관리(PAM) 도구입니다. 이 프로그램은 포트 80을 사용하며 액세스를 위한 도메인 이름 추가를 지원하지 않습니다."
 		local app_url="공식 소개:${gh_https_url}github.com/jumpserver/jumpserver"
 		local docker_name="jms_web"
 		local docker_port="80"
@@ -12777,7 +12848,7 @@ while true; do
 
 		}
 
-		local docker_describe="AI 대형 모델에 대한 WeChat, QQ 및 TG 액세스를 지원하는 오픈 소스 AI 챗봇 프레임워크"
+		local docker_describe="대규모 AI 모델에 대한 WeChat, QQ 및 TG 액세스를 지원하는 오픈 소스 AI 챗봇 프레임워크"
 		local docker_url="공식 홈페이지 소개: https://astrbot.app/"
 		local docker_use="echo \"사용자 이름: astrbot 비밀번호: astrbot\""
 		local docker_passwd=""
@@ -12833,7 +12904,7 @@ while true; do
 
 		}
 
-		local docker_describe="데이터를 제어할 수 있는 비밀번호 관리자"
+		local docker_describe="귀하의 데이터를 통제할 수 있는 비밀번호 관리자"
 		local docker_url="공식 홈페이지 소개: https://bitwarden.com/"
 		local docker_use=""
 		local docker_passwd=""
@@ -13390,7 +13461,7 @@ while true; do
 
 		}
 
-		local docker_describe="원격으로 영화와 생방송을 함께 시청할 수 있는 프로그램입니다. 동시 시청, 라이브 방송, 채팅 및 기타 기능을 제공합니다."
+		local docker_describe="영화와 생방송을 원격으로 함께 시청할 수 있는 프로그램입니다. 동시 시청, 라이브 방송, 채팅 및 기타 기능을 제공합니다."
 		local docker_url="공식 웹사이트 소개:${gh_https_url}github.com/synctv-org/synctv"
 		local docker_use="echo \"초기 계정 및 비밀번호: root. 로그인 후 시간에 맞춰 로그인 비밀번호를 변경하세요\""
 		local docker_passwd=""
@@ -14021,7 +14092,7 @@ while true; do
 	  101|moneyprinterturbo)
 		local app_id="101"
 		local app_name="AI 영상 생성 도구"
-		local app_text="MoneyPrinterTurbo는 AI 대형 모델을 사용하여 고화질 단편 동영상을 합성하는 도구입니다."
+		local app_text="MoneyPrinterTurbo는 AI 대형 모델을 사용하여 고화질 짧은 동영상을 합성하는 도구입니다."
 		local app_url="공식 웹사이트:${gh_https_url}github.com/harry0703/MoneyPrinterTurbo"
 		local docker_name="moneyprinterturbo"
 		local docker_port="8101"
@@ -14538,7 +14609,7 @@ linux_work() {
 	  send_stats "백엔드 작업공간"
 	  echo -e "백엔드 작업공간"
 	  echo -e "시스템은 장기간 작업을 수행하는 데 사용할 수 있는 백그라운드에서 영구적으로 실행될 수 있는 작업 공간을 제공합니다."
-	  echo -e "SSH 연결을 끊더라도 작업 공간의 작업은 중단되지 않으며 백그라운드 작업은 유지됩니다."
+	  echo -e "SSH 연결을 끊더라도 작업 공간의 작업은 중단되지 않으며 작업은 백그라운드에 유지됩니다."
 	  echo -e "${gl_huang}힌트:${gl_bai}워크스페이스 진입 후 Ctrl+b를 누른 후 d만 눌러 워크스페이스를 종료하세요!"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo "현재 존재하는 작업공간 목록"
@@ -14786,6 +14857,9 @@ fail2ban_panel() {
 				echo "2. SSH 차단 기록 보기"
 				echo "3. 실시간 로그 모니터링"
 				echo "------------------------"
+				echo "4. 기본 매개변수 구성(금지 기간/기간/재시도 횟수)"
+				echo "5. 구성 파일 편집(나노)"
+				echo "------------------------"
 				echo "9. 방어 프로그램 제거"
 				echo "------------------------"
 				echo "0. 이전 메뉴로 돌아가기"
@@ -14807,6 +14881,16 @@ fail2ban_panel() {
 					3)
 						tail -f /var/log/fail2ban.log
 						break
+						;;
+					4)
+						send_stats "SSH 방어 기본 매개변수 구성"
+						f2b_basic_config
+						break_end
+						;;
+					5)
+						send_stats "SSH 방어 편집 구성 파일"
+						f2b_edit_config
+						break_end
 						;;
 					9)
 						remove fail2ban
@@ -14922,7 +15006,7 @@ log_menu() {
 		show_log_overview
 		echo
 		echo "=========== 시스템 로그 관리 메뉴 ==========="
-		echo "1. 최신 시스템 로그(일지)를 확인하세요."
+		echo "1. 최신 시스템 로그(일지) 보기"
 		echo "2. 지정된 서비스 로그 보기"
 		echo "3. 로그인/보안 로그 보기"
 		echo "4. 실시간 추적 로그"
@@ -14934,7 +15018,7 @@ log_menu() {
 		case $choice in
 			1)
 				send_stats "최근 로그 보기"
-				read -erp "최근 로그 줄을 몇 개나 보셨나요? [기본값 100]:" lines
+				read -erp "가장 최근 로그 줄을 보시겠습니까? [기본값 100]:" lines
 				lines=${lines:-100}
 				journalctl -n "$lines" --no-pager
 				read -erp "계속하려면 Enter를 누르세요..."
@@ -14983,7 +15067,7 @@ log_menu() {
 				echo "⚠️ 일지를 청소하세요(안전한 방법)"
 				echo "1) 최근 7일을 보관"
 				echo "2) 최근 3일을 보관한다"
-				echo "3) 최대 로그 크기를 500M로 제한합니다."
+				echo "3) 최대 로그 크기를 500M로 제한하십시오."
 				read -erp "청소 방법을 선택하세요:" c
 				case $c in
 					1) journalctl --vacuum-time=7d ;;
@@ -15089,7 +15173,7 @@ env_menu() {
 		echo "=========== 시스템 환경 변수 관리 =========="
 		echo "현재 사용자:$USER"
 		echo "--------------------------------------"
-		echo "1. 현재 일반적으로 사용되는 환경변수를 확인하세요."
+		echo "1. 현재 일반적으로 사용되는 환경변수를 확인한다"
 		echo "2. ~/.bashrc 보기"
 		echo "3. ~/.profile 보기"
 		echo "4. ~/.bashrc 편집"
@@ -15208,7 +15292,7 @@ linux_Settings() {
 	  echo -e "시스템 도구"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}스크립트 시작 단축키 설정${gl_kjlan}2.   ${gl_bai}로그인 비밀번호 변경"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}사용자 비밀번호 로그인 모드${gl_kjlan}4.   ${gl_bai}지정된 Python 버전을 설치합니다."
+	  echo -e "${gl_kjlan}3.   ${gl_bai}사용자 비밀번호 로그인 모드${gl_kjlan}4.   ${gl_bai}지정된 버전의 Python 설치"
 	  echo -e "${gl_kjlan}5.   ${gl_bai}모든 포트 열기${gl_kjlan}6.   ${gl_bai}SSH 연결 포트 수정"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}DNS 주소 최적화${gl_kjlan}8.   ${gl_bai}한 번의 클릭으로 시스템을 다시 설치${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}ROOT 계정을 비활성화하고 새 계정을 만듭니다.${gl_kjlan}10.  ${gl_bai}우선순위 ipv4/ipv6 전환"
@@ -15673,7 +15757,7 @@ EOF
 				# 현재 시스템 시간대 가져오기
 				local timezone=$(current_timezone)
 
-				# 현재 시스템 시간을 가져옵니다
+				# 현재 시스템 시간 가져오기
 				local current_time=$(date +"%Y-%m-%d %H:%M:%S")
 
 				# 시간대 및 시간 표시
@@ -15956,7 +16040,7 @@ EOF
 					echo -e "${gl_lv}현재 설정된 인바운드 트래픽 제한 임계값은 다음과 같습니다.${gl_huang}${rx_threshold_gb}${gl_lv}G${gl_bai}"
 					echo -e "${gl_lv}현재 설정된 아웃바운드 트래픽 제한 임계값은 다음과 같습니다.${gl_huang}${tx_threshold_gb}${gl_lv}GB${gl_bai}"
 				else
-					echo -e "${gl_hui}현재 제한 종료 기능이 활성화되어 있지 않습니다.${gl_bai}"
+					echo -e "${gl_hui}현재 제한 종료 기능이 현재 활성화되어 있지 않습니다.${gl_bai}"
 				fi
 
 				echo
@@ -16587,7 +16671,7 @@ run_commands_on_servers() {
 		local username=${SERVER_ARRAY[i+3]}
 		local password=${SERVER_ARRAY[i+4]}
 		echo
-		echo -e "${gl_huang}연결하다$name ($hostname)...${gl_bai}"
+		echo -e "${gl_huang}연결 대상$name ($hostname)...${gl_bai}"
 		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 	done
@@ -16621,7 +16705,7 @@ while true; do
 	  echo -e "${gl_kjlan}일괄적으로 작업 실행${gl_bai}"
 	  echo -e "${gl_kjlan}11. ${gl_bai}기술 사자 스크립트 설치${gl_kjlan}12. ${gl_bai}시스템 업데이트${gl_kjlan}13. ${gl_bai}시스템 청소"
 	  echo -e "${gl_kjlan}14. ${gl_bai}도커 설치${gl_kjlan}15. ${gl_bai}BBR3 설치${gl_kjlan}16. ${gl_bai}1G 가상 메모리 설정"
-	  echo -e "${gl_kjlan}17. ${gl_bai}시간대를 상하이로 설정${gl_kjlan}18. ${gl_bai}모든 포트 열기${gl_kjlan}51. ${gl_bai}사용자 정의 지시어"
+	  echo -e "${gl_kjlan}17. ${gl_bai}시간대를 상하이로 설정${gl_kjlan}18. ${gl_bai}모든 포트 열기${gl_kjlan}51. ${gl_bai}맞춤 지침"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}0.  ${gl_bai}메인 메뉴로 돌아가기"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -16738,7 +16822,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 월 6.9달러 도쿄 소프트뱅크 2코어 1G 메모리 20G 하드드라이브 월 1T 트래픽${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}더 인기 있는 VPS 혜택${gl_bai}"
+echo -e "${gl_kjlan}더 인기 있는 VPS 거래${gl_bai}"
 echo -e "${gl_bai}홈페이지: https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -16977,7 +17061,7 @@ done
 
 
 k_info() {
-send_stats "k 명령 참조 사용 사례"
+send_stats "k 명령 참조 예"
 echo "-------------------"
 echo "영상 소개: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "다음은 k 명령의 참조 사용 사례입니다."

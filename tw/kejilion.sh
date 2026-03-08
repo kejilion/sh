@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.4.1"
+sh_v="4.4.3"
 
 
 gl_hui='\e[37m'
@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 canshu="default"
-permission_granted="true"
+permission_granted="false"
 ENABLE_STATS="true"
 
 
@@ -538,7 +538,7 @@ while true; do
 			  [Nn])
 				;;
 			  *)
-				echo "無效的選擇，請輸入 Y 或 N。"
+				echo "无效的选择，请输入 Y 或 N。"
 				;;
 			esac
 			;;
@@ -753,7 +753,7 @@ docker_ipv6_on() {
 		echo "$REQUIRED_IPV6_CONFIG" | jq . > "$CONFIG_FILE"
 		restart docker
 	else
-		# 使用jq處理設定檔的更新
+		# 使用jq处理配置文件的更新
 		local ORIGINAL_CONFIG=$(<"$CONFIG_FILE")
 
 		# 檢查目前配置是否已經有 ipv6 設定
@@ -1221,7 +1221,7 @@ iptables_panel() {
 add_swap() {
 	local new_swap=$1  # 获取传入的参数
 
-	# 取得目前系統中所有的 swap 分區
+	# 取得目前系統中所有的 swap 分割區
 	local swap_partitions=$(grep -E '^/dev/' /proc/swaps | awk '{print $1}')
 
 	# 遍歷並刪除所有的 swap 分割區
@@ -2192,7 +2192,7 @@ web_security() {
 					  remove fail2ban
 					  rm -rf /etc/fail2ban
 					  crontab -l | grep -v "CF-Under-Attack.sh" | crontab - 2>/dev/null
-					  echo "Fail2Ban防禦程序已卸載"
+					  echo "Fail2Ban防御程序已卸载"
 					  break
 					  ;;
 
@@ -2232,7 +2232,7 @@ web_security() {
 
 				  22)
 					  send_stats "高負載開啟5秒盾"
-					  echo -e "${gl_huang}網站每5分鐘自動偵測，當達偵測到高負載會自動開盾，低負載也會自動關閉5秒盾。${gl_bai}"
+					  echo -e "${gl_huang}网站每5分钟自动检测，当达检测到高负载会自动开盾，低负载也会自动关闭5秒盾。${gl_bai}"
 					  echo "--------------"
 					  echo "取得CF參數:"
 					  echo -e "到cf後台右上角我的個人資料，選擇左側API令牌，取得${gl_huang}Global API Key${gl_bai}"
@@ -3213,6 +3213,80 @@ f2b_sshd() {
 	fi
 }
 
+# 基礎參數配置：封禁時長(bantime)、時間視窗(findtime)、重試次數(maxretry)
+# 說明：
+# - 優先寫入 /etc/fail2ban/jail.d/sshd.local（覆蓋預設 jail 配置，升級不易丟）
+# - 若是 Alpine 且 jail 名稱不同，仍寫 sshd.local；Fail2Ban 會以 jail 名稱配對
+f2b_basic_config() {
+	root_use
+	install nano
+
+	if ! command -v fail2ban-client >/dev/null 2>&1; then
+		echo -e "${gl_hui}未偵測到 fail2ban-client，請先安裝 fail2ban。${gl_bai}"
+		return
+	fi
+
+	local jail_name="sshd"
+	if grep -qi 'Alpine' /etc/issue 2>/dev/null; then
+		# Alpine 預設 jail 通常為 sshd；僅當偵測到自訂 alpine-sshd 規則時才切換
+		if [ -f /etc/fail2ban/filter.d/alpine-sshd.conf ] || [ -f /etc/fail2ban/jail.d/alpine-ssh.conf ] || [ -f /etc/fail2ban/jail.d/alpine-sshd.local ]; then
+			jail_name="alpine-sshd"
+		fi
+	fi
+
+	echo "即將配置 SSH jail：$jail_name"
+	read -e -p "封禁時長 bantime (秒/分鐘/小時，如 3600 或 1h) [預設 1h]:" bantime
+	read -e -p "時間窗口 findtime (秒/分鐘/小時，如 600 或 10m) [預設 10m]:" findtime
+	read -e -p "重試次數 maxretry (整數) [預設 5]:" maxretry
+
+	bantime=${bantime:-1h}
+	findtime=${findtime:-10m}
+	maxretry=${maxretry:-5}
+
+	mkdir -p /etc/fail2ban/jail.d
+	cat > /etc/fail2ban/jail.d/sshd.local <<EOF
+[$jail_name]
+# Managed by kejilion.sh
+# Note: enable the jail so these parameters take effect
+enabled = true
+bantime = $bantime
+findtime = $findtime
+maxretry = $maxretry
+EOF
+
+	# Ensure a logfile exists for sshd jail on Debian/Ubuntu minimal images
+	# (without it, fail2ban-server may refuse to start)
+	if [ "$jail_name" = "sshd" ]; then
+		if [ -f /etc/fail2ban/jail.d/sshd.local ]; then
+			grep -qE '^\s*logpath\s*=' /etc/fail2ban/jail.d/sshd.local || echo 'logpath = /var/log/auth.log' >> /etc/fail2ban/jail.d/sshd.local
+		fi
+	fi
+
+	echo -e "${gl_lv}已寫入配置${gl_bai}: /etc/fail2ban/jail.d/sshd.local"
+	fail2ban-client reload >/dev/null 2>&1 || true
+	sleep 2
+	fail2ban-client status $jail_name || true
+}
+
+# 直接開啟主配置/覆蓋配置編輯（nano）
+# 優先編輯 /etc/fail2ban/jail.d/sshd.local（更安全），若不存在則創建
+f2b_edit_config() {
+	root_use
+	install nano
+
+	if [ ! -d /etc/fail2ban ]; then
+		echo -e "${gl_hui}/etc/fail2ban 不存在，請先安裝 fail2ban。${gl_bai}"
+		return
+	fi
+
+	mkdir -p /etc/fail2ban/jail.d
+	local cfg="/etc/fail2ban/jail.d/sshd.local"
+	[ -f "$cfg" ] || printf "[sshd]\n# bantime/findtime/maxretry\n" > "$cfg"
+
+	nano "$cfg"
+	echo -e "${gl_lv}已儲存${gl_bai}，正在 reload fail2ban..."
+	fail2ban-client reload >/dev/null 2>&1 || true
+}
 
 
 
@@ -3810,7 +3884,7 @@ ldnmp_web_status() {
 			2)
 				send_stats "克隆站點域名"
 				read -e -p "請輸入舊網域名稱:" oddyuming
-				read -e -p "請輸入新網域:" yuming
+				read -e -p "請輸入新網域名稱:" yuming
 				install_certbot
 				install_ssltls
 				certs_status
@@ -3851,7 +3925,7 @@ ldnmp_web_status() {
 				send_stats "建立關聯站點"
 				echo -e "為現有的站點再關聯一個新網域用於訪問"
 				read -e -p "請輸入現有的網域名稱:" oddyuming
-				read -e -p "請輸入新網域:" yuming
+				read -e -p "請輸入新網域名稱:" yuming
 				install_certbot
 				install_ssltls
 				certs_status
@@ -4026,7 +4100,7 @@ EOF
 
 	donlond_frp frps
 
-	# 輸出產生的信息
+	# 输出生成的信息
 	ip_address
 	echo "------------------------"
 	echo "客戶端部署時所需使用的參數"
@@ -4178,7 +4252,7 @@ list_forwarding_services() {
 	}
 
 	END {
-		# 列印最後一個服務的訊息
+		# 打印最后一个服务的信息
 		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
 			printf "%-16s %-21s %-26s %-10s\n", \
 				current_service, \
@@ -4196,7 +4270,7 @@ get_frp_ports() {
 	mapfile -t ports < <(ss -tulnape | grep frps | awk '{print $5}' | awk -F':' '{print $NF}' | sort -u)
 }
 
-# 產生訪問地址
+# 生成访问地址
 generate_access_urls() {
 	# 首先獲取所有連接埠
 	get_frp_ports
@@ -4275,7 +4349,7 @@ frps_panel() {
 		fi
 		echo ""
 		echo "------------------------"
-		echo "1. 安裝 2. 更新 3. 卸載"
+		echo "1. 安装                  2. 更新                  3. 卸载"
 		echo "------------------------"
 		echo "5. 內部網路服務網域存取 6. 刪除網域名稱訪問"
 		echo "------------------------"
@@ -4364,7 +4438,7 @@ frpc_panel() {
 		check_frp_app
 		check_docker_image_update $docker_name
 		echo -e "FRP客戶端$check_frp $update_status"
-		echo "與服務端對接，對接後可建立內網穿透服務到網際網路存取"
+		echo "与服务端对接，对接后可创建内网穿透服务到互联网访问"
 		echo "官網介紹:${gh_https_url}github.com/fatedier/frp/"
 		echo "影片教學: https://www.bilibili.com/video/BV1yMw6e2EwL?t=173.9"
 		echo "------------------------"
@@ -4898,7 +4972,7 @@ import_sshkey() {
 	fi
 
 	if [[ -z "$public_key" ]]; then
-		echo -e "${gl_hong}錯誤：未輸入公鑰內容。${gl_bai}"
+		echo -e "${gl_hong}错误：未输入公钥内容。${gl_bai}"
 		return 1
 	fi
 
@@ -4947,7 +5021,7 @@ fetch_remote_ssh_keys() {
 	# 下載公鑰
 	if command -v curl >/dev/null 2>&1; then
 		curl -fsSL --connect-timeout 10 "${keys_url}" -o "${temp_file}" || {
-			echo "錯誤：無法從 URL 下載公鑰（網路問題或位址無效）" >&2
+			echo "错误：无法从 URL 下载公钥（网络问题或地址无效）" >&2
 			rm -f "${temp_file}"
 			return 1
 		}
@@ -4963,7 +5037,7 @@ fetch_remote_ssh_keys() {
 		return 1
 	fi
 
-	# 檢查內容是否有效
+	# 检查内容是否有效
 	if [[ ! -s "${temp_file}" ]]; then
 		echo "錯誤：下載到的檔案為空，URL 可能不包含任何公鑰" >&2
 		rm -f "${temp_file}"
@@ -5857,7 +5931,7 @@ clamav() {
 
 
 # ============================================================================
-# Linux 内核调优模块（重构版）
+# Linux 核心調優模組（重構版）
 # 統一核心函數 + 場景差異化參數 + 持久化到設定檔 + 硬體自適應
 # 取代原 optimize_high_performance / optimize_balanced / optimize_web_server / restore_defaults
 # ============================================================================
@@ -5886,7 +5960,7 @@ _kernel_optimize_core() {
 
 	case "$scene" in
 		high|stream|game)
-			# 高性能/直播/游戏：激进参数
+			# 高效能/直播/遊戲：激進參數
 			SWAPPINESS=10
 			DIRTY_RATIO=15
 			DIRTY_BG_RATIO=5
@@ -6070,7 +6144,7 @@ net.ipv4.ip_local_port_range = $PORT_RANGE
 net.ipv4.tcp_mem = $((MEM_MB * 1024 / 8)) $((MEM_MB * 1024 / 4)) $((MEM_MB * 1024 / 2))
 net.ipv4.tcp_max_orphans = 32768
 
-# ── 虚拟内存 ──
+# ── 虛擬記憶體 ──
 vm.swappiness = $SWAPPINESS
 vm.dirty_ratio = $DIRTY_RATIO
 vm.dirty_background_ratio = $DIRTY_BG_RATIO
@@ -6113,7 +6187,7 @@ $GAME_EXTRA
 SYSCTL
 
 	# ── 應用配置（逐行，跳過不支援的參數） ──
-	echo -e "${gl_lv}应用优化参数...${gl_bai}"
+	echo -e "${gl_lv}應用優化參數...${gl_bai}"
 	local applied=0 skipped=0
 	while IFS= read -r line; do
 		# 跳過註解和空行
@@ -6127,7 +6201,7 @@ SYSCTL
 	done < "$CONF"
 	echo -e "${gl_lv}已應用${applied}項參數${skipped:+，跳過${skipped}項不支援的參數}${gl_bai}"
 
-	# ── 透明大页面 ──
+	# ── 透明大頁面 ──
 	if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
 		echo "$THP" > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null
 	fi
@@ -6152,7 +6226,7 @@ LIMITS
 	fi
 
 	echo -e "${gl_lv}${mode_name}優化完成！配置已持久化到${CONF}${gl_bai}"
-	echo -e "${gl_lv}記憶體:${MEM_MB}MB | 壅塞演算法:${CC} | 队列: ${QDISC}${gl_bai}"
+	echo -e "${gl_lv}記憶體:${MEM_MB}MB | 壅塞演算法:${CC}| 隊列:${QDISC}${gl_bai}"
 }
 
 # ── 各模式入口函數（保持原有呼叫介面不變） ──
@@ -6179,17 +6253,17 @@ restore_defaults() {
 	rm -f "$CONF"
 	rm -f /etc/sysctl.d/99-network-optimize.conf
 
-	# 清理 sysctl.conf 里可能残留的 bbr 配置
+	# 清理 sysctl.conf 裡可能殘留的 bbr 配置
 	sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf 2>/dev/null
 
-	# 重新加载系统默认配置
+	# 重新載入系統預設配置
 	sysctl --system 2>/dev/null | tail -1
 
 	# 還原透明大頁面
 	[ -f /sys/kernel/mm/transparent_hugepage/enabled ] && \
 		echo always > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null
 
-	# 清理文件描述符配置
+	# 清理檔案描述符配置
 	if grep -q "# kejilion-optimize" /etc/security/limits.conf 2>/dev/null; then
 		sed -i '/# kejilion-optimize/,+4d' /etc/security/limits.conf
 	fi
@@ -6210,7 +6284,7 @@ Kernel_optimize() {
 	  [ -z "$current_mode" ] && [ -f /etc/sysctl.d/99-network-optimize.conf ] && current_mode="自動調優模式"
 	  echo "Linux系統核心參數優化"
 	  if [ -n "$current_mode" ]; then
-		  echo -e "当前模式: ${gl_lv}${current_mode}${gl_bai}"
+		  echo -e "當前模式:${gl_lv}${current_mode}${gl_bai}"
 	  else
 		  echo -e "當前模式:${gl_hui}未最佳化${gl_bai}"
 	  fi
@@ -6219,13 +6293,13 @@ Kernel_optimize() {
 	  echo "提供多種系統參數調優模式，使用者可依自身使用場景進行選擇切換。"
 	  echo -e "${gl_huang}提示:${gl_bai}生產環境請謹慎使用！"
 	  echo -e "--------------------"
-	  echo -e "1. 高性能优化模式：     最大化系统性能，激进的内存和网络参数。"
+	  echo -e "1. 高效能最佳化模式： 最大化系統效能，激進的記憶體和網路參數。"
 	  echo -e "2. 均衡最佳化模式： 在效能與資源消耗之間取得平衡，適合日常使用。"
-	  echo -e "3. 网站优化模式：       针对网站服务器优化，超高并发连接队列。"
+	  echo -e "3. 網站最佳化模式： 針對網站伺服器最佳化，超高並發連線佇列。"
 	  echo -e "4. 直播最佳化模式： 針對直播推流優化，UDP 緩衝區加大，減少延遲。"
 	  echo -e "5. 遊戲服最佳化模式： 針對遊戲伺服器最佳化，低延遲優先。"
 	  echo -e "6. 還原預設設定： 將系統設定還原為預設配置。"
-	  echo -e "7. 自动调优：           根据测试数据自动调优内核参数。${gl_huang}★${gl_bai}"
+	  echo -e "7. 自動調優： 依測試資料自動調優核心參數。${gl_huang}★${gl_bai}"
 	  echo "--------------------"
 	  echo "0. 返回上一級選單"
 	  echo "--------------------"
@@ -6532,7 +6606,7 @@ create_backup() {
 	echo "- 直接回車將使用預設目錄 (/etc /usr /home)"
 	read -e -p "請輸入要備份的目錄（多個目錄以空格分隔，直接回車則使用預設目錄）：" input
 
-	# 如果使用者沒有輸入目錄，則使用預設目錄
+	# 如果用户没有输入目录，则使用默认目录
 	if [ -z "$input" ]; then
 		BACKUP_PATHS=(
 			"/etc"              # 配置文件和软件包配置
@@ -6540,7 +6614,7 @@ create_backup() {
 			"/home"             # 用户数据
 		)
 	else
-		# 將使用者輸入的目錄以空格分隔成數組
+		# 将用户输入的目录按空格分隔成数组
 		IFS=' ' read -r -a BACKUP_PATHS <<< "$input"
 	fi
 
@@ -6569,7 +6643,7 @@ create_backup() {
 	install tar
 	tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"
 
-	# 檢查命令是否成功
+	# 检查命令是否成功
 	if [ $? -eq 0 ]; then
 		echo "備份建立成功:$BACKUP_DIR/$BACKUP_NAME"
 	else
@@ -6817,7 +6891,7 @@ ssh_manager() {
 	while true; do
 		clear
 		echo "SSH 遠端連線工具"
-		echo "可以透過SSH連接到其他Linux系統上"
+		echo "可以通过SSH连接到其他Linux系统上"
 		echo "------------------------"
 		list_connections
 		echo "1. 建立新連接 2. 使用連接 3. 刪除連接"
@@ -6848,7 +6922,7 @@ ssh_manager() {
 
 # 列出可用的硬碟分割區
 list_partitions() {
-	echo "可用的硬碟分割區："
+	echo "可用的硬盘分区："
 	lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT | grep -v "sr\|loop"
 }
 
@@ -7424,7 +7498,7 @@ linux_info() {
 	echo -e "${gl_kjlan}地理位置:${gl_bai}$country $city"
 	echo -e "${gl_kjlan}系統時間:${gl_bai}$timezone $current_time"
 	echo -e "${gl_kjlan}-------------"
-	echo -e "${gl_kjlan}運行時長:${gl_bai}$runtime"
+	echo -e "${gl_kjlan}运行时长:       ${gl_bai}$runtime"
 	echo
 
 
@@ -8425,7 +8499,7 @@ linux_test() {
 	  # send_stats "測試腳本集合"
 	  echo -e "測試腳本合集"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}IP及解鎖狀態偵測"
+	  echo -e "${gl_kjlan}IP及解锁状态检测"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}ChatGPT 解鎖狀態偵測"
 	  echo -e "${gl_kjlan}2.   ${gl_bai}Region 串流解鎖測試"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}yeahwu 串流媒體解鎖偵測"
@@ -8508,7 +8582,7 @@ linux_test() {
 			  send_stats "nxtrace指定IP回程測試腳本"
 			  echo "可參考的IP列表"
 			  echo "------------------------"
-			  echo "北京電信: 219.141.136.12"
+			  echo "北京电信: 219.141.136.12"
 			  echo "北京聯通: 202.106.50.1"
 			  echo "北京移動: 221.179.155.161"
 			  echo "上海電信: 202.96.209.133"
@@ -9453,7 +9527,7 @@ linux_ldnmp() {
 
 	  30)
 	  clear
-	  webname="靜態站點"
+	  webname="静态站点"
 	  send_stats "安裝$webname"
 	  echo "開始部署$webname"
 	  add_yuming
@@ -9684,7 +9758,7 @@ linux_ldnmp() {
 
 			  2)
 			  local ldnmp_pods="mysql"
-			  read -e -p "請輸入${ldnmp_pods}版本號碼 （如: 8.0 8.3 8.4 9.0）（回車取得最新版）:" version
+			  read -e -p "請輸入${ldnmp_pods}版本号 （如: 8.0 8.3 8.4 9.0）（回车获取最新版）: " version
 			  local version=${version:-latest}
 
 			  cd /home/web/
@@ -9883,16 +9957,17 @@ moltbot_menu() {
 		echo "4. 狀態日誌查看"
 		echo "5. 換模型"
 		echo "6. 加新模型API"
-		echo "7. TG輸入連接碼"
+		echo "7. 機器人連線對接"
 		echo "8. 安裝插件（如：飛書）"
 		echo "9. 安裝技能（skills）"
 		echo "10. 編輯主設定文件"
 		echo "11. 配置精靈"
 		echo "12. 健康檢測與修復"
 		echo "13. WebUI存取與設置"
+		echo "14. TUI命令列對話窗口"
 		echo "--------------------"
-		echo "14. 更新"
-		echo "15. 卸載"
+		echo "15. 更新"
+		echo "16. 卸載"
 		echo "--------------------"
 		echo "0. 返回上一級選單"
 		echo "--------------------"
@@ -9932,8 +10007,13 @@ moltbot_menu() {
 		if [[ "$country" == "CN" || "$country" == "HK" ]]; then
 			npm config set registry https://registry.npmmirror.com
 		fi
+
+		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
+
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
+		sed -i 's|"profile": "messaging"|"profile": "full"|g' ~/.openclaw/openclaw.json
 		start_gateway
 		add_app_id
 		break_end
@@ -10220,78 +10300,7 @@ EOF
 
 
 
-	install_plugin() {
-
-		send_stats "安裝插件"
-		while true; do
-			clear
-			echo "========================================"
-			echo "外掛程式管理 (安裝)"
-			echo "========================================"
-			echo "目前已安裝插件:"
-			openclaw plugins list
-			echo "----------------------------------------"
-
-			# 輸出推薦的實用外掛程式列表，方便用戶複製
-			echo "建議的實用外掛程式（可直接複製名稱輸入）："
-			echo "feishu # 飛書/Lark 整合 (目前已載入 ✓)"
-			echo "telegram # Telegram 機器人整合 (目前已載入 ✓)"
-			echo "memory-core # 核心記憶增強：基於檔案的上下文搜尋 (目前已載入 ✓)"
-			echo "@openclaw/slack # Slack 頻道與 DMs 深度連接"
-			echo "@openclaw/bluebubbles # iMessage 橋接 (macOS 用戶首選)"
-			echo "@openclaw/msteams # Microsoft Teams 企業通訊集成"
-			echo "@openclaw/voice-call # 語音通話外掛程式 (基於 Twilio 等後端)"
-			echo "@openclaw/discord # Discord 頻道自動化管理"
-			echo "@openclaw/nostr # Nostr 協定：隱私安全加密聊天"
-			echo "lobster # 審批工作流程：帶有人工幹預的自動任務"
-			echo "memory-lancedb # 長期記憶增強：基於向量資料庫的精準召回"
-			echo "copilot-proxy # GitHub Copilot 代理程式存取增強"
-			echo "----------------------------------------"
-
-			# 提示使用者輸入外掛名稱
-			read -e -p "請輸入要安裝的插件名稱（輸入 0 退出）：" plugin_name
-
-			# 1. 檢查是否輸入 0 退出
-			if [ "$plugin_name" = "0" ]; then
-				echo "操作已取消，退出插件安裝。"
-				break
-			fi
-
-			# 2. 驗證輸入是否為空
-			if [ -z "$plugin_name" ]; then
-				echo "錯誤：插件名稱不能為空，請重新輸入。"
-				echo ""
-				continue
-			fi
-
-			# 1. 徹底清理之前失敗的殘留（使用者目錄）
-			rm -rf "/root/.openclaw/extensions/$plugin_name"
-
-			# 2. 檢查系統是否已預先安裝（防止 duplicate id 衝突）
-			if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_name" ]; then
-				echo "💡 偵測到系統目錄已存在該插件，正在直接啟動..."
-				openclaw plugins enable "$plugin_name"
-			else
-				echo "📥 正在透過官方管道下載安裝插件..."
-				# 使用 openclaw 自己的 install 指令，它會自動處理 package.json 的規格檢查
-				openclaw plugins install "$plugin_name"
-
-				# 3. 如果 openclaw install 報錯，再嘗試作為普通 npm 套件安裝（最後的備選）
-				if [ $? -ne 0 ]; then
-					echo "⚠️ 官方安裝失敗，嘗試透過 npm 全域強制安裝..."
-					npm install -g "$plugin_name" --unsafe-perm
-				fi
-
-				# 4. 最後統一執行啟用
-				openclaw plugins enable "$plugin_name"
-			fi
-
-			start_gateway
-			break_end
-		done
-	}
-
-	install_plugin() {
+		install_plugin() {
 		send_stats "安裝插件"
 		while true; do
 			clear
@@ -10319,7 +10328,7 @@ EOF
 			echo "⚙️ 功能擴充:"
 			echo "- [lobster] # 審批流 (附人工確認)"
 			echo "- [voice-call] # 語音通話能力"
-			echo "- [nostr] # 加密隱私聊天"
+			echo "  - [nostr]        	# 加密隐私聊天"
 			echo "--------------------------------------------------------"
 
 			read -e -p "請輸入外掛 ID（輸入 0 退出）：" raw_input
@@ -10332,6 +10341,8 @@ EOF
 			local plugin_full="$raw_input"
 
 			echo "🔍 正在檢查插件狀態..."
+			# 取得目前插件清單用於狀態檢測
+			local plugin_list=$(openclaw plugins list 2>/dev/null)
 
 			# 2. 檢查是否已經在 list 中且為 disabled (最常見的情況)
 			if echo "$plugin_list" | grep -qw "$plugin_id" && echo "$plugin_list" | grep "$plugin_id" | grep -q "disabled"; then
@@ -10426,14 +10437,29 @@ EOF
 				continue
 			fi
 
-			# 3. 執行安裝指令
-			echo "正在安裝技能：$skill_name ..."
-			npx clawhub install "$skill_name"
+			# 3. 檢查技能是否已安裝
+			local skill_found=false
+			if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
+				echo "💡 技能 [$skill_name] 已在使用者目錄安裝。"
+				skill_found=true
+			elif [ -d "/usr/lib/node_modules/openclaw/skills/${skill_name}" ]; then
+				echo "💡 技能 [$skill_name] 已在系統目錄安裝。"
+				skill_found=true
+			fi
 
-			# 取得上一條指令的退出狀態
-			if [ $? -eq 0 ]; then
+			if [ "$skill_found" = true ]; then
+				read -e -p "是否重新安裝？ (y/N):" reinstall
+				if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
+					echo "跳過安裝。"
+					break_end
+					continue
+				fi
+			fi
+
+			# 4. 執行安裝指令
+			echo "正在安裝技能：$skill_name ..."
+			if npx clawhub install "$skill_name"; then
 				echo "✅ 技能$skill_name安裝成功。"
-				# 執行重啟/啟動服務邏輯
 				start_gateway
 			else
 				echo "❌ 安裝失敗。請檢查技能名稱是否正確，或參考文件排查。"
@@ -10441,29 +10467,56 @@ EOF
 
 			break_end
 		done
-
 	}
 
 
 
 	change_tg_bot_code() {
 		send_stats "機器人對接"
-		read -e -p "請輸入TG機器人收到的連線碼 (例如 Pairing code: NYA99R2F)（輸入 0 退出）：" code
+		while true; do
+			clear
+			echo "========================================"
+			echo "機器人連線對接"
+			echo "========================================"
+			echo "1. Telegram 機器人對接"
+			echo "2. 飛書 (Lark) 機器人對接"
+			echo "3. WhatsApp 機器人對接"
+			echo "----------------------------------------"
+			echo "0. 返回上一級選單"
+			echo "----------------------------------------"
+			read -e -p "請輸入你的選擇:" bot_choice
 
-		# 檢查是否輸入 0 退出
-		if [ "$code" = "0" ]; then
-			echo "操作已取消。"
-			return 0  # 正常退出函数
-		fi
-
-		# 驗證輸入是否為空
-		if [ -z "$code" ]; then
-			echo "錯誤：連接碼不能為空。請重試。"
-			return 1
-		fi
-
-		openclaw pairing approve telegram $code
-		break_end
+			case $bot_choice in
+				1)
+					read -e -p "請輸入TG機器人收到的連線碼 (例如 NYA99R2F)（輸入 0 退出）：" code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "錯誤：連接碼不能為空。"; sleep 1; continue; fi
+					openclaw pairing approve telegram "$code"
+					break_end
+					;;
+				2)
+					read -e -p "請輸入飛書機器人收到的連線碼 (例如 NYA99R2F)（輸入 0 退出）：" code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "錯誤：連接碼不能為空。"; sleep 1; continue; fi
+					openclaw pairing approve feishu "$code"
+					break_end
+					;;
+				3)
+					read -e -p "請輸入WhatsApp收到的連線碼 (例如 NYA99R2F)（輸入 0 退出）：" code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "錯誤：連接碼不能為空。"; sleep 1; continue; fi
+					openclaw pairing approve whatsapp "$code"
+					break_end
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "無效的選擇，請重試。"
+					sleep 1
+					;;
+			esac
+		done
 	}
 
 
@@ -10487,6 +10540,7 @@ EOF
 		openclaw uninstall
 		npm uninstall -g openclaw
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
+		rm -rf /root/.openclaw
 		hash -r
 		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 		echo "卸載完成"
@@ -10542,7 +10596,7 @@ EOF
 
 		domains=$(openclaw_find_webui_domain)
 		if [ -n "$domains" ]; then
-			echo "網域名稱地址："
+			echo "網域地址："
 			echo "$domains" | while read d; do
 				echo "https://${d}/#token=${token}"
 			done
@@ -10570,6 +10624,19 @@ EOF
 		echo "先造訪URL觸發設備ID，然後回車下一步進行配對。"
 		read
 		echo -e "${gl_kjlan}正在載入設備列表…${gl_bai}"
+		# 自動新增網域到 allowedOrigins
+		config_file="$HOME/.openclaw/openclaw.json"
+		if [ -f "$config_file" ]; then
+			new_origin="https://${yuming}"
+			# 使用 jq 安全性修改 JSON，確保結構存在且不重複新增域名
+			if command -v jq >/dev/null 2>&1; then
+				tmp_json=$(mktemp)
+				jq 'if .gateway.controlUi == null then .gateway.controlUi = {"allowedOrigins": ["http://127.0.0.1"]} else . end | if (.gateway.controlUi.allowedOrigins | contains([$origin]) | not) then .gateway.controlUi.allowedOrigins += [$origin] else . end' --arg origin "$new_origin" "$config_file" > "$tmp_json" && mv "$tmp_json" "$config_file"
+				echo -e "${gl_kjlan}已將域名${yuming}加入 allowedOrigins 配置${gl_bai}"
+				openclaw gateway restart >/dev/null 2>&1
+			fi
+		fi
+
 		openclaw devices list
 
 		read -e -p "請輸入 Request_Key:" Request_Key
@@ -10650,8 +10717,12 @@ EOF
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;
-			14) update_moltbot ;;
-			15) uninstall_moltbot ;;
+			14) send_stats "TUI命令列對話"
+				openclaw tui
+				break_end
+			 	;;
+			15) update_moltbot ;;
+			16) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
@@ -10702,7 +10773,7 @@ while true; do
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io郵件伺服器程式${gl_kjlan}10.  ${color10}RocketChat多人線上聊天系統"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}11.  ${color11}禪道專案管理軟體${gl_kjlan}12.  ${color12}青龍面板定時任務管理平台"
-	  echo -e "${gl_kjlan}13.  ${color13}Cloudreve網盤${gl_huang}★${gl_bai}                     ${gl_kjlan}14.  ${color14}簡單圖床圖片管理程序"
+	  echo -e "${gl_kjlan}13.  ${color13}Cloudreve网盘 ${gl_huang}★${gl_bai}                     ${gl_kjlan}14.  ${color14}簡單圖床圖片管理程序"
 	  echo -e "${gl_kjlan}15.  ${color15}emby多媒體管理系統${gl_kjlan}16.  ${color16}Speedtest測速板"
 	  echo -e "${gl_kjlan}17.  ${color17}AdGuardHome去廣告軟體${gl_kjlan}18.  ${color18}onlyoffice線上辦公OFFICE"
 	  echo -e "${gl_kjlan}19.  ${color19}雷池WAF防火牆面板${gl_kjlan}20.  ${color20}portainer容器管理面板"
@@ -10751,11 +10822,11 @@ while true; do
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}91.  ${color91}gitea私有程式碼倉庫${gl_kjlan}92.  ${color92}FileBrowser文件管理器"
 	  echo -e "${gl_kjlan}93.  ${color93}Dufs極簡靜態檔案伺服器${gl_kjlan}94.  ${color94}Gopeed高速下載工具"
-	  echo -e "${gl_kjlan}95.  ${color95}paperless文件管理平台${gl_kjlan}96.  ${color96}2FAuth自架二步驟驗證器"
+	  echo -e "${gl_kjlan}95.  ${color95}paperless文件管理平台${gl_kjlan}96.  ${color96}2FAuth自托管二步验证器"
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard組網(服務端)${gl_kjlan}98.  ${color98}WireGuard組網(客戶端)"
-	  echo -e "${gl_kjlan}99.  ${color99}DSM群暉虛擬機${gl_kjlan}100. ${color100}Syncthing點對點檔案同步工具"
+	  echo -e "${gl_kjlan}99.  ${color99}DSM群暉虛擬機${gl_kjlan}100. ${color100}Syncthing点对点文件同步工具"
 	  echo -e "${gl_kjlan}-------------------------"
-	  echo -e "${gl_kjlan}101. ${color101}AI影片產生工具${gl_kjlan}102. ${color102}VoceChat多人線上聊天系統"
+	  echo -e "${gl_kjlan}101. ${color101}AI影片生成工具${gl_kjlan}102. ${color102}VoceChat多人線上聊天系統"
 	  echo -e "${gl_kjlan}103. ${color103}Umami網站統計工具${gl_kjlan}104. ${color104}Stream四層代理轉送工具"
 	  echo -e "${gl_kjlan}105. ${color105}思源筆記${gl_kjlan}106. ${color106}Drawnix開源白板工具"
 	  echo -e "${gl_kjlan}107. ${color107}PanSou網盤搜尋${gl_kjlan}108. ${color108}LangBot聊天機器人"
@@ -11257,8 +11328,8 @@ while true; do
 
 		local docker_describe="禪道是通用的專案管理軟體"
 		local docker_url="官網介紹: https://www.zentao.net/"
-		local docker_use="echo \"初始使用者名稱: admin\""
-		local docker_passwd="echo \"初始密碼: 123456\""
+		local docker_use="echo \"初始用户名: admin\""
+		local docker_passwd="echo \"初始密码: 123456\""
 		local app_size="2"
 		docker_app
 
@@ -11477,7 +11548,7 @@ while true; do
 			check_docker_app
 			clear
 			echo -e "雷池服務$check_docker"
-			echo "雷池是長亭科技開發的WAF站點防火牆程式面板，可反代站點進行自動化防禦"
+			echo "雷池是长亭科技开发的WAF站点防火墙程序面板，可以反代站点进行自动化防御"
 			echo "影片介紹: https://www.bilibili.com/video/BV1mZ421T74c?t=0.1"
 			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
 				check_docker_app_ip
@@ -11512,7 +11583,7 @@ while true; do
 
 					add_app_id
 					clear
-					echo "雷池WAF面板已經更新完成"
+					echo "雷池WAF面板已经更新完成"
 					check_docker_app_ip
 					;;
 				3)
@@ -14020,7 +14091,7 @@ while true; do
 
 	  101|moneyprinterturbo)
 		local app_id="101"
-		local app_name="AI影片產生工具"
+		local app_name="AI影片生成工具"
 		local app_text="MoneyPrinterTurbo是一款使用AI大模型合成高清短影片的工具"
 		local app_url="官方網站:${gh_https_url}github.com/harry0703/MoneyPrinterTurbo"
 		local docker_name="moneyprinterturbo"
@@ -14356,7 +14427,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		}
 
 		local docker_describe="是一個功能強大的多格式文件轉換工具（支援文件、圖像、音訊視訊等）強烈建議添加域名訪問"
-		local docker_url="項目地址:${gh_https_url}github.com/c4illin/ConvertX"
+		local docker_url="项目地址: ${gh_https_url}github.com/c4illin/ConvertX"
 		local docker_use=""
 		local docker_passwd=""
 		local app_size="2"
@@ -14783,8 +14854,11 @@ fail2ban_panel() {
 				echo "------------------------"
 				echo "1. 安裝防禦程序"
 				echo "------------------------"
-				echo "2. 查看SSH攔截記錄"
+				echo "2. 查看SSH拦截记录"
 				echo "3. 日誌即時監控"
+				echo "------------------------"
+				echo "4. 基礎參數配置（封禁時間/時間視窗/重試次數）"
+				echo "5. 編輯設定檔（nano）"
 				echo "------------------------"
 				echo "9. 卸載防禦程序"
 				echo "------------------------"
@@ -14807,6 +14881,16 @@ fail2ban_panel() {
 					3)
 						tail -f /var/log/fail2ban.log
 						break
+						;;
+					4)
+						send_stats "SSH防禦基礎參數配置"
+						f2b_basic_config
+						break_end
+						;;
+					5)
+						send_stats "SSH防禦編輯設定檔"
+						f2b_edit_config
+						break_end
 						;;
 					9)
 						remove fail2ban
@@ -15222,7 +15306,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}21.  ${gl_bai}本機host解析${gl_kjlan}22.  ${gl_bai}SSH防禦程序"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}限流自動關機${gl_kjlan}24.  ${gl_bai}使用者密鑰登入模式"
 	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot系統監控預警${gl_kjlan}26.  ${gl_bai}修復OpenSSH高風險漏洞"
-	  echo -e "${gl_kjlan}27.  ${gl_bai}紅帽系Linux核心升級${gl_kjlan}28.  ${gl_bai}Linux系統核心參數優化${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}27.  ${gl_bai}红帽系Linux内核升级                ${gl_kjlan}28.  ${gl_bai}Linux系統核心參數優化${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}病毒掃描工具${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}文件管理器"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}切換系統語言${gl_kjlan}32.  ${gl_bai}命令列美化工具${gl_huang}★${gl_bai}"
@@ -15563,7 +15647,7 @@ EOF
 				  echo "------------------------"
 				  echo "3. 賦予最高權限 4. 取消最高權限"
 				  echo "------------------------"
-				  echo "5. 刪除帳號"
+				  echo "5. 删除账号"
 				  echo "------------------------"
 				  echo "0. 返回上一級選單"
 				  echo "------------------------"
@@ -16174,7 +16258,7 @@ EOF
 			  echo -e "4. 設定SSH埠號為${gl_huang}5522${gl_bai}"
 			  echo -e "5. 啟動fail2ban防禦SSH暴力破解"
 			  echo -e "6. 開放所有端口"
-			  echo -e "7. 開啟${gl_huang}BBR${gl_bai}加速"
+			  echo -e "7. 开启${gl_huang}BBR${gl_bai}加速"
 			  echo -e "8. 設定時區到${gl_huang}上海${gl_bai}"
 			  echo -e "9. 自動優化DNS位址${gl_huang}海外: 1.1.1.1 8.8.8.8 國內: 223.5.5.5${gl_bai}"
 		  	  echo -e "10. 設定網路為${gl_huang}ipv4優先${gl_bai}"
@@ -16210,7 +16294,7 @@ EOF
 				  echo -e "[${gl_lv}OK${gl_bai}] 5/12. 啟動fail2ban防禦SSH暴力破解"
 
 				  echo "------------------------------------------------"
-				  echo -e "[${gl_lv}OK${gl_bai}] 6/12. 開放所有端口"
+				  echo -e "[${gl_lv}OK${gl_bai}] 6/12. 开放所有端口"
 
 				  echo "------------------------------------------------"
 				  bbr_on
@@ -16373,7 +16457,7 @@ linux_file() {
 		echo "15. 刪除文件"
 		echo "------------------------"
 		echo "21. 壓縮檔案目錄 22. 解壓縮檔案目錄 23. 行動檔案目錄 24. 複製檔案目錄"
-		echo "25. 傳文件至其他伺服器"
+		echo "25. 传文件至其他服务器"
 		echo "------------------------"
 		echo "0. 返回上一級選單"
 		echo "------------------------"
@@ -16381,7 +16465,7 @@ linux_file() {
 
 		case "$Limiting" in
 			1)  # 进入目录
-				read -e -p "請輸入目錄名:" dirname
+				read -e -p "请输入目录名: " dirname
 				cd "$dirname" 2>/dev/null || echo "無法進入目錄"
 				send_stats "進入目錄"
 				;;
@@ -16429,7 +16513,7 @@ linux_file() {
 				send_stats "修改檔案權限"
 				;;
 			14) # 重命名文件
-				read -e -p "請輸入目前檔名:" current_name
+				read -e -p "请输入当前文件名: " current_name
 				read -e -p "請輸入新檔名:" new_name
 				mv "$current_name" "$new_name" && echo "文件已重新命名" || echo "重新命名失敗"
 				send_stats "重新命名文件"
@@ -16446,7 +16530,7 @@ linux_file() {
 				send_stats "壓縮檔案/目錄"
 				;;
 			22) # 解压文件/目录
-				read -e -p "請輸入要解壓縮的檔案名稱 (.tar.gz):" filename
+				read -e -p "請輸入要解壓縮的檔名 (.tar.gz):" filename
 				install tar
 				tar -xzvf "$filename" && echo "已解壓縮$filename" || echo "解壓縮失敗"
 				send_stats "解壓縮檔案/目錄"
@@ -16655,7 +16739,7 @@ while true; do
 		  4)
 			  clear
 			  send_stats "備份叢集"
-			  echo -e "請將${gl_huang}/root/cluster/servers.py${gl_bai}檔案下載，完成備份！"
+			  echo -e "請將${gl_huang}/root/cluster/servers.py${gl_bai} 文件下载，完成备份！"
 			  break_end
 			  ;;
 
@@ -16718,7 +16802,7 @@ echo "廣告專欄"
 echo "------------------------"
 echo "將為用戶提供更簡單優雅的推廣與購買體驗！"
 echo ""
-echo -e "伺服器優惠"
+echo -e "服务器优惠"
 echo "------------------------"
 echo -e "${gl_lan}萊卡雲 香港CN2 GIA 韓國雙ISP 美國CN2 GIA 優惠活動${gl_bai}"
 echo -e "${gl_bai}網址: https://www.lcayun.com/aff/ZEXUQBIM${gl_bai}"

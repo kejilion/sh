@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.4.1"
+sh_v="4.4.3"
 
 
 gl_hui='\e[37m'
@@ -13,7 +13,7 @@ gl_kjlan='\033[96m'
 
 
 canshu="default"
-permission_granted="true"
+permission_granted="false"
 ENABLE_STATS="true"
 
 
@@ -2318,7 +2318,7 @@ check_nginx_compression() {
 
 	# Check whether zstd is on and uncommented (the whole line starts with zstd on;)
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status="zstd compression is enabled"
+		zstd_status="zstd compression is on"
 	else
 		zstd_status=""
 	fi
@@ -2667,7 +2667,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p tcp -d "$container_ip" -j DROP
 	fi
 
-	# Clear the rules that allow the specified IP
+	# Clear the rules that allow specified IPs
 	if iptables -C DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -2686,7 +2686,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p udp -d "$container_ip" -j DROP
 	fi
 
-	# Clear the rules that allow the specified IP
+	# Clear the rules that allow specified IPs
 	if iptables -C DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -2936,7 +2936,7 @@ while true; do
 			rm -f /home/docker/${docker_name}_port.conf
 
 			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 			send_stats "uninstall$docker_name"
 			;;
 
@@ -3213,6 +3213,80 @@ f2b_sshd() {
 	fi
 }
 
+# Basic parameter configuration: ban duration (bantime), time window (findtime), number of retries (maxretry)
+# illustrate:
+# - Prioritize writing to /etc/fail2ban/jail.d/sshd.local (overwrites the default jail configuration and is not easy to lose when upgrading)
+# - If it is Alpine and the jail names are different, still write sshd.local; Fail2Ban will match according to the jail name.
+f2b_basic_config() {
+	root_use
+	install nano
+
+	if ! command -v fail2ban-client >/dev/null 2>&1; then
+		echo -e "${gl_hui}fail2ban-client is not detected, please install fail2ban first.${gl_bai}"
+		return
+	fi
+
+	local jail_name="sshd"
+	if grep -qi 'Alpine' /etc/issue 2>/dev/null; then
+		# Alpine default jail is usually sshd; only switches if custom alpine-sshd rules are detected
+		if [ -f /etc/fail2ban/filter.d/alpine-sshd.conf ] || [ -f /etc/fail2ban/jail.d/alpine-ssh.conf ] || [ -f /etc/fail2ban/jail.d/alpine-sshd.local ]; then
+			jail_name="alpine-sshd"
+		fi
+	fi
+
+	echo "About to configure the SSH jail:$jail_name"
+	read -e -p "Bantime bantime (seconds/minutes/hours, such as 3600 or 1h) [default 1h]:" bantime
+	read -e -p "Time window findtime (seconds/minutes/hours, e.g. 600 or 10m) [default 10m]:" findtime
+	read -e -p "Number of retries maxretry (integer) [default 5]:" maxretry
+
+	bantime=${bantime:-1h}
+	findtime=${findtime:-10m}
+	maxretry=${maxretry:-5}
+
+	mkdir -p /etc/fail2ban/jail.d
+	cat > /etc/fail2ban/jail.d/sshd.local <<EOF
+[$jail_name]
+# Managed by kejilion.sh
+# Note: enable the jail so these parameters take effect
+enabled = true
+bantime = $bantime
+findtime = $findtime
+maxretry = $maxretry
+EOF
+
+	# Ensure a logfile exists for sshd jail on Debian/Ubuntu minimal images
+	# (without it, fail2ban-server may refuse to start)
+	if [ "$jail_name" = "sshd" ]; then
+		if [ -f /etc/fail2ban/jail.d/sshd.local ]; then
+			grep -qE '^\s*logpath\s*=' /etc/fail2ban/jail.d/sshd.local || echo 'logpath = /var/log/auth.log' >> /etc/fail2ban/jail.d/sshd.local
+		fi
+	fi
+
+	echo -e "${gl_lv}Configuration has been written${gl_bai}: /etc/fail2ban/jail.d/sshd.local"
+	fail2ban-client reload >/dev/null 2>&1 || true
+	sleep 2
+	fail2ban-client status $jail_name || true
+}
+
+# Directly open the main configuration/overlay configuration editor (nano)
+# Edit /etc/fail2ban/jail.d/sshd.local first (more secure), create it if it does not exist
+f2b_edit_config() {
+	root_use
+	install nano
+
+	if [ ! -d /etc/fail2ban ]; then
+		echo -e "${gl_hui}/etc/fail2ban does not exist, please install fail2ban first.${gl_bai}"
+		return
+	fi
+
+	mkdir -p /etc/fail2ban/jail.d
+	local cfg="/etc/fail2ban/jail.d/sshd.local"
+	[ -f "$cfg" ] || printf "[sshd]\n# bantime/findtime/maxretry\n" > "$cfg"
+
+	nano "$cfg"
+	echo -e "${gl_lv}saved${gl_bai}, reloading fail2ban..."
+	fail2ban-client reload >/dev/null 2>&1 || true
+}
 
 
 
@@ -3522,7 +3596,7 @@ ldnmp_Proxy_backend() {
 list_stream_services() {
 
 	STREAM_DIR="/home/web/stream.d"
-	printf "%-25s %-18s %-25s %-20s\n" "Service name" "Communication type" "local address" "Backend address"
+	printf "%-25s %-18s %-25s %-20s\n" "Service name" "Communication type" "Local address" "Backend address"
 
 	if [ -z "$(ls -A "$STREAM_DIR")" ]; then
 		return
@@ -4312,7 +4386,7 @@ frps_panel() {
 				close_port 8055 8056
 
 				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-				echo "App uninstalled"
+				echo "App has been uninstalled"
 				;;
 			5)
 				echo "Reverse intranet penetration service into domain name access"
@@ -4409,7 +4483,7 @@ frpc_panel() {
 				close_port 8055
 
 				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-				echo "App uninstalled"
+				echo "App has been uninstalled"
 				;;
 
 			4)
@@ -5014,7 +5088,7 @@ fetch_github_ssh_keys() {
 	local base_dir="${2:-$HOME}"
 
 	echo "Before proceeding, make sure you have added your SSH public key to your GitHub account:"
-	echo "1. Log in${gh_https_url}github.com/settings/keys"
+	echo "1. Login${gh_https_url}github.com/settings/keys"
 	echo "2. Click New SSH key or Add SSH key"
 	echo "3. Title can be filled in as desired (for example: Home Laptop 2026)"
 	echo "4. Paste the contents of the local public key (usually the entire contents of ~/.ssh/id_ed25519.pub or id_rsa.pub) into the Key field"
@@ -5450,7 +5524,7 @@ dd_xitong() {
 				;;
 
 			  41)
-				send_stats "Reinstall Windows 11"
+				send_stats "Reinstall windows 11"
 				dd_xitong_2
 				bash InstallNET.sh -windows 11 -lang "cn"
 				reboot
@@ -6248,7 +6322,7 @@ Kernel_optimize() {
 			  cd ~
 			  clear
 			  optimize_web_server
-			  send_stats "Website optimization model"
+			  send_stats "Website optimization mode"
 			  ;;
 		  4)
 			  cd ~
@@ -6707,7 +6781,7 @@ add_connection() {
 				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
 					break
 				fi
-				# If it is the first line or you have already started to enter the key content, continue adding
+				# If it is the first line or you have already started entering the key content, continue adding
 				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
 					local password_or_key+="${line}"$'\n'
 				fi
@@ -7083,7 +7157,7 @@ add_task() {
 				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
 					break
 				fi
-				# If it is the first line or you have already started to enter the key content, continue adding
+				# If it is the first line or you have already started entering the key content, continue adding
 				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
 					password_or_key+="${line}"$'\n'
 				fi
@@ -7220,7 +7294,7 @@ run_task() {
 	else
 		echo "Sync failed! Please check the following:"
 		echo "1. Is the network connection normal?"
-		echo "2. Is the remote host accessible?"
+		echo "2. Whether the remote host is accessible"
 		echo "3. Is the authentication information correct?"
 		echo "4. Do the local and remote directories have correct access permissions?"
 	fi
@@ -7437,7 +7511,7 @@ linux_tools() {
 
   while true; do
 	  clear
-	  # send_stats "Basic Tools"
+	  # send_stats "Basic tools"
 	  echo -e "basic tools"
 
 	  tools=(
@@ -8072,7 +8146,7 @@ docker_ssh_migration() {
 
 		echo -e "${gl_huang}Transferring backup...${gl_bai}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# Log in with key
+			# Log in using key
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -8149,7 +8223,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}7.   ${gl_bai}Clean up useless docker containers and mirror network data volumes"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}8.   ${gl_bai}Change Docker source"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}Edit daemon.json file"
+	  echo -e "${gl_kjlan}9.   ${gl_bai}编辑daemon.json文件"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}Enable Docker-ipv6 access"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}Turn off Docker-ipv6 access"
@@ -8439,7 +8513,7 @@ linux_test() {
 	  echo -e "${gl_kjlan}14.  ${gl_bai}nxtrace fast backhaul test script"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}nxtrace specifies IP backhaul test script"
 	  echo -e "${gl_kjlan}16.  ${gl_bai}ludashi2020 three network line test"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}i-abc multifunctional speed test script"
+	  echo -e "${gl_kjlan}17.  ${gl_bai}i-abc multi-function speed test script"
 	  echo -e "${gl_kjlan}18.  ${gl_bai}NetQuality network quality check script${gl_huang}★${gl_bai}"
 
 	  echo -e "${gl_kjlan}------------------------"
@@ -9883,16 +9957,17 @@ moltbot_menu() {
 		echo "4. View status log"
 		echo "5. Change model"
 		echo "6. Add new model API"
-		echo "7. Enter the connection code in TG"
+		echo "7. Robot connection and docking"
 		echo "8. Install plug-ins (such as Feishu)"
 		echo "9. Install skills"
 		echo "10. Edit the main configuration file"
 		echo "11. Configuration Wizard"
 		echo "12. Health detection and repair"
 		echo "13. WebUI access and settings"
+		echo "14. TUI command line dialog window"
 		echo "--------------------"
-		echo "14. Update"
-		echo "15. Uninstall"
+		echo "15. Update"
+		echo "16. Uninstall"
 		echo "--------------------"
 		echo "0. Return to the previous menu"
 		echo "--------------------"
@@ -9932,8 +10007,13 @@ moltbot_menu() {
 		if [[ "$country" == "CN" || "$country" == "HK" ]]; then
 			npm config set registry https://registry.npmmirror.com
 		fi
+
+		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
+
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
+		sed -i 's|"profile": "messaging"|"profile": "full"|g' ~/.openclaw/openclaw.json
 		start_gateway
 		add_app_id
 		break_end
@@ -9942,8 +10022,8 @@ moltbot_menu() {
 
 
 	start_bot() {
-		echo "Start OpenClaw..."
-		send_stats "Start OpenClaw..."
+		echo "Starting OpenClaw..."
+		send_stats "Starting OpenClaw..."
 		start_gateway
 		break_end
 	}
@@ -10220,78 +10300,7 @@ EOF
 
 
 
-	install_plugin() {
-
-		send_stats "Install plugin"
-		while true; do
-			clear
-			echo "========================================"
-			echo "Plug-in management (installation)"
-			echo "========================================"
-			echo "Currently installed plugins:"
-			openclaw plugins list
-			echo "----------------------------------------"
-
-			# Output a list of recommended practical plug-ins for users to copy
-			echo "Recommended practical plug-ins (you can directly copy the name and enter it):"
-			echo "feishu # Feishu/Lark integration (currently loaded ✓)"
-			echo "telegram # Telegram bot integration (currently loaded ✓)"
-			echo "memory-core # Core memory enhancement: file-based contextual search (currently loaded ✓)"
-			echo "@openclaw/slack # Deep connections between Slack channels and DMs"
-			echo "@openclaw/bluebubbles # iMessage bridge (preferred for macOS users)"
-			echo "@openclaw/msteams #Microsoft Teams Enterprise Communications Integration"
-			echo "@openclaw/voice-call # Voice call plug-in (based on backends such as Twilio)"
-			echo "@openclaw/discord # Discord channel automatic management"
-			echo "@openclaw/nostr # Nostr protocol: private and secure encrypted chat"
-			echo "lobster # Approval workflow: automated tasks with human intervention"
-			echo "memory-lancedb # Long-term memory enhancement: precise recall based on vector database"
-			echo "copilot-proxy # GitHub Copilot proxy access enhancement"
-			echo "----------------------------------------"
-
-			# Prompt user for plugin name
-			read -e -p "Please enter the name of the plugin you want to install (enter 0 to exit):" plugin_name
-
-			# 1. Check if you entered 0 to exit
-			if [ "$plugin_name" = "0" ]; then
-				echo "The operation has been canceled and the plug-in installation has been exited."
-				break
-			fi
-
-			# 2. Verify that the input is empty
-			if [ -z "$plugin_name" ]; then
-				echo "Error: The plug-in name cannot be empty, please re-enter it."
-				echo ""
-				continue
-			fi
-
-			# 1. Completely clean up the remnants of previous failures (user directory)
-			rm -rf "/root/.openclaw/extensions/$plugin_name"
-
-			# 2. Check whether the system has been pre-installed (to prevent duplicate ID conflicts)
-			if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_name" ]; then
-				echo "💡 It is detected that the plug-in already exists in the system directory and is being activated directly..."
-				openclaw plugins enable "$plugin_name"
-			else
-				echo "📥 Downloading and installing the plug-in through official channels..."
-				# Use openclaw's own install command, which automatically handles spec checking of package.json
-				openclaw plugins install "$plugin_name"
-
-				# 3. If openclaw install reports an error, try installing it as a normal npm package (last alternative)
-				if [ $? -ne 0 ]; then
-					echo "⚠️ The official installation failed, try to force the installation globally through npm..."
-					npm install -g "$plugin_name" --unsafe-perm
-				fi
-
-				# 4. Finally, unified execution and activation
-				openclaw plugins enable "$plugin_name"
-			fi
-
-			start_gateway
-			break_end
-		done
-	}
-
-	install_plugin() {
+		install_plugin() {
 		send_stats "Install plugin"
 		while true; do
 			clear
@@ -10332,6 +10341,8 @@ EOF
 			local plugin_full="$raw_input"
 
 			echo "🔍 Checking plugin status..."
+			# Get the current plug-in list for status detection
+			local plugin_list=$(openclaw plugins list 2>/dev/null)
 
 			# 2. Check whether it is already in the list and disabled (the most common case)
 			if echo "$plugin_list" | grep -qw "$plugin_id" && echo "$plugin_list" | grep "$plugin_id" | grep -q "disabled"; then
@@ -10426,14 +10437,29 @@ EOF
 				continue
 			fi
 
-			# 3. Execute the installation command
-			echo "Installing skills:$skill_name ..."
-			npx clawhub install "$skill_name"
+			# 3. Check whether the skill is installed
+			local skill_found=false
+			if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
+				echo "💡 Skills [$skill_name] is installed in the user directory."
+				skill_found=true
+			elif [ -d "/usr/lib/node_modules/openclaw/skills/${skill_name}" ]; then
+				echo "💡 Skills [$skill_name] is installed in the system directory."
+				skill_found=true
+			fi
 
-			# Get the exit status of the previous command
-			if [ $? -eq 0 ]; then
+			if [ "$skill_found" = true ]; then
+				read -e -p "Reinstall? (y/N):" reinstall
+				if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
+					echo "Skip installation."
+					break_end
+					continue
+				fi
+			fi
+
+			# 4. Execute the installation command
+			echo "Installing skills:$skill_name ..."
+			if npx clawhub install "$skill_name"; then
 				echo "✅ Skills$skill_nameInstallation successful."
-				# Execute restart/start service logic
 				start_gateway
 			else
 				echo "❌ Installation failed. Please check whether the skill name is correct, or refer to the documentation for troubleshooting."
@@ -10441,29 +10467,56 @@ EOF
 
 			break_end
 		done
-
 	}
 
 
 
 	change_tg_bot_code() {
 		send_stats "Robot docking"
-		read -e -p "Please enter the connection code received by the TG robot (for example, Pairing code: NYA99R2F) (enter 0 to exit):" code
+		while true; do
+			clear
+			echo "========================================"
+			echo "Robot connection and docking"
+			echo "========================================"
+			echo "1. Telegram robot docking"
+			echo "2. Feishu (Lark) robot docking"
+			echo "3. WhatsApp bot docking"
+			echo "----------------------------------------"
+			echo "0. Return to the previous menu"
+			echo "----------------------------------------"
+			read -e -p "Please enter your choice:" bot_choice
 
-		# Check if 0 is entered to exit
-		if [ "$code" = "0" ]; then
-			echo "The operation has been cancelled."
-			return 0  # 正常退出函数
-		fi
-
-		# Verify input is empty
-		if [ -z "$code" ]; then
-			echo "Error: Connection code cannot be empty. Please try again."
-			return 1
-		fi
-
-		openclaw pairing approve telegram $code
-		break_end
+			case $bot_choice in
+				1)
+					read -e -p "Please enter the connection code received by the TG robot (for example, NYA99R2F) (enter 0 to exit):" code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "Error: Connection code cannot be empty."; sleep 1; continue; fi
+					openclaw pairing approve telegram "$code"
+					break_end
+					;;
+				2)
+					read -e -p "Please enter the connection code received by Feishu Robot (for example, NYA99R2F) (enter 0 to exit):" code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "Error: Connection code cannot be empty."; sleep 1; continue; fi
+					openclaw pairing approve feishu "$code"
+					break_end
+					;;
+				3)
+					read -e -p "Please enter the connection code received by WhatsApp (for example NYA99R2F) (enter 0 to exit):" code
+					if [ "$code" = "0" ]; then continue; fi
+					if [ -z "$code" ]; then echo "Error: Connection code cannot be empty."; sleep 1; continue; fi
+					openclaw pairing approve whatsapp "$code"
+					break_end
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "Invalid selection, please try again."
+					sleep 1
+					;;
+			esac
+		done
 	}
 
 
@@ -10487,6 +10540,7 @@ EOF
 		openclaw uninstall
 		npm uninstall -g openclaw
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
+		rm -rf /root/.openclaw
 		hash -r
 		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 		echo "Uninstall completed"
@@ -10570,6 +10624,19 @@ EOF
 		echo "First access the URL to trigger the device ID, then press Enter to proceed with pairing."
 		read
 		echo -e "${gl_kjlan}Loading device list...${gl_bai}"
+		# Automatically add domain names to allowedOrigins
+		config_file="$HOME/.openclaw/openclaw.json"
+		if [ -f "$config_file" ]; then
+			new_origin="https://${yuming}"
+			# Use jq to safely modify JSON to ensure that the structure exists and domain names are not added repeatedly
+			if command -v jq >/dev/null 2>&1; then
+				tmp_json=$(mktemp)
+				jq 'if .gateway.controlUi == null then .gateway.controlUi = {"allowedOrigins": ["http://127.0.0.1"]} else . end | if (.gateway.controlUi.allowedOrigins | contains([$origin]) | not) then .gateway.controlUi.allowedOrigins += [$origin] else . end' --arg origin "$new_origin" "$config_file" > "$tmp_json" && mv "$tmp_json" "$config_file"
+				echo -e "${gl_kjlan}Domain name has been${yuming}Add allowedOrigins configuration${gl_bai}"
+				openclaw gateway restart >/dev/null 2>&1
+			fi
+		fi
+
 		openclaw devices list
 
 		read -e -p "Please enter Request_Key:" Request_Key
@@ -10650,8 +10717,12 @@ EOF
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;
-			14) update_moltbot ;;
-			15) uninstall_moltbot ;;
+			14) send_stats "TUI command line conversation"
+				openclaw tui
+				break_end
+			 	;;
+			15) update_moltbot ;;
+			16) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
@@ -11171,7 +11242,7 @@ while true; do
 					rm -rf /home/docker/mail
 
 					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-					echo "App uninstalled"
+					echo "App has been uninstalled"
 					;;
 
 				*)
@@ -11225,7 +11296,7 @@ while true; do
 			docker rm -f db
 			docker rmi -f mongo:latest
 			rm -rf /home/docker/mongo
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -11323,7 +11394,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/cloud/ && docker compose down --rmi all
 			rm -rf /home/docker/cloud
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -11398,7 +11469,7 @@ while true; do
 
 		}
 
-		local docker_describe="Speedtest speed test panel is a VPS network speed test tool with multiple test functions and can also monitor VPS inbound and outbound traffic in real time."
+		local docker_describe="Speedtest speed measurement panel is a VPS network speed test tool with multiple test functions and can also monitor VPS inbound and outbound traffic in real time."
 		local docker_url="Official website introduction:${gh_proxy}github.com/wikihost-opensource/als"
 		local docker_use=""
 		local docker_passwd=""
@@ -12209,7 +12280,7 @@ while true; do
 			docker rmi -f grafana/grafana:latest
 
 			rm -rf /home/docker/monitoring
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -12436,7 +12507,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/dify/docker/ && docker compose down --rmi all
 			rm -rf /home/docker/dify
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -12488,7 +12559,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/new-api/ && docker compose down --rmi all
 			rm -rf /home/docker/new-api
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -12529,7 +12600,7 @@ while true; do
 			cd /opt
 			rm -rf jumpserver-installer*/
 			rm -rf jumpserver
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -12592,7 +12663,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/ragflow/docker/ && docker compose down --rmi all
 			rm -rf /home/docker/ragflow
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -12777,7 +12848,7 @@ while true; do
 
 		}
 
-		local docker_describe="Open source AI chatbot framework, supporting WeChat, QQ, and TG access to AI large models"
+		local docker_describe="Open source AI chatbot framework, supporting WeChat, QQ, and TG access to large AI models"
 		local docker_url="Official website introduction: https://astrbot.app/"
 		local docker_use="echo \"Username: astrbot Password: astrbot\""
 		local docker_passwd=""
@@ -12806,7 +12877,7 @@ while true; do
 
 		}
 
-		local docker_describe="Is a lightweight, high-performance music streaming server"
+		local docker_describe="It is a lightweight, high-performance music streaming server"
 		local docker_url="Official website introduction: https://www.navidrome.org/"
 		local docker_use=""
 		local docker_passwd=""
@@ -12833,7 +12904,7 @@ while true; do
 
 		}
 
-		local docker_describe="A password manager where you can control your data"
+		local docker_describe="A password manager that puts you in control of your data"
 		local docker_url="Official website introduction: https://bitwarden.com/"
 		local docker_use=""
 		local docker_passwd=""
@@ -12920,7 +12991,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/moontv/ && docker compose down --rmi all
 			rm -rf /home/docker/moontv
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -13141,7 +13212,7 @@ while true; do
 		  docker_app_uninstall() {
 			  cd /home/docker/linkwarden && docker compose down --rmi all
 			  rm -rf /home/docker/linkwarden
-			  echo "App uninstalled"
+			  echo "App has been uninstalled"
 		  }
 
 		  docker_app_plus
@@ -13191,7 +13262,7 @@ while true; do
 			  cd "$(ls -dt */ | head -n 1)"
 			  docker compose down --rmi all
 			  rm -rf /home/docker/jitsi
-			  echo "App uninstalled"
+			  echo "App has been uninstalled"
 		  }
 
 		  docker_app_plus
@@ -13327,7 +13398,7 @@ while true; do
 		  docker_app_uninstall() {
 			  cd /home/docker/${docker_name} && docker compose down --rmi all
 			  rm -rf /home/docker/${docker_name}
-			  echo "App uninstalled"
+			  echo "App has been uninstalled"
 		  }
 
 		  docker_app_plus
@@ -13390,7 +13461,7 @@ while true; do
 
 		}
 
-		local docker_describe="A program for watching movies and live broadcasts together remotely. It provides simultaneous viewing, live broadcast, chat and other functions"
+		local docker_describe="A program to watch movies and live broadcasts together remotely. It provides simultaneous viewing, live broadcast, chat and other functions"
 		local docker_url="Official website introduction:${gh_https_url}github.com/synctv-org/synctv"
 		local docker_use="echo \"Initial account and password: root. Please change the login password in time after logging in\""
 		local docker_passwd=""
@@ -13554,7 +13625,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/gitea/ && docker compose down --rmi all
 			rm -rf /home/docker/gitea
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -13692,7 +13763,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/paperless/ && docker compose down --rmi all
 			rm -rf /home/docker/paperless
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -13746,7 +13817,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/2fauth/ && docker compose down --rmi all
 			rm -rf /home/docker/2fauth
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -13979,7 +14050,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/dsm/ && docker compose down --rmi all
 			rm -rf /home/docker/dsm
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -14021,7 +14092,7 @@ while true; do
 	  101|moneyprinterturbo)
 		local app_id="101"
 		local app_name="AI video generation tool"
-		local app_text="MoneyPrinterTurbo is a tool that uses AI large models to synthesize high-definition short videos."
+		local app_text="MoneyPrinterTurbo is a tool that uses AI large models to synthesize high-definition short videos"
 		local app_url="Official website:${gh_https_url}github.com/harry0703/MoneyPrinterTurbo"
 		local docker_name="moneyprinterturbo"
 		local docker_port="8101"
@@ -14050,7 +14121,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
 			rm -rf /home/docker/MoneyPrinterTurbo
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -14119,7 +14190,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/umami/ && docker compose down --rmi all
 			rm -rf /home/docker/umami
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -14260,7 +14331,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		docker_app_uninstall() {
 			cd  /home/docker/LangBot/docker/ && docker compose down --rmi all
 			rm -rf /home/docker/LangBot
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -14330,7 +14401,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		docker_app_uninstall() {
 			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
 			rm -rf /home/docker/karakeep
-			echo "App uninstalled"
+			echo "App has been uninstalled"
 		}
 
 		docker_app_plus
@@ -14370,7 +14441,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		local app_id="112"
 		local docker_name="lucky"
 		local docker_img="gdy666/lucky:v2"
-		# Since Lucky uses the host network mode, the port here is only for record/explanation reference, and is actually controlled by the application itself (default 16601)
+		# Since Lucky uses the host network mode, the port here is only for record/explanation reference and is actually controlled by the application itself (default 16601)
 		local docker_port=8112
 
 		docker_rum() {
@@ -14538,7 +14609,7 @@ linux_work() {
 	  send_stats "Backend workspace"
 	  echo -e "Backend workspace"
 	  echo -e "The system will provide you with a workspace that can run permanently in the background, which you can use to perform long-term tasks."
-	  echo -e "Even if you disconnect SSH, the tasks in the workspace will not be interrupted, and the background tasks will persist."
+	  echo -e "Even if you disconnect SSH, the tasks in the workspace will not be interrupted, and the tasks will remain in the background."
 	  echo -e "${gl_huang}hint:${gl_bai}After entering the workspace, use Ctrl+b and then press d alone to exit the workspace!"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo "List of currently existing workspaces"
@@ -14728,7 +14799,7 @@ switch_mirror() {
 	local country
 	country=$(curl -s ipinfo.io/country)
 
-	echo "Countries detected:$country"
+	echo "检测到国家：$country"
 
 	if [ "$country" = "CN" ]; then
 		echo "Use domestic mirror sources..."
@@ -14786,6 +14857,9 @@ fail2ban_panel() {
 				echo "2. View SSH interception records"
 				echo "3. Real-time log monitoring"
 				echo "------------------------"
+				echo "4. Basic parameter configuration (ban duration/time window/number of retries)"
+				echo "5. Edit configuration file (nano)"
+				echo "------------------------"
 				echo "9. Uninstall the defense program"
 				echo "------------------------"
 				echo "0. Return to the previous menu"
@@ -14807,6 +14881,16 @@ fail2ban_panel() {
 					3)
 						tail -f /var/log/fail2ban.log
 						break
+						;;
+					4)
+						send_stats "SSH defense basic parameter configuration"
+						f2b_basic_config
+						break_end
+						;;
+					5)
+						send_stats "SSH Defense Edit Configuration File"
+						f2b_edit_config
+						break_end
 						;;
 					9)
 						remove fail2ban
@@ -14922,7 +15006,7 @@ log_menu() {
 		show_log_overview
 		echo
 		echo "=========== System log management menu ==========="
-		echo "1. Check the latest system log (journal)"
+		echo "1. View the latest system log (journal)"
 		echo "2. View the specified service log"
 		echo "3. View login/security logs"
 		echo "4. Real-time tracking logs"
@@ -14934,7 +15018,7 @@ log_menu() {
 		case $choice in
 			1)
 				send_stats "View recent logs"
-				read -erp "How many recent log lines have you viewed? [Default 100]:" lines
+				read -erp "View the most recent log lines? [Default 100]:" lines
 				lines=${lines:-100}
 				journalctl -n "$lines" --no-pager
 				read -erp "Press Enter to continue..."
@@ -15012,7 +15096,7 @@ env_menu() {
 
 	show_env_vars() {
 		clear
-		send_stats "Environment variables currently in effect"
+		send_stats "Currently in effect environment variables"
 		echo "========== Currently in effect environment variables (excerpt) =========="
 		printf "%-20s %s\n" "variable name" "value"
 		echo "-----------------------------------------------"
@@ -15204,7 +15288,7 @@ linux_Settings() {
 
 	while true; do
 	  clear
-	  # send_stats "system tools"
+	  # send_stats "System Tools"
 	  echo -e "system tools"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}Set script startup shortcut key${gl_kjlan}2.   ${gl_bai}Change login password"
@@ -15279,7 +15363,7 @@ linux_Settings() {
 			echo "python version management"
 			echo "Video introduction: https://www.bilibili.com/video/BV1Pm42157cK?t=0.1"
 			echo "---------------------------------------"
-			echo "This function can seamlessly install any version officially supported by Python!"
+			echo "This function can seamlessly install any version officially supported by python!"
 			local VERSION=$(python3 -V 2>&1 | awk '{print $2}')
 			echo -e "Current python version number:${gl_huang}$VERSION${gl_bai}"
 			echo "------------"
@@ -15956,7 +16040,7 @@ EOF
 					echo -e "${gl_lv}The currently set inbound traffic limit threshold is:${gl_huang}${rx_threshold_gb}${gl_lv}G${gl_bai}"
 					echo -e "${gl_lv}The currently set outbound traffic limiting threshold is:${gl_huang}${tx_threshold_gb}${gl_lv}GB${gl_bai}"
 				else
-					echo -e "${gl_hui}Current limiting shutdown function is not currently enabled${gl_bai}"
+					echo -e "${gl_hui}The current limiting shutdown function is not currently enabled${gl_bai}"
 				fi
 
 				echo
@@ -15972,7 +16056,7 @@ EOF
 				case "$Limiting" in
 				  1)
 					# Enter new virtual memory size
-					echo "If the actual server only has 100G traffic, you can set the threshold to 95G and shut down in advance to avoid traffic errors or overflows."
+					echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出。"
 					read -e -p "Please enter the inbound traffic threshold (unit is G, default is 100G):" rx_threshold_gb
 					rx_threshold_gb=${rx_threshold_gb:-100}
 					read -e -p "Please enter the outbound traffic threshold (unit is G, default is 100G):" tx_threshold_gb
@@ -16177,7 +16261,7 @@ EOF
 			  echo -e "7. Turn on${gl_huang}BBR${gl_bai}accelerate"
 			  echo -e "8. Set time zone to${gl_huang}Shanghai${gl_bai}"
 			  echo -e "9. Automatically optimize DNS addresses${gl_huang}Overseas: 1.1.1.1 8.8.8.8 Domestic: 223.5.5.5${gl_bai}"
-		  	  echo -e "10. Set the network to${gl_huang}ipv4 priority${gl_bai}"
+		  	  echo -e "10. Set the network to${gl_huang}IPv4 priority${gl_bai}"
 			  echo -e "11. Install basic tools${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 			  echo -e "12. Linux system kernel parameter optimization${gl_huang}Automatically tune according to network environment${gl_bai}"
 			  echo "------------------------------------------------"
@@ -16225,7 +16309,7 @@ EOF
 				  echo -e "[${gl_lv}OK${gl_bai}] 9/12. Automatically optimize DNS address${gl_huang}${gl_bai}"
 				  echo "------------------------------------------------"
 				  prefer_ipv4
-				  echo -e "[${gl_lv}OK${gl_bai}] 10/12. Set the network to${gl_huang}ipv4 priority${gl_bai}}"
+				  echo -e "[${gl_lv}OK${gl_bai}] 10/12. Set the network to${gl_huang}IPv4 priority${gl_bai}}"
 
 				  echo "------------------------------------------------"
 				  install_docker
@@ -16587,7 +16671,7 @@ run_commands_on_servers() {
 		local username=${SERVER_ARRAY[i+3]}
 		local password=${SERVER_ARRAY[i+4]}
 		echo
-		echo -e "${gl_huang}connect to$name ($hostname)...${gl_bai}"
+		echo -e "${gl_huang}Connect to$name ($hostname)...${gl_bai}"
 		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 	done
@@ -16621,7 +16705,7 @@ while true; do
 	  echo -e "${gl_kjlan}Execute tasks in batches${gl_bai}"
 	  echo -e "${gl_kjlan}11. ${gl_bai}Install technology lion script${gl_kjlan}12. ${gl_bai}Update system${gl_kjlan}13. ${gl_bai}Clean the system"
 	  echo -e "${gl_kjlan}14. ${gl_bai}Install docker${gl_kjlan}15. ${gl_bai}Install BBR3${gl_kjlan}16. ${gl_bai}Set 1G virtual memory"
-	  echo -e "${gl_kjlan}17. ${gl_bai}Set time zone to Shanghai${gl_kjlan}18. ${gl_bai}Open all ports${gl_kjlan}51. ${gl_bai}custom directive"
+	  echo -e "${gl_kjlan}17. ${gl_bai}Set time zone to Shanghai${gl_kjlan}18. ${gl_bai}Open all ports${gl_kjlan}51. ${gl_bai}Custom instructions"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}0.  ${gl_bai}Return to main menu"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -16738,7 +16822,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 6.9 dollars per month Tokyo Softbank 2 cores 1G memory 20G hard drive 1T traffic per month${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}More popular VPS offers${gl_bai}"
+echo -e "${gl_kjlan}More popular VPS deals${gl_bai}"
 echo -e "${gl_bai}Website: https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -16977,7 +17061,7 @@ done
 
 
 k_info() {
-send_stats "k command reference use case"
+send_stats "k命令参考用例"
 echo "-------------------"
 echo "Video introduction: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "The following is a reference use case for the k command:"
