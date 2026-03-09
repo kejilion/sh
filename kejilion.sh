@@ -10620,13 +10620,54 @@ EOF
 	openclaw_api_manage_list() {
 		local config_file="${HOME}/.openclaw/openclaw.json"
 
-		python3 - "$config_file" <<'PY'
+		python3 - "$config_file" "${gl_huang}" "${gl_lv}" "${gl_hong}" "${gl_bai}" "${gl_kjlan}" <<'PY'
 import json
 import sys
 import time
+import unicodedata
 import urllib.request
 
 path = sys.argv[1]
+C_YELLOW = sys.argv[2] if len(sys.argv) > 2 else ''
+C_GREEN = sys.argv[3] if len(sys.argv) > 3 else ''
+C_RED = sys.argv[4] if len(sys.argv) > 4 else ''
+C_WHITE = sys.argv[5] if len(sys.argv) > 5 else ''
+C_BLUE = sys.argv[6] if len(sys.argv) > 6 and sys.argv[6] else C_WHITE
+C_RESET = C_WHITE if C_WHITE else '\033[0m'
+
+
+def colorize(text, color):
+    return f'{color}{text}{C_RESET}' if color else text
+
+
+def char_width(ch):
+    return 2 if unicodedata.east_asian_width(ch) in ('W', 'F') else 1
+
+
+def text_width(text):
+    return sum(char_width(ch) for ch in str(text))
+
+
+def trim_to_width(text, width):
+    s = str(text)
+    if text_width(s) <= width:
+        return s
+    reserve = 3
+    out = []
+    w = 0
+    for ch in s:
+        cw = char_width(ch)
+        if w + cw > max(width - reserve, 0):
+            break
+        out.append(ch)
+        w += cw
+    return ''.join(out) + '...'
+
+
+def pad_text(text, width):
+    s = trim_to_width(text, width)
+    return s + ' ' * max(width - text_width(s), 0)
+
 
 try:
     with open(path, 'r', encoding='utf-8') as f:
@@ -10659,31 +10700,71 @@ def ping_models(base_url, api_key):
         resp.read(2048)
     return int((time.perf_counter() - start) * 1000)
 
+
+def latency_label_and_color(latency):
+    if latency == '不可用':
+        return latency, C_RED
+    if latency == '未检测':
+        return latency, C_BLUE
+    if isinstance(latency, int):
+        if latency < 800:
+            return f'{latency}ms', C_GREEN
+        return f'{latency}ms', C_YELLOW
+    return str(latency), C_BLUE
+
+
+IDX_W = 4
+NAME_W = 18
+URL_W = 44
+MODEL_W = 8
+LAT_W = 12
+
 print('--- 已配置 API 列表 ---')
+header = (
+    f"{pad_text('序号', IDX_W)} "
+    f"{pad_text('名称', NAME_W)} "
+    f"{pad_text('API地址', URL_W)} "
+    f"{pad_text('模型数量', MODEL_W)} "
+    f"{pad_text('延迟/状态', LAT_W)}"
+)
+print(header)
+print('-' * text_width(header))
+
 for idx, name in enumerate(sorted(providers.keys()), start=1):
     provider = providers.get(name)
     if not isinstance(provider, dict):
-        print(f'{idx}. {name} | 地址: - | 模型数: 0 | 延迟: 不可用')
-        continue
+        base_url = '-'
+        model_count = 0
+        latency_raw = '不可用'
+    else:
+        base_url = provider.get('baseUrl') or provider.get('url') or provider.get('endpoint') or '-'
+        models = provider.get('models') if isinstance(provider.get('models'), list) else []
+        model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
+        api = provider.get('api', '')
+        api_key = provider.get('apiKey')
 
-    base_url = provider.get('baseUrl') or provider.get('url') or provider.get('endpoint') or '-'
-    models = provider.get('models') if isinstance(provider.get('models'), list) else []
-    model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
-    api = provider.get('api', '')
-    api_key = provider.get('apiKey')
+        latency_raw = '未检测'
+        if api in SUPPORTED_APIS:
+            if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
+                try:
+                    latency_raw = ping_models(base_url, api_key)
+                except Exception:
+                    latency_raw = '不可用'
+            else:
+                latency_raw = '不可用'
 
-    latency = '未检测'
-    if api in SUPPORTED_APIS:
-        if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
-            try:
-                ms = ping_models(base_url, api_key)
-                latency = f'{ms}ms'
-            except Exception:
-                latency = '不可用'
-        else:
-            latency = '不可用'
+    model_txt = pad_text(str(model_count), MODEL_W)
+    latency_txt, latency_color = latency_label_and_color(latency_raw)
+    latency_txt = pad_text(latency_txt, LAT_W)
 
-    print(f'{idx}. {name} | 地址: {base_url} | 模型数: {model_count} | 延迟: {latency}')
+    row = (
+        f"{pad_text(str(idx) + '.', IDX_W)} "
+        f"{pad_text(name, NAME_W)} "
+        f"{pad_text(base_url, URL_W)} "
+        f"{colorize(model_txt, C_YELLOW)} "
+        f"{colorize(latency_txt, latency_color)}"
+    )
+    print(row)
 PY
 	}
 
