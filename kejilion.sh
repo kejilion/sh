@@ -10733,16 +10733,14 @@ def ping_models(base_url, api_key):
     return int((time.perf_counter() - start) * 1000)
 
 
-def latency_label_and_color(latency):
+def format_latency(latency):
     if latency == '不可用':
-        return '不可用', C_RED
+        return '不可用'
     if latency == '未检测':
-        return '未检测', C_BLUE
+        return '未检测'
     if isinstance(latency, int):
-        if latency < 800:
-            return f'低 {latency}ms', C_GREEN
-        return f'中 {latency}ms', C_YELLOW
-    return str(latency), C_BLUE
+        return f'{latency}ms'
+    return str(latency)
 
 
 IDX_W = 4
@@ -10785,16 +10783,15 @@ for idx, name in enumerate(sorted(providers.keys()), start=1):
             else:
                 latency_raw = '不可用'
 
-    model_txt = pad_text(f'模型{model_count}', MODEL_W)
-    latency_txt, latency_color = latency_label_and_color(latency_raw)
-    latency_txt = pad_text(latency_txt, LAT_W)
+    model_txt = pad_text(str(model_count), MODEL_W)
+    latency_txt = pad_text(format_latency(latency_raw), LAT_W)
 
     row = (
         f"{pad_text(str(idx) + '.', IDX_W)} "
         f"{pad_text(name, NAME_W)} "
         f"{pad_text(base_url, URL_W)} "
-        f"{colorize(model_txt, C_YELLOW)} "
-        f"{colorize(latency_txt, latency_color)}"
+        f"{model_txt} "
+        f"{latency_txt}"
     )
     print(row)
 PY
