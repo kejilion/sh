@@ -10648,176 +10648,122 @@ EOF
 	}
 
 
-	openclaw_api_manage_list() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
-		send_stats "OpenClaw API列表"
 	
-		while IFS=$'\t' read -r rec_type idx name base_url model_count latency_txt latency_level; do
-			case "$rec_type" in
-				MSG)
-					echo "$idx"
-					;;
-				HEADER)
-					printf "%s\n" "$idx"
-					;;
-				SEP)
-					printf "%s\n" "$idx"
-					;;
-				ROW)
-					local latency_color="$gl_bai"
-					case "$latency_level" in
-						low) latency_color="$gl_lv" ;;
-						medium) latency_color="$gl_huang" ;;
-						high|unavailable) latency_color="$gl_hong" ;;
-						unchecked) latency_color="$gl_bai" ;;
-					esac
-	
-					printf "%s %-4s %-18s %-44s %s%-8s%s %s%-12s%s\n" \
-						"" "$idx" "$name" "$base_url" \
-						"$gl_huang" "$model_count" "$gl_bai" \
-						"$latency_color" "$latency_txt" "$gl_bai"
-					;;
-			esac
-		done < <(python3 - "$config_file" <<-'PY'
-	import json
-	import sys
-	import time
-	import unicodedata
-	import urllib.request
-	
-	path = sys.argv[1]
-	SUPPORTED_APIS = {'openai-completions', 'openai-responses', 'openai-chat-completions'}
-	
-	
-	def char_width(ch):
-	    return 2 if unicodedata.east_asian_width(ch) in ('W', 'F') else 1
-	
-	
-	def text_width(text):
-	    return sum(char_width(ch) for ch in str(text))
-	
-	
-	def trim_to_width(text, width):
-	    s = str(text)
-	    if text_width(s) <= width:
-	        return s
-	    reserve = 3
-	    out = []
-	    w = 0
-	    for ch in s:
-	        cw = char_width(ch)
-	        if w + cw > max(width - reserve, 0):
-	            break
-	        out.append(ch)
-	        w += cw
-	    return ''.join(out) + '...'
-	
-	
-	def pad_text(text, width):
-	    s = trim_to_width(text, width)
-	    return s + ' ' * max(width - text_width(s), 0)
-	
-	
-	def ping_models(base_url, api_key):
-	    req = urllib.request.Request(
-	        base_url.rstrip('/') + '/models',
-	        headers={
-	            'Authorization': f'Bearer {api_key}',
-	            'User-Agent': 'OpenClaw-API-Manage/1.0',
-	        },
-	    )
-	    start = time.perf_counter()
-	    with urllib.request.urlopen(req, timeout=4) as resp:
-	        resp.read(2048)
-	    return int((time.perf_counter() - start) * 1000)
-	
-	
-	def classify_latency(latency):
-	    if latency == '不可用':
-	        return '不可用', 'unavailable'
-	    if latency == '未检测':
-	        return '未检测', 'unchecked'
-	    if isinstance(latency, int):
-	        if latency <= 800:
-	            level = 'low'
-	        elif latency <= 2000:
-	            level = 'medium'
-	        else:
-	            level = 'high'
-	        return f'{latency}ms', level
-	    return str(latency), 'unchecked'
-	
-	
-	IDX_W = 4
-	NAME_W = 18
-	URL_W = 44
-	MODEL_W = 8
-	LAT_W = 12
-	
-	try:
-	    with open(path, 'r', encoding='utf-8') as f:
-	        obj = json.load(f)
-	except FileNotFoundError:
-	    print('MSG\tℹ️ 未找到 openclaw.json，请先完成安装/初始化。')
-	    raise SystemExit(0)
-	except Exception as e:
-	    print(f'MSG\t❌ 读取配置失败: {type(e).__name__}: {e}')
-	    raise SystemExit(0)
-	
-	providers = ((obj.get('models') or {}).get('providers') or {})
-	if not isinstance(providers, dict) or not providers:
-	    print('MSG\tℹ️ 当前未配置任何 API provider。')
-	    raise SystemExit(0)
-	
-	print('MSG\t--- 已配置 API 列表 ---')
-	header = (
-	    f"{pad_text('序号', IDX_W)} "
-	    f"{pad_text('名称', NAME_W)} "
-	    f"{pad_text('API地址', URL_W)} "
-	    f"{pad_text('模型数量', MODEL_W)} "
-	    f"{pad_text('延迟/状态', LAT_W)}"
-	)
-	print(f'HEADER\t{header}')
-	print(f'SEP\t{"-" * text_width(header)}')
-	
-	for idx, name in enumerate(sorted(providers.keys()), start=1):
-	    provider = providers.get(name)
-	    if not isinstance(provider, dict):
-	        base_url = '-'
-	        model_count = 0
-	        latency_raw = '不可用'
-	    else:
-	        base_url = provider.get('baseUrl') or provider.get('url') or provider.get('endpoint') or '-'
-	        models = provider.get('models') if isinstance(provider.get('models'), list) else []
-	        model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
-	        api = provider.get('api', '')
-	        api_key = provider.get('apiKey')
-	
-	        latency_raw = '未检测'
-	        if api in SUPPORTED_APIS:
-	            if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
-	                try:
-	                    latency_raw = ping_models(base_url, api_key)
-	                except Exception:
-	                    latency_raw = '不可用'
-	            else:
-	                latency_raw = '不可用'
-	
-	    latency_text, latency_level = classify_latency(latency_raw)
-	    print(
-	        'ROW\t' + '\t'.join([
-	            pad_text(str(idx) + '.', IDX_W),
-	            pad_text(name, NAME_W),
-	            pad_text(base_url, URL_W),
-	            pad_text(str(model_count), MODEL_W),
-	            pad_text(latency_text, LAT_W),
-	            latency_level,
-	        ])
-	    )
-	PY
-	)
-	}
+openclaw_api_manage_list() {
+	local config_file="${HOME}/.openclaw/openclaw.json"
+	send_stats "OpenClaw API列表"
 
+	while IFS=$'\t' read -r rec_type idx name base_url model_count latency_txt latency_level; do
+		case "$rec_type" in
+			MSG)
+				echo "$idx"
+				;;
+			ROW)
+				local latency_color="$gl_bai"
+				case "$latency_level" in
+					low) latency_color="$gl_lv" ;;
+					medium) latency_color="$gl_huang" ;;
+					high|unavailable) latency_color="$gl_hong" ;;
+					unchecked) latency_color="$gl_bai" ;;
+				esac
+
+				printf '%b\n' "[$idx] ${name} | API: ${base_url} | 模型数量: ${gl_huang}${model_count}${gl_bai} | 延迟/状态: ${latency_color}${latency_txt}${gl_bai}"
+				;;
+		esac
+	done < <(python3 - "$config_file" <<-'PY'
+import json
+import sys
+import time
+import urllib.request
+
+path = sys.argv[1]
+SUPPORTED_APIS = {'openai-completions', 'openai-responses', 'openai-chat-completions'}
+
+
+def ping_models(base_url, api_key):
+    req = urllib.request.Request(
+        base_url.rstrip('/') + '/models',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+    )
+    start = time.perf_counter()
+    with urllib.request.urlopen(req, timeout=4) as resp:
+        resp.read(2048)
+    return int((time.perf_counter() - start) * 1000)
+
+
+def classify_latency(latency):
+    if latency == '不可用':
+        return '不可用', 'unavailable'
+    if latency == '未检测':
+        return '未检测', 'unchecked'
+    if isinstance(latency, int):
+        if latency <= 800:
+            level = 'low'
+        elif latency <= 2000:
+            level = 'medium'
+        else:
+            level = 'high'
+        return f'{latency}ms', level
+    return str(latency), 'unchecked'
+
+
+try:
+    with open(path, 'r', encoding='utf-8') as f:
+        obj = json.load(f)
+except FileNotFoundError:
+    print('MSG\tℹ️ 未找到 openclaw.json，请先完成安装/初始化。')
+    raise SystemExit(0)
+except Exception as e:
+    print(f'MSG\t❌ 读取配置失败: {type(e).__name__}: {e}')
+    raise SystemExit(0)
+
+providers = ((obj.get('models') or {}).get('providers') or {})
+if not isinstance(providers, dict) or not providers:
+    print('MSG\tℹ️ 当前未配置任何 API provider。')
+    raise SystemExit(0)
+
+print('MSG\t--- 已配置 API 列表 ---')
+
+for idx, name in enumerate(sorted(providers.keys()), start=1):
+    provider = providers.get(name)
+    if not isinstance(provider, dict):
+        base_url = '-'
+        model_count = 0
+        latency_raw = '不可用'
+    else:
+        base_url = provider.get('baseUrl') or provider.get('url') or provider.get('endpoint') or '-'
+        models = provider.get('models') if isinstance(provider.get('models'), list) else []
+        model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
+        api = provider.get('api', '')
+        api_key = provider.get('apiKey')
+
+        latency_raw = '未检测'
+        if api in SUPPORTED_APIS:
+            if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
+                try:
+                    latency_raw = ping_models(base_url, api_key)
+                except Exception:
+                    latency_raw = '不可用'
+            else:
+                latency_raw = '不可用'
+
+    latency_text, latency_level = classify_latency(latency_raw)
+    print(
+        'ROW\t' + '\t'.join([
+            str(idx),
+            str(name),
+            str(base_url),
+            str(model_count),
+            str(latency_text),
+            str(latency_level),
+        ])
+    )
+PY
+)
+}
 sync-openclaw-provider-interactive() {
 	local config_file="${HOME}/.openclaw/openclaw.json"
 	send_stats "OpenClaw API按Provider同步"
