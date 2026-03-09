@@ -9,7 +9,7 @@ read -p "请输入 数据库用户密码：" dbusepasswd
 # 更新并安装必要的软件包
 DEBIAN_FRONTEND=noninteractive apt update -y
 DEBIAN_FRONTEND=noninteractive apt full-upgrade -y
-apt install -y curl wget sudo socat unzip tar htop
+apt install -y curl wget sudo socat unzip tar htop rclone
 
 # 安装 Docker
 curl -fsSL https://get.docker.com | sh
