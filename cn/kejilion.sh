@@ -10034,14 +10034,42 @@ PY
 
 		install jq curl >/dev/null 2>&1
 
-		python3 - "$config_file" <<'PY'
+		python3 - "$config_file" "$ENABLE_STATS" "$sh_v" <<'PY'
 import copy
 import json
+import os
+import platform
 import sys
 import time
 import urllib.request
+from datetime import datetime, timezone
 
 path = sys.argv[1]
+stats_enabled = (sys.argv[2].lower() == "true") if len(sys.argv) > 2 else True
+script_version = sys.argv[3] if len(sys.argv) > 3 else ""
+
+def send_stat(action):
+    if not stats_enabled:
+        return
+    payload = {
+        "action": action,
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        "country": "",
+        "os_info": platform.platform(),
+        "cpu_arch": platform.machine(),
+        "version": script_version,
+    }
+    try:
+        req = urllib.request.Request(
+            "https://api.kejilion.pro/api/log",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=3):
+            pass
+    except Exception:
+        pass
 
 with open(path, 'r', encoding='utf-8') as f:
     obj = json.load(f)
@@ -10225,11 +10253,14 @@ for name, provider in list(providers.items()):
     data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
     if err is not None:
         summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
+        send_stat('OpenClaw API确认介入')
         if prompt_delete_provider(name):
             deleted = delete_provider_and_refs(name)
             if deleted:
+                send_stat('OpenClaw API删失败Provider-确认')
                 summary.append(f'✅ {name}: 用户已确认删除该 provider 及全部相关模型引用')
         else:
+            send_stat('OpenClaw API删失败Provider-拒绝')
             summary.append(f'ℹ️ {name}: 用户未确认删除，保留现有 provider 配置')
         continue
 
@@ -10519,7 +10550,7 @@ EOF
 	}
 
 	add-openclaw-provider-interactive() {
-		send_stats "添加API"
+		send_stats "OpenClaw API添加"
 		echo "=== 交互式添加 OpenClaw Provider (全量模型) ==="
 
 		# 1. Provider 名称
@@ -10618,6 +10649,7 @@ EOF
 
 	openclaw_api_manage_list() {
 		local config_file="${HOME}/.openclaw/openclaw.json"
+		send_stats "OpenClaw API列表"
 
 		python3 - "$config_file" "${gl_huang}" "${gl_lv}" "${gl_hong}" "${gl_bai}" "${gl_kjlan}" <<'PY'
 import json
@@ -10769,6 +10801,7 @@ PY
 
 	delete-openclaw-provider-interactive() {
 		local config_file="${HOME}/.openclaw/openclaw.json"
+		send_stats "OpenClaw API删除入口"
 
 		if [ ! -f "$config_file" ]; then
 			echo "❌ 未找到配置文件: $config_file"
@@ -10778,6 +10811,7 @@ PY
 
 		read -erp "请输入要删除的 API 名称(provider): " provider_name
 		if [ -z "$provider_name" ]; then
+			send_stats "OpenClaw API删除取消"
 			echo "❌ provider 名称不能为空"
 			break_end
 			return 1
@@ -10895,6 +10929,7 @@ PY
 		local rc=$?
 		case "$rc" in
 			0)
+				send_stats "OpenClaw API删除确认"
 				echo "✅ 删除完成"
 				start_gateway
 				;;
@@ -10902,6 +10937,7 @@ PY
 				echo "❌ 删除失败：provider 不存在"
 				;;
 			3)
+				send_stats "OpenClaw API删除取消"
 				echo "❌ 删除失败：无可用替代模型，已保持原配置"
 				;;
 			*)
@@ -10913,7 +10949,7 @@ PY
 	}
 
 	openclaw_api_manage_menu() {
-		send_stats "API管理"
+		send_stats "OpenClaw API入口"
 		while true; do
 			clear
 			echo "======================================="
@@ -11400,6 +11436,7 @@ PY
 				;;
 			12) send_stats "健康检测与修复"
 				openclaw doctor --fix
+				send_stats "OpenClaw API同步触发"
 				if sync_openclaw_api_models; then
 					start_gateway
 				else
