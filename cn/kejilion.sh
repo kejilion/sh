@@ -10734,13 +10734,13 @@ def ping_models(base_url, api_key):
 
 def latency_label_and_color(latency):
     if latency == '不可用':
-        return latency, C_RED
+        return '不可用', C_RED
     if latency == '未检测':
-        return latency, C_BLUE
+        return '未检测', C_BLUE
     if isinstance(latency, int):
         if latency < 800:
-            return f'{latency}ms', C_GREEN
-        return f'{latency}ms', C_YELLOW
+            return f'低 {latency}ms', C_GREEN
+        return f'中 {latency}ms', C_YELLOW
     return str(latency), C_BLUE
 
 
@@ -10784,7 +10784,7 @@ for idx, name in enumerate(sorted(providers.keys()), start=1):
             else:
                 latency_raw = '不可用'
 
-    model_txt = pad_text(str(model_count), MODEL_W)
+    model_txt = pad_text(f'模型{model_count}', MODEL_W)
     latency_txt, latency_color = latency_label_and_color(latency_raw)
     latency_txt = pad_text(latency_txt, LAT_W)
 
