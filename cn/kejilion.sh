@@ -11724,6 +11724,34 @@ PYTHON_EOF
 		[ -t 0 ] && [ -t 1 ]
 	}
 
+	openclaw_has_command() {
+		command -v "$1" >/dev/null 2>&1
+	}
+
+	openclaw_try_install_transfer_tool() {
+		local tool_name="$1"
+		openclaw_has_command "$tool_name" && return 0
+
+		echo "未检测到 $tool_name，正在尝试安装 lrzsz（提供 rz/sz）..."
+
+		if ! install lrzsz; then
+			if openclaw_has_command opkg; then
+				echo "lrzsz 安装失败，正在尝试安装 rzsz..."
+				opkg update && opkg install rzsz
+			else
+				echo "⚠️ 自动安装 lrzsz 失败。"
+			fi
+		fi
+
+		if openclaw_has_command "$tool_name"; then
+			echo "✅ 已启用 $tool_name"
+			return 0
+		fi
+
+		echo "⚠️ 自动安装完成后仍未找到 $tool_name"
+		return 1
+	}
+
 	openclaw_is_safe_relpath() {
 		local rel="$1"
 		[ -z "$rel" ] && return 1
@@ -11800,14 +11828,21 @@ EOF
 
 	openclaw_offer_transfer_hint() {
 		local file_path="$1"
-		if command -v sz >/dev/null 2>&1 && openclaw_is_interactive_terminal; then
-			echo "检测到交互终端与 sz，可选快速下载。"
-			read -e -p "是否使用 sz 发送备份文件？(y/N): " send_by_sz
-			if [[ "$send_by_sz" =~ ^[Yy]$ ]]; then
-				sz "$file_path"
-				return
+
+		if openclaw_is_interactive_terminal; then
+			if openclaw_try_install_transfer_tool "sz"; then
+				echo "正在通过 sz 发送备份文件，请在终端客户端确认接收..."
+				if sz "$file_path"; then
+					return 0
+				fi
+				echo "⚠️ sz 发送失败，可能是当前终端不支持 ZMODEM，改为路径下载方式。"
+			else
+				echo "⚠️ 当前环境未能启用 sz，改为路径下载方式。"
 			fi
+		else
+			echo "⚠️ 当前会话不是交互终端，无法直接使用 sz，改为路径下载方式。"
 		fi
+
 		echo "可使用以下方式下载备份文件："
 		echo "- 本地路径: $file_path"
 		echo "- scp 示例: scp root@你的服务器:$file_path ./"
@@ -11899,14 +11934,25 @@ EOF
 		local prompt_text="$1"
 		local file_path
 		echo "$prompt_text" >&2
-		if command -v rz >/dev/null 2>&1 && openclaw_is_interactive_terminal; then
-			echo "提示：检测到 rz，可输入 rz 后回车上传，再输入本机保存路径。" >&2
+
+		if openclaw_is_interactive_terminal; then
+			if openclaw_try_install_transfer_tool "rz"; then
+				echo "正在启用 rz 接收备份文件，请在终端客户端选择上传..." >&2
+				if rz; then
+					echo "✅ rz 接收已结束，请输入上传后的备份文件路径。" >&2
+				else
+					echo "⚠️ rz 接收失败，改为手动输入服务器上的备份文件路径。" >&2
+				fi
+			else
+				echo "⚠️ 当前环境未能启用 rz，改为手动输入服务器上的备份文件路径。" >&2
+			fi
+		else
+			echo "⚠️ 当前会话不是交互终端，无法直接使用 rz。" >&2
 		fi
+
+		echo "可先通过 scp/sftp 上传备份包到服务器，再输入路径。" >&2
+		echo "scp 示例: scp /本地/备份包.tar.gz root@你的服务器:/tmp/" >&2
 		read -e -p "请输入备份文件路径: " file_path
-		if [ "$file_path" = "rz" ] && command -v rz >/dev/null 2>&1 && openclaw_is_interactive_terminal; then
-			rz
-			read -e -p "上传完成，请输入备份文件路径: " file_path
-		fi
 		echo "$file_path"
 	}
 
