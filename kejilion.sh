@@ -11218,6 +11218,90 @@ PY
 	}
 
 
+		resolve_openclaw_plugin_id() {
+			local raw_input="$1"
+			local plugin_id="$raw_input"
+
+			plugin_id="${plugin_id#@openclaw/}"
+			if [[ "$plugin_id" == @*/* ]]; then
+				plugin_id="${plugin_id##*/}"
+			fi
+			plugin_id="${plugin_id%%@*}"
+			echo "$plugin_id"
+		}
+
+		sync_openclaw_plugin_allowlist() {
+			local plugin_id="$1"
+			[ -z "$plugin_id" ] && return 1
+
+			local home_config="${HOME}/.openclaw/openclaw.json"
+			local root_config="/root/.openclaw/openclaw.json"
+			local config_file="$home_config"
+			if [ ! -f "$home_config" ] && [ -f "$root_config" ]; then
+				config_file="$root_config"
+			fi
+
+			mkdir -p "$(dirname "$config_file")"
+			if [ ! -s "$config_file" ]; then
+				echo '{}' > "$config_file"
+			fi
+
+			if command -v jq >/dev/null 2>&1; then
+				local tmp_json
+				tmp_json=$(mktemp)
+				if jq --arg pid "$plugin_id" '
+					.plugins = (if (.plugins | type) == "object" then .plugins else {} end)
+					| .plugins.allow = (if (.plugins.allow | type) == "array" then .plugins.allow else [] end)
+					| if (.plugins.allow | index($pid)) == null then .plugins.allow += [$pid] else . end
+				' "$config_file" > "$tmp_json" 2>/dev/null && mv "$tmp_json" "$config_file"; then
+					echo "✅ 已同步 plugins.allow 白名单: $plugin_id"
+					return 0
+				fi
+				rm -f "$tmp_json"
+			fi
+
+			if command -v python3 >/dev/null 2>&1; then
+				if python3 - "$config_file" "$plugin_id" <<'PYTHON_EOF'
+import json
+import sys
+from pathlib import Path
+
+config_file = Path(sys.argv[1])
+plugin_id = sys.argv[2]
+
+try:
+    data = json.loads(config_file.read_text(encoding='utf-8')) if config_file.exists() else {}
+    if not isinstance(data, dict):
+        data = {}
+except Exception:
+    data = {}
+
+plugins = data.get('plugins')
+if not isinstance(plugins, dict):
+    plugins = {}
+
+a = plugins.get('allow')
+if not isinstance(a, list):
+    a = []
+
+if plugin_id not in a:
+    a.append(plugin_id)
+
+plugins['allow'] = a
+data['plugins'] = plugins
+config_file.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding='utf-8')
+PYTHON_EOF
+				then
+					echo "✅ 已同步 plugins.allow 白名单: $plugin_id"
+					return 0
+				fi
+			fi
+
+			echo "⚠️ 已安装插件，但同步 plugins.allow 失败，请手动检查: $config_file"
+			return 1
+		}
+
+
 
 
 		install_plugin() {
@@ -11257,7 +11341,7 @@ PY
 			[ -z "$raw_input" ] && continue
 
 			# 1. 自动处理：如果用户输入带 @openclaw/，提取纯 ID 方便路径检查
-			local plugin_id=$(echo "$raw_input" | sed 's|^@openclaw/||')
+			local plugin_id=$(resolve_openclaw_plugin_id "$raw_input")
 			local plugin_full="$raw_input"
 
 			echo "🔍 正在检查插件状态..."
@@ -11299,6 +11383,10 @@ PY
 					fi
 				fi
 			fi
+
+			echo "🔐 正在同步 plugins.allow 白名单..."
+			sync_openclaw_plugin_allowlist "$plugin_id"
+
 
 			echo "🔄 正在重启 OpenClaw 服务以加载新插件..."
 			start_gateway
