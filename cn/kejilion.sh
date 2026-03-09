@@ -12163,11 +12163,11 @@ EOF
 	openclaw_backup_detect_type() {
 		local file_name="$1"
 		if [[ "$file_name" == pre-import-* ]]; then
-			echo "回滚快照"
+			echo "导入前回滚快照"
 		elif [[ "$file_name" == openclaw-memory-full-* || "$file_name" == openclaw-project-* ]]; then
-			echo "正式备份"
+			echo "正式备份文件"
 		else
-			echo "其他文件"
+			echo "其他备份文件"
 		fi
 	}
 
@@ -12180,6 +12180,7 @@ EOF
 
 	openclaw_backup_render_file_list() {
 		local backup_root i file_name file_path file_type file_size file_time
+		local has_official=0 has_snapshot=0 has_other=0
 		backup_root=$(openclaw_backup_root)
 		openclaw_backup_collect_files
 
@@ -12189,15 +12190,56 @@ EOF
 			return 0
 		fi
 
-		echo "序号 | 类型     | 文件名 | 大小 | 修改时间"
 		for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
-			file_name="${OPENCLAW_BACKUP_FILES[$i]}"
-			file_path="$backup_root/$file_name"
-			file_type=$(openclaw_backup_detect_type "$file_name")
-			file_size=$(ls -lh "$file_path" | awk '{print $5}')
-			file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
-			printf "%2d.  [%-8s] %s | %s | %s\n" "$((i + 1))" "$file_type" "$file_name" "$file_size" "$file_time"
+			file_type=$(openclaw_backup_detect_type "${OPENCLAW_BACKUP_FILES[$i]}")
+			case "$file_type" in
+				"正式备份文件") has_official=1 ;;
+				"导入前回滚快照") has_snapshot=1 ;;
+				"其他备份文件") has_other=1 ;;
+			esac
 		done
+
+		if [ "$has_official" -eq 1 ]; then
+			echo "正式备份文件"
+			echo "序号 | 文件名 | 大小 | 修改时间"
+			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
+				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
+				file_type=$(openclaw_backup_detect_type "$file_name")
+				[ "$file_type" != "正式备份文件" ] && continue
+				file_path="$backup_root/$file_name"
+				file_size=$(ls -lh "$file_path" | awk '{print $5}')
+				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
+				printf "%2d.  %s | %s | %s\n" "$((i + 1))" "$file_name" "$file_size" "$file_time"
+			done
+		fi
+
+		if [ "$has_snapshot" -eq 1 ]; then
+			echo "导入前回滚快照"
+			echo "序号 | 文件名 | 大小 | 修改时间"
+			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
+				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
+				file_type=$(openclaw_backup_detect_type "$file_name")
+				[ "$file_type" != "导入前回滚快照" ] && continue
+				file_path="$backup_root/$file_name"
+				file_size=$(ls -lh "$file_path" | awk '{print $5}')
+				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
+				printf "%2d.  %s | %s | %s\n" "$((i + 1))" "$file_name" "$file_size" "$file_time"
+			done
+		fi
+
+		if [ "$has_other" -eq 1 ]; then
+			echo "其他备份文件"
+			echo "序号 | 文件名 | 大小 | 修改时间"
+			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
+				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
+				file_type=$(openclaw_backup_detect_type "$file_name")
+				[ "$file_type" != "其他备份文件" ] && continue
+				file_path="$backup_root/$file_name"
+				file_size=$(ls -lh "$file_path" | awk '{print $5}')
+				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
+				printf "%2d.  %s | %s | %s\n" "$((i + 1))" "$file_name" "$file_size" "$file_time"
+			done
+		fi
 	}
 
 	openclaw_backup_delete_file() {
