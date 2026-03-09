@@ -12161,12 +12161,93 @@ EOF
 		break_end
 	}
 
-	openclaw_backup_render_file_list() {
+	openclaw_backup_detect_type() {
+		local file_name="$1"
+		if [[ "$file_name" == pre-import-* ]]; then
+			echo "回滚快照"
+		elif [[ "$file_name" == openclaw-memory-full-* || "$file_name" == openclaw-project-* ]]; then
+			echo "正式备份"
+		else
+			echo "其他文件"
+		fi
+	}
+
+	openclaw_backup_collect_files() {
 		local backup_root
 		backup_root=$(openclaw_backup_root)
 		mkdir -p "$backup_root"
+		mapfile -t OPENCLAW_BACKUP_FILES < <(find "$backup_root" -maxdepth 1 -type f -name '*.tar.gz' -printf '%f\n' | sort -r)
+	}
+
+	openclaw_backup_render_file_list() {
+		local backup_root i file_name file_path file_type file_size file_time
+		backup_root=$(openclaw_backup_root)
+		openclaw_backup_collect_files
+
 		echo "备份目录: $backup_root"
-		ls -lh "$backup_root"/*.tar.gz 2>/dev/null || echo "暂无备份文件"
+		if [ ${#OPENCLAW_BACKUP_FILES[@]} -eq 0 ]; then
+			echo "暂无备份文件"
+			return 0
+		fi
+
+		echo "序号 | 类型     | 文件名 | 大小 | 修改时间"
+		for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
+			file_name="${OPENCLAW_BACKUP_FILES[$i]}"
+			file_path="$backup_root/$file_name"
+			file_type=$(openclaw_backup_detect_type "$file_name")
+			file_size=$(ls -lh "$file_path" | awk '{print $5}')
+			file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
+			printf "%2d.  [%-8s] %s | %s | %s\n" "$((i + 1))" "$file_type" "$file_name" "$file_size" "$file_time"
+		done
+	}
+
+	openclaw_backup_delete_file() {
+		send_stats "OpenClaw删除备份或快照"
+		local backup_root select_idx target_file target_path target_type
+		backup_root=$(openclaw_backup_root)
+
+		openclaw_backup_render_file_list
+		if [ ${#OPENCLAW_BACKUP_FILES[@]} -eq 0 ]; then
+			break_end
+			return 0
+		fi
+
+		read -e -p "请输入要删除的序号（0 取消）: " select_idx
+		if [ "$select_idx" = "0" ]; then
+			echo "已取消删除。"
+			break_end
+			return 0
+		fi
+		if ! [[ "$select_idx" =~ ^[0-9]+$ ]] || [ "$select_idx" -lt 1 ] || [ "$select_idx" -gt ${#OPENCLAW_BACKUP_FILES[@]} ]; then
+			echo "❌ 序号无效。"
+			break_end
+			return 1
+		fi
+
+		target_file="${OPENCLAW_BACKUP_FILES[$((select_idx - 1))]}"
+		target_path="$backup_root/$target_file"
+		target_type=$(openclaw_backup_detect_type "$target_file")
+
+		echo "即将删除: [$target_type] $target_file"
+		read -e -p "第一次确认：输入 yes 确认继续: " confirm_step1
+		if [ "$confirm_step1" != "yes" ]; then
+			echo "已取消删除。"
+			break_end
+			return 0
+		fi
+		read -e -p "二次确认：输入 DELETE 执行删除: " confirm_step2
+		if [ "$confirm_step2" != "DELETE" ]; then
+			echo "已取消删除。"
+			break_end
+			return 0
+		fi
+
+		if rm -f -- "$target_path"; then
+			echo "✅ 删除成功: $target_file"
+		else
+			echo "❌ 删除失败: $target_file"
+		fi
+		break_end
 	}
 
 	openclaw_backup_list_files() {
@@ -12187,6 +12268,7 @@ EOF
 			echo "2. 导入记忆全量"
 			echo "3. 导出 OpenClaw 项目（默认安全模式）"
 			echo "4. 导入 OpenClaw 项目（高级/高风险）"
+			echo "5. 删除备份或快照"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " backup_choice
@@ -12196,6 +12278,7 @@ EOF
 				2) openclaw_memory_backup_import ;;
 				3) openclaw_project_backup_export ;;
 				4) openclaw_project_backup_import ;;
+				5) openclaw_backup_delete_file ;;
 				0) return 0 ;;
 				*)
 					echo "无效的选择，请重试。"
