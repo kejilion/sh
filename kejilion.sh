@@ -11391,6 +11391,192 @@ PY
 
 
 
+	openclaw_json_get_bool() {
+		local expr="$1"
+		local config_file="${HOME}/.openclaw/openclaw.json"
+		if [ ! -s "$config_file" ]; then
+			echo "false"
+			return
+		fi
+		jq -r "$expr" "$config_file" 2>/dev/null || echo "false"
+	}
+
+	openclaw_channel_has_cfg() {
+		local channel="$1"
+		local config_file="${HOME}/.openclaw/openclaw.json"
+		if [ ! -s "$config_file" ]; then
+			echo "false"
+			return
+		fi
+		jq -r --arg c "$channel" '
+			(.channels[$c] // null) as $v
+			| if ($v | type) != "object" then
+				false
+			  else
+				([ $v
+				   | to_entries[]
+				   | select((.key == "enabled" or .key == "dmPolicy" or .key == "groupPolicy" or .key == "streaming") | not)
+				   | .value
+				   | select(. != null and . != "" and . != false)
+				 ] | length) > 0
+			  end
+		' "$config_file" 2>/dev/null || echo "false"
+	}
+
+	openclaw_dir_has_files() {
+		local dir="$1"
+		[ -d "$dir" ] && find "$dir" -type f -print -quit 2>/dev/null | grep -q .
+	}
+
+	openclaw_plugin_local_installed() {
+		local plugin="$1"
+		local config_file="${HOME}/.openclaw/openclaw.json"
+		if [ -s "$config_file" ] && jq -e --arg p "$plugin" '.plugins.installs[$p]' "$config_file" >/dev/null 2>&1; then
+			return 0
+		fi
+		[ -d "${HOME}/.openclaw/extensions/${plugin}" ] || [ -d "/usr/lib/node_modules/openclaw/extensions/${plugin}" ]
+	}
+
+	openclaw_bot_status_text() {
+		local enabled="$1"
+		local configured="$2"
+		local connected="$3"
+		local abnormal="$4"
+		if [ "$abnormal" = "true" ]; then
+			echo "异常"
+		elif [ "$enabled" != "true" ]; then
+			echo "未启用"
+		elif [ "$connected" = "true" ]; then
+			echo "已连接"
+		elif [ "$configured" = "true" ]; then
+			echo "已配置"
+		else
+			echo "未配置"
+		fi
+	}
+
+	openclaw_colorize_bot_status() {
+		local status="$1"
+		case "$status" in
+			已连接) echo -e "${gl_lv}${status}${gl_bai}" ;;
+			已配置) echo -e "${gl_huang}${status}${gl_bai}" ;;
+			异常) echo -e "${gl_hong}${status}${gl_bai}" ;;
+			*) echo "$status" ;;
+		esac
+	}
+
+	openclaw_print_bot_status_line() {
+		local label="$1"
+		local status="$2"
+		echo -e "- ${label}: $(openclaw_colorize_bot_status "$status")"
+	}
+
+	openclaw_show_bot_local_status_block() {
+		local config_file="${HOME}/.openclaw/openclaw.json"
+		local json_ok="false"
+		if [ -s "$config_file" ] && jq empty "$config_file" >/dev/null 2>&1; then
+			json_ok="true"
+		fi
+
+		local tg_enabled tg_cfg tg_connected tg_abnormal tg_status
+		tg_enabled=$(openclaw_json_get_bool '.channels.telegram.enabled // .plugins.entries.telegram.enabled // false')
+		tg_cfg=$(openclaw_channel_has_cfg "telegram")
+		tg_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/telegram"; then
+			tg_connected="true"
+		fi
+		tg_abnormal="false"
+		if [ "$tg_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			tg_abnormal="true"
+		fi
+		tg_status=$(openclaw_bot_status_text "$tg_enabled" "$tg_cfg" "$tg_connected" "$tg_abnormal")
+
+		local feishu_enabled feishu_cfg feishu_connected feishu_abnormal feishu_status
+		feishu_enabled=$(openclaw_json_get_bool '.plugins.entries.feishu.enabled // .channels.feishu.enabled // false')
+		feishu_cfg=$(openclaw_channel_has_cfg "feishu")
+		feishu_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/feishu"; then
+			feishu_connected="true"
+		fi
+		feishu_abnormal="false"
+		if [ "$feishu_enabled" = "true" ] && ! openclaw_plugin_local_installed "feishu"; then
+			feishu_abnormal="true"
+		fi
+		if [ "$feishu_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			feishu_abnormal="true"
+		fi
+		feishu_status=$(openclaw_bot_status_text "$feishu_enabled" "$feishu_cfg" "$feishu_connected" "$feishu_abnormal")
+
+		local wa_enabled wa_cfg wa_connected wa_abnormal wa_status
+		wa_enabled=$(openclaw_json_get_bool '.plugins.entries.whatsapp.enabled // .channels.whatsapp.enabled // false')
+		wa_cfg=$(openclaw_channel_has_cfg "whatsapp")
+		wa_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/whatsapp"; then
+			wa_connected="true"
+		fi
+		wa_abnormal="false"
+		if [ "$wa_enabled" = "true" ] && ! openclaw_plugin_local_installed "whatsapp"; then
+			wa_abnormal="true"
+		fi
+		if [ "$wa_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			wa_abnormal="true"
+		fi
+		wa_status=$(openclaw_bot_status_text "$wa_enabled" "$wa_cfg" "$wa_connected" "$wa_abnormal")
+
+		local dc_enabled dc_cfg dc_connected dc_abnormal dc_status
+		dc_enabled=$(openclaw_json_get_bool '.channels.discord.enabled // .plugins.entries.discord.enabled // false')
+		dc_cfg=$(openclaw_channel_has_cfg "discord")
+		dc_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/discord"; then
+			dc_connected="true"
+		fi
+		dc_abnormal="false"
+		if [ "$dc_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			dc_abnormal="true"
+		fi
+		dc_status=$(openclaw_bot_status_text "$dc_enabled" "$dc_cfg" "$dc_connected" "$dc_abnormal")
+
+		local slack_enabled slack_cfg slack_connected slack_abnormal slack_status
+		slack_enabled=$(openclaw_json_get_bool '.plugins.entries.slack.enabled // .channels.slack.enabled // false')
+		slack_cfg=$(openclaw_channel_has_cfg "slack")
+		slack_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/slack"; then
+			slack_connected="true"
+		fi
+		slack_abnormal="false"
+		if [ "$slack_enabled" = "true" ] && ! openclaw_plugin_local_installed "slack"; then
+			slack_abnormal="true"
+		fi
+		if [ "$slack_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			slack_abnormal="true"
+		fi
+		slack_status=$(openclaw_bot_status_text "$slack_enabled" "$slack_cfg" "$slack_connected" "$slack_abnormal")
+
+		local qq_enabled qq_cfg qq_connected qq_abnormal qq_status
+		qq_enabled=$(openclaw_json_get_bool '.plugins.entries.qqbot.enabled // .channels.qqbot.enabled // false')
+		qq_cfg=$(openclaw_channel_has_cfg "qqbot")
+		qq_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/qqbot/sessions" || openclaw_dir_has_files "${HOME}/.openclaw/qqbot/data"; then
+			qq_connected="true"
+		fi
+		qq_abnormal="false"
+		if [ "$qq_enabled" = "true" ] && ! openclaw_plugin_local_installed "qqbot"; then
+			qq_abnormal="true"
+		fi
+		if [ "$qq_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			qq_abnormal="true"
+		fi
+		qq_status=$(openclaw_bot_status_text "$qq_enabled" "$qq_cfg" "$qq_connected" "$qq_abnormal")
+
+		echo "本地状态（仅本机配置/缓存，不做网络探测）："
+		openclaw_print_bot_status_line "Telegram" "$tg_status"
+		openclaw_print_bot_status_line "飞书(Lark)" "$feishu_status"
+		openclaw_print_bot_status_line "WhatsApp" "$wa_status"
+		openclaw_print_bot_status_line "Discord" "$dc_status"
+		openclaw_print_bot_status_line "Slack" "$slack_status"
+		openclaw_print_bot_status_line "QQ Bot" "$qq_status"
+	}
+
 	change_tg_bot_code() {
 		send_stats "机器人对接"
 		while true; do
@@ -11398,6 +11584,8 @@ PY
 			echo "========================================"
 			echo "            机器人连接对接            "
 			echo "========================================"
+			openclaw_show_bot_local_status_block
+			echo "----------------------------------------"
 			echo "1. Telegram 机器人对接"
 			echo "2. 飞书 (Lark) 机器人对接"
 			echo "3. WhatsApp 机器人对接"
