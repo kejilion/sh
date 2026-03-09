@@ -10817,6 +10817,236 @@ EOF
 	PY
 	)
 	}
+
+sync-openclaw-provider-interactive() {
+	local config_file="${HOME}/.openclaw/openclaw.json"
+	send_stats "OpenClaw API按Provider同步"
+
+	if [ ! -f "$config_file" ]; then
+		echo "❌ 未找到配置文件: $config_file"
+		break_end
+		return 1
+	fi
+
+	read -erp "请输入要同步的 API 名称(provider): " provider_name
+	if [ -z "$provider_name" ]; then
+		echo "❌ provider 名称不能为空"
+		break_end
+		return 1
+	fi
+
+	install jq curl >/dev/null 2>&1
+
+	python3 - "$config_file" "$provider_name" <<'PY2'
+import copy
+import json
+import sys
+import time
+import urllib.request
+
+path = sys.argv[1]
+target = sys.argv[2]
+SUPPORTED_APIS = {'openai-completions', 'openai-responses', 'openai-chat-completions'}
+
+with open(path, 'r', encoding='utf-8') as f:
+    obj = json.load(f)
+
+work = copy.deepcopy(obj)
+models_cfg = work.setdefault('models', {})
+providers = models_cfg.get('providers', {})
+if not isinstance(providers, dict) or not providers:
+    print('❌ 未检测到 API providers，无法同步')
+    raise SystemExit(2)
+
+provider = providers.get(target)
+if not isinstance(provider, dict):
+    print(f'❌ 未找到 provider: {target}')
+    raise SystemExit(2)
+
+agents = work.setdefault('agents', {})
+defaults = agents.setdefault('defaults', {})
+defaults_models_raw = defaults.get('models')
+if isinstance(defaults_models_raw, dict):
+    defaults_models = defaults_models_raw
+elif isinstance(defaults_models_raw, list):
+    defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
+else:
+    defaults_models = {}
+defaults['models'] = defaults_models
+
+
+def model_ref(provider_name, model_id):
+    return f"{provider_name}/{model_id}"
+
+
+def get_primary_ref(defaults_obj):
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        return model_obj
+    if isinstance(model_obj, dict):
+        primary = model_obj.get('primary')
+        if isinstance(primary, str):
+            return primary
+    return None
+
+
+def set_primary_ref(defaults_obj, new_ref):
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        defaults_obj['model'] = new_ref
+    elif isinstance(model_obj, dict):
+        model_obj['primary'] = new_ref
+    else:
+        defaults_obj['model'] = {'primary': new_ref}
+
+
+def fetch_remote_models_with_retry(base_url, api_key, retries=3):
+    last_error = None
+    for attempt in range(1, retries + 1):
+        req = urllib.request.Request(
+            base_url.rstrip('/') + '/models',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'User-Agent': 'Mozilla/5.0',
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                payload = resp.read().decode('utf-8', 'ignore')
+            return json.loads(payload), None, attempt
+        except Exception as e:
+            last_error = e
+            if attempt < retries:
+                time.sleep(1)
+    return None, last_error, retries
+
+
+api = provider.get('api', '')
+base_url = provider.get('baseUrl')
+api_key = provider.get('apiKey')
+model_list = provider.get('models', [])
+
+if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
+    print(f'❌ provider {target} 缺少 baseUrl/apiKey/models，无法执行同步')
+    raise SystemExit(3)
+
+if api not in SUPPORTED_APIS:
+    print(f'❌ provider {target} 当前 api={api}，不支持直接 /models 同步')
+    raise SystemExit(3)
+
+data, err, attempts = fetch_remote_models_with_retry(base_url, api_key, retries=3)
+if err is not None:
+    print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
+    raise SystemExit(4)
+
+if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
+    print(f'❌ {target}: /models 返回结构不可识别')
+    raise SystemExit(4)
+
+remote_ids = []
+for item in data['data']:
+    if isinstance(item, dict) and item.get('id'):
+        remote_ids.append(str(item['id']))
+remote_set = set(remote_ids)
+if not remote_set:
+    print(f'❌ {target}: 上游 /models 为空，已中止同步')
+    raise SystemExit(5)
+
+local_models = [m for m in model_list if isinstance(m, dict) and m.get('id')]
+local_ids = [str(m['id']) for m in local_models]
+local_set = set(local_ids)
+
+template = copy.deepcopy(local_models[0]) if local_models else None
+if template is None:
+    print(f'❌ {target}: 本地 models 无有效模板模型，无法补全新增模型')
+    raise SystemExit(3)
+
+removed_ids = [mid for mid in local_ids if mid not in remote_set]
+added_ids = [mid for mid in remote_ids if mid not in local_set]
+
+kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
+new_models = kept_models[:]
+for mid in added_ids:
+    nm = copy.deepcopy(template)
+    nm['id'] = mid
+    if isinstance(nm.get('name'), str):
+        nm['name'] = f'{target} / {mid}'
+    new_models.append(nm)
+
+if not new_models:
+    print(f'❌ {target}: 同步后无可用模型，已中止写入')
+    raise SystemExit(5)
+
+expected_refs = {model_ref(target, str(m['id'])) for m in new_models if isinstance(m, dict) and m.get('id')}
+local_refs = {model_ref(target, mid) for mid in local_ids}
+removed_refs = local_refs - expected_refs
+first_ref = model_ref(target, str(new_models[0]['id']))
+
+changed = False
+primary_ref = get_primary_ref(defaults)
+if isinstance(primary_ref, str) and primary_ref in removed_refs:
+    set_primary_ref(defaults, first_ref)
+    changed = True
+    print(f'🔁 默认模型已兜底替换: {primary_ref} -> {first_ref}')
+
+for fk in ('modelFallback', 'imageModelFallback'):
+    val = defaults.get(fk)
+    if isinstance(val, str) and val in removed_refs:
+        defaults[fk] = first_ref
+        changed = True
+        print(f'🔁 {fk} 已兜底替换: {val} -> {first_ref}')
+
+stale_refs = [r for r in list(defaults_models.keys()) if r.startswith(target + '/') and r not in expected_refs]
+for r in stale_refs:
+    defaults_models.pop(r, None)
+    changed = True
+
+for r in sorted(expected_refs):
+    if r not in defaults_models:
+        defaults_models[r] = {}
+        changed = True
+
+if removed_ids or added_ids or len(local_models) != len(new_models):
+    provider['models'] = new_models
+    changed = True
+
+if changed:
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(work, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+
+print(f'✅ {target}: 删除 {len(removed_ids)} 个，新增 {len(added_ids)} 个，当前 {len(new_models)} 个')
+if changed:
+    print('✅ 指定 provider 模型一致性同步完成并已写入配置')
+else:
+    print('ℹ️ 无需同步：该 provider 配置已与上游 /models 保持一致')
+PY2
+	local rc=$?
+	case "$rc" in
+		0)
+			echo "✅ 同步执行完成"
+			start_gateway
+			;;
+		2)
+			echo "❌ 同步失败：provider 不存在或未配置"
+			;;
+		3)
+			echo "❌ 同步失败：provider 配置不完整或类型不支持"
+			;;
+		4)
+			echo "❌ 同步失败：上游 /models 请求失败"
+			;;
+		5)
+			echo "❌ 同步失败：上游模型为空或同步后无可用模型"
+			;;
+		*)
+			echo "❌ 同步失败：请检查配置文件结构或日志输出"
+			;;
+	esac
+
+	break_end
+}
+
 	delete-openclaw-provider-interactive() {
 		local config_file="${HOME}/.openclaw/openclaw.json"
 		send_stats "OpenClaw API删除入口"
@@ -10976,8 +11206,9 @@ PY
 			openclaw_api_manage_list
 			echo "---------------------------------------"
 			echo "1. 添加API"
-			echo "2. 删除API"
-			echo "0. 返回上一级"
+			echo "2. 同步API供应商模型列表"
+			echo "3. 删除API"
+			echo "0. 退出"
 			echo "---------------------------------------"
 			read -erp "请输入你的选择: " api_choice
 
@@ -10986,6 +11217,9 @@ PY
 					add-openclaw-provider-interactive
 					;;
 				2)
+					sync-openclaw-provider-interactive
+					;;
+				3)
 					delete-openclaw-provider-interactive
 					;;
 				0)
