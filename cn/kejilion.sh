@@ -10038,6 +10038,7 @@ PY
 import copy
 import json
 import sys
+import time
 import urllib.request
 
 path = sys.argv[1]
@@ -10095,7 +10096,115 @@ def set_primary_ref(defaults_obj, new_ref):
         defaults_obj['model'] = {'primary': new_ref}
 
 
-for name, provider in providers.items():
+def ref_provider(ref):
+    if not isinstance(ref, str) or '/' not in ref:
+        return None
+    return ref.split('/', 1)[0]
+
+
+def collect_available_refs(exclude_provider=None):
+    refs = []
+    if not isinstance(providers, dict):
+        return refs
+    for pname, p in providers.items():
+        if exclude_provider and pname == exclude_provider:
+            continue
+        if not isinstance(p, dict):
+            continue
+        for m in p.get('models', []) or []:
+            if isinstance(m, dict) and m.get('id'):
+                refs.append(model_ref(pname, str(m['id'])))
+    return refs
+
+
+def prompt_delete_provider(name):
+    prompt = f"⚠️ {name} /models 探测连续失败 3 次。是否删除该 API 供应商及其全部相关模型？[y/N]: "
+    try:
+        ans = input(prompt).strip().lower()
+    except EOFError:
+        return False
+    return ans in ('y', 'yes')
+
+
+def rebind_defaults_before_delete(name):
+    global changed
+
+    replacement = None
+
+    def get_replacement():
+        nonlocal replacement
+        if replacement is None:
+            candidates = collect_available_refs(exclude_provider=name)
+            replacement = candidates[0] if candidates else None
+        return replacement
+
+    primary_ref = get_primary_ref(defaults)
+    if ref_provider(primary_ref) == name:
+        repl = get_replacement()
+        if not repl:
+            summary.append(f'❌ {name}: 默认主模型指向该 provider，但无可用替代模型，已中止删除')
+            return False
+        set_primary_ref(defaults, repl)
+        changed = True
+        summary.append(f'🔁 删除前已切换默认主模型: {primary_ref} -> {repl}')
+
+    for fk in ('modelFallback', 'imageModelFallback'):
+        val = defaults.get(fk)
+        if ref_provider(val) == name:
+            repl = get_replacement()
+            if not repl:
+                summary.append(f'❌ {name}: {fk} 指向该 provider，但无可用替代模型，已中止删除')
+                return False
+            defaults[fk] = repl
+            changed = True
+            summary.append(f'🔁 删除前已切换 {fk}: {val} -> {repl}')
+
+    return True
+
+
+def delete_provider_and_refs(name):
+    global changed
+
+    if not rebind_defaults_before_delete(name):
+        return False
+
+    removed_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/')]
+    for r in removed_refs:
+        defaults_models.pop(r, None)
+    if removed_refs:
+        changed = True
+
+    if name in providers:
+        providers.pop(name, None)
+        changed = True
+
+    summary.append(f'🗑️ 已删除 provider {name}，并移除 defaults.models 下 {len(removed_refs)} 个模型引用')
+    return True
+
+
+def fetch_remote_models_with_retry(name, base_url, api_key, retries=3):
+    last_error = None
+    for attempt in range(1, retries + 1):
+        req = urllib.request.Request(
+            base_url.rstrip('/') + '/models',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'User-Agent': 'Mozilla/5.0',
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                payload = resp.read().decode('utf-8', 'ignore')
+            data = json.loads(payload)
+            return data, None, attempt
+        except Exception as e:
+            last_error = e
+            if attempt < retries:
+                time.sleep(1)
+    return None, last_error, retries
+
+
+for name, provider in list(providers.items()):
     if not isinstance(provider, dict):
         summary.append(f'ℹ️ 跳过 {name}: provider 结构非法')
         continue
@@ -10113,20 +10222,19 @@ for name, provider in providers.items():
         summary.append(f'ℹ️ 跳过 {name}: 不支持直接 /models 校验 (api={api})')
         continue
 
-    req = urllib.request.Request(
-        base_url.rstrip('/') + '/models',
-        headers={
-            'Authorization': f'Bearer {api_key}',
-            'User-Agent': 'Mozilla/5.0',
-        },
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            data = json.loads(resp.read().decode('utf-8', 'ignore'))
-    except Exception as e:
-        summary.append(f'⚠️ 跳过 {name}: 探测失败 ({type(e).__name__}: {e})')
+    data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
+    if err is not None:
+        summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
+        if prompt_delete_provider(name):
+            deleted = delete_provider_and_refs(name)
+            if deleted:
+                summary.append(f'✅ {name}: 用户已确认删除该 provider 及全部相关模型引用')
+        else:
+            summary.append(f'ℹ️ {name}: 用户未确认删除，保留现有 provider 配置')
         continue
+
+    if attempts > 1:
+        summary.append(f'🔁 {name}: /models 第 {attempts} 次重试后成功')
 
     if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
         summary.append(f'⚠️ 跳过 {name}: /models 返回结构不可识别')
@@ -10226,6 +10334,7 @@ else:
     print('ℹ️ 无需同步：配置已与上游 /models 保持一致')
 PY
 	}
+
 
 
 	install_moltbot() {
