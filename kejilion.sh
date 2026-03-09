@@ -12113,12 +12113,16 @@ EOF
 		break_end
 	}
 
-	openclaw_backup_list_files() {
+	openclaw_backup_render_file_list() {
 		local backup_root
 		backup_root=$(openclaw_backup_root)
 		mkdir -p "$backup_root"
 		echo "备份目录: $backup_root"
 		ls -lh "$backup_root"/*.tar.gz 2>/dev/null || echo "暂无备份文件"
+	}
+
+	openclaw_backup_list_files() {
+		openclaw_backup_render_file_list
 		break_end
 	}
 
@@ -12129,11 +12133,12 @@ EOF
 			echo "======================================="
 			echo "OpenClaw 备份与还原"
 			echo "======================================="
+			openclaw_backup_render_file_list
+			echo "---------------------------------------"
 			echo "1. 导出记忆全量"
 			echo "2. 导入记忆全量"
 			echo "3. 导出 OpenClaw 项目（默认安全模式）"
 			echo "4. 导入 OpenClaw 项目（高级/高风险）"
-			echo "5. 查看备份文件"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " backup_choice
@@ -12143,7 +12148,6 @@ EOF
 				2) openclaw_memory_backup_import ;;
 				3) openclaw_project_backup_export ;;
 				4) openclaw_project_backup_import ;;
-				5) openclaw_backup_list_files ;;
 				0) return 0 ;;
 				*)
 					echo "无效的选择，请重试。"
