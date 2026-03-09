@@ -11738,6 +11738,8 @@ PYTHON_EOF
 			if openclaw_has_command opkg; then
 				echo "lrzsz 安装失败，正在尝试安装 rzsz..."
 				opkg update && opkg install rzsz
+			elif openclaw_has_command apk; then
+				echo "⚠️ 当前系统仓库无可用的 rz/sz（lrzsz/rzsz）包，将直接回退到路径导入/导出。"
 			else
 				echo "⚠️ 自动安装 lrzsz 失败。"
 			fi
