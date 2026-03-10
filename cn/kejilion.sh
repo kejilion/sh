@@ -11728,31 +11728,6 @@ PYTHON_EOF
 		command -v "$1" >/dev/null 2>&1
 	}
 
-	openclaw_try_install_transfer_tool() {
-		local tool_name="$1"
-		openclaw_has_command "$tool_name" && return 0
-
-		echo "未检测到 $tool_name，正在尝试安装 lrzsz（提供 rz/sz）..."
-
-		if ! install lrzsz; then
-			if openclaw_has_command opkg; then
-				echo "lrzsz 安装失败，正在尝试安装 rzsz..."
-				opkg update && opkg install rzsz
-			elif openclaw_has_command apk; then
-				echo "⚠️ 当前系统仓库无可用的 rz/sz（lrzsz/rzsz）包，将直接回退到路径导入/导出。"
-			else
-				echo "⚠️ 自动安装 lrzsz 失败。"
-			fi
-		fi
-
-		if openclaw_has_command "$tool_name"; then
-			echo "✅ 已启用 $tool_name"
-			return 0
-		fi
-
-		echo "⚠️ 自动安装完成后仍未找到 $tool_name"
-		return 1
-	}
 
 	openclaw_is_safe_relpath() {
 		local rel="$1"
@@ -11831,18 +11806,9 @@ EOF
 	openclaw_offer_transfer_hint() {
 		local file_path="$1"
 
-		if openclaw_is_interactive_terminal; then
-			if openclaw_try_install_transfer_tool "sz"; then
-				echo "正在通过 sz 发送备份文件，请在终端客户端确认接收..."
-				if sz "$file_path"; then
-					return 0
-				fi
-				echo "⚠️ sz 发送失败，可能是当前终端不支持 ZMODEM，改为路径下载方式。"
-			else
-				echo "⚠️ 当前环境未能启用 sz，改为路径下载方式。"
-			fi
-		else
-			echo "⚠️ 当前会话不是交互终端，无法直接使用 sz，改为路径下载方式。"
+		if openclaw_is_interactive_terminal && openclaw_has_command "sz"; then
+			echo "检测到 sz，可在当前终端自行执行以下命令下载："
+			echo "sz \"$file_path\""
 		fi
 
 		echo "可使用以下方式下载备份文件："
@@ -11937,19 +11903,8 @@ EOF
 		local file_path
 		echo "$prompt_text" >&2
 
-		if openclaw_is_interactive_terminal; then
-			if openclaw_try_install_transfer_tool "rz"; then
-				echo "正在启用 rz 接收备份文件，请在终端客户端选择上传..." >&2
-				if rz; then
-					echo "✅ rz 接收已结束，请输入上传后的备份文件路径。" >&2
-				else
-					echo "⚠️ rz 接收失败，改为手动输入服务器上的备份文件路径。" >&2
-				fi
-			else
-				echo "⚠️ 当前环境未能启用 rz，改为手动输入服务器上的备份文件路径。" >&2
-			fi
-		else
-			echo "⚠️ 当前会话不是交互终端，无法直接使用 rz。" >&2
+		if openclaw_is_interactive_terminal && openclaw_has_command "rz"; then
+			echo "检测到 rz，可在当前终端自行执行 rz 上传备份包；上传完成后再输入服务器上的文件路径。" >&2
 		fi
 
 		echo "可先通过 scp/sftp 上传备份包到服务器，再输入路径。" >&2
@@ -12202,7 +12157,6 @@ EOF
 
 		if [ "$has_official" -eq 1 ]; then
 			echo "正式备份文件"
-			echo "文件名 | 大小 | 修改时间"
 			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
 				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
 				file_type=$(openclaw_backup_detect_type "$file_name")
@@ -12216,7 +12170,6 @@ EOF
 
 		if [ "$has_snapshot" -eq 1 ]; then
 			echo "导入前回滚快照"
-			echo "文件名 | 大小 | 修改时间"
 			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
 				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
 				file_type=$(openclaw_backup_detect_type "$file_name")
@@ -12230,7 +12183,6 @@ EOF
 
 		if [ "$has_other" -eq 1 ]; then
 			echo "其他备份文件"
-			echo "文件名 | 大小 | 修改时间"
 			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
 				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
 				file_type=$(openclaw_backup_detect_type "$file_name")
