@@ -12103,8 +12103,10 @@ EOF
 
 	openclaw_backup_detect_type() {
 		local file_name="$1"
-		if [[ "$file_name" == openclaw-memory-full-* || "$file_name" == openclaw-project-* ]]; then
-			echo "正式备份文件"
+		if [[ "$file_name" == openclaw-memory-full-*.tar.gz ]]; then
+			echo "记忆备份文件"
+		elif [[ "$file_name" == openclaw-project-*.tar.gz ]]; then
+			echo "项目备份文件"
 		else
 			echo "其他备份文件"
 		fi
@@ -12120,7 +12122,7 @@ EOF
 
 	openclaw_backup_render_file_list() {
 		local backup_root i file_name file_path file_type file_size file_time
-		local has_official=0 has_other=0
+		local has_memory=0 has_project=0 has_other=0
 		backup_root=$(openclaw_backup_root)
 		openclaw_backup_collect_files
 
@@ -12133,17 +12135,31 @@ EOF
 		for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
 			file_type=$(openclaw_backup_detect_type "${OPENCLAW_BACKUP_FILES[$i]}")
 			case "$file_type" in
-				"正式备份文件") has_official=1 ;;
+				"记忆备份文件") has_memory=1 ;;
+				"项目备份文件") has_project=1 ;;
 				"其他备份文件") has_other=1 ;;
 			esac
 		done
 
-		if [ "$has_official" -eq 1 ]; then
-			echo "正式备份文件"
+		if [ "$has_memory" -eq 1 ]; then
+			echo "记忆备份文件"
 			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
 				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
 				file_type=$(openclaw_backup_detect_type "$file_name")
-				[ "$file_type" != "正式备份文件" ] && continue
+				[ "$file_type" != "记忆备份文件" ] && continue
+				file_path="$backup_root/$file_name"
+				file_size=$(ls -lh "$file_path" | awk '{print $5}')
+				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
+				printf "%s | %s | %s\n" "$file_name" "$file_size" "$file_time"
+			done
+		fi
+
+		if [ "$has_project" -eq 1 ]; then
+			echo "项目备份文件"
+			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
+				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
+				file_type=$(openclaw_backup_detect_type "$file_name")
+				[ "$file_type" != "项目备份文件" ] && continue
 				file_path="$backup_root/$file_name"
 				file_size=$(ls -lh "$file_path" | awk '{print $5}')
 				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
