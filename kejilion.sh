@@ -12179,6 +12179,7 @@ EOF
 		mapfile -t OPENCLAW_BACKUP_FILES < <(find "$backup_root" -maxdepth 1 -type f -name '*.tar.gz' -printf '%f\n' | sort -r)
 	}
 
+
 	openclaw_backup_render_file_list() {
 		local backup_root i file_name file_path file_type file_size file_time
 		local has_official=0 has_snapshot=0 has_other=0
@@ -12202,7 +12203,7 @@ EOF
 
 		if [ "$has_official" -eq 1 ]; then
 			echo "正式备份文件"
-			echo "序号 | 文件名 | 大小 | 修改时间"
+			echo "文件名 | 大小 | 修改时间"
 			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
 				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
 				file_type=$(openclaw_backup_detect_type "$file_name")
@@ -12210,13 +12211,13 @@ EOF
 				file_path="$backup_root/$file_name"
 				file_size=$(ls -lh "$file_path" | awk '{print $5}')
 				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
-				printf "%2d.  %s | %s | %s\n" "$((i + 1))" "$file_name" "$file_size" "$file_time"
+				printf "%s | %s | %s\n" "$file_name" "$file_size" "$file_time"
 			done
 		fi
 
 		if [ "$has_snapshot" -eq 1 ]; then
 			echo "导入前回滚快照"
-			echo "序号 | 文件名 | 大小 | 修改时间"
+			echo "文件名 | 大小 | 修改时间"
 			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
 				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
 				file_type=$(openclaw_backup_detect_type "$file_name")
@@ -12224,13 +12225,13 @@ EOF
 				file_path="$backup_root/$file_name"
 				file_size=$(ls -lh "$file_path" | awk '{print $5}')
 				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
-				printf "%2d.  %s | %s | %s\n" "$((i + 1))" "$file_name" "$file_size" "$file_time"
+				printf "%s | %s | %s\n" "$file_name" "$file_size" "$file_time"
 			done
 		fi
 
 		if [ "$has_other" -eq 1 ]; then
 			echo "其他备份文件"
-			echo "序号 | 文件名 | 大小 | 修改时间"
+			echo "文件名 | 大小 | 修改时间"
 			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
 				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
 				file_type=$(openclaw_backup_detect_type "$file_name")
@@ -12238,14 +12239,23 @@ EOF
 				file_path="$backup_root/$file_name"
 				file_size=$(ls -lh "$file_path" | awk '{print $5}')
 				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
-				printf "%2d.  %s | %s | %s\n" "$((i + 1))" "$file_name" "$file_size" "$file_time"
+				printf "%s | %s | %s\n" "$file_name" "$file_size" "$file_time"
 			done
 		fi
 	}
 
+	openclaw_backup_file_exists_in_list() {
+		local target_file="$1"
+		local item
+		for item in "${OPENCLAW_BACKUP_FILES[@]}"; do
+			[ "$item" = "$target_file" ] && return 0
+		done
+		return 1
+	}
+
 	openclaw_backup_delete_file() {
 		send_stats "OpenClaw删除备份或快照"
-		local backup_root select_idx target_file target_path target_type
+		local backup_root backup_root_real user_input target_file target_path target_type
 		backup_root=$(openclaw_backup_root)
 
 		openclaw_backup_render_file_list
@@ -12254,23 +12264,50 @@ EOF
 			return 0
 		fi
 
-		read -e -p "请输入要删除的序号（0 取消）: " select_idx
-		if [ "$select_idx" = "0" ]; then
+		read -e -p "请输入要删除的文件名或完整路径（0 取消）: " user_input
+		if [ "$user_input" = "0" ]; then
 			echo "已取消删除。"
 			break_end
 			return 0
 		fi
-		if ! [[ "$select_idx" =~ ^[0-9]+$ ]] || [ "$select_idx" -lt 1 ] || [ "$select_idx" -gt ${#OPENCLAW_BACKUP_FILES[@]} ]; then
-			echo "❌ 序号无效。"
+		if [ -z "$user_input" ]; then
+			echo "❌ 输入不能为空。"
 			break_end
 			return 1
 		fi
 
-		target_file="${OPENCLAW_BACKUP_FILES[$((select_idx - 1))]}"
-		target_path="$backup_root/$target_file"
+		backup_root_real=$(realpath -m "$backup_root")
+		if [[ "$user_input" == /* ]]; then
+			target_path=$(realpath -m "$user_input")
+			case "$target_path" in
+				"$backup_root_real"/*) ;;
+				*)
+					echo "❌ 路径越界：仅允许删除备份根目录内的文件。"
+					break_end
+					return 1
+					;;
+			esac
+			target_file=$(basename "$target_path")
+		else
+			target_file=$(basename -- "$user_input")
+			target_path="$backup_root/$target_file"
+		fi
+
+		if [ ! -f "$target_path" ]; then
+			echo "❌ 目标文件不存在: $target_path"
+			break_end
+			return 1
+		fi
+
+		if ! openclaw_backup_file_exists_in_list "$target_file"; then
+			echo "❌ 目标文件不在当前备份列表中。"
+			break_end
+			return 1
+		fi
+
 		target_type=$(openclaw_backup_detect_type "$target_file")
 
-		echo "即将删除: [$target_type] $target_file"
+		echo "即将删除: [$target_type] $target_path"
 		read -e -p "第一次确认：输入 yes 确认继续: " confirm_step1
 		if [ "$confirm_step1" != "yes" ]; then
 			echo "已取消删除。"
