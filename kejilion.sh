@@ -11938,7 +11938,7 @@ EOF
 		mkdir -p "$workspace_dir"
 
 		local archive_path
-		archive_path=$(openclaw_read_import_path "还原前将执行：类型校验 + sha256 校验 + 路径白名单校验 + 快照")
+		archive_path=$(openclaw_read_import_path "还原前将执行：类型校验 + sha256 校验 + 路径白名单校验")
 		[ -z "$archive_path" ] && { echo "❌ 未输入备份路径"; break_end; return 1; }
 
 		local tmp_unpack
@@ -11967,18 +11967,6 @@ EOF
 			return 1
 		fi
 
-		local backup_root
-		backup_root=$(openclaw_backup_root)
-		mkdir -p "$backup_root"
-		local snapshot_file="$backup_root/pre-import-memory-$(date +%Y%m%d-%H%M%S).tar.gz"
-		local snapshot_targets=()
-		while IFS= read -r rel; do
-			[ -e "$workspace_dir/$rel" ] && snapshot_targets+=("$rel")
-		done < "$valid_list"
-		if [ ${#snapshot_targets[@]} -gt 0 ]; then
-			( cd "$workspace_dir" && tar -czf "$snapshot_file" "${snapshot_targets[@]}" )
-			echo "🧷 已创建导入前快照: $snapshot_file"
-		fi
 
 		while IFS= read -r rel; do
 			mkdir -p "$workspace_dir/$(dirname "$rel")"
@@ -12059,7 +12047,7 @@ EOF
 		mkdir -p "$openclaw_root"
 
 		echo "⚠️ 高风险操作：项目还原会覆盖 OpenClaw 配置与工作区内容。"
-		echo "⚠️ 还原前将执行快照、manifest/sha256 校验、白名单恢复、gateway 停启与健康检查。"
+		echo "⚠️ 还原前将执行 manifest/sha256 校验、白名单恢复、gateway 停启与健康检查。"
 		read -e -p "请输入确认词【我已知晓高风险并继续还原】后继续: " confirm_text
 		if [ "$confirm_text" != "我已知晓高风险并继续还原" ]; then
 			echo "❌ 确认词不匹配，已取消还原"
@@ -12097,18 +12085,6 @@ EOF
 			return 1
 		fi
 
-		local backup_root
-		backup_root=$(openclaw_backup_root)
-		mkdir -p "$backup_root"
-		local snapshot_file="$backup_root/pre-import-project-$(date +%Y%m%d-%H%M%S).tar.gz"
-		local snapshot_targets=()
-		while IFS= read -r rel; do
-			[ -e "$openclaw_root/$rel" ] && snapshot_targets+=("$rel")
-		done < "$valid_list"
-		if [ ${#snapshot_targets[@]} -gt 0 ]; then
-			( cd "$openclaw_root" && tar -czf "$snapshot_file" "${snapshot_targets[@]}" )
-			echo "🧷 已创建导入前快照: $snapshot_file"
-		fi
 
 		if command -v openclaw >/dev/null 2>&1; then
 			echo "⏸️ 还原前停止 OpenClaw gateway..."
@@ -12136,9 +12112,7 @@ EOF
 
 	openclaw_backup_detect_type() {
 		local file_name="$1"
-		if [[ "$file_name" == pre-import-* ]]; then
-			echo "导入前回滚快照"
-		elif [[ "$file_name" == openclaw-memory-full-* || "$file_name" == openclaw-project-* ]]; then
+		if [[ "$file_name" == openclaw-memory-full-* || "$file_name" == openclaw-project-* ]]; then
 			echo "正式备份文件"
 		else
 			echo "其他备份文件"
@@ -12155,7 +12129,7 @@ EOF
 
 	openclaw_backup_render_file_list() {
 		local backup_root i file_name file_path file_type file_size file_time
-		local has_official=0 has_snapshot=0 has_other=0
+		local has_official=0 has_other=0
 		backup_root=$(openclaw_backup_root)
 		openclaw_backup_collect_files
 
@@ -12169,7 +12143,6 @@ EOF
 			file_type=$(openclaw_backup_detect_type "${OPENCLAW_BACKUP_FILES[$i]}")
 			case "$file_type" in
 				"正式备份文件") has_official=1 ;;
-				"导入前回滚快照") has_snapshot=1 ;;
 				"其他备份文件") has_other=1 ;;
 			esac
 		done
@@ -12180,19 +12153,6 @@ EOF
 				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
 				file_type=$(openclaw_backup_detect_type "$file_name")
 				[ "$file_type" != "正式备份文件" ] && continue
-				file_path="$backup_root/$file_name"
-				file_size=$(ls -lh "$file_path" | awk '{print $5}')
-				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
-				printf "%s | %s | %s\n" "$file_name" "$file_size" "$file_time"
-			done
-		fi
-
-		if [ "$has_snapshot" -eq 1 ]; then
-			echo "导入前回滚快照"
-			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
-				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
-				file_type=$(openclaw_backup_detect_type "$file_name")
-				[ "$file_type" != "导入前回滚快照" ] && continue
 				file_path="$backup_root/$file_name"
 				file_size=$(ls -lh "$file_path" | awk '{print $5}')
 				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
@@ -12224,7 +12184,7 @@ EOF
 	}
 
 	openclaw_backup_delete_file() {
-		send_stats "OpenClaw删除备份或快照"
+		send_stats "OpenClaw删除备份文件"
 		local backup_root backup_root_real user_input target_file target_path target_type
 		backup_root=$(openclaw_backup_root)
 
@@ -12317,7 +12277,7 @@ EOF
 			echo "2. 还原记忆全量"
 			echo "3. 备份 OpenClaw 项目（默认安全模式）"
 			echo "4. 还原 OpenClaw 项目（高级/高风险）"
-			echo "5. 删除备份或快照"
+			echo "5. 删除备份文件"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " backup_choice
