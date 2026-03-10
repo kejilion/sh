@@ -11756,7 +11756,7 @@ PYTHON_EOF
 				;;
 			project)
 				case "$rel" in
-					openclaw.json|workspace/*|extensions/*|skills/*|prompts/*|tools/*) return 0 ;;
+					openclaw.json|workspace/*|extensions/*|skills/*|prompts/*|tools/*|telegram/*|feishu/*|whatsapp/*|discord/*|slack/*|qqbot/*|logs/*) return 0 ;;
 					*) return 1 ;;
 				esac
 				;;
@@ -11995,10 +11995,7 @@ EOF
 			done
 			[ -f "$openclaw_root/openclaw.json" ] && cp -a "$openclaw_root/openclaw.json" "$tmp_payload/"
 			for d in telegram feishu whatsapp discord slack qqbot logs; do
-				if [ -e "$openclaw_root/$d" ]; then
-					mkdir -p "$tmp_payload/full-extra"
-					cp -a "$openclaw_root/$d" "$tmp_payload/full-extra/"
-				fi
+				[ -e "$openclaw_root/$d" ] && cp -a "$openclaw_root/$d" "$tmp_payload/"
 			done
 		else
 			[ -d "$openclaw_root/workspace" ] && cp -a "$openclaw_root/workspace" "$tmp_payload/"
