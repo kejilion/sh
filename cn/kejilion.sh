@@ -6883,6 +6883,19 @@ kj_ssh_read_password() {
 	done
 }
 
+kj_ssh_read_port() {
+	local port_prompt="$1"
+	local default_port="${2:-22}"
+	while true; do
+		read -e -p "$port_prompt" KJ_SSH_PORT
+		KJ_SSH_PORT=${KJ_SSH_PORT:-$default_port}
+		if kj_ssh_validate_port "$KJ_SSH_PORT"; then
+			return 0
+		fi
+		echo "错误: 端口必须是 1-65535 之间的数字。"
+	done
+}
+
 # 显示连接列表
 list_connections() {
 	echo "已保存的连接:"
@@ -7250,14 +7263,8 @@ add_task() {
 		fi
 	done
 
-	while true; do
-		read -e -p "请输入 SSH 端口 (默认 22): " port
-		port=${port:-22}
-		if kj_ssh_validate_port "$port"; then
-			break
-		fi
-		echo "错误: 端口必须是 1-65535 之间的数字。"
-	done
+	kj_ssh_read_port "请输入 SSH 端口 (默认 22): " "22"
+	port="$KJ_SSH_PORT"
 
 	if ! kj_ssh_read_auth "$KEY_DIR/${name}_sync.key"; then
 		return
