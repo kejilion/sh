@@ -11846,14 +11846,14 @@ EOF
 		(
 			cd "$pkg_dir/payload" || exit 1
 			sha256sum -c ../manifest.sha256 >/dev/null
-		) || { echo "❌ sha256 校验失败，拒绝导入"; return 1; }
+		) || { echo "❌ sha256 校验失败，拒绝还原"; return 1; }
 
 		echo "$pkg_dir"
 		return 0
 	}
 
 	openclaw_memory_backup_export() {
-		send_stats "OpenClaw记忆全量导出"
+		send_stats "OpenClaw记忆全量备份"
 		local workspace_dir="${HOME}/.openclaw/workspace"
 		local backup_root
 		backup_root=$(openclaw_backup_root)
@@ -11882,17 +11882,17 @@ EOF
 		fi
 
 		if ! find "$tmp_payload" -mindepth 1 -print -quit | grep -q .; then
-			echo "❌ 未找到可导出的记忆文件"
+			echo "❌ 未找到可备份的记忆文件"
 			rm -rf "$tmp_payload"
 			break_end
 			return 1
 		fi
 
 		if openclaw_pack_backup_archive "memory-full" "default" "$tmp_payload" "$out_file"; then
-			echo "✅ 记忆备份导出完成: $out_file"
+			echo "✅ 记忆全量备份完成: $out_file"
 			openclaw_offer_transfer_hint "$out_file"
 		else
-			echo "❌ 记忆备份导出失败"
+			echo "❌ 记忆全量备份失败"
 		fi
 
 		rm -rf "$tmp_payload"
@@ -11901,7 +11901,7 @@ EOF
 
 	openclaw_read_import_path() {
 		local prompt_text="$1"
-		local file_path
+		local file_input file_path backup_root
 		echo "$prompt_text" >&2
 
 		if openclaw_is_interactive_terminal && openclaw_has_command "rz"; then
@@ -11910,17 +11910,35 @@ EOF
 
 		echo "可先通过 scp/sftp 上传备份包到服务器，再输入路径。" >&2
 		echo "scp 示例: scp /本地/备份包.tar.gz root@你的服务器:/tmp/" >&2
-		read -e -p "请输入备份文件路径: " file_path
+		echo "提示：输入文件名时默认在备份目录查找；输入含 / 的路径时按完整路径校验。" >&2
+		read -e -p "请输入备份文件名或路径: " file_input
+		[ -z "$file_input" ] && { echo ""; return 0; }
+
+		backup_root=$(openclaw_backup_root)
+		mkdir -p "$backup_root"
+
+		if [[ "$file_input" == */* ]]; then
+			file_path="$file_input"
+		else
+			file_path="$backup_root/$file_input"
+		fi
+
+		if [ ! -f "$file_path" ]; then
+			echo "❌ 备份文件不存在: $file_path" >&2
+			echo ""
+			return 1
+		fi
+
 		echo "$file_path"
 	}
 
 	openclaw_memory_backup_import() {
-		send_stats "OpenClaw记忆全量导入"
+		send_stats "OpenClaw记忆全量还原"
 		local workspace_dir="${HOME}/.openclaw/workspace"
 		mkdir -p "$workspace_dir"
 
 		local archive_path
-		archive_path=$(openclaw_read_import_path "导入前将执行：类型校验 + sha256 校验 + 路径白名单校验 + 快照")
+		archive_path=$(openclaw_read_import_path "还原前将执行：类型校验 + sha256 校验 + 路径白名单校验 + 快照")
 		[ -z "$archive_path" ] && { echo "❌ 未输入备份路径"; break_end; return 1; }
 
 		local tmp_unpack
@@ -11944,7 +11962,7 @@ EOF
 		if [ "$invalid" -ne 0 ]; then
 			rm -f "$valid_list"
 			rm -rf "$tmp_unpack"
-			echo "❌ 导入中止：存在不安全路径"
+			echo "❌ 还原中止：存在不安全路径"
 			break_end
 			return 1
 		fi
@@ -11969,12 +11987,12 @@ EOF
 
 		rm -f "$valid_list"
 		rm -rf "$tmp_unpack"
-		echo "✅ 记忆全量导入完成"
+		echo "✅ 记忆全量还原完成"
 		break_end
 	}
 
 	openclaw_project_backup_export() {
-		send_stats "OpenClaw项目导出"
+		send_stats "OpenClaw项目备份"
 		local openclaw_root="${HOME}/.openclaw"
 		if [ ! -d "$openclaw_root" ]; then
 			echo "❌ 未找到 OpenClaw 根目录: $openclaw_root"
@@ -11982,10 +12000,10 @@ EOF
 			return 1
 		fi
 
-		echo "导出模式："
+		echo "备份模式："
 		echo "1. 安全模式（默认，推荐）：workspace + openclaw.json + extensions/skills/prompts/tools（如存在）"
 		echo "2. 完整模式（含更多状态，敏感风险更高）"
-		read -e -p "请选择导出模式（默认 1）: " export_mode
+		read -e -p "请选择备份模式（默认 1）: " export_mode
 		[ -z "$export_mode" ] && export_mode="1"
 
 		local mode_label="safe"
@@ -12013,7 +12031,7 @@ EOF
 		fi
 
 		if ! find "$tmp_payload" -mindepth 1 -print -quit | grep -q .; then
-			echo "❌ 未找到可导出的 OpenClaw 项目内容"
+			echo "❌ 未找到可备份的 OpenClaw 项目内容"
 			rm -rf "$tmp_payload"
 			break_end
 			return 1
@@ -12025,10 +12043,10 @@ EOF
 		local out_file="$backup_root/openclaw-project-${mode_label}-$(date +%Y%m%d-%H%M%S).tar.gz"
 
 		if openclaw_pack_backup_archive "openclaw-project" "$mode_label" "$tmp_payload" "$out_file"; then
-			echo "✅ OpenClaw 项目导出完成 (${mode_label}): $out_file"
+			echo "✅ OpenClaw 项目备份完成 (${mode_label}): $out_file"
 			openclaw_offer_transfer_hint "$out_file"
 		else
-			echo "❌ OpenClaw 项目导出失败"
+			echo "❌ OpenClaw 项目备份失败"
 		fi
 
 		rm -rf "$tmp_payload"
@@ -12036,15 +12054,15 @@ EOF
 	}
 
 	openclaw_project_backup_import() {
-		send_stats "OpenClaw项目导入"
+		send_stats "OpenClaw项目还原"
 		local openclaw_root="${HOME}/.openclaw"
 		mkdir -p "$openclaw_root"
 
-		echo "⚠️ 高风险操作：项目导入会覆盖 OpenClaw 配置与工作区内容。"
-		echo "⚠️ 导入前将执行快照、manifest/sha256 校验、白名单恢复、gateway 停启与健康检查。"
-		read -e -p "请输入确认词【我已知晓高风险并继续导入】后继续: " confirm_text
-		if [ "$confirm_text" != "我已知晓高风险并继续导入" ]; then
-			echo "❌ 确认词不匹配，已取消导入"
+		echo "⚠️ 高风险操作：项目还原会覆盖 OpenClaw 配置与工作区内容。"
+		echo "⚠️ 还原前将执行快照、manifest/sha256 校验、白名单恢复、gateway 停启与健康检查。"
+		read -e -p "请输入确认词【我已知晓高风险并继续还原】后继续: " confirm_text
+		if [ "$confirm_text" != "我已知晓高风险并继续还原" ]; then
+			echo "❌ 确认词不匹配，已取消还原"
 			break_end
 			return 1
 		fi
@@ -12074,7 +12092,7 @@ EOF
 		if [ "$invalid" -ne 0 ]; then
 			rm -f "$valid_list"
 			rm -rf "$tmp_unpack"
-			echo "❌ 导入中止：存在不安全路径"
+			echo "❌ 还原中止：存在不安全路径"
 			break_end
 			return 1
 		fi
@@ -12093,7 +12111,7 @@ EOF
 		fi
 
 		if command -v openclaw >/dev/null 2>&1; then
-			echo "⏸️ 导入前停止 OpenClaw gateway..."
+			echo "⏸️ 还原前停止 OpenClaw gateway..."
 			openclaw gateway stop >/dev/null 2>&1
 		fi
 
@@ -12103,7 +12121,7 @@ EOF
 		done < "$valid_list"
 
 		if command -v openclaw >/dev/null 2>&1; then
-			echo "▶️ 导入后启动 OpenClaw gateway..."
+			echo "▶️ 还原后启动 OpenClaw gateway..."
 			openclaw gateway start >/dev/null 2>&1
 			sleep 2
 			echo "🩺 gateway 健康检查："
@@ -12112,7 +12130,7 @@ EOF
 
 		rm -f "$valid_list"
 		rm -rf "$tmp_unpack"
-		echo "✅ OpenClaw 项目导入完成"
+		echo "✅ OpenClaw 项目还原完成"
 		break_end
 	}
 
@@ -12295,10 +12313,10 @@ EOF
 			echo "======================================="
 			openclaw_backup_render_file_list
 			echo "---------------------------------------"
-			echo "1. 导出记忆全量"
-			echo "2. 导入记忆全量"
-			echo "3. 导出 OpenClaw 项目（默认安全模式）"
-			echo "4. 导入 OpenClaw 项目（高级/高风险）"
+			echo "1. 备份记忆全量"
+			echo "2. 还原记忆全量"
+			echo "3. 备份 OpenClaw 项目（默认安全模式）"
+			echo "4. 还原 OpenClaw 项目（高级/高风险）"
 			echo "5. 删除备份或快照"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
