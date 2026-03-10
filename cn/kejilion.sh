@@ -11806,11 +11806,6 @@ EOF
 	openclaw_offer_transfer_hint() {
 		local file_path="$1"
 
-		if openclaw_is_interactive_terminal && openclaw_has_command "sz"; then
-			echo "检测到 sz，可在当前终端自行执行以下命令下载："
-			echo "sz \"$file_path\""
-		fi
-
 		echo "可使用以下方式下载备份文件："
 		echo "- 本地路径: $file_path"
 		echo "- scp 示例: scp root@你的服务器:$file_path ./"
@@ -11902,10 +11897,6 @@ EOF
 		local prompt_text="$1"
 		local file_input file_path backup_root
 		echo "$prompt_text" >&2
-
-		if openclaw_is_interactive_terminal && openclaw_has_command "rz"; then
-			echo "检测到 rz，可在当前终端自行执行 rz 上传备份包；上传完成后再输入服务器上的文件路径。" >&2
-		fi
 
 		echo "可先通过 scp/sftp 上传备份包到服务器，再输入路径。" >&2
 		echo "scp 示例: scp /本地/备份包.tar.gz root@你的服务器:/tmp/" >&2
