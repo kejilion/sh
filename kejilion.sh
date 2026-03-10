@@ -11612,7 +11612,15 @@ PYTHON_EOF
 		if [ -s "$config_file" ] && jq -e --arg p "$plugin" '.plugins.installs[$p]' "$config_file" >/dev/null 2>&1; then
 			return 0
 		fi
-		[ -d "${HOME}/.openclaw/extensions/${plugin}" ] || [ -d "/usr/lib/node_modules/openclaw/extensions/${plugin}" ]
+
+		# 兼容两种常见目录命名：
+		# - ~/.openclaw/extensions/qqbot
+		# - ~/.openclaw/extensions/openclaw-qqbot
+		# 避免无脑 substring，优先精确匹配与 openclaw- 前缀匹配。
+		[ -d "${HOME}/.openclaw/extensions/${plugin}" ] \
+			|| [ -d "${HOME}/.openclaw/extensions/openclaw-${plugin}" ] \
+			|| [ -d "/usr/lib/node_modules/openclaw/extensions/${plugin}" ] \
+			|| [ -d "/usr/lib/node_modules/openclaw/extensions/openclaw-${plugin}" ]
 	}
 
 	openclaw_bot_status_text() {
