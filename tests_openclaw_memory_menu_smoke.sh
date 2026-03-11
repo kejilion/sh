@@ -117,15 +117,15 @@ run_menu() {
   printf "%b" "$input" | openclaw_memory_menu >/tmp/memory_menu.out
 }
 
-# 1) 状态
-run_menu "1\n\n0\n" "status"
+# 1) 状态展示（直接返回）
+run_menu "0\n" "status"
 # 2) 更新索引（增量）
-run_menu "2\nyes\n\n\n0\n" "index"
+run_menu "1\nyes\n\n\n0\n" "index"
 # 3) 查看记忆文件（列表+查看）
-run_menu "3\n1\n\n\n\n\n0\n0\n" "files"
+run_menu "2\n1\n\n\n\n\n0\n0\n" "files"
 # 4) 索引修复（取消）
-run_menu "4\n\n0\n" "fix"
+run_menu "3\n\n0\n" "fix"
 # 5) 记忆方案（自动推荐并取消）
-run_menu "5\n1\n\nN\n0\n0\n" "scheme"
+run_menu "4\n1\n\nN\n0\n0\n" "scheme"
 
 echo "SMOKE_OK"

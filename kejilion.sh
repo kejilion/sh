@@ -12789,20 +12789,26 @@ PY
 			echo "======================================="
 			echo "OpenClaw 记忆管理"
 			echo "======================================="
-			echo "1. 记忆索引状态"
-			echo "2. 更新记忆索引"
-			echo "3. 查看记忆文件"
-			echo "4. 索引修复（Indexed 异常）"
-			echo "5. 记忆方案（QMD/Local/Auto）"
+			status_output=$(openclaw memory status 2>/dev/null)
+			if [ $? -ne 0 ] || [ -z "$status_output" ]; then
+				echo "获取状态失败"
+			else
+				status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed)" | head -n 3)
+				if [ -z "$status_lines" ]; then
+					echo "未安装/未启动"
+				else
+					echo "$status_lines"
+				fi
+			fi
+			echo "1. 更新记忆索引"
+			echo "2. 查看记忆文件"
+			echo "3. 索引修复（Indexed 异常）"
+			echo "4. 记忆方案（QMD/Local/Auto）"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " memory_choice
 			case "$memory_choice" in
 				1)
-					openclaw memory status
-					break_end
-					;;
-				2)
 					echo "即将更新记忆索引。"
 					read -e -p "第一次确认：输入 yes 继续: " confirm_step1
 					if [ "$confirm_step1" != "yes" ]; then
@@ -12818,13 +12824,13 @@ PY
 					fi
 					break_end
 					;;
-				3)
+				2)
 					openclaw_memory_files_menu
 					;;
-				4)
+				3)
 					openclaw_memory_fix_index
 					;;
-				5)
+				4)
 					openclaw_memory_scheme_menu
 					;;
 				0)
