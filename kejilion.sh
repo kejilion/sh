@@ -10046,8 +10046,8 @@ moltbot_menu() {
 		echo "5.  换模型"
 		echo "6.  API管理"
 		echo "7.  机器人连接对接"
-		echo "8.  安装插件（如：飞书）"
-		echo "9.  安装技能（skills）"
+		echo "8.  插件管理（安装/删除）"
+		echo "9.  技能管理（安装/删除）"
 		echo "10. 编辑主配置文件"
 		echo "11. 配置向导"
 		echo "12. 健康检测与修复"
@@ -11393,15 +11393,86 @@ PYTHON_EOF
 			return 1
 		}
 
+		sync_openclaw_plugin_denylist() {
+			local plugin_id="$1"
+			[ -z "$plugin_id" ] && return 1
+
+			local home_config="${HOME}/.openclaw/openclaw.json"
+			local root_config="/root/.openclaw/openclaw.json"
+			local config_file="$home_config"
+			if [ ! -f "$home_config" ] && [ -f "$root_config" ]; then
+				config_file="$root_config"
+			fi
+
+			mkdir -p "$(dirname "$config_file")"
+			if [ ! -s "$config_file" ]; then
+				echo '{}' > "$config_file"
+			fi
+
+			if command -v jq >/dev/null 2>&1; then
+				local tmp_json
+				tmp_json=$(mktemp)
+				if jq --arg pid "$plugin_id" '
+					.plugins = (if (.plugins | type) == "object" then .plugins else {} end)
+					| .plugins.allow = (if (.plugins.allow | type) == "array" then .plugins.allow else [] end)
+					| .plugins.allow = (.plugins.allow | map(select(. != $pid)))
+				' "$config_file" > "$tmp_json" 2>/dev/null && mv "$tmp_json" "$config_file"; then
+					echo "✅ 已从 plugins.allow 移除: $plugin_id"
+					return 0
+				fi
+				rm -f "$tmp_json"
+			fi
+
+			if command -v python3 >/dev/null 2>&1; then
+				if python3 - "$config_file" "$plugin_id" <<'PYTHON_EOF'
+import json
+import sys
+from pathlib import Path
+
+config_file = Path(sys.argv[1])
+plugin_id = sys.argv[2]
+
+try:
+    data = json.loads(config_file.read_text(encoding='utf-8')) if config_file.exists() else {}
+    if not isinstance(data, dict):
+        data = {}
+except Exception:
+    data = {}
+
+plugins = data.get('plugins')
+if not isinstance(plugins, dict):
+    plugins = {}
+
+a = plugins.get('allow')
+if not isinstance(a, list):
+    a = []
+
+a = [x for x in a if x != plugin_id]
+plugins['allow'] = a
+data['plugins'] = plugins
+config_file.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding='utf-8')
+PYTHON_EOF
+				then
+					echo "✅ 已从 plugins.allow 移除: $plugin_id"
+					return 0
+				fi
+			fi
+
+			echo "⚠️ plugins.allow 移除失败，请手动检查: $config_file"
+			return 1
+		}
 
 
 
+
+
+		
 		install_plugin() {
-		send_stats "安装插件"
+		send_stats "插件管理"
 		while true; do
 			clear
 			echo "========================================"
-			echo "            插件管理 (安装)            "
+			echo "            插件管理 (安装/删除)            "
 			echo "========================================"
 			echo "当前插件列表:"
 			openclaw plugins list
@@ -11427,77 +11498,110 @@ PYTHON_EOF
 			echo "  - [nostr]        	# 加密隐私聊天"
 			echo "--------------------------------------------------------"
 
-			read -e -p "请输入插件 ID（输入 0 退出）： " raw_input
+			echo "1) 安装/启用插件"
+			echo "2) 删除/禁用插件"
+			echo "0) 返回"
+			read -e -p "请选择操作：" plugin_action
 
+			[ "$plugin_action" = "0" ] && break
+			[ -z "$plugin_action" ] && continue
+
+			read -e -p "请输入插件 ID（空格分隔，输入 0 退出）： " raw_input
 			[ "$raw_input" = "0" ] && break
 			[ -z "$raw_input" ] && continue
 
-			# 1. 自动处理：如果用户输入带 @openclaw/，提取纯 ID 方便路径检查
-			local plugin_id=$(resolve_openclaw_plugin_id "$raw_input")
-			local plugin_full="$raw_input"
+			local success_list=""
+			local failed_list=""
+			local skipped_list=""
+			local changed=false
+			local token
 
-			echo "🔍 正在检查插件状态..."
-			# 获取当前插件列表用于状态检测
-			local plugin_list=$(openclaw plugins list 2>/dev/null)
+			for token in $raw_input; do
+				local plugin_id
+				local plugin_full
+				plugin_id=$(resolve_openclaw_plugin_id "$token")
+				plugin_full="$token"
+				[ -z "$plugin_id" ] && continue
 
-			# 2. 检查是否已经在 list 中且为 disabled (最常见的情况)
-			if echo "$plugin_list" | grep -qw "$plugin_id" && echo "$plugin_list" | grep "$plugin_id" | grep -q "disabled"; then
-				echo "💡 插件 [$plugin_id] 已预装，正在激活..."
-				openclaw plugins enable "$plugin_id" && echo "✅ 激活成功" || echo "❌ 激活失败"
+				if [ "$plugin_action" = "1" ]; then
+					echo "🔍 正在检查插件状态: $plugin_id"
+					local plugin_list
+					plugin_list=$(openclaw plugins list 2>/dev/null)
 
-			# 3. 检查系统物理目录是否存在
-			elif [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_id" ]; then
-				echo "💡 发现系统内置目录存在该插件，尝试直接启用..."
-				openclaw plugins enable "$plugin_id"
-
-			else
-				# 4. 远程安装逻辑
-				echo "📥 本地未发现，尝试下载安装..."
-
-				# 清理旧的失败残留
-				rm -rf "/root/.openclaw/extensions/$plugin_id"
-
-				# 执行安装，并捕获结果
-				if openclaw plugins install "$plugin_full"; then
-					echo "✅ 下载成功，正在启用..."
-					openclaw plugins enable "$plugin_id"
-				else
-					echo "⚠️ 官方渠道下载失败，尝试备选方案..."
-					# 备选 npm 安装
-					if npm install -g "$plugin_full" --unsafe-perm; then
-						echo "✅ npm 安装成功，尝试启用..."
-						openclaw plugins enable "$plugin_id"
-					else
-						echo "❌ 严重错误：无法获取该插件。请检查 ID 是否正确或网络是否可用。"
-						# 关键：这里直接 return 或 continue，不走下面的 start_gateway，防止写死配置
-						break_end
+					if echo "$plugin_list" | grep -qw "$plugin_id" && echo "$plugin_list" | grep "$plugin_id" | grep -q "disabled"; then
+						echo "💡 插件 [$plugin_id] 已预装，正在激活..."
+						if openclaw plugins enable "$plugin_id"; then
+							sync_openclaw_plugin_allowlist "$plugin_id"
+							success_list="$success_list $plugin_id"
+							changed=true
+						else
+							failed_list="$failed_list $plugin_id"
+						fi
 						continue
 					fi
+
+					if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_id" ]; then
+						echo "💡 发现系统内置目录存在该插件，尝试直接启用..."
+						if openclaw plugins enable "$plugin_id"; then
+							sync_openclaw_plugin_allowlist "$plugin_id"
+							success_list="$success_list $plugin_id"
+							changed=true
+						else
+							failed_list="$failed_list $plugin_id"
+						fi
+						continue
+					fi
+
+					echo "📥 本地未发现，尝试下载安装: $plugin_full"
+					rm -rf "/root/.openclaw/extensions/$plugin_id"
+					if openclaw plugins install "$plugin_full"; then
+						echo "✅ 下载成功，正在启用..."
+						if openclaw plugins enable "$plugin_id"; then
+							sync_openclaw_plugin_allowlist "$plugin_id"
+							success_list="$success_list $plugin_id"
+							changed=true
+						else
+							failed_list="$failed_list $plugin_id"
+						fi
+					else
+						echo "❌ 安装失败：$plugin_full"
+						failed_list="$failed_list $plugin_id"
+					fi
+				else
+					echo "🗑️ 正在删除/禁用插件: $plugin_id"
+					openclaw plugins disable "$plugin_id" >/dev/null 2>&1
+					if openclaw plugins uninstall "$plugin_id"; then
+						echo "✅ 已卸载: $plugin_id"
+					else
+						echo "⚠️ 卸载失败，可能为预装插件，仅禁用: $plugin_id"
+					fi
+					sync_openclaw_plugin_denylist "$plugin_id" >/dev/null 2>&1
+					success_list="$success_list $plugin_id"
+					changed=true
 				fi
+			done
+
+			echo ""
+			echo "====== 操作汇总 ======"
+			echo "✅ 成功:$success_list"
+			[ -n "$failed_list" ] && echo "❌ 失败:$failed_list"
+			[ -n "$skipped_list" ] && echo "⏭️ 跳过:$skipped_list"
+
+			if [ "$changed" = true ]; then
+				echo "🔄 正在重启 OpenClaw 服务以加载变更..."
+				start_gateway
 			fi
-
-			echo "🔐 正在同步 plugins.allow 白名单..."
-			sync_openclaw_plugin_allowlist "$plugin_id"
-
-
-			echo "🔄 正在重启 OpenClaw 服务以加载新插件..."
-			start_gateway
 			break_end
 		done
 	}
 
 
-
-
-
-
-
 	install_skill() {
-		send_stats "安装技能"
+		send_stats "技能管理"
 		while true; do
 			clear
 			echo "========================================"
-			echo "            技能管理 (安装)            "
+			echo "            技能管理 (安装/删除)            "
 			echo "========================================"
 			echo "当前已安装技能:"
 			openclaw skills list
@@ -11521,57 +11625,95 @@ PYTHON_EOF
 			echo "coding-agent       # 自动运行 Claude Code/Codex 等编程助手"
 			echo "----------------------------------------"
 
-			# 提示用户输入技能名称
-			read -e -p "请输入要安装的技能名称（输入 0 退出）： " skill_name
+			echo "1) 安装技能"
+			echo "2) 删除技能"
+			echo "0) 返回"
+			read -e -p "请选择操作：" skill_action
 
-			# 1. 检查是否输入 0 以退出
-			if [ "$skill_name" = "0" ]; then
-				echo "操作已取消，退出技能安装。"
-				break
-			fi
+			[ "$skill_action" = "0" ] && break
+			[ -z "$skill_action" ] && continue
 
-			# 2. 验证输入是否为空
-			if [ -z "$skill_name" ]; then
-				echo "错误：技能名称不能为空。请重试。"
-				echo ""
-				continue
-			fi
+			read -e -p "请输入技能名称（空格分隔，输入 0 退出）： " skill_input
+			[ "$skill_input" = "0" ] && break
+			[ -z "$skill_input" ] && continue
 
-			# 3. 检查技能是否已安装
-			local skill_found=false
-			if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
-				echo "💡 技能 [$skill_name] 已在用户目录安装。"
-				skill_found=true
-			elif [ -d "/usr/lib/node_modules/openclaw/skills/${skill_name}" ]; then
-				echo "💡 技能 [$skill_name] 已在系统目录安装。"
-				skill_found=true
-			fi
+			local success_list=""
+			local failed_list=""
+			local skipped_list=""
+			local changed=false
+			local token
 
-			if [ "$skill_found" = true ]; then
-				read -e -p "是否重新安装？(y/N): " reinstall
-				if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
-					echo "跳过安装。"
+			if [ "$skill_action" = "2" ]; then
+				read -e -p "二次确认：删除仅影响用户目录 ~/.openclaw/workspace/skills，确认继续？(y/N): " confirm_del
+				if [[ ! "$confirm_del" =~ ^[Yy]$ ]]; then
+					echo "已取消删除。"
 					break_end
 					continue
 				fi
 			fi
 
-			# 4. 执行安装命令
-			echo "正在安装技能：$skill_name ..."
-			if npx clawhub install "$skill_name"; then
-				echo "✅ 技能 $skill_name 安装成功。"
-				start_gateway
-			else
-				echo "❌ 安装失败。请检查技能名称是否正确，或参考文档排查。"
-			fi
+			for token in $skill_input; do
+				local skill_name
+				skill_name="$token"
+				[ -z "$skill_name" ] && continue
 
+				if [ "$skill_action" = "1" ]; then
+					local skill_found=false
+					if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
+						echo "💡 技能 [$skill_name] 已在用户目录安装。"
+						skill_found=true
+					elif [ -d "/usr/lib/node_modules/openclaw/skills/${skill_name}" ]; then
+						echo "💡 技能 [$skill_name] 已在系统目录安装。"
+						skill_found=true
+					fi
+
+					if [ "$skill_found" = true ]; then
+						read -e -p "技能 [$skill_name] 已安装，是否重新安装？(y/N): " reinstall
+						if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
+							skipped_list="$skipped_list $skill_name"
+							continue
+						fi
+					fi
+
+					echo "正在安装技能：$skill_name ..."
+					if npx clawhub install "$skill_name" --yes --no-input 2>/dev/null || npx clawhub install "$skill_name"; then
+						echo "✅ 技能 $skill_name 安装成功。"
+						success_list="$success_list $skill_name"
+						changed=true
+					else
+						echo "❌ 安装失败：$skill_name"
+						failed_list="$failed_list $skill_name"
+					fi
+				else
+					echo "🗑️ 正在删除技能: $skill_name"
+					npx clawhub uninstall "$skill_name" --yes --no-input 2>/dev/null || npx clawhub uninstall "$skill_name" >/dev/null 2>&1
+					if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
+						rm -rf "${HOME}/.openclaw/workspace/skills/${skill_name}"
+						echo "✅ 已删除用户技能目录: $skill_name"
+						success_list="$success_list $skill_name"
+						changed=true
+					else
+						echo "⏭️ 未发现用户技能目录: $skill_name"
+						skipped_list="$skipped_list $skill_name"
+					fi
+				fi
+			done
+
+			echo ""
+			echo "====== 操作汇总 ======"
+			echo "✅ 成功:$success_list"
+			[ -n "$failed_list" ] && echo "❌ 失败:$failed_list"
+			[ -n "$skipped_list" ] && echo "⏭️ 跳过:$skipped_list"
+
+			if [ "$changed" = true ]; then
+				echo "🔄 正在重启 OpenClaw 服务以加载变更..."
+				start_gateway
+			fi
 			break_end
 		done
 	}
 
-
-
-	openclaw_json_get_bool() {
+openclaw_json_get_bool() {
 		local expr="$1"
 		local config_file="${HOME}/.openclaw/openclaw.json"
 		if [ ! -s "$config_file" ]; then
