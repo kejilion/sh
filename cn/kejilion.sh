@@ -12812,45 +12812,7 @@ EOF
 	}
 
 	openclaw_memory_config_file() {
-		local detected expanded
-		if command -v openclaw >/dev/null 2>&1; then
-			detected=$(openclaw config file 2>/dev/null | head -n 1 | tr -d '\r')
-		fi
-		if [ -n "$detected" ]; then
-			expanded=$(python3 - "$detected" <<'PY'
-import os,sys
-path = sys.argv[1]
-if not path:
-    print('')
-else:
-    print(os.path.expandvars(os.path.expanduser(path)))
-PY
-)
-			if [ -n "$expanded" ]; then
-				echo "$expanded"
-				return 0
-			fi
-		fi
 		echo "${HOME}/.openclaw/openclaw.json"
-	}
-
-	openclaw_memory_config_display() {
-		local path="$1"
-		local display head tail
-		if [ -z "$path" ]; then
-			echo "未知"
-			return
-		fi
-		display="$path"
-		if [ -n "$HOME" ]; then
-			display="${display/#$HOME/~}"
-		fi
-		if [ ${#display} -gt 48 ]; then
-			head="${display:0:20}"
-			tail="${display: -20}"
-			display="${head}...${tail}"
-		fi
-		echo "$display"
 	}
 
 	openclaw_memory_render_status() {
@@ -12866,9 +12828,6 @@ PY
 				echo "$status_lines"
 			fi
 		fi
-		config_file=$(openclaw_memory_config_file)
-		config_display=$(openclaw_memory_config_display "$config_file")
-		echo "配置文件: $config_display"
 	}
 
 	openclaw_memory_get_backend() {

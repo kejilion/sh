@@ -31,10 +31,6 @@ Indexed: 5/5 files
 TXT
   exit 0
 fi
-if [[ "$cmd" == "config file" ]]; then
-  echo "~/.openclaw/custom-openclaw.json"
-  exit 0
-fi
 if [[ "$cmd" == "memory index"* ]]; then
   echo "index ok"
   exit 0
@@ -80,7 +76,7 @@ export PATH="$WORKDIR/bin:$PATH"
 export TERM=xterm
 
 # minimal openclaw.json
-cat > "$HOME/.openclaw/custom-openclaw.json" <<'JSON'
+cat > "$HOME/.openclaw/openclaw.json" <<'JSON'
 {
   "memory": {
     "backend": "qmd",
@@ -134,7 +130,7 @@ run_menu "4\n1\n\nN\n0\n0\n" "scheme"
 
 python3 - <<'PY'
 import json,os,sys
-path = os.path.expanduser('~/.openclaw/custom-openclaw.json')
+path = os.path.expanduser('~/.openclaw/openclaw.json')
 with open(path,'r',encoding='utf-8') as f:
     data = json.load(f)
 flag = data.get('memory', {}).get('qmd', {}).get('includeDefaultMemory', True)
