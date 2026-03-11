@@ -1,0 +1,1 @@
+../tests_openclaw_api_protocol_detect_smoke.sh

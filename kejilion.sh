@@ -10139,6 +10139,39 @@ path = sys.argv[1]
 stats_enabled = (sys.argv[2].lower() == "true") if len(sys.argv) > 2 else True
 script_version = sys.argv[3] if len(sys.argv) > 3 else ""
 
+def probe_endpoint(base_url, api_key, path, timeout=6):
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
+
+
+def detect_api_protocol(base_url, api_key):
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    code2, err2 = probe_endpoint(base_url, api_key, '/chat/completions')
+    if code2 is not None and code2 not in (404, 405):
+        return 'openai-chat-completions', f'POST /chat/completions -> HTTP {code2}', None
+    if err or err2:
+        return 'openai-completions', 'fallback: probe failed', err or err2
+    return 'openai-completions', f'POST /responses={code}, /chat/completions={code2} -> fallback /completions', None
+
+
 def send_stat(action):
     if not stats_enabled:
         return
@@ -10301,6 +10334,39 @@ def delete_provider_and_refs(name):
     return True
 
 
+def probe_endpoint(base_url, api_key, path, timeout=6):
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
+
+
+def detect_api_protocol(base_url, api_key):
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    code2, err2 = probe_endpoint(base_url, api_key, '/chat/completions')
+    if code2 is not None and code2 not in (404, 405):
+        return 'openai-chat-completions', f'POST /chat/completions -> HTTP {code2}', None
+    if err or err2:
+        return 'openai-completions', 'fallback: probe failed', err or err2
+    return 'openai-completions', f'POST /responses={code}, /chat/completions={code2} -> fallback /completions', None
+
+
 def fetch_remote_models_with_retry(name, base_url, api_key, retries=3):
     last_error = None
     for attempt in range(1, retries + 1):
@@ -10340,6 +10406,16 @@ for name, provider in list(providers.items()):
     if api not in SUPPORTED_APIS:
         summary.append(f'ℹ️ 跳过 {name}: 不支持直接 /models 校验 (api={api})')
         continue
+
+    try:
+        detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
+        if detected_api and api != detected_api:
+            provider['api'] = detected_api
+            api = detected_api
+            changed = True
+            summary.append(f'🔁 {name}: 已自动纠正协议为 {detected_api} ({detected_reason})')
+    except Exception as e:
+        summary.append(f'⚠️ {name}: 协议探测失败，跳过纠正 ({type(e).__name__}: {e})')
 
     data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
     if err is not None:
@@ -10513,6 +10589,52 @@ PY
 
 
 
+	# OpenClaw API 协议探测（优先 responses -> chat/completions -> completions）
+	openclaw_probe_api_endpoint() {
+		local base_url="$1"
+		local api_key="$2"
+		local path="$3"
+		local url="${base_url%/}${path}"
+		local http_code
+		http_code=$(curl -s -o /dev/null -w "%{http_code}" -m 8 \
+			-X POST \
+			-H "Authorization: Bearer $api_key" \
+			-H "Content-Type: application/json" \
+			-d '{}' "$url" 2>/dev/null || echo "000")
+		if [ -z "$http_code" ]; then
+			http_code="000"
+		fi
+		echo "$http_code"
+	}
+
+	openclaw_detect_api_protocol() {
+		local base_url="$1"
+		local api_key="$2"
+		local code_responses="000"
+		local code_chat="000"
+
+		DETECTED_API="openai-completions"
+		DETECTED_REASON="fallback: /responses & /chat/completions not supported"
+
+		code_responses=$(openclaw_probe_api_endpoint "$base_url" "$api_key" "/responses")
+		if [[ "$code_responses" != "404" && "$code_responses" != "405" && "$code_responses" != "000" ]]; then
+			DETECTED_API="openai-responses"
+			DETECTED_REASON="POST /responses -> HTTP $code_responses"
+			return 0
+		fi
+
+		code_chat=$(openclaw_probe_api_endpoint "$base_url" "$api_key" "/chat/completions")
+		if [[ "$code_chat" != "404" && "$code_chat" != "405" && "$code_chat" != "000" ]]; then
+			DETECTED_API="openai-chat-completions"
+			DETECTED_REASON="POST /chat/completions -> HTTP $code_chat"
+			return 0
+		fi
+
+		DETECTED_API="openai-completions"
+		DETECTED_REASON="POST /responses=$code_responses, /chat/completions=$code_chat -> fallback /completions"
+		return 0
+	}
+
 	# 核心函数：获取并添加所有模型
 	add-all-models-from-provider() {
 		local provider_name="$1"
@@ -10521,6 +10643,10 @@ PY
 		local config_file="${HOME}/.openclaw/openclaw.json"
 
 		echo "🔍 正在获取 $provider_name 的所有可用模型..."
+
+		# 自动识别 API 协议
+		install curl >/dev/null 2>&1
+		openclaw_detect_api_protocol "$base_url" "$api_key"
 
 		# 获取模型列表
 		local models_json=$(curl -s -m 10 \
@@ -10601,6 +10727,7 @@ EOF
 		jq --arg prov "$provider_name" \
 		   --arg url "$base_url" \
 		   --arg key "$api_key" \
+		   --arg api "$DETECTED_API" \
 		   --argjson models "$models_array" \
 		'
 		.models |= (
@@ -10609,7 +10736,7 @@ EOF
 			| .providers[$prov] = {
 				baseUrl: $url,
 				apiKey: $key,
-				api: "openai-completions",
+				api: $api,
 				models: $models
 			}
 		)
@@ -10669,7 +10796,11 @@ EOF
 			echo
 		done
 
-		# 4. 获取模型列表
+		# 4. 协议探测（无感）
+		install curl >/dev/null 2>&1
+		openclaw_detect_api_protocol "$base_url" "$api_key"
+
+		# 5. 获取模型列表
 		echo "🔍 正在获取可用模型列表..."
 		models_json=$(curl -s -m 10 \
 			-H "Authorization: Bearer $api_key" \
@@ -10684,10 +10815,10 @@ EOF
 				echo "--------------------------------"
 				# 全部显示，带序号
 				i=1
-				declare -A model_map
+				model_list=()
 				while read -r model; do
 					echo "[$i] $model"
-					model_map[$i]="$model"
+					model_list+=("$model")
 					((i++))
 				done <<< "$available_models"
 				echo "--------------------------------"
@@ -10701,8 +10832,8 @@ EOF
 		if [[ -z "$input_model" && -n "$available_models" ]]; then
 			default_model=$(echo "$available_models" | head -1)
 			echo "🎯 使用第一个模型: $default_model"
-		elif [[ -n "${model_map[$input_model]}" ]]; then
-			default_model="${model_map[$input_model]}"
+		elif [[ "$input_model" =~ ^[0-9]+$ ]] && [ "${#model_list[@]}" -gt 0 ] && [ "$input_model" -ge 1 ] && [ "$input_model" -le "${#model_list[@]}" ]; then
+			default_model="${model_list[$((input_model-1))]}"
 			echo "🎯 已选择模型: $default_model"
 		else
 			default_model="$input_model"
@@ -10733,6 +10864,7 @@ EOF
 			openclaw models set "$provider_name/$default_model"
 			start_gateway
 			echo "✅ 完成！所有 $model_count 个模型已加载"
+			echo "✅ 已自动识别协议为: $DETECTED_API"
 		fi
 
 		break_end
@@ -10744,7 +10876,7 @@ openclaw_api_manage_list() {
 	local config_file="${HOME}/.openclaw/openclaw.json"
 	send_stats "OpenClaw API列表"
 
-	while IFS=$'\t' read -r rec_type idx name base_url model_count latency_txt latency_level; do
+	while IFS=$'\t' read -r rec_type idx name base_url model_count api_type latency_txt latency_level; do
 		case "$rec_type" in
 			MSG)
 				echo "$idx"
@@ -10758,7 +10890,7 @@ openclaw_api_manage_list() {
 					unchecked) latency_color="$gl_bai" ;;
 				esac
 
-				printf '%b\n' "[$idx] ${name} | API: ${base_url} | 模型数量: ${gl_huang}${model_count}${gl_bai} | 延迟/状态: ${latency_color}${latency_txt}${gl_bai}"
+				printf '%b\n' "[$idx] ${name} | API: ${base_url} | 协议: ${api_type} | 模型数量: ${gl_huang}${model_count}${gl_bai} | 延迟/状态: ${latency_color}${latency_txt}${gl_bai}"
 				;;
 		esac
 	done < <(python3 - "$config_file" <<-'PY'
@@ -10842,12 +10974,14 @@ for idx, name in enumerate(sorted(providers.keys()), start=1):
                 latency_raw = '不可用'
 
     latency_text, latency_level = classify_latency(latency_raw)
+    api_label = api if api in SUPPORTED_APIS else '-'
     print(
         'ROW\t' + '\t'.join([
             str(idx),
             str(name),
             str(base_url),
             str(model_count),
+            str(api_label),
             str(latency_text),
             str(latency_level),
         ])
@@ -10884,6 +11018,38 @@ import urllib.request
 path = sys.argv[1]
 target = sys.argv[2]
 SUPPORTED_APIS = {'openai-completions', 'openai-responses', 'openai-chat-completions'}
+
+def probe_endpoint(base_url, api_key, path, timeout=6):
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
+
+
+def detect_api_protocol(base_url, api_key):
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    code2, err2 = probe_endpoint(base_url, api_key, '/chat/completions')
+    if code2 is not None and code2 not in (404, 405):
+        return 'openai-chat-completions', f'POST /chat/completions -> HTTP {code2}', None
+    if err or err2:
+        return 'openai-completions', 'fallback: probe failed', err or err2
+    return 'openai-completions', f'POST /responses={code}, /chat/completions={code2} -> fallback /completions', None
 
 with open(path, 'r', encoding='utf-8') as f:
     obj = json.load(f)
@@ -10971,6 +11137,16 @@ if api not in SUPPORTED_APIS:
     print(f'❌ provider {target} 当前 api={api}，不支持直接 /models 同步')
     raise SystemExit(3)
 
+protocol_msg = None
+try:
+    detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
+    if detected_api and api != detected_api:
+        provider['api'] = detected_api
+        api = detected_api
+        protocol_msg = f'🔁 已自动纠正协议: {target} {api} ({detected_reason})'
+except Exception as e:
+    protocol_msg = f'⚠️ 协议探测失败，跳过纠正: {target} ({type(e).__name__}: {e})'
+
 data, err, attempts = fetch_remote_models_with_retry(base_url, api_key, retries=3)
 if err is not None:
     print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
@@ -11047,6 +11223,9 @@ if removed_ids or added_ids or len(local_models) != len(new_models):
     provider['models'] = new_models
     changed = True
 
+if protocol_msg:
+    print(protocol_msg)
+
 if changed:
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(work, f, ensure_ascii=False, indent=2)
@@ -11078,6 +11257,125 @@ PY2
 			;;
 		*)
 			echo "❌ 同步失败：请检查配置文件结构或日志输出"
+			;;
+	esac
+
+	break_end
+}
+
+openclaw_detect_api_protocol_by_provider() {
+	local config_file="$1"
+	local provider_name="$2"
+
+	python3 - "$config_file" "$provider_name" <<'PY'
+import json
+import sys
+import urllib.request
+
+path = sys.argv[1]
+name = sys.argv[2]
+SUPPORTED_APIS = {'openai-completions', 'openai-responses', 'openai-chat-completions'}
+
+def probe_endpoint(base_url, api_key, path, timeout=6):
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
+
+
+def detect_api_protocol(base_url, api_key):
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    code2, err2 = probe_endpoint(base_url, api_key, '/chat/completions')
+    if code2 is not None and code2 not in (404, 405):
+        return 'openai-chat-completions', f'POST /chat/completions -> HTTP {code2}', None
+    if err or err2:
+        return 'openai-completions', 'fallback: probe failed', err or err2
+    return 'openai-completions', f'POST /responses={code}, /chat/completions={code2} -> fallback /completions', None
+
+try:
+    with open(path, 'r', encoding='utf-8') as f:
+        obj = json.load(f)
+except FileNotFoundError:
+    print('❌ 未找到 openclaw.json')
+    raise SystemExit(2)
+
+providers = ((obj.get('models') or {}).get('providers') or {})
+provider = providers.get(name) if isinstance(providers, dict) else None
+if not isinstance(provider, dict):
+    print(f'❌ 未找到 provider: {name}')
+    raise SystemExit(2)
+
+base_url = provider.get('baseUrl')
+api_key = provider.get('apiKey')
+if not base_url or not api_key:
+    print(f'❌ provider {name} 缺少 baseUrl/apiKey')
+    raise SystemExit(3)
+
+current_api = provider.get('api', '')
+if current_api not in SUPPORTED_APIS:
+    current_api = ''
+
+api, reason, err = detect_api_protocol(base_url, api_key)
+if api and api != current_api:
+    provider['api'] = api
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+    print(f'✅ 已更新 provider {name} 协议: {current_api or "(unset)"} -> {api} ({reason})')
+else:
+    print(f'ℹ️ 无需更新：协议保持为 {current_api or api}')
+PY
+}
+
+fix-openclaw-provider-protocol-interactive() {
+	local config_file="${HOME}/.openclaw/openclaw.json"
+	send_stats "OpenClaw API协议修复"
+
+	if [ ! -f "$config_file" ]; then
+		echo "❌ 未找到配置文件: $config_file"
+		break_end
+		return 1
+	fi
+
+	read -erp "请输入要修复协议的 API 名称(provider): " provider_name
+	if [ -z "$provider_name" ]; then
+		echo "❌ provider 名称不能为空"
+		break_end
+		return 1
+	fi
+
+	install jq curl >/dev/null 2>&1
+	openclaw_detect_api_protocol_by_provider "$config_file" "$provider_name"
+	local rc=$?
+	case "$rc" in
+		0)
+			echo "✅ 协议已检测并更新（如有变更）"
+			start_gateway
+			;;
+		2)
+			echo "❌ 修复失败：provider 不存在或未配置"
+			;;
+		3)
+			echo "❌ 修复失败：provider 配置不完整"
+			;;
+		*)
+			echo "❌ 修复失败：请检查配置文件结构或日志输出"
 			;;
 	esac
 
@@ -11245,6 +11543,7 @@ PY
 			echo "1. 添加API"
 			echo "2. 同步API供应商模型列表"
 			echo "3. 删除API"
+			echo "4. 协议修复/重新探测"
 			echo "0. 退出"
 			echo "---------------------------------------"
 			read -erp "请输入你的选择: " api_choice
@@ -11258,6 +11557,9 @@ PY
 					;;
 				3)
 					delete-openclaw-provider-interactive
+					;;
+				4)
+					fix-openclaw-provider-protocol-interactive
 					;;
 				0)
 					return 0
