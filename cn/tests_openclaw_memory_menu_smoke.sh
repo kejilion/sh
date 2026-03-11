@@ -31,6 +31,10 @@ Indexed: 5/5 files
 TXT
   exit 0
 fi
+if [[ "$cmd" == "config file" ]]; then
+  echo "~/.openclaw/custom-openclaw.json"
+  exit 0
+fi
 if [[ "$cmd" == "memory index"* ]]; then
   echo "index ok"
   exit 0
@@ -76,7 +80,7 @@ export PATH="$WORKDIR/bin:$PATH"
 export TERM=xterm
 
 # minimal openclaw.json
-cat > "$HOME/.openclaw/openclaw.json" <<'JSON'
+cat > "$HOME/.openclaw/custom-openclaw.json" <<'JSON'
 {
   "memory": {
     "backend": "qmd",
@@ -118,14 +122,23 @@ run_menu() {
 }
 
 # 1) 状态
-run_menu "1\n\n0\n" "status"
+run_menu "0\n" "status"
 # 2) 更新索引（增量）
-run_menu "2\nyes\n\n\n0\n" "index"
+run_menu "1\nyes\n\n\n0\n" "index"
 # 3) 查看记忆文件（列表+查看）
-run_menu "3\n1\n\n\n\n\n0\n0\n" "files"
-# 4) 索引修复（取消）
-run_menu "4\n\n0\n" "fix"
+run_menu "2\n1\n\n\n\n\n0\n0\n" "files"
+# 4) 索引修复（执行修复 + 不立即重建）
+run_menu "3\ny\n\nN\n0\n" "fix"
 # 5) 记忆方案（自动推荐并取消）
-run_menu "5\n1\n\nN\n0\n0\n" "scheme"
+run_menu "4\n1\n\nN\n0\n0\n" "scheme"
 
-echo "SMOKE_OK"
+python3 - <<'PY'
+import json,os,sys
+path = os.path.expanduser('~/.openclaw/custom-openclaw.json')
+with open(path,'r',encoding='utf-8') as f:
+    data = json.load(f)
+flag = data.get('memory', {}).get('qmd', {}).get('includeDefaultMemory', True)
+if flag is not False:
+    raise SystemExit('includeDefaultMemory not updated')
+print('SMOKE_OK')
+PY

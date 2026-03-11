@@ -12510,7 +12510,63 @@ EOF
 	}
 
 	openclaw_memory_config_file() {
+		local detected expanded
+		if command -v openclaw >/dev/null 2>&1; then
+			detected=$(openclaw config file 2>/dev/null | head -n 1 | tr -d '\r')
+		fi
+		if [ -n "$detected" ]; then
+			expanded=$(python3 - "$detected" <<'PY'
+import os,sys
+path = sys.argv[1]
+if not path:
+    print('')
+else:
+    print(os.path.expandvars(os.path.expanduser(path)))
+PY
+)
+			if [ -n "$expanded" ]; then
+				echo "$expanded"
+				return 0
+			fi
+		fi
 		echo "${HOME}/.openclaw/openclaw.json"
+	}
+
+	openclaw_memory_config_display() {
+		local path="$1"
+		local display head tail
+		if [ -z "$path" ]; then
+			echo "未知"
+			return
+		fi
+		display="$path"
+		if [ -n "$HOME" ]; then
+			display="${display/#$HOME/~}"
+		fi
+		if [ ${#display} -gt 48 ]; then
+			head="${display:0:20}"
+			tail="${display: -20}"
+			display="${head}...${tail}"
+		fi
+		echo "$display"
+	}
+
+	openclaw_memory_render_status() {
+		local status_output status_lines config_file config_display
+		status_output=$(openclaw memory status 2>/dev/null)
+		if [ $? -ne 0 ] || [ -z "$status_output" ]; then
+			echo "获取状态失败"
+		else
+			status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed)" | head -n 3 | sed -e 's/^Provider: /底层方案: /' -e 's/^Vector: /向量库状态: /' -e 's/^Indexed: /已收录文件: /')
+			if [ -z "$status_lines" ]; then
+				echo "未安装/未启动"
+			else
+				echo "$status_lines"
+			fi
+		fi
+		config_file=$(openclaw_memory_config_file)
+		config_display=$(openclaw_memory_config_display "$config_file")
+		echo "配置文件: $config_display"
 	}
 
 	openclaw_memory_get_backend() {
@@ -12574,8 +12630,10 @@ PY
 			echo "true"
 			return
 		fi
-		if [ -s "${HOME}/.openclaw/openclaw.json" ] && command -v jq >/dev/null 2>&1; then
-			if jq -e '.memory.backend == "qmd"' "${HOME}/.openclaw/openclaw.json" >/dev/null 2>&1; then
+		local config_file
+		config_file=$(openclaw_memory_config_file)
+		if [ -s "$config_file" ] && command -v jq >/dev/null 2>&1; then
+			if jq -e '.memory.backend == "qmd"' "$config_file" >/dev/null 2>&1; then
 				echo "true"
 				return
 			fi
@@ -12737,9 +12795,14 @@ PY
 			return 1
 		fi
 		echo "✅ 已设置 includeDefaultMemory=false"
-		read -e -p "是否立即执行 openclaw memory index --force？(y/N): " rebuild_choice
-		if [[ "$rebuild_choice" =~ ^[Yy]$ ]]; then
+		echo "建议立即执行：openclaw memory index --force"
+		read -e -p "是否立即执行 openclaw memory index --force？(Y/n): " rebuild_choice
+		if [[ ! "$rebuild_choice" =~ ^[Nn]$ ]]; then
 			openclaw memory index --force
+			echo ""
+			openclaw_memory_render_status
+		else
+			echo "可稍后在记忆管理中查看状态。"
 		fi
 		break_end
 	}
@@ -12931,17 +12994,7 @@ PY
 			echo "======================================="
 			echo "OpenClaw 记忆管理"
 			echo "======================================="
-			status_output=$(openclaw memory status 2>/dev/null)
-			if [ $? -ne 0 ] || [ -z "$status_output" ]; then
-				echo "获取状态失败"
-			else
-				status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed)" | head -n 3 | sed -e 's/^Provider: /底层方案: /' -e 's/^Vector: /向量库状态: /' -e 's/^Indexed: /已收录文件: /')
-				if [ -z "$status_lines" ]; then
-					echo "未安装/未启动"
-				else
-					echo "$status_lines"
-				fi
-			fi
+			openclaw_memory_render_status
 			echo "1. 更新记忆索引"
 			echo "2. 查看记忆文件"
 			echo "3. 索引修复（Indexed 异常）"
