@@ -12794,7 +12794,6 @@ PY
 			echo "3. 查看记忆文件"
 			echo "4. 索引修复（Indexed 异常）"
 			echo "5. 记忆方案（QMD/Local/Auto）"
-			echo "   - Auto 会基于可用性 + 网络探测推荐"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " memory_choice
