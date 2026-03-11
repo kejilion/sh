@@ -10053,10 +10053,11 @@ moltbot_menu() {
 		echo "12. 健康检测与修复"
 		echo "13. WebUI访问与设置"
 		echo "14. TUI命令行对话窗口"
+		echo "15. 记忆/Memory"
 		echo "--------------------"
-		echo "15. 备份与还原"
-		echo "16. 更新"
-		echo "17. 卸载"
+		echo "16. 备份与还原"
+		echo "17. 更新"
+		echo "18. 卸载"
 		echo "--------------------"
 		echo "0. 返回上一级选单"
 		echo "--------------------"
@@ -12366,6 +12367,165 @@ EOF
 		break_end
 	}
 
+	openclaw_memory_file_collect() {
+		OPENCLAW_MEMORY_FILES=()
+		local base_dir="${HOME}/.openclaw/workspace"
+		local memory_dir="$base_dir/memory"
+		local memory_file="$base_dir/MEMORY.md"
+		[ -f "$memory_file" ] && OPENCLAW_MEMORY_FILES+=("$memory_file")
+		if [ -d "$memory_dir" ]; then
+			while IFS= read -r file; do
+				[ -f "$file" ] && OPENCLAW_MEMORY_FILES+=("$file")
+			done < <(find "$memory_dir" -type f -name '*.md' | sort)
+		fi
+	}
+
+	openclaw_memory_file_render_list() {
+		local base_dir="${HOME}/.openclaw/workspace"
+		openclaw_memory_file_collect
+		if [ ${#OPENCLAW_MEMORY_FILES[@]} -eq 0 ]; then
+			echo "未找到记忆文件。"
+			return 0
+		fi
+		echo "编号 | 相对路径 | 大小 | 修改时间"
+		echo "---------------------------------------"
+		local i file rel size mtime
+		for i in "${!OPENCLAW_MEMORY_FILES[@]}"; do
+			file="${OPENCLAW_MEMORY_FILES[$i]}"
+			rel="${file#$base_dir/}"
+			size=$(ls -lh "$file" | awk '{print $5}')
+			mtime=$(date -d "$(stat -c %y "$file")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file" | awk '{print $1" "$2}')
+			printf "%s | %s | %s | %s\n" "$((i+1))" "$rel" "$size" "$mtime"
+		done
+	}
+
+	openclaw_memory_view_file() {
+		local file="$1"
+		[ -f "$file" ] || {
+			echo "❌ 文件不存在: $file"
+			return 1
+		}
+		local total_lines
+		total_lines=$(wc -l < "$file" 2>/dev/null || echo 0)
+		local default_lines=200
+		local start_line count
+		echo "文件: $file"
+		echo "总行数: $total_lines"
+		read -e -p "请输入起始行（默认末尾 $default_lines 行）: " start_line
+		read -e -p "请输入显示行数（默认 $default_lines）: " count
+		[ -z "$count" ] && count=$default_lines
+		if [ -z "$start_line" ]; then
+			if [ "$total_lines" -le "$count" ]; then
+				start_line=1
+			else
+				start_line=$((total_lines - count + 1))
+			fi
+		fi
+		if ! [[ "$start_line" =~ ^[0-9]+$ ]] || ! [[ "$count" =~ ^[0-9]+$ ]]; then
+			echo "❌ 请输入有效的数字。"
+			return 1
+		fi
+		if [ "$start_line" -lt 1 ]; then
+			start_line=1
+		fi
+		if [ "$count" -le 0 ]; then
+			echo "❌ 行数必须大于 0。"
+			return 1
+		fi
+		local end_line=$((start_line + count - 1))
+		if [ "$end_line" -gt "$total_lines" ]; then
+			end_line=$total_lines
+		fi
+		if [ "$total_lines" -eq 0 ]; then
+			echo "(空文件)"
+			return 0
+		fi
+		echo "---------------------------------------"
+		sed -n "${start_line},${end_line}p" "$file"
+		echo "---------------------------------------"
+	}
+
+	openclaw_memory_files_menu() {
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw 记忆文件"
+			echo "======================================="
+			openclaw_memory_file_render_list
+			echo "---------------------------------------"
+			read -e -p "请输入文件编号查看（0 返回）: " file_choice
+			if [ "$file_choice" = "0" ]; then
+				return 0
+			fi
+			if ! [[ "$file_choice" =~ ^[0-9]+$ ]]; then
+				echo "无效的选择，请重试。"
+				sleep 1
+				continue
+			fi
+			openclaw_memory_file_collect
+			if [ ${#OPENCLAW_MEMORY_FILES[@]} -eq 0 ]; then
+				read -p "未找到记忆文件，按回车返回..."
+				return 0
+			fi
+			local idx=$((file_choice-1))
+			if [ "$idx" -lt 0 ] || [ "$idx" -ge ${#OPENCLAW_MEMORY_FILES[@]} ]; then
+				echo "无效的编号，请重试。"
+				sleep 1
+				continue
+			fi
+			openclaw_memory_view_file "${OPENCLAW_MEMORY_FILES[$idx]}"
+			read -p "按回车返回列表..."
+			done
+	}
+
+	openclaw_memory_menu() {
+		send_stats "OpenClaw记忆管理"
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw 记忆管理"
+			echo "======================================="
+			echo "1. 记忆索引状态"
+			echo "2. 更新记忆索引"
+			echo "3. 查看记忆文件"
+			echo "0. 返回上一级"
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " memory_choice
+			case "$memory_choice" in
+				1)
+					openclaw memory status
+					break_end
+					;;
+				2)
+					echo "即将更新记忆索引。"
+					read -e -p "第一次确认：输入 yes 继续: " confirm_step1
+					if [ "$confirm_step1" != "yes" ]; then
+						echo "已取消。"
+						break_end
+						continue
+					fi
+					read -e -p "二次确认：输入 force 使用全量（留空为增量）: " confirm_step2
+					if [ "$confirm_step2" = "force" ]; then
+						openclaw memory index --force
+					else
+						openclaw memory index
+					fi
+					break_end
+					;;
+				3)
+					openclaw_memory_files_menu
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "无效的选择，请重试。"
+					sleep 1
+					;;
+			esac
+		done
+	}
+
 	openclaw_backup_restore_menu() {
 		send_stats "OpenClaw备份与还原"
 		while true; do
@@ -12607,9 +12767,10 @@ EOF
 				openclaw tui
 				break_end
 			 	;;
-			15) openclaw_backup_restore_menu ;;
-			16) update_moltbot ;;
-			17) uninstall_moltbot ;;
+			15) openclaw_memory_menu ;;
+			16) openclaw_backup_restore_menu ;;
+			17) update_moltbot ;;
+			18) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
