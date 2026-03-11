@@ -10116,6 +10116,7 @@ with open(path, 'w', encoding='utf-8') as f:
 PY
 	}
 
+
 	sync_openclaw_api_models() {
 		local config_file="${HOME}/.openclaw/openclaw.json"
 
