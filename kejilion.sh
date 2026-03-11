@@ -11301,6 +11301,7 @@ PY
 			# 3. 执行切换逻辑
 			echo "正在切换模型为: $model ..."
 			openclaw models set "$model"
+			start_gateway
 
 			break_end
 		done
