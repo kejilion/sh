@@ -12367,6 +12367,310 @@ EOF
 		break_end
 	}
 
+	openclaw_memory_config_file() {
+		echo "${HOME}/.openclaw/openclaw.json"
+	}
+
+	openclaw_memory_get_backend() {
+		local config_file
+		config_file=$(openclaw_memory_config_file)
+		[ -s "$config_file" ] || { echo ""; return 0; }
+		python3 - "$config_file" <<'PY'
+import json,sys
+path = sys.argv[1]
+try:
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    backend = data.get('memory', {}).get('backend', '')
+    print(backend if isinstance(backend, str) else '')
+except Exception:
+    print('')
+PY
+	}
+
+	openclaw_memory_get_local_model_path() {
+		local config_file
+		config_file=$(openclaw_memory_config_file)
+		[ -s "$config_file" ] || { echo ""; return 0; }
+		python3 - "$config_file" <<'PY'
+import json,sys
+path = sys.argv[1]
+try:
+    with open(path, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+    obj = data.get('agents', {}).get('defaults', {}).get('memorySearch', {}).get('local', {})
+    model_path = obj.get('modelPath', '') if isinstance(obj, dict) else ''
+    print(model_path if isinstance(model_path, str) else '')
+except Exception:
+    print('')
+PY
+	}
+
+	openclaw_memory_local_model_status() {
+		local model_path="$1"
+		if [ -z "$model_path" ]; then
+			echo "missing"
+			return
+		fi
+		if [[ "$model_path" == hf:* ]]; then
+			echo "hf"
+			return
+		fi
+		if [ -f "$model_path" ]; then
+			echo "ok"
+		else
+			echo "missing"
+		fi
+	}
+
+	openclaw_memory_qmd_available() {
+		if command -v qmd >/dev/null 2>&1; then
+			echo "true"
+			return
+		fi
+		if command -v openclaw >/dev/null 2>&1 && openclaw memory status >/dev/null 2>&1; then
+			echo "true"
+			return
+		fi
+		if [ -s "${HOME}/.openclaw/openclaw.json" ] && command -v jq >/dev/null 2>&1; then
+			if jq -e '.memory.backend == "qmd"' "${HOME}/.openclaw/openclaw.json" >/dev/null 2>&1; then
+				echo "true"
+				return
+			fi
+		fi
+		echo "false"
+	}
+
+	openclaw_memory_probe_url() {
+		local url="$1"
+		if ! command -v curl >/dev/null 2>&1; then
+			echo "unknown"
+			return
+		fi
+		if [ -z "$url" ]; then
+			echo "unknown"
+			return
+		fi
+		if curl -I -m 2 -s "$url" >/dev/null 2>&1; then
+			echo "ok"
+		else
+			echo "fail"
+		fi
+	}
+
+	openclaw_memory_recommend() {
+		local qmd_ok model_path model_status hf_ok mirror_ok
+		qmd_ok=$(openclaw_memory_qmd_available)
+		model_path=$(openclaw_memory_get_local_model_path)
+		model_status=$(openclaw_memory_local_model_status "$model_path")
+		hf_ok=$(openclaw_memory_probe_url "https://huggingface.co")
+		mirror_ok=$(openclaw_memory_probe_url "https://hf-mirror.com")
+
+		OPENCLAW_MEMORY_RECOMMEND_REASON=()
+		if [ "$qmd_ok" = "true" ]; then
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("QMD 可用")
+		else
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("未检测到 QMD")
+		fi
+		if [ -n "$model_path" ]; then
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("本地模型路径: $model_path")
+		else
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("未配置本地模型路径")
+		fi
+		case "$model_status" in
+			ok) OPENCLAW_MEMORY_RECOMMEND_REASON+=("本地模型文件存在") ;;
+			hf) OPENCLAW_MEMORY_RECOMMEND_REASON+=("模型来自 HF 下载源（国内可能慢/失败）") ;;
+			*) OPENCLAW_MEMORY_RECOMMEND_REASON+=("本地模型文件不存在或不可用") ;;
+		esac
+		if [ "$hf_ok" = "ok" ]; then
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("huggingface.co 可访问")
+		elif [ "$mirror_ok" = "ok" ]; then
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("hf-mirror.com 可访问")
+		else
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("huggingface.co / hf-mirror.com 可能不可达（疑似国内/受限网络）")
+		fi
+
+		if [ "$qmd_ok" = "true" ]; then
+			if [ "$model_status" = "ok" ]; then
+				OPENCLAW_MEMORY_RECOMMEND="local"
+			elif [ "$model_status" = "hf" ] && { [ "$hf_ok" = "ok" ] || [ "$mirror_ok" = "ok" ]; }; then
+				OPENCLAW_MEMORY_RECOMMEND="local"
+			elif [ "$model_status" = "hf" ] && [ "$hf_ok" = "fail" ] && [ "$mirror_ok" = "fail" ]; then
+				OPENCLAW_MEMORY_RECOMMEND="qmd"
+			else
+				OPENCLAW_MEMORY_RECOMMEND="qmd"
+			fi
+		else
+			if [ "$model_status" = "ok" ]; then
+				OPENCLAW_MEMORY_RECOMMEND="local"
+			else
+				OPENCLAW_MEMORY_RECOMMEND="qmd"
+			fi
+		fi
+	}
+
+	openclaw_memory_apply_scheme() {
+		local scheme="$1"
+		local config_file
+		config_file=$(openclaw_memory_config_file)
+		if [ ! -f "$config_file" ]; then
+			echo "❌ 未找到配置文件: $config_file"
+			return 1
+		fi
+		python3 - "$config_file" "$scheme" <<'PY'
+import json,sys
+path = sys.argv[1]
+scheme = sys.argv[2]
+with open(path, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+mem = data.setdefault('memory', {})
+if scheme == 'qmd':
+    mem['backend'] = 'qmd'
+    qmd = mem.setdefault('qmd', {})
+    qmd.setdefault('command', 'qmd')
+elif scheme == 'local':
+    mem['backend'] = 'local'
+    agents = data.setdefault('agents', {})
+    defaults = agents.setdefault('defaults', {})
+    memory_search = defaults.setdefault('memorySearch', {})
+    memory_search['provider'] = 'local'
+else:
+    raise SystemExit(2)
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+    f.write('\n')
+PY
+		if [ $? -ne 0 ]; then
+			echo "❌ 写入配置失败"
+			return 1
+		fi
+		echo "✅ 已更新记忆方案配置"
+		return 0
+	}
+
+	openclaw_memory_offer_restart() {
+		echo "配置已写入，需要重启 OpenClaw 网关后生效。"
+		read -e -p "是否立即重启 OpenClaw 网关？(Y/n): " restart_choice
+		if [[ "$restart_choice" =~ ^[Nn]$ ]]; then
+			echo "已跳过重启，可稍后执行: openclaw gateway restart"
+			return 0
+		fi
+		if declare -F start_gateway >/dev/null 2>&1; then
+			start_gateway
+		else
+			openclaw gateway restart
+		fi
+	}
+
+	openclaw_memory_fix_index() {
+		local config_file
+		config_file=$(openclaw_memory_config_file)
+		if [ ! -f "$config_file" ]; then
+			echo "❌ 未找到配置文件: $config_file"
+			break_end
+			return 1
+		fi
+		echo "适用场景：Indexed 分子 > 分母（重复 collection 导致计数异常）"
+		read -e -p "确认将 includeDefaultMemory 设为 false？(y/N): " confirm_fix
+		if [[ ! "$confirm_fix" =~ ^[Yy]$ ]]; then
+			echo "已取消。"
+			break_end
+			return 0
+		fi
+		python3 - "$config_file" <<'PY'
+import json,sys
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+mem = data.setdefault('memory', {})
+qmd = mem.setdefault('qmd', {})
+qmd['includeDefaultMemory'] = False
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(data, f, ensure_ascii=False, indent=2)
+    f.write('\n')
+PY
+		if [ $? -ne 0 ]; then
+			echo "❌ 写入配置失败"
+			break_end
+			return 1
+		fi
+		echo "✅ 已设置 includeDefaultMemory=false"
+		read -e -p "是否立即执行 openclaw memory index --force？(y/N): " rebuild_choice
+		if [[ "$rebuild_choice" =~ ^[Yy]$ ]]; then
+			openclaw memory index --force
+		fi
+		break_end
+	}
+
+	openclaw_memory_scheme_menu() {
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw 记忆方案"
+			echo "======================================="
+			local backend current_label
+			backend=$(openclaw_memory_get_backend)
+			case "$backend" in
+				qmd) current_label="QMD" ;;
+				local) current_label="Local" ;;
+				*) current_label="未配置" ;;
+			esac
+			echo "当前方案: $current_label"
+			echo ""
+			echo "QMD  : 轻量索引，依赖 qmd 命令（适合网络受限）"
+			echo "Local: 本地向量检索，依赖 embedding 模型文件"
+			echo "Auto : 自动推荐（基于可用性 + 网络探测）"
+			echo "---------------------------------------"
+			echo "1. 自动推荐并应用"
+			echo "2. 手动选择 QMD"
+			echo "3. 手动选择 Local"
+			echo "0. 返回上一级"
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " scheme_choice
+			case "$scheme_choice" in
+				1)
+					openclaw_memory_recommend
+					local recommend_label
+					if [ "$OPENCLAW_MEMORY_RECOMMEND" = "qmd" ]; then
+						recommend_label="QMD"
+					else
+						recommend_label="Local"
+					fi
+					echo "推荐方案: $recommend_label"
+					echo "推荐原因:"
+					for reason in "${OPENCLAW_MEMORY_RECOMMEND_REASON[@]}"; do
+						echo "  - $reason"
+					done
+					read -e -p "是否应用该方案？(Y/n): " apply_choice
+					if [[ "$apply_choice" =~ ^[Nn]$ ]]; then
+						break_end
+						continue
+					fi
+					openclaw_memory_apply_scheme "$OPENCLAW_MEMORY_RECOMMEND" || { break_end; continue; }
+					openclaw_memory_offer_restart
+					break_end
+					;;
+				2)
+					openclaw_memory_apply_scheme "qmd" || { break_end; continue; }
+					openclaw_memory_offer_restart
+					break_end
+					;;
+				3)
+					openclaw_memory_apply_scheme "local" || { break_end; continue; }
+					openclaw_memory_offer_restart
+					break_end
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "无效的选择，请重试。"
+					sleep 1
+					;;
+			esac
+		done
+	}
+
 	openclaw_memory_file_collect() {
 		OPENCLAW_MEMORY_FILES=()
 		local base_dir="${HOME}/.openclaw/workspace"
@@ -12395,7 +12699,7 @@ EOF
 			rel="${file#$base_dir/}"
 			size=$(ls -lh "$file" | awk '{print $5}')
 			mtime=$(date -d "$(stat -c %y "$file")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file" | awk '{print $1" "$2}')
-			printf "%s | %s | %s | %s\n" "$((i+1))" "$rel" "$size" "$mtime"
+			printf "%s | %s | %s | %s\\n" "$((i+1))" "$rel" "$size" "$mtime"
 		done
 	}
 
@@ -12407,12 +12711,12 @@ EOF
 		}
 		local total_lines
 		total_lines=$(wc -l < "$file" 2>/dev/null || echo 0)
-		local default_lines=200
+		local default_lines=120
 		local start_line count
 		echo "文件: $file"
 		echo "总行数: $total_lines"
-		read -e -p "请输入起始行（默认末尾 $default_lines 行）: " start_line
-		read -e -p "请输入显示行数（默认 $default_lines）: " count
+		read -e -p "请输入起始行（回车默认末尾 $default_lines 行）: " start_line
+		read -e -p "请输入显示行数（回车默认 $default_lines）: " count
 		[ -z "$count" ] && count=$default_lines
 		if [ -z "$start_line" ]; then
 			if [ "$total_lines" -le "$count" ]; then
@@ -12488,6 +12792,9 @@ EOF
 			echo "1. 记忆索引状态"
 			echo "2. 更新记忆索引"
 			echo "3. 查看记忆文件"
+			echo "4. 索引修复（Indexed 异常）"
+			echo "5. 记忆方案（QMD/Local/Auto）"
+			echo "   - Auto 会基于可用性 + 网络探测推荐"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " memory_choice
@@ -12515,6 +12822,12 @@ EOF
 				3)
 					openclaw_memory_files_menu
 					;;
+				4)
+					openclaw_memory_fix_index
+					;;
+				5)
+					openclaw_memory_scheme_menu
+					;;
 				0)
 					return 0
 					;;
@@ -12527,6 +12840,7 @@ EOF
 	}
 
 	openclaw_backup_restore_menu() {
+
 		send_stats "OpenClaw备份与还原"
 		while true; do
 			clear
