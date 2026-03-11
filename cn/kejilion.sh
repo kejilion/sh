@@ -12793,7 +12793,7 @@ PY
 			if [ $? -ne 0 ] || [ -z "$status_output" ]; then
 				echo "获取状态失败"
 			else
-				status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed)" | head -n 3)
+				status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed)" | head -n 3 | sed -e 's/^Provider: /底层方案: /' -e 's/^Vector: /向量库状态: /' -e 's/^Indexed: /已收录文件: /')
 				if [ -z "$status_lines" ]; then
 					echo "未安装/未启动"
 				else
