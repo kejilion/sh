@@ -69,6 +69,7 @@ if [[ "$cmd" == "memory index"* ]]; then
   exit 0
 fi
 if [[ "$cmd" == "gateway restart" ]]; then
+  echo "$cmd" >> "${HOME}/.openclaw/gateway_calls"
   echo "gateway restarted"
   exit 0
 fi
@@ -194,10 +195,20 @@ with open(calls_path, 'r', encoding='utf-8') as fh:
     calls = fh.read()
 if 'memory index --force' not in calls:
     raise SystemExit('force index not called for missing store')
+# ensure gateway restart called after rebuild
+gw_calls_path = os.path.expanduser('~/.openclaw/gateway_calls')
+if not os.path.exists(gw_calls_path):
+    raise SystemExit('gateway restart not recorded')
+with open(gw_calls_path, 'r', encoding='utf-8') as fh:
+    gw_calls = fh.read()
+if 'gateway restart' not in gw_calls:
+    raise SystemExit('gateway restart not called after rebuild')
 # ensure warning emitted
 with open(os.path.join(os.environ['WORKDIR'], 'out_missing.txt'), 'r', encoding='utf-8') as fh:
     out = fh.read()
 if 'Store 原始值' not in out:
     raise SystemExit('missing store warning not found')
+if '索引已重建并自动重启网关' not in out:
+    raise SystemExit('auto restart message not found')
 print('SMOKE_OK')
 PY

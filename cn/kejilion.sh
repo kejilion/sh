@@ -12880,6 +12880,8 @@ EOF
 			fi
 		fi
 		openclaw memory index --force
+		openclaw gateway restart
+		echo "✅ 索引已重建并自动重启网关"
 		echo ""
 		openclaw_memory_render_status
 	}
@@ -13678,6 +13680,8 @@ EOF
 						openclaw_memory_rebuild_index_safe
 					else
 						openclaw memory index --force
+						openclaw gateway restart
+						echo "✅ 索引已重建并自动重启网关"
 					fi
 				else
 					openclaw memory index
