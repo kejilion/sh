@@ -1,1 +1,0 @@
-../../../tests/openclaw/tests_openclaw_memory_menu_smoke.sh
