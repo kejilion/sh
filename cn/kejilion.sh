@@ -12833,6 +12833,44 @@ EOF
 		echo "${HOME}/.openclaw/openclaw.json"
 	}
 
+	openclaw_memory_config_get() {
+		local key="$1"
+		local default_value="${2:-}"
+		local value
+		value=$(openclaw config get "$key" 2>/dev/null | head -n 1 | sed -e 's/^"//' -e 's/"$//')
+		if [ -z "$value" ] || [ "$value" = "null" ] || [ "$value" = "undefined" ]; then
+			echo "$default_value"
+			return 0
+		fi
+		echo "$value"
+	}
+
+	openclaw_memory_config_set() {
+		local key="$1"
+		shift
+		openclaw config set "$key" "$@" >/dev/null 2>&1
+	}
+
+	openclaw_memory_status_value() {
+		local key="$1"
+		openclaw memory status 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
+	}
+
+	openclaw_memory_prepare_workspace() {
+		local workspace memory_dir
+		workspace=$(openclaw_memory_status_value "Workspace")
+		if [ -z "$workspace" ]; then
+			echo "⚠️ 未能获取 Workspace 路径，跳过目录修复。"
+			return 1
+		fi
+		memory_dir="$workspace/memory"
+		if [ ! -d "$memory_dir" ]; then
+			echo "🔧 记忆目录不存在，已自动创建: $memory_dir"
+			mkdir -p "$memory_dir"
+		fi
+		return 0
+	}
+
 	openclaw_memory_render_status() {
 		local status_output status_lines config_file config_display
 		status_output=$(openclaw memory status 2>/dev/null)
@@ -12849,38 +12887,11 @@ EOF
 	}
 
 	openclaw_memory_get_backend() {
-		local config_file
-		config_file=$(openclaw_memory_config_file)
-		[ -s "$config_file" ] || { echo ""; return 0; }
-		python3 - "$config_file" <<'PY'
-import json,sys
-path = sys.argv[1]
-try:
-    with open(path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    backend = data.get('memory', {}).get('backend', '')
-    print(backend if isinstance(backend, str) else '')
-except Exception:
-    print('')
-PY
+		openclaw_memory_config_get "memory.backend"
 	}
 
 	openclaw_memory_get_local_model_path() {
-		local config_file
-		config_file=$(openclaw_memory_config_file)
-		[ -s "$config_file" ] || { echo ""; return 0; }
-		python3 - "$config_file" <<'PY'
-import json,sys
-path = sys.argv[1]
-try:
-    with open(path, 'r', encoding='utf-8') as f:
-        data = json.load(f)
-    obj = data.get('agents', {}).get('defaults', {}).get('memorySearch', {}).get('local', {})
-    model_path = obj.get('modelPath', '') if isinstance(obj, dict) else ''
-    print(model_path if isinstance(model_path, str) else '')
-except Exception:
-    print('')
-PY
+		openclaw_memory_config_get "agents.defaults.memorySearch.local.modelPath"
 	}
 
 	openclaw_memory_local_model_status() {
@@ -12905,17 +12916,11 @@ PY
 			echo "true"
 			return
 		fi
-		if command -v openclaw >/dev/null 2>&1 && openclaw memory status >/dev/null 2>&1; then
+		local backend
+		backend=$(openclaw_memory_config_get "memory.backend")
+		if [ "$backend" = "qmd" ]; then
 			echo "true"
 			return
-		fi
-		local config_file
-		config_file=$(openclaw_memory_config_file)
-		if [ -s "$config_file" ] && command -v jq >/dev/null 2>&1; then
-			if jq -e '.memory.backend == "qmd"' "$config_file" >/dev/null 2>&1; then
-				echo "true"
-				return
-			fi
 		fi
 		echo "false"
 	}
@@ -12990,39 +12995,27 @@ PY
 
 	openclaw_memory_apply_scheme() {
 		local scheme="$1"
-		local config_file
-		config_file=$(openclaw_memory_config_file)
-		if [ ! -f "$config_file" ]; then
-			echo "❌ 未找到配置文件: $config_file"
-			return 1
-		fi
-		python3 - "$config_file" "$scheme" <<'PY'
-import json,sys
-path = sys.argv[1]
-scheme = sys.argv[2]
-with open(path, 'r', encoding='utf-8') as f:
-    data = json.load(f)
-mem = data.setdefault('memory', {})
-if scheme == 'qmd':
-    mem['backend'] = 'qmd'
-    qmd = mem.setdefault('qmd', {})
-    qmd.setdefault('command', 'qmd')
-elif scheme == 'local':
-    mem['backend'] = 'local'
-    agents = data.setdefault('agents', {})
-    defaults = agents.setdefault('defaults', {})
-    memory_search = defaults.setdefault('memorySearch', {})
-    memory_search['provider'] = 'local'
-else:
-    raise SystemExit(2)
-with open(path, 'w', encoding='utf-8') as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
-    f.write('\n')
-PY
-		if [ $? -ne 0 ]; then
-			echo "❌ 写入配置失败"
-			return 1
-		fi
+		case "$scheme" in
+			qmd)
+				openclaw_memory_config_set "memory.backend" "qmd"
+				if [ $? -ne 0 ]; then
+					echo "❌ 写入配置失败"
+					return 1
+				fi
+				openclaw_memory_config_set "memory.qmd.command" "qmd" >/dev/null 2>&1
+				;;
+			local)
+				openclaw_memory_config_set "memory.backend" "local"
+				if [ $? -ne 0 ]; then
+					echo "❌ 写入配置失败"
+					return 1
+				fi
+				openclaw_memory_config_set "agents.defaults.memorySearch.provider" "local" >/dev/null 2>&1
+				;;
+			*)
+				echo "❌ 未知方案: $scheme"
+				return 1
+			esac
 		echo "✅ 已更新记忆方案配置"
 		return 0
 	}
@@ -13042,12 +13035,11 @@ PY
 	}
 
 	openclaw_memory_fix_index() {
-		local config_file
-		config_file=$(openclaw_memory_config_file)
-		if [ ! -f "$config_file" ]; then
-			echo "❌ 未找到配置文件: $config_file"
-			break_end
-			return 1
+		local backend
+		backend=$(openclaw_memory_get_backend)
+		if [ "$backend" = "qmd" ] && ! command -v qmd >/dev/null 2>&1; then
+			echo "⚠️ 检测到当前方案为 QMD，但未安装 qmd 命令。"
+			echo "   可切换 Local，或安装 bun + qmd 后再试。"
 		fi
 		echo "适用场景：Indexed 分子 > 分母（重复 collection 导致计数异常）"
 		read -e -p "确认将 includeDefaultMemory 设为 false？(y/N): " confirm_fix
@@ -13056,27 +13048,29 @@ PY
 			break_end
 			return 0
 		fi
-		python3 - "$config_file" <<'PY'
-import json,sys
-path = sys.argv[1]
-with open(path, 'r', encoding='utf-8') as f:
-    data = json.load(f)
-mem = data.setdefault('memory', {})
-qmd = mem.setdefault('qmd', {})
-qmd['includeDefaultMemory'] = False
-with open(path, 'w', encoding='utf-8') as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
-    f.write('\n')
-PY
+		openclaw_memory_config_set "memory.qmd.includeDefaultMemory" false
 		if [ $? -ne 0 ]; then
 			echo "❌ 写入配置失败"
 			break_end
 			return 1
 		fi
 		echo "✅ 已设置 includeDefaultMemory=false"
-		echo "建议立即执行：openclaw memory index --force"
-		read -e -p "是否立即执行 openclaw memory index --force？(Y/n): " rebuild_choice
+		echo "推荐执行：清理并重建索引"
+		read -e -p "是否执行清理并重建索引（推荐）？(Y/n): " rebuild_choice
 		if [[ ! "$rebuild_choice" =~ ^[Nn]$ ]]; then
+			local store_file ts backup_file
+			store_file=$(openclaw_memory_status_value "Store")
+			if [ -n "$store_file" ] && [ -f "$store_file" ]; then
+				ts=$(date +%Y%m%d_%H%M%S)
+				backup_file="${store_file}.bak.${ts}"
+				if mv "$store_file" "$backup_file"; then
+					echo "✅ 已备份索引: $backup_file"
+				else
+					echo "⚠️ 索引备份失败，继续重建。"
+				fi
+			else
+				echo "⚠️ 未找到索引库文件，跳过备份。"
+			fi
 			openclaw memory index --force
 			echo ""
 			openclaw_memory_render_status
@@ -13290,6 +13284,7 @@ PY
 						break_end
 						continue
 					fi
+				openclaw_memory_prepare_workspace
 					read -e -p "二次确认：输入 force 使用全量（留空为增量）: " confirm_step2
 					if [ "$confirm_step2" = "force" ]; then
 						openclaw memory index --force

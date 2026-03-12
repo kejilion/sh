@@ -14,7 +14,6 @@ cat > "$WORKDIR/harness.sh" <<'EOF_INNER'
 set -euo pipefail
 break_end() { return 0; }
 send_stats() { return 0; }
-openclaw_memory_prepare_workspace() { return 0; }
 EOF_INNER
 
 awk 'BEGIN{p=0} /openclaw_memory_config_file\(\) \{/{p=1} /openclaw_memory_menu\(\) \{/{p=0} p{print}' "$SCRIPT" >> "$WORKDIR/harness.sh"
@@ -26,21 +25,41 @@ cat > "$WORKDIR/bin/openclaw" <<'EOF_INNER'
 #!/usr/bin/env bash
 cmd="$*"
 if [[ "$cmd" == "config get"* ]]; then
+  key="$3"
+  case "$key" in
+    memory.backend) echo "qmd" ;;
+    memory.qmd.includeDefaultMemory) echo "true" ;;
+    memory.qmd.command) echo "qmd" ;;
+    agents.defaults.memorySearch.local.modelPath) echo "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf" ;;
+    agents.defaults.memorySearch.provider) echo "local" ;;
+    *) echo "" ;;
+  esac
   exit 0
 fi
 if [[ "$cmd" == "config set"* ]]; then
-  exit 0
-fi
-if [[ "$cmd" == "config file" ]]; then
-  echo "$HOME/.openclaw/openclaw.json"
+  key="$3"
+  val="$4"
+  if [[ "$key" == "memory.qmd.includeDefaultMemory" ]]; then
+    echo "$val" > "${HOME}/.openclaw/includeDefaultMemory"
+  fi
+  if [[ "$key" == "memory.backend" ]]; then
+    echo "$val" > "${HOME}/.openclaw/backend"
+  fi
+  if [[ "$key" == "memory.qmd.command" ]]; then
+    echo "$val" > "${HOME}/.openclaw/qmd_command"
+  fi
+  if [[ "$key" == "agents.defaults.memorySearch.provider" ]]; then
+    echo "$val" > "${HOME}/.openclaw/provider"
+  fi
   exit 0
 fi
 if [[ "$cmd" == "memory status" ]]; then
   cat <<TXT
-Provider: qmd
+Provider: qmd (requested: qmd)
 Vector: ready
-Indexed: 5/5 files
-Workspace: $HOME/.openclaw/workspace
+Indexed: 23/14 files
+Workspace: ${HOME}/.openclaw/workspace
+Store: ${HOME}/.openclaw/workspace/memory/index.sqlite
 TXT
   exit 0
 fi
@@ -108,6 +127,10 @@ cat > "$HOME/.openclaw/openclaw.json" <<'JSON'
 }
 JSON
 
+# mock index sqlite
+mkdir -p "$HOME/.openclaw/workspace/memory"
+touch "$HOME/.openclaw/workspace/memory/index.sqlite"
+
 # mock memory files
 cat > "$HOME/.openclaw/workspace/MEMORY.md" <<'TXT'
 # MEMORY
@@ -137,17 +160,22 @@ run_menu "1\nyes\n\n\n0\n" "index"
 # 3) 查看记忆文件（列表+查看）
 run_menu "2\n1\n\n\n\n\n0\n0\n" "files"
 # 4) 索引修复（执行修复 + 不立即重建）
-run_menu "3\ny\n\nN\n0\n" "fix"
+run_menu "3\ny\n\n\n0\n" "fix"
 # 5) 记忆方案（自动推荐并取消）
 run_menu "4\n1\n\nN\n0\n0\n" "scheme"
 
 python3 - <<'PY'
 import json,os,sys
-path = os.path.expanduser('~/.openclaw/openclaw.json')
-with open(path,'r',encoding='utf-8') as f:
-    data = json.load(f)
-flag = data.get('memory', {}).get('qmd', {}).get('includeDefaultMemory', True)
-if flag is not False:
+flag_path = os.path.expanduser('~/.openclaw/includeDefaultMemory')
+if not os.path.exists(flag_path):
     raise SystemExit('includeDefaultMemory not updated')
+flag = open(flag_path, 'r', encoding='utf-8').read().strip()
+if flag != 'false':
+    raise SystemExit('includeDefaultMemory not updated')
+# ensure backup created
+import glob
+baks = glob.glob(os.path.expanduser('~/.openclaw/workspace/memory/index.sqlite.bak.*'))
+if not baks:
+    raise SystemExit('index sqlite backup not created')
 print('SMOKE_OK')
 PY
