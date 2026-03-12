@@ -12834,6 +12834,15 @@ EOF
 		openclaw config set "$key" "$@" >/dev/null 2>&1
 	}
 
+	openclaw_memory_config_unset() {
+		local key="$1"
+		openclaw config unset "$key" >/dev/null 2>&1
+	}
+
+	openclaw_memory_cleanup_legacy_keys() {
+		openclaw_memory_config_unset "memory.local"
+	}
+
 	openclaw_memory_status_value() {
 		local key="$1"
 		openclaw memory status 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
@@ -12906,7 +12915,13 @@ EOF
 	}
 
 	openclaw_memory_get_backend() {
-		openclaw_memory_config_get "memory.backend"
+		local backend
+		backend=$(openclaw_memory_config_get "memory.backend")
+		if [ "$backend" = "local" ]; then
+			echo "builtin"
+		else
+			echo "$backend"
+		fi
 	}
 
 	openclaw_memory_get_local_model_path() {
@@ -13144,9 +13159,14 @@ EOF
 			echo "模式: 仅写配置（未安装/未下载）"
 		fi
 		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
-			echo "预热索引: 已执行"
+			echo "索引: 已执行"
 		else
-			echo "预热索引: 已跳过"
+			echo "索引: 已跳过"
+		fi
+		if [ "$OPENCLAW_MEMORY_RESTARTED" = "true" ]; then
+			echo "重启: 已执行"
+		else
+			echo "重启: 已跳过"
 		fi
 		if [ -n "$OPENCLAW_MEMORY_QMD_PATH" ]; then
 			echo "qmd: $OPENCLAW_MEMORY_QMD_PATH"
@@ -13160,13 +13180,15 @@ EOF
 		if [ -n "$OPENCLAW_MEMORY_HF_BASE" ]; then
 			echo "下载源: $OPENCLAW_MEMORY_HF_BASE"
 		fi
-		echo "如需立即生效，请执行: openclaw gateway restart"
+		echo "最终状态:"
+		openclaw_memory_render_status
 		echo "---------------------------------------"
 	}
 
 	openclaw_memory_auto_confirm() {
 		local scheme_label="$1"
-		OPENCLAW_MEMORY_PREHEAT="false"
+		OPENCLAW_MEMORY_PREHEAT="true"
+		OPENCLAW_MEMORY_RESTARTED="false"
 		OPENCLAW_MEMORY_CONFIG_ONLY="false"
 		echo "即将执行自动部署（详细模式）"
 		echo "目标方案: $scheme_label"
@@ -13181,14 +13203,11 @@ EOF
 		else
 			echo "可能流量/磁盘占用: 视实际情况而定"
 		fi
-		echo "是否预热索引: 默认否（可输入 yes-preheat 开启）"
-		echo "高级选项: 输入 config 仅写配置（不安装不下载，不预热）"
+		echo "确认后将自动安装/下载、写入配置、构建索引并重启网关"
+		echo "高级选项: 输入 config 仅写配置（不安装不下载、不索引、不重启）"
 		read -e -p "输入 yes 确认继续（默认 N）: " confirm_step
 		case "$confirm_step" in
 			yes|YES)
-				OPENCLAW_MEMORY_PREHEAT="false"
-				;;
-			yes-preheat|YES-PREHEAT|yes_preheat|YES_PREHEAT|yespreheat|YESPREHEAT)
 				OPENCLAW_MEMORY_PREHEAT="true"
 				;;
 			config|CONFIG)
@@ -13202,17 +13221,15 @@ EOF
 		esac
 		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
 			echo "⚠️ 已选择仅写配置，不安装不下载"
-		fi
-		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
-			echo "🔥 已选择预热索引"
 		else
-			echo "⏭️ 将跳过预热索引"
+			echo "✅ 将自动构建索引并重启网关"
 		fi
 		return 0
 	}
 
 	openclaw_memory_auto_setup_qmd() {
 		echo "🔍 检测 QMD 环境"
+		openclaw_memory_cleanup_legacy_keys
 		openclaw_memory_check_sqlite || true
 		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
 			if command -v qmd >/dev/null 2>&1; then
@@ -13251,13 +13268,14 @@ EOF
 
 	openclaw_memory_auto_setup_local() {
 		echo "🔍 检测 Local 环境"
+		openclaw_memory_cleanup_legacy_keys
 		local backend provider
 		backend=$(openclaw_memory_get_backend)
-		if [ "$backend" = "local" ]; then
-			echo "✅ memory.backend 已是 local"
+		if [ "$backend" = "builtin" ] || [ "$backend" = "local" ]; then
+			echo "✅ memory.backend 已是 builtin"
 		else
-			openclaw_memory_config_set "memory.backend" "local"
-			echo "✅ 已设置 memory.backend=local"
+			openclaw_memory_config_set "memory.backend" "builtin"
+			echo "✅ 已设置 memory.backend=builtin"
 		fi
 		provider=$(openclaw_memory_config_get "agents.defaults.memorySearch.provider")
 		if [ "$provider" = "local" ]; then
@@ -13341,6 +13359,18 @@ EOF
 			local) openclaw_memory_auto_setup_local || return 1 ;;
 			*) return 1 ;;
 		esac
+		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+			OPENCLAW_MEMORY_RESTARTED="false"
+			openclaw_memory_render_auto_summary
+			return 0
+		fi
+		echo "♻️ 重启 OpenClaw 网关"
+		if declare -F start_gateway >/dev/null 2>&1; then
+			start_gateway
+		else
+			openclaw gateway restart
+		fi
+		OPENCLAW_MEMORY_RESTARTED="true"
 		openclaw_memory_render_auto_summary
 		return 0
 	}
@@ -13383,6 +13413,7 @@ EOF
 
 	openclaw_memory_apply_scheme() {
 		local scheme="$1"
+		openclaw_memory_cleanup_legacy_keys
 		case "$scheme" in
 			qmd)
 				openclaw_memory_config_set "memory.backend" "qmd"
@@ -13393,7 +13424,7 @@ EOF
 				openclaw_memory_config_set "memory.qmd.command" "qmd" >/dev/null 2>&1
 				;;
 			local)
-				openclaw_memory_config_set "memory.backend" "local"
+				openclaw_memory_config_set "memory.backend" "builtin"
 				if [ $? -ne 0 ]; then
 					echo "❌ 写入配置失败"
 					return 1
@@ -13463,7 +13494,7 @@ EOF
 			backend=$(openclaw_memory_get_backend)
 			case "$backend" in
 				qmd) current_label="QMD" ;;
-				local) current_label="Local" ;;
+				builtin|local) current_label="Local" ;;
 				*) current_label="未配置" ;;
 			esac
 			echo "当前方案: $current_label"
