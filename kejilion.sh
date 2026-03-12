@@ -12839,6 +12839,42 @@ EOF
 		openclaw memory status 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
 	}
 
+	openclaw_memory_expand_path() {
+		local raw_path="$1"
+		if [ -z "$raw_path" ]; then
+			echo ""
+			return 0
+		fi
+		raw_path=$(echo "$raw_path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+		if [[ "$raw_path" == ~* ]]; then
+			echo "${raw_path/#\~/$HOME}"
+		else
+			echo "$raw_path"
+		fi
+	}
+
+	openclaw_memory_rebuild_index_safe() {
+		local store_raw store_file ts backup_file
+		store_raw=$(openclaw_memory_status_value "Store")
+		store_file=$(openclaw_memory_expand_path "$store_raw")
+		if [ -z "$store_file" ] || [ ! -f "$store_file" ]; then
+			echo "⚠️ 未找到索引库文件，可能为空或不存在。"
+			echo "   Store 原始值: ${store_raw:-<空>}"
+			echo "   仍将执行重建索引。"
+		else
+			ts=$(date +%Y%m%d_%H%M%S)
+			backup_file="${store_file}.bak.${ts}"
+			if mv "$store_file" "$backup_file"; then
+				echo "✅ 已备份索引: $backup_file"
+			else
+				echo "⚠️ 索引备份失败，继续重建。"
+			fi
+		fi
+		openclaw memory index --force
+		echo ""
+		openclaw_memory_render_status
+	}
+
 	openclaw_memory_prepare_workspace() {
 		local workspace memory_dir
 		workspace=$(openclaw_memory_status_value "Workspace")
@@ -13041,22 +13077,7 @@ EOF
 		echo "推荐执行：清理并重建索引"
 		read -e -p "是否执行清理并重建索引（推荐）？(Y/n): " rebuild_choice
 		if [[ ! "$rebuild_choice" =~ ^[Nn]$ ]]; then
-			local store_file ts backup_file
-			store_file=$(openclaw_memory_status_value "Store")
-			if [ -n "$store_file" ] && [ -f "$store_file" ]; then
-				ts=$(date +%Y%m%d_%H%M%S)
-				backup_file="${store_file}.bak.${ts}"
-				if mv "$store_file" "$backup_file"; then
-					echo "✅ 已备份索引: $backup_file"
-				else
-					echo "⚠️ 索引备份失败，继续重建。"
-				fi
-			else
-				echo "⚠️ 未找到索引库文件，跳过备份。"
-			fi
-			openclaw memory index --force
-			echo ""
-			openclaw_memory_render_status
+			openclaw_memory_rebuild_index_safe
 		else
 			echo "可稍后在记忆管理中查看状态。"
 		fi
@@ -13268,13 +13289,20 @@ EOF
 						continue
 					fi
 				openclaw_memory_prepare_workspace
-					read -e -p "二次确认：输入 force 使用全量（留空为增量）: " confirm_step2
-					if [ "$confirm_step2" = "force" ]; then
-						openclaw memory index --force
+				read -e -p "二次确认：输入 force 使用全量（留空为增量）: " confirm_step2
+				if [ "$confirm_step2" = "force" ]; then
+					echo "⚠️ 全量重建更彻底，但耗时更长。"
+					echo "推荐：输入 rebuild 进行安全重建（先备份索引库）。"
+					read -e -p "第三次确认：输入 rebuild 执行安全重建；直接回车继续普通 force: " confirm_step3
+					if [ "$confirm_step3" = "rebuild" ]; then
+						openclaw_memory_rebuild_index_safe
 					else
-						openclaw memory index
+						openclaw memory index --force
 					fi
-					break_end
+				else
+					openclaw memory index
+				fi
+				break_end
 					;;
 				2)
 					openclaw_memory_files_menu
