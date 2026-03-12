@@ -23,6 +23,13 @@ awk 'BEGIN{p=0}
  /openclaw_api_manage_list\(\) \{/{p=0}
  p{print}
 ' "$SCRIPT" >> "$WORKDIR/harness.sh"
+
+awk 'BEGIN{p=0}
+ /openclaw_detect_api_protocol_by_provider\(\) \{/{p=1}
+ /fix-openclaw-provider-protocol-interactive\(\) \{/{p=0}
+ p{print}
+' "$SCRIPT" >> "$WORKDIR/harness.sh"
+
 chmod +x "$WORKDIR/harness.sh"
 
 # stub: curl
@@ -58,7 +65,7 @@ export HOME="$WORKDIR/home"
 export PATH="$WORKDIR/bin:$PATH"
 export TERM=xterm
 
-# minimal openclaw.json
+# case 1: responses 不可用但 chat/completions 可用，仍应写 openai-completions
 cat > "$HOME/.openclaw/openclaw.json" <<'JSON'
 {
   "models": {
@@ -84,7 +91,53 @@ with open(path, 'r', encoding='utf-8') as f:
     data = json.load(f)
 prov = data.get('models', {}).get('providers', {}).get('demo', {})
 api = prov.get('api')
-if api != 'openai-chat-completions':
+if api != 'openai-completions':
     raise SystemExit(f'api mismatch: {api}')
-print('SMOKE_OK')
+print('SMOKE_OK: detect fallback to openai-completions')
+PY
+
+# case 2: 已写入 openai-chat-completions 的配置，修复后必须落回合法协议
+cat > "$HOME/.openclaw/openclaw.json" <<'JSON'
+{
+  "models": {
+    "mode": "merge",
+    "providers": {
+      "demo": {
+        "api": "openai-chat-completions",
+        "baseUrl": "http://127.0.0.1:1",
+        "apiKey": "sk-test",
+        "models": [
+          {
+            "id": "gpt-4o",
+            "name": "demo / gpt-4o",
+            "input": ["text"],
+            "contextWindow": 1,
+            "maxTokens": 1,
+            "cost": {"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0}
+          }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "models": {
+        "demo/gpt-4o": {}
+      }
+    }
+  }
+}
+JSON
+
+openclaw_detect_api_protocol_by_provider "$HOME/.openclaw/openclaw.json" "demo"
+
+python3 - <<'PY'
+import json, os, sys
+path = os.path.expanduser('~/.openclaw/openclaw.json')
+with open(path, 'r', encoding='utf-8') as f:
+    data = json.load(f)
+api = data.get('models', {}).get('providers', {}).get('demo', {}).get('api')
+if api not in ('openai-completions', 'openai-responses'):
+    raise SystemExit(f'protocol fix mismatch: {api}')
+print('SMOKE_OK: protocol repair corrected openai-chat-completions')
 PY

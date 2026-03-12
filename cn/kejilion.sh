@@ -10164,12 +10164,9 @@ def detect_api_protocol(base_url, api_key):
     code, err = probe_endpoint(base_url, api_key, '/responses')
     if code is not None and code not in (404, 405):
         return 'openai-responses', f'POST /responses -> HTTP {code}', None
-    code2, err2 = probe_endpoint(base_url, api_key, '/chat/completions')
-    if code2 is not None and code2 not in (404, 405):
-        return 'openai-chat-completions', f'POST /chat/completions -> HTTP {code2}', None
-    if err or err2:
-        return 'openai-completions', 'fallback: probe failed', err or err2
-    return 'openai-completions', f'POST /responses={code}, /chat/completions={code2} -> fallback /completions', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 
 def send_stat(action):
@@ -10216,7 +10213,7 @@ else:
     defaults_models = {}
 defaults['models'] = defaults_models
 
-SUPPORTED_APIS = {'openai-completions', 'openai-responses', 'openai-chat-completions'}
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
 
 changed = False
 fatal_errors = []
@@ -10359,12 +10356,9 @@ def detect_api_protocol(base_url, api_key):
     code, err = probe_endpoint(base_url, api_key, '/responses')
     if code is not None and code not in (404, 405):
         return 'openai-responses', f'POST /responses -> HTTP {code}', None
-    code2, err2 = probe_endpoint(base_url, api_key, '/chat/completions')
-    if code2 is not None and code2 not in (404, 405):
-        return 'openai-chat-completions', f'POST /chat/completions -> HTTP {code2}', None
-    if err or err2:
-        return 'openai-completions', 'fallback: probe failed', err or err2
-    return 'openai-completions', f'POST /responses={code}, /chat/completions={code2} -> fallback /completions', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 
 def fetch_remote_models_with_retry(name, base_url, api_key, retries=3):
@@ -10404,8 +10398,10 @@ for name, provider in list(providers.items()):
         continue
 
     if api not in SUPPORTED_APIS:
-        summary.append(f'ℹ️ 跳过 {name}: 不支持直接 /models 校验 (api={api})')
-        continue
+        summary.append(f'🔁 {name}: 发现非法协议 {api or "(unset)"}，将重新探测')
+        provider['api'] = ''
+        api = ''
+        changed = True
 
     try:
         detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
@@ -10598,7 +10594,7 @@ PY
 
 
 
-	# OpenClaw API 协议探测（优先 responses -> chat/completions -> completions）
+	# OpenClaw API 协议探测（优先 responses -> completions）
 	openclaw_probe_api_endpoint() {
 		local base_url="$1"
 		local api_key="$2"
@@ -10620,10 +10616,9 @@ PY
 		local base_url="$1"
 		local api_key="$2"
 		local code_responses="000"
-		local code_chat="000"
 
 		DETECTED_API="openai-completions"
-		DETECTED_REASON="fallback: /responses & /chat/completions not supported"
+		DETECTED_REASON="fallback: /responses not supported"
 
 		code_responses=$(openclaw_probe_api_endpoint "$base_url" "$api_key" "/responses")
 		if [[ "$code_responses" != "404" && "$code_responses" != "405" && "$code_responses" != "000" ]]; then
@@ -10632,15 +10627,8 @@ PY
 			return 0
 		fi
 
-		code_chat=$(openclaw_probe_api_endpoint "$base_url" "$api_key" "/chat/completions")
-		if [[ "$code_chat" != "404" && "$code_chat" != "405" && "$code_chat" != "000" ]]; then
-			DETECTED_API="openai-chat-completions"
-			DETECTED_REASON="POST /chat/completions -> HTTP $code_chat"
-			return 0
-		fi
-
 		DETECTED_API="openai-completions"
-		DETECTED_REASON="POST /responses=$code_responses, /chat/completions=$code_chat -> fallback /completions"
+		DETECTED_REASON="POST /responses=$code_responses -> fallback /completions"
 		return 0
 	}
 
@@ -10909,7 +10897,7 @@ import time
 import urllib.request
 
 path = sys.argv[1]
-SUPPORTED_APIS = {'openai-completions', 'openai-responses', 'openai-chat-completions'}
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
 
 
 def ping_models(base_url, api_key):
@@ -11026,7 +11014,7 @@ import urllib.request
 
 path = sys.argv[1]
 target = sys.argv[2]
-SUPPORTED_APIS = {'openai-completions', 'openai-responses', 'openai-chat-completions'}
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
 
 def probe_endpoint(base_url, api_key, path, timeout=6):
     url = base_url.rstrip('/') + path
@@ -11053,12 +11041,9 @@ def detect_api_protocol(base_url, api_key):
     code, err = probe_endpoint(base_url, api_key, '/responses')
     if code is not None and code not in (404, 405):
         return 'openai-responses', f'POST /responses -> HTTP {code}', None
-    code2, err2 = probe_endpoint(base_url, api_key, '/chat/completions')
-    if code2 is not None and code2 not in (404, 405):
-        return 'openai-chat-completions', f'POST /chat/completions -> HTTP {code2}', None
-    if err or err2:
-        return 'openai-completions', 'fallback: probe failed', err or err2
-    return 'openai-completions', f'POST /responses={code}, /chat/completions={code2} -> fallback /completions', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 with open(path, 'r', encoding='utf-8') as f:
     obj = json.load(f)
@@ -11143,8 +11128,9 @@ if not base_url or not api_key or not isinstance(model_list, list) or not model_
     raise SystemExit(3)
 
 if api not in SUPPORTED_APIS:
-    print(f'❌ provider {target} 当前 api={api}，不支持直接 /models 同步')
-    raise SystemExit(3)
+    print(f'ℹ️ provider {target} 当前 api={api}，将重新探测协议后继续')
+    provider['api'] = ''
+    api = ''
 
 protocol_msg = None
 try:
@@ -11292,7 +11278,7 @@ import urllib.request
 
 path = sys.argv[1]
 name = sys.argv[2]
-SUPPORTED_APIS = {'openai-completions', 'openai-responses', 'openai-chat-completions'}
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
 
 def probe_endpoint(base_url, api_key, path, timeout=6):
     url = base_url.rstrip('/') + path
@@ -11319,12 +11305,9 @@ def detect_api_protocol(base_url, api_key):
     code, err = probe_endpoint(base_url, api_key, '/responses')
     if code is not None and code not in (404, 405):
         return 'openai-responses', f'POST /responses -> HTTP {code}', None
-    code2, err2 = probe_endpoint(base_url, api_key, '/chat/completions')
-    if code2 is not None and code2 not in (404, 405):
-        return 'openai-chat-completions', f'POST /chat/completions -> HTTP {code2}', None
-    if err or err2:
-        return 'openai-completions', 'fallback: probe failed', err or err2
-    return 'openai-completions', f'POST /responses={code}, /chat/completions={code2} -> fallback /completions', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 try:
     with open(path, 'r', encoding='utf-8') as f:
