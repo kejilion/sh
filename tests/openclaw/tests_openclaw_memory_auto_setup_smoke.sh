@@ -163,13 +163,13 @@ run_auto() {
 HOME_QMD=$(make_home "qmd")
 export HOME="$HOME_QMD"
 FAKE_COUNTRY=US FAKE_HF_OK=0 FAKE_MIRROR_OK=1 \
-  run_auto "yes\n\n" "qmd" "$WORKDIR/out_qmd.txt"
+  run_auto "yes-preheat\n" "qmd" "$WORKDIR/out_qmd.txt"
 
 # Case 2: local 模型不存在 -> 下载 -> 写入 modelPath -> index (CN)
 HOME_LOCAL=$(make_home "local")
 export HOME="$HOME_LOCAL"
 FAKE_COUNTRY=CN FAKE_HF_OK=1 FAKE_MIRROR_OK=0 \
-  run_auto "yes\n\n" "local" "$WORKDIR/out_local.txt"
+  run_auto "yes-preheat\n" "local" "$WORKDIR/out_local.txt"
 
 # Case 3: 已存在 -> 跳过下载/安装
 HOME_SKIP=$(make_home "skip")
@@ -193,7 +193,7 @@ chmod +x "$HOME/.bun/bin/qmd"
 export PATH="$HOME/.bun/bin:$PATH"
 
 FAKE_COUNTRY=US FAKE_HF_OK=0 FAKE_MIRROR_OK=0 \
-  run_auto "yes\nN\n" "local" "$WORKDIR/out_skip.txt"
+  run_auto "yes\n" "local" "$WORKDIR/out_skip.txt"
 
 export WORKDIR
 python3 - <<'PY'

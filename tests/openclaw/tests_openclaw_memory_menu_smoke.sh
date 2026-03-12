@@ -164,7 +164,7 @@ run_menu "2\n1\n\n\n\n\n0\n0\n" "files" "$WORKDIR/out_files.txt"
 # 4) 索引修复（执行修复 + 不立即重建）
 run_menu "3\ny\n\n\n0\n" "fix" "$WORKDIR/out_fix.txt"
 # 5) 记忆方案（自动推荐并取消）
-run_menu "4\n1\n\nN\n0\n0\n" "scheme" "$WORKDIR/out_scheme.txt"
+run_menu "4\n1\n\n0\n0\n" "scheme" "$WORKDIR/out_scheme.txt"
 
 # 6) Store 缺失时仍执行 rebuild
 : > "$HOME/.openclaw/index_calls"

@@ -13140,6 +13140,14 @@ EOF
 		echo "---------------------------------------"
 		echo "✅ 环境就绪"
 		echo "方案: ${OPENCLAW_MEMORY_AUTO_SCHEME:-unknown}"
+		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+			echo "模式: 仅写配置（未安装/未下载）"
+		fi
+		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
+			echo "预热索引: 已执行"
+		else
+			echo "预热索引: 已跳过"
+		fi
 		if [ -n "$OPENCLAW_MEMORY_QMD_PATH" ]; then
 			echo "qmd: $OPENCLAW_MEMORY_QMD_PATH"
 		fi
@@ -13158,24 +13166,47 @@ EOF
 
 	openclaw_memory_auto_confirm() {
 		local scheme_label="$1"
-		echo "即将执行自动部署（可能下载模型 / 写入配置 / 安装依赖）"
+		OPENCLAW_MEMORY_PREHEAT="false"
+		OPENCLAW_MEMORY_CONFIG_ONLY="false"
+		echo "即将执行自动部署（详细模式）"
 		echo "目标方案: $scheme_label"
-		echo "检测到地区: ${OPENCLAW_MEMORY_COUNTRY:-unknown}"
-		echo "huggingface.co: ${OPENCLAW_MEMORY_HF_OK:-unknown}"
-		echo "hf-mirror.com: ${OPENCLAW_MEMORY_MIRROR_OK:-unknown}"
+		echo "地区: ${OPENCLAW_MEMORY_COUNTRY:-unknown}"
+		echo "镜像源探测: huggingface.co=${OPENCLAW_MEMORY_HF_OK:-unknown} hf-mirror.com=${OPENCLAW_MEMORY_MIRROR_OK:-unknown}"
 		echo "下载源: ${OPENCLAW_MEMORY_HF_BASE:-unknown}"
-		echo "⚠️ 该过程可能产生网络流量与磁盘占用"
-		read -e -p "输入 yes 确认继续（默认 N）: " confirm_step
-		if [ "$confirm_step" != "yes" ]; then
-			echo "已取消自动部署。"
-			return 1
+		if [ -n "$OPENCLAW_MEMORY_EXPECT_PATH" ]; then
+			echo "预计下载路径: $OPENCLAW_MEMORY_EXPECT_PATH"
 		fi
-		local preheat_choice
-		read -e -p "是否预热索引（可能下载模型）？(Y/n): " preheat_choice
-		if [[ "$preheat_choice" =~ ^[Nn]$ ]]; then
-			OPENCLAW_MEMORY_PREHEAT="false"
+		if [ -n "$OPENCLAW_MEMORY_EXPECT_SIZE" ]; then
+			echo "可能流量/磁盘占用: $OPENCLAW_MEMORY_EXPECT_SIZE"
 		else
-			OPENCLAW_MEMORY_PREHEAT="true"
+			echo "可能流量/磁盘占用: 视实际情况而定"
+		fi
+		echo "是否预热索引: 默认否（可输入 yes-preheat 开启）"
+		echo "高级选项: 输入 config 仅写配置（不安装不下载，不预热）"
+		read -e -p "输入 yes 确认继续（默认 N）: " confirm_step
+		case "$confirm_step" in
+			yes|YES)
+				OPENCLAW_MEMORY_PREHEAT="false"
+				;;
+			yes-preheat|YES-PREHEAT|yes_preheat|YES_PREHEAT|yespreheat|YESPREHEAT)
+				OPENCLAW_MEMORY_PREHEAT="true"
+				;;
+			config|CONFIG)
+				OPENCLAW_MEMORY_CONFIG_ONLY="true"
+				OPENCLAW_MEMORY_PREHEAT="false"
+				;;
+			*)
+				echo "已取消自动部署。"
+				return 1
+				;;
+		esac
+		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+			echo "⚠️ 已选择仅写配置，不安装不下载"
+		fi
+		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
+			echo "🔥 已选择预热索引"
+		else
+			echo "⏭️ 将跳过预热索引"
 		fi
 		return 0
 	}
@@ -13183,7 +13214,15 @@ EOF
 	openclaw_memory_auto_setup_qmd() {
 		echo "🔍 检测 QMD 环境"
 		openclaw_memory_check_sqlite || true
-		openclaw_memory_ensure_qmd || return 1
+		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+			if command -v qmd >/dev/null 2>&1; then
+				OPENCLAW_MEMORY_QMD_PATH=$(command -v qmd)
+			else
+				OPENCLAW_MEMORY_QMD_PATH="qmd"
+			fi
+		else
+			openclaw_memory_ensure_qmd || return 1
+		fi
 		local backend
 		backend=$(openclaw_memory_get_backend)
 		if [ "$backend" = "qmd" ]; then
@@ -13240,20 +13279,29 @@ EOF
 			local model_dir="$HOME/.openclaw/models/embedding"
 			local model_dest="$model_dir/$model_name"
 			local model_url="${OPENCLAW_MEMORY_HF_BASE}/ggml-org/embeddinggemma-300M-GGUF/resolve/main/$model_name"
-			if [ -f "$model_dest" ]; then
-				echo "✅ 已发现默认模型文件: $model_dest"
+			if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+				echo "ℹ️ 仅写配置模式：跳过模型下载"
+				OPENCLAW_MEMORY_MODEL_PATH="$model_dest"
 			else
-				echo "⬇️ 下载模型: $model_url"
-				openclaw_memory_download_file "$model_url" "$model_dest" || return 1
-				echo "✅ 模型已下载: $model_dest"
+				if [ -f "$model_dest" ]; then
+					echo "✅ 已发现默认模型文件: $model_dest"
+				else
+					echo "⬇️ 下载模型: $model_url"
+					openclaw_memory_download_file "$model_url" "$model_dest" || return 1
+					echo "✅ 模型已下载: $model_dest"
+				fi
+				OPENCLAW_MEMORY_MODEL_PATH="$model_dest"
 			fi
 			openclaw_memory_config_set "agents.defaults.memorySearch.local.modelPath" "$model_dest"
 			echo "✅ 已写入模型路径"
-			OPENCLAW_MEMORY_MODEL_PATH="$model_dest"
 		fi
-		echo "🔁 生成索引"
-		openclaw_memory_prepare_workspace
-		openclaw memory index --force
+		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
+			echo "🔥 预热索引（可能下载模型）"
+			openclaw_memory_prepare_workspace
+			openclaw memory index --force
+		else
+			echo "⏭️ 已跳过预热"
+		fi
 		echo "✅ Local 自动部署完成"
 	}
 
@@ -13262,6 +13310,8 @@ EOF
 		local scheme_label
 		OPENCLAW_MEMORY_QMD_PATH=""
 		OPENCLAW_MEMORY_MODEL_PATH=""
+		OPENCLAW_MEMORY_EXPECT_PATH=""
+		OPENCLAW_MEMORY_EXPECT_SIZE=""
 		openclaw_memory_detect_region
 		openclaw_memory_select_sources
 		if [ "$scheme" = "auto" ]; then
@@ -13269,8 +13319,16 @@ EOF
 			scheme="$OPENCLAW_MEMORY_RECOMMEND"
 		fi
 		case "$scheme" in
-			qmd) scheme_label="QMD" ;;
-			local) scheme_label="Local" ;;
+			qmd)
+				scheme_label="QMD"
+				OPENCLAW_MEMORY_EXPECT_PATH="$HOME/.bun (qmd 安装目录)"
+				OPENCLAW_MEMORY_EXPECT_SIZE="约 20-50MB"
+				;;
+			local)
+				scheme_label="Local"
+				OPENCLAW_MEMORY_EXPECT_PATH="$HOME/.openclaw/models/embedding/embeddinggemma-300M-Q8_0.gguf"
+				OPENCLAW_MEMORY_EXPECT_SIZE="约 350-600MB"
+				;;
 			*)
 				echo "❌ 未知方案: $scheme"
 				return 1
@@ -13414,47 +13472,23 @@ EOF
 			echo "Local: 本地向量检索，依赖 embedding 模型文件"
 			echo "Auto : 自动推荐（基于可用性 + 网络探测）"
 			echo "---------------------------------------"
-			echo "1. 切换并自动部署（推荐）"
-			echo "2. 自动推荐并应用（仅写配置）"
-			echo "3. 手动选择 QMD"
-			echo "4. 手动选择 Local"
+			echo "1. 切换 QMD（自动部署/已装则跳过）"
+			echo "2. 切换 Local（自动部署/已装则跳过）"
+			echo "3. Auto（自动推荐并自动部署）"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " scheme_choice
 			case "$scheme_choice" in
 				1)
-					openclaw_memory_auto_setup_menu
+					openclaw_memory_auto_setup_run "qmd"
+					break_end
 					;;
 				2)
-					openclaw_memory_recommend
-					local recommend_label
-					if [ "$OPENCLAW_MEMORY_RECOMMEND" = "qmd" ]; then
-						recommend_label="QMD"
-					else
-						recommend_label="Local"
-					fi
-					echo "推荐方案: $recommend_label"
-					echo "推荐原因:"
-					for reason in "${OPENCLAW_MEMORY_RECOMMEND_REASON[@]}"; do
-						echo "  - $reason"
-					done
-					read -e -p "是否应用该方案？(Y/n): " apply_choice
-					if [[ "$apply_choice" =~ ^[Nn]$ ]]; then
-						break_end
-						continue
-					fi
-					openclaw_memory_apply_scheme "$OPENCLAW_MEMORY_RECOMMEND" || { break_end; continue; }
-					openclaw_memory_offer_restart
+					openclaw_memory_auto_setup_run "local"
 					break_end
 					;;
 				3)
-					openclaw_memory_apply_scheme "qmd" || { break_end; continue; }
-					openclaw_memory_offer_restart
-					break_end
-					;;
-				4)
-					openclaw_memory_apply_scheme "local" || { break_end; continue; }
-					openclaw_memory_offer_restart
+					openclaw_memory_auto_setup_run "auto"
 					break_end
 					;;
 				0)
