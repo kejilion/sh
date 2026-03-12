@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-SCRIPT="$REPO_DIR/kejilion.sh"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SCRIPT="$REPO_ROOT/kejilion.sh"
 WORKDIR="${TMPDIR:-/tmp}/openclaw-plugin-skill-menu-test-$$"
 mkdir -p "$WORKDIR/bin" "$WORKDIR/home/.openclaw/workspace/skills" "$WORKDIR/home/.openclaw"
 KEEP_WORKDIR=${KEEP_WORKDIR:-false}

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
-SCRIPT="$REPO_DIR/kejilion.sh"
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SCRIPT="$REPO_ROOT/kejilion.sh"
 WORKDIR="${TMPDIR:-/tmp}/openclaw-memory-menu-test-$$"
 mkdir -p "$WORKDIR/bin" "$WORKDIR/home/.openclaw/workspace/memory"
 KEEP_WORKDIR=${KEEP_WORKDIR:-false}
@@ -14,20 +14,33 @@ cat > "$WORKDIR/harness.sh" <<'EOF_INNER'
 set -euo pipefail
 break_end() { return 0; }
 send_stats() { return 0; }
+openclaw_memory_prepare_workspace() { return 0; }
 EOF_INNER
 
-awk 'BEGIN{p=0} /openclaw_memory_config_file\(\) \{/{p=1} /openclaw_backup_restore_menu\(\) \{/{p=0} p{print}' "$SCRIPT" >> "$WORKDIR/harness.sh"
+awk 'BEGIN{p=0} /openclaw_memory_config_file\(\) \{/{p=1} /openclaw_memory_menu\(\) \{/{p=0} p{print}' "$SCRIPT" >> "$WORKDIR/harness.sh"
+awk 'BEGIN{p=0} /openclaw_memory_menu\(\) \{/{p=1} /openclaw_backup_restore_menu\(\) \{/{p=0} p{print}' "$SCRIPT" >> "$WORKDIR/harness.sh"
 chmod +x "$WORKDIR/harness.sh"
 
 # stub: openclaw
 cat > "$WORKDIR/bin/openclaw" <<'EOF_INNER'
 #!/usr/bin/env bash
 cmd="$*"
+if [[ "$cmd" == "config get"* ]]; then
+  exit 0
+fi
+if [[ "$cmd" == "config set"* ]]; then
+  exit 0
+fi
+if [[ "$cmd" == "config file" ]]; then
+  echo "$HOME/.openclaw/openclaw.json"
+  exit 0
+fi
 if [[ "$cmd" == "memory status" ]]; then
   cat <<TXT
 Provider: qmd
 Vector: ready
 Indexed: 5/5 files
+Workspace: $HOME/.openclaw/workspace
 TXT
   exit 0
 fi
@@ -117,7 +130,7 @@ run_menu() {
   printf "%b" "$input" | openclaw_memory_menu >/tmp/memory_menu.out
 }
 
-# 1) 状态
+# 1) 状态展示（直接返回）
 run_menu "0\n" "status"
 # 2) 更新索引（增量）
 run_menu "1\nyes\n\n\n0\n" "index"

@@ -1,0 +1,1 @@
+../../../tests/openclaw/tests_openclaw_plugin_skill_menu_smoke.sh
