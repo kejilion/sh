@@ -1,0 +1,1 @@
+../../../tests/openclaw/tests_openclaw_memory_auto_setup_smoke.sh
