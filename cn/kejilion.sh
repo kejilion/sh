@@ -11577,39 +11577,90 @@ PY
 	change_model() {
 		send_stats "换模型"
 
+		# 仅展示已配置/可用的模型（Auth=yes），并用 gum 交互式选择
+		# 需要 gum；若未安装则降级为手动输入
+		local orange="#FF8C00"
+
 		while true; do
-			clear
-			echo "--- 模型管理 ---"
-			echo "所有模型:"
-			openclaw models list --all
-			echo "----------------"
-			echo "当前模型:"
-			openclaw models list
-			echo "----------------"
-			read -e -p "请输入要设置的模型名称 (例如 openrouter/openai/gpt-4o)（输入 0 退出）： " model
+			local models_raw models_list default_model model_count selected_model
 
-			# 1. 检查是否输入 0 以退出
-			if [ "$model" = "0" ]; then
-				echo "操作已取消，正在退出..."
-				break  # 跳出 while 循环
-
+			models_raw=$(openclaw models list 2>/dev/null)
+			if [ -z "$models_raw" ]; then
+				echo "获取模型列表失败，请检查 openclaw 是否可用。"
+				break_end
+				return 1
 			fi
 
-			# 2. 验证输入是否为空
-			if [ -z "$model" ]; then
-				echo "错误：模型名称不能为空。请重试。"
-				echo "" # 换行美化
-				continue # 跳过本次循环，重新开始
+			# 提取 Auth=yes 的模型名（跳过表头）
+			models_list=$(echo "$models_raw" | awk 'NR>1 && $5=="yes" {print $1}')
+			model_count=$(echo "$models_list" | sed '/^\s*$/d' | wc -l | tr -d ' ')
+
+			# 获取默认模型（Tags 含 default）
+			default_model=$(echo "$models_raw" | awk 'NR>1 && $0 ~ /default/ {print $1; exit}')
+			[ -z "$default_model" ] && default_model="(unknown)"
+
+			# 若 gum 不存在，降级为手动输入（但仍只提示可用模型）
+			if ! command -v gum >/dev/null 2>&1; then
+				clear
+				echo "--- 模型管理 ---"
+				echo "可用模型（Auth=yes）：${model_count}"
+				echo "当前默认：${default_model}"
+				echo "----------------"
+				echo "$models_list"
+				echo "----------------"
+				read -e -p "请输入要设置的模型名称（输入 0 退出）： " selected_model
+				if [ "$selected_model" = "0" ]; then
+					echo "操作已取消，正在退出..."
+					break
+				fi
+				if [ -z "$selected_model" ]; then
+					echo "错误：模型名称不能为空。请重试。"
+					echo ""
+					continue
+				fi
+			else
+				clear
+				# 顶部信息（橙色）
+				gum style --foreground "$orange" --bold "模型管理"
+				gum style --foreground "$orange" "可用模型（Auth=yes）：${model_count}"
+				gum style --foreground "$orange" "当前默认：${default_model}"
+				echo ""
+
+				# 底部提示
+				gum style --faint "↑↓ 选择 / Enter 确认 / Esc 退出"
+				echo ""
+
+				# gum filter：带搜索；默认选中当前默认模型
+				selected_model=$(echo "$models_list" | gum filter \
+					--placeholder "搜索模型（如 cli-api/gpt-5.2）" \
+					--prompt "选择模型 > " \
+					--indicator "➜ " \
+					--value "$default_model" \
+					--prompt.foreground "$orange" \
+					--indicator.foreground "$orange" \
+					--cursor.foreground "$orange" \
+					--match.foreground "$orange" \
+					--header "" \
+					--height 20)
+
+				# Esc 退出时返回空
+				if [ -z "$selected_model" ]; then
+					echo "操作已取消，正在退出..."
+					break
+				fi
 			fi
 
-			# 3. 执行切换逻辑
-			echo "正在切换模型为: $model ..."
-			openclaw models set "$model"
+			# 执行切换
+			echo "正在切换模型为: $selected_model ..."
+			if ! openclaw models set "$selected_model"; then
+				echo "切换失败：openclaw models set 返回错误。"
+				break_end
+				return 1
+			fi
 			start_gateway
 
 			break_end
-		done
-
+			done
 	}
 
 
