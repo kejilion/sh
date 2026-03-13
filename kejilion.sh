@@ -10096,24 +10096,24 @@ moltbot_menu() {
 import json, sys
 path = sys.argv[1]
 with open(path, 'r', encoding='utf-8') as f:
-	obj = json.load(f)
+    obj = json.load(f)
 
 session = obj.setdefault('session', {})
 session['dmScope'] = session.get('dmScope', 'per-channel-peer')
 session['resetTriggers'] = ['/new', '/reset']
 session['reset'] = {
-	'mode': 'idle',
-	'idleMinutes': 10080
+    'mode': 'idle',
+    'idleMinutes': 10080
 }
 session['resetByType'] = {
-	'direct': {'mode': 'idle', 'idleMinutes': 10080},
-	'thread': {'mode': 'idle', 'idleMinutes': 1440},
-	'group': {'mode': 'idle', 'idleMinutes': 120}
+    'direct': {'mode': 'idle', 'idleMinutes': 10080},
+    'thread': {'mode': 'idle', 'idleMinutes': 1440},
+    'group': {'mode': 'idle', 'idleMinutes': 120}
 }
 
 with open(path, 'w', encoding='utf-8') as f:
-	json.dump(obj, f, ensure_ascii=False, indent=2)
-	f.write('\n')
+    json.dump(obj, f, ensure_ascii=False, indent=2)
+    f.write('\n')
 PY
 	}
 
@@ -10140,77 +10140,77 @@ stats_enabled = (sys.argv[2].lower() == "true") if len(sys.argv) > 2 else True
 script_version = sys.argv[3] if len(sys.argv) > 3 else ""
 
 def probe_endpoint(base_url, api_key, path, timeout=6):
-	url = base_url.rstrip('/') + path
-	req = urllib.request.Request(
-		url,
-		data=b'{}',
-		headers={
-			'Authorization': f'Bearer {api_key}',
-			'Content-Type': 'application/json',
-			'User-Agent': 'OpenClaw-API-Manage/1.0',
-		},
-		method='POST',
-	)
-	try:
-		with urllib.request.urlopen(req, timeout=timeout) as resp:
-			return resp.getcode(), None
-	except urllib.error.HTTPError as e:
-		return e.code, None
-	except Exception as e:
-		return None, e
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
 
 
 def detect_api_protocol(base_url, api_key):
-	code, err = probe_endpoint(base_url, api_key, '/responses')
-	if code is not None and code not in (404, 405):
-		return 'openai-responses', f'POST /responses -> HTTP {code}', None
-	if err:
-		return 'openai-completions', 'fallback: probe failed', err
-	return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 
 def send_stat(action):
-	if not stats_enabled:
-		return
-	payload = {
-		"action": action,
-		"timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
-		"country": "",
-		"os_info": platform.platform(),
-		"cpu_arch": platform.machine(),
-		"version": script_version,
-	}
-	try:
-		req = urllib.request.Request(
-			"https://api.kejilion.pro/api/log",
-			data=json.dumps(payload).encode("utf-8"),
-			headers={"Content-Type": "application/json"},
-			method="POST",
-		)
-		with urllib.request.urlopen(req, timeout=3):
-			pass
-	except Exception:
-		pass
+    if not stats_enabled:
+        return
+    payload = {
+        "action": action,
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        "country": "",
+        "os_info": platform.platform(),
+        "cpu_arch": platform.machine(),
+        "version": script_version,
+    }
+    try:
+        req = urllib.request.Request(
+            "https://api.kejilion.pro/api/log",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=3):
+            pass
+    except Exception:
+        pass
 
 with open(path, 'r', encoding='utf-8') as f:
-	obj = json.load(f)
+    obj = json.load(f)
 
 work = copy.deepcopy(obj)
 models_cfg = work.setdefault('models', {})
 providers = models_cfg.get('providers', {})
 if not isinstance(providers, dict) or not providers:
-	print('ℹ️ 未检测到 API providers，跳过模型同步')
-	raise SystemExit(0)
+    print('ℹ️ 未检测到 API providers，跳过模型同步')
+    raise SystemExit(0)
 
 agents = work.setdefault('agents', {})
 defaults = agents.setdefault('defaults', {})
 defaults_models_raw = defaults.get('models')
 if isinstance(defaults_models_raw, dict):
-	defaults_models = defaults_models_raw
+    defaults_models = defaults_models_raw
 elif isinstance(defaults_models_raw, list):
-	defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
+    defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
 else:
-	defaults_models = {}
+    defaults_models = {}
 defaults['models'] = defaults_models
 
 SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
@@ -10221,320 +10221,320 @@ summary = []
 
 
 def model_ref(provider_name, model_id):
-	return f"{provider_name}/{model_id}"
+    return f"{provider_name}/{model_id}"
 
 
 def get_primary_ref(defaults_obj):
-	model_obj = defaults_obj.get('model')
-	if isinstance(model_obj, str):
-		return model_obj
-	if isinstance(model_obj, dict):
-		primary = model_obj.get('primary')
-		if isinstance(primary, str):
-			return primary
-	return None
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        return model_obj
+    if isinstance(model_obj, dict):
+        primary = model_obj.get('primary')
+        if isinstance(primary, str):
+            return primary
+    return None
 
 
 def set_primary_ref(defaults_obj, new_ref):
-	model_obj = defaults_obj.get('model')
-	if isinstance(model_obj, str):
-		defaults_obj['model'] = new_ref
-	elif isinstance(model_obj, dict):
-		model_obj['primary'] = new_ref
-	else:
-		defaults_obj['model'] = {'primary': new_ref}
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        defaults_obj['model'] = new_ref
+    elif isinstance(model_obj, dict):
+        model_obj['primary'] = new_ref
+    else:
+        defaults_obj['model'] = {'primary': new_ref}
 
 
 def ref_provider(ref):
-	if not isinstance(ref, str) or '/' not in ref:
-		return None
-	return ref.split('/', 1)[0]
+    if not isinstance(ref, str) or '/' not in ref:
+        return None
+    return ref.split('/', 1)[0]
 
 
 def collect_available_refs(exclude_provider=None):
-	refs = []
-	if not isinstance(providers, dict):
-		return refs
-	for pname, p in providers.items():
-		if exclude_provider and pname == exclude_provider:
-			continue
-		if not isinstance(p, dict):
-			continue
-		for m in p.get('models', []) or []:
-			if isinstance(m, dict) and m.get('id'):
-				refs.append(model_ref(pname, str(m['id'])))
-	return refs
+    refs = []
+    if not isinstance(providers, dict):
+        return refs
+    for pname, p in providers.items():
+        if exclude_provider and pname == exclude_provider:
+            continue
+        if not isinstance(p, dict):
+            continue
+        for m in p.get('models', []) or []:
+            if isinstance(m, dict) and m.get('id'):
+                refs.append(model_ref(pname, str(m['id'])))
+    return refs
 
 
 def prompt_delete_provider(name):
-	prompt = f"⚠️ {name} /models 探测连续失败 3 次。是否删除该 API 供应商及其全部相关模型？[y/N]: "
-	try:
-		ans = input(prompt).strip().lower()
-	except EOFError:
-		return False
-	return ans in ('y', 'yes')
+    prompt = f"⚠️ {name} /models 探测连续失败 3 次。是否删除该 API 供应商及其全部相关模型？[y/N]: "
+    try:
+        ans = input(prompt).strip().lower()
+    except EOFError:
+        return False
+    return ans in ('y', 'yes')
 
 
 def rebind_defaults_before_delete(name):
-	global changed
+    global changed
 
-	replacement = None
+    replacement = None
 
-	def get_replacement():
-		nonlocal replacement
-		if replacement is None:
-			candidates = collect_available_refs(exclude_provider=name)
-			replacement = candidates[0] if candidates else None
-		return replacement
+    def get_replacement():
+        nonlocal replacement
+        if replacement is None:
+            candidates = collect_available_refs(exclude_provider=name)
+            replacement = candidates[0] if candidates else None
+        return replacement
 
-	primary_ref = get_primary_ref(defaults)
-	if ref_provider(primary_ref) == name:
-		repl = get_replacement()
-		if not repl:
-			summary.append(f'❌ {name}: 默认主模型指向该 provider，但无可用替代模型，已中止删除')
-			return False
-		set_primary_ref(defaults, repl)
-		changed = True
-		summary.append(f'🔁 删除前已切换默认主模型: {primary_ref} -> {repl}')
+    primary_ref = get_primary_ref(defaults)
+    if ref_provider(primary_ref) == name:
+        repl = get_replacement()
+        if not repl:
+            summary.append(f'❌ {name}: 默认主模型指向该 provider，但无可用替代模型，已中止删除')
+            return False
+        set_primary_ref(defaults, repl)
+        changed = True
+        summary.append(f'🔁 删除前已切换默认主模型: {primary_ref} -> {repl}')
 
-	for fk in ('modelFallback', 'imageModelFallback'):
-		val = defaults.get(fk)
-		if ref_provider(val) == name:
-			repl = get_replacement()
-			if not repl:
-				summary.append(f'❌ {name}: {fk} 指向该 provider，但无可用替代模型，已中止删除')
-				return False
-			defaults[fk] = repl
-			changed = True
-			summary.append(f'🔁 删除前已切换 {fk}: {val} -> {repl}')
+    for fk in ('modelFallback', 'imageModelFallback'):
+        val = defaults.get(fk)
+        if ref_provider(val) == name:
+            repl = get_replacement()
+            if not repl:
+                summary.append(f'❌ {name}: {fk} 指向该 provider，但无可用替代模型，已中止删除')
+                return False
+            defaults[fk] = repl
+            changed = True
+            summary.append(f'🔁 删除前已切换 {fk}: {val} -> {repl}')
 
-	return True
+    return True
 
 
 def delete_provider_and_refs(name):
-	global changed
+    global changed
 
-	if not rebind_defaults_before_delete(name):
-		return False
+    if not rebind_defaults_before_delete(name):
+        return False
 
-	removed_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/')]
-	for r in removed_refs:
-		defaults_models.pop(r, None)
-	if removed_refs:
-		changed = True
+    removed_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/')]
+    for r in removed_refs:
+        defaults_models.pop(r, None)
+    if removed_refs:
+        changed = True
 
-	if name in providers:
-		providers.pop(name, None)
-		changed = True
+    if name in providers:
+        providers.pop(name, None)
+        changed = True
 
-	summary.append(f'🗑️ 已删除 provider {name}，并移除 defaults.models 下 {len(removed_refs)} 个模型引用')
-	return True
+    summary.append(f'🗑️ 已删除 provider {name}，并移除 defaults.models 下 {len(removed_refs)} 个模型引用')
+    return True
 
 
 def probe_endpoint(base_url, api_key, path, timeout=6):
-	url = base_url.rstrip('/') + path
-	req = urllib.request.Request(
-		url,
-		data=b'{}',
-		headers={
-			'Authorization': f'Bearer {api_key}',
-			'Content-Type': 'application/json',
-			'User-Agent': 'OpenClaw-API-Manage/1.0',
-		},
-		method='POST',
-	)
-	try:
-		with urllib.request.urlopen(req, timeout=timeout) as resp:
-			return resp.getcode(), None
-	except urllib.error.HTTPError as e:
-		return e.code, None
-	except Exception as e:
-		return None, e
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
 
 
 def detect_api_protocol(base_url, api_key):
-	code, err = probe_endpoint(base_url, api_key, '/responses')
-	if code is not None and code not in (404, 405):
-		return 'openai-responses', f'POST /responses -> HTTP {code}', None
-	if err:
-		return 'openai-completions', 'fallback: probe failed', err
-	return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 
 def fetch_remote_models_with_retry(name, base_url, api_key, retries=3):
-	last_error = None
-	for attempt in range(1, retries + 1):
-		req = urllib.request.Request(
-			base_url.rstrip('/') + '/models',
-			headers={
-				'Authorization': f'Bearer {api_key}',
-				'User-Agent': 'Mozilla/5.0',
-			},
-		)
-		try:
-			with urllib.request.urlopen(req, timeout=12) as resp:
-				payload = resp.read().decode('utf-8', 'ignore')
-			data = json.loads(payload)
-			return data, None, attempt
-		except Exception as e:
-			last_error = e
-			if attempt < retries:
-				time.sleep(1)
-	return None, last_error, retries
+    last_error = None
+    for attempt in range(1, retries + 1):
+        req = urllib.request.Request(
+            base_url.rstrip('/') + '/models',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'User-Agent': 'Mozilla/5.0',
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                payload = resp.read().decode('utf-8', 'ignore')
+            data = json.loads(payload)
+            return data, None, attempt
+        except Exception as e:
+            last_error = e
+            if attempt < retries:
+                time.sleep(1)
+    return None, last_error, retries
 
 
 for name, provider in list(providers.items()):
-	if not isinstance(provider, dict):
-		summary.append(f'ℹ️ 跳过 {name}: provider 结构非法')
-		continue
+    if not isinstance(provider, dict):
+        summary.append(f'ℹ️ 跳过 {name}: provider 结构非法')
+        continue
 
-	api = provider.get('api', '')
-	base_url = provider.get('baseUrl')
-	api_key = provider.get('apiKey')
-	model_list = provider.get('models', [])
+    api = provider.get('api', '')
+    base_url = provider.get('baseUrl')
+    api_key = provider.get('apiKey')
+    model_list = provider.get('models', [])
 
-	if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
-		summary.append(f'ℹ️ 跳过 {name}: 无 baseUrl/apiKey/models')
-		continue
+    if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
+        summary.append(f'ℹ️ 跳过 {name}: 无 baseUrl/apiKey/models')
+        continue
 
-	if api not in SUPPORTED_APIS:
-		summary.append(f'🔁 {name}: 发现非法协议 {api or "(unset)"}，将重新探测')
-		provider['api'] = ''
-		api = ''
-		changed = True
+    if api not in SUPPORTED_APIS:
+        summary.append(f'🔁 {name}: 发现非法协议 {api or "(unset)"}，将重新探测')
+        provider['api'] = ''
+        api = ''
+        changed = True
 
-	try:
-		detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
-		if detected_api and api != detected_api:
-			provider['api'] = detected_api
-			api = detected_api
-			changed = True
-			summary.append(f'🔁 {name}: 已自动纠正协议为 {detected_api} ({detected_reason})')
-	except Exception as e:
-		summary.append(f'⚠️ {name}: 协议探测失败，跳过纠正 ({type(e).__name__}: {e})')
+    try:
+        detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
+        if detected_api and api != detected_api:
+            provider['api'] = detected_api
+            api = detected_api
+            changed = True
+            summary.append(f'🔁 {name}: 已自动纠正协议为 {detected_api} ({detected_reason})')
+    except Exception as e:
+        summary.append(f'⚠️ {name}: 协议探测失败，跳过纠正 ({type(e).__name__}: {e})')
 
-	data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
-	if err is not None:
-		summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
-		send_stat('OpenClaw API确认介入')
-		if prompt_delete_provider(name):
-			deleted = delete_provider_and_refs(name)
-			if deleted:
-				send_stat('OpenClaw API删失败Provider-确认')
-				summary.append(f'✅ {name}: 用户已确认删除该 provider 及全部相关模型引用')
-		else:
-			send_stat('OpenClaw API删失败Provider-拒绝')
-			summary.append(f'ℹ️ {name}: 用户未确认删除，保留现有 provider 配置')
-		continue
+    data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
+    if err is not None:
+        summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
+        send_stat('OpenClaw API确认介入')
+        if prompt_delete_provider(name):
+            deleted = delete_provider_and_refs(name)
+            if deleted:
+                send_stat('OpenClaw API删失败Provider-确认')
+                summary.append(f'✅ {name}: 用户已确认删除该 provider 及全部相关模型引用')
+        else:
+            send_stat('OpenClaw API删失败Provider-拒绝')
+            summary.append(f'ℹ️ {name}: 用户未确认删除，保留现有 provider 配置')
+        continue
 
-	if attempts > 1:
-		summary.append(f'🔁 {name}: /models 第 {attempts} 次重试后成功')
+    if attempts > 1:
+        summary.append(f'🔁 {name}: /models 第 {attempts} 次重试后成功')
 
-	if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
-		summary.append(f'⚠️ 跳过 {name}: /models 返回结构不可识别')
-		continue
+    if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
+        summary.append(f'⚠️ 跳过 {name}: /models 返回结构不可识别')
+        continue
 
-	remote_ids = []
-	for item in data['data']:
-		if isinstance(item, dict) and item.get('id'):
-			remote_ids.append(str(item['id']))
-	remote_set = set(remote_ids)
+    remote_ids = []
+    for item in data['data']:
+        if isinstance(item, dict) and item.get('id'):
+            remote_ids.append(str(item['id']))
+    remote_set = set(remote_ids)
 
-	if not remote_set:
-		fatal_errors.append(f'❌ {name} 上游 /models 为空，无法为该 provider 提供兜底模型')
-		continue
+    if not remote_set:
+        fatal_errors.append(f'❌ {name} 上游 /models 为空，无法为该 provider 提供兜底模型')
+        continue
 
-	local_models = [m for m in model_list if isinstance(m, dict) and m.get('id')]
-	local_ids = [str(m['id']) for m in local_models]
-	local_set = set(local_ids)
+    local_models = [m for m in model_list if isinstance(m, dict) and m.get('id')]
+    local_ids = [str(m['id']) for m in local_models]
+    local_set = set(local_ids)
 
-	template = None
-	for m in local_models:
-		template = copy.deepcopy(m)
-		break
-	if template is None:
-		summary.append(f'⚠️ 跳过 {name}: 本地 models 无有效模板模型')
-		continue
+    template = None
+    for m in local_models:
+        template = copy.deepcopy(m)
+        break
+    if template is None:
+        summary.append(f'⚠️ 跳过 {name}: 本地 models 无有效模板模型')
+        continue
 
-	removed_ids = [mid for mid in local_ids if mid not in remote_set]
-	added_ids = [mid for mid in remote_ids if mid not in local_set]
+    removed_ids = [mid for mid in local_ids if mid not in remote_set]
+    added_ids = [mid for mid in remote_ids if mid not in local_set]
 
-	if added_ids:
-		summary.append(f'➕ 新增模型({len(added_ids)}):')
-		for mid in added_ids:
-			summary.append(f'  + {mid}')
-	if removed_ids:
-		summary.append(f'➖ 删除模型({len(removed_ids)}):')
-		for mid in removed_ids:
-			summary.append(f'  - {mid}')
+    if added_ids:
+        summary.append(f'➕ 新增模型({len(added_ids)}):')
+        for mid in added_ids:
+            summary.append(f'  + {mid}')
+    if removed_ids:
+        summary.append(f'➖ 删除模型({len(removed_ids)}):')
+        for mid in removed_ids:
+            summary.append(f'  - {mid}')
 
-	kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
-	new_models = kept_models[:]
+    kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
+    new_models = kept_models[:]
 
-	for mid in added_ids:
-		nm = copy.deepcopy(template)
-		nm['id'] = mid
-		if isinstance(nm.get('name'), str):
-			nm['name'] = f'{name} / {mid}'
-		new_models.append(nm)
+    for mid in added_ids:
+        nm = copy.deepcopy(template)
+        nm['id'] = mid
+        if isinstance(nm.get('name'), str):
+            nm['name'] = f'{name} / {mid}'
+        new_models.append(nm)
 
-	if not new_models:
-		fatal_errors.append(f'❌ {name} 同步后无可用模型，无法保障默认模型/回退模型兜底')
-		continue
+    if not new_models:
+        fatal_errors.append(f'❌ {name} 同步后无可用模型，无法保障默认模型/回退模型兜底')
+        continue
 
-	expected_refs = {model_ref(name, str(m['id'])) for m in new_models if isinstance(m, dict) and m.get('id')}
-	local_refs = {model_ref(name, mid) for mid in local_ids}
+    expected_refs = {model_ref(name, str(m['id'])) for m in new_models if isinstance(m, dict) and m.get('id')}
+    local_refs = {model_ref(name, mid) for mid in local_ids}
 
-	first_ref = model_ref(name, str(new_models[0]['id']))
+    first_ref = model_ref(name, str(new_models[0]['id']))
 
-	primary_ref = get_primary_ref(defaults)
-	if isinstance(primary_ref, str) and primary_ref in (local_refs - expected_refs):
-		set_primary_ref(defaults, first_ref)
-		changed = True
-		summary.append(f'🔁 默认模型已兜底替换: {primary_ref} -> {first_ref}')
+    primary_ref = get_primary_ref(defaults)
+    if isinstance(primary_ref, str) and primary_ref in (local_refs - expected_refs):
+        set_primary_ref(defaults, first_ref)
+        changed = True
+        summary.append(f'🔁 默认模型已兜底替换: {primary_ref} -> {first_ref}')
 
-	for fk in ('modelFallback', 'imageModelFallback'):
-		val = defaults.get(fk)
-		if isinstance(val, str) and val in (local_refs - expected_refs):
-			defaults[fk] = first_ref
-			changed = True
-			summary.append(f'🔁 {fk} 已兜底替换: {val} -> {first_ref}')
+    for fk in ('modelFallback', 'imageModelFallback'):
+        val = defaults.get(fk)
+        if isinstance(val, str) and val in (local_refs - expected_refs):
+            defaults[fk] = first_ref
+            changed = True
+            summary.append(f'🔁 {fk} 已兜底替换: {val} -> {first_ref}')
 
-	stale_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/') and r not in expected_refs]
-	for r in stale_refs:
-		defaults_models.pop(r, None)
-		changed = True
+    stale_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/') and r not in expected_refs]
+    for r in stale_refs:
+        defaults_models.pop(r, None)
+        changed = True
 
-	for r in sorted(expected_refs):
-		if r not in defaults_models:
-			defaults_models[r] = {}
-			changed = True
+    for r in sorted(expected_refs):
+        if r not in defaults_models:
+            defaults_models[r] = {}
+            changed = True
 
-	if removed_ids or added_ids or len(local_models) != len(new_models):
-		provider['models'] = new_models
-		changed = True
+    if removed_ids or added_ids or len(local_models) != len(new_models):
+        provider['models'] = new_models
+        changed = True
 
-	summary.append(f'✅ {name}: 删除 {len(removed_ids)} 个，新增 {len(added_ids)} 个，当前 {len(new_models)} 个')
+    summary.append(f'✅ {name}: 删除 {len(removed_ids)} 个，新增 {len(added_ids)} 个，当前 {len(new_models)} 个')
 
 if fatal_errors:
-	for line in summary:
-		print(line)
-	for err in fatal_errors:
-		print(err)
-	print('❌ 模型同步失败：存在 provider 同步后无可用模型，已中止写入')
-	raise SystemExit(2)
+    for line in summary:
+        print(line)
+    for err in fatal_errors:
+        print(err)
+    print('❌ 模型同步失败：存在 provider 同步后无可用模型，已中止写入')
+    raise SystemExit(2)
 
 if changed:
-	with open(path, 'w', encoding='utf-8') as f:
-		json.dump(work, f, ensure_ascii=False, indent=2)
-		f.write('\n')
-	for line in summary:
-		print(line)
-	print('✅ OpenClaw API 模型一致性同步完成并已写入配置')
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(work, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+    for line in summary:
+        print(line)
+    print('✅ OpenClaw API 模型一致性同步完成并已写入配置')
 else:
-	for line in summary:
-		print(line)
-	print('ℹ️ 无需同步：配置已与上游 /models 保持一致')
+    for line in summary:
+        print(line)
+    print('ℹ️ 无需同步：配置已与上游 /models 保持一致')
 PY
 	}
 
@@ -10901,88 +10901,88 @@ SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
 
 
 def ping_models(base_url, api_key):
-	req = urllib.request.Request(
-		base_url.rstrip('/') + '/models',
-		headers={
-			'Authorization': f'Bearer {api_key}',
-			'User-Agent': 'OpenClaw-API-Manage/1.0',
-		},
-	)
-	start = time.perf_counter()
-	with urllib.request.urlopen(req, timeout=4) as resp:
-		resp.read(2048)
-	return int((time.perf_counter() - start) * 1000)
+    req = urllib.request.Request(
+        base_url.rstrip('/') + '/models',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+    )
+    start = time.perf_counter()
+    with urllib.request.urlopen(req, timeout=4) as resp:
+        resp.read(2048)
+    return int((time.perf_counter() - start) * 1000)
 
 
 def classify_latency(latency):
-	if latency == '不可用':
-		return '不可用', 'unavailable'
-	if latency == '未检测':
-		return '未检测', 'unchecked'
-	if isinstance(latency, int):
-		if latency <= 800:
-			level = 'low'
-		elif latency <= 2000:
-			level = 'medium'
-		else:
-			level = 'high'
-		return f'{latency}ms', level
-	return str(latency), 'unchecked'
+    if latency == '不可用':
+        return '不可用', 'unavailable'
+    if latency == '未检测':
+        return '未检测', 'unchecked'
+    if isinstance(latency, int):
+        if latency <= 800:
+            level = 'low'
+        elif latency <= 2000:
+            level = 'medium'
+        else:
+            level = 'high'
+        return f'{latency}ms', level
+    return str(latency), 'unchecked'
 
 
 try:
-	with open(path, 'r', encoding='utf-8') as f:
-		obj = json.load(f)
+    with open(path, 'r', encoding='utf-8') as f:
+        obj = json.load(f)
 except FileNotFoundError:
-	print('MSG\tℹ️ 未找到 openclaw.json，请先完成安装/初始化。')
-	raise SystemExit(0)
+    print('MSG\tℹ️ 未找到 openclaw.json，请先完成安装/初始化。')
+    raise SystemExit(0)
 except Exception as e:
-	print(f'MSG\t❌ 读取配置失败: {type(e).__name__}: {e}')
-	raise SystemExit(0)
+    print(f'MSG\t❌ 读取配置失败: {type(e).__name__}: {e}')
+    raise SystemExit(0)
 
 providers = ((obj.get('models') or {}).get('providers') or {})
 if not isinstance(providers, dict) or not providers:
-	print('MSG\tℹ️ 当前未配置任何 API provider。')
-	raise SystemExit(0)
+    print('MSG\tℹ️ 当前未配置任何 API provider。')
+    raise SystemExit(0)
 
 print('MSG\t--- 已配置 API 列表 ---')
 
 for idx, name in enumerate(sorted(providers.keys()), start=1):
-	provider = providers.get(name)
-	if not isinstance(provider, dict):
-		base_url = '-'
-		model_count = 0
-		latency_raw = '不可用'
-	else:
-		base_url = provider.get('baseUrl') or provider.get('url') or provider.get('endpoint') or '-'
-		models = provider.get('models') if isinstance(provider.get('models'), list) else []
-		model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
-		api = provider.get('api', '')
-		api_key = provider.get('apiKey')
+    provider = providers.get(name)
+    if not isinstance(provider, dict):
+        base_url = '-'
+        model_count = 0
+        latency_raw = '不可用'
+    else:
+        base_url = provider.get('baseUrl') or provider.get('url') or provider.get('endpoint') or '-'
+        models = provider.get('models') if isinstance(provider.get('models'), list) else []
+        model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
+        api = provider.get('api', '')
+        api_key = provider.get('apiKey')
 
-		latency_raw = '未检测'
-		if api in SUPPORTED_APIS:
-			if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
-				try:
-					latency_raw = ping_models(base_url, api_key)
-				except Exception:
-					latency_raw = '不可用'
-			else:
-				latency_raw = '不可用'
+        latency_raw = '未检测'
+        if api in SUPPORTED_APIS:
+            if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
+                try:
+                    latency_raw = ping_models(base_url, api_key)
+                except Exception:
+                    latency_raw = '不可用'
+            else:
+                latency_raw = '不可用'
 
-	latency_text, latency_level = classify_latency(latency_raw)
-	api_label = api if api in SUPPORTED_APIS else '-'
-	print(
-		'ROW\t' + '\t'.join([
-			str(idx),
-			str(name),
-			str(base_url),
-			str(model_count),
-			str(api_label),
-			str(latency_text),
-			str(latency_level),
-		])
-	)
+    latency_text, latency_level = classify_latency(latency_raw)
+    api_label = api if api in SUPPORTED_APIS else '-'
+    print(
+        'ROW\t' + '\t'.join([
+            str(idx),
+            str(name),
+            str(base_url),
+            str(model_count),
+            str(api_label),
+            str(latency_text),
+            str(latency_level),
+        ])
+    )
 PY
 )
 }
@@ -11017,105 +11017,105 @@ target = sys.argv[2]
 SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
 
 def probe_endpoint(base_url, api_key, path, timeout=6):
-	url = base_url.rstrip('/') + path
-	req = urllib.request.Request(
-		url,
-		data=b'{}',
-		headers={
-			'Authorization': f'Bearer {api_key}',
-			'Content-Type': 'application/json',
-			'User-Agent': 'OpenClaw-API-Manage/1.0',
-		},
-		method='POST',
-	)
-	try:
-		with urllib.request.urlopen(req, timeout=timeout) as resp:
-			return resp.getcode(), None
-	except urllib.error.HTTPError as e:
-		return e.code, None
-	except Exception as e:
-		return None, e
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
 
 
 def detect_api_protocol(base_url, api_key):
-	code, err = probe_endpoint(base_url, api_key, '/responses')
-	if code is not None and code not in (404, 405):
-		return 'openai-responses', f'POST /responses -> HTTP {code}', None
-	if err:
-		return 'openai-completions', 'fallback: probe failed', err
-	return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 with open(path, 'r', encoding='utf-8') as f:
-	obj = json.load(f)
+    obj = json.load(f)
 
 work = copy.deepcopy(obj)
 models_cfg = work.setdefault('models', {})
 providers = models_cfg.get('providers', {})
 if not isinstance(providers, dict) or not providers:
-	print('❌ 未检测到 API providers，无法同步')
-	raise SystemExit(2)
+    print('❌ 未检测到 API providers，无法同步')
+    raise SystemExit(2)
 
 provider = providers.get(target)
 if not isinstance(provider, dict):
-	print(f'❌ 未找到 provider: {target}')
-	raise SystemExit(2)
+    print(f'❌ 未找到 provider: {target}')
+    raise SystemExit(2)
 
 agents = work.setdefault('agents', {})
 defaults = agents.setdefault('defaults', {})
 defaults_models_raw = defaults.get('models')
 if isinstance(defaults_models_raw, dict):
-	defaults_models = defaults_models_raw
+    defaults_models = defaults_models_raw
 elif isinstance(defaults_models_raw, list):
-	defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
+    defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
 else:
-	defaults_models = {}
+    defaults_models = {}
 defaults['models'] = defaults_models
 
 
 def model_ref(provider_name, model_id):
-	return f"{provider_name}/{model_id}"
+    return f"{provider_name}/{model_id}"
 
 
 def get_primary_ref(defaults_obj):
-	model_obj = defaults_obj.get('model')
-	if isinstance(model_obj, str):
-		return model_obj
-	if isinstance(model_obj, dict):
-		primary = model_obj.get('primary')
-		if isinstance(primary, str):
-			return primary
-	return None
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        return model_obj
+    if isinstance(model_obj, dict):
+        primary = model_obj.get('primary')
+        if isinstance(primary, str):
+            return primary
+    return None
 
 
 def set_primary_ref(defaults_obj, new_ref):
-	model_obj = defaults_obj.get('model')
-	if isinstance(model_obj, str):
-		defaults_obj['model'] = new_ref
-	elif isinstance(model_obj, dict):
-		model_obj['primary'] = new_ref
-	else:
-		defaults_obj['model'] = {'primary': new_ref}
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        defaults_obj['model'] = new_ref
+    elif isinstance(model_obj, dict):
+        model_obj['primary'] = new_ref
+    else:
+        defaults_obj['model'] = {'primary': new_ref}
 
 
 def fetch_remote_models_with_retry(base_url, api_key, retries=3):
-	last_error = None
-	for attempt in range(1, retries + 1):
-		req = urllib.request.Request(
-			base_url.rstrip('/') + '/models',
-			headers={
-				'Authorization': f'Bearer {api_key}',
-				'User-Agent': 'Mozilla/5.0',
-			},
-		)
-		try:
-			with urllib.request.urlopen(req, timeout=12) as resp:
-				payload = resp.read().decode('utf-8', 'ignore')
-			return json.loads(payload), None, attempt
-		except Exception as e:
-			last_error = e
-			if attempt < retries:
-				time.sleep(1)
-	return None, last_error, retries
+    last_error = None
+    for attempt in range(1, retries + 1):
+        req = urllib.request.Request(
+            base_url.rstrip('/') + '/models',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'User-Agent': 'Mozilla/5.0',
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                payload = resp.read().decode('utf-8', 'ignore')
+            return json.loads(payload), None, attempt
+        except Exception as e:
+            last_error = e
+            if attempt < retries:
+                time.sleep(1)
+    return None, last_error, retries
 
 
 api = provider.get('api', '')
@@ -11124,41 +11124,41 @@ api_key = provider.get('apiKey')
 model_list = provider.get('models', [])
 
 if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
-	print(f'❌ provider {target} 缺少 baseUrl/apiKey/models，无法执行同步')
-	raise SystemExit(3)
+    print(f'❌ provider {target} 缺少 baseUrl/apiKey/models，无法执行同步')
+    raise SystemExit(3)
 
 if api not in SUPPORTED_APIS:
-	print(f'ℹ️ provider {target} 当前 api={api}，将重新探测协议后继续')
-	provider['api'] = ''
-	api = ''
+    print(f'ℹ️ provider {target} 当前 api={api}，将重新探测协议后继续')
+    provider['api'] = ''
+    api = ''
 
 protocol_msg = None
 try:
-	detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
-	if detected_api and api != detected_api:
-		provider['api'] = detected_api
-		api = detected_api
-		protocol_msg = f'🔁 已自动纠正协议: {target} {api} ({detected_reason})'
+    detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
+    if detected_api and api != detected_api:
+        provider['api'] = detected_api
+        api = detected_api
+        protocol_msg = f'🔁 已自动纠正协议: {target} {api} ({detected_reason})'
 except Exception as e:
-	protocol_msg = f'⚠️ 协议探测失败，跳过纠正: {target} ({type(e).__name__}: {e})'
+    protocol_msg = f'⚠️ 协议探测失败，跳过纠正: {target} ({type(e).__name__}: {e})'
 
 data, err, attempts = fetch_remote_models_with_retry(base_url, api_key, retries=3)
 if err is not None:
-	print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
-	raise SystemExit(4)
+    print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
+    raise SystemExit(4)
 
 if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
-	print(f'❌ {target}: /models 返回结构不可识别')
-	raise SystemExit(4)
+    print(f'❌ {target}: /models 返回结构不可识别')
+    raise SystemExit(4)
 
 remote_ids = []
 for item in data['data']:
-	if isinstance(item, dict) and item.get('id'):
-		remote_ids.append(str(item['id']))
+    if isinstance(item, dict) and item.get('id'):
+        remote_ids.append(str(item['id']))
 remote_set = set(remote_ids)
 if not remote_set:
-	print(f'❌ {target}: 上游 /models 为空，已中止同步')
-	raise SystemExit(5)
+    print(f'❌ {target}: 上游 /models 为空，已中止同步')
+    raise SystemExit(5)
 
 local_models = [m for m in model_list if isinstance(m, dict) and m.get('id')]
 local_ids = [str(m['id']) for m in local_models]
@@ -11166,33 +11166,33 @@ local_set = set(local_ids)
 
 template = copy.deepcopy(local_models[0]) if local_models else None
 if template is None:
-	print(f'❌ {target}: 本地 models 无有效模板模型，无法补全新增模型')
-	raise SystemExit(3)
+    print(f'❌ {target}: 本地 models 无有效模板模型，无法补全新增模型')
+    raise SystemExit(3)
 
 removed_ids = [mid for mid in local_ids if mid not in remote_set]
 added_ids = [mid for mid in remote_ids if mid not in local_set]
 
 if added_ids:
-	print(f'➕ 新增模型({len(added_ids)}):')
-	for mid in added_ids:
-		print(f'  + {mid}')
+    print(f'➕ 新增模型({len(added_ids)}):')
+    for mid in added_ids:
+        print(f'  + {mid}')
 if removed_ids:
-	print(f'➖ 删除模型({len(removed_ids)}):')
-	for mid in removed_ids:
-		print(f'  - {mid}')
+    print(f'➖ 删除模型({len(removed_ids)}):')
+    for mid in removed_ids:
+        print(f'  - {mid}')
 
 kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
 new_models = kept_models[:]
 for mid in added_ids:
-	nm = copy.deepcopy(template)
-	nm['id'] = mid
-	if isinstance(nm.get('name'), str):
-		nm['name'] = f'{target} / {mid}'
-	new_models.append(nm)
+    nm = copy.deepcopy(template)
+    nm['id'] = mid
+    if isinstance(nm.get('name'), str):
+        nm['name'] = f'{target} / {mid}'
+    new_models.append(nm)
 
 if not new_models:
-	print(f'❌ {target}: 同步后无可用模型，已中止写入')
-	raise SystemExit(5)
+    print(f'❌ {target}: 同步后无可用模型，已中止写入')
+    raise SystemExit(5)
 
 expected_refs = {model_ref(target, str(m['id'])) for m in new_models if isinstance(m, dict) and m.get('id')}
 local_refs = {model_ref(target, mid) for mid in local_ids}
@@ -11202,44 +11202,44 @@ first_ref = model_ref(target, str(new_models[0]['id']))
 changed = False
 primary_ref = get_primary_ref(defaults)
 if isinstance(primary_ref, str) and primary_ref in removed_refs:
-	set_primary_ref(defaults, first_ref)
-	changed = True
-	print(f'🔁 默认模型已兜底替换: {primary_ref} -> {first_ref}')
+    set_primary_ref(defaults, first_ref)
+    changed = True
+    print(f'🔁 默认模型已兜底替换: {primary_ref} -> {first_ref}')
 
 for fk in ('modelFallback', 'imageModelFallback'):
-	val = defaults.get(fk)
-	if isinstance(val, str) and val in removed_refs:
-		defaults[fk] = first_ref
-		changed = True
-		print(f'🔁 {fk} 已兜底替换: {val} -> {first_ref}')
+    val = defaults.get(fk)
+    if isinstance(val, str) and val in removed_refs:
+        defaults[fk] = first_ref
+        changed = True
+        print(f'🔁 {fk} 已兜底替换: {val} -> {first_ref}')
 
 stale_refs = [r for r in list(defaults_models.keys()) if r.startswith(target + '/') and r not in expected_refs]
 for r in stale_refs:
-	defaults_models.pop(r, None)
-	changed = True
+    defaults_models.pop(r, None)
+    changed = True
 
 for r in sorted(expected_refs):
-	if r not in defaults_models:
-		defaults_models[r] = {}
-		changed = True
+    if r not in defaults_models:
+        defaults_models[r] = {}
+        changed = True
 
 if removed_ids or added_ids or len(local_models) != len(new_models):
-	provider['models'] = new_models
-	changed = True
+    provider['models'] = new_models
+    changed = True
 
 if protocol_msg:
-	print(protocol_msg)
+    print(protocol_msg)
 
 if changed:
-	with open(path, 'w', encoding='utf-8') as f:
-		json.dump(work, f, ensure_ascii=False, indent=2)
-		f.write('\n')
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(work, f, ensure_ascii=False, indent=2)
+        f.write('\n')
 
 print(f'✅ {target}: 删除 {len(removed_ids)} 个，新增 {len(added_ids)} 个，当前 {len(new_models)} 个')
 if changed:
-	print('✅ 指定 provider 模型一致性同步完成并已写入配置')
+    print('✅ 指定 provider 模型一致性同步完成并已写入配置')
 else:
-	print('ℹ️ 无需同步：该 provider 配置已与上游 /models 保持一致')
+    print('ℹ️ 无需同步：该 provider 配置已与上游 /models 保持一致')
 PY2
 	local rc=$?
 	case "$rc" in
@@ -11281,66 +11281,66 @@ name = sys.argv[2]
 SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
 
 def probe_endpoint(base_url, api_key, path, timeout=6):
-	url = base_url.rstrip('/') + path
-	req = urllib.request.Request(
-		url,
-		data=b'{}',
-		headers={
-			'Authorization': f'Bearer {api_key}',
-			'Content-Type': 'application/json',
-			'User-Agent': 'OpenClaw-API-Manage/1.0',
-		},
-		method='POST',
-	)
-	try:
-		with urllib.request.urlopen(req, timeout=timeout) as resp:
-			return resp.getcode(), None
-	except urllib.error.HTTPError as e:
-		return e.code, None
-	except Exception as e:
-		return None, e
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
 
 
 def detect_api_protocol(base_url, api_key):
-	code, err = probe_endpoint(base_url, api_key, '/responses')
-	if code is not None and code not in (404, 405):
-		return 'openai-responses', f'POST /responses -> HTTP {code}', None
-	if err:
-		return 'openai-completions', 'fallback: probe failed', err
-	return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 try:
-	with open(path, 'r', encoding='utf-8') as f:
-		obj = json.load(f)
+    with open(path, 'r', encoding='utf-8') as f:
+        obj = json.load(f)
 except FileNotFoundError:
-	print('❌ 未找到 openclaw.json')
-	raise SystemExit(2)
+    print('❌ 未找到 openclaw.json')
+    raise SystemExit(2)
 
 providers = ((obj.get('models') or {}).get('providers') or {})
 provider = providers.get(name) if isinstance(providers, dict) else None
 if not isinstance(provider, dict):
-	print(f'❌ 未找到 provider: {name}')
-	raise SystemExit(2)
+    print(f'❌ 未找到 provider: {name}')
+    raise SystemExit(2)
 
 base_url = provider.get('baseUrl')
 api_key = provider.get('apiKey')
 if not base_url or not api_key:
-	print(f'❌ provider {name} 缺少 baseUrl/apiKey')
-	raise SystemExit(3)
+    print(f'❌ provider {name} 缺少 baseUrl/apiKey')
+    raise SystemExit(3)
 
 current_api = provider.get('api', '')
 if current_api not in SUPPORTED_APIS:
-	current_api = ''
+    current_api = ''
 
 api, reason, err = detect_api_protocol(base_url, api_key)
 if api and api != current_api:
-	provider['api'] = api
-	with open(path, 'w', encoding='utf-8') as f:
-		json.dump(obj, f, ensure_ascii=False, indent=2)
-		f.write('\n')
-	print(f'✅ 已更新 provider {name} 协议: {current_api or "(unset)"} -> {api} ({reason})')
+    provider['api'] = api
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+    print(f'✅ 已更新 provider {name} 协议: {current_api or "(unset)"} -> {api} ({reason})')
 else:
-	print(f'ℹ️ 无需更新：协议保持为 {current_api or api}')
+    print(f'ℹ️ 无需更新：协议保持为 {current_api or api}')
 PY
 }
 
@@ -11410,71 +11410,71 @@ path = sys.argv[1]
 name = sys.argv[2]
 
 with open(path, 'r', encoding='utf-8') as f:
-	obj = json.load(f)
+    obj = json.load(f)
 
 work = copy.deepcopy(obj)
 models_cfg = work.setdefault('models', {})
 providers = models_cfg.get('providers', {})
 if not isinstance(providers, dict) or name not in providers:
-	print(f'❌ 未找到 provider: {name}')
-	raise SystemExit(2)
+    print(f'❌ 未找到 provider: {name}')
+    raise SystemExit(2)
 
 agents = work.setdefault('agents', {})
 defaults = agents.setdefault('defaults', {})
 defaults_models_raw = defaults.get('models')
 if isinstance(defaults_models_raw, dict):
-	defaults_models = defaults_models_raw
+    defaults_models = defaults_models_raw
 elif isinstance(defaults_models_raw, list):
-	defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
+    defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
 else:
-	defaults_models = {}
+    defaults_models = {}
 defaults['models'] = defaults_models
 
 
 def model_ref(provider_name, model_id):
-	return f"{provider_name}/{model_id}"
+    return f"{provider_name}/{model_id}"
 
 
 def ref_provider(ref):
-	if not isinstance(ref, str) or '/' not in ref:
-		return None
-	return ref.split('/', 1)[0]
+    if not isinstance(ref, str) or '/' not in ref:
+        return None
+    return ref.split('/', 1)[0]
 
 
 def get_primary_ref(defaults_obj):
-	model_obj = defaults_obj.get('model')
-	if isinstance(model_obj, str):
-		return model_obj
-	if isinstance(model_obj, dict):
-		primary = model_obj.get('primary')
-		if isinstance(primary, str):
-			return primary
-	return None
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        return model_obj
+    if isinstance(model_obj, dict):
+        primary = model_obj.get('primary')
+        if isinstance(primary, str):
+            return primary
+    return None
 
 
 def set_primary_ref(defaults_obj, new_ref):
-	model_obj = defaults_obj.get('model')
-	if isinstance(model_obj, str):
-		defaults_obj['model'] = new_ref
-	elif isinstance(model_obj, dict):
-		model_obj['primary'] = new_ref
-	else:
-		defaults_obj['model'] = {'primary': new_ref}
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        defaults_obj['model'] = new_ref
+    elif isinstance(model_obj, dict):
+        model_obj['primary'] = new_ref
+    else:
+        defaults_obj['model'] = {'primary': new_ref}
 
 
 def collect_available_refs(exclude_provider=None):
-	refs = []
-	if not isinstance(providers, dict):
-		return refs
-	for pname, p in providers.items():
-		if exclude_provider and pname == exclude_provider:
-			continue
-		if not isinstance(p, dict):
-			continue
-		for m in p.get('models', []) or []:
-			if isinstance(m, dict) and m.get('id'):
-				refs.append(model_ref(pname, str(m['id'])))
-	return refs
+    refs = []
+    if not isinstance(providers, dict):
+        return refs
+    for pname, p in providers.items():
+        if exclude_provider and pname == exclude_provider:
+            continue
+        if not isinstance(p, dict):
+            continue
+        for m in p.get('models', []) or []:
+            if isinstance(m, dict) and m.get('id'):
+                refs.append(model_ref(pname, str(m['id'])))
+    return refs
 
 
 replacement_candidates = collect_available_refs(exclude_provider=name)
@@ -11482,30 +11482,30 @@ replacement = replacement_candidates[0] if replacement_candidates else None
 
 primary_ref = get_primary_ref(defaults)
 if ref_provider(primary_ref) == name:
-	if not replacement:
-		print('❌ 删除中止：默认主模型指向该 provider，且无可用替代模型')
-		raise SystemExit(3)
-	set_primary_ref(defaults, replacement)
-	print(f'🔁 默认主模型切换: {primary_ref} -> {replacement}')
+    if not replacement:
+        print('❌ 删除中止：默认主模型指向该 provider，且无可用替代模型')
+        raise SystemExit(3)
+    set_primary_ref(defaults, replacement)
+    print(f'🔁 默认主模型切换: {primary_ref} -> {replacement}')
 
 for fk in ('modelFallback', 'imageModelFallback'):
-	val = defaults.get(fk)
-	if ref_provider(val) == name:
-		if not replacement:
-			print(f'❌ 删除中止：{fk} 指向该 provider，且无可用替代模型')
-			raise SystemExit(3)
-		defaults[fk] = replacement
-		print(f'🔁 {fk} 切换: {val} -> {replacement}')
+    val = defaults.get(fk)
+    if ref_provider(val) == name:
+        if not replacement:
+            print(f'❌ 删除中止：{fk} 指向该 provider，且无可用替代模型')
+            raise SystemExit(3)
+        defaults[fk] = replacement
+        print(f'🔁 {fk} 切换: {val} -> {replacement}')
 
 removed_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/')]
 for r in removed_refs:
-	defaults_models.pop(r, None)
+    defaults_models.pop(r, None)
 
 providers.pop(name, None)
 
 with open(path, 'w', encoding='utf-8') as f:
-	json.dump(work, f, ensure_ascii=False, indent=2)
-	f.write('\n')
+    json.dump(work, f, ensure_ascii=False, indent=2)
+    f.write('\n')
 
 print(f'🗑️ 已删除 provider: {name}')
 print(f'🧹 已清理 defaults.models 中 {len(removed_refs)} 个关联模型引用')
@@ -11576,16 +11576,16 @@ PY
 
 
 	install_gum() {
-		if command -v gum >/dev/null 2>&1; then
-			return 0
-		fi
-		if [ -f /etc/debian_version ]; then
-			mkdir -p /etc/apt/keyrings
-			curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
-			echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | tee /etc/apt/sources.list.d/charm.list > /dev/null
-			apt update && apt install -y gum
+	    if command -v gum >/dev/null 2>&1; then
+	        return 0
+	    fi
+	    if [ -f /etc/debian_version ]; then
+	        mkdir -p /etc/apt/keyrings
+	        curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+	        echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | tee /etc/apt/sources.list.d/charm.list > /dev/null
+	        apt update && apt install -y gum
 
-		fi
+	    fi
 	}
 
 
@@ -11600,7 +11600,7 @@ PY
 		while true; do
 			local models_raw models_list default_model model_count selected_model
 
-			models_raw=$(openclaw models list --plain 2>/dev/null)
+			models_raw=$(openclaw models list 2>/dev/null)
 			if [ -z "$models_raw" ]; then
 				echo "获取模型列表失败，请检查 openclaw 是否可用。"
 				break_end
@@ -11667,8 +11667,8 @@ PY
 					--header "" \
 					--height 35)
 
-
-				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -iqE '^(error|usage|gum)'; then
+				# gum 失败（例如 flags 不兼容）时会输出 Usage/help；避免误写入 openclaw 配置
+				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -qE '^(Usage:|gum: error:)'; then
 					echo "操作已取消，正在退出..."
 					break
 				fi
@@ -11740,22 +11740,22 @@ config_file = Path(sys.argv[1])
 plugin_id = sys.argv[2]
 
 try:
-	data = json.loads(config_file.read_text(encoding='utf-8')) if config_file.exists() else {}
-	if not isinstance(data, dict):
-		data = {}
+    data = json.loads(config_file.read_text(encoding='utf-8')) if config_file.exists() else {}
+    if not isinstance(data, dict):
+        data = {}
 except Exception:
-	data = {}
+    data = {}
 
 plugins = data.get('plugins')
 if not isinstance(plugins, dict):
-	plugins = {}
+    plugins = {}
 
 a = plugins.get('allow')
 if not isinstance(a, list):
-	a = []
+    a = []
 
 if plugin_id not in a:
-	a.append(plugin_id)
+    a.append(plugin_id)
 
 plugins['allow'] = a
 data['plugins'] = plugins
@@ -11811,19 +11811,19 @@ config_file = Path(sys.argv[1])
 plugin_id = sys.argv[2]
 
 try:
-	data = json.loads(config_file.read_text(encoding='utf-8')) if config_file.exists() else {}
-	if not isinstance(data, dict):
-		data = {}
+    data = json.loads(config_file.read_text(encoding='utf-8')) if config_file.exists() else {}
+    if not isinstance(data, dict):
+        data = {}
 except Exception:
-	data = {}
+    data = {}
 
 plugins = data.get('plugins')
 if not isinstance(plugins, dict):
-	plugins = {}
+    plugins = {}
 
 a = plugins.get('allow')
 if not isinstance(a, list):
-	a = []
+    a = []
 
 a = [x for x in a if x != plugin_id]
 plugins['allow'] = a
