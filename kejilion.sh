@@ -11599,6 +11599,8 @@ PY
 			default_model=$(echo "$models_raw" | awk 'NR>1 && $0 ~ /default/ {print $1; exit}')
 			[ -z "$default_model" ] && default_model="(unknown)"
 
+			install gum
+
 				# 若 gum 不存在，降级为原始手动输入流程（保持与之前完全一致）
 			if ! command -v gum >/dev/null 2>&1; then
 				clear
