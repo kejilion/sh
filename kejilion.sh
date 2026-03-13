@@ -11574,6 +11574,22 @@ PY
 	}
 
 
+
+	install_gum() {
+	    if command -v gum >/dev/null 2>&1; then
+	        return 0
+	    fi
+	    if [ -f /etc/debian_version ]; then
+	        mkdir -p /etc/apt/keyrings
+	        curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+	        echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | tee /etc/apt/sources.list.d/charm.list > /dev/null
+	        apt update && apt install -y gum
+
+	    fi
+	}
+
+
+	
 	change_model() {
 		send_stats "换模型"
 
@@ -11599,6 +11615,8 @@ PY
 			default_model=$(echo "$models_raw" | awk 'NR>1 && $0 ~ /default/ {print $1; exit}')
 			[ -z "$default_model" ] && default_model="(unknown)"
 
+
+			install_gum
 			install gum
 
 				# 若 gum 不存在，降级为原始手动输入流程（保持与之前完全一致）
