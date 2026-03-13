@@ -11643,7 +11643,7 @@ PY
 					--value "$default_model" \
 					--prompt.foreground "$orange" \
 					--indicator.foreground "$orange" \
-					--cursor.foreground "$orange" \
+					--cursor-text.foreground "$orange" \
 					--match.foreground "$orange" \
 					--header "" \
 					--height 20)
