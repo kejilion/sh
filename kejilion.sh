@@ -11599,24 +11599,29 @@ PY
 			default_model=$(echo "$models_raw" | awk 'NR>1 && $0 ~ /default/ {print $1; exit}')
 			[ -z "$default_model" ] && default_model="(unknown)"
 
-			# 若 gum 不存在，降级为手动输入（但仍只提示可用模型）
+				# 若 gum 不存在，降级为原始手动输入流程（保持与之前完全一致）
 			if ! command -v gum >/dev/null 2>&1; then
 				clear
 				echo "--- 模型管理 ---"
-				echo "可用模型（Auth=yes）：${model_count}"
-				echo "当前默认：${default_model}"
+				echo "所有模型:"
+				openclaw models list --all
 				echo "----------------"
-				echo "$models_list"
+				echo "当前模型:"
+				openclaw models list
 				echo "----------------"
-				read -e -p "请输入要设置的模型名称（输入 0 退出）： " selected_model
+				read -e -p "请输入要设置的模型名称 (例如 openrouter/openai/gpt-4o)（输入 0 退出）： " selected_model
+
+				# 1. 检查是否输入 0 以退出
 				if [ "$selected_model" = "0" ]; then
 					echo "操作已取消，正在退出..."
-					break
+					break  # 跳出 while 循环
 				fi
+
+				# 2. 验证输入是否为空
 				if [ -z "$selected_model" ]; then
 					echo "错误：模型名称不能为空。请重试。"
-					echo ""
-					continue
+					echo "" # 换行美化
+					continue # 跳过本次循环，重新开始
 				fi
 			else
 				clear
