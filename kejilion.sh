@@ -11640,13 +11640,13 @@ PY
 					--placeholder "搜索模型（如 cli-api/gpt-5.2）" \
 					--prompt "选择模型 > " \
 					--indicator "➜ " \
-					--value "$default_model" \
+					--selected "$default_model" \
 					--prompt.foreground "$orange" \
 					--indicator.foreground "$orange" \
 					--cursor-text.foreground "$orange" \
 					--match.foreground "$orange" \
 					--header "" \
-					--height 20)
+					--height 35)
 
 				# Esc 退出时返回空
 				if [ -z "$selected_model" ]; then
