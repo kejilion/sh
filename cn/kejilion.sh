@@ -11635,21 +11635,20 @@ PY
 				gum style --faint "↑↓ 选择 / Enter 确认 / Esc 退出"
 				echo ""
 
-				# gum filter：带搜索；默认选中当前默认模型
+				# gum filter：带搜索；gum 版本差异较大，这里只用兼容性最强的 flags
 				selected_model=$(echo "$models_list" | gum filter \
 					--placeholder "搜索模型（如 cli-api/gpt-5.2）" \
 					--prompt "选择模型 > " \
 					--indicator "➜ " \
-					--selected "$default_model" \
 					--prompt.foreground "$orange" \
 					--indicator.foreground "$orange" \
 					--cursor-text.foreground "$orange" \
 					--match.foreground "$orange" \
 					--header "" \
-					--height 35)
+					--height 35 2>/dev/null)
 
-				# Esc 退出时返回空
-				if [ -z "$selected_model" ]; then
+				# gum 失败（例如 flags 不兼容）时会输出 Usage/help；避免误写入 openclaw 配置
+				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -qE '^(Usage:|gum: error:)'; then
 					echo "操作已取消，正在退出..."
 					break
 				fi
