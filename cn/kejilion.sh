@@ -11645,7 +11645,7 @@ PY
 					--cursor-text.foreground "$orange" \
 					--match.foreground "$orange" \
 					--header "" \
-					--height 35 2>/dev/null)
+					--height 35)
 
 				# gum 失败（例如 flags 不兼容）时会输出 Usage/help；避免误写入 openclaw 配置
 				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -qE '^(Usage:|gum: error:)'; then
