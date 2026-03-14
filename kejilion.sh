@@ -11600,7 +11600,7 @@ PY
 		while true; do
 			local models_raw models_list default_model model_count selected_model
 
-			models_raw=$(openclaw models list --plain 2>/dev/null)
+			models_raw=$(openclaw models list 2>/dev/null)
 			if [ -z "$models_raw" ]; then
 				echo "获取模型列表失败，请检查 openclaw 是否可用。"
 				break_end
