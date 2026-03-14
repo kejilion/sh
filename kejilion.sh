@@ -11622,7 +11622,7 @@ REPO
 			oc_config="${HOME}/.openclaw/openclaw.json"
 			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
 
-			models_raw=$(jq -r '.agents.defaults.models | keys[]?' "$oc_config" 2>/dev/null | sed '/^\s*$/d')
+			models_raw=$(jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d')
 			if [ -z "$models_raw" ]; then
 				models_raw=$(openclaw models list --plain 2>/dev/null)
 			fi
