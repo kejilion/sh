@@ -15,6 +15,7 @@ gl_kjlan='\033[96m'
 canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
+CLEAN_SKIP_CONFIRM="false"
 
 
 quanju_canshu() {
@@ -4665,6 +4666,173 @@ fix_dpkg() {
 	DEBIAN_FRONTEND=noninteractive dpkg --configure -a
 }
 
+linux_clean_disk_bar() {
+	local percent="${1%%%}"
+	local filled empty bar=""
+	local i
+
+	traffic_limit_is_number "$percent" || percent=0
+	(( percent < 0 )) && percent=0
+	(( percent > 100 )) && percent=100
+
+	filled=$((percent / 5))
+	empty=$((20 - filled))
+
+	for ((i = 0; i < filled; i++)); do
+		bar="${bar}#"
+	done
+	for ((i = 0; i < empty; i++)); do
+		bar="${bar}-"
+	done
+
+	printf '%s' "$bar"
+}
+
+linux_clean_collect_disk_snapshot() {
+	local output_file="$1"
+	local path snapshot mountpoint
+	local seen_mounts="|"
+
+	: > "$output_file"
+	for path in / /var /tmp /var/tmp /root /var/log /var/cache /var/crash; do
+		[ -e "$path" ] || continue
+		snapshot=$(df -PkP "$path" 2>/dev/null | awk 'NR==2 {print $6 "|" $2 "|" $3 "|" $4 "|" $5}')
+		[ -n "$snapshot" ] || continue
+		mountpoint=${snapshot%%|*}
+		case "$seen_mounts" in
+			*"|$mountpoint|"*) continue ;;
+		esac
+		seen_mounts="${seen_mounts}${mountpoint}|"
+		printf '%s\n' "$snapshot" >> "$output_file"
+	done
+}
+
+linux_clean_show_disk_delta() {
+	local before_file="$1"
+	local after_file="$2"
+	local mount total_kb_before used_kb_before avail_kb_before used_pct_before
+	local after_line total_kb_after used_kb_after avail_kb_after used_pct_after
+	local freed_kb total_freed_bytes=0
+
+	echo "------------------------"
+	echo "清理前后磁盘占用对比"
+	echo "------------------------"
+
+	while IFS='|' read -r mount total_kb_before used_kb_before avail_kb_before used_pct_before; do
+		[ -n "$mount" ] || continue
+		after_line=$(awk -F'|' -v target="$mount" '$1 == target {print $0; exit}' "$after_file")
+		[ -n "$after_line" ] || continue
+		IFS='|' read -r _ total_kb_after used_kb_after avail_kb_after used_pct_after <<< "$after_line"
+		freed_kb=$((avail_kb_after - avail_kb_before))
+		(( freed_kb < 0 )) && freed_kb=0
+		total_freed_bytes=$((total_freed_bytes + freed_kb * 1024))
+
+		echo "$mount"
+		printf "  清理前 [%s] %s (%s 已用)\n" \
+			"$(linux_clean_disk_bar "$used_pct_before")" \
+			"$used_pct_before" \
+			"$(traffic_limit_format_bytes $((used_kb_before * 1024)))"
+		printf "  清理后 [%s] %s (%s 已用)\n" \
+			"$(linux_clean_disk_bar "$used_pct_after")" \
+			"$used_pct_after" \
+			"$(traffic_limit_format_bytes $((used_kb_after * 1024)))"
+		printf "  释放空间 %s\n" "$(traffic_limit_format_bytes $((freed_kb * 1024)))"
+		echo "------------------------"
+	done < "$before_file"
+
+	echo "总释放空间: $(traffic_limit_format_bytes "$total_freed_bytes")"
+}
+
+linux_clean_collect_pkg_processes() {
+	ps -eo pid=,comm=,args= | awk '$2 ~ /^(apt|apt-get|dpkg|dnf|yum|rpm|packagekitd|pacman|zypper|apk|opkg|pkg)$/ {print}'
+}
+
+linux_clean_collect_running_services() {
+	local service_ignore_regex='^(dbus|dbus-broker|systemd-[^ ]+|getty@.*|serial-getty@.*|user@.*|polkit|cron|crond|sshd|ssh|rsyslog|syslog|NetworkManager|networking|systemd-resolved|systemd-timesyncd|irqbalance|acpid|systemd-logind|systemd-journald|systemd-udevd)(\.service)?$'
+
+	if command -v systemctl >/dev/null 2>&1; then
+		systemctl list-units --type=service --state=running --no-legend --plain 2>/dev/null \
+			| awk '{print $1}' \
+			| grep -Ev "$service_ignore_regex" || true
+	elif command -v rc-status >/dev/null 2>&1; then
+		rc-status -s 2>/dev/null \
+			| awk '$2 == "[started]" {print $1}' \
+			| grep -Ev "$service_ignore_regex" || true
+	elif command -v service >/dev/null 2>&1; then
+		service --status-all 2>/dev/null \
+			| sed -n 's/^ \[ + \]  //p' \
+			| grep -Ev "$service_ignore_regex" || true
+	fi
+}
+
+linux_clean_preview_list() {
+	local title="$1"
+	local content="$2"
+	local count
+
+	[ -n "$content" ] || return 0
+	count=$(printf '%s\n' "$content" | sed '/^$/d' | wc -l | awk '{print $1}')
+
+	echo "$title"
+	if [ "$count" -gt 15 ]; then
+		printf '%s\n' "$content" | sed -n '1,15p'
+		echo "... 其余 $((count - 15)) 项未展开"
+	else
+		printf '%s\n' "$content"
+	fi
+	echo "------------------------"
+}
+
+linux_clean_confirm_running_state() {
+	local pkg_processes running_services clean_confirm
+
+	[ "$CLEAN_SKIP_CONFIRM" = "true" ] && return 0
+
+	pkg_processes=$(linux_clean_collect_pkg_processes)
+	running_services=$(linux_clean_collect_running_services)
+
+	if [ -z "$pkg_processes$running_services" ]; then
+		return 0
+	fi
+
+	echo "检测到运行中的服务/进程，激进清理可能影响日志、缓存和临时文件。"
+	echo "------------------------"
+	linux_clean_preview_list "包管理相关进程：" "$pkg_processes"
+	linux_clean_preview_list "运行中的服务：" "$running_services"
+	echo "1. 确认后清理"
+	echo "2. 本次会话后续直接清理"
+	echo "0. 取消"
+	echo "------------------------"
+	read -e -p "请输入你的选择: " clean_confirm
+
+	case "$clean_confirm" in
+		1)
+			return 0
+			;;
+		2)
+			CLEAN_SKIP_CONFIRM="true"
+			return 0
+			;;
+		*)
+			echo "已取消清理。"
+			return 1
+			;;
+	esac
+}
+
+linux_clean_extra_paths() {
+	echo "清理额外缓存与临时目录..."
+	rm -rf /tmp/*
+	rm -rf /var/tmp/*
+	rm -rf /var/crash/*
+	rm -rf /var/lib/systemd/coredump/*
+	rm -rf /var/cache/PackageKit/*
+	rm -rf /var/cache/man/*
+	rm -rf /var/cache/fontconfig/*
+	rm -rf /root/.cache/*
+	find /var/log -type f \( -name '*.gz' -o -name '*.[0-9]' -o -name '*.old' \) -delete 2>/dev/null || true
+}
+
 
 linux_update() {
 	echo -e "${gl_kjlan}正在系统更新...${gl_bai}"
@@ -4694,12 +4862,22 @@ linux_update() {
 
 
 linux_clean() {
+	local before_snapshot after_snapshot
+
+	root_use
 	echo -e "${gl_kjlan}正在系统清理...${gl_bai}"
+	if ! linux_clean_confirm_running_state; then
+		return
+	fi
+
+	before_snapshot=$(mktemp)
+	after_snapshot=$(mktemp)
+	linux_clean_collect_disk_snapshot "$before_snapshot"
+
 	if command -v dnf &>/dev/null; then
 		rpm --rebuilddb
 		dnf autoremove -y
 		dnf clean all
-		dnf makecache
 		journalctl --rotate
 		journalctl --vacuum-time=1s
 		journalctl --vacuum-size=500M
@@ -4708,7 +4886,6 @@ linux_clean() {
 		rpm --rebuilddb
 		yum autoremove -y
 		yum clean all
-		yum makecache
 		journalctl --rotate
 		journalctl --vacuum-time=1s
 		journalctl --vacuum-size=500M
@@ -4718,6 +4895,7 @@ linux_clean() {
 		apt autoremove --purge -y
 		apt clean -y
 		apt autoclean -y
+		rm -rf /var/lib/apt/lists/*
 		journalctl --rotate
 		journalctl --vacuum-time=1s
 		journalctl --vacuum-size=500M
@@ -4733,7 +4911,9 @@ linux_clean() {
 		rm -rf /tmp/*
 
 	elif command -v pacman &>/dev/null; then
-		pacman -Rns $(pacman -Qdtq) --noconfirm
+		local pacman_orphans
+		pacman_orphans=$(pacman -Qdtq 2>/dev/null)
+		[ -n "$pacman_orphans" ] && pacman -Rns $pacman_orphans --noconfirm
 		pacman -Scc --noconfirm
 		journalctl --rotate
 		journalctl --vacuum-time=1s
@@ -4741,7 +4921,6 @@ linux_clean() {
 
 	elif command -v zypper &>/dev/null; then
 		zypper clean --all
-		zypper refresh
 		journalctl --rotate
 		journalctl --vacuum-time=1s
 		journalctl --vacuum-size=500M
@@ -4764,8 +4943,14 @@ linux_clean() {
 
 	else
 		echo "未知的包管理器!"
+		rm -f "$before_snapshot" "$after_snapshot"
 		return
 	fi
+
+	linux_clean_extra_paths
+	linux_clean_collect_disk_snapshot "$after_snapshot"
+	linux_clean_show_disk_delta "$before_snapshot" "$after_snapshot"
+	rm -f "$before_snapshot" "$after_snapshot"
 	return
 }
 
