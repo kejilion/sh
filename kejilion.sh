@@ -11600,7 +11600,7 @@ PY
 		while true; do
 			local models_raw models_list default_model model_count selected_model
 
-			models_raw=$(openclaw models list 2>/dev/null)
+			models_raw=$(openclaw models list --plain 2>/dev/null)
 			if [ -z "$models_raw" ]; then
 				echo "获取模型列表失败，请检查 openclaw 是否可用。"
 				break_end
@@ -11667,8 +11667,7 @@ PY
 					--header "" \
 					--height 35)
 
-				# gum 失败（例如 flags 不兼容）时会输出 Usage/help；避免误写入 openclaw 配置
-				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -qE '^(Usage:|gum: error:)'; then
+				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -iqE '^(error|usage|gum:)'; then
 					echo "操作已取消，正在退出..."
 					break
 				fi
