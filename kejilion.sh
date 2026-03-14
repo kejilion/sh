@@ -11636,8 +11636,11 @@ REPO
 			models_list=$(echo "$models_raw" | awk '{print "(" NR ") " $0}')
 			model_count=$(echo "$models_list" | sed '/^\s*$/d' | wc -l | tr -d ' ')
 
-			# 获取默认模型（Tags 含 default）
-			default_model=$(openclaw models list 2>/dev/null | awk 'NR>1 && $0 ~ /default/ {print $1; exit}')
+			# 从配置文件读取默认模型（更快）；失败再回退到 openclaw 命令
+			default_model=$(jq -r '.agents.defaults.model.primary // empty' "$oc_config" 2>/dev/null)
+			if [ -z "$default_model" ]; then
+				default_model=$(openclaw models list 2>/dev/null | awk 'NR>1 && $0 ~ /default/ {print $1; exit}')
+			fi
 			[ -z "$default_model" ] && default_model="(unknown)"
 
 
