@@ -11593,14 +11593,14 @@ PY
 	change_model() {
 		send_stats "换模型"
 
-		# 仅展示已配置/可用的模型（Auth=yes），并用 gum 交互式选择
-		# 需要 gum；若未安装则降级为手动输入
 		local orange="#FF8C00"
+
+		clear
 
 		while true; do
 			local models_raw models_list default_model model_count selected_model
 
-			models_raw=$(openclaw models list 2>/dev/null)
+			models_raw=$(openclaw models list --plain 2>/dev/null)
 			if [ -z "$models_raw" ]; then
 				echo "获取模型列表失败，请检查 openclaw 是否可用。"
 				break_end
@@ -11608,25 +11608,23 @@ PY
 			fi
 
 			# 提取 Auth=yes 的模型名（跳过表头）
-			models_list=$(echo "$models_raw" | awk 'NR>1 && $5=="yes" {print $1}')
+			models_list=$(echo "$models_raw")
 			model_count=$(echo "$models_list" | sed '/^\s*$/d' | wc -l | tr -d ' ')
 
 			# 获取默认模型（Tags 含 default）
-			default_model=$(echo "$models_raw" | awk 'NR>1 && $0 ~ /default/ {print $1; exit}')
+			default_model=$(openclaw models list 2>/dev/null | awk 'NR>1 && $0 ~ /default/ {print $1; exit}')
 			[ -z "$default_model" ] && default_model="(unknown)"
 
 
 			install_gum
 			install gum
 
+			clear
+
 				# 若 gum 不存在，降级为原始手动输入流程（保持与之前完全一致）
 			if ! command -v gum >/dev/null 2>&1; then
-				clear
 				echo "--- 模型管理 ---"
-				echo "所有模型:"
-				openclaw models list --all
-				echo "----------------"
-				echo "当前模型:"
+				echo "当前可用模型:"
 				openclaw models list
 				echo "----------------"
 				read -e -p "请输入要设置的模型名称 (例如 openrouter/openai/gpt-4o)（输入 0 退出）： " selected_model
@@ -11644,8 +11642,6 @@ PY
 					continue # 跳过本次循环，重新开始
 				fi
 			else
-				clear
-				# 顶部信息（橙色）
 				gum style --foreground "$orange" --bold "模型管理"
 				gum style --foreground "$orange" "可用模型（Auth=yes）：${model_count}"
 				gum style --foreground "$orange" "当前默认：${default_model}"
