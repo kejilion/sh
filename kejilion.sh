@@ -20368,6 +20368,7 @@ echo "-------------------"
 echo "视频介绍: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "以下是k命令参考用例："
 echo "启动脚本            k"
+echo "查看功能介绍        k help | k 你能做什么"
 echo "安装软件包          k install nano wget | k add nano wget | k 安装 nano wget"
 echo "卸载软件包          k remove nano wget | k del nano wget | k uninstall nano wget | k 卸载 nano wget"
 echo "更新系统            k update | k 更新"
@@ -20417,6 +20418,79 @@ echo "SSH公钥导入(GitHub) k sshkey github <user> "
 
 }
 
+
+k_help() {
+send_stats "帮助功能"
+echo "======================================"
+echo "科技Lion Shell脚本工具箱 - 功能介绍"
+echo "KejiLion.sh Toolbox - Features Guide"
+echo "======================================"
+echo ""
+echo "【核心功能 / Core Features】"
+echo ""
+echo "1. 系统管理 / System Management"
+echo "   • 系统信息查询 - 查看CPU、内存、磁盘、网络等"
+echo "   • 系统更新 - 一键更新系统软件包"
+echo "   • 系统清理 - 清理系统垃圾和缓存"
+echo "   • 系统备份与还原 - 数据安全保护"
+echo ""
+echo "2. Docker容器管理 / Docker Management"
+echo "   • 独创的可视化容器管理界面"
+echo "   • 容器创建、启动、停止、删除"
+echo "   • 镜像管理和网络配置"
+echo "   • 容器备份、迁移和还原"
+echo ""
+echo "3. LDNMP建站 / Website Hosting"
+echo "   • 一键部署 Nginx + MySQL + PHP"
+echo "   • WordPress、Typecho等站点快速搭建"
+echo "   • 反向代理和负载均衡"
+echo "   • SSL证书自动申请和续期"
+echo "   • 网站防CC攻击、防爬虫"
+echo ""
+echo "4. 网络工具 / Network Tools"
+echo "   • 测速、回程路由、延迟测试"
+echo "   • BBR/BBR3网络加速优化"
+echo "   • WARP管理"
+echo "   • 内网穿透（frps/frpc）"
+echo ""
+echo "5. 安全防护 / Security"
+echo "   • 防火墙管理（端口开放/关闭）"
+echo "   • IP白名单/黑名单"
+echo "   • Fail2ban入侵防护"
+echo "   • SSH密钥管理"
+echo ""
+echo "6. 应用市场 / Application Store"
+echo "   • 集成50+常用应用一键安装"
+echo "   • 包括1Panel、NPM等管理面板"
+echo "   • 各类服务和工具快速部署"
+echo ""
+echo "7. 服务器工具 / Server Tools"
+echo "   • 远程SSH连接管理"
+echo "   • Rsync远程同步"
+echo "   • 硬盘管理和分区"
+echo "   • 计划任务管理"
+echo "   • 系统回收站功能"
+echo ""
+echo "8. 游戏服务器 / Game Servers"
+echo "   • Minecraft服务器一键搭建"
+echo "   • Palworld服务器部署"
+echo "   • 游戏服务器备份和日志管理"
+echo ""
+echo "======================================"
+echo "使用方法 / Usage:"
+echo "  命令行输入 k 启动交互式菜单"
+echo "  或使用快捷命令，例如："
+echo "  k help          - 显示功能介绍"
+echo "  k info          - 显示系统信息"
+echo "  k docker        - Docker管理"
+echo "  k web           - 网站管理"
+echo ""
+echo "查看所有命令用例，运行任意未知命令，如: k usage"
+echo "======================================"
+echo "视频教程: https://www.bilibili.com/video/BV1ib421E7it"
+echo "项目地址: https://github.com/kejilion/sh"
+echo "======================================"
+}
 
 
 if [ "$#" -eq 0 ]; then
@@ -20642,6 +20716,10 @@ else
 			linux_panel "$@"
 			;;
 
+
+		help|--help|-h|帮助|你能做什么)
+			k_help
+			;;
 
 		info)
 			linux_info
