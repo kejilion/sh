@@ -11624,8 +11624,8 @@ REPO
 				return 1
 			fi
 
-			# 提取 Auth=yes 的模型名（跳过表头）
-			models_list=$(echo "$models_raw")
+			# 为每个模型加编号，便于快速定位（例如："(10) or-api/...:free"）
+			models_list=$(echo "$models_raw" | awk '{print "(" NR ") " $0}')
 			model_count=$(echo "$models_list" | sed '/^\s*$/d' | wc -l | tr -d ' ')
 
 			# 获取默认模型（Tags 含 default）
@@ -11685,6 +11685,9 @@ REPO
 					break
 				fi
 			fi
+
+			# 去掉编号前缀："(10) model" -> "model"
+			selected_model=$(echo "$selected_model" | sed -E 's/^\([0-9]+\)[[:space:]]+//')
 
 			# 执行切换
 			echo "正在切换模型为: $selected_model ..."
