@@ -11584,7 +11584,24 @@ PY
 	        curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
 	        echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | tee /etc/apt/sources.list.d/charm.list > /dev/null
 	        apt update && apt install -y gum
-
+	    elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
+	        cat > /etc/yum.repos.d/charm.repo <<'REPO'
+[charm]
+name=Charm
+baseurl=https://repo.charm.sh/yum/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.charm.sh/yum/gpg.key
+REPO
+	        rpm --import https://repo.charm.sh/yum/gpg.key
+	        if command -v dnf >/dev/null 2>&1; then
+	            dnf install -y gum
+	        else
+	            yum install -y gum
+	        fi
+	    elif command -v zypper >/dev/null 2>&1; then
+	        zypper --non-interactive refresh
+	        zypper --non-interactive install gum
 	    fi
 	}
 
