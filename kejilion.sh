@@ -11617,17 +11617,14 @@ REPO
 		while true; do
 			local models_raw models_list default_model model_count selected_model
 
-			# 优先从配置文件读取模型键（更快），失败再回退到 openclaw models list
+			# 从配置文件读取模型键（不调用 openclaw models list）
 			local oc_config
 			oc_config="${HOME}/.openclaw/openclaw.json"
 			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
 
 			models_raw=$(jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d')
 			if [ -z "$models_raw" ]; then
-				models_raw=$(openclaw models list --plain 2>/dev/null)
-			fi
-			if [ -z "$models_raw" ]; then
-				echo "获取模型列表失败，请检查 openclaw 是否可用。"
+				echo "获取模型列表失败：配置文件中未找到 agents.defaults.models。"
 				break_end
 				return 1
 			fi
@@ -11638,9 +11635,6 @@ REPO
 
 			# 从配置文件读取默认模型（更快）；失败再回退到 openclaw 命令
 			default_model=$(jq -r '.agents.defaults.model.primary // empty' "$oc_config" 2>/dev/null)
-			if [ -z "$default_model" ]; then
-				default_model=$(openclaw models list 2>/dev/null | awk 'NR>1 && $0 ~ /default/ {print $1; exit}')
-			fi
 			[ -z "$default_model" ] && default_model="(unknown)"
 
 
@@ -11653,7 +11647,7 @@ REPO
 			if ! command -v gum >/dev/null 2>&1; then
 				echo "--- 模型管理 ---"
 				echo "当前可用模型:"
-				openclaw models list
+				jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d'
 				echo "----------------"
 				read -e -p "请输入要设置的模型名称 (例如 openrouter/openai/gpt-4o)（输入 0 退出）： " selected_model
 
