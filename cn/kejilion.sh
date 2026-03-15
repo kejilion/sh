@@ -10161,12 +10161,17 @@ def probe_endpoint(base_url, api_key, path, timeout=6):
 
 
 def detect_api_protocol(base_url, api_key):
+    # Capability gate: Only consider /responses supported when the probe indicates a valid endpoint.
+    # Many OpenAI-compatible providers only implement /v1/chat/completions and will respond 400/422
+    # to /responses; treating that as "supported" causes mis-routing.
     code, err = probe_endpoint(base_url, api_key, '/responses')
-    if code is not None and code not in (404, 405):
+    if code is not None and code in (200, 201, 202, 204):
         return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if code is not None and code in (404, 405):
+        return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
     if err:
         return 'openai-completions', 'fallback: probe failed', err
-    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+    return 'openai-completions', f'POST /responses -> HTTP {code} (treated as unsupported) -> fallback /completions', None
 
 
 def send_stat(action):
@@ -10621,14 +10626,18 @@ PY
 		DETECTED_REASON="fallback: /responses not supported"
 
 		code_responses=$(openclaw_probe_api_endpoint "$base_url" "$api_key" "/responses")
-		if [[ "$code_responses" != "404" && "$code_responses" != "405" && "$code_responses" != "000" ]]; then
+		# Capability gate:
+		# Only treat /responses as supported when probe returns a "success" HTTP code.
+		# Many OpenAI-compatible providers will return 400/422 for /responses even though
+		# /v1/chat/completions works; routing those providers to openai-responses is wrong.
+		if [[ "$code_responses" == "200" || "$code_responses" == "201" || "$code_responses" == "202" || "$code_responses" == "204" ]]; then
 			DETECTED_API="openai-responses"
 			DETECTED_REASON="POST /responses -> HTTP $code_responses"
 			return 0
 		fi
 
 		DETECTED_API="openai-completions"
-		DETECTED_REASON="POST /responses=$code_responses -> fallback /completions"
+		DETECTED_REASON="POST /responses=$code_responses -> treated as unsupported -> fallback /completions"
 		return 0
 	}
 
