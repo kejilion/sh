@@ -11047,12 +11047,16 @@ def probe_endpoint(base_url, api_key, path, timeout=6):
 
 
 def detect_api_protocol(base_url, api_key):
+    # Capability gate: only treat /responses as supported when probe returns a 2xx success code.
+    # Providers may return 400/422/500 for /responses even if /chat/completions works.
     code, err = probe_endpoint(base_url, api_key, '/responses')
-    if code is not None and code not in (404, 405):
+    if code is not None and code in (200, 201, 202, 204):
         return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if code is not None and code in (404, 405):
+        return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
     if err:
         return 'openai-completions', 'fallback: probe failed', err
-    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+    return 'openai-completions', f'POST /responses -> HTTP {code} (treated as unsupported) -> fallback /completions', None
 
 with open(path, 'r', encoding='utf-8') as f:
     obj = json.load(f)
@@ -11311,12 +11315,16 @@ def probe_endpoint(base_url, api_key, path, timeout=6):
 
 
 def detect_api_protocol(base_url, api_key):
+    # Capability gate: only treat /responses as supported when probe returns a 2xx success code.
+    # Providers may return 400/422/500 for /responses even if /chat/completions works.
     code, err = probe_endpoint(base_url, api_key, '/responses')
-    if code is not None and code not in (404, 405):
+    if code is not None and code in (200, 201, 202, 204):
         return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if code is not None and code in (404, 405):
+        return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
     if err:
         return 'openai-completions', 'fallback: probe failed', err
-    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+    return 'openai-completions', f'POST /responses -> HTTP {code} (treated as unsupported) -> fallback /completions', None
 
 try:
     with open(path, 'r', encoding='utf-8') as f:
