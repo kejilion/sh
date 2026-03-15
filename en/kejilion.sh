@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.4.3"
+sh_v="4.4.7"
 
 
 gl_hui='\e[37m'
@@ -884,7 +884,7 @@ close_port() {
 		iptables -D INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null
 		iptables -D INPUT -p udp --dport $port -j ACCEPT 2>/dev/null
 
-		# Add shutdown rule
+		# Add a shutdown rule
 		if ! iptables -C INPUT -p tcp --dport $port -j DROP 2>/dev/null; then
 			iptables -I INPUT 1 -p tcp --dport $port -j DROP
 		fi
@@ -2667,7 +2667,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p tcp -d "$container_ip" -j DROP
 	fi
 
-	# Clear the rules that allow specified IPs
+	# Clear the rules that allow the specified IP
 	if iptables -C DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -2686,7 +2686,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p udp -d "$container_ip" -j DROP
 	fi
 
-	# Clear the rules that allow specified IPs
+	# Clear the rules that allow the specified IP
 	if iptables -C DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -5088,7 +5088,7 @@ fetch_github_ssh_keys() {
 	local base_dir="${2:-$HOME}"
 
 	echo "Before proceeding, make sure you have added your SSH public key to your GitHub account:"
-	echo "1. Login${gh_https_url}github.com/settings/keys"
+	echo "1. Log in${gh_https_url}github.com/settings/keys"
 	echo "2. Click New SSH key or Add SSH key"
 	echo "3. Title can be filled in as desired (for example: Home Laptop 2026)"
 	echo "4. Paste the contents of the local public key (usually the entire contents of ~/.ssh/id_ed25519.pub or id_rsa.pub) into the Key field"
@@ -5524,7 +5524,7 @@ dd_xitong() {
 				;;
 
 			  41)
-				send_stats "Reinstall windows 11"
+				send_stats "Reinstall Windows 11"
 				dd_xitong_2
 				bash InstallNET.sh -windows 11 -lang "cn"
 				reboot
@@ -6594,9 +6594,9 @@ send_stats "Command Favorites"
 bash <(curl -l -s ${gh_proxy}raw.githubusercontent.com/byJoey/cmdbox/refs/heads/main/install.sh)
 }
 
-# Create a backup
+# Create backup
 create_backup() {
-	send_stats "Create a backup"
+	send_stats "Create backup"
 	local TIMESTAMP=$(date +"%Y%m%d%H%M%S")
 
 	# Prompt user for backup directory
@@ -6638,7 +6638,7 @@ create_backup() {
 		echo "- $path"
 	done
 
-	# Create a backup
+	# Create backup
 	echo "Creating backup$BACKUP_NAME..."
 	install tar
 	tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"
@@ -6738,6 +6738,164 @@ linux_backup() {
 
 
 
+# SSH input normalization function
+kj_ssh_validate_host() {
+	local host="$1"
+	[[ -n "$host" && ! "$host" =~ [[:space:]] && "$host" =~ ^[A-Za-z0-9._:-]+$ ]]
+}
+
+kj_ssh_validate_port() {
+	local port="$1"
+	[[ "$port" =~ ^[0-9]+$ ]] && [ "$port" -ge 1 ] && [ "$port" -le 65535 ]
+}
+
+kj_ssh_validate_user() {
+	local user="$1"
+	[[ -n "$user" && "$user" =~ ^[A-Za-z_][A-Za-z0-9._-]*$ ]]
+}
+
+kj_ssh_read_host_port() {
+	local host_prompt="$1"
+	local port_prompt="$2"
+	local default_port="${3:-22}"
+
+	while true; do
+		read -e -p "$host_prompt" KJ_SSH_HOST
+		if kj_ssh_validate_host "$KJ_SSH_HOST"; then
+			break
+		fi
+		echo "Error: Please enter a valid server address."
+	done
+
+	while true; do
+		read -e -p "$port_prompt" KJ_SSH_PORT
+		KJ_SSH_PORT=${KJ_SSH_PORT:-$default_port}
+		if kj_ssh_validate_port "$KJ_SSH_PORT"; then
+			break
+		fi
+		echo "Error: Port must be a number between 1-65535."
+	done
+}
+
+kj_ssh_read_host_user_port() {
+	local host_prompt="$1"
+	local user_prompt="$2"
+	local port_prompt="$3"
+	local default_user="${4:-root}"
+	local default_port="${5:-22}"
+
+	kj_ssh_read_host_port "$host_prompt" "$port_prompt" "$default_port"
+
+	while true; do
+		read -e -p "$user_prompt" KJ_SSH_USER
+		KJ_SSH_USER=${KJ_SSH_USER:-$default_user}
+		if kj_ssh_validate_user "$KJ_SSH_USER"; then
+			break
+		fi
+		echo "Error: Username format is incorrect."
+	done
+}
+
+kj_ssh_parse_remote() {
+	local remote_raw="$1"
+	local default_user="${2:-root}"
+	local remote_user remote_host
+
+	if [[ "$remote_raw" == *@* ]]; then
+		remote_user="${remote_raw%@*}"
+		remote_host="${remote_raw#*@}"
+	else
+		remote_user="$default_user"
+		remote_host="$remote_raw"
+	fi
+
+	if ! kj_ssh_validate_user "$remote_user"; then
+		echo "Error: SSH username format is incorrect."
+		return 1
+	fi
+
+	if ! kj_ssh_validate_host "$remote_host"; then
+		echo "Error: SSH host address format is incorrect."
+		return 1
+	fi
+
+	KJ_SSH_USER="$remote_user"
+	KJ_SSH_HOST="$remote_host"
+	KJ_SSH_REMOTE="$remote_user@$remote_host"
+}
+
+kj_ssh_read_auth() {
+	local key_file="$1"
+	local password_or_key=""
+
+	echo "Please select an authentication method:"
+	echo "1. Password"
+	echo "2. Key"
+	read -e -p "Please enter your choice (1/2):" auth_choice
+
+	case $auth_choice in
+		1)
+			read -s -p "Please enter password:" password_or_key
+			echo
+			if [ -z "$password_or_key" ]; then
+				echo "Error: Password cannot be empty."
+				return 1
+			fi
+			KJ_SSH_AUTH_METHOD="password"
+			KJ_SSH_AUTH_SECRET="$password_or_key"
+			;;
+		2)
+			echo "Please paste the key content (press Enter twice after pasting):"
+			while IFS= read -r line; do
+				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
+					break
+				fi
+				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
+					password_or_key+="${line}"$'\n'
+				fi
+			done
+
+			if [[ "$password_or_key" != *"-----BEGIN"* || "$password_or_key" != *"PRIVATE KEY-----"* ]]; then
+				echo "Invalid key content!"
+				return 1
+			fi
+
+			mkdir -p "$(dirname "$key_file")"
+			echo -n "$password_or_key" > "$key_file"
+			chmod 600 "$key_file"
+			KJ_SSH_AUTH_METHOD="key"
+			KJ_SSH_AUTH_SECRET="$key_file"
+			;;
+		*)
+			echo "Invalid choice!"
+			return 1
+			;;
+	esac
+}
+
+kj_ssh_read_password() {
+	local prompt="${1:-请输入密码: }"
+	while true; do
+		read -e -s -p "$prompt" KJ_SSH_PASSWORD
+		echo
+		[ -n "$KJ_SSH_PASSWORD" ] && break
+		echo "Error: Password cannot be empty."
+	done
+}
+
+kj_ssh_read_port() {
+	local port_prompt="$1"
+	local default_port="${2:-22}"
+	while true; do
+		read -e -p "$port_prompt" KJ_SSH_PORT
+		KJ_SSH_PORT=${KJ_SSH_PORT:-$default_port}
+		if kj_ssh_validate_port "$KJ_SSH_PORT"; then
+			return 0
+		fi
+		echo "Error: Port must be a number between 1-65535."
+	done
+}
+
 # Show connection list
 list_connections() {
 	echo "Saved connections:"
@@ -6757,51 +6915,13 @@ add_connection() {
 	echo "- Port: 22"
 	echo "------------------------"
 	read -e -p "Please enter a connection name:" name
-	read -e -p "Please enter IP address:" ip
-	read -e -p "Please enter username (default: root):" user
-	local user=${user:-root}  # 如果用户未输入，则使用默认值 root
-	read -e -p "Please enter the port number (default: 22):" port
-	local port=${port:-22}  # 如果用户未输入，则使用默认值 22
 
-	echo "Please select an authentication method:"
-	echo "1. Password"
-	echo "2. Key"
-	read -e -p "Please enter your choice (1/2):" auth_choice
+	kj_ssh_read_host_user_port "Please enter IP address:" "Please enter username (default: root):" "Please enter the port number (default: 22):" "root" "22"
+	if ! kj_ssh_read_auth "$KEY_DIR/$name.key"; then
+		return
+	fi
 
-	case $auth_choice in
-		1)
-			read -s -p "Please enter password:" password_or_key
-			echo  # 换行
-			;;
-		2)
-			echo "Please paste the key content (press Enter twice after pasting):"
-			local password_or_key=""
-			while IFS= read -r line; do
-				# If the input is a blank line and the key content already contains the beginning, end the input
-				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
-					break
-				fi
-				# If it is the first line or you have already started entering the key content, continue adding
-				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
-					local password_or_key+="${line}"$'\n'
-				fi
-			done
-
-			# Check if it is the key content
-			if [[ "$password_or_key" == *"-----BEGIN"* && "$password_or_key" == *"PRIVATE KEY-----"* ]]; then
-				local key_file="$KEY_DIR/$name.key"
-				echo -n "$password_or_key" > "$key_file"
-				chmod 600 "$key_file"
-				local password_or_key="$key_file"
-			fi
-			;;
-		*)
-			echo "Invalid choice!"
-			return
-			;;
-	esac
-
-	echo "$name|$ip|$user|$port|$password_or_key" >> "$CONFIG_FILE"
+	echo "$name|$KJ_SSH_HOST|$KJ_SSH_USER|$KJ_SSH_PORT|$KJ_SSH_AUTH_SECRET" >> "$CONFIG_FILE"
 	echo "Connection saved!"
 }
 
@@ -7087,7 +7207,7 @@ disk_manager() {
 	send_stats "Hard disk management function"
 	while true; do
 		clear
-		echo "Hard disk partition management"
+		echo "Hard drive partition management"
 		echo -e "${gl_huang}This feature is under internal testing and should not be used in a production environment.${gl_bai}"
 		echo "------------------------"
 		list_partitions
@@ -7134,52 +7254,23 @@ add_task() {
 	read -e -p "Please enter the task name:" name
 	read -e -p "Please enter the local directory:" local_path
 	read -e -p "Please enter the remote directory:" remote_path
-	read -e -p "Please enter remote user@IP:" remote
-	read -e -p "Please enter the SSH port (default 22):" port
-	port=${port:-22}
 
-	echo "Please select an authentication method:"
-	echo "1. Password"
-	echo "2. Key"
-	read -e -p "Please select (1/2):" auth_choice
+	while true; do
+		read -e -p "Please enter remote user@IP:" remote
+		if kj_ssh_parse_remote "$remote" "root"; then
+			remote="$KJ_SSH_REMOTE"
+			break
+		fi
+	done
 
-	case $auth_choice in
-		1)
-			read -s -p "Please enter password:" password_or_key
-			echo  # 换行
-			auth_method="password"
-			;;
-		2)
-			echo "Please paste the key content (press Enter twice after pasting):"
-			local password_or_key=""
-			while IFS= read -r line; do
-				# If the input is a blank line and the key content already contains the beginning, end the input
-				if [[ -z "$line" && "$password_or_key" == *"-----BEGIN"* ]]; then
-					break
-				fi
-				# If it is the first line or you have already started entering the key content, continue adding
-				if [[ -n "$line" || "$password_or_key" == *"-----BEGIN"* ]]; then
-					password_or_key+="${line}"$'\n'
-				fi
-			done
+	kj_ssh_read_port "Please enter the SSH port (default 22):" "22"
+	port="$KJ_SSH_PORT"
 
-			# Check if it is the key content
-			if [[ "$password_or_key" == *"-----BEGIN"* && "$password_or_key" == *"PRIVATE KEY-----"* ]]; then
-				local key_file="$KEY_DIR/${name}_sync.key"
-				echo -n "$password_or_key" > "$key_file"
-				chmod 600 "$key_file"
-				password_or_key="$key_file"
-				auth_method="key"
-			else
-				echo "Invalid key content!"
-				return
-			fi
-			;;
-		*)
-			echo "Invalid choice!"
-			return
-			;;
-	esac
+	if ! kj_ssh_read_auth "$KEY_DIR/${name}_sync.key"; then
+		return
+	fi
+	auth_method="$KJ_SSH_AUTH_METHOD"
+	password_or_key="$KJ_SSH_AUTH_SECRET"
 
 	echo "Please select synchronization mode:"
 	echo "1. Standard mode (-avz)"
@@ -7197,6 +7288,7 @@ add_task() {
 
 	echo "Mission saved!"
 }
+
 
 # Delete task
 delete_task() {
@@ -7294,7 +7386,7 @@ run_task() {
 	else
 		echo "Sync failed! Please check the following:"
 		echo "1. Is the network connection normal?"
-		echo "2. Whether the remote host is accessible"
+		echo "2. Is the remote host accessible?"
 		echo "3. Is the authentication information correct?"
 		echo "4. Do the local and remote directories have correct access permissions?"
 	fi
@@ -8137,10 +8229,10 @@ docker_ssh_migration() {
 		read -e -p  "Please enter the backup directory to be migrated:" BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${gl_hong}The backup directory does not exist${gl_bai}"; return; }
 
-		read -e -p  "Target server IP:" TARGET_IP
-		read -e -p  "Target server SSH username:" TARGET_USER
-		read -e -p "Target server SSH port [default 22]:" TARGET_PORT
-		local TARGET_PORT=${TARGET_PORT:-22}
+		kj_ssh_read_host_user_port "Target server IP:" "Target server SSH username [default root]:" "Target server SSH port [default 22]:" "root" "22"
+		local TARGET_IP="$KJ_SSH_HOST"
+		local TARGET_USER="$KJ_SSH_USER"
+		local TARGET_PORT="$KJ_SSH_PORT"
 
 		local LATEST_TAR="$BACKUP_DIR"
 
@@ -8223,7 +8315,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}7.   ${gl_bai}Clean up useless docker containers and mirror network data volumes"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}8.   ${gl_bai}Change Docker source"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}编辑daemon.json文件"
+	  echo -e "${gl_kjlan}9.   ${gl_bai}Edit daemon.json file"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}Enable Docker-ipv6 access"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}Turn off Docker-ipv6 access"
@@ -9604,13 +9696,9 @@ linux_ldnmp() {
 		read -e -p "Do you want to transfer backup data to a remote server? (Y/N):" choice
 		case "$choice" in
 		  [Yy])
-			read -e -p "Please enter the remote server IP:" remote_ip
-			read -e -p "Target server SSH port [default 22]:" TARGET_PORT
-			local TARGET_PORT=${TARGET_PORT:-22}
-			if [ -z "$remote_ip" ]; then
-			  echo "Error: Please enter the remote server IP."
-			  continue
-			fi
+			kj_ssh_read_host_port "Please enter the remote server IP:" "Target server SSH port [default 22]:" "22"
+			local remote_ip="$KJ_SSH_HOST"
+			local TARGET_PORT="$KJ_SSH_PORT"
 			local latest_tar=$(ls -t /home/*.tar.gz | head -1)
 			if [ -n "$latest_tar" ]; then
 			  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
@@ -9956,22 +10044,24 @@ moltbot_menu() {
 		echo "--------------------"
 		echo "4. View status log"
 		echo "5. Change model"
-		echo "6. Add new model API"
+		echo "6. API management"
 		echo "7. Robot connection and docking"
-		echo "8. Install plug-ins (such as Feishu)"
-		echo "9. Install skills"
+		echo "8. Plug-in management (installation/removal)"
+		echo "9. Skill management (installation/removal)"
 		echo "10. Edit the main configuration file"
 		echo "11. Configuration Wizard"
 		echo "12. Health detection and repair"
 		echo "13. WebUI access and settings"
 		echo "14. TUI command line dialog window"
+		echo "15. Memory/Memory"
 		echo "--------------------"
-		echo "15. Update"
-		echo "16. Uninstall"
+		echo "16. Backup and restore"
+		echo "17. Update"
+		echo "18. Uninstall"
 		echo "--------------------"
 		echo "0. Return to the previous menu"
 		echo "--------------------"
-		printf "Please enter options and press Enter:"
+		printf "请输入选项并回车: "
 	}
 
 
@@ -9997,6 +10087,459 @@ moltbot_menu() {
 		fi
 	}
 
+	configure_openclaw_session_policy() {
+		local config_file="${HOME}/.openclaw/openclaw.json"
+
+		[ ! -f "$config_file" ] && return 1
+
+		python3 - "$config_file" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path, 'r', encoding='utf-8') as f:
+    obj = json.load(f)
+
+session = obj.setdefault('session', {})
+session['dmScope'] = session.get('dmScope', 'per-channel-peer')
+session['resetTriggers'] = ['/new', '/reset']
+session['reset'] = {
+    'mode': 'idle',
+    'idleMinutes': 10080
+}
+session['resetByType'] = {
+    'direct': {'mode': 'idle', 'idleMinutes': 10080},
+    'thread': {'mode': 'idle', 'idleMinutes': 1440},
+    'group': {'mode': 'idle', 'idleMinutes': 120}
+}
+
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(obj, f, ensure_ascii=False, indent=2)
+    f.write('\n')
+PY
+	}
+
+
+	sync_openclaw_api_models() {
+		local config_file="${HOME}/.openclaw/openclaw.json"
+
+		[ ! -f "$config_file" ] && return 0
+
+		install jq curl >/dev/null 2>&1
+
+		python3 - "$config_file" "$ENABLE_STATS" "$sh_v" <<'PY'
+import copy
+import json
+import os
+import platform
+import sys
+import time
+import urllib.request
+from datetime import datetime, timezone
+
+path = sys.argv[1]
+stats_enabled = (sys.argv[2].lower() == "true") if len(sys.argv) > 2 else True
+script_version = sys.argv[3] if len(sys.argv) > 3 else ""
+
+def probe_endpoint(base_url, api_key, path, timeout=6):
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
+
+
+def detect_api_protocol(base_url, api_key):
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+
+
+def send_stat(action):
+    if not stats_enabled:
+        return
+    payload = {
+        "action": action,
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S"),
+        "country": "",
+        "os_info": platform.platform(),
+        "cpu_arch": platform.machine(),
+        "version": script_version,
+    }
+    try:
+        req = urllib.request.Request(
+            "https://api.kejilion.pro/api/log",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=3):
+            pass
+    except Exception:
+        pass
+
+with open(path, 'r', encoding='utf-8') as f:
+    obj = json.load(f)
+
+work = copy.deepcopy(obj)
+models_cfg = work.setdefault('models', {})
+providers = models_cfg.get('providers', {})
+if not isinstance(providers, dict) or not providers:
+    print('ℹ️ API providers not detected, model synchronization skipped')
+    raise SystemExit(0)
+
+agents = work.setdefault('agents', {})
+defaults = agents.setdefault('defaults', {})
+defaults_models_raw = defaults.get('models')
+if isinstance(defaults_models_raw, dict):
+    defaults_models = defaults_models_raw
+elif isinstance(defaults_models_raw, list):
+    defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
+else:
+    defaults_models = {}
+defaults['models'] = defaults_models
+
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
+
+changed = False
+fatal_errors = []
+summary = []
+
+
+def model_ref(provider_name, model_id):
+    return f"{provider_name}/{model_id}"
+
+
+def get_primary_ref(defaults_obj):
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        return model_obj
+    if isinstance(model_obj, dict):
+        primary = model_obj.get('primary')
+        if isinstance(primary, str):
+            return primary
+    return None
+
+
+def set_primary_ref(defaults_obj, new_ref):
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        defaults_obj['model'] = new_ref
+    elif isinstance(model_obj, dict):
+        model_obj['primary'] = new_ref
+    else:
+        defaults_obj['model'] = {'primary': new_ref}
+
+
+def ref_provider(ref):
+    if not isinstance(ref, str) or '/' not in ref:
+        return None
+    return ref.split('/', 1)[0]
+
+
+def collect_available_refs(exclude_provider=None):
+    refs = []
+    if not isinstance(providers, dict):
+        return refs
+    for pname, p in providers.items():
+        if exclude_provider and pname == exclude_provider:
+            continue
+        if not isinstance(p, dict):
+            continue
+        for m in p.get('models', []) or []:
+            if isinstance(m, dict) and m.get('id'):
+                refs.append(model_ref(pname, str(m['id'])))
+    return refs
+
+
+def prompt_delete_provider(name):
+    prompt = f"⚠️ {name} /models probe failed 3 times in a row. Delete this API provider and all related models? [y/N]:"
+    try:
+        ans = input(prompt).strip().lower()
+    except EOFError:
+        return False
+    return ans in ('y', 'yes')
+
+
+def rebind_defaults_before_delete(name):
+    global changed
+
+    replacement = None
+
+    def get_replacement():
+        nonlocal replacement
+        if replacement is None:
+            candidates = collect_available_refs(exclude_provider=name)
+            replacement = candidates[0] if candidates else None
+        return replacement
+
+    primary_ref = get_primary_ref(defaults)
+    if ref_provider(primary_ref) == name:
+        repl = get_replacement()
+        if not repl:
+            summary.append(f'❌ {name}: The default main model points to this provider, but there is no alternative model available, and the deletion has been aborted.')
+            return False
+        set_primary_ref(defaults, repl)
+        changed = True
+        summary.append(f'🔁 The default primary model has been switched before deletion: {primary_ref} -> {repl}')
+
+    for fk in ('modelFallback', 'imageModelFallback'):
+        val = defaults.get(fk)
+        if ref_provider(val) == name:
+            repl = get_replacement()
+            if not repl:
+                summary.append(f'❌ {name}: {fk} points to the provider, but no alternative model is available, deletion aborted')
+                return False
+            defaults[fk] = repl
+            changed = True
+            summary.append(f'🔁 Switched before deletion {fk}: {val} -> {repl}')
+
+    return True
+
+
+def delete_provider_and_refs(name):
+    global changed
+
+    if not rebind_defaults_before_delete(name):
+        return False
+
+    removed_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/')]
+    for r in removed_refs:
+        defaults_models.pop(r, None)
+    if removed_refs:
+        changed = True
+
+    if name in providers:
+        providers.pop(name, None)
+        changed = True
+
+    summary.append(f'🗑️ Provider {name} has been deleted and {len(removed_refs)} model references under defaults.models have been removed')
+    return True
+
+
+def probe_endpoint(base_url, api_key, path, timeout=6):
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
+
+
+def detect_api_protocol(base_url, api_key):
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+
+
+def fetch_remote_models_with_retry(name, base_url, api_key, retries=3):
+    last_error = None
+    for attempt in range(1, retries + 1):
+        req = urllib.request.Request(
+            base_url.rstrip('/') + '/models',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'User-Agent': 'Mozilla/5.0',
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                payload = resp.read().decode('utf-8', 'ignore')
+            data = json.loads(payload)
+            return data, None, attempt
+        except Exception as e:
+            last_error = e
+            if attempt < retries:
+                time.sleep(1)
+    return None, last_error, retries
+
+
+for name, provider in list(providers.items()):
+    if not isinstance(provider, dict):
+        summary.append(f'ℹ️ Skip {name}: provider structure is illegal')
+        continue
+
+    api = provider.get('api', '')
+    base_url = provider.get('baseUrl')
+    api_key = provider.get('apiKey')
+    model_list = provider.get('models', [])
+
+    if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
+        summary.append(f'ℹ️ Skip {name}: None baseUrl/apiKey/models')
+        continue
+
+    if api not in SUPPORTED_APIS:
+        summary.append(f'🔁 {name}: Illegal protocol {api or "(unset)"} found, will be re-detected')
+        provider['api'] = ''
+        api = ''
+        changed = True
+
+    try:
+        detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
+        if detected_api and api != detected_api:
+            provider['api'] = detected_api
+            api = detected_api
+            changed = True
+            summary.append(f'🔁 {name}: The protocol has been automatically corrected to {detected_api} ({detected_reason})')
+    except Exception as e:
+        summary.append(f'⚠️ {name}: Protocol detection failed, skip correction ({type(e).__name__}: {e})')
+
+    data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
+    if err is not None:
+        summary.append(f'⚠️ {name}: /models detection failed, retried {attempts} times ({type(err).__name__}: {err})')
+        send_stat('OpenClaw API confirmed intervention')
+        if prompt_delete_provider(name):
+            deleted = delete_provider_and_refs(name)
+            if deleted:
+                send_stat('OpenClaw API deletion failed Provider-Confirm')
+                summary.append(f'✅ {name}: The user has confirmed to delete the provider and all related model references')
+        else:
+            send_stat('OpenClaw API deletion failed Provider-rejected')
+            summary.append(f'ℹ️ {name}: The user has not confirmed the deletion and retains the existing provider configuration.')
+        continue
+
+    if attempts > 1:
+        summary.append(f'🔁 {name}: /models Successful after {attempts} retry')
+
+    if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
+        summary.append(f'⚠️ Skip {name}: /models return structure is not recognized')
+        continue
+
+    remote_ids = []
+    for item in data['data']:
+        if isinstance(item, dict) and item.get('id'):
+            remote_ids.append(str(item['id']))
+    remote_set = set(remote_ids)
+
+    if not remote_set:
+        fatal_errors.append(f'❌ {name}’s upstream /models is empty and cannot provide a bottom-up model for this provider.')
+        continue
+
+    local_models = [m for m in model_list if isinstance(m, dict) and m.get('id')]
+    local_ids = [str(m['id']) for m in local_models]
+    local_set = set(local_ids)
+
+    template = None
+    for m in local_models:
+        template = copy.deepcopy(m)
+        break
+    if template is None:
+        summary.append(f'⚠️ Skip {name}: local models no valid template model')
+        continue
+
+    removed_ids = [mid for mid in local_ids if mid not in remote_set]
+    added_ids = [mid for mid in remote_ids if mid not in local_set]
+
+    if added_ids:
+        summary.append(f'➕ Add new model ({len(added_ids)}):')
+        for mid in added_ids:
+            summary.append(f'  + {mid}')
+    if removed_ids:
+        summary.append(f'➖ Delete model ({len(removed_ids)}):')
+        for mid in removed_ids:
+            summary.append(f'  - {mid}')
+
+    kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
+    new_models = kept_models[:]
+
+    for mid in added_ids:
+        nm = copy.deepcopy(template)
+        nm['id'] = mid
+        if isinstance(nm.get('name'), str):
+            nm['name'] = f'{name} / {mid}'
+        new_models.append(nm)
+
+    if not new_models:
+        fatal_errors.append(f'❌ {name} has no available model after synchronization, and the default model/fallback model cannot be guaranteed.')
+        continue
+
+    expected_refs = {model_ref(name, str(m['id'])) for m in new_models if isinstance(m, dict) and m.get('id')}
+    local_refs = {model_ref(name, mid) for mid in local_ids}
+
+    first_ref = model_ref(name, str(new_models[0]['id']))
+
+    primary_ref = get_primary_ref(defaults)
+    if isinstance(primary_ref, str) and primary_ref in (local_refs - expected_refs):
+        set_primary_ref(defaults, first_ref)
+        changed = True
+        summary.append(f'🔁 The default model has been completely replaced: {primary_ref} -> {first_ref}')
+
+    for fk in ('modelFallback', 'imageModelFallback'):
+        val = defaults.get(fk)
+        if isinstance(val, str) and val in (local_refs - expected_refs):
+            defaults[fk] = first_ref
+            changed = True
+            summary.append(f'🔁 {fk} has been completely replaced: {val} -> {first_ref}')
+
+    stale_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/') and r not in expected_refs]
+    for r in stale_refs:
+        defaults_models.pop(r, None)
+        changed = True
+
+    for r in sorted(expected_refs):
+        if r not in defaults_models:
+            defaults_models[r] = {}
+            changed = True
+
+    if removed_ids or added_ids or len(local_models) != len(new_models):
+        provider['models'] = new_models
+        changed = True
+
+    summary.append(f'✅ {name}: Delete {len(removed_ids)}, add {len(added_ids)}, current {len(new_models)}')
+
+if fatal_errors:
+    for line in summary:
+        print(line)
+    for err in fatal_errors:
+        print(err)
+    print('❌ Model synchronization failed: There is a provider. After synchronization, there is no available model and writing has been aborted.')
+    raise SystemExit(2)
+
+if changed:
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(work, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+    for line in summary:
+        print(line)
+    print('✅ OpenClaw API model consistency synchronization is completed and the configuration has been written')
+else:
+    for line in summary:
+        print(line)
+    print('ℹ️ No synchronization required: configuration is already consistent with upstream /models')
+PY
+	}
+
+
+
 	install_moltbot() {
 		echo "Start installing OpenClaw..."
 		send_stats "Start installing OpenClaw..."
@@ -10013,7 +10556,9 @@ moltbot_menu() {
 
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
-		sed -i 's|"profile": "messaging"|"profile": "full"|g' ~/.openclaw/openclaw.json
+		openclaw config set tools.profile full
+		# Tip: If you need to modify the configuration to take effect immediately, you can restart the gateway: openclaw gateway restart
+		configure_openclaw_session_policy
 		start_gateway
 		add_app_id
 		break_end
@@ -10049,6 +10594,44 @@ moltbot_menu() {
 
 
 
+	# OpenClaw API protocol detection (priority responses -> completions)
+	openclaw_probe_api_endpoint() {
+		local base_url="$1"
+		local api_key="$2"
+		local path="$3"
+		local url="${base_url%/}${path}"
+		local http_code
+		http_code=$(curl -s -o /dev/null -w "%{http_code}" -m 8 \
+			-X POST \
+			-H "Authorization: Bearer $api_key" \
+			-H "Content-Type: application/json" \
+			-d '{}' "$url" 2>/dev/null || echo "000")
+		if [ -z "$http_code" ]; then
+			http_code="000"
+		fi
+		echo "$http_code"
+	}
+
+	openclaw_detect_api_protocol() {
+		local base_url="$1"
+		local api_key="$2"
+		local code_responses="000"
+
+		DETECTED_API="openai-completions"
+		DETECTED_REASON="fallback: /responses not supported"
+
+		code_responses=$(openclaw_probe_api_endpoint "$base_url" "$api_key" "/responses")
+		if [[ "$code_responses" != "404" && "$code_responses" != "405" && "$code_responses" != "000" ]]; then
+			DETECTED_API="openai-responses"
+			DETECTED_REASON="POST /responses -> HTTP $code_responses"
+			return 0
+		fi
+
+		DETECTED_API="openai-completions"
+		DETECTED_REASON="POST /responses=$code_responses -> fallback /completions"
+		return 0
+	}
+
 	# Core function: get and add all models
 	add-all-models-from-provider() {
 		local provider_name="$1"
@@ -10057,6 +10640,10 @@ moltbot_menu() {
 		local config_file="${HOME}/.openclaw/openclaw.json"
 
 		echo "🔍 Getting$provider_nameAll available models of..."
+
+		# Automatically identify API protocols
+		install curl >/dev/null 2>&1
+		openclaw_detect_api_protocol "$base_url" "$api_key"
 
 		# Get model list
 		local models_json=$(curl -s -m 10 \
@@ -10087,7 +10674,7 @@ moltbot_menu() {
 			[[ $first == false ]] && models_array+=","
 			first=false
 
-			# context and max_tokens are fully loaded, so you are not afraid of the big problem
+			# context and max_tokens are fully loaded, so you are not afraid of big problems
 			local context_window=1048576
 			local max_tokens=128000
 
@@ -10133,10 +10720,11 @@ EOF
 		# Backup configuration
 		[[ -f "$config_file" ]] && cp "$config_file" "${config_file}.bak.$(date +%s)"
 
-		# Inject all models using jq
+		# Use jq to inject all models and synchronize defaults.models
 		jq --arg prov "$provider_name" \
 		   --arg url "$base_url" \
 		   --arg key "$api_key" \
+		   --arg api "$DETECTED_API" \
 		   --argjson models "$models_array" \
 		'
 		.models |= (
@@ -10145,9 +10733,25 @@ EOF
 			| .providers[$prov] = {
 				baseUrl: $url,
 				apiKey: $key,
-				api: "openai-completions",
+				api: $api,
 				models: $models
 			}
+		)
+		| .agents |= (. // {})
+		| .agents.defaults |= (. // {})
+		| .agents.defaults.models |= (
+			(if type == "object" then .
+			 elif type == "array" then reduce .[] as $m ({}; if ($m|type) == "string" then .[$m] = {} else . end)
+			 else {}
+			 end) as $existing
+			| reduce ($models[]? | .id? // empty | tostring) as $mid (
+				$existing;
+				if ($mid | length) > 0 then
+					.["\($prov)/\($mid)"] //= {}
+				else
+					.
+				end
+			)
 		)
 		' "$config_file" > "${config_file}.tmp" && mv "${config_file}.tmp" "$config_file"
 
@@ -10162,7 +10766,7 @@ EOF
 	}
 
 	add-openclaw-provider-interactive() {
-		send_stats "Add API"
+		send_stats "OpenClaw API added"
 		echo "=== Interactively add OpenClaw Provider (full model) ==="
 
 		# 1. Provider name
@@ -10189,7 +10793,11 @@ EOF
 			echo
 		done
 
-		# 4. Get model list
+		# 4. Protocol detection (no sense)
+		install curl >/dev/null 2>&1
+		openclaw_detect_api_protocol "$base_url" "$api_key"
+
+		# 5. Get model list
 		echo "🔍 Getting list of available models..."
 		models_json=$(curl -s -m 10 \
 			-H "Authorization: Bearer $api_key" \
@@ -10204,10 +10812,10 @@ EOF
 				echo "--------------------------------"
 				# Show all, with serial number
 				i=1
-				declare -A model_map
+				model_list=()
 				while read -r model; do
 					echo "[$i] $model"
-					model_map[$i]="$model"
+					model_list+=("$model")
 					((i++))
 				done <<< "$available_models"
 				echo "--------------------------------"
@@ -10221,8 +10829,8 @@ EOF
 		if [[ -z "$input_model" && -n "$available_models" ]]; then
 			default_model=$(echo "$available_models" | head -1)
 			echo "🎯 Using the first model:$default_model"
-		elif [[ -n "${model_map[$input_model]}" ]]; then
-			default_model="${model_map[$input_model]}"
+		elif [[ "$input_model" =~ ^[0-9]+$ ]] && [ "${#model_list[@]}" -gt 0 ] && [ "$input_model" -ge 1 ] && [ "$input_model" -le "${#model_list[@]}" ]; then
+			default_model="${model_list[$((input_model-1))]}"
 			echo "🎯 Selected models:$default_model"
 		else
 			default_model="$input_model"
@@ -10253,59 +10861,1016 @@ EOF
 			openclaw models set "$provider_name/$default_model"
 			start_gateway
 			echo "✅ Done! all$model_countmodels loaded"
+			echo "✅ The agreement has been automatically identified as:$DETECTED_API"
 		fi
 
 		break_end
 	}
 
 
+	
+openclaw_api_manage_list() {
+	local config_file="${HOME}/.openclaw/openclaw.json"
+	send_stats "OpenClaw API List"
 
-	change_model() {
-		send_stats "Change model"
+	while IFS=$'\t' read -r rec_type idx name base_url model_count api_type latency_txt latency_level; do
+		case "$rec_type" in
+			MSG)
+				echo "$idx"
+				;;
+			ROW)
+				local latency_color="$gl_bai"
+				case "$latency_level" in
+					low) latency_color="$gl_lv" ;;
+					medium) latency_color="$gl_huang" ;;
+					high|unavailable) latency_color="$gl_hong" ;;
+					unchecked) latency_color="$gl_bai" ;;
+				esac
 
+				printf '%b\n' "[$idx] ${name} | API: ${base_url}| Agreement:${api_type}| Number of models:${gl_huang}${model_count}${gl_bai}| Delay/Status:${latency_color}${latency_txt}${gl_bai}"
+				;;
+		esac
+	done < <(python3 - "$config_file" <<-'PY'
+import json
+import sys
+import time
+import urllib.request
+
+path = sys.argv[1]
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
+
+
+def ping_models(base_url, api_key):
+    req = urllib.request.Request(
+        base_url.rstrip('/') + '/models',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+    )
+    start = time.perf_counter()
+    with urllib.request.urlopen(req, timeout=4) as resp:
+        resp.read(2048)
+    return int((time.perf_counter() - start) * 1000)
+
+
+def classify_latency(latency):
+    if latency == 'Not available':
+        return 'Not available', 'unavailable'
+    if latency == 'Not detected':
+        return 'Not detected', 'unchecked'
+    if isinstance(latency, int):
+        if latency <= 800:
+            level = 'low'
+        elif latency <= 2000:
+            level = 'medium'
+        else:
+            level = 'high'
+        return f'{latency}ms', level
+    return str(latency), 'unchecked'
+
+
+try:
+    with open(path, 'r', encoding='utf-8') as f:
+        obj = json.load(f)
+except FileNotFoundError:
+    print('MSG\tℹ️ openclaw.json not found, please complete the installation/initialization first.')
+    raise SystemExit(0)
+except Exception as e:
+    print(f'MSG\t❌ Failed to read configuration: {type(e).__name__}: {e}')
+    raise SystemExit(0)
+
+providers = ((obj.get('models') or {}).get('providers') or {})
+if not isinstance(providers, dict) or not providers:
+    print('MSG\tℹ️ No API provider is currently configured.')
+    raise SystemExit(0)
+
+print('MSG\t--- Configured API list ---')
+
+for idx, name in enumerate(sorted(providers.keys()), start=1):
+    provider = providers.get(name)
+    if not isinstance(provider, dict):
+        base_url = '-'
+        model_count = 0
+        latency_raw = 'Not available'
+    else:
+        base_url = provider.get('baseUrl') or provider.get('url') or provider.get('endpoint') or '-'
+        models = provider.get('models') if isinstance(provider.get('models'), list) else []
+        model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
+        api = provider.get('api', '')
+        api_key = provider.get('apiKey')
+
+        latency_raw = 'Not detected'
+        if api in SUPPORTED_APIS:
+            if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
+                try:
+                    latency_raw = ping_models(base_url, api_key)
+                except Exception:
+                    latency_raw = 'Not available'
+            else:
+                latency_raw = 'Not available'
+
+    latency_text, latency_level = classify_latency(latency_raw)
+    api_label = api if api in SUPPORTED_APIS else '-'
+    print(
+        'ROW\t' + '\t'.join([
+            str(idx),
+            str(name),
+            str(base_url),
+            str(model_count),
+            str(api_label),
+            str(latency_text),
+            str(latency_level),
+        ])
+    )
+PY
+)
+}
+sync-openclaw-provider-interactive() {
+	local config_file="${HOME}/.openclaw/openclaw.json"
+	send_stats "OpenClaw API synchronization by Provider"
+
+	if [ ! -f "$config_file" ]; then
+		echo "❌ Configuration file not found:$config_file"
+		break_end
+		return 1
+	fi
+
+	read -erp "Please enter the API name (provider) to be synchronized:" provider_name
+	if [ -z "$provider_name" ]; then
+		echo "❌ provider name cannot be empty"
+		break_end
+		return 1
+	fi
+
+	install jq curl >/dev/null 2>&1
+
+	python3 - "$config_file" "$provider_name" <<'PY2'
+import copy
+import json
+import sys
+import time
+import urllib.request
+
+path = sys.argv[1]
+target = sys.argv[2]
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
+
+def probe_endpoint(base_url, api_key, path, timeout=6):
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
+
+
+def detect_api_protocol(base_url, api_key):
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+
+with open(path, 'r', encoding='utf-8') as f:
+    obj = json.load(f)
+
+work = copy.deepcopy(obj)
+models_cfg = work.setdefault('models', {})
+providers = models_cfg.get('providers', {})
+if not isinstance(providers, dict) or not providers:
+    print('❌ API providers not detected, unable to synchronize')
+    raise SystemExit(2)
+
+provider = providers.get(target)
+if not isinstance(provider, dict):
+    print(f'❌ provider: {target} not found')
+    raise SystemExit(2)
+
+agents = work.setdefault('agents', {})
+defaults = agents.setdefault('defaults', {})
+defaults_models_raw = defaults.get('models')
+if isinstance(defaults_models_raw, dict):
+    defaults_models = defaults_models_raw
+elif isinstance(defaults_models_raw, list):
+    defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
+else:
+    defaults_models = {}
+defaults['models'] = defaults_models
+
+
+def model_ref(provider_name, model_id):
+    return f"{provider_name}/{model_id}"
+
+
+def get_primary_ref(defaults_obj):
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        return model_obj
+    if isinstance(model_obj, dict):
+        primary = model_obj.get('primary')
+        if isinstance(primary, str):
+            return primary
+    return None
+
+
+def set_primary_ref(defaults_obj, new_ref):
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        defaults_obj['model'] = new_ref
+    elif isinstance(model_obj, dict):
+        model_obj['primary'] = new_ref
+    else:
+        defaults_obj['model'] = {'primary': new_ref}
+
+
+def fetch_remote_models_with_retry(base_url, api_key, retries=3):
+    last_error = None
+    for attempt in range(1, retries + 1):
+        req = urllib.request.Request(
+            base_url.rstrip('/') + '/models',
+            headers={
+                'Authorization': f'Bearer {api_key}',
+                'User-Agent': 'Mozilla/5.0',
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                payload = resp.read().decode('utf-8', 'ignore')
+            return json.loads(payload), None, attempt
+        except Exception as e:
+            last_error = e
+            if attempt < retries:
+                time.sleep(1)
+    return None, last_error, retries
+
+
+api = provider.get('api', '')
+base_url = provider.get('baseUrl')
+api_key = provider.get('apiKey')
+model_list = provider.get('models', [])
+
+if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
+    print(f'❌ provider {target} is missing baseUrl/apiKey/models and cannot perform synchronization')
+    raise SystemExit(3)
+
+if api not in SUPPORTED_APIS:
+    print(f'ℹ️ provider {target} current api={api}, will re-detect the protocol and continue')
+    provider['api'] = ''
+    api = ''
+
+protocol_msg = None
+try:
+    detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
+    if detected_api and api != detected_api:
+        provider['api'] = detected_api
+        api = detected_api
+        protocol_msg = f'🔁 Auto-corrected protocol: {target} {api} ({detected_reason})'
+except Exception as e:
+    protocol_msg = f'⚠️ Protocol detection failed, skipping correction: {target} ({type(e).__name__}: {e})'
+
+data, err, attempts = fetch_remote_models_with_retry(base_url, api_key, retries=3)
+if err is not None:
+    print(f'❌ {target}: /models detection failed, retried {attempts} times ({type(err).__name__}: {err})')
+    raise SystemExit(4)
+
+if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
+    print(f'❌ {target}: /models The returned structure is not recognized')
+    raise SystemExit(4)
+
+remote_ids = []
+for item in data['data']:
+    if isinstance(item, dict) and item.get('id'):
+        remote_ids.append(str(item['id']))
+remote_set = set(remote_ids)
+if not remote_set:
+    print(f'❌ {target}: upstream /models is empty, synchronization aborted')
+    raise SystemExit(5)
+
+local_models = [m for m in model_list if isinstance(m, dict) and m.get('id')]
+local_ids = [str(m['id']) for m in local_models]
+local_set = set(local_ids)
+
+template = copy.deepcopy(local_models[0]) if local_models else None
+if template is None:
+    print(f'❌ {target}: Local models do not have a valid template model, and new models cannot be added.')
+    raise SystemExit(3)
+
+removed_ids = [mid for mid in local_ids if mid not in remote_set]
+added_ids = [mid for mid in remote_ids if mid not in local_set]
+
+if added_ids:
+    print(f'➕ Add new model ({len(added_ids)}):')
+    for mid in added_ids:
+        print(f'  + {mid}')
+if removed_ids:
+    print(f'➖ Delete model ({len(removed_ids)}):')
+    for mid in removed_ids:
+        print(f'  - {mid}')
+
+kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
+new_models = kept_models[:]
+for mid in added_ids:
+    nm = copy.deepcopy(template)
+    nm['id'] = mid
+    if isinstance(nm.get('name'), str):
+        nm['name'] = f'{target} / {mid}'
+    new_models.append(nm)
+
+if not new_models:
+    print(f'❌ {target}: No model available after synchronization, writing aborted')
+    raise SystemExit(5)
+
+expected_refs = {model_ref(target, str(m['id'])) for m in new_models if isinstance(m, dict) and m.get('id')}
+local_refs = {model_ref(target, mid) for mid in local_ids}
+removed_refs = local_refs - expected_refs
+first_ref = model_ref(target, str(new_models[0]['id']))
+
+changed = False
+primary_ref = get_primary_ref(defaults)
+if isinstance(primary_ref, str) and primary_ref in removed_refs:
+    set_primary_ref(defaults, first_ref)
+    changed = True
+    print(f'🔁 The default model has been completely replaced: {primary_ref} -> {first_ref}')
+
+for fk in ('modelFallback', 'imageModelFallback'):
+    val = defaults.get(fk)
+    if isinstance(val, str) and val in removed_refs:
+        defaults[fk] = first_ref
+        changed = True
+        print(f'🔁 {fk} has been completely replaced: {val} -> {first_ref}')
+
+stale_refs = [r for r in list(defaults_models.keys()) if r.startswith(target + '/') and r not in expected_refs]
+for r in stale_refs:
+    defaults_models.pop(r, None)
+    changed = True
+
+for r in sorted(expected_refs):
+    if r not in defaults_models:
+        defaults_models[r] = {}
+        changed = True
+
+if removed_ids or added_ids or len(local_models) != len(new_models):
+    provider['models'] = new_models
+    changed = True
+
+if protocol_msg:
+    print(protocol_msg)
+
+if changed:
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(work, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+
+print(f'✅ {target}: Remove {len(removed_ids)}, add {len(added_ids)}, current {len(new_models)}')
+if changed:
+    print('✅ The specified provider model consistency synchronization is completed and the configuration has been written')
+else:
+    print('ℹ️ No synchronization required: the provider configuration is already consistent with the upstream /models')
+PY2
+	local rc=$?
+	case "$rc" in
+		0)
+			echo "✅ Synchronous execution completed"
+			start_gateway
+			;;
+		2)
+			echo "❌ Synchronization failed: provider does not exist or is not configured"
+			;;
+		3)
+			echo "❌ Synchronization failed: provider configuration is incomplete or type is not supported"
+			;;
+		4)
+			echo "❌ Synchronization failed: Upstream /models request failed"
+			;;
+		5)
+			echo "❌ Synchronization failed: the upstream model is empty or there is no available model after synchronization"
+			;;
+		*)
+			echo "❌ Synchronization failed: please check the configuration file structure or log output"
+			;;
+	esac
+
+	break_end
+}
+
+openclaw_detect_api_protocol_by_provider() {
+	local config_file="$1"
+	local provider_name="$2"
+
+	python3 - "$config_file" "$provider_name" <<'PY'
+import json
+import sys
+import urllib.request
+
+path = sys.argv[1]
+name = sys.argv[2]
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
+
+def probe_endpoint(base_url, api_key, path, timeout=6):
+    url = base_url.rstrip('/') + path
+    req = urllib.request.Request(
+        url,
+        data=b'{}',
+        headers={
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'User-Agent': 'OpenClaw-API-Manage/1.0',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.getcode(), None
+    except urllib.error.HTTPError as e:
+        return e.code, None
+    except Exception as e:
+        return None, e
+
+
+def detect_api_protocol(base_url, api_key):
+    code, err = probe_endpoint(base_url, api_key, '/responses')
+    if code is not None and code not in (404, 405):
+        return 'openai-responses', f'POST /responses -> HTTP {code}', None
+    if err:
+        return 'openai-completions', 'fallback: probe failed', err
+    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
+
+try:
+    with open(path, 'r', encoding='utf-8') as f:
+        obj = json.load(f)
+except FileNotFoundError:
+    print('❌ openclaw.json not found')
+    raise SystemExit(2)
+
+providers = ((obj.get('models') or {}).get('providers') or {})
+provider = providers.get(name) if isinstance(providers, dict) else None
+if not isinstance(provider, dict):
+    print(f'❌ provider: {name} not found')
+    raise SystemExit(2)
+
+base_url = provider.get('baseUrl')
+api_key = provider.get('apiKey')
+if not base_url or not api_key:
+    print(f'❌ provider {name} is missing baseUrl/apiKey')
+    raise SystemExit(3)
+
+current_api = provider.get('api', '')
+if current_api not in SUPPORTED_APIS:
+    current_api = ''
+
+api, reason, err = detect_api_protocol(base_url, api_key)
+if api and api != current_api:
+    provider['api'] = api
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(obj, f, ensure_ascii=False, indent=2)
+        f.write('\n')
+    print(f'✅ Updated provider {name} protocol: {current_api or "(unset)"} -> {api} ({reason})')
+else:
+    print(f'ℹ️ No updates required: protocol remains {current_api or api}')
+PY
+}
+
+fix-openclaw-provider-protocol-interactive() {
+	local config_file="${HOME}/.openclaw/openclaw.json"
+	send_stats "OpenClaw API protocol fixes"
+
+	if [ ! -f "$config_file" ]; then
+		echo "❌ Configuration file not found:$config_file"
+		break_end
+		return 1
+	fi
+
+	read -erp "Please enter the API name (provider) of the protocol to be repaired:" provider_name
+	if [ -z "$provider_name" ]; then
+		echo "❌ provider name cannot be empty"
+		break_end
+		return 1
+	fi
+
+	install jq curl >/dev/null 2>&1
+	openclaw_detect_api_protocol_by_provider "$config_file" "$provider_name"
+	local rc=$?
+	case "$rc" in
+		0)
+			echo "✅The agreement has been tested and updated (subject to change)"
+			start_gateway
+			;;
+		2)
+			echo "❌ Repair failed: provider does not exist or is not configured"
+			;;
+		3)
+			echo "❌ Repair failed: provider configuration is incomplete"
+			;;
+		*)
+			echo "❌ Repair failed: please check the configuration file structure or log output"
+			;;
+	esac
+
+	break_end
+}
+
+	delete-openclaw-provider-interactive() {
+		local config_file="${HOME}/.openclaw/openclaw.json"
+		send_stats "OpenClaw API delete entry"
+
+		if [ ! -f "$config_file" ]; then
+			echo "❌ Configuration file not found:$config_file"
+			break_end
+			return 1
+		fi
+
+		read -erp "Please enter the API name (provider) to be deleted:" provider_name
+		if [ -z "$provider_name" ]; then
+			send_stats "OpenClaw API Delete Cancel"
+			echo "❌ provider name cannot be empty"
+			break_end
+			return 1
+		fi
+
+		python3 - "$config_file" "$provider_name" <<'PY'
+import copy
+import json
+import sys
+
+path = sys.argv[1]
+name = sys.argv[2]
+
+with open(path, 'r', encoding='utf-8') as f:
+    obj = json.load(f)
+
+work = copy.deepcopy(obj)
+models_cfg = work.setdefault('models', {})
+providers = models_cfg.get('providers', {})
+if not isinstance(providers, dict) or name not in providers:
+    print(f'❌ provider: {name} not found')
+    raise SystemExit(2)
+
+agents = work.setdefault('agents', {})
+defaults = agents.setdefault('defaults', {})
+defaults_models_raw = defaults.get('models')
+if isinstance(defaults_models_raw, dict):
+    defaults_models = defaults_models_raw
+elif isinstance(defaults_models_raw, list):
+    defaults_models = {str(x): {} for x in defaults_models_raw if isinstance(x, str)}
+else:
+    defaults_models = {}
+defaults['models'] = defaults_models
+
+
+def model_ref(provider_name, model_id):
+    return f"{provider_name}/{model_id}"
+
+
+def ref_provider(ref):
+    if not isinstance(ref, str) or '/' not in ref:
+        return None
+    return ref.split('/', 1)[0]
+
+
+def get_primary_ref(defaults_obj):
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        return model_obj
+    if isinstance(model_obj, dict):
+        primary = model_obj.get('primary')
+        if isinstance(primary, str):
+            return primary
+    return None
+
+
+def set_primary_ref(defaults_obj, new_ref):
+    model_obj = defaults_obj.get('model')
+    if isinstance(model_obj, str):
+        defaults_obj['model'] = new_ref
+    elif isinstance(model_obj, dict):
+        model_obj['primary'] = new_ref
+    else:
+        defaults_obj['model'] = {'primary': new_ref}
+
+
+def collect_available_refs(exclude_provider=None):
+    refs = []
+    if not isinstance(providers, dict):
+        return refs
+    for pname, p in providers.items():
+        if exclude_provider and pname == exclude_provider:
+            continue
+        if not isinstance(p, dict):
+            continue
+        for m in p.get('models', []) or []:
+            if isinstance(m, dict) and m.get('id'):
+                refs.append(model_ref(pname, str(m['id'])))
+    return refs
+
+
+replacement_candidates = collect_available_refs(exclude_provider=name)
+replacement = replacement_candidates[0] if replacement_candidates else None
+
+primary_ref = get_primary_ref(defaults)
+if ref_provider(primary_ref) == name:
+    if not replacement:
+        print('❌ Deletion aborted: the default main model points to the provider and no alternative model is available')
+        raise SystemExit(3)
+    set_primary_ref(defaults, replacement)
+    print(f'🔁 Default primary model switching: {primary_ref} -> {replacement}')
+
+for fk in ('modelFallback', 'imageModelFallback'):
+    val = defaults.get(fk)
+    if ref_provider(val) == name:
+        if not replacement:
+            print(f'❌ Deletion aborted: {fk} points to the provider and no alternative model is available')
+            raise SystemExit(3)
+        defaults[fk] = replacement
+        print(f'🔁 {fk} switch: {val} -> {replacement}')
+
+removed_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/')]
+for r in removed_refs:
+    defaults_models.pop(r, None)
+
+providers.pop(name, None)
+
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(work, f, ensure_ascii=False, indent=2)
+    f.write('\n')
+
+print(f'🗑️ Deleted provider: {name}')
+print(f'🧹 Cleaned {len(removed_refs)} associated model references in defaults.models')
+PY
+		local rc=$?
+		case "$rc" in
+			0)
+				send_stats "OpenClaw API deletion confirmation"
+				echo "✅Deletion completed"
+				start_gateway
+				;;
+			2)
+				echo "❌ Deletion failed: provider does not exist"
+				;;
+			3)
+				send_stats "OpenClaw API Delete Cancel"
+				echo "❌ Deletion failed: no replacement model available, original configuration has been maintained"
+				;;
+			*)
+				echo "❌ Deletion failed: please check the configuration file structure or log output"
+				;;
+		esac
+
+		break_end
+	}
+
+	openclaw_api_manage_menu() {
+		send_stats "OpenClaw API entrance"
 		while true; do
 			clear
-			echo "---Model Management ---"
-			echo "All models:"
-			openclaw models list --all
-			echo "----------------"
-			echo "Current model:"
-			openclaw models list
-			echo "----------------"
-			read -e -p "Please enter the model name to set (e.g. openrouter/openai/gpt-4o) (enter 0 to exit):" model
+			echo "======================================="
+			echo "OpenClaw API Management"
+			echo "======================================="
+			openclaw_api_manage_list
+			echo "---------------------------------------"
+			echo "1. Add API"
+			echo "2. Synchronize API provider model list"
+			echo "3. Delete API"
+			echo "4. Protocol repair/redetection"
+			echo "0. Exit"
+			echo "---------------------------------------"
+			read -erp "Please enter your choice:" api_choice
 
-			# 1. Check if you entered 0 to exit
-			if [ "$model" = "0" ]; then
-				echo "Operation canceled, exiting..."
-				break  # 跳出 while 循环
-
-			fi
-
-			# 2. Verify that the input is empty
-			if [ -z "$model" ]; then
-				echo "Error: Model name cannot be empty. Please try again."
-				echo "" # 换行美化
-				continue # 跳过本次循环，重新开始
-			fi
-
-			# 3. Execute switching logic
-			echo "The model being switched is:$model ..."
-			openclaw models set "$model"
-
-			break_end
+			case "$api_choice" in
+				1)
+					add-openclaw-provider-interactive
+					;;
+				2)
+					sync-openclaw-provider-interactive
+					;;
+				3)
+					delete-openclaw-provider-interactive
+					;;
+				4)
+					fix-openclaw-provider-protocol-interactive
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "Invalid selection, please try again."
+					sleep 1
+					;;
+			esac
 		done
-
 	}
 
 
 
+	install_gum() {
+	    if command -v gum >/dev/null 2>&1; then
+	        return 0
+	    fi
+	    if [ -f /etc/debian_version ]; then
+	        mkdir -p /etc/apt/keyrings
+	        curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
+	        echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | tee /etc/apt/sources.list.d/charm.list > /dev/null
+	        apt update && apt install -y gum
+	    elif command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
+	        cat > /etc/yum.repos.d/charm.repo <<'REPO'
+[charm]
+name=Charm
+baseurl=https://repo.charm.sh/yum/
+enabled=1
+gpgcheck=1
+gpgkey=https://repo.charm.sh/yum/gpg.key
+REPO
+	        rpm --import https://repo.charm.sh/yum/gpg.key
+	        if command -v dnf >/dev/null 2>&1; then
+	            dnf install -y gum
+	        else
+	            yum install -y gum
+	        fi
+	    elif command -v zypper >/dev/null 2>&1; then
+	        zypper --non-interactive refresh
+	        zypper --non-interactive install gum
+	    fi
+	}
 
+
+	
+	change_model() {
+		send_stats "Change model"
+
+		local orange="#FF8C00"
+
+		clear
+
+		while true; do
+			local models_raw models_list default_model model_count selected_model
+
+			# Read model keys from configuration file (without calling openclaw models list)
+			local oc_config
+			oc_config="${HOME}/.openclaw/openclaw.json"
+			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
+
+			models_raw=$(jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d')
+			if [ -z "$models_raw" ]; then
+				echo "Failed to get list of models: agents.defaults.models not found in configuration file."
+				break_end
+				return 1
+			fi
+
+			# Number each model to facilitate quick location (for example: "(10) or-api/...:free")
+			models_list=$(echo "$models_raw" | awk '{print "(" NR ") " $0}')
+			model_count=$(echo "$models_list" | sed '/^\s*$/d' | wc -l | tr -d ' ')
+
+			# Read default model from configuration file (faster); fallback to openclaw command on failure
+			default_model=$(jq -r '.agents.defaults.model.primary // empty' "$oc_config" 2>/dev/null)
+			[ -z "$default_model" ] && default_model="(unknown)"
+
+
+			install_gum
+			install gum
+
+			clear
+
+				# If gum does not exist, downgrade to the original manual input process (remaining exactly the same as before)
+			if ! command -v gum >/dev/null 2>&1; then
+				echo "---Model Management ---"
+				echo "Currently available models:"
+				jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d'
+				echo "----------------"
+				read -e -p "Please enter the model name to set (e.g. openrouter/openai/gpt-4o) (enter 0 to exit):" selected_model
+
+				# 1. Check if you entered 0 to exit
+				if [ "$selected_model" = "0" ]; then
+					echo "Operation canceled, exiting..."
+					break  # 跳出 while 循环
+				fi
+
+				# 2. Verify that the input is empty
+				if [ -z "$selected_model" ]; then
+					echo "Error: Model name cannot be empty. Please try again."
+					echo "" # 换行美化
+					continue # 跳过本次循环，重新开始
+				fi
+			else
+				gum style --foreground "$orange" --bold "Model management"
+				gum style --foreground "$orange" "Available models (Auth=yes):${model_count}"
+				gum style --foreground "$orange" "Current default:${default_model}"
+				echo ""
+
+				# Bottom tip
+				gum style --faint "↑↓ Select / Enter to confirm / Esc to exit"
+				echo ""
+
+				# gum filter: with search; gum versions vary greatly, only the most compatible flags are used here
+				selected_model=$(echo "$models_list" | gum filter \
+					--placeholder "Search models (such as cli-api/gpt-5.2)" \
+					--prompt "Select model >" \
+					--indicator "➜ " \
+					--prompt.foreground "$orange" \
+					--indicator.foreground "$orange" \
+					--cursor-text.foreground "$orange" \
+					--match.foreground "$orange" \
+					--header "" \
+					--height 35)
+
+				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -iqE '^(error|usage|gum:)'; then
+					echo "Operation canceled, exiting..."
+					break
+				fi
+			fi
+
+			# Remove the number prefix: "(10) model" -> "model"
+			selected_model=$(echo "$selected_model" | sed -E 's/^\([0-9]+\)[[:space:]]+//')
+
+			# Execute switch
+			echo "The model being switched is:$selected_model ..."
+			if ! openclaw models set "$selected_model"; then
+				echo "Switch failed: openclaw models set returned error."
+				break_end
+				return 1
+			fi
+			start_gateway
+
+			break_end
+			done
+	}
+
+
+		resolve_openclaw_plugin_id() {
+			local raw_input="$1"
+			local plugin_id="$raw_input"
+
+			plugin_id="${plugin_id#@openclaw/}"
+			if [[ "$plugin_id" == @*/* ]]; then
+				plugin_id="${plugin_id##*/}"
+			fi
+			plugin_id="${plugin_id%%@*}"
+			echo "$plugin_id"
+		}
+
+		sync_openclaw_plugin_allowlist() {
+			local plugin_id="$1"
+			[ -z "$plugin_id" ] && return 1
+
+			local home_config="${HOME}/.openclaw/openclaw.json"
+			local root_config="/root/.openclaw/openclaw.json"
+			local config_file="$home_config"
+			if [ ! -f "$home_config" ] && [ -f "$root_config" ]; then
+				config_file="$root_config"
+			fi
+
+			mkdir -p "$(dirname "$config_file")"
+			if [ ! -s "$config_file" ]; then
+				echo '{}' > "$config_file"
+			fi
+
+			if command -v jq >/dev/null 2>&1; then
+				local tmp_json
+				tmp_json=$(mktemp)
+				if jq --arg pid "$plugin_id" '
+					.plugins = (if (.plugins | type) == "object" then .plugins else {} end)
+					| .plugins.allow = (if (.plugins.allow | type) == "array" then .plugins.allow else [] end)
+					| if (.plugins.allow | index($pid)) == null then .plugins.allow += [$pid] else . end
+				' "$config_file" > "$tmp_json" 2>/dev/null && mv "$tmp_json" "$config_file"; then
+					echo "✅ Synchronized plugins.allow whitelist:$plugin_id"
+					return 0
+				fi
+				rm -f "$tmp_json"
+			fi
+
+			if command -v python3 >/dev/null 2>&1; then
+				if python3 - "$config_file" "$plugin_id" <<'PYTHON_EOF'
+import json
+import sys
+from pathlib import Path
+
+config_file = Path(sys.argv[1])
+plugin_id = sys.argv[2]
+
+try:
+    data = json.loads(config_file.read_text(encoding='utf-8')) if config_file.exists() else {}
+    if not isinstance(data, dict):
+        data = {}
+except Exception:
+    data = {}
+
+plugins = data.get('plugins')
+if not isinstance(plugins, dict):
+    plugins = {}
+
+a = plugins.get('allow')
+if not isinstance(a, list):
+    a = []
+
+if plugin_id not in a:
+    a.append(plugin_id)
+
+plugins['allow'] = a
+data['plugins'] = plugins
+config_file.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding='utf-8')
+PYTHON_EOF
+				then
+					echo "✅ Synchronized plugins.allow whitelist:$plugin_id"
+					return 0
+				fi
+			fi
+
+			echo "⚠️ The plugin has been installed, but the synchronization of plugins.allow failed, please check manually:$config_file"
+			return 1
+		}
+
+		sync_openclaw_plugin_denylist() {
+			local plugin_id="$1"
+			[ -z "$plugin_id" ] && return 1
+
+			local home_config="${HOME}/.openclaw/openclaw.json"
+			local root_config="/root/.openclaw/openclaw.json"
+			local config_file="$home_config"
+			if [ ! -f "$home_config" ] && [ -f "$root_config" ]; then
+				config_file="$root_config"
+			fi
+
+			mkdir -p "$(dirname "$config_file")"
+			if [ ! -s "$config_file" ]; then
+				echo '{}' > "$config_file"
+			fi
+
+			if command -v jq >/dev/null 2>&1; then
+				local tmp_json
+				tmp_json=$(mktemp)
+				if jq --arg pid "$plugin_id" '
+					.plugins = (if (.plugins | type) == "object" then .plugins else {} end)
+					| .plugins.allow = (if (.plugins.allow | type) == "array" then .plugins.allow else [] end)
+					| .plugins.allow = (.plugins.allow | map(select(. != $pid)))
+				' "$config_file" > "$tmp_json" 2>/dev/null && mv "$tmp_json" "$config_file"; then
+					echo "✅ Removed from plugins.allow:$plugin_id"
+					return 0
+				fi
+				rm -f "$tmp_json"
+			fi
+
+			if command -v python3 >/dev/null 2>&1; then
+				if python3 - "$config_file" "$plugin_id" <<'PYTHON_EOF'
+import json
+import sys
+from pathlib import Path
+
+config_file = Path(sys.argv[1])
+plugin_id = sys.argv[2]
+
+try:
+    data = json.loads(config_file.read_text(encoding='utf-8')) if config_file.exists() else {}
+    if not isinstance(data, dict):
+        data = {}
+except Exception:
+    data = {}
+
+plugins = data.get('plugins')
+if not isinstance(plugins, dict):
+    plugins = {}
+
+a = plugins.get('allow')
+if not isinstance(a, list):
+    a = []
+
+a = [x for x in a if x != plugin_id]
+plugins['allow'] = a
+data['plugins'] = plugins
+config_file.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding='utf-8')
+PYTHON_EOF
+				then
+					echo "✅ Removed from plugins.allow:$plugin_id"
+					return 0
+				fi
+			fi
+
+			echo "⚠️ plugins.allow removal failed, please check manually:$config_file"
+			return 1
+		}
+
+
+
+
+
+		
 		install_plugin() {
-		send_stats "Install plugin"
+		send_stats "Plug-in management"
 		while true; do
 			clear
 			echo "========================================"
-			echo "Plug-in management (installation)"
+			echo "Plug-in management (installation/removal)"
 			echo "========================================"
 			echo "Current plugin list:"
 			openclaw plugins list
@@ -10331,73 +11896,110 @@ EOF
 			echo "- [nostr] # Encrypted private chat"
 			echo "--------------------------------------------------------"
 
-			read -e -p "Please enter the plugin ID (enter 0 to exit):" raw_input
+			echo "1) Install/enable plugin"
+			echo "2) Delete/disable plugins"
+			echo "0) Return"
+			read -e -p "Please select an action:" plugin_action
 
+			[ "$plugin_action" = "0" ] && break
+			[ -z "$plugin_action" ] && continue
+
+			read -e -p "Please enter plugin IDs (separated by spaces, enter 0 to exit):" raw_input
 			[ "$raw_input" = "0" ] && break
 			[ -z "$raw_input" ] && continue
 
-			# 1. Automatic processing: If the user input contains @openclaw/, extract the pure ID to facilitate path checking
-			local plugin_id=$(echo "$raw_input" | sed 's|^@openclaw/||')
-			local plugin_full="$raw_input"
+			local success_list=""
+			local failed_list=""
+			local skipped_list=""
+			local changed=false
+			local token
 
-			echo "🔍 Checking plugin status..."
-			# Get the current plug-in list for status detection
-			local plugin_list=$(openclaw plugins list 2>/dev/null)
+			for token in $raw_input; do
+				local plugin_id
+				local plugin_full
+				plugin_id=$(resolve_openclaw_plugin_id "$token")
+				plugin_full="$token"
+				[ -z "$plugin_id" ] && continue
 
-			# 2. Check whether it is already in the list and disabled (the most common case)
-			if echo "$plugin_list" | grep -qw "$plugin_id" && echo "$plugin_list" | grep "$plugin_id" | grep -q "disabled"; then
-				echo "💡 Plugin [$plugin_id] Pre-installed, activating..."
-				openclaw plugins enable "$plugin_id" && echo "✅Activation successful" || echo "❌ Activation failed"
+				if [ "$plugin_action" = "1" ]; then
+					echo "🔍 Checking plugin status:$plugin_id"
+					local plugin_list
+					plugin_list=$(openclaw plugins list 2>/dev/null)
 
-			# 3. Check whether the system physical directory exists
-			elif [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_id" ]; then
-				echo "💡 Found that the plug-in exists in the system's built-in directory, try to enable it directly..."
-				openclaw plugins enable "$plugin_id"
-
-			else
-				# 4. Remote installation logic
-				echo "📥 Not found locally, try to download and install..."
-
-				# Clean up old failed remnants
-				rm -rf "/root/.openclaw/extensions/$plugin_id"
-
-				# Perform the installation and capture the results
-				if openclaw plugins install "$plugin_full"; then
-					echo "✅ Download successful, activating..."
-					openclaw plugins enable "$plugin_id"
-				else
-					echo "⚠️ Download from official channels failed, try alternatives..."
-					# Alternative npm installation
-					if npm install -g "$plugin_full" --unsafe-perm; then
-						echo "✅ npm installed successfully, try to enable..."
-						openclaw plugins enable "$plugin_id"
-					else
-						echo "❌ Fatal error: Unable to obtain the plug-in. Please check if the ID is correct or if the network is available."
-						# Key: Return or continue directly here instead of using the start_gateway below to prevent hard-coding the configuration.
-						break_end
+					if echo "$plugin_list" | grep -qw "$plugin_id" && echo "$plugin_list" | grep "$plugin_id" | grep -q "disabled"; then
+						echo "💡 Plugin [$plugin_id] Pre-installed, activating..."
+						if openclaw plugins enable "$plugin_id"; then
+							sync_openclaw_plugin_allowlist "$plugin_id"
+							success_list="$success_list $plugin_id"
+							changed=true
+						else
+							failed_list="$failed_list $plugin_id"
+						fi
 						continue
 					fi
-				fi
-			fi
 
-			echo "🔄 Restarting OpenClaw service to load new plugins..."
-			start_gateway
+					if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_id" ]; then
+						echo "💡 Found that the plug-in exists in the system's built-in directory, try to enable it directly..."
+						if openclaw plugins enable "$plugin_id"; then
+							sync_openclaw_plugin_allowlist "$plugin_id"
+							success_list="$success_list $plugin_id"
+							changed=true
+						else
+							failed_list="$failed_list $plugin_id"
+						fi
+						continue
+					fi
+
+					echo "📥 Not found locally, try to download and install:$plugin_full"
+					rm -rf "/root/.openclaw/extensions/$plugin_id"
+					if openclaw plugins install "$plugin_full"; then
+						echo "✅ Download successful, activating..."
+						if openclaw plugins enable "$plugin_id"; then
+							sync_openclaw_plugin_allowlist "$plugin_id"
+							success_list="$success_list $plugin_id"
+							changed=true
+						else
+							failed_list="$failed_list $plugin_id"
+						fi
+					else
+						echo "❌ Installation failed:$plugin_full"
+						failed_list="$failed_list $plugin_id"
+					fi
+				else
+					echo "🗑️ Removing/disabling plugins:$plugin_id"
+					openclaw plugins disable "$plugin_id" >/dev/null 2>&1
+					if openclaw plugins uninstall "$plugin_id"; then
+						echo "✅ Uninstalled:$plugin_id"
+					else
+						echo "⚠️ Uninstallation failed, it may be a pre-installed plug-in, only disable:$plugin_id"
+					fi
+					sync_openclaw_plugin_denylist "$plugin_id" >/dev/null 2>&1
+					success_list="$success_list $plugin_id"
+					changed=true
+				fi
+			done
+
+			echo ""
+			echo "====== Operation Summary ======"
+			echo "✅ Success:$success_list"
+			[ -n "$failed_list" ] && echo "❌ Failure:$failed_list"
+			[ -n "$skipped_list" ] && echo "⏭️ Skip:$skipped_list"
+
+			if [ "$changed" = true ]; then
+				echo "🔄 Restarting OpenClaw service to load changes..."
+				start_gateway
+			fi
 			break_end
 		done
 	}
 
 
-
-
-
-
-
 	install_skill() {
-		send_stats "Installation skills"
+		send_stats "Skill management"
 		while true; do
 			clear
 			echo "========================================"
-			echo "Skill Management (Installation)"
+			echo "Skill management (install/remove)"
 			echo "========================================"
 			echo "Currently installed skills:"
 			openclaw skills list
@@ -10421,55 +12023,287 @@ EOF
 			echo "coding-agent # Automatically run programming assistants such as Claude Code/Codex"
 			echo "----------------------------------------"
 
-			# Prompt user to enter skill name
-			read -e -p "Please enter the name of the skill to be installed (enter 0 to exit):" skill_name
+			echo "1) Installation skills"
+			echo "2) Delete skills"
+			echo "0) Return"
+			read -e -p "Please select an action:" skill_action
 
-			# 1. Check if you entered 0 to exit
-			if [ "$skill_name" = "0" ]; then
-				echo "The operation has been canceled and the skill installation has been exited."
-				break
-			fi
+			[ "$skill_action" = "0" ] && break
+			[ -z "$skill_action" ] && continue
 
-			# 2. Verify that the input is empty
-			if [ -z "$skill_name" ]; then
-				echo "Error: Skill name cannot be empty. Please try again."
-				echo ""
-				continue
-			fi
+			read -e -p "Please enter skill names (separated by spaces, enter 0 to exit):" skill_input
+			[ "$skill_input" = "0" ] && break
+			[ -z "$skill_input" ] && continue
 
-			# 3. Check whether the skill is installed
-			local skill_found=false
-			if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
-				echo "💡 Skills [$skill_name] is installed in the user directory."
-				skill_found=true
-			elif [ -d "/usr/lib/node_modules/openclaw/skills/${skill_name}" ]; then
-				echo "💡 Skills [$skill_name] is installed in the system directory."
-				skill_found=true
-			fi
+			local success_list=""
+			local failed_list=""
+			local skipped_list=""
+			local changed=false
+			local token
 
-			if [ "$skill_found" = true ]; then
-				read -e -p "Reinstall? (y/N):" reinstall
-				if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
-					echo "Skip installation."
+			if [ "$skill_action" = "2" ]; then
+				read -e -p "Secondary confirmation: Deletion only affects the user directory ~/.openclaw/workspace/skills. Are you sure to continue? (y/N):" confirm_del
+				if [[ ! "$confirm_del" =~ ^[Yy]$ ]]; then
+					echo "Deletion canceled."
 					break_end
 					continue
 				fi
 			fi
 
-			# 4. Execute the installation command
-			echo "Installing skills:$skill_name ..."
-			if npx clawhub install "$skill_name"; then
-				echo "✅ Skills$skill_nameInstallation successful."
-				start_gateway
-			else
-				echo "❌ Installation failed. Please check whether the skill name is correct, or refer to the documentation for troubleshooting."
-			fi
+			for token in $skill_input; do
+				local skill_name
+				skill_name="$token"
+				[ -z "$skill_name" ] && continue
 
+				if [ "$skill_action" = "1" ]; then
+					local skill_found=false
+					if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
+						echo "💡 Skills [$skill_name] is installed in the user directory."
+						skill_found=true
+					elif [ -d "/usr/lib/node_modules/openclaw/skills/${skill_name}" ]; then
+						echo "💡 Skills [$skill_name] is installed in the system directory."
+						skill_found=true
+					fi
+
+					if [ "$skill_found" = true ]; then
+						read -e -p "Skill [$skill_name] Already installed, do you want to reinstall? (y/N):" reinstall
+						if [[ ! "$reinstall" =~ ^[Yy]$ ]]; then
+							skipped_list="$skipped_list $skill_name"
+							continue
+						fi
+					fi
+
+					echo "Installing skills:$skill_name ..."
+					if npx clawhub install "$skill_name" --yes --no-input 2>/dev/null || npx clawhub install "$skill_name"; then
+						echo "✅ Skills$skill_nameInstallation successful."
+						success_list="$success_list $skill_name"
+						changed=true
+					else
+						echo "❌ Installation failed:$skill_name"
+						failed_list="$failed_list $skill_name"
+					fi
+				else
+					echo "🗑️ Deleting skills:$skill_name"
+					npx clawhub uninstall "$skill_name" --yes --no-input 2>/dev/null || npx clawhub uninstall "$skill_name" >/dev/null 2>&1
+					if [ -d "${HOME}/.openclaw/workspace/skills/${skill_name}" ]; then
+						rm -rf "${HOME}/.openclaw/workspace/skills/${skill_name}"
+						echo "✅ User skill directory has been deleted:$skill_name"
+						success_list="$success_list $skill_name"
+						changed=true
+					else
+						echo "⏭️ User skill directory not found:$skill_name"
+						skipped_list="$skipped_list $skill_name"
+					fi
+				fi
+			done
+
+			echo ""
+			echo "====== Operation Summary ======"
+			echo "✅ Success:$success_list"
+			[ -n "$failed_list" ] && echo "❌ Failure:$failed_list"
+			[ -n "$skipped_list" ] && echo "⏭️ Skip:$skipped_list"
+
+			if [ "$changed" = true ]; then
+				echo "🔄 Restarting OpenClaw service to load changes..."
+				start_gateway
+			fi
 			break_end
 		done
 	}
 
+openclaw_json_get_bool() {
+		local expr="$1"
+		local config_file="${HOME}/.openclaw/openclaw.json"
+		if [ ! -s "$config_file" ]; then
+			echo "false"
+			return
+		fi
+		jq -r "$expr" "$config_file" 2>/dev/null || echo "false"
+	}
 
+	openclaw_channel_has_cfg() {
+		local channel="$1"
+		local config_file="${HOME}/.openclaw/openclaw.json"
+		if [ ! -s "$config_file" ]; then
+			echo "false"
+			return
+		fi
+		jq -r --arg c "$channel" '
+			(.channels[$c] // null) as $v
+			| if ($v | type) != "object" then
+				false
+			  else
+				([ $v
+				   | to_entries[]
+				   | select((.key == "enabled" or .key == "dmPolicy" or .key == "groupPolicy" or .key == "streaming") | not)
+				   | .value
+				   | select(. != null and . != "" and . != false)
+				 ] | length) > 0
+			  end
+		' "$config_file" 2>/dev/null || echo "false"
+	}
+
+	openclaw_dir_has_files() {
+		local dir="$1"
+		[ -d "$dir" ] && find "$dir" -type f -print -quit 2>/dev/null | grep -q .
+	}
+
+	openclaw_plugin_local_installed() {
+		local plugin="$1"
+		local config_file="${HOME}/.openclaw/openclaw.json"
+		if [ -s "$config_file" ] && jq -e --arg p "$plugin" '.plugins.installs[$p]' "$config_file" >/dev/null 2>&1; then
+			return 0
+		fi
+
+		# Compatible with two common directory namings:
+		# - ~/.openclaw/extensions/qqbot
+		# - ~/.openclaw/extensions/openclaw-qqbot
+		# Avoid brainless substrings, prefer exact matching and openclaw- prefix matching.
+		[ -d "${HOME}/.openclaw/extensions/${plugin}" ] \
+			|| [ -d "${HOME}/.openclaw/extensions/openclaw-${plugin}" ] \
+			|| [ -d "/usr/lib/node_modules/openclaw/extensions/${plugin}" ] \
+			|| [ -d "/usr/lib/node_modules/openclaw/extensions/openclaw-${plugin}" ]
+	}
+
+	openclaw_bot_status_text() {
+		local enabled="$1"
+		local configured="$2"
+		local connected="$3"
+		local abnormal="$4"
+		if [ "$abnormal" = "true" ]; then
+			echo "abnormal"
+		elif [ "$enabled" != "true" ]; then
+			echo "Not enabled"
+		elif [ "$connected" = "true" ]; then
+			echo "Connected"
+		elif [ "$configured" = "true" ]; then
+			echo "configured"
+		else
+			echo "Not configured"
+		fi
+	}
+
+	openclaw_colorize_bot_status() {
+		local status="$1"
+		case "$status" in
+			已连接) echo -e "${gl_lv}${status}${gl_bai}" ;;
+			已配置) echo -e "${gl_huang}${status}${gl_bai}" ;;
+			异常) echo -e "${gl_hong}${status}${gl_bai}" ;;
+			*) echo "$status" ;;
+		esac
+	}
+
+	openclaw_print_bot_status_line() {
+		local label="$1"
+		local status="$2"
+		echo -e "- ${label}: $(openclaw_colorize_bot_status "$status")"
+	}
+
+	openclaw_show_bot_local_status_block() {
+		local config_file="${HOME}/.openclaw/openclaw.json"
+		local json_ok="false"
+		if [ -s "$config_file" ] && jq empty "$config_file" >/dev/null 2>&1; then
+			json_ok="true"
+		fi
+
+		local tg_enabled tg_cfg tg_connected tg_abnormal tg_status
+		tg_enabled=$(openclaw_json_get_bool '.channels.telegram.enabled // .plugins.entries.telegram.enabled // false')
+		tg_cfg=$(openclaw_channel_has_cfg "telegram")
+		tg_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/telegram"; then
+			tg_connected="true"
+		fi
+		tg_abnormal="false"
+		if [ "$tg_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			tg_abnormal="true"
+		fi
+		tg_status=$(openclaw_bot_status_text "$tg_enabled" "$tg_cfg" "$tg_connected" "$tg_abnormal")
+
+		local feishu_enabled feishu_cfg feishu_connected feishu_abnormal feishu_status
+		feishu_enabled=$(openclaw_json_get_bool '.plugins.entries.feishu.enabled // .channels.feishu.enabled // false')
+		feishu_cfg=$(openclaw_channel_has_cfg "feishu")
+		feishu_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/feishu"; then
+			feishu_connected="true"
+		fi
+		feishu_abnormal="false"
+		if [ "$feishu_enabled" = "true" ] && ! openclaw_plugin_local_installed "feishu"; then
+			feishu_abnormal="true"
+		fi
+		if [ "$feishu_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			feishu_abnormal="true"
+		fi
+		feishu_status=$(openclaw_bot_status_text "$feishu_enabled" "$feishu_cfg" "$feishu_connected" "$feishu_abnormal")
+
+		local wa_enabled wa_cfg wa_connected wa_abnormal wa_status
+		wa_enabled=$(openclaw_json_get_bool '.plugins.entries.whatsapp.enabled // .channels.whatsapp.enabled // false')
+		wa_cfg=$(openclaw_channel_has_cfg "whatsapp")
+		wa_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/whatsapp"; then
+			wa_connected="true"
+		fi
+		wa_abnormal="false"
+		if [ "$wa_enabled" = "true" ] && ! openclaw_plugin_local_installed "whatsapp"; then
+			wa_abnormal="true"
+		fi
+		if [ "$wa_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			wa_abnormal="true"
+		fi
+		wa_status=$(openclaw_bot_status_text "$wa_enabled" "$wa_cfg" "$wa_connected" "$wa_abnormal")
+
+		local dc_enabled dc_cfg dc_connected dc_abnormal dc_status
+		dc_enabled=$(openclaw_json_get_bool '.channels.discord.enabled // .plugins.entries.discord.enabled // false')
+		dc_cfg=$(openclaw_channel_has_cfg "discord")
+		dc_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/discord"; then
+			dc_connected="true"
+		fi
+		dc_abnormal="false"
+		if [ "$dc_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			dc_abnormal="true"
+		fi
+		dc_status=$(openclaw_bot_status_text "$dc_enabled" "$dc_cfg" "$dc_connected" "$dc_abnormal")
+
+		local slack_enabled slack_cfg slack_connected slack_abnormal slack_status
+		slack_enabled=$(openclaw_json_get_bool '.plugins.entries.slack.enabled // .channels.slack.enabled // false')
+		slack_cfg=$(openclaw_channel_has_cfg "slack")
+		slack_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/slack"; then
+			slack_connected="true"
+		fi
+		slack_abnormal="false"
+		if [ "$slack_enabled" = "true" ] && ! openclaw_plugin_local_installed "slack"; then
+			slack_abnormal="true"
+		fi
+		if [ "$slack_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			slack_abnormal="true"
+		fi
+		slack_status=$(openclaw_bot_status_text "$slack_enabled" "$slack_cfg" "$slack_connected" "$slack_abnormal")
+
+		local qq_enabled qq_cfg qq_connected qq_abnormal qq_status
+		qq_enabled=$(openclaw_json_get_bool '.plugins.entries.qqbot.enabled // .channels.qqbot.enabled // false')
+		qq_cfg=$(openclaw_channel_has_cfg "qqbot")
+		qq_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/qqbot/sessions" || openclaw_dir_has_files "${HOME}/.openclaw/qqbot/data"; then
+			qq_connected="true"
+		fi
+		qq_abnormal="false"
+		if [ "$qq_enabled" = "true" ] && ! openclaw_plugin_local_installed "qqbot"; then
+			qq_abnormal="true"
+		fi
+		if [ "$qq_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			qq_abnormal="true"
+		fi
+		qq_status=$(openclaw_bot_status_text "$qq_enabled" "$qq_cfg" "$qq_connected" "$qq_abnormal")
+
+		echo "Local status (only local configuration/cache, no network detection):"
+		openclaw_print_bot_status_line "Telegram" "$tg_status"
+		openclaw_print_bot_status_line "Lark" "$feishu_status"
+		openclaw_print_bot_status_line "WhatsApp" "$wa_status"
+		openclaw_print_bot_status_line "Discord" "$dc_status"
+		openclaw_print_bot_status_line "Slack" "$slack_status"
+		openclaw_print_bot_status_line "QQ Bot" "$qq_status"
+	}
 
 	change_tg_bot_code() {
 		send_stats "Robot docking"
@@ -10478,6 +12312,8 @@ EOF
 			echo "========================================"
 			echo "Robot connection and docking"
 			echo "========================================"
+			openclaw_show_bot_local_status_block
+			echo "----------------------------------------"
 			echo "1. Telegram robot docking"
 			echo "2. Feishu (Lark) robot docking"
 			echo "3. WhatsApp bot docking"
@@ -10520,10 +12356,1494 @@ EOF
 	}
 
 
+	openclaw_backup_root() {
+		echo "${HOME}/.openclaw/backups"
+	}
+
+	openclaw_is_interactive_terminal() {
+		[ -t 0 ] && [ -t 1 ]
+	}
+
+	openclaw_has_command() {
+		command -v "$1" >/dev/null 2>&1
+	}
+
+
+	openclaw_is_safe_relpath() {
+		local rel="$1"
+		[ -z "$rel" ] && return 1
+		[[ "$rel" = /* ]] && return 1
+		[[ "$rel" == *"//"* ]] && return 1
+		[[ "$rel" == *$'\n'* ]] && return 1
+		[[ "$rel" == *$'\r'* ]] && return 1
+		case "$rel" in
+			../*|*/../*|*/..|..)
+				return 1
+				;;
+		esac
+		return 0
+	}
+
+	openclaw_restore_path_allowed() {
+		local mode="$1"
+		local rel="$2"
+		case "$mode" in
+			memory)
+				case "$rel" in
+					MEMORY.md|AGENTS.md|USER.md|SOUL.md|TOOLS.md|memory/*) return 0 ;;
+					*) return 1 ;;
+				esac
+				;;
+			project)
+				case "$rel" in
+					openclaw.json|workspace/*|extensions/*|skills/*|prompts/*|tools/*|telegram/*|feishu/*|whatsapp/*|discord/*|slack/*|qqbot/*|logs/*) return 0 ;;
+					*) return 1 ;;
+				esac
+				;;
+			*)
+				return 1
+				;;
+		esac
+	}
+
+	openclaw_pack_backup_archive() {
+		local backup_type="$1"
+		local export_mode="$2"
+		local payload_dir="$3"
+		local output_file="$4"
+
+		local tmp_root
+		tmp_root=$(mktemp -d) || return 1
+		local pack_dir="$tmp_root/package"
+		mkdir -p "$pack_dir"
+
+		cp -a "$payload_dir" "$pack_dir/payload"
+
+		(
+			cd "$pack_dir/payload" || exit 1
+			find . -type f | sed 's|^\./||' | sort > "$pack_dir/manifest.files"
+			: > "$pack_dir/manifest.sha256"
+			while IFS= read -r f; do
+				[ -z "$f" ] && continue
+				sha256sum "$f" >> "$pack_dir/manifest.sha256"
+			done < "$pack_dir/manifest.files"
+		) || { rm -rf "$tmp_root"; return 1; }
+
+		cat > "$pack_dir/backup.meta" <<EOF
+TYPE=$backup_type
+MODE=$export_mode
+CREATED_AT=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+HOST=$(hostname)
+EOF
+
+		mkdir -p "$(dirname "$output_file")"
+		tar -C "$pack_dir" -czf "$output_file" backup.meta manifest.files manifest.sha256 payload
+		local rc=$?
+		rm -rf "$tmp_root"
+		return $rc
+	}
+
+	openclaw_offer_transfer_hint() {
+		local file_path="$1"
+
+		echo "Backup files can be downloaded using the following methods:"
+		echo "- Local path:$file_path"
+		echo "- scp example: scp root@yourserver:$file_path ./"
+		echo "- Or download using SFTP client"
+	}
+
+	openclaw_prepare_import_archive() {
+		local expected_type="$1"
+		local archive_path="$2"
+		local unpack_root="$3"
+
+		[ ! -f "$archive_path" ] && { echo "❌ File does not exist:$archive_path"; return 1; }
+		mkdir -p "$unpack_root"
+		tar -xzf "$archive_path" -C "$unpack_root" || { echo "❌ Failed to decompress the backup package"; return 1; }
+
+		local pkg_dir="$unpack_root/package"
+		if [ -f "$unpack_root/backup.meta" ]; then
+			pkg_dir="$unpack_root"
+		fi
+
+		for required in backup.meta manifest.files manifest.sha256 payload; do
+			[ -e "$pkg_dir/$required" ] || { echo "❌ The backup package is missing necessary files:$required"; return 1; }
+		done
+
+		local real_type
+		real_type=$(grep '^TYPE=' "$pkg_dir/backup.meta" | head -n1 | cut -d'=' -f2-)
+		if [ "$real_type" != "$expected_type" ]; then
+			echo "❌ Backup type mismatch, expected:$expected_type, actual: ${real_type:-unknown}"
+			return 1
+		fi
+
+		(
+			cd "$pkg_dir/payload" || exit 1
+			sha256sum -c ../manifest.sha256 >/dev/null
+		) || { echo "❌ sha256 verification failed and restoration refused"; return 1; }
+
+		echo "$pkg_dir"
+		return 0
+	}
+
+	openclaw_memory_backup_export() {
+		send_stats "OpenClaw memory full backup"
+		local workspace_dir="${HOME}/.openclaw/workspace"
+		local backup_root
+		backup_root=$(openclaw_backup_root)
+		local ts
+		ts=$(date +%Y%m%d-%H%M%S)
+		local out_file="$backup_root/openclaw-memory-full-${ts}.tar.gz"
+
+		mkdir -p "$backup_root"
+		if [ ! -d "$workspace_dir" ]; then
+			echo "❌ workspace directory not found:$workspace_dir"
+			break_end
+			return 1
+		fi
+
+		local tmp_payload
+		tmp_payload=$(mktemp -d) || return 1
+
+		[ -f "$workspace_dir/MEMORY.md" ] && cp -a "$workspace_dir/MEMORY.md" "$tmp_payload/"
+		[ -d "$workspace_dir/memory" ] && cp -a "$workspace_dir/memory" "$tmp_payload/"
+
+		read -e -p "Does it come with AGENTS/USER/SOUL/TOOLS files? (y/N):" include_optional
+		if [[ "$include_optional" =~ ^[Yy]$ ]]; then
+			for f in AGENTS.md USER.md SOUL.md TOOLS.md; do
+				[ -f "$workspace_dir/$f" ] && cp -a "$workspace_dir/$f" "$tmp_payload/"
+			done
+		fi
+
+		if ! find "$tmp_payload" -mindepth 1 -print -quit | grep -q .; then
+			echo "❌ No backup memory file found"
+			rm -rf "$tmp_payload"
+			break_end
+			return 1
+		fi
+
+		if openclaw_pack_backup_archive "memory-full" "default" "$tmp_payload" "$out_file"; then
+			echo "✅ Full memory backup completed:$out_file"
+			openclaw_offer_transfer_hint "$out_file"
+		else
+			echo "❌ Full memory backup failed"
+		fi
+
+		rm -rf "$tmp_payload"
+		break_end
+	}
+
+	openclaw_read_import_path() {
+		local prompt_text="$1"
+		local file_input file_path backup_root
+		echo "$prompt_text" >&2
+
+		echo "You can first upload the backup package to the server through scp/sftp, and then enter the path." >&2
+		echo "scp example: scp /local/backup package.tar.gz root@yourserver:/tmp/" >&2
+		echo "Tip: When entering a file name, it will be searched in the backup directory by default; when entering a path containing /, it will be verified by the full path." >&2
+		read -e -p "Please enter the backup file name or path:" file_input
+		[ -z "$file_input" ] && { echo ""; return 0; }
+
+		backup_root=$(openclaw_backup_root)
+		mkdir -p "$backup_root"
+
+		if [[ "$file_input" == */* ]]; then
+			file_path="$file_input"
+		else
+			file_path="$backup_root/$file_input"
+		fi
+
+		if [ ! -f "$file_path" ]; then
+			echo "❌ The backup file does not exist:$file_path" >&2
+			echo ""
+			return 1
+		fi
+
+		echo "$file_path"
+	}
+
+	openclaw_memory_backup_import() {
+		send_stats "OpenClaw memory full restoration"
+		local workspace_dir="${HOME}/.openclaw/workspace"
+		mkdir -p "$workspace_dir"
+
+		local archive_path
+		archive_path=$(openclaw_read_import_path "Before restoration, it will be performed: type verification + sha256 verification + path whitelist verification")
+		[ -z "$archive_path" ] && { echo "❌ No backup path entered"; break_end; return 1; }
+
+		local tmp_unpack
+		tmp_unpack=$(mktemp -d) || return 1
+		local pkg_dir
+		pkg_dir=$(openclaw_prepare_import_archive "memory-full" "$archive_path" "$tmp_unpack") || { rm -rf "$tmp_unpack"; break_end; return 1; }
+
+		local invalid=0
+		local valid_list
+		valid_list=$(mktemp)
+		while IFS= read -r rel; do
+			[ -z "$rel" ] && continue
+			if ! openclaw_is_safe_relpath "$rel" || ! openclaw_restore_path_allowed memory "$rel"; then
+				echo "❌ Illegal or unauthorized path detected:$rel"
+				invalid=1
+				break
+			fi
+			echo "$rel" >> "$valid_list"
+		done < "$pkg_dir/manifest.files"
+
+		if [ "$invalid" -ne 0 ]; then
+			rm -f "$valid_list"
+			rm -rf "$tmp_unpack"
+			echo "❌ Restore aborted: Insecure path exists"
+			break_end
+			return 1
+		fi
+
+
+		while IFS= read -r rel; do
+			mkdir -p "$workspace_dir/$(dirname "$rel")"
+			cp -a "$pkg_dir/payload/$rel" "$workspace_dir/$rel"
+		done < "$valid_list"
+
+		rm -f "$valid_list"
+		rm -rf "$tmp_unpack"
+		echo "✅ Full memory restoration completed"
+		break_end
+	}
+
+	openclaw_project_backup_export() {
+		send_stats "OpenClaw project backup"
+		local openclaw_root="${HOME}/.openclaw"
+		if [ ! -d "$openclaw_root" ]; then
+			echo "❌ OpenClaw root directory not found:$openclaw_root"
+			break_end
+			return 1
+		fi
+
+		echo "Backup mode:"
+		echo "1. Safe mode (default, recommended): workspace + openclaw.json + extensions/skills/prompts/tools (if exists)"
+		echo "2. Complete mode (contains more states, higher sensitivity risk)"
+		read -e -p "Please select backup mode (default 1):" export_mode
+		[ -z "$export_mode" ] && export_mode="1"
+
+		local mode_label="safe"
+		local tmp_payload
+		tmp_payload=$(mktemp -d) || return 1
+
+		if [ "$export_mode" = "2" ]; then
+			mode_label="full"
+			for d in workspace extensions skills prompts tools; do
+				[ -e "$openclaw_root/$d" ] && cp -a "$openclaw_root/$d" "$tmp_payload/"
+			done
+			[ -f "$openclaw_root/openclaw.json" ] && cp -a "$openclaw_root/openclaw.json" "$tmp_payload/"
+			for d in telegram feishu whatsapp discord slack qqbot logs; do
+				[ -e "$openclaw_root/$d" ] && cp -a "$openclaw_root/$d" "$tmp_payload/"
+			done
+		else
+			[ -d "$openclaw_root/workspace" ] && cp -a "$openclaw_root/workspace" "$tmp_payload/"
+			[ -f "$openclaw_root/openclaw.json" ] && cp -a "$openclaw_root/openclaw.json" "$tmp_payload/"
+			for d in extensions skills prompts tools; do
+				[ -e "$openclaw_root/$d" ] && cp -a "$openclaw_root/$d" "$tmp_payload/"
+			done
+		fi
+
+		if ! find "$tmp_payload" -mindepth 1 -print -quit | grep -q .; then
+			echo "❌ No backupable OpenClaw project content found"
+			rm -rf "$tmp_payload"
+			break_end
+			return 1
+		fi
+
+		local backup_root
+		backup_root=$(openclaw_backup_root)
+		mkdir -p "$backup_root"
+		local out_file="$backup_root/openclaw-project-${mode_label}-$(date +%Y%m%d-%H%M%S).tar.gz"
+
+		if openclaw_pack_backup_archive "openclaw-project" "$mode_label" "$tmp_payload" "$out_file"; then
+			echo "✅ OpenClaw project backup completed (${mode_label}): $out_file"
+			openclaw_offer_transfer_hint "$out_file"
+		else
+			echo "❌ OpenClaw project backup failed"
+		fi
+
+		rm -rf "$tmp_payload"
+		break_end
+	}
+
+	openclaw_project_backup_import() {
+		send_stats "OpenClaw project restore"
+		local openclaw_root="${HOME}/.openclaw"
+		mkdir -p "$openclaw_root"
+
+		echo "⚠️ High-risk operation: Project restore will overwrite OpenClaw configuration and workspace content."
+		echo "⚠️ Manifest/sha256 verification, whitelist restoration, gateway shutdown and health check will be performed before restoration."
+		read -e -p "Please enter the confirmation word [I am aware of the high risk and continue to restore] to continue:" confirm_text
+		if [ "$confirm_text" != "I am aware of the high risk and continue to restore" ]; then
+			echo "❌ The confirmation word does not match and the restore has been cancelled."
+			break_end
+			return 1
+		fi
+
+		local archive_path
+		archive_path=$(openclaw_read_import_path "Please enter the OpenClaw project backup package path")
+		[ -z "$archive_path" ] && { echo "❌ No backup path entered"; break_end; return 1; }
+
+		local tmp_unpack
+		tmp_unpack=$(mktemp -d) || return 1
+		local pkg_dir
+		pkg_dir=$(openclaw_prepare_import_archive "openclaw-project" "$archive_path" "$tmp_unpack") || { rm -rf "$tmp_unpack"; break_end; return 1; }
+
+		local invalid=0
+		local valid_list
+		valid_list=$(mktemp)
+		while IFS= read -r rel; do
+			[ -z "$rel" ] && continue
+			if ! openclaw_is_safe_relpath "$rel" || ! openclaw_restore_path_allowed project "$rel"; then
+				echo "❌ Illegal or unauthorized path detected:$rel"
+				invalid=1
+				break
+			fi
+			echo "$rel" >> "$valid_list"
+		done < "$pkg_dir/manifest.files"
+
+		if [ "$invalid" -ne 0 ]; then
+			rm -f "$valid_list"
+			rm -rf "$tmp_unpack"
+			echo "❌ Restore aborted: Insecure path exists"
+			break_end
+			return 1
+		fi
+
+
+		if command -v openclaw >/dev/null 2>&1; then
+			echo "⏸️ Stop OpenClaw gateway before restoring..."
+			openclaw gateway stop >/dev/null 2>&1
+		fi
+
+		while IFS= read -r rel; do
+			mkdir -p "$openclaw_root/$(dirname "$rel")"
+			cp -a "$pkg_dir/payload/$rel" "$openclaw_root/$rel"
+		done < "$valid_list"
+
+		if command -v openclaw >/dev/null 2>&1; then
+			echo "▶️ Start OpenClaw gateway after restoration..."
+			openclaw gateway start >/dev/null 2>&1
+			sleep 2
+			echo "🩺 gateway health check:"
+			openclaw gateway status || true
+		fi
+
+		rm -f "$valid_list"
+		rm -rf "$tmp_unpack"
+		echo "✅ OpenClaw project restoration completed"
+		break_end
+	}
+
+	openclaw_backup_detect_type() {
+		local file_name="$1"
+		if [[ "$file_name" == openclaw-memory-full-*.tar.gz ]]; then
+			echo "memory backup file"
+		elif [[ "$file_name" == openclaw-project-*.tar.gz ]]; then
+			echo "Project backup file"
+		else
+			echo "Other backup files"
+		fi
+	}
+
+	openclaw_backup_collect_files() {
+		local backup_root
+		backup_root=$(openclaw_backup_root)
+		mkdir -p "$backup_root"
+		mapfile -t OPENCLAW_BACKUP_FILES < <(find "$backup_root" -maxdepth 1 -type f -name '*.tar.gz' -printf '%f\n' | sort -r)
+	}
+
+
+	openclaw_backup_render_file_list() {
+		local backup_root i file_name file_path file_type file_size file_time
+		local has_memory=0 has_project=0 has_other=0
+		backup_root=$(openclaw_backup_root)
+		openclaw_backup_collect_files
+
+		echo "Backup directory:$backup_root"
+		if [ ${#OPENCLAW_BACKUP_FILES[@]} -eq 0 ]; then
+			echo "No backup file yet"
+			return 0
+		fi
+
+		for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
+			file_type=$(openclaw_backup_detect_type "${OPENCLAW_BACKUP_FILES[$i]}")
+			case "$file_type" in
+				"memory backup file") has_memory=1 ;;
+				"Project backup file") has_project=1 ;;
+				"Other backup files") has_other=1 ;;
+			esac
+		done
+
+		if [ "$has_memory" -eq 1 ]; then
+			echo "memory backup file"
+			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
+				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
+				file_type=$(openclaw_backup_detect_type "$file_name")
+				[ "$file_type" != "memory backup file" ] && continue
+				file_path="$backup_root/$file_name"
+				file_size=$(ls -lh "$file_path" | awk '{print $5}')
+				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
+				printf "%s | %s | %s\n" "$file_name" "$file_size" "$file_time"
+			done
+		fi
+
+		if [ "$has_project" -eq 1 ]; then
+			echo "Project backup file"
+			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
+				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
+				file_type=$(openclaw_backup_detect_type "$file_name")
+				[ "$file_type" != "Project backup file" ] && continue
+				file_path="$backup_root/$file_name"
+				file_size=$(ls -lh "$file_path" | awk '{print $5}')
+				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
+				printf "%s | %s | %s\n" "$file_name" "$file_size" "$file_time"
+			done
+		fi
+
+		if [ "$has_other" -eq 1 ]; then
+			echo "Other backup files"
+			for i in "${!OPENCLAW_BACKUP_FILES[@]}"; do
+				file_name="${OPENCLAW_BACKUP_FILES[$i]}"
+				file_type=$(openclaw_backup_detect_type "$file_name")
+				[ "$file_type" != "Other backup files" ] && continue
+				file_path="$backup_root/$file_name"
+				file_size=$(ls -lh "$file_path" | awk '{print $5}')
+				file_time=$(date -d "$(stat -c %y "$file_path")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file_path" | awk '{print $1" "$2}')
+				printf "%s | %s | %s\n" "$file_name" "$file_size" "$file_time"
+			done
+		fi
+	}
+
+	openclaw_backup_file_exists_in_list() {
+		local target_file="$1"
+		local item
+		for item in "${OPENCLAW_BACKUP_FILES[@]}"; do
+			[ "$item" = "$target_file" ] && return 0
+		done
+		return 1
+	}
+
+	openclaw_backup_delete_file() {
+		send_stats "OpenClaw delete backup files"
+		local backup_root backup_root_real user_input target_file target_path target_type
+		backup_root=$(openclaw_backup_root)
+
+		openclaw_backup_render_file_list
+		if [ ${#OPENCLAW_BACKUP_FILES[@]} -eq 0 ]; then
+			break_end
+			return 0
+		fi
+
+		read -e -p "Please enter the file name or full path to delete (0 to cancel):" user_input
+		if [ "$user_input" = "0" ]; then
+			echo "Deletion canceled."
+			break_end
+			return 0
+		fi
+		if [ -z "$user_input" ]; then
+			echo "❌ The input cannot be empty."
+			break_end
+			return 1
+		fi
+
+		backup_root_real=$(realpath -m "$backup_root")
+		if [[ "$user_input" == /* ]]; then
+			target_path=$(realpath -m "$user_input")
+			case "$target_path" in
+				"$backup_root_real"/*) ;;
+				*)
+					echo "❌ Path out of bounds: Only files in the backup root directory are allowed to be deleted."
+					break_end
+					return 1
+					;;
+			esac
+			target_file=$(basename "$target_path")
+		else
+			target_file=$(basename -- "$user_input")
+			target_path="$backup_root/$target_file"
+		fi
+
+		if [ ! -f "$target_path" ]; then
+			echo "❌ The target file does not exist:$target_path"
+			break_end
+			return 1
+		fi
+
+		if ! openclaw_backup_file_exists_in_list "$target_file"; then
+			echo "❌ The target file is not in the current backup list."
+			break_end
+			return 1
+		fi
+
+		target_type=$(openclaw_backup_detect_type "$target_file")
+
+		echo "About to be deleted: [$target_type] $target_path"
+		read -e -p "First confirmation: Enter yes to confirm and continue:" confirm_step1
+		if [ "$confirm_step1" != "yes" ]; then
+			echo "Deletion canceled."
+			break_end
+			return 0
+		fi
+		read -e -p "Secondary confirmation: Enter DELETE to delete:" confirm_step2
+		if [ "$confirm_step2" != "DELETE" ]; then
+			echo "Deletion canceled."
+			break_end
+			return 0
+		fi
+
+		if rm -f -- "$target_path"; then
+			echo "✅ Deletion successful:$target_file"
+		else
+			echo "❌ Delete failed:$target_file"
+		fi
+		break_end
+	}
+
+	openclaw_backup_list_files() {
+		openclaw_backup_render_file_list
+		break_end
+	}
+
+	openclaw_memory_config_file() {
+		echo "${HOME}/.openclaw/openclaw.json"
+	}
+
+	openclaw_memory_config_get() {
+		local key="$1"
+		local default_value="${2:-}"
+		local value
+		value=$(openclaw config get "$key" 2>/dev/null | head -n 1 | sed -e 's/^"//' -e 's/"$//')
+		if [ -z "$value" ] || [ "$value" = "null" ] || [ "$value" = "undefined" ]; then
+			echo "$default_value"
+			return 0
+		fi
+		echo "$value"
+	}
+
+	openclaw_memory_config_set() {
+		local key="$1"
+		shift
+		openclaw config set "$key" "$@" >/dev/null 2>&1
+	}
+
+	openclaw_memory_config_unset() {
+		local key="$1"
+		openclaw config unset "$key" >/dev/null 2>&1
+	}
+
+	openclaw_memory_cleanup_legacy_keys() {
+		openclaw_memory_config_unset "memory.local"
+	}
+
+	openclaw_memory_status_value() {
+		local key="$1"
+		openclaw memory status 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
+	}
+
+	openclaw_memory_expand_path() {
+		local raw_path="$1"
+		if [ -z "$raw_path" ]; then
+			echo ""
+			return 0
+		fi
+		raw_path=$(echo "$raw_path" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+		if [[ "$raw_path" == ~* ]]; then
+			echo "${raw_path/#\~/$HOME}"
+		else
+			echo "$raw_path"
+		fi
+	}
+
+	openclaw_memory_rebuild_index_safe() {
+		local store_raw store_file ts backup_file
+		store_raw=$(openclaw_memory_status_value "Store")
+		store_file=$(openclaw_memory_expand_path "$store_raw")
+		if [ -z "$store_file" ] || [ ! -f "$store_file" ]; then
+			echo "⚠️ The index library file was not found, it may be empty or does not exist."
+			echo "Store raw value: ${store_raw:-<empty>}"
+			echo "Reindexing will still be performed."
+		else
+			ts=$(date +%Y%m%d_%H%M%S)
+			backup_file="${store_file}.bak.${ts}"
+			if mv "$store_file" "$backup_file"; then
+				echo "✅ Index backed up:$backup_file"
+			else
+				echo "⚠️ Index backup failed, continue to rebuild."
+			fi
+		fi
+		openclaw memory index --force
+		openclaw gateway restart
+		echo "✅ The index has been rebuilt and the gateway has been automatically restarted."
+		echo ""
+		openclaw_memory_render_status
+	}
+
+	openclaw_memory_prepare_workspace() {
+		local workspace memory_dir
+		workspace=$(openclaw_memory_status_value "Workspace")
+		if [ -z "$workspace" ]; then
+			echo "⚠️ Failed to obtain Workspace path, skipping directory repair."
+			return 1
+		fi
+		memory_dir="$workspace/memory"
+		if [ ! -d "$memory_dir" ]; then
+			echo "🔧 The memory directory does not exist and has been automatically created:$memory_dir"
+			mkdir -p "$memory_dir"
+		fi
+		return 0
+	}
+
+	openclaw_memory_render_status() {
+		local status_output status_lines config_file config_display
+		status_output=$(openclaw memory status 2>/dev/null)
+		if [ $? -ne 0 ] || [ -z "$status_output" ]; then
+			echo "Failed to get status"
+		else
+			status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed)" | head -n 3 | sed -e 's/^Provider: /Underlying solution: /' -e 's/^Vector: /Vector library status: /' -e 's/^Indexed: /Included files: /')
+			if [ -z "$status_lines" ]; then
+				echo "Not installed/not started"
+			else
+				echo "$status_lines"
+			fi
+		fi
+	}
+
+	openclaw_memory_get_backend() {
+		local backend
+		backend=$(openclaw_memory_config_get "memory.backend")
+		if [ "$backend" = "local" ]; then
+			echo "builtin"
+		else
+			echo "$backend"
+		fi
+	}
+
+	openclaw_memory_get_local_model_path() {
+		openclaw_memory_config_get "agents.defaults.memorySearch.local.modelPath"
+	}
+
+	openclaw_memory_local_model_status() {
+		local model_path="$1"
+		if [ -z "$model_path" ]; then
+			echo "missing"
+			return
+		fi
+		if [[ "$model_path" == hf:* ]]; then
+			echo "hf"
+			return
+		fi
+		if [ -f "$model_path" ]; then
+			echo "ok"
+		else
+			echo "missing"
+		fi
+	}
+
+	openclaw_memory_qmd_available() {
+		if command -v qmd >/dev/null 2>&1; then
+			echo "true"
+			return
+		fi
+		local backend
+		backend=$(openclaw_memory_config_get "memory.backend")
+		if [ "$backend" = "qmd" ]; then
+			echo "true"
+			return
+		fi
+		echo "false"
+	}
+
+	openclaw_memory_probe_url() {
+		local url="$1"
+		if ! command -v curl >/dev/null 2>&1; then
+			echo "unknown"
+			return
+		fi
+		if [ -z "$url" ]; then
+			echo "unknown"
+			return
+		fi
+		if curl -I -m 2 -s "$url" >/dev/null 2>&1; then
+			echo "ok"
+		else
+			echo "fail"
+		fi
+	}
+
+	openclaw_memory_recommend() {
+		local qmd_ok model_path model_status hf_ok mirror_ok
+		qmd_ok=$(openclaw_memory_qmd_available)
+		model_path=$(openclaw_memory_get_local_model_path)
+		model_status=$(openclaw_memory_local_model_status "$model_path")
+		hf_ok=$(openclaw_memory_probe_url "https://huggingface.co")
+		mirror_ok=$(openclaw_memory_probe_url "https://hf-mirror.com")
+
+		OPENCLAW_MEMORY_RECOMMEND_REASON=()
+		if [ "$qmd_ok" = "true" ]; then
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("QMD is available")
+		else
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("QMD not detected")
+		fi
+		if [ -n "$model_path" ]; then
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("Local model path:$model_path")
+		else
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("Local model path not configured")
+		fi
+		case "$model_status" in
+			ok) OPENCLAW_MEMORY_RECOMMEND_REASON+=("Local model file exists") ;;
+			hf) OPENCLAW_MEMORY_RECOMMEND_REASON+=("Model comes from HF download source (may be slow/failed in China)") ;;
+			*) OPENCLAW_MEMORY_RECOMMEND_REASON+=("The local model file does not exist or is unavailable") ;;
+		esac
+		if [ "$hf_ok" = "ok" ]; then
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("huggingface.co is accessible")
+		elif [ "$mirror_ok" = "ok" ]; then
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("hf-mirror.com can be accessed")
+		else
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("huggingface.co / hf-mirror.com may be unreachable (suspected domestic/restricted network)")
+		fi
+
+		if [ "$qmd_ok" = "true" ]; then
+			if [ "$model_status" = "ok" ]; then
+				OPENCLAW_MEMORY_RECOMMEND="local"
+			elif [ "$model_status" = "hf" ] && { [ "$hf_ok" = "ok" ] || [ "$mirror_ok" = "ok" ]; }; then
+				OPENCLAW_MEMORY_RECOMMEND="local"
+			elif [ "$model_status" = "hf" ] && [ "$hf_ok" = "fail" ] && [ "$mirror_ok" = "fail" ]; then
+				OPENCLAW_MEMORY_RECOMMEND="qmd"
+			else
+				OPENCLAW_MEMORY_RECOMMEND="qmd"
+			fi
+		else
+			if [ "$model_status" = "ok" ]; then
+				OPENCLAW_MEMORY_RECOMMEND="local"
+			else
+				OPENCLAW_MEMORY_RECOMMEND="qmd"
+			fi
+		fi
+	}
+
+
+	openclaw_memory_detect_region() {
+		OPENCLAW_MEMORY_COUNTRY="unknown"
+		OPENCLAW_MEMORY_USE_MIRROR="false"
+		if command -v curl >/dev/null 2>&1; then
+			OPENCLAW_MEMORY_COUNTRY=$(curl -s -m 2 ipinfo.io/country | tr -d '
+' | tr -d '
+')
+		fi
+		case "$OPENCLAW_MEMORY_COUNTRY" in
+			CN|HK)
+				OPENCLAW_MEMORY_USE_MIRROR="true"
+				;;
+		esac
+	}
+
+	openclaw_memory_select_sources() {
+		local hf_ok mirror_ok
+		hf_ok=$(openclaw_memory_probe_url "https://huggingface.co")
+		mirror_ok=$(openclaw_memory_probe_url "https://hf-mirror.com")
+		OPENCLAW_MEMORY_HF_OK="$hf_ok"
+		OPENCLAW_MEMORY_MIRROR_OK="$mirror_ok"
+		if [ "$OPENCLAW_MEMORY_USE_MIRROR" = "true" ]; then
+			if [ "$mirror_ok" = "ok" ]; then
+				OPENCLAW_MEMORY_HF_BASE="https://hf-mirror.com"
+			elif [ "$hf_ok" = "ok" ]; then
+				OPENCLAW_MEMORY_HF_BASE="https://huggingface.co"
+			else
+				OPENCLAW_MEMORY_HF_BASE="https://hf-mirror.com"
+			fi
+			OPENCLAW_MEMORY_GH_PROXY="https://gh.kejilion.pro/"
+		else
+			if [ "$hf_ok" = "ok" ]; then
+				OPENCLAW_MEMORY_HF_BASE="https://huggingface.co"
+			elif [ "$mirror_ok" = "ok" ]; then
+				OPENCLAW_MEMORY_HF_BASE="https://hf-mirror.com"
+			else
+				OPENCLAW_MEMORY_HF_BASE="https://huggingface.co"
+			fi
+			OPENCLAW_MEMORY_GH_PROXY="https://"
+		fi
+	}
+
+	openclaw_memory_download_file() {
+		local url="$1"
+		local dest="$2"
+		mkdir -p "$(dirname "$dest")"
+		if command -v curl >/dev/null 2>&1; then
+			curl -L --fail --retry 2 -o "$dest" "$url"
+			return $?
+		fi
+		if command -v wget >/dev/null 2>&1; then
+			wget -O "$dest" "$url"
+			return $?
+		fi
+		echo "❌ Curl or wget is not detected and cannot be downloaded."
+		return 1
+	}
+
+	openclaw_memory_check_sqlite() {
+		if ! command -v sqlite3 >/dev/null 2>&1; then
+			echo "⚠️ sqlite3 is not detected, QMD may not function properly."
+			return 1
+		fi
+		local ver
+		ver=$(sqlite3 --version 2>/dev/null | awk '{print $1}')
+		echo "✅ sqlite3 available: ${ver:-unknown}"
+		echo "ℹ️ sqlite extension support cannot be reliably detected and will continue."
+		return 0
+	}
+
+	openclaw_memory_ensure_bun() {
+		if [ -x "$HOME/.bun/bin/bun" ]; then
+			export PATH="$HOME/.bun/bin:$PATH"
+		fi
+		if command -v bun >/dev/null 2>&1; then
+			echo "✅ bun already exists"
+			return 0
+		fi
+		echo "⬇️ Install bun..."
+		if command -v curl >/dev/null 2>&1; then
+			curl -fsSL https://bun.sh/install | bash
+		elif command -v wget >/dev/null 2>&1; then
+			wget -qO- https://bun.sh/install | bash
+		else
+			echo "❌ Unable to install bun as curl or wget is not detected."
+			return 1
+		fi
+		if [ -d "$HOME/.bun/bin" ]; then
+			export PATH="$HOME/.bun/bin:$PATH"
+		fi
+		if command -v bun >/dev/null 2>&1; then
+			echo "✅ bun installation completed"
+			return 0
+		fi
+		echo "❌ bun installation failed"
+		return 1
+	}
+
+	openclaw_memory_ensure_qmd() {
+		local qmd_path
+		qmd_path=$(command -v qmd 2>/dev/null || true)
+		if [ -n "$qmd_path" ]; then
+			echo "✅ qmd already exists:$qmd_path"
+			OPENCLAW_MEMORY_QMD_PATH="$qmd_path"
+			return 0
+		fi
+		openclaw_memory_ensure_bun || return 1
+		local qmd_url="${OPENCLAW_MEMORY_GH_PROXY}github.com/tobi/qmd"
+		echo "⬇️ Install qmd via bun:$qmd_url"
+		bun install -g "$qmd_url"
+		qmd_path=$(command -v qmd 2>/dev/null || true)
+		if [ -z "$qmd_path" ] && [ -x "$HOME/.bun/bin/qmd" ]; then
+			qmd_path="$HOME/.bun/bin/qmd"
+		fi
+		if [ -z "$qmd_path" ]; then
+			echo "❌ qmd installation failed"
+			return 1
+		fi
+		OPENCLAW_MEMORY_QMD_PATH="$qmd_path"
+		echo "✅ qmd installation completed:$qmd_path"
+		return 0
+	}
+
+	openclaw_memory_render_auto_summary() {
+		echo "---------------------------------------"
+		echo "✅ Environment ready"
+		echo "Scheme: ${OPENCLAW_MEMORY_AUTO_SCHEME:-unknown}"
+		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+			echo "Mode: Write configuration only (not installed/not downloaded)"
+		fi
+		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
+			echo "Index: Executed"
+		else
+			echo "Index: skipped"
+		fi
+		if [ "$OPENCLAW_MEMORY_RESTARTED" = "true" ]; then
+			echo "Restart: executed"
+		else
+			echo "Restart: skipped"
+		fi
+		if [ -n "$OPENCLAW_MEMORY_QMD_PATH" ]; then
+			echo "qmd: $OPENCLAW_MEMORY_QMD_PATH"
+		fi
+		if [ -n "$OPENCLAW_MEMORY_MODEL_PATH" ]; then
+			echo "Model:$OPENCLAW_MEMORY_MODEL_PATH"
+		fi
+		if [ -n "$OPENCLAW_MEMORY_COUNTRY" ]; then
+			echo "area:$OPENCLAW_MEMORY_COUNTRY"
+		fi
+		if [ -n "$OPENCLAW_MEMORY_HF_BASE" ]; then
+			echo "Download source:$OPENCLAW_MEMORY_HF_BASE"
+		fi
+		echo "Final status:"
+		openclaw_memory_render_status
+		echo "---------------------------------------"
+	}
+
+	openclaw_memory_auto_confirm() {
+		local scheme_label="$1"
+		OPENCLAW_MEMORY_PREHEAT="true"
+		OPENCLAW_MEMORY_RESTARTED="false"
+		OPENCLAW_MEMORY_CONFIG_ONLY="false"
+		echo "Automatic deployment is about to be performed (verbose mode)"
+		echo "Target plan:$scheme_label"
+		echo "Region: ${OPENCLAW_MEMORY_COUNTRY:-unknown}"
+		echo "Mirror source detection: huggingface.co=${OPENCLAW_MEMORY_HF_OK:-unknown} hf-mirror.com=${OPENCLAW_MEMORY_MIRROR_OK:-unknown}"
+		echo "Download source: ${OPENCLAW_MEMORY_HF_BASE:-unknown}"
+		if [ -n "$OPENCLAW_MEMORY_EXPECT_PATH" ]; then
+			echo "Estimated download path:$OPENCLAW_MEMORY_EXPECT_PATH"
+		fi
+		if [ -n "$OPENCLAW_MEMORY_EXPECT_SIZE" ]; then
+			echo "Possible traffic/disk usage:$OPENCLAW_MEMORY_EXPECT_SIZE"
+		else
+			echo "Possible traffic/disk usage: Depends on actual situation"
+		fi
+		echo "After confirmation, it will automatically install/download, write configuration, build index and restart the gateway."
+		echo "Advanced options: Enter config to write configuration only (no installation, no download, no indexing, no restart)"
+		read -e -p "Enter yes to confirm to continue (default N):" confirm_step
+		case "$confirm_step" in
+			yes|YES)
+				OPENCLAW_MEMORY_PREHEAT="true"
+				;;
+			config|CONFIG)
+				OPENCLAW_MEMORY_CONFIG_ONLY="true"
+				OPENCLAW_MEMORY_PREHEAT="false"
+				;;
+			*)
+				echo "Autodeployment canceled."
+				return 1
+				;;
+		esac
+		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+			echo "⚠️ Selected to only write configuration, no installation or download"
+		else
+			echo "✅ The index will be automatically built and the gateway will be restarted"
+		fi
+		return 0
+	}
+
+	openclaw_memory_auto_setup_qmd() {
+		echo "🔍 Detect QMD environment"
+		openclaw_memory_cleanup_legacy_keys
+		openclaw_memory_check_sqlite || true
+		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+			if command -v qmd >/dev/null 2>&1; then
+				OPENCLAW_MEMORY_QMD_PATH=$(command -v qmd)
+			else
+				OPENCLAW_MEMORY_QMD_PATH="qmd"
+			fi
+		else
+			openclaw_memory_ensure_qmd || return 1
+		fi
+		local backend
+		backend=$(openclaw_memory_get_backend)
+		if [ "$backend" = "qmd" ]; then
+			echo "✅ memory.backend is already qmd"
+		else
+			openclaw_memory_config_set "memory.backend" "qmd"
+			echo "✅ memory.backend=qmd has been set"
+		fi
+		local qmd_cmd
+		qmd_cmd=$(openclaw_memory_config_get "memory.qmd.command")
+		if [ -z "$qmd_cmd" ] || [[ "$qmd_cmd" != /* ]] || [ "$qmd_cmd" != "$OPENCLAW_MEMORY_QMD_PATH" ]; then
+			openclaw_memory_config_set "memory.qmd.command" "$OPENCLAW_MEMORY_QMD_PATH"
+			echo "✅ Written to memory.qmd.command:$OPENCLAW_MEMORY_QMD_PATH"
+		else
+			echo "✅ memory.qmd.command is correct"
+		fi
+		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
+			echo "🔥 Warm index (possibly download models)"
+			openclaw_memory_prepare_workspace
+			openclaw memory index --force
+		else
+			echo "⏭️ Preheat skipped"
+		fi
+		echo "✅ QMD automatic deployment completed"
+	}
+
+	openclaw_memory_auto_setup_local() {
+		echo "🔍 Detect Local environment"
+		openclaw_memory_cleanup_legacy_keys
+		local backend provider
+		backend=$(openclaw_memory_get_backend)
+		if [ "$backend" = "builtin" ] || [ "$backend" = "local" ]; then
+			echo "✅ memory.backend is already builtin"
+		else
+			openclaw_memory_config_set "memory.backend" "builtin"
+			echo "✅ memory.backend=builtin is set"
+		fi
+		provider=$(openclaw_memory_config_get "agents.defaults.memorySearch.provider")
+		if [ "$provider" = "local" ]; then
+			echo "✅ memorySearch.provider is already local"
+		else
+			openclaw_memory_config_set "agents.defaults.memorySearch.provider" "local"
+			echo "✅ agents.defaults.memorySearch.provider=local set"
+		fi
+
+		local model_path model_status
+		model_path=$(openclaw_memory_get_local_model_path)
+		model_path=$(openclaw_memory_expand_path "$model_path")
+		model_status=$(openclaw_memory_local_model_status "$model_path")
+		if [ "$model_status" = "ok" ]; then
+			echo "✅ The model file already exists:$model_path"
+			OPENCLAW_MEMORY_MODEL_PATH="$model_path"
+		else
+			local model_name="embeddinggemma-300M-Q8_0.gguf"
+			local model_dir="$HOME/.openclaw/models/embedding"
+			local model_dest="$model_dir/$model_name"
+			local model_url="${OPENCLAW_MEMORY_HF_BASE}/ggml-org/embeddinggemma-300M-GGUF/resolve/main/$model_name"
+			if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+				echo "ℹ️ Write-only configuration mode: skip model download"
+				OPENCLAW_MEMORY_MODEL_PATH="$model_dest"
+			else
+				if [ -f "$model_dest" ]; then
+					echo "✅ Default model file found:$model_dest"
+				else
+					echo "⬇️ Download model:$model_url"
+					openclaw_memory_download_file "$model_url" "$model_dest" || return 1
+					echo "✅ Model has been downloaded:$model_dest"
+				fi
+				OPENCLAW_MEMORY_MODEL_PATH="$model_dest"
+			fi
+			openclaw_memory_config_set "agents.defaults.memorySearch.local.modelPath" "$model_dest"
+			echo "✅ The model path has been written"
+		fi
+		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
+			echo "🔥 Warm index (possibly download models)"
+			openclaw_memory_prepare_workspace
+			openclaw memory index --force
+		else
+			echo "⏭️ Preheat skipped"
+		fi
+		echo "✅ Local automatic deployment is completed"
+	}
+
+	openclaw_memory_auto_setup_run() {
+		local scheme="$1"
+		local scheme_label
+		OPENCLAW_MEMORY_QMD_PATH=""
+		OPENCLAW_MEMORY_MODEL_PATH=""
+		OPENCLAW_MEMORY_EXPECT_PATH=""
+		OPENCLAW_MEMORY_EXPECT_SIZE=""
+		openclaw_memory_detect_region
+		openclaw_memory_select_sources
+		if [ "$scheme" = "auto" ]; then
+			openclaw_memory_recommend
+			scheme="$OPENCLAW_MEMORY_RECOMMEND"
+		fi
+		case "$scheme" in
+			qmd)
+				scheme_label="QMD"
+				OPENCLAW_MEMORY_EXPECT_PATH="$HOME/.bun (qmd installation directory)"
+				OPENCLAW_MEMORY_EXPECT_SIZE="About 20-50MB"
+				;;
+			local)
+				scheme_label="Local"
+				OPENCLAW_MEMORY_EXPECT_PATH="$HOME/.openclaw/models/embedding/embeddinggemma-300M-Q8_0.gguf"
+				OPENCLAW_MEMORY_EXPECT_SIZE="About 350-600MB"
+				;;
+			*)
+				echo "❌ Unknown solution:$scheme"
+				return 1
+				;;
+		esac
+		OPENCLAW_MEMORY_AUTO_SCHEME="$scheme_label"
+		openclaw_memory_auto_confirm "$scheme_label" || return 0
+		case "$scheme" in
+			qmd) openclaw_memory_auto_setup_qmd || return 1 ;;
+			local) openclaw_memory_auto_setup_local || return 1 ;;
+			*) return 1 ;;
+		esac
+		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
+			OPENCLAW_MEMORY_RESTARTED="false"
+			openclaw_memory_render_auto_summary
+			return 0
+		fi
+		echo "♻️ Restart OpenClaw Gateway"
+		if declare -F start_gateway >/dev/null 2>&1; then
+			start_gateway
+		else
+			openclaw gateway restart
+		fi
+		OPENCLAW_MEMORY_RESTARTED="true"
+		openclaw_memory_render_auto_summary
+		return 0
+	}
+
+	openclaw_memory_auto_setup_menu() {
+		while true; do
+			clear
+			echo "======================================="
+			echo "Automatic deployment of memory solutions"
+			echo "======================================="
+			echo "1. QMD"
+			echo "2. Local"
+			echo "3. Auto (automatic selection)"
+			echo "0. Return to the previous level"
+			echo "---------------------------------------"
+			read -e -p "Please enter your choice:" auto_choice
+			case "$auto_choice" in
+				1)
+					openclaw_memory_auto_setup_run "qmd"
+					break_end
+					;;
+				2)
+					openclaw_memory_auto_setup_run "local"
+					break_end
+					;;
+				3)
+					openclaw_memory_auto_setup_run "auto"
+					break_end
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "Invalid selection, please try again."
+					sleep 1
+					;;
+			esac
+		done
+	}
+
+	openclaw_memory_apply_scheme() {
+		local scheme="$1"
+		openclaw_memory_cleanup_legacy_keys
+		case "$scheme" in
+			qmd)
+				openclaw_memory_config_set "memory.backend" "qmd"
+				if [ $? -ne 0 ]; then
+					echo "❌ Failed to write configuration"
+					return 1
+				fi
+				openclaw_memory_config_set "memory.qmd.command" "qmd" >/dev/null 2>&1
+				;;
+			local)
+				openclaw_memory_config_set "memory.backend" "builtin"
+				if [ $? -ne 0 ]; then
+					echo "❌ Failed to write configuration"
+					return 1
+				fi
+				openclaw_memory_config_set "agents.defaults.memorySearch.provider" "local" >/dev/null 2>&1
+				;;
+			*)
+				echo "❌ Unknown solution:$scheme"
+				return 1
+			esac
+		echo "✅ Memory scheme configuration has been updated"
+		return 0
+	}
+
+	openclaw_memory_offer_restart() {
+		echo "The configuration has been written and needs to be restarted to take effect after the OpenClaw gateway is restarted."
+		read -e -p "Restart OpenClaw Gateway now? (Y/n):" restart_choice
+		if [[ "$restart_choice" =~ ^[Nn]$ ]]; then
+			echo "Restart skipped, can be performed later: openclaw gateway restart"
+			return 0
+		fi
+		if declare -F start_gateway >/dev/null 2>&1; then
+			start_gateway
+		else
+			openclaw gateway restart
+		fi
+	}
+
+	openclaw_memory_fix_index() {
+		local backend
+		backend=$(openclaw_memory_get_backend)
+		if [ "$backend" = "qmd" ] && ! command -v qmd >/dev/null 2>&1; then
+			echo "⚠️ The current scheme is detected as QMD, but the qmd command is not installed."
+			echo "You can switch to Local, or install bun + qmd and try again."
+		fi
+		echo "Applicable scenarios: Indexed numerator > denominator (repeated collections lead to abnormal counting)"
+		read -e -p "Are you sure you set includeDefaultMemory to false? (y/N):" confirm_fix
+		if [[ ! "$confirm_fix" =~ ^[Yy]$ ]]; then
+			echo "Canceled."
+			break_end
+			return 0
+		fi
+		openclaw_memory_config_set "memory.qmd.includeDefaultMemory" false
+		if [ $? -ne 0 ]; then
+			echo "❌ Failed to write configuration"
+			break_end
+			return 1
+		fi
+		echo "✅ includeDefaultMemory=false set"
+		echo "Recommended execution: Clean and rebuild the index"
+		read -e -p "Do you want to clean and rebuild the index (recommended)? (Y/n):" rebuild_choice
+		if [[ ! "$rebuild_choice" =~ ^[Nn]$ ]]; then
+			openclaw_memory_rebuild_index_safe
+		else
+			echo "The status can be viewed later in memory management."
+		fi
+		break_end
+	}
+
+	openclaw_memory_scheme_menu() {
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw memory solution"
+			echo "======================================="
+			local backend current_label
+			backend=$(openclaw_memory_get_backend)
+			case "$backend" in
+				qmd) current_label="QMD" ;;
+				builtin|local) current_label="Local" ;;
+				*) current_label="Not configured" ;;
+			esac
+			echo "Current plan:$current_label"
+			echo ""
+			echo "QMD: lightweight index, relying on the qmd command (suitable for network constraints)"
+			echo "Local: local vector retrieval, dependent on embedding model file"
+			echo "Auto: automatic recommendation (based on availability + network detection)"
+			echo "---------------------------------------"
+			echo "1. Switch QMD (automatic deployment/skip if already installed)"
+			echo "2. Switch to Local (automatic deployment/skip if already installed)"
+			echo "3. Auto (automatic recommendation and automatic deployment)"
+			echo "0. Return to the previous level"
+			echo "---------------------------------------"
+			read -e -p "Please enter your choice:" scheme_choice
+			case "$scheme_choice" in
+				1)
+					openclaw_memory_auto_setup_run "qmd"
+					break_end
+					;;
+				2)
+					openclaw_memory_auto_setup_run "local"
+					break_end
+					;;
+				3)
+					openclaw_memory_auto_setup_run "auto"
+					break_end
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "Invalid selection, please try again."
+					sleep 1
+					;;
+			esac
+		done
+	}
+
+	openclaw_memory_file_collect() {
+		OPENCLAW_MEMORY_FILES=()
+		local base_dir="${HOME}/.openclaw/workspace"
+		local memory_dir="$base_dir/memory"
+		local memory_file="$base_dir/MEMORY.md"
+		[ -f "$memory_file" ] && OPENCLAW_MEMORY_FILES+=("$memory_file")
+		if [ -d "$memory_dir" ]; then
+			while IFS= read -r file; do
+				[ -f "$file" ] && OPENCLAW_MEMORY_FILES+=("$file")
+			done < <(find "$memory_dir" -type f -name '*.md' | sort)
+		fi
+	}
+
+	openclaw_memory_file_render_list() {
+		local base_dir="${HOME}/.openclaw/workspace"
+		openclaw_memory_file_collect
+		if [ ${#OPENCLAW_MEMORY_FILES[@]} -eq 0 ]; then
+			echo "Memory file not found."
+			return 0
+		fi
+		echo "number | relative path | size | modification time"
+		echo "---------------------------------------"
+		local i file rel size mtime
+		for i in "${!OPENCLAW_MEMORY_FILES[@]}"; do
+			file="${OPENCLAW_MEMORY_FILES[$i]}"
+			rel="${file#$base_dir/}"
+			size=$(ls -lh "$file" | awk '{print $5}')
+			mtime=$(date -d "$(stat -c %y "$file")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file" | awk '{print $1" "$2}')
+			printf "%s | %s | %s | %s\\n" "$((i+1))" "$rel" "$size" "$mtime"
+		done
+	}
+
+	openclaw_memory_view_file() {
+		local file="$1"
+		[ -f "$file" ] || {
+			echo "❌ File does not exist:$file"
+			return 1
+		}
+		local total_lines
+		total_lines=$(wc -l < "$file" 2>/dev/null || echo 0)
+		local default_lines=120
+		local start_line count
+		echo "document:$file"
+		echo "Total number of rows:$total_lines"
+		read -e -p "Please enter the starting line (Press Enter to default to the end of$default_linesOK):" start_line
+		read -e -p "Please enter the number of rows to display (default is to press Enter$default_lines）: " count
+		[ -z "$count" ] && count=$default_lines
+		if [ -z "$start_line" ]; then
+			if [ "$total_lines" -le "$count" ]; then
+				start_line=1
+			else
+				start_line=$((total_lines - count + 1))
+			fi
+		fi
+		if ! [[ "$start_line" =~ ^[0-9]+$ ]] || ! [[ "$count" =~ ^[0-9]+$ ]]; then
+			echo "❌ Please enter a valid number."
+			return 1
+		fi
+		if [ "$start_line" -lt 1 ]; then
+			start_line=1
+		fi
+		if [ "$count" -le 0 ]; then
+			echo "❌ The number of rows must be greater than 0."
+			return 1
+		fi
+		local end_line=$((start_line + count - 1))
+		if [ "$end_line" -gt "$total_lines" ]; then
+			end_line=$total_lines
+		fi
+		if [ "$total_lines" -eq 0 ]; then
+			echo "(empty file)"
+			return 0
+		fi
+		echo "---------------------------------------"
+		sed -n "${start_line},${end_line}p" "$file"
+		echo "---------------------------------------"
+	}
+
+	openclaw_memory_files_menu() {
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw memory file"
+			echo "======================================="
+			openclaw_memory_file_render_list
+			echo "---------------------------------------"
+			read -e -p "Please enter the file number to view (return 0):" file_choice
+			if [ "$file_choice" = "0" ]; then
+				return 0
+			fi
+			if ! [[ "$file_choice" =~ ^[0-9]+$ ]]; then
+				echo "Invalid selection, please try again."
+				sleep 1
+				continue
+			fi
+			openclaw_memory_file_collect
+			if [ ${#OPENCLAW_MEMORY_FILES[@]} -eq 0 ]; then
+				read -p "Memory file not found, press Enter to return..."
+				return 0
+			fi
+			local idx=$((file_choice-1))
+			if [ "$idx" -lt 0 ] || [ "$idx" -ge ${#OPENCLAW_MEMORY_FILES[@]} ]; then
+				echo "Invalid number, please try again."
+				sleep 1
+				continue
+			fi
+			openclaw_memory_view_file "${OPENCLAW_MEMORY_FILES[$idx]}"
+			read -p "Press Enter to return to the list..."
+			done
+	}
+
+	openclaw_memory_menu() {
+		send_stats "OpenClaw memory management"
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw memory management"
+			echo "======================================="
+			openclaw_memory_render_status
+			echo "1. Update memory index"
+			echo "2. View memory files"
+			echo "3. Index repair (Indexed exception)"
+			echo "4. Memory solution (QMD/Local/Auto)"
+			echo "0. Return to the previous level"
+			echo "---------------------------------------"
+			read -e -p "Please enter your choice:" memory_choice
+			case "$memory_choice" in
+				1)
+					echo "The memory index will be updated soon."
+					read -e -p "First confirmation: Enter yes to continue:" confirm_step1
+					if [ "$confirm_step1" != "yes" ]; then
+						echo "Canceled."
+						break_end
+						continue
+					fi
+				openclaw_memory_prepare_workspace
+				read -e -p "Secondary confirmation: Enter force to use the full amount (leave blank for increment):" confirm_step2
+				if [ "$confirm_step2" = "force" ]; then
+					echo "⚠️ Full reconstruction is more thorough, but takes longer."
+					echo "Recommendation: Enter rebuild for safe reconstruction (back up the index database first)."
+					read -e -p "Third confirmation: Enter rebuild to perform a safe rebuild; press Enter to continue with normal force:" confirm_step3
+					if [ "$confirm_step3" = "rebuild" ]; then
+						openclaw_memory_rebuild_index_safe
+					else
+						openclaw memory index --force
+						openclaw gateway restart
+						echo "✅ The index has been rebuilt and the gateway has been automatically restarted."
+					fi
+				else
+					openclaw memory index
+				fi
+				break_end
+					;;
+				2)
+					openclaw_memory_files_menu
+					;;
+				3)
+					openclaw_memory_fix_index
+					;;
+				4)
+					openclaw_memory_scheme_menu
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "Invalid selection, please try again."
+					sleep 1
+					;;
+			esac
+		done
+	}
+
+	openclaw_backup_restore_menu() {
+
+		send_stats "OpenClaw backup and restore"
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw Backup and Restore"
+			echo "======================================="
+			openclaw_backup_render_file_list
+			echo "---------------------------------------"
+			echo "1. Back up the entire memory"
+			echo "2. Restore the full memory"
+			echo "3. Back up the OpenClaw project (default safe mode)"
+			echo "4. Restore OpenClaw Project (Advanced/High Risk)"
+			echo "5. Delete backup files"
+			echo "0. Return to the previous level"
+			echo "---------------------------------------"
+			read -e -p "Please enter your choice:" backup_choice
+
+			case "$backup_choice" in
+				1) openclaw_memory_backup_export ;;
+				2) openclaw_memory_backup_import ;;
+				3) openclaw_project_backup_export ;;
+				4) openclaw_project_backup_import ;;
+				5) openclaw_backup_delete_file ;;
+				0) return 0 ;;
+				*)
+					echo "Invalid selection, please try again."
+					sleep 1
+					;;
+			esac
+		done
+	}
+
+
 	update_moltbot() {
 		echo "Update OpenClaw..."
 		send_stats "Update OpenClaw..."
 		install_node_and_tools
+		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
 		npm install -g openclaw@latest
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
 		start_gateway
@@ -10703,7 +14023,7 @@ EOF
 			3) stop_bot ;;
 			4) view_logs ;;
 			5) change_model ;;
-			6) add-openclaw-provider-interactive ;;
+			6) openclaw_api_manage_menu ;;
 			7) change_tg_bot_code ;;
 			8) install_plugin ;;
 			9) install_skill ;;
@@ -10714,6 +14034,12 @@ EOF
 				;;
 			12) send_stats "Health detection and repair"
 				openclaw doctor --fix
+				send_stats "OpenClaw API synchronous triggering"
+				if sync_openclaw_api_models; then
+					start_gateway
+				else
+					echo "❌ API model synchronization failed, restarting the gateway has been aborted. Please check provider /models and try again after returning."
+				fi
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;
@@ -10721,8 +14047,10 @@ EOF
 				openclaw tui
 				break_end
 			 	;;
-			15) update_moltbot ;;
-			16) uninstall_moltbot ;;
+			15) openclaw_memory_menu ;;
+			16) openclaw_backup_restore_menu ;;
+			17) update_moltbot ;;
+			18) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
@@ -10833,7 +14161,7 @@ while true; do
 	  echo -e "${gl_kjlan}109. ${color109}ZFile online network disk${gl_kjlan}110. ${color110}Karakeep bookmark management"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}111. ${color111}Multi-format file conversion tool${gl_kjlan}112. ${color112}Lucky large intranet penetration tool"
-	  echo -e "${gl_kjlan}113. ${color113}Firefox browser${gl_kjlan}114. ${color114}ClawdBot/Moltbot robot${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}113. ${color113}Firefox browser${gl_kjlan}114. ${color114}OpenClaw bot management tool${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}Third-party application list"
   	  echo -e "${gl_kjlan}Want your app to appear here? Check out the developer guide:${gl_huang}https://dev.kejilion.sh/${gl_bai}"
@@ -13280,7 +16608,7 @@ while true; do
 
 		docker_rum() {
 
-			read -e -p "set up${docker_name}Login key (sk-a combination of letters and numbers starting with) such as: sk-159kejilionyyds163:" app_passwd
+			read -e -p "set up${docker_name}的登录密钥（sk-开头字母和数字组合）如: sk-159kejilionyyds163: " app_passwd
 
 			mkdir -p /home/docker/gpt-load && \
 			docker run -d --name gpt-load \
@@ -14516,14 +17844,9 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 			read -e -p "Do you want to transfer backup data to a remote server? (Y/N):" choice
 			case "$choice" in
 			  [Yy])
-				read -e -p "Please enter the remote server IP:" remote_ip
-				read -e -p "Target server SSH port [default 22]:" TARGET_PORT
-				local TARGET_PORT=${TARGET_PORT:-22}
-
-				if [ -z "$remote_ip" ]; then
-				  echo "Error: Please enter the remote server IP."
-				  continue
-				fi
+				kj_ssh_read_host_port "Please enter the remote server IP:" "Target server SSH port [default 22]:" "22"
+				local remote_ip="$KJ_SSH_HOST"
+				local TARGET_PORT="$KJ_SSH_PORT"
 				local latest_tar=$(ls -t /app*.tar.gz | head -1)
 				if [ -n "$latest_tar" ]; then
 				  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
@@ -14547,7 +17870,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 	  r)
 	  	root_use
 	  	send_stats "Restore all apps"
-	  	echo "Available app backups"
+	  	echo "Available application backups"
 	  	echo "-------------------------"
 	  	ls -lt /app*.gz | awk '{print $NF}'
 	  	echo ""
@@ -14620,7 +17943,7 @@ linux_work() {
 	  echo -e "${gl_kjlan}2.   ${gl_bai}Work Area 2"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}Work Area 3"
 	  echo -e "${gl_kjlan}4.   ${gl_bai}Work Area 4"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}Work Area 5"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}Workspace No. 5"
 	  echo -e "${gl_kjlan}6.   ${gl_bai}Work Area 6"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}Work Area 7"
 	  echo -e "${gl_kjlan}8.   ${gl_bai}Work Area 8"
@@ -14799,7 +18122,7 @@ switch_mirror() {
 	local country
 	country=$(curl -s ipinfo.io/country)
 
-	echo "检测到国家：$country"
+	echo "Countries detected:$country"
 
 	if [ "$country" = "CN" ]; then
 		echo "Use domestic mirror sources..."
@@ -15018,7 +18341,7 @@ log_menu() {
 		case $choice in
 			1)
 				send_stats "View recent logs"
-				read -erp "View the most recent log lines? [Default 100]:" lines
+				read -erp "How many recent log lines have you viewed? [Default 100]:" lines
 				lines=${lines:-100}
 				journalctl -n "$lines" --no-pager
 				read -erp "Press Enter to continue..."
@@ -15363,7 +18686,7 @@ linux_Settings() {
 			echo "python version management"
 			echo "Video introduction: https://www.bilibili.com/video/BV1Pm42157cK?t=0.1"
 			echo "---------------------------------------"
-			echo "This function can seamlessly install any version officially supported by python!"
+			echo "This function can seamlessly install any version officially supported by Python!"
 			local VERSION=$(python3 -V 2>&1 | awk '{print $2}')
 			echo -e "Current python version number:${gl_huang}$VERSION${gl_bai}"
 			echo "------------"
@@ -15549,8 +18872,8 @@ EOF
 						;;
 					2)
 						rm -f /etc/gai.conf
-						echo "Switched to IPv6 first"
-						send_stats "Switched to IPv6 first"
+						echo "Switched to IPv6 priority"
+						send_stats "Switched to IPv6 priority"
 						;;
 
 					3)
@@ -16056,7 +19379,7 @@ EOF
 				case "$Limiting" in
 				  1)
 					# Enter new virtual memory size
-					echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出。"
+					echo "If the actual server only has 100G traffic, you can set the threshold to 95G and shut down in advance to avoid traffic errors or overflows."
 					read -e -p "Please enter the inbound traffic threshold (unit is G, default is 100G):" rx_threshold_gb
 					rx_threshold_gb=${rx_threshold_gb:-100}
 					read -e -p "Please enter the outbound traffic threshold (unit is G, default is 100G):" tx_threshold_gb
@@ -16585,26 +19908,13 @@ linux_file() {
 					continue
 				fi
 
-				read -e -p "Please enter the remote server IP:" remote_ip
-				if [ -z "$remote_ip" ]; then
-					echo "Error: Please enter the remote server IP."
-					send_stats "File transfer failed: Remote server IP not entered"
-					continue
-				fi
+				kj_ssh_read_host_user_port "Please enter the remote server IP:" "Please enter the remote server username (default root):" "Please enter the login port (default 22):" "root" "22"
+				local remote_ip="$KJ_SSH_HOST"
+				local remote_user="$KJ_SSH_USER"
+				local remote_port="$KJ_SSH_PORT"
 
-				read -e -p "Please enter the remote server username (default root):" remote_user
-				remote_user=${remote_user:-root}
-
-				read -e -p "Please enter the remote server password:" -s remote_password
-				echo
-				if [ -z "$remote_password" ]; then
-					echo "Error: Please enter the remote server password."
-					send_stats "File transfer failed: Remote server password not entered"
-					continue
-				fi
-
-				read -e -p "Please enter the login port (default 22):" remote_port
-				remote_port=${remote_port:-22}
+				kj_ssh_read_password "Please enter the remote server password:"
+				local remote_password="$KJ_SSH_PASSWORD"
 
 				# Clear old entries for known hosts
 				ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
@@ -16822,7 +20132,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 6.9 dollars per month Tokyo Softbank 2 cores 1G memory 20G hard drive 1T traffic per month${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}More popular VPS deals${gl_bai}"
+echo -e "${gl_kjlan}More popular VPS offers${gl_bai}"
 echo -e "${gl_bai}Website: https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -17061,7 +20371,7 @@ done
 
 
 k_info() {
-send_stats "k命令参考用例"
+send_stats "k command reference examples"
 echo "-------------------"
 echo "Video introduction: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "The following is a reference use case for the k command:"
