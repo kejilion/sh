@@ -11371,7 +11371,7 @@ PY
 			echo "1. 添加API"
 			echo "2. 同步API供应商模型列表"
 			echo "3. 删除API"
-			echo "4. 切换 API 类型（responses / completions）"
+			echo "4. 切换 API 类型（completions / responses）"
 			echo "0. 退出"
 			echo "---------------------------------------"
 			read -erp "请输入你的选择: " api_choice
