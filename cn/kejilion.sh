@@ -11683,7 +11683,7 @@ REPO
 					--cursor-text.foreground "$orange" \
 					--match.foreground "$orange" \
 					--header "" \
-					--height 45)
+					--height 35)
 
 				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -iqE '^(error|usage|gum:)'; then
 					echo "操作已取消，正在退出..."
