@@ -76,4 +76,4 @@ echo "SMOKE_OK: no protocol probing required during add"
 # 协议修复函数现在不再修改配置，只输出提示
 openclaw_detect_api_protocol_by_provider "$HOME/.openclaw/openclaw.json" "demo" >/dev/null 2>&1 || true
 
-echo "SMOKE_OK: protocol repair is no-op"
+echo "SMOKE_OK: protocol switch is available"

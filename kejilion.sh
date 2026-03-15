@@ -11127,7 +11127,7 @@ openclaw_detect_api_protocol_by_provider() {
 
 fix-openclaw-provider-protocol-interactive() {
 	local config_file="${HOME}/.openclaw/openclaw.json"
-	send_stats "OpenClaw API协议修复"
+	send_stats "OpenClaw API协议切换"
 
 	if [ ! -f "$config_file" ]; then
 		echo "❌ 未找到配置文件: $config_file"
@@ -11135,30 +11135,75 @@ fix-openclaw-provider-protocol-interactive() {
 		return 1
 	fi
 
-	read -erp "请输入要修复协议的 API 名称(provider): " provider_name
+	read -erp "请输入要切换协议的 API 名称(provider): " provider_name
 	if [ -z "$provider_name" ]; then
 		echo "❌ provider 名称不能为空"
 		break_end
 		return 1
 	fi
 
-	# 不再探测/纠正协议
-	install jq curl >/dev/null 2>&1
-	openclaw_detect_api_protocol_by_provider "$config_file" "$provider_name"
+	echo "请选择要设置的 API 类型："
+	echo "1. openai-completions"
+	echo "2. openai-responses"
+	read -erp "请输入你的选择 (1/2): " proto_choice
+
+	local new_api=""
+	case "$proto_choice" in
+		1) new_api="openai-completions" ;;
+		2) new_api="openai-responses" ;;
+		*)
+			echo "❌ 无效选择"
+			break_end
+			return 1
+			;;
+	esac
+
+	install python3 >/dev/null 2>&1
+
+	python3 - "$config_file" "$provider_name" "$new_api" <<'PY'
+import copy
+import json
+import sys
+
+path = sys.argv[1]
+name = sys.argv[2]
+new_api = sys.argv[3]
+
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
+if new_api not in SUPPORTED_APIS:
+    print('❌ 非法协议值')
+    raise SystemExit(3)
+
+with open(path, 'r', encoding='utf-8') as f:
+    obj = json.load(f)
+
+work = copy.deepcopy(obj)
+providers = ((work.get('models') or {}).get('providers') or {})
+if not isinstance(providers, dict) or name not in providers or not isinstance(providers.get(name), dict):
+    print(f'❌ 未找到 provider: {name}')
+    raise SystemExit(2)
+
+providers[name]['api'] = new_api
+
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(work, f, ensure_ascii=False, indent=2)
+    f.write('\n')
+
+print(f'✅ 已更新 provider {name} 协议为: {new_api}')
+PY
 	local rc=$?
 	case "$rc" in
 		0)
-			echo "✅ 协议已检测并更新（如有变更）"
 			start_gateway
 			;;
 		2)
-			echo "❌ 修复失败：provider 不存在或未配置"
+			echo "❌ 切换失败：provider 不存在或未配置"
 			;;
 		3)
-			echo "❌ 修复失败：provider 配置不完整"
+			echo "❌ 切换失败：协议值非法"
 			;;
 		*)
-			echo "❌ 修复失败：请检查配置文件结构或日志输出"
+			echo "❌ 切换失败：请检查配置文件结构或日志输出"
 			;;
 	esac
 
@@ -11326,7 +11371,7 @@ PY
 			echo "1. 添加API"
 			echo "2. 同步API供应商模型列表"
 			echo "3. 删除API"
-			echo "4. 协议修复/重新探测"
+			echo "4. 切换 API 类型（手动设置协议）"
 			echo "0. 退出"
 			echo "---------------------------------------"
 			read -erp "请输入你的选择: " api_choice
