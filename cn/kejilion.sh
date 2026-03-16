@@ -10481,8 +10481,8 @@ PY
 			npm config set registry https://registry.npmmirror.com
 		fi
 
-		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
-		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
+		git config --global url."${gh_proxy}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_proxy}github.com/".insteadOf git@github.com:
 
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
@@ -13669,8 +13669,8 @@ EOF
 		echo "更新 OpenClaw..."
 		send_stats "更新 OpenClaw..."
 		install_node_and_tools
-		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
-		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
+		git config --global url."${gh_proxy}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_proxy}github.com/".insteadOf git@github.com:
 		npm install -g openclaw@latest
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
 		start_gateway
