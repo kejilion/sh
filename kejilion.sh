@@ -10389,15 +10389,6 @@ for name, provider in list(providers.items()):
     removed_ids = [mid for mid in local_ids if mid not in remote_set]
     added_ids = [mid for mid in remote_ids if mid not in local_set]
 
-    if added_ids:
-        summary.append(f'➕ 新增模型({len(added_ids)}):')
-        for mid in added_ids:
-            summary.append(f'  + {mid}')
-    if removed_ids:
-        summary.append(f'➖ 删除模型({len(removed_ids)}):')
-        for mid in removed_ids:
-            summary.append(f'  - {mid}')
-
     kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
     new_models = kept_models[:]
 
@@ -10445,6 +10436,16 @@ for name, provider in list(providers.items()):
         changed = True
 
     summary.append(f'✅ {name}: 删除 {len(removed_ids)} 个，新增 {len(added_ids)} 个，当前 {len(new_models)} 个')
+
+    if added_ids:
+        summary.append(f'➕ 新增模型({len(added_ids)}):')
+        for mid in added_ids:
+            summary.append(f'  + {mid}')
+    if removed_ids:
+        summary.append(f'➖ 删除模型({len(removed_ids)}):')
+        for mid in removed_ids:
+            summary.append(f'  - {mid}')
+
 
 if fatal_errors:
     for line in summary:
@@ -11025,15 +11026,6 @@ if template is None:
 removed_ids = [mid for mid in local_ids if mid not in remote_set]
 added_ids = [mid for mid in remote_ids if mid not in local_set]
 
-if added_ids:
-    print(f'➕ 新增模型({len(added_ids)}):')
-    for mid in added_ids:
-        print(f'  + {mid}')
-if removed_ids:
-    print(f'➖ 删除模型({len(removed_ids)}):')
-    for mid in removed_ids:
-        print(f'  - {mid}')
-
 kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
 new_models = kept_models[:]
 for mid in added_ids:
@@ -11087,6 +11079,16 @@ if changed:
         f.write('\n')
 
 print(f'✅ {target}: 删除 {len(removed_ids)} 个，新增 {len(added_ids)} 个，当前 {len(new_models)} 个')
+
+if added_ids:
+    print(f'➕ 新增模型({len(added_ids)}):')
+    for mid in added_ids:
+        print(f'  + {mid}')
+if removed_ids:
+    print(f'➖ 删除模型({len(removed_ids)}):')
+    for mid in removed_ids:
+        print(f'  - {mid}')
+
 if changed:
     print('✅ 指定 provider 模型一致性同步完成并已写入配置')
 else:
