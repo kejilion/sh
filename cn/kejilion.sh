@@ -11484,10 +11484,142 @@ REPO
 
 		local orange="#FF8C00"
 
+		openclaw_model_probe() {
+			local target_model="$1"
+			local probe_timeout=25
+			local tmp_payload tmp_response http_code curl_exit latency_ms reply_preview reply_trimmed
+			local oc_config provider_name base_url api_key
+
+			oc_config="${HOME}/.openclaw/openclaw.json"
+			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
+			[ ! -f "$oc_config" ] && {
+				OPENCLAW_PROBE_STATUS="ERROR"
+				OPENCLAW_PROBE_MESSAGE="未找到 openclaw 配置文件"
+				OPENCLAW_PROBE_LATENCY="-"
+				OPENCLAW_PROBE_REPLY="-"
+				return 1
+			}
+
+			provider_name="${target_model%%/*}"
+			base_url=$(jq -r --arg provider "$provider_name" '.providers[$provider].baseURL // empty' "$oc_config" 2>/dev/null)
+			api_key=$(jq -r --arg provider "$provider_name" '.providers[$provider].apiKey // empty' "$oc_config" 2>/dev/null)
+			if [ -z "$provider_name" ] || [ -z "$base_url" ] || [ -z "$api_key" ]; then
+				OPENCLAW_PROBE_STATUS="ERROR"
+				OPENCLAW_PROBE_MESSAGE="未读取到 provider/baseURL/apiKey"
+				OPENCLAW_PROBE_LATENCY="-"
+				OPENCLAW_PROBE_REPLY="-"
+				return 1
+			fi
+
+			base_url="${base_url%/}"
+			tmp_payload=$(mktemp)
+			tmp_response=$(mktemp)
+			printf '{"model":"%s","messages":[{"role":"user","content":"hi"}],"temperature":0,"max_tokens":16}' "$target_model" > "$tmp_payload"
+
+			latency_ms=$(python3 - "$base_url" "$api_key" "$tmp_payload" "$tmp_response" "$probe_timeout" <<'PYTHON_EOF'
+import json
+import os
+import sys
+import time
+import urllib.error
+import urllib.request
+
+base_url, api_key, payload_path, response_path, timeout = sys.argv[1:6]
+timeout = int(timeout)
+url = base_url + '/chat/completions'
+payload = open(payload_path, 'rb').read()
+req = urllib.request.Request(
+    url,
+    data=payload,
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+    },
+    method='POST',
+)
+start = time.time()
+body = b''
+status = 0
+exit_code = 0
+try:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        status = getattr(resp, 'status', 200)
+        body = resp.read()
+except urllib.error.HTTPError as e:
+    status = getattr(e, 'code', 0) or 0
+    body = e.read()
+    exit_code = 22
+except Exception as e:
+    body = str(e).encode('utf-8', errors='replace')
+    exit_code = 1
+elapsed = int((time.time() - start) * 1000)
+with open(response_path, 'wb') as f:
+    f.write(body)
+print(f"{exit_code}|{status}|{elapsed}")
+PYTHON_EOF
+)
+			curl_exit=${latency_ms%%|*}
+			http_code=${latency_ms#*|}
+			http_code=${http_code%%|*}
+			latency_ms=${latency_ms##*|}
+
+			reply_preview=$(python3 - "$tmp_response" <<'PYTHON_EOF'
+import json
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+raw = path.read_text(encoding='utf-8', errors='replace').strip()
+reply = ''
+if raw:
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            choices = data.get('choices') or []
+            if choices and isinstance(choices[0], dict):
+                message = choices[0].get('message') or {}
+                if isinstance(message, dict):
+                    reply = message.get('content') or ''
+            if not reply:
+                for key in ('error', 'message', 'detail'):
+                    value = data.get(key)
+                    if isinstance(value, str) and value.strip():
+                        reply = value.strip()
+                        break
+                    if isinstance(value, dict):
+                        nested = value.get('message')
+                        if isinstance(nested, str) and nested.strip():
+                            reply = nested.strip()
+                            break
+    except Exception:
+        reply = raw
+reply = ' '.join(str(reply).split())
+print(reply)
+PYTHON_EOF
+)
+			rm -f "$tmp_payload" "$tmp_response"
+
+			reply_trimmed=$(printf '%s' "$reply_preview" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
+
+			if [ "$curl_exit" = "0" ] && [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+				OPENCLAW_PROBE_STATUS="OK"
+				OPENCLAW_PROBE_MESSAGE="HTTP ${http_code}"
+				OPENCLAW_PROBE_LATENCY="${latency_ms}ms"
+				OPENCLAW_PROBE_REPLY="$reply_trimmed"
+				return 0
+			fi
+
+			OPENCLAW_PROBE_STATUS="FAIL"
+			OPENCLAW_PROBE_MESSAGE="HTTP ${http_code:-0} / exit ${curl_exit:-1}"
+			OPENCLAW_PROBE_LATENCY="${latency_ms:-?}ms"
+			OPENCLAW_PROBE_REPLY="$reply_trimmed"
+			return 1
+		}
+
 		clear
 
 		while true; do
-			local models_raw models_list default_model model_count selected_model
+			local models_raw models_list default_model model_count selected_model confirm_switch
 
 			# 从配置文件读取模型键（不调用 openclaw models list）
 			local oc_config
@@ -11509,53 +11641,38 @@ REPO
 			default_model=$(jq -r '.agents.defaults.model.primary // empty' "$oc_config" 2>/dev/null)
 			[ -z "$default_model" ] && default_model="(unknown)"
 
-
 			install_gum
 			install gum
 
 			clear
 
-				# 若 gum 不存在，降级为原始手动输入流程（保持与之前完全一致）
+			# 若 gum 不存在，降级为原始手动输入流程
 			if ! command -v gum >/dev/null 2>&1; then
 				echo "--- 模型管理 ---"
 				echo "当前可用模型:"
 				jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d'
 				echo "----------------"
-				read -e -p "请输入要设置的模型名称 (例如 openrouter/openai/gpt-4o)（输入 0 退出）： " selected_model
+				read -e -p "请输入要测试并设置的模型名称（输入 0 退出）： " selected_model
 
-				# 1. 检查是否输入 0 以退出
 				if [ "$selected_model" = "0" ]; then
 					echo "操作已取消，正在退出..."
-					break  # 跳出 while 循环
+					break
 				fi
 
-				# 2. 验证输入是否为空
 				if [ -z "$selected_model" ]; then
 					echo "错误：模型名称不能为空。请重试。"
-					echo "" # 换行美化
-					continue # 跳过本次循环，重新开始
+					echo ""
+					continue
 				fi
 			else
 				gum style --foreground "$orange" --bold "模型管理"
 				gum style --foreground "$orange" "可用模型（Auth=yes）：${model_count}"
 				gum style --foreground "$orange" "当前默认：${default_model}"
 				echo ""
-
-				# 底部提示
-				gum style --faint "↑↓ 选择 / Enter 确认 / Esc 退出"
+				gum style --faint "↑↓ 选择 / Enter 测试 / Esc 退出"
 				echo ""
 
-				# gum filter：带搜索；gum 版本差异较大，这里只用兼容性最强的 flags
-				selected_model=$(echo "$models_list" | gum filter \
-					--placeholder "搜索模型（如 cli-api/gpt-5.2）" \
-					--prompt "选择模型 > " \
-					--indicator "➜ " \
-					--prompt.foreground "$orange" \
-					--indicator.foreground "$orange" \
-					--cursor-text.foreground "$orange" \
-					--match.foreground "$orange" \
-					--header "" \
-					--height 35)
+				selected_model=$(echo "$models_list" | gum filter 					--placeholder "搜索模型（如 cli-api/gpt-5.2）" 					--prompt "选择模型 > " 					--indicator "➜ " 					--prompt.foreground "$orange" 					--indicator.foreground "$orange" 					--cursor-text.foreground "$orange" 					--match.foreground "$orange" 					--header "" 					--height 35)
 
 				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -iqE '^(error|usage|gum:)'; then
 					echo "操作已取消，正在退出..."
@@ -11563,10 +11680,40 @@ REPO
 				fi
 			fi
 
-			# 去掉编号前缀："(10) model" -> "model"
 			selected_model=$(echo "$selected_model" | sed -E 's/^\([0-9]+\)[[:space:]]+//')
 
-			# 执行切换
+			echo ""
+			echo "正在检测模型: $selected_model"
+			if openclaw_model_probe "$selected_model"; then
+				echo "最小检测结果：可用"
+			else
+				echo "最小检测结果：不可用"
+			fi
+			echo "返回状态：$OPENCLAW_PROBE_MESSAGE"
+			echo "响应延迟：$OPENCLAW_PROBE_LATENCY"
+			echo "返回摘要：$OPENCLAW_PROBE_REPLY"
+			echo ""
+
+			if command -v gum >/dev/null 2>&1; then
+				if gum confirm --affirmative "切换" --negative "返回列表" "是否切换到该模型？"; then
+					confirm_switch="yes"
+				else
+					confirm_switch="no"
+				fi
+			else
+				read -e -p "是否切换到该模型？[y/N]: " confirm_switch
+				case "$confirm_switch" in
+					[yY]|[yY][eE][sS]) confirm_switch="yes" ;;
+					*) confirm_switch="no" ;;
+				esac
+			fi
+
+			if [ "$confirm_switch" != "yes" ]; then
+				echo "已返回模型选择列表。"
+				sleep 1
+				continue
+			fi
+
 			echo "正在切换模型为: $selected_model ..."
 			if ! openclaw models set "$selected_model"; then
 				echo "切换失败：openclaw models set 返回错误。"
@@ -11577,7 +11724,7 @@ REPO
 
 			break_end
 			done
-	}
+		}
 
 
 		resolve_openclaw_plugin_id() {
