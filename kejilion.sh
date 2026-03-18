@@ -11645,7 +11645,7 @@ PYTHON_EOF
 			clear
 
 			# 若 gum 不存在，降级为原始手动输入流程
-			if ! command -v gum >/dev/null 2>&1; then
+			if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
 				echo "--- 模型管理 ---"
 				echo "当前可用模型:"
 				jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d'
@@ -11676,7 +11676,7 @@ PYTHON_EOF
 			else
 				install_gum
 				install gum
-				if ! command -v gum >/dev/null 2>&1; then
+				if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
 					echo "gum 安装失败，返回旧版输入模式。"
 					sleep 1
 					continue
