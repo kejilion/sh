@@ -11502,8 +11502,8 @@ REPO
 
 			provider_name="${target_model%%/*}"
 			request_model="${target_model#*/}"
-			base_url=$(jq -r --arg provider "$provider_name" '.models[$provider].baseUrl // empty' "$oc_config" 2>/dev/null)
-			api_key=$(jq -r --arg provider "$provider_name" '.models[$provider].apiKey // empty' "$oc_config" 2>/dev/null)
+			base_url=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].baseUrl // empty' "$oc_config" 2>/dev/null)
+			api_key=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].apiKey // empty' "$oc_config" 2>/dev/null)
 			if [ -z "$provider_name" ] || [ -z "$base_url" ] || [ -z "$api_key" ]; then
 				OPENCLAW_PROBE_STATUS="ERROR"
 				OPENCLAW_PROBE_MESSAGE="未读取到 provider/baseUrl/apiKey"
