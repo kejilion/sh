@@ -11632,7 +11632,7 @@ PYTHON_EOF
 				fi
 				IFS= read -rsn1 first_key
 				if [ -z "$first_key" ]; then
-					printf '%s' "$current_choice"
+					OPENCLAW_CONFIRM_SWITCH="$current_choice"
 					return 0
 				fi
 				if [ "$first_key" = $'' ]; then
@@ -11646,7 +11646,7 @@ PYTHON_EOF
 							fi
 							;;
 						'')
-							printf 'no'
+							OPENCLAW_CONFIRM_SWITCH="no"
 							return 0
 							;;
 					esac
@@ -11748,7 +11748,9 @@ PYTHON_EOF
 			echo ""
 
 			if command -v gum >/dev/null 2>&1 && gum --version >/dev/null 2>&1; then
-				confirm_switch=$(openclaw_confirm_switch)
+				OPENCLAW_CONFIRM_SWITCH=""
+				openclaw_confirm_switch
+				confirm_switch="$OPENCLAW_CONFIRM_SWITCH"
 				[ -z "$confirm_switch" ] && confirm_switch="no"
 			else
 				read -e -p "是否切换到该模型？[yes/NO]: " confirm_switch
