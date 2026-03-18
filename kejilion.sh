@@ -11642,9 +11642,6 @@ PYTHON_EOF
 			default_model=$(jq -r '.agents.defaults.model.primary // empty' "$oc_config" 2>/dev/null)
 			[ -z "$default_model" ] && default_model="(unknown)"
 
-			install_gum
-			install gum
-
 			clear
 
 			# 若 gum 不存在，降级为原始手动输入流程
@@ -11677,6 +11674,13 @@ PYTHON_EOF
 				break_end
 				return 0
 			else
+				install_gum
+				install gum
+				if ! command -v gum >/dev/null 2>&1; then
+					echo "gum 安装失败，返回旧版输入模式。"
+					sleep 1
+					continue
+				fi
 				gum style --foreground "$orange" --bold "模型管理"
 				gum style --foreground "$orange" "可用模型（Auth=yes）：${model_count}"
 				gum style --foreground "$orange" "当前默认：${default_model}"
