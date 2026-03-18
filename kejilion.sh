@@ -11501,8 +11501,11 @@ REPO
 		openclaw_model_probe() {
 			local target_model="$1"
 			local probe_timeout=25
-			local tmp_payload tmp_response http_code curl_exit latency_ms reply_preview reply_trimmed
+			local tmp_payload tmp_response probe_result probe_status reply_preview reply_trimmed
 			local oc_config provider_name base_url api_key request_model
+			local first_endpoint second_endpoint
+			local first_exit first_http first_latency second_exit second_http second_latency
+			local first_reply second_reply
 
 			oc_config="${HOME}/.openclaw/openclaw.json"
 			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
@@ -11527,21 +11530,80 @@ REPO
 			fi
 
 			base_url="${base_url%/}"
-			tmp_payload=$(mktemp)
-			tmp_response=$(mktemp)
-			printf '{"model":"%s","messages":[{"role":"user","content":"hi"}],"temperature":0,"max_tokens":16}' "$request_model" > "$tmp_payload"
+			first_endpoint="/chat/completions"
+			second_endpoint="/responses"
 
-			latency_ms=$(python3 - "$base_url" "$api_key" "$tmp_payload" "$tmp_response" "$probe_timeout" <<'PYTHON_EOF'
+			openclaw_extract_probe_reply() {
+				python3 - "$1" <<'PYTHON_EOF'
 import json
-import os
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+raw = path.read_text(encoding='utf-8', errors='replace').strip()
+reply = ''
+if raw:
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            choices = data.get('choices') or []
+            if choices and isinstance(choices[0], dict):
+                message = choices[0].get('message') or {}
+                if isinstance(message, dict):
+                    reply = message.get('content') or ''
+            if not reply:
+                output = data.get('output') or []
+                if isinstance(output, list):
+                    texts = []
+                    for item in output:
+                        if not isinstance(item, dict):
+                            continue
+                        for content in item.get('content') or []:
+                            if not isinstance(content, dict):
+                                continue
+                            text = content.get('text')
+                            if isinstance(text, str) and text.strip():
+                                texts.append(text.strip())
+                        if texts:
+                            break
+                    if texts:
+                        reply = ' '.join(texts)
+            if not reply:
+                for key in ('error', 'message', 'detail'):
+                    value = data.get(key)
+                    if isinstance(value, str) and value.strip():
+                        reply = value.strip()
+                        break
+                    if isinstance(value, dict):
+                        nested = value.get('message')
+                        if isinstance(nested, str) and nested.strip():
+                            reply = nested.strip()
+                            break
+    except Exception:
+        reply = raw
+reply = ' '.join(str(reply).split())
+print(reply)
+PYTHON_EOF
+			}
+
+			openclaw_run_probe() {
+				local endpoint="$1"
+				tmp_payload=$(mktemp)
+				tmp_response=$(mktemp)
+				if [ "$endpoint" = "/responses" ]; then
+					printf '{"model":"%s","input":"hi","temperature":0,"max_output_tokens":16}' "$request_model" > "$tmp_payload"
+				else
+					printf '{"model":"%s","messages":[{"role":"user","content":"hi"}],"temperature":0,"max_tokens":16}' "$request_model" > "$tmp_payload"
+				fi
+
+				probe_result=$(python3 - "$base_url" "$api_key" "$tmp_payload" "$tmp_response" "$probe_timeout" "$endpoint" <<'PYTHON_EOF'
 import sys
 import time
 import urllib.error
 import urllib.request
 
-base_url, api_key, payload_path, response_path, timeout = sys.argv[1:6]
+base_url, api_key, payload_path, response_path, timeout, endpoint = sys.argv[1:7]
 timeout = int(timeout)
-url = base_url + '/chat/completions'
+url = base_url + endpoint
 payload = open(payload_path, 'rb').read()
 req = urllib.request.Request(
     url,
@@ -11573,60 +11635,55 @@ with open(response_path, 'wb') as f:
 print(f"{exit_code}|{status}|{elapsed}")
 PYTHON_EOF
 )
-			curl_exit=${latency_ms%%|*}
-			http_code=${latency_ms#*|}
-			http_code=${http_code%%|*}
-			latency_ms=${latency_ms##*|}
+				probe_status=$?
+				reply_preview=$(openclaw_extract_probe_reply "$tmp_response")
+				rm -f "$tmp_payload" "$tmp_response"
+				return $probe_status
+			}
 
-			reply_preview=$(python3 - "$tmp_response" <<'PYTHON_EOF'
-import json
-import sys
-from pathlib import Path
-path = Path(sys.argv[1])
-raw = path.read_text(encoding='utf-8', errors='replace').strip()
-reply = ''
-if raw:
-    try:
-        data = json.loads(raw)
-        if isinstance(data, dict):
-            choices = data.get('choices') or []
-            if choices and isinstance(choices[0], dict):
-                message = choices[0].get('message') or {}
-                if isinstance(message, dict):
-                    reply = message.get('content') or ''
-            if not reply:
-                for key in ('error', 'message', 'detail'):
-                    value = data.get(key)
-                    if isinstance(value, str) and value.strip():
-                        reply = value.strip()
-                        break
-                    if isinstance(value, dict):
-                        nested = value.get('message')
-                        if isinstance(nested, str) and nested.strip():
-                            reply = nested.strip()
-                            break
-    except Exception:
-        reply = raw
-reply = ' '.join(str(reply).split())
-print(reply)
-PYTHON_EOF
-)
-			rm -f "$tmp_payload" "$tmp_response"
+			openclaw_run_probe "$first_endpoint"
+			first_exit=${probe_result%%|*}
+			first_http=${probe_result#*|}
+			first_http=${first_http%%|*}
+			first_latency=${probe_result##*|}
+			first_reply="$reply_preview"
 
-			reply_trimmed=$(printf '%s' "$reply_preview" | cut -c1-120)
+			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
 			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
 
-			if [ "$curl_exit" = "0" ] && [ "$http_code" -ge 200 ] && [ "$http_code" -lt 300 ]; then
+			if [ "$first_exit" = "0" ] && [ "$first_http" -ge 200 ] && [ "$first_http" -lt 300 ]; then
 				OPENCLAW_PROBE_STATUS="OK"
-				OPENCLAW_PROBE_MESSAGE="HTTP ${http_code}"
-				OPENCLAW_PROBE_LATENCY="${latency_ms}ms"
+				OPENCLAW_PROBE_MESSAGE="${first_endpoint} -> HTTP ${first_http}"
+				OPENCLAW_PROBE_LATENCY="${first_latency}ms"
 				OPENCLAW_PROBE_REPLY="$reply_trimmed"
 				return 0
 			fi
 
+			openclaw_run_probe "$second_endpoint"
+			second_exit=${probe_result%%|*}
+			second_http=${probe_result#*|}
+			second_http=${second_http%%|*}
+			second_latency=${probe_result##*|}
+			second_reply="$reply_preview"
+
+			reply_trimmed=$(printf '%s' "$second_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
+
+			if [ "$second_exit" = "0" ] && [ "$second_http" -ge 200 ] && [ "$second_http" -lt 300 ]; then
+				OPENCLAW_PROBE_STATUS="OK"
+				OPENCLAW_PROBE_MESSAGE="${first_endpoint} -> HTTP ${first_http:-0}，切换 ${second_endpoint} -> HTTP ${second_http}"
+				OPENCLAW_PROBE_LATENCY="${second_latency}ms"
+				OPENCLAW_PROBE_REPLY="$reply_trimmed"
+				return 0
+			fi
+
+			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed=$(printf '%s' "$second_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
+
 			OPENCLAW_PROBE_STATUS="FAIL"
-			OPENCLAW_PROBE_MESSAGE="HTTP ${http_code:-0} / exit ${curl_exit:-1}"
-			OPENCLAW_PROBE_LATENCY="${latency_ms:-?}ms"
+			OPENCLAW_PROBE_MESSAGE="${first_endpoint} -> HTTP ${first_http:-0} / exit ${first_exit:-1}；${second_endpoint} -> HTTP ${second_http:-0} / exit ${second_exit:-1}"
+			OPENCLAW_PROBE_LATENCY="${first_latency:-?}ms -> ${second_latency:-?}ms"
 			OPENCLAW_PROBE_REPLY="$reply_trimmed"
 			return 1
 		}
