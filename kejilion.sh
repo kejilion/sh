@@ -11710,16 +11710,18 @@ PYTHON_EOF
 			echo "返回摘要：$OPENCLAW_PROBE_REPLY"
 			echo ""
 
-			if command -v gum >/dev/null 2>&1; then
-				if gum confirm --affirmative "切换" --negative "返回列表" "是否切换到该模型？"; then
-					confirm_switch="yes"
-				else
-					confirm_switch="no"
-				fi
+			if command -v gum >/dev/null 2>&1 && gum --version >/dev/null 2>&1; then
+				confirm_switch=$(printf '%s
+' "yes" "no" | gum choose \
+					--cursor "> " \
+					--header "使用 ←/→ 或 Tab 切换，回车确认" \
+					--selected.foreground "$orange" \
+					--cursor.foreground "$orange")
+				[ -z "$confirm_switch" ] && confirm_switch="no"
 			else
-				read -e -p "是否切换到该模型？[y/N]: " confirm_switch
+				read -e -p "是否切换到该模型？[yes/NO]: " confirm_switch
 				case "$confirm_switch" in
-					[yY]|[yY][eE][sS]) confirm_switch="yes" ;;
+					[yY][eE][sS]|[yY]) confirm_switch="yes" ;;
 					*) confirm_switch="no" ;;
 				esac
 			fi
