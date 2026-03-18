@@ -11617,6 +11617,43 @@ PYTHON_EOF
 			return 1
 		}
 
+		openclaw_confirm_switch() {
+			local current_choice="yes"
+			local first_key rest_key
+			while true; do
+				clear
+				echo "是否切换到该模型？"
+				echo "使用 ← / → 切换，Enter 确认，Esc 返回列表"
+				echo ""
+				if [ "$current_choice" = "yes" ]; then
+					echo "> [ yes ]    no"
+				else
+					echo "  yes    [ no ]"
+				fi
+				IFS= read -rsn1 first_key
+				if [ -z "$first_key" ]; then
+					printf '%s' "$current_choice"
+					return 0
+				fi
+				if [ "$first_key" = $'' ]; then
+					IFS= read -rsn2 -t 0.1 rest_key
+					case "$rest_key" in
+						'[D'|'[C')
+							if [ "$current_choice" = "yes" ]; then
+								current_choice="no"
+							else
+								current_choice="yes"
+							fi
+							;;
+						'')
+							printf 'no'
+							return 0
+							;;
+					esac
+				fi
+				done
+		}
+
 		clear
 
 		while true; do
@@ -11711,12 +11748,7 @@ PYTHON_EOF
 			echo ""
 
 			if command -v gum >/dev/null 2>&1 && gum --version >/dev/null 2>&1; then
-				confirm_switch=$(printf '%s
-' "yes" "no" | gum choose \
-					--cursor "> " \
-					--header "使用 ←/→ 或 Tab 切换，回车确认" \
-					--selected.foreground "$orange" \
-					--cursor.foreground "$orange")
+				confirm_switch=$(openclaw_confirm_switch)
 				[ -z "$confirm_switch" ] && confirm_switch="no"
 			else
 				read -e -p "是否切换到该模型？[yes/NO]: " confirm_switch
