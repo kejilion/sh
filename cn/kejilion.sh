@@ -11747,9 +11747,9 @@ PYTHON_EOF
 			echo ""
 			echo "正在检测模型: $selected_model"
 			if openclaw_model_probe "$selected_model"; then
-				echo "最小检测结果：可用"
+				green "最小检测结果：可用"
 			else
-				echo "最小检测结果：不可用"
+				red "最小检测结果：不可用"
 			fi
 			echo "返回状态：$OPENCLAW_PROBE_MESSAGE"
 			echo "响应延迟：$OPENCLAW_PROBE_LATENCY"
