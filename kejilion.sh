@@ -11617,52 +11617,6 @@ PYTHON_EOF
 			return 1
 		}
 
-		openclaw_confirm_switch() {
-			local current_choice="yes"
-			local first_key rest_key
-			while true; do
-				clear
-				echo "是否切换到该模型？"
-				echo "使用 ← / → 切换，Enter 确认，Esc 返回列表"
-				echo ""
-				if [ "$current_choice" = "yes" ]; then
-					echo "> [ yes ]    no"
-				else
-					echo "  yes    [ no ]"
-				fi
-				IFS= read -rsn1 first_key
-				if [ -z "$first_key" ]; then
-					OPENCLAW_CONFIRM_SWITCH="$current_choice"
-					return 0
-				fi
-				case "$first_key" in
-					$'')
-						IFS= read -rsn2 -t 0.1 rest_key
-						case "$rest_key" in
-							'[D'|'[C')
-								if [ "$current_choice" = "yes" ]; then
-									current_choice="no"
-								else
-									current_choice="yes"
-								fi
-								;;
-							'')
-								OPENCLAW_CONFIRM_SWITCH="no"
-								return 0
-								;;
-						esac
-						;;
-					[hHlL])
-						if [ "$current_choice" = "yes" ]; then
-							current_choice="no"
-						else
-							current_choice="yes"
-						fi
-						;;
-				esac
-				done
-		}
-
 		clear
 
 		while true; do
@@ -11723,7 +11677,7 @@ PYTHON_EOF
 				install_gum
 				install gum
 				if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
-					echo "gum 安装失败，返回旧版输入模式。"
+					echo "gum 不可用，返回旧版输入模式。"
 					sleep 1
 					continue
 				fi
@@ -11756,15 +11710,18 @@ PYTHON_EOF
 			echo "返回摘要：$OPENCLAW_PROBE_REPLY"
 			echo ""
 
-			if command -v gum >/dev/null 2>&1 && gum --version >/dev/null 2>&1; then
-				OPENCLAW_CONFIRM_SWITCH=""
-				openclaw_confirm_switch
-				confirm_switch="$OPENCLAW_CONFIRM_SWITCH"
-				[ -z "$confirm_switch" ] && confirm_switch="no"
+			printf "是否切换到该模型？[y/N，Esc 返回列表]: "
+			IFS= read -rsn1 confirm_switch
+			echo ""
+			if [ "$confirm_switch" = $'' ]; then
+				confirm_switch="no"
 			else
-				read -e -p "是否切换到该模型？[yes/NO]: " confirm_switch
 				case "$confirm_switch" in
-					[yY][eE][sS]|[yY]) confirm_switch="yes" ;;
+					[yY])
+						IFS= read -rsn1 -t 5 _enter_key
+						confirm_switch="yes"
+						;;
+					[nN]|"") confirm_switch="no" ;;
 					*) confirm_switch="no" ;;
 				esac
 			fi
