@@ -11484,6 +11484,20 @@ REPO
 
 		local orange="#FF8C00"
 
+		openclaw_probe_status_line() {
+			local status_text="$1"
+			local status_color_ok='[32m'
+			local status_color_fail='[31m'
+			local status_color_reset='[0m'
+			if [ "$status_text" = "可用" ]; then
+				printf "%b最小检测结果：%s%b
+" "$status_color_ok" "$status_text" "$status_color_reset"
+			else
+				printf "%b最小检测结果：%s%b
+" "$status_color_fail" "$status_text" "$status_color_reset"
+			fi
+		}
+
 		openclaw_model_probe() {
 			local target_model="$1"
 			local probe_timeout=25
@@ -11701,13 +11715,13 @@ PYTHON_EOF
 			echo ""
 			echo "正在检测模型: $selected_model"
 			if openclaw_model_probe "$selected_model"; then
-				green "最小检测结果：可用"
+				openclaw_probe_status_line "可用"
 			else
-				red "最小检测结果：不可用"
+				openclaw_probe_status_line "不可用"
 			fi
-			echo "返回状态：$OPENCLAW_PROBE_MESSAGE"
-			echo "响应延迟：$OPENCLAW_PROBE_LATENCY"
-			echo "返回摘要：$OPENCLAW_PROBE_REPLY"
+			echo "状态：$OPENCLAW_PROBE_MESSAGE"
+			echo "延迟：$OPENCLAW_PROBE_LATENCY"
+			echo "摘要：$OPENCLAW_PROBE_REPLY"
 			echo ""
 
 			printf "是否切换到该模型？[y/N，Esc 返回列表]: "
