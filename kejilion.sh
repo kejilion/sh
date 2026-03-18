@@ -11488,7 +11488,7 @@ REPO
 			local target_model="$1"
 			local probe_timeout=25
 			local tmp_payload tmp_response http_code curl_exit latency_ms reply_preview reply_trimmed
-			local oc_config provider_name base_url api_key
+			local oc_config provider_name base_url api_key request_model
 
 			oc_config="${HOME}/.openclaw/openclaw.json"
 			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
@@ -11501,6 +11501,7 @@ REPO
 			}
 
 			provider_name="${target_model%%/*}"
+			request_model="${target_model#*/}"
 			base_url=$(jq -r --arg provider "$provider_name" '.models[$provider].baseUrl // empty' "$oc_config" 2>/dev/null)
 			api_key=$(jq -r --arg provider "$provider_name" '.models[$provider].apiKey // empty' "$oc_config" 2>/dev/null)
 			if [ -z "$provider_name" ] || [ -z "$base_url" ] || [ -z "$api_key" ]; then
@@ -11514,7 +11515,7 @@ REPO
 			base_url="${base_url%/}"
 			tmp_payload=$(mktemp)
 			tmp_response=$(mktemp)
-			printf '{"model":"%s","messages":[{"role":"user","content":"hi"}],"temperature":0,"max_tokens":16}' "$target_model" > "$tmp_payload"
+			printf '{"model":"%s","messages":[{"role":"user","content":"hi"}],"temperature":0,"max_tokens":16}' "$request_model" > "$tmp_payload"
 
 			latency_ms=$(python3 - "$base_url" "$api_key" "$tmp_payload" "$tmp_response" "$probe_timeout" <<'PYTHON_EOF'
 import json
