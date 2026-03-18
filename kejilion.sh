@@ -11635,22 +11635,31 @@ PYTHON_EOF
 					OPENCLAW_CONFIRM_SWITCH="$current_choice"
 					return 0
 				fi
-				if [ "$first_key" = $'' ]; then
-					IFS= read -rsn2 -t 0.1 rest_key
-					case "$rest_key" in
-						'[D'|'[C')
-							if [ "$current_choice" = "yes" ]; then
-								current_choice="no"
-							else
-								current_choice="yes"
-							fi
-							;;
-						'')
-							OPENCLAW_CONFIRM_SWITCH="no"
-							return 0
-							;;
-					esac
-				fi
+				case "$first_key" in
+					$'')
+						IFS= read -rsn2 -t 0.1 rest_key
+						case "$rest_key" in
+							'[D'|'[C')
+								if [ "$current_choice" = "yes" ]; then
+									current_choice="no"
+								else
+									current_choice="yes"
+								fi
+								;;
+							'')
+								OPENCLAW_CONFIRM_SWITCH="no"
+								return 0
+								;;
+						esac
+						;;
+					[hHlL])
+						if [ "$current_choice" = "yes" ]; then
+							current_choice="no"
+						else
+							current_choice="yes"
+						fi
+						;;
+				esac
 				done
 		}
 
