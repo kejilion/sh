@@ -11530,8 +11530,8 @@ REPO
 			fi
 
 			base_url="${base_url%/}"
-			first_endpoint="/chat/completions"
-			second_endpoint="/responses"
+			first_endpoint="/responses"
+			second_endpoint="/chat/completions"
 
 			openclaw_extract_probe_reply() {
 				python3 - "$1" <<'PYTHON_EOF'

@@ -119,12 +119,12 @@ EOF_CASE
 
 out1=$(run_case fallback-success)
 printf '%s\n' "$out1" | grep -q 'STATUS=OK'
-printf '%s\n' "$out1" | grep -q '/chat/completions -> HTTP 404，切换 /responses -> HTTP 200'
+printf '%s\n' "$out1" | grep -q 'MESSAGE=/responses -> HTTP 200'
 printf '%s\n' "$out1" | grep -q 'REPLY=pong from responses'
 
 out2=$(run_case all-fail || true)
 printf '%s\n' "$out2" | grep -q 'RC=1'
 printf '%s\n' "$out2" | grep -q 'STATUS=FAIL'
-printf '%s\n' "$out2" | grep -q '/chat/completions -> HTTP 404 / exit 22；/responses -> HTTP 404 / exit 22'
+printf '%s\n' "$out2" | grep -q '/responses -> HTTP 404 / exit 22；/chat/completions -> HTTP 404 / exit 22'
 
 printf '%s\n' 'SMOKE_OK'
