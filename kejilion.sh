@@ -11652,7 +11652,7 @@ PYTHON_EOF
 				echo "当前可用模型:"
 				jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d'
 				echo "----------------"
-				read -e -p "请输入要测试并设置的模型名称（输入 0 退出）： " selected_model
+				read -e -p "请输入要设置的模型名称 (例如 openrouter/openai/gpt-4o)（输入 0 退出）： " selected_model
 
 				if [ "$selected_model" = "0" ]; then
 					echo "操作已取消，正在退出..."
@@ -11664,6 +11664,17 @@ PYTHON_EOF
 					echo ""
 					continue
 				fi
+
+				echo "正在切换模型为: $selected_model ..."
+				if ! openclaw models set "$selected_model"; then
+					echo "切换失败：openclaw models set 返回错误。"
+					break_end
+					return 1
+				fi
+				start_gateway
+
+				break_end
+				return 0
 			else
 				gum style --foreground "$orange" --bold "模型管理"
 				gum style --foreground "$orange" "可用模型（Auth=yes）：${model_count}"
