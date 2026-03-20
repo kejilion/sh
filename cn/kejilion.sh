@@ -13998,7 +13998,7 @@ EOF
 			fi
 		fi
 
-		[ -f "$config_file" ] || { echo "(unset)"; return 1; }
+		[ -f "$config_file" ] || { echo "(unset)"; return 0; }
 
 		if openclaw_has_command jq; then
 			local jq_value
@@ -14032,6 +14032,22 @@ PY
 		fi
 
 		echo "(unset)"
+		return 0
+	}
+
+	openclaw_permission_unset_optional() {
+		local key="$1"
+		local probe
+		if ! openclaw_has_command openclaw; then
+			return 1
+		fi
+		if openclaw config unset "$key" >/dev/null 2>&1; then
+			return 0
+		fi
+		probe=$(openclaw config get "$key" 2>/dev/null | head -n 1)
+		if [ -z "$probe" ] || [ "$probe" = "null" ] || [ "$probe" = "(unset)" ]; then
+			return 0
+		fi
 		return 1
 	}
 
@@ -14085,8 +14101,8 @@ PY
 		openclaw_permission_backup_current || true
 		local failed=0
 		openclaw config set tools.profile coding || failed=1
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
 		openclaw config set tools.deny '[]' --json || failed=1
 		openclaw config set tools.exec.security allowlist || failed=1
 		openclaw config set tools.exec.ask on-miss || failed=1
@@ -14112,8 +14128,8 @@ PY
 		openclaw_permission_backup_current || true
 		local failed=0
 		openclaw config set tools.profile coding || failed=1
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
 		openclaw config set tools.deny '[]' --json || failed=1
 		openclaw config set tools.exec.security allowlist || failed=1
 		openclaw config set tools.exec.ask on-miss || failed=1
@@ -14139,8 +14155,8 @@ PY
 		openclaw_permission_backup_current || true
 		local failed=0
 		openclaw config set tools.profile full || failed=1
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
 		openclaw config set tools.deny '[]' --json || failed=1
 		openclaw config set tools.exec.security full || failed=1
 		openclaw config set tools.exec.ask off || failed=1
@@ -14165,16 +14181,16 @@ PY
 		openclaw_permission_require_openclaw || return 1
 		openclaw_permission_backup_current || true
 		local failed=0
-		openclaw config unset tools.profile >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.deny >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.exec.security >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.exec.ask >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.elevated.enabled >/dev/null 2>&1 || failed=1
-		openclaw config unset commands.bash >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.exec.applyPatch.enabled >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.exec.applyPatch.workspaceOnly >/dev/null 2>&1 || failed=1
+		openclaw_permission_unset_optional tools.profile || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
+		openclaw_permission_unset_optional tools.deny || failed=1
+		openclaw_permission_unset_optional tools.exec.security || failed=1
+		openclaw_permission_unset_optional tools.exec.ask || failed=1
+		openclaw_permission_unset_optional tools.elevated.enabled || failed=1
+		openclaw_permission_unset_optional commands.bash || failed=1
+		openclaw_permission_unset_optional tools.exec.applyPatch.enabled || failed=1
+		openclaw_permission_unset_optional tools.exec.applyPatch.workspaceOnly || failed=1
 		if [ "$failed" -ne 0 ]; then
 			echo "❌ 恢复失败：清理显式权限覆盖时出现错误。"
 			openclaw_permission_restore_backup || true
