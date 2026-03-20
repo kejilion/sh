@@ -10477,7 +10477,7 @@ PY
 	install_moltbot() {
 		echo "开始安装 OpenClaw..."
 		send_stats "开始安装 OpenClaw..."
-		install git jq gum
+		install git jq
 
 		install_node_and_tools
 
