@@ -10036,6 +10036,7 @@ moltbot_menu() {
 
 		echo "======================================="
 		echo -e "🦞 OPENCLAW 管理工具 by KEJILION 🦞"
+		echo -e "💡 终端执行 \033[1;33mk claw\033[0m 快速进入菜单"
 		echo -e "$install_status $running_status $update_message"
 		echo "======================================="
 		echo "1.  安装"
@@ -14010,24 +14011,43 @@ PY
 	}
 
 	openclaw_permission_detect_mode() {
-		local profile security ask elevated bash_enabled apply_patch workspace_only
-		profile=$(openclaw_permission_get_value "tools.profile")
-		security=$(openclaw_permission_get_value "tools.exec.security")
-		ask=$(openclaw_permission_get_value "tools.exec.ask")
-		elevated=$(openclaw_permission_get_value "tools.elevated.enabled")
-		bash_enabled=$(openclaw_permission_get_value "commands.bash")
-		apply_patch=$(openclaw_permission_get_value "tools.exec.applyPatch.enabled")
-		workspace_only=$(openclaw_permission_get_value "tools.exec.applyPatch.workspaceOnly")
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		[ ! -f "$config_file" ] && { echo "未知模式"; return; }
 
-		if [ "$profile" = "coding" ] && [ "$security" = "allowlist" ] && [ "$ask" = "on-miss" ] && [ "$elevated" = "false" ] && [ "$bash_enabled" = "false" ] && [ "$apply_patch" = "false" ]; then
-			echo "标准安全模式"
-		elif [ "$profile" = "coding" ] && [ "$security" = "allowlist" ] && [ "$ask" = "on-miss" ] && [ "$elevated" = "true" ] && [ "$bash_enabled" = "true" ] && [ "$apply_patch" = "true" ] && [ "$workspace_only" = "true" ]; then
-			echo "开发增强模式"
-		elif { [ "$profile" = "full" ] || [ "$profile" = "(unset)" ]; } && [ "$security" = "full" ] && [ "$ask" = "off" ] && [ "$elevated" = "true" ] && [ "$bash_enabled" = "true" ] && [ "$apply_patch" = "true" ]; then
-			echo "完全开放模式"
-		else
-			echo "自定义模式"
-		fi
+		python3 - "$config_file" <<'PY'
+import json, sys
+
+def get_v(o, p):
+    for k in p.split('.'):
+        if isinstance(o, dict) and k in o:
+            o = o[k]
+        else:
+            return "(unset)"
+    return str(o).lower()
+
+try:
+    with open(sys.argv[1], 'r', encoding='utf-8') as f:
+        d = json.load(f)
+    p = get_v(d, "tools.profile")
+    s = get_v(d, "tools.exec.security")
+    a = get_v(d, "tools.exec.ask")
+    e = get_v(d, "tools.elevated.enabled")
+    b = get_v(d, "commands.bash")
+    ap = get_v(d, "tools.exec.applyPatch.enabled")
+    w = get_v(d, "tools.exec.applyPatch.workspaceOnly")
+
+    if p == "coding" and s == "allowlist" and a == "on-miss" and e == "false" and b == "false" and ap == "false":
+        print("标准安全模式")
+    elif p == "coding" and s == "allowlist" and a == "on-miss" and e == "true" and b == "true" and ap == "true" and w == "true":
+        print("开发增强模式")
+    elif (p == "full" or p == "(unset)") and s == "full" and a == "off" and e == "true" and b == "true" and ap == "true":
+        print("完全开放模式")
+    else:
+        print("自定义模式")
+except Exception:
+    print("自定义模式")
+PY
 	}
 
 		openclaw_permission_render_status() {
@@ -14195,45 +14215,40 @@ PY
 			echo "======================================="
 			openclaw_permission_render_status
 			echo "---------------------------------------"
-			echo "1. 查看当前权限状态"
-			echo "2. 切换为标准安全模式（推荐）"
-			echo "3. 切换为开发增强模式"
-			echo "4. 切换为完全开放模式（高风险）"
-			echo "5. 恢复官方默认策略"
-			echo "6. 运行安全审计"
+			echo "1. 切换为标准安全模式（推荐）"
+			echo "2. 切换为开发增强模式"
+			echo "3. 切换为完全开放模式（高风险）"
+			echo "4. 恢复官方默认策略"
+			echo "5. 运行安全审计"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " perm_choice
 			case "$perm_choice" in
 				1)
-					openclaw_permission_render_status
-					break_end
-					;;
-				2)
 					echo "将应用：标准安全模式"
 					read -e -p "输入 yes 确认: " confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_standard || echo "已取消"
 					break_end
 					;;
-				3)
+				2)
 					echo "将应用：开发增强模式"
 					read -e -p "输入 yes 确认: " confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_developer || echo "已取消"
 					break_end
 					;;
-				4)
+				3)
 					echo "⚠️ 完全开放模式会关闭 exec 审批、启用提权与 bash，仅建议可信单用户环境使用。"
 					read -e -p "输入 FULL 确认继续: " confirm
 					[ "$confirm" = "FULL" ] && openclaw_permission_apply_full || echo "已取消"
 					break_end
 					;;
-				5)
+				4)
 					echo "将清除脚本写入的显式权限覆盖，恢复到 OpenClaw 官方默认策略。"
 					read -e -p "输入 yes 确认: " confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_restore_official_defaults || echo "已取消"
 					break_end
 					;;
-				6)
+				5)
 					openclaw_permission_run_audit
 					break_end
 					;;
@@ -21454,6 +21469,9 @@ else
 			linux_panel "$@"
 			;;
 
+		claw|oc|OpenClaw)
+			moltbot_menu
+			;;
 
 		info)
 			linux_info
