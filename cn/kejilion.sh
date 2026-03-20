@@ -14278,10 +14278,44 @@ PY
 	}
 
 	openclaw_multiagent_config_file() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		if [ -s "$config_file" ]; then
+			echo "$config_file"
+			return 0
+		fi
 		openclaw config file 2>/dev/null | tail -n 1
 	}
 
 	openclaw_multiagent_default_agent() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		if [ -s "$config_file" ]; then
+			python3 - "$config_file" <<'PY'
+import json,sys,os
+path=sys.argv[1]
+value="(unset)"
+try:
+    with open(path) as f:
+        data=json.load(f)
+    defaults=data.get("agents",{}).get("defaults",{}) if isinstance(data,dict) else {}
+    value=defaults.get("agent") or None
+    if not value:
+        for item in data.get("agents",{}).get("list",[]) or []:
+            if isinstance(item,dict) and (item.get("isDefault") or item.get("default")):
+                value=item.get("id")
+                break
+    if not value:
+        for item in data.get("agents",{}).get("list",[]) or []:
+            if isinstance(item,dict) and item.get("id"):
+                value=item.get("id")
+                break
+except Exception:
+    value="(unset)"
+print(value or "(unset)")
+PY
+			return 0
+		fi
 		local value
 		value=$(openclaw config get agents.defaults.agent 2>&1 | head -n 1)
 		if [ -z "$value" ] || echo "$value" | grep -qi "config path not found"; then
@@ -14308,15 +14342,124 @@ except Exception:
 	}
 
 	openclaw_multiagent_agents_json() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		if [ -s "$config_file" ]; then
+			python3 - "$config_file" <<'PY'
+import json,sys,os
+path=sys.argv[1]
+try:
+    with open(path) as f:
+        data=json.load(f)
+    agents=data.get("agents",{}).get("list",[])
+    if not isinstance(agents,list):
+        agents=[]
+    print(json.dumps(agents, ensure_ascii=False))
+except Exception:
+    print("[]")
+PY
+			return 0
+		fi
 		openclaw agents list --json 2>/dev/null || echo '[]'
 	}
 
 	openclaw_multiagent_bindings_json() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		if [ -s "$config_file" ]; then
+			python3 - "$config_file" <<'PY'
+import json,sys,os
+path=sys.argv[1]
+results=[]
+
+def add_item(item):
+    if not isinstance(item,dict):
+        return
+    bind=item.get("bind") or item.get("binding") or item.get("scope") or item.get("route")
+    agent=item.get("agentId") or item.get("agent")
+    if agent or bind:
+        results.append({"agentId": agent or "?", "bind": bind or "-"})
+
+def walk(obj):
+    if isinstance(obj,dict):
+        if "agentId" in obj and any(k in obj for k in ("bind","binding","scope","route")):
+            add_item(obj)
+        for v in obj.values():
+            walk(v)
+    elif isinstance(obj,list):
+        for v in obj:
+            walk(v)
+
+try:
+    with open(path) as f:
+        data=json.load(f)
+    bindings=data.get("agents",{}).get("bindings") if isinstance(data,dict) else None
+    if isinstance(bindings,list):
+        for item in bindings:
+            add_item(item)
+    walk(data)
+    print(json.dumps(results, ensure_ascii=False))
+except Exception:
+    print("[]")
+PY
+			return 0
+		fi
 		openclaw agents bindings --json 2>/dev/null || echo '[]'
 	}
 
 	openclaw_multiagent_sessions_json() {
-		openclaw sessions --all-agents --json 2>/dev/null || echo '{}'
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		python3 - "$config_file" <<'PY'
+import json,sys,os
+config_path=sys.argv[1] if len(sys.argv)>1 else ""
+
+def load_agents(path):
+    if path and os.path.exists(path):
+        try:
+            with open(path) as f:
+                data=json.load(f)
+            agents=data.get("agents",{}).get("list",[])
+            if isinstance(agents,list) and agents:
+                ids=[a.get("id") for a in agents if isinstance(a,dict) and a.get("id")]
+                if ids:
+                    return ids
+        except Exception:
+            pass
+    base=os.path.expanduser("~/.openclaw/agents")
+    try:
+        return [d for d in os.listdir(base) if os.path.isdir(os.path.join(base,d))]
+    except Exception:
+        return []
+
+agent_ids=load_agents(config_path)
+sessions=[]
+for agent_id in agent_ids:
+    path=os.path.expanduser(f"~/.openclaw/agents/{agent_id}/sessions/sessions.json")
+    if not os.path.exists(path):
+        continue
+    try:
+        with open(path) as f:
+            data=json.load(f)
+    except Exception:
+        continue
+    if isinstance(data,dict):
+        items=data.items()
+    elif isinstance(data,list):
+        items=[(item.get("key") or item.get("sessionKey") or "?", item) for item in data if isinstance(item,dict)]
+    else:
+        continue
+    for key,item in items:
+        if not isinstance(item,dict):
+            continue
+        model=item.get("model")
+        if not model:
+            report=item.get("systemPromptReport") or {}
+            if isinstance(report,dict):
+                model=report.get("model") or report.get("modelProvider") or report.get("provider")
+        sessions.append({"agentId": agent_id, "key": key, "model": model or "-"})
+print(json.dumps({"sessions": sessions}, ensure_ascii=False))
+PY
 	}
 
 	openclaw_multiagent_render_status() {
@@ -14335,7 +14478,6 @@ else:
 
 	openclaw_multiagent_list_agents() {
 		send_stats "OpenClaw多智能体-列出Agent"
-		openclaw_multiagent_require_openclaw || return 1
 		python3 -c 'import json,sys; agents=json.loads(sys.argv[1] or "[]");
 if not agents: print("暂无已配置 Agent。"); raise SystemExit(0)
 for idx,item in enumerate(agents,1):
@@ -14381,7 +14523,6 @@ for idx,item in enumerate(agents,1):
 
 	openclaw_multiagent_list_bindings() {
 		send_stats "OpenClaw多智能体-查看路由绑定"
-		openclaw_multiagent_require_openclaw || return 1
 		python3 -c 'import json,sys; bindings=json.loads(sys.argv[1] or "[]");
 if not bindings: print("暂无路由绑定。"); raise SystemExit(0)
 for idx,item in enumerate(bindings,1):
@@ -14446,7 +14587,6 @@ for idx,item in enumerate(bindings,1):
 
 	openclaw_multiagent_show_sessions() {
 		send_stats "OpenClaw多智能体-会话概况"
-		openclaw_multiagent_require_openclaw || return 1
 		python3 -c 'import json,sys; obj=json.loads(sys.argv[1] or "{}"); sessions=obj.get("sessions",[]) if isinstance(obj,dict) else [];
 if not sessions: print("暂无 session 数据。"); raise SystemExit(0)
 by_agent={}
