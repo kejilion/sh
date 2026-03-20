@@ -13637,22 +13637,99 @@ EOF
 		echo "${HOME}/.openclaw/openclaw.json"
 	}
 
-	openclaw_permission_restart_gateway() {
-		if command -v openclaw >/dev/null 2>&1; then
-			echo "正在重启 OpenClaw Gateway..."
-			openclaw gateway restart >/dev/null 2>&1 || {
-				openclaw gateway stop >/dev/null 2>&1
-				openclaw gateway start >/dev/null 2>&1
-			}
+	openclaw_permission_backup_file() {
+		local backup_root
+		backup_root=$(openclaw_backup_root)
+		echo "${backup_root}/openclaw-permission-last.json"
+	}
+
+	openclaw_permission_require_openclaw() {
+		if ! openclaw_has_command openclaw; then
+			echo "❌ 未检测到 openclaw 命令，请先安装或初始化 OpenClaw。"
+			return 1
 		fi
+		return 0
+	}
+
+	openclaw_permission_backup_current() {
+		local config_file backup_file
+		config_file=$(openclaw_permission_config_file)
+		backup_file=$(openclaw_permission_backup_file)
+		if [ ! -s "$config_file" ]; then
+			echo "⚠️ 未找到 OpenClaw 配置文件，跳过权限备份。"
+			return 1
+		fi
+		mkdir -p "$(dirname "$backup_file")"
+		cp -f "$config_file" "$backup_file" >/dev/null 2>&1 || {
+			echo "⚠️ 权限备份失败：$backup_file"
+			return 1
+		}
+		echo "✅ 已备份当前权限配置: $backup_file"
+		return 0
+	}
+
+	openclaw_permission_restore_backup() {
+		local config_file backup_file
+		config_file=$(openclaw_permission_config_file)
+		backup_file=$(openclaw_permission_backup_file)
+		if [ ! -s "$backup_file" ]; then
+			echo "❌ 未找到可恢复的权限备份文件。"
+			return 1
+		fi
+		cp -f "$backup_file" "$config_file" >/dev/null 2>&1 || {
+			echo "❌ 权限恢复失败：$backup_file"
+			return 1
+		}
+		echo "✅ 已恢复切换前权限配置"
+		openclaw_permission_restart_gateway || true
+		return 0
+	}
+
+	openclaw_permission_restart_gateway() {
+		if ! openclaw_has_command openclaw; then
+			echo "❌ 未检测到 openclaw，无法重启 OpenClaw Gateway。"
+			return 1
+		fi
+		echo "正在重启 OpenClaw Gateway..."
+		openclaw gateway restart >/dev/null 2>&1 || {
+			openclaw gateway stop >/dev/null 2>&1
+			openclaw gateway start >/dev/null 2>&1
+		}
 	}
 
 	openclaw_permission_get_value() {
 		local path="$1"
 		local config_file
 		config_file=$(openclaw_permission_config_file)
-		[ -f "$config_file" ] || return 1
-		python3 - "$config_file" "$path" <<'PY'
+
+		if openclaw_has_command openclaw; then
+			local value
+			value=$(openclaw config get "$path" 2>/dev/null | head -n 1)
+			if [ -n "$value" ]; then
+				if [ "$value" = "null" ]; then
+					echo "(unset)"
+				else
+					if echo "$value" | grep -q '^".*"$'; then
+						value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//')
+					fi
+					echo "$value"
+				fi
+				return 0
+			fi
+		fi
+
+		[ -f "$config_file" ] || { echo "(unset)"; return 1; }
+
+		if openclaw_has_command jq; then
+			local jq_value
+			jq_value=$(jq -r --arg p "$path" 'getpath($p|split(".")) // "(unset)"' "$config_file" 2>/dev/null) || jq_value="(unset)"
+			[ "$jq_value" = "null" ] && jq_value="(unset)"
+			echo "$jq_value"
+			return 0
+		fi
+
+		if openclaw_has_command python3; then
+			python3 - "$config_file" "$path" <<'PY'
 import json, sys
 path = sys.argv[2]
 with open(sys.argv[1], 'r', encoding='utf-8') as f:
@@ -13671,6 +13748,11 @@ elif cur is None:
 else:
     print(json.dumps(cur, ensure_ascii=False) if isinstance(cur, (dict, list)) else str(cur))
 PY
+			return 0
+		fi
+
+		echo "(unset)"
+		return 1
 	}
 
 	openclaw_permission_detect_mode() {
@@ -13699,6 +13781,10 @@ PY
 		config_file=$(openclaw_permission_config_file)
 		mode=$(openclaw_permission_detect_mode)
 		echo "配置文件: $config_file"
+		[ ! -s "$config_file" ] && echo "⚠️ 未找到 OpenClaw 配置文件（可能尚未初始化）。"
+		if ! openclaw_has_command openclaw; then
+			echo "⚠️ 未检测到 openclaw 命令，状态读取将基于配置文件。"
+		fi
 		echo "当前模式: $mode"
 		echo "---------------------------------------"
 		printf "%-28s %s\n" "tools.profile" "$(openclaw_permission_get_value tools.profile)"
@@ -13715,70 +13801,115 @@ PY
 
 	openclaw_permission_apply_standard() {
 		send_stats "OpenClaw权限-标准安全模式"
-		openclaw config set tools.profile coding
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || true
-		openclaw config unset tools.allow >/dev/null 2>&1 || true
-		openclaw config set tools.deny '[]' --json
-		openclaw config set tools.exec.security allowlist
-		openclaw config set tools.exec.ask on-miss
-		openclaw config set tools.elevated.enabled false
-		openclaw config set commands.bash false
-		openclaw config set tools.exec.applyPatch.enabled false
-		openclaw config set tools.exec.applyPatch.workspaceOnly true
-		openclaw_permission_restart_gateway
+		openclaw_permission_require_openclaw || return 1
+		openclaw_permission_backup_current || true
+		local failed=0
+		openclaw config set tools.profile coding || failed=1
+		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw config set tools.deny '[]' --json || failed=1
+		openclaw config set tools.exec.security allowlist || failed=1
+		openclaw config set tools.exec.ask on-miss || failed=1
+		openclaw config set tools.elevated.enabled false || failed=1
+		openclaw config set commands.bash false || failed=1
+		openclaw config set tools.exec.applyPatch.enabled false || failed=1
+		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
+		if [ "$failed" -ne 0 ]; then
+			echo "❌ 切换失败：写入权限配置过程中出现错误。"
+			openclaw_permission_restore_backup || true
+			return 1
+		fi
+		if ! openclaw_permission_restart_gateway; then
+			echo "⚠️ 已写入配置，但重启失败，请手动执行: openclaw gateway restart"
+			return 1
+		fi
 		echo "✅ 已切换为标准安全模式"
 	}
 
 	openclaw_permission_apply_developer() {
 		send_stats "OpenClaw权限-开发增强模式"
-		openclaw config set tools.profile coding
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || true
-		openclaw config unset tools.allow >/dev/null 2>&1 || true
-		openclaw config set tools.deny '[]' --json
-		openclaw config set tools.exec.security allowlist
-		openclaw config set tools.exec.ask on-miss
-		openclaw config set tools.elevated.enabled true
-		openclaw config set commands.bash true
-		openclaw config set tools.exec.applyPatch.enabled true
-		openclaw config set tools.exec.applyPatch.workspaceOnly true
-		openclaw_permission_restart_gateway
+		openclaw_permission_require_openclaw || return 1
+		openclaw_permission_backup_current || true
+		local failed=0
+		openclaw config set tools.profile coding || failed=1
+		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw config set tools.deny '[]' --json || failed=1
+		openclaw config set tools.exec.security allowlist || failed=1
+		openclaw config set tools.exec.ask on-miss || failed=1
+		openclaw config set tools.elevated.enabled true || failed=1
+		openclaw config set commands.bash true || failed=1
+		openclaw config set tools.exec.applyPatch.enabled true || failed=1
+		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
+		if [ "$failed" -ne 0 ]; then
+			echo "❌ 切换失败：写入权限配置过程中出现错误。"
+			openclaw_permission_restore_backup || true
+			return 1
+		fi
+		if ! openclaw_permission_restart_gateway; then
+			echo "⚠️ 已写入配置，但重启失败，请手动执行: openclaw gateway restart"
+			return 1
+		fi
 		echo "✅ 已切换为开发增强模式"
 	}
 
 	openclaw_permission_apply_full() {
 		send_stats "OpenClaw权限-完全开放模式"
-		openclaw config set tools.profile full
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || true
-		openclaw config unset tools.allow >/dev/null 2>&1 || true
-		openclaw config set tools.deny '[]' --json
-		openclaw config set tools.exec.security full
-		openclaw config set tools.exec.ask off
-		openclaw config set tools.elevated.enabled true
-		openclaw config set commands.bash true
-		openclaw config set tools.exec.applyPatch.enabled true
-		openclaw config set tools.exec.applyPatch.workspaceOnly true
-		openclaw_permission_restart_gateway
+		openclaw_permission_require_openclaw || return 1
+		openclaw_permission_backup_current || true
+		local failed=0
+		openclaw config set tools.profile full || failed=1
+		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw config set tools.deny '[]' --json || failed=1
+		openclaw config set tools.exec.security full || failed=1
+		openclaw config set tools.exec.ask off || failed=1
+		openclaw config set tools.elevated.enabled true || failed=1
+		openclaw config set commands.bash true || failed=1
+		openclaw config set tools.exec.applyPatch.enabled true || failed=1
+		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
+		if [ "$failed" -ne 0 ]; then
+			echo "❌ 切换失败：写入权限配置过程中出现错误。"
+			openclaw_permission_restore_backup || true
+			return 1
+		fi
+		if ! openclaw_permission_restart_gateway; then
+			echo "⚠️ 已写入配置，但重启失败，请手动执行: openclaw gateway restart"
+			return 1
+		fi
 		echo "✅ 已切换为完全开放模式"
 	}
 
 	openclaw_permission_restore_official_defaults() {
 		send_stats "OpenClaw权限-恢复官方默认"
-		openclaw config unset tools.profile >/dev/null 2>&1 || true
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || true
-		openclaw config unset tools.allow >/dev/null 2>&1 || true
-		openclaw config unset tools.deny >/dev/null 2>&1 || true
-		openclaw config unset tools.exec.security >/dev/null 2>&1 || true
-		openclaw config unset tools.exec.ask >/dev/null 2>&1 || true
-		openclaw config unset tools.elevated.enabled >/dev/null 2>&1 || true
-		openclaw config unset commands.bash >/dev/null 2>&1 || true
-		openclaw config unset tools.exec.applyPatch.enabled >/dev/null 2>&1 || true
-		openclaw config unset tools.exec.applyPatch.workspaceOnly >/dev/null 2>&1 || true
-		openclaw_permission_restart_gateway
+		openclaw_permission_require_openclaw || return 1
+		openclaw_permission_backup_current || true
+		local failed=0
+		openclaw config unset tools.profile >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.deny >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.exec.security >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.exec.ask >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.elevated.enabled >/dev/null 2>&1 || failed=1
+		openclaw config unset commands.bash >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.exec.applyPatch.enabled >/dev/null 2>&1 || failed=1
+		openclaw config unset tools.exec.applyPatch.workspaceOnly >/dev/null 2>&1 || failed=1
+		if [ "$failed" -ne 0 ]; then
+			echo "❌ 恢复失败：清理显式权限覆盖时出现错误。"
+			openclaw_permission_restore_backup || true
+			return 1
+		fi
+		if ! openclaw_permission_restart_gateway; then
+			echo "⚠️ 已写入配置，但重启失败，请手动执行: openclaw gateway restart"
+			return 1
+		fi
 		echo "✅ 已恢复为 OpenClaw 官方默认策略（清除显式覆盖）"
 	}
 
 	openclaw_permission_run_audit() {
 		send_stats "OpenClaw权限-安全审计"
+		openclaw_permission_require_openclaw || return 1
 		openclaw security audit
 	}
 
