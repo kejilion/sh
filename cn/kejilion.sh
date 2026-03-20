@@ -14285,7 +14285,12 @@ PY
 		local value
 		value=$(openclaw config get agents.defaults.agent 2>&1 | head -n 1)
 		if [ -z "$value" ] || echo "$value" | grep -qi "config path not found"; then
-			value=$(openclaw agents list --json 2>/dev/null | python3 -c 'import json,sys; data=json.load(sys.stdin); print(next((x.get("id","(unset)") for x in data if x.get("isDefault")), "(unset)"))' 2>/dev/null)
+			value=$(openclaw agents list --json 2>/dev/null | python3 -c 'import json,sys
+try:
+ data=json.load(sys.stdin)
+ print(next((x.get("id","(unset)") for x in data if x.get("isDefault")), "(unset)"))
+except Exception:
+ print("(unset)")' 2>/dev/null)
 		fi
 		[ -z "$value" ] && value="(unset)"
 		if echo "$value" | grep -q '^".*"$'; then
