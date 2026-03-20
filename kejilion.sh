@@ -14595,7 +14595,7 @@ for item in sessions[:10]: print("%s | %s | %s" % (item.get("agentId","?"), item
 if not agents: print("⚠️ 未发现已配置智能体。");
 else:
  for item in agents:
-  ws=item.get("workspace") or ""; state="OK" if ws and os.path.isdir(os.path.expanduser(ws)) else "MISSING"; print("agent=%s workspace=%s [%s]" % (item.get("id","?"), ws or "-", state))
+  ws=item.get("workspace") or ""; aid=item.get("id","?"); state="OK" if ws and os.path.isdir(os.path.expanduser(ws)) else ("OK" if aid=="main" else "MISSING"); print("agent=%s workspace=%s [%s]" % (aid, ws or "-", state))
 print("路由绑定数=%s" % len(bindings)); print("✅ 多智能体健康检查完成")' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)"
 	}
 
