@@ -14030,27 +14030,46 @@ PY
 		fi
 	}
 
-	openclaw_permission_render_status() {
+		openclaw_permission_render_status() {
 		local config_file mode
 		config_file=$(openclaw_permission_config_file)
 		mode=$(openclaw_permission_detect_mode)
 		echo "配置文件: $config_file"
 		[ ! -s "$config_file" ] && echo "⚠️ 未找到 OpenClaw 配置文件（可能尚未初始化）。"
-		if ! openclaw_has_command openclaw; then
-			echo "⚠️ 未检测到 openclaw 命令，状态读取将基于配置文件。"
-		fi
 		echo "当前模式: $mode"
 		echo "---------------------------------------"
-		printf "%-28s %s\n" "tools.profile" "$(openclaw_permission_get_value tools.profile)"
-		printf "%-28s %s\n" "tools.allow" "$(openclaw_permission_get_value tools.allow)"
-		printf "%-28s %s\n" "tools.deny" "$(openclaw_permission_get_value tools.deny)"
-		printf "%-28s %s\n" "tools.byProvider" "$(openclaw_permission_get_value tools.byProvider)"
-		printf "%-28s %s\n" "tools.exec.security" "$(openclaw_permission_get_value tools.exec.security)"
-		printf "%-28s %s\n" "tools.exec.ask" "$(openclaw_permission_get_value tools.exec.ask)"
-		printf "%-28s %s\n" "tools.elevated.enabled" "$(openclaw_permission_get_value tools.elevated.enabled)"
-		printf "%-28s %s\n" "commands.bash" "$(openclaw_permission_get_value commands.bash)"
-		printf "%-28s %s\n" "applyPatch.enabled" "$(openclaw_permission_get_value tools.exec.applyPatch.enabled)"
-		printf "%-28s %s\n" "applyPatch.workspaceOnly" "$(openclaw_permission_get_value tools.exec.applyPatch.workspaceOnly)"
+
+		# 使用 Python 一次性高效解析所有权限字段
+		python3 - "$config_file" <<'PY'
+import json, sys
+def get_val(obj, path, default="(unset)"):
+    parts = path.split('.')
+    for p in parts:
+        if isinstance(obj, dict) and p in obj: obj = obj[p]
+        else: return default
+    if isinstance(obj, (list, dict)): return json.dumps(obj)
+    return str(obj)
+
+try:
+    with open(sys.argv[1], 'r') as f: data = json.load(f)
+    fields = [
+        ("tools.profile", "tools.profile"),
+        ("tools.allow", "tools.allow"),
+        ("tools.deny", "tools.deny"),
+        ("tools.byProvider", "tools.byProvider"),
+        ("tools.exec.security", "tools.exec.security"),
+        ("tools.exec.ask", "tools.exec.ask"),
+        ("tools.elevated.enabled", "tools.elevated.enabled"),
+        ("commands.bash", "commands.bash"),
+        ("applyPatch.enabled", "tools.exec.applyPatch.enabled"),
+        ("applyPatch.workspaceOnly", "tools.exec.applyPatch.workspaceOnly")
+    ]
+    for label, path in fields:
+        val = get_val(data, path)
+        print("%-28s %s" % (label, val))
+except Exception as e:
+    print("❌ 配置文件解析失败: %s" % e)
+PY
 	}
 
 	openclaw_permission_apply_standard() {
