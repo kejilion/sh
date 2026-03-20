@@ -14497,6 +14497,13 @@ for idx,item in enumerate(agents,1):
 		[ "$confirm" = "yes" ] || { echo "已取消"; return 1; }
 		if openclaw agents add "$agent_id" --workspace "$workspace"; then
 			echo "✅ 智能体创建成功: $agent_id"
+			local name theme
+			read -e -p "请输入智能体身份名称 (如: 代码专家): " name
+			[ -z "$name" ] && name="$agent_id"
+			read -e -p "请输入智能体性格主题 (如: 严谨、高效): " theme
+			[ -z "$theme" ] && theme="助手"
+			echo "正在配置智能体身份..."
+			openclaw agents identity "$agent_id" --name "$name" --theme "$theme"
 		else
 			echo "❌ 智能体创建失败"
 			return 1
@@ -14564,25 +14571,6 @@ for idx,item in enumerate(bindings,1):
 		fi
 	}
 
-	openclaw_multiagent_set_identity() {
-		send_stats "OpenClaw多智能体-设置智能体身份"
-		openclaw_multiagent_require_openclaw || return 1
-		local agent_id name theme emoji confirm
-		read -e -p "请输入智能体 ID: " agent_id
-		[ -z "$agent_id" ] && echo "已取消：Agent ID 不能为空。" && return 1
-		read -e -p "身份名称（可留空）: " name
-		read -e -p "身份主题（可留空）: " theme
-		read -e -p "身份表情（可留空）: " emoji
-		[ -z "$name$theme$emoji" ] && echo "已取消：至少填写一个身份字段。" && return 1
-		echo "将更新智能体 [$agent_id] 的身份信息。"
-		read -e -p "输入 yes 确认继续: " confirm
-		[ "$confirm" = "yes" ] || { echo "已取消"; return 1; }
-		local cmd="openclaw agents set-identity --agent '$agent_id'"
-		[ -n "$name" ] && cmd="$cmd --name '$(printf %s "$name" | sed "s/'/'\\''/g")'"
-		[ -n "$theme" ] && cmd="$cmd --theme '$(printf %s "$theme" | sed "s/'/'\\''/g")'"
-		[ -n "$emoji" ] && cmd="$cmd --emoji '$(printf %s "$emoji" | sed "s/'/'\\''/g")'"
-		eval "$cmd"
-	}
 
 	openclaw_multiagent_show_sessions() {
 		send_stats "OpenClaw多智能体-会话概况"
@@ -14625,9 +14613,8 @@ print("路由绑定数=%s" % len(bindings)); print("✅ 多智能体健康检查
 			echo "3. 查看路由绑定"
 			echo "4. 新增路由绑定"
 			echo "5. 移除路由绑定"
-			echo "6. 设置智能体身份"
-			echo "7. 查看会话概况"
-			echo "8. 运行多智能体健康检查"
+			echo "6. 查看会话概况"
+			echo "7. 运行多智能体健康检查"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " multi_choice
@@ -14637,9 +14624,8 @@ print("路由绑定数=%s" % len(bindings)); print("✅ 多智能体健康检查
 				3) openclaw_multiagent_list_bindings; break_end ;;
 				4) openclaw_multiagent_add_binding; break_end ;;
 				5) openclaw_multiagent_remove_binding; break_end ;;
-				6) openclaw_multiagent_set_identity; break_end ;;
-				7) openclaw_multiagent_show_sessions; break_end ;;
-				8) openclaw_multiagent_health_check; break_end ;;
+				6) openclaw_multiagent_show_sessions; break_end ;;
+				7) openclaw_multiagent_health_check; break_end ;;
 				0) return 0 ;;
 				*) echo "无效的选择，请重试。"; sleep 1 ;;
 			esac
