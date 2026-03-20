@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.4.7"
+sh_v="4.4.8"
 
 
 gl_hui='\e[37m'
@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="default"
+canshu="CN"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -10035,7 +10035,7 @@ moltbot_menu() {
 		local update_message=$(check_openclaw_update)
 
 		echo "======================================="
-		echo -e "🦞 OPENCLAW 管理 🦞"
+		echo -e "🦞 OPENCLAW 管理工具 by KEJILION 🦞"
 		echo -e "$install_status $running_status $update_message"
 		echo "======================================="
 		echo "1.  安装"
@@ -10056,9 +10056,11 @@ moltbot_menu() {
 		echo "15. 记忆/Memory"
 		echo "16. 权限管理"
 		echo "--------------------"
-		echo "17. 备份与还原"
-		echo "18. 更新"
-		echo "19. 卸载"
+		echo "17. 多智能体管理"
+		echo "--------------------"
+		echo "18. 备份与还原"
+		echo "19. 更新"
+		echo "20. 卸载"
 		echo "--------------------"
 		echo "0. 返回上一级选单"
 		echo "--------------------"
@@ -10436,7 +10438,7 @@ for name, provider in list(providers.items()):
         provider['models'] = new_models
         changed = True
 
-    summary.append(f'✅ {name}: 删除 {len(removed_ids)} 个，新增 {len(added_ids)} 个，当前 {len(new_models)} 个')
+    summary.append(f'✅ {name}: 新增 {len(added_ids)} 个，删除 {len(removed_ids)} 个，当前 {len(new_models)} 个')
 
     if added_ids:
         summary.append(f'➕ 新增模型({len(added_ids)}):')
@@ -10489,6 +10491,7 @@ PY
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
 		openclaw config set tools.profile full
+		openclaw config set tools.elevated.enabled true
 		# 提示：修改配置后如需立即生效，可重启 gateway：openclaw gateway restart
 		configure_openclaw_session_policy
 		start_gateway
@@ -10529,52 +10532,20 @@ PY
 	# OpenClaw API 协议探测逻辑已移除：不再自动探测/判定 API 类型。
 	# 说明：API 类型由用户显式配置（models.providers.<name>.api），脚本不再尝试调用 /responses 做推断。
 
-	# 核心函数：获取并添加所有模型
-	add-all-models-from-provider() {
+	# 构造模型配置 JSON
+	build-openclaw-provider-models-json() {
 		local provider_name="$1"
-		local base_url="$2"
-		local api_key="$3"
-		local config_file="${HOME}/.openclaw/openclaw.json"
-
-		echo "🔍 正在获取 $provider_name 的所有可用模型..."
-
-		# 不再自动探测/纠正 API 协议；保持用户配置为准
-		DETECTED_API="openai-completions"
-
-		# 获取模型列表
-		local models_json=$(curl -s -m 10 \
-			-H "Authorization: Bearer $api_key" \
-			"${base_url}/models")
-
-		if [[ -z "$models_json" ]]; then
-			echo "❌ 无法获取模型列表"
-			return 1
-		fi
-
-		# 提取所有模型ID
-		local model_ids=$(echo "$models_json" | grep -oP '"id":\s*"\K[^"]+')
-
-		if [[ -z "$model_ids" ]]; then
-			echo "❌ 未找到任何模型"
-			return 1
-		fi
-
-		local model_count=$(echo "$model_ids" | wc -l)
-		echo "✅ 发现 $model_count 个模型"
-
-		# 智能推断模型参数
+		local model_ids="$2"
 		local models_array="["
 		local first=true
 
 		while read -r model_id; do
+			[ -z "$model_id" ] && continue
 			[[ $first == false ]] && models_array+=","
 			first=false
 
-			# context 和 max_tokens 全拉满，不怕大
 			local context_window=1048576
 			local max_tokens=128000
-
-			# 只有价格需要分级
 			local input_cost=0.15
 			local output_cost=0.60
 
@@ -10612,11 +10583,22 @@ EOF
 		done <<< "$model_ids"
 
 		models_array+="]"
+		echo "$models_array"
+	}
 
-		# 备份配置
+	# 写入 provider 与模型配置
+	write-openclaw-provider-models() {
+		local provider_name="$1"
+		local base_url="$2"
+		local api_key="$3"
+		local models_array="$4"
+		local config_file="${HOME}/.openclaw/openclaw.json"
+
+		# 不再自动探测/纠正 API 协议；保持用户配置为准
+		DETECTED_API="openai-completions"
+
 		[[ -f "$config_file" ]] && cp "$config_file" "${config_file}.bak.$(date +%s)"
 
-		# 使用jq注入所有模型，并同步 defaults.models
 		jq --arg prov "$provider_name" \
 		   --arg url "$base_url" \
 		   --arg key "$api_key" \
@@ -10650,10 +10632,70 @@ EOF
 			)
 		)
 		' "$config_file" > "${config_file}.tmp" && mv "${config_file}.tmp" "$config_file"
+	}
+
+	# 核心函数：获取并添加所有模型
+	add-all-models-from-provider() {
+		local provider_name="$1"
+		local base_url="$2"
+		local api_key="$3"
+
+		echo "🔍 正在获取 $provider_name 的所有可用模型..."
+
+		local models_json=$(curl -s -m 10 \
+			-H "Authorization: Bearer $api_key" \
+			"${base_url}/models")
+
+		if [[ -z "$models_json" ]]; then
+			echo "❌ 无法获取模型列表"
+			return 1
+		fi
+
+		local model_ids=$(echo "$models_json" | grep -oP '"id":\s*"\K[^"]+')
+
+		if [[ -z "$model_ids" ]]; then
+			echo "❌ 未找到任何模型"
+			return 1
+		fi
+
+		local model_count=$(echo "$model_ids" | wc -l)
+		echo "✅ 发现 $model_count 个模型"
+
+		local models_array
+		models_array=$(build-openclaw-provider-models-json "$provider_name" "$model_ids")
+
+		write-openclaw-provider-models "$provider_name" "$base_url" "$api_key" "$models_array"
 
 		if [[ $? -eq 0 ]]; then
 			echo "✅ 成功添加 $model_count 个模型到 $provider_name"
 			echo "📦 模型引用格式: $provider_name/<model-id>"
+			return 0
+		else
+			echo "❌ 配置注入失败"
+			return 1
+		fi
+	}
+
+	# 仅添加默认模型并保留 provider
+	add-default-model-only-to-provider() {
+		local provider_name="$1"
+		local base_url="$2"
+		local api_key="$3"
+		local default_model="$4"
+
+		if [[ -z "$default_model" ]]; then
+			echo "❌ 默认模型不能为空"
+			return 1
+		fi
+
+		local models_array
+		models_array=$(build-openclaw-provider-models-json "$provider_name" "$default_model")
+
+		write-openclaw-provider-models "$provider_name" "$base_url" "$api_key" "$models_array"
+
+		if [[ $? -eq 0 ]]; then
+			echo "✅ 已添加 provider：$provider_name"
+			echo "✅ 仅写入默认模型：$default_model"
 			return 0
 		else
 			echo "❌ 配置注入失败"
@@ -10740,22 +10782,26 @@ EOF
 		echo "模型总数    : $model_count"
 		echo "======================"
 
-		read -erp "确认添加所有 $model_count 个模型？(y/N): " confirm
-		if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-			echo "❎ 已取消"
-			return 1
-		fi
+		read -erp "是否同时添加其他所有可用模型？(y/N): " confirm
 
 		install jq
-		add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
+		if [[ "$confirm" =~ ^[Yy]$ ]]; then
+			add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
+			add_result=$?
+			finish_msg="✅ 完成！所有 $model_count 个模型已加载"
+		else
+			add-default-model-only-to-provider "$provider_name" "$base_url" "$api_key" "$default_model"
+			add_result=$?
+			finish_msg="✅ 完成！已保留 provider，并仅加载默认模型：$default_model"
+		fi
 
-		if [[ $? -eq 0 ]]; then
+		if [[ $add_result -eq 0 ]]; then
 			echo
 			echo "🔄 设置默认模型并重启网关..."
 			openclaw models set "$provider_name/$default_model"
 			start_gateway
-			echo "✅ 完成！所有 $model_count 个模型已加载"
-			echo "✅ 已自动识别协议为: $DETECTED_API"
+			echo "$finish_msg"
+			echo "✅ 当前 API 协议类型: $DETECTED_API"
 		fi
 
 		break_end
@@ -11079,7 +11125,7 @@ if changed:
         json.dump(work, f, ensure_ascii=False, indent=2)
         f.write('\n')
 
-print(f'✅ {target}: 删除 {len(removed_ids)} 个，新增 {len(added_ids)} 个，当前 {len(new_models)} 个')
+print(f'✅ {target}: 新增 {len(added_ids)} 个，删除 {len(removed_ids)} 个，当前 {len(new_models)} 个')
 
 if added_ids:
     print(f'➕ 新增模型({len(added_ids)}):')
@@ -11442,10 +11488,214 @@ REPO
 
 		local orange="#FF8C00"
 
+		openclaw_probe_status_line() {
+			local status_text="$1"
+			local status_color_ok='[32m'
+			local status_color_fail='[31m'
+			local status_color_reset='[0m'
+			if [ "$status_text" = "可用" ]; then
+				printf "%b最小检测结果：%s%b
+" "$status_color_ok" "$status_text" "$status_color_reset"
+			else
+				printf "%b最小检测结果：%s%b
+" "$status_color_fail" "$status_text" "$status_color_reset"
+			fi
+		}
+
+		openclaw_model_probe() {
+			local target_model="$1"
+			local probe_timeout=25
+			local tmp_payload tmp_response probe_result probe_status reply_preview reply_trimmed
+			local oc_config provider_name base_url api_key request_model
+			local first_endpoint second_endpoint
+			local first_exit first_http first_latency second_exit second_http second_latency
+			local first_reply second_reply
+
+			oc_config="${HOME}/.openclaw/openclaw.json"
+			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
+			[ ! -f "$oc_config" ] && {
+				OPENCLAW_PROBE_STATUS="ERROR"
+				OPENCLAW_PROBE_MESSAGE="未找到 openclaw 配置文件"
+				OPENCLAW_PROBE_LATENCY="-"
+				OPENCLAW_PROBE_REPLY="-"
+				return 1
+			}
+
+			provider_name="${target_model%%/*}"
+			request_model="${target_model#*/}"
+			base_url=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].baseUrl // empty' "$oc_config" 2>/dev/null)
+			api_key=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].apiKey // empty' "$oc_config" 2>/dev/null)
+			if [ -z "$provider_name" ] || [ -z "$base_url" ] || [ -z "$api_key" ]; then
+				OPENCLAW_PROBE_STATUS="ERROR"
+				OPENCLAW_PROBE_MESSAGE="未读取到 provider/baseUrl/apiKey"
+				OPENCLAW_PROBE_LATENCY="-"
+				OPENCLAW_PROBE_REPLY="-"
+				return 1
+			fi
+
+			base_url="${base_url%/}"
+			first_endpoint="/responses"
+			second_endpoint="/chat/completions"
+
+			openclaw_extract_probe_reply() {
+				python3 - "$1" <<'PYTHON_EOF'
+import json
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+raw = path.read_text(encoding='utf-8', errors='replace').strip()
+reply = ''
+if raw:
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            choices = data.get('choices') or []
+            if choices and isinstance(choices[0], dict):
+                message = choices[0].get('message') or {}
+                if isinstance(message, dict):
+                    reply = message.get('content') or ''
+            if not reply:
+                output = data.get('output') or []
+                if isinstance(output, list):
+                    texts = []
+                    for item in output:
+                        if not isinstance(item, dict):
+                            continue
+                        for content in item.get('content') or []:
+                            if not isinstance(content, dict):
+                                continue
+                            text = content.get('text')
+                            if isinstance(text, str) and text.strip():
+                                texts.append(text.strip())
+                        if texts:
+                            break
+                    if texts:
+                        reply = ' '.join(texts)
+            if not reply:
+                for key in ('error', 'message', 'detail'):
+                    value = data.get(key)
+                    if isinstance(value, str) and value.strip():
+                        reply = value.strip()
+                        break
+                    if isinstance(value, dict):
+                        nested = value.get('message')
+                        if isinstance(nested, str) and nested.strip():
+                            reply = nested.strip()
+                            break
+    except Exception:
+        reply = raw
+reply = ' '.join(str(reply).split())
+print(reply)
+PYTHON_EOF
+			}
+
+			openclaw_run_probe() {
+				local endpoint="$1"
+				tmp_payload=$(mktemp)
+				tmp_response=$(mktemp)
+				if [ "$endpoint" = "/responses" ]; then
+					printf '{"model":"%s","input":"hi","temperature":0,"max_output_tokens":16}' "$request_model" > "$tmp_payload"
+				else
+					printf '{"model":"%s","messages":[{"role":"user","content":"hi"}],"temperature":0,"max_tokens":16}' "$request_model" > "$tmp_payload"
+				fi
+
+				probe_result=$(python3 - "$base_url" "$api_key" "$tmp_payload" "$tmp_response" "$probe_timeout" "$endpoint" <<'PYTHON_EOF'
+import sys
+import time
+import urllib.error
+import urllib.request
+
+base_url, api_key, payload_path, response_path, timeout, endpoint = sys.argv[1:7]
+timeout = int(timeout)
+url = base_url + endpoint
+payload = open(payload_path, 'rb').read()
+req = urllib.request.Request(
+    url,
+    data=payload,
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+    },
+    method='POST',
+)
+start = time.time()
+body = b''
+status = 0
+exit_code = 0
+try:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        status = getattr(resp, 'status', 200)
+        body = resp.read()
+except urllib.error.HTTPError as e:
+    status = getattr(e, 'code', 0) or 0
+    body = e.read()
+    exit_code = 22
+except Exception as e:
+    body = str(e).encode('utf-8', errors='replace')
+    exit_code = 1
+elapsed = int((time.time() - start) * 1000)
+with open(response_path, 'wb') as f:
+    f.write(body)
+print(f"{exit_code}|{status}|{elapsed}")
+PYTHON_EOF
+)
+				probe_status=$?
+				reply_preview=$(openclaw_extract_probe_reply "$tmp_response")
+				rm -f "$tmp_payload" "$tmp_response"
+				return $probe_status
+			}
+
+			openclaw_run_probe "$first_endpoint"
+			first_exit=${probe_result%%|*}
+			first_http=${probe_result#*|}
+			first_http=${first_http%%|*}
+			first_latency=${probe_result##*|}
+			first_reply="$reply_preview"
+
+			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
+
+			if [ "$first_exit" = "0" ] && [ "$first_http" -ge 200 ] && [ "$first_http" -lt 300 ]; then
+				OPENCLAW_PROBE_STATUS="OK"
+				OPENCLAW_PROBE_MESSAGE="${first_endpoint} -> HTTP ${first_http}"
+				OPENCLAW_PROBE_LATENCY="${first_latency}ms"
+				OPENCLAW_PROBE_REPLY="$reply_trimmed"
+				return 0
+			fi
+
+			openclaw_run_probe "$second_endpoint"
+			second_exit=${probe_result%%|*}
+			second_http=${probe_result#*|}
+			second_http=${second_http%%|*}
+			second_latency=${probe_result##*|}
+			second_reply="$reply_preview"
+
+			reply_trimmed=$(printf '%s' "$second_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
+
+			if [ "$second_exit" = "0" ] && [ "$second_http" -ge 200 ] && [ "$second_http" -lt 300 ]; then
+				OPENCLAW_PROBE_STATUS="OK"
+				OPENCLAW_PROBE_MESSAGE="${first_endpoint} -> HTTP ${first_http:-0}，切换 ${second_endpoint} -> HTTP ${second_http}"
+				OPENCLAW_PROBE_LATENCY="${second_latency}ms"
+				OPENCLAW_PROBE_REPLY="$reply_trimmed"
+				return 0
+			fi
+
+			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed=$(printf '%s' "$second_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
+
+			OPENCLAW_PROBE_STATUS="FAIL"
+			OPENCLAW_PROBE_MESSAGE="${first_endpoint} -> HTTP ${first_http:-0} / exit ${first_exit:-1}；${second_endpoint} -> HTTP ${second_http:-0} / exit ${second_exit:-1}"
+			OPENCLAW_PROBE_LATENCY="${first_latency:-?}ms -> ${second_latency:-?}ms"
+			OPENCLAW_PROBE_REPLY="$reply_trimmed"
+			return 1
+		}
+
 		clear
 
 		while true; do
-			local models_raw models_list default_model model_count selected_model
+			local models_raw models_list default_model model_count selected_model confirm_switch
 
 			# 从配置文件读取模型键（不调用 openclaw models list）
 			local oc_config
@@ -11467,53 +11717,53 @@ REPO
 			default_model=$(jq -r '.agents.defaults.model.primary // empty' "$oc_config" 2>/dev/null)
 			[ -z "$default_model" ] && default_model="(unknown)"
 
-
-			install_gum
-			install gum
-
 			clear
 
-				# 若 gum 不存在，降级为原始手动输入流程（保持与之前完全一致）
-			if ! command -v gum >/dev/null 2>&1; then
+			# 若 gum 不存在，降级为原始手动输入流程
+			if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
 				echo "--- 模型管理 ---"
 				echo "当前可用模型:"
 				jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d'
 				echo "----------------"
 				read -e -p "请输入要设置的模型名称 (例如 openrouter/openai/gpt-4o)（输入 0 退出）： " selected_model
 
-				# 1. 检查是否输入 0 以退出
 				if [ "$selected_model" = "0" ]; then
 					echo "操作已取消，正在退出..."
-					break  # 跳出 while 循环
+					break
 				fi
 
-				# 2. 验证输入是否为空
 				if [ -z "$selected_model" ]; then
 					echo "错误：模型名称不能为空。请重试。"
-					echo "" # 换行美化
-					continue # 跳过本次循环，重新开始
+					echo ""
+					continue
 				fi
+
+				echo "正在切换模型为: $selected_model ..."
+				if ! openclaw models set "$selected_model"; then
+					echo "切换失败：openclaw models set 返回错误。"
+					break_end
+					return 1
+				fi
+				start_gateway
+
+				break_end
+				return 0
 			else
+				install_gum
+				install gum
+				if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
+					echo "gum 不可用，返回旧版输入模式。"
+					sleep 1
+					continue
+				fi
 				gum style --foreground "$orange" --bold "模型管理"
 				gum style --foreground "$orange" "可用模型（Auth=yes）：${model_count}"
 				gum style --foreground "$orange" "当前默认：${default_model}"
 				echo ""
-
-				# 底部提示
-				gum style --faint "↑↓ 选择 / Enter 确认 / Esc 退出"
+				gum style --faint "↑↓ 选择 / Enter 测试 / Esc 退出"
 				echo ""
 
-				# gum filter：带搜索；gum 版本差异较大，这里只用兼容性最强的 flags
-				selected_model=$(echo "$models_list" | gum filter \
-					--placeholder "搜索模型（如 cli-api/gpt-5.2）" \
-					--prompt "选择模型 > " \
-					--indicator "➜ " \
-					--prompt.foreground "$orange" \
-					--indicator.foreground "$orange" \
-					--cursor-text.foreground "$orange" \
-					--match.foreground "$orange" \
-					--header "" \
-					--height 35)
+				selected_model=$(echo "$models_list" | gum filter 					--placeholder "搜索模型（如 cli-api/gpt-5.2）" 					--prompt "选择模型 > " 					--indicator "➜ " 					--prompt.foreground "$orange" 					--indicator.foreground "$orange" 					--cursor-text.foreground "$orange" 					--match.foreground "$orange" 					--header "" 					--height 35)
 
 				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -iqE '^(error|usage|gum:)'; then
 					echo "操作已取消，正在退出..."
@@ -11521,10 +11771,42 @@ REPO
 				fi
 			fi
 
-			# 去掉编号前缀："(10) model" -> "model"
 			selected_model=$(echo "$selected_model" | sed -E 's/^\([0-9]+\)[[:space:]]+//')
 
-			# 执行切换
+			echo ""
+			echo "正在检测模型: $selected_model"
+			if openclaw_model_probe "$selected_model"; then
+				openclaw_probe_status_line "可用"
+			else
+				openclaw_probe_status_line "不可用"
+			fi
+			echo "状态：$OPENCLAW_PROBE_MESSAGE"
+			echo "延迟：$OPENCLAW_PROBE_LATENCY"
+			echo "摘要：$OPENCLAW_PROBE_REPLY"
+			echo ""
+
+			printf "是否切换到该模型？[y/N，Esc 返回列表]: "
+			IFS= read -rsn1 confirm_switch
+			echo ""
+			if [ "$confirm_switch" = $'' ]; then
+				confirm_switch="no"
+			else
+				case "$confirm_switch" in
+					[yY])
+						IFS= read -rsn1 -t 5 _enter_key
+						confirm_switch="yes"
+						;;
+					[nN]|"") confirm_switch="no" ;;
+					*) confirm_switch="no" ;;
+				esac
+			fi
+
+			if [ "$confirm_switch" != "yes" ]; then
+				echo "已返回模型选择列表。"
+				sleep 1
+				continue
+			fi
+
 			echo "正在切换模型为: $selected_model ..."
 			if ! openclaw models set "$selected_model"; then
 				echo "切换失败：openclaw models set 返回错误。"
@@ -11535,7 +11817,7 @@ REPO
 
 			break_end
 			done
-	}
+		}
 
 
 		resolve_openclaw_plugin_id() {
@@ -13704,8 +13986,12 @@ EOF
 
 		if openclaw_has_command openclaw; then
 			local value
-			value=$(openclaw config get "$path" 2>/dev/null | head -n 1)
+			value=$(openclaw config get "$path" 2>&1 | head -n 1)
 			if [ -n "$value" ]; then
+				if echo "$value" | grep -qi "config path not found"; then
+					echo "(unset)"
+					return 0
+				fi
 				if [ "$value" = "null" ]; then
 					echo "(unset)"
 				else
@@ -13718,7 +14004,7 @@ EOF
 			fi
 		fi
 
-		[ -f "$config_file" ] || { echo "(unset)"; return 1; }
+		[ -f "$config_file" ] || { echo "(unset)"; return 0; }
 
 		if openclaw_has_command jq; then
 			local jq_value
@@ -13752,6 +14038,22 @@ PY
 		fi
 
 		echo "(unset)"
+		return 0
+	}
+
+	openclaw_permission_unset_optional() {
+		local key="$1"
+		local probe
+		if ! openclaw_has_command openclaw; then
+			return 1
+		fi
+		if openclaw config unset "$key" >/dev/null 2>&1; then
+			return 0
+		fi
+		probe=$(openclaw config get "$key" 2>&1 | head -n 1)
+		if [ -z "$probe" ] || [ "$probe" = "null" ] || [ "$probe" = "(unset)" ] || echo "$probe" | grep -qi "config path not found"; then
+			return 0
+		fi
 		return 1
 	}
 
@@ -13805,8 +14107,8 @@ PY
 		openclaw_permission_backup_current || true
 		local failed=0
 		openclaw config set tools.profile coding || failed=1
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
 		openclaw config set tools.deny '[]' --json || failed=1
 		openclaw config set tools.exec.security allowlist || failed=1
 		openclaw config set tools.exec.ask on-miss || failed=1
@@ -13832,8 +14134,8 @@ PY
 		openclaw_permission_backup_current || true
 		local failed=0
 		openclaw config set tools.profile coding || failed=1
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
 		openclaw config set tools.deny '[]' --json || failed=1
 		openclaw config set tools.exec.security allowlist || failed=1
 		openclaw config set tools.exec.ask on-miss || failed=1
@@ -13859,8 +14161,8 @@ PY
 		openclaw_permission_backup_current || true
 		local failed=0
 		openclaw config set tools.profile full || failed=1
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
 		openclaw config set tools.deny '[]' --json || failed=1
 		openclaw config set tools.exec.security full || failed=1
 		openclaw config set tools.exec.ask off || failed=1
@@ -13885,16 +14187,16 @@ PY
 		openclaw_permission_require_openclaw || return 1
 		openclaw_permission_backup_current || true
 		local failed=0
-		openclaw config unset tools.profile >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.byProvider >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.allow >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.deny >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.exec.security >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.exec.ask >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.elevated.enabled >/dev/null 2>&1 || failed=1
-		openclaw config unset commands.bash >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.exec.applyPatch.enabled >/dev/null 2>&1 || failed=1
-		openclaw config unset tools.exec.applyPatch.workspaceOnly >/dev/null 2>&1 || failed=1
+		openclaw_permission_unset_optional tools.profile || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
+		openclaw_permission_unset_optional tools.deny || failed=1
+		openclaw_permission_unset_optional tools.exec.security || failed=1
+		openclaw_permission_unset_optional tools.exec.ask || failed=1
+		openclaw_permission_unset_optional tools.elevated.enabled || failed=1
+		openclaw_permission_unset_optional commands.bash || failed=1
+		openclaw_permission_unset_optional tools.exec.applyPatch.enabled || failed=1
+		openclaw_permission_unset_optional tools.exec.applyPatch.workspaceOnly || failed=1
 		if [ "$failed" -ne 0 ]; then
 			echo "❌ 恢复失败：清理显式权限覆盖时出现错误。"
 			openclaw_permission_restore_backup || true
@@ -13975,7 +14277,237 @@ PY
 		done
 	}
 
-	openclaw_backup_restore_menu() {
+	openclaw_multiagent_config_file() {
+		openclaw config file 2>/dev/null | tail -n 1
+	}
+
+	openclaw_multiagent_default_agent() {
+		local value
+		value=$(openclaw config get agents.defaults.agent 2>&1 | head -n 1)
+		if [ -z "$value" ] || echo "$value" | grep -qi "config path not found"; then
+			value=$(openclaw agents list --json 2>/dev/null | python3 -c 'import json,sys; data=json.load(sys.stdin); print(next((x.get("id","(unset)") for x in data if x.get("isDefault")), "(unset)"))' 2>/dev/null)
+		fi
+		[ -z "$value" ] && value="(unset)"
+		if echo "$value" | grep -q '^".*"$'; then
+			value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//')
+		fi
+		echo "$value"
+	}
+
+	openclaw_multiagent_require_openclaw() {
+		if ! openclaw_has_command openclaw; then
+			echo "❌ 未检测到 openclaw 命令，请先安装或初始化 OpenClaw。"
+			return 1
+		fi
+		return 0
+	}
+
+	openclaw_multiagent_agents_json() {
+		openclaw agents list --json 2>/dev/null || echo '[]'
+	}
+
+	openclaw_multiagent_bindings_json() {
+		openclaw agents bindings --json 2>/dev/null || echo '[]'
+	}
+
+	openclaw_multiagent_sessions_json() {
+		openclaw sessions --all-agents --json 2>/dev/null || echo '{}'
+	}
+
+	openclaw_multiagent_render_status() {
+		local config_file default_agent
+		config_file=$(openclaw_multiagent_config_file)
+		default_agent=$(openclaw_multiagent_default_agent)
+		echo "配置文件: ${config_file:-$(openclaw_permission_config_file)}"
+		echo "默认 Agent: $default_agent"
+		python3 -c 'import json,sys; agents=json.loads(sys.argv[1] or "[]"); bindings=json.loads(sys.argv[2] or "[]"); obj=json.loads(sys.argv[3] or "{}"); sessions=obj.get("sessions",[]) if isinstance(obj,dict) else []; print("已配置 Agent 数: %s" % len(agents)); print("Routing 绑定数: %s" % len(bindings)); print("Session 总数: %s" % len(sessions)); print("---------------------------------------");
+if not agents: print("当前未配置任何多智能体。");
+else:
+ import itertools
+ for item in itertools.islice(agents, 8):
+  identity=item.get("identityName") or "-"; ws=item.get("workspace") or "-"; print("- %s | identity=%s | bindings=%s" % (item.get("id","?"), identity, item.get("bindings",0))); print("  workspace: %s" % ws)' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)" "$(openclaw_multiagent_sessions_json)"
+	}
+
+	openclaw_multiagent_list_agents() {
+		send_stats "OpenClaw多智能体-列出Agent"
+		openclaw_multiagent_require_openclaw || return 1
+		python3 -c 'import json,sys; agents=json.loads(sys.argv[1] or "[]");
+if not agents: print("暂无已配置 Agent。"); raise SystemExit(0)
+for idx,item in enumerate(agents,1):
+ print("%s. %s" % (idx, item.get("id","?"))); print("   workspace : %s" % item.get("workspace","-")); ident=(item.get("identityName") or "-") + ((" " + item.get("identityEmoji")) if item.get("identityEmoji") else ""); print("   identity  : %s" % ident.strip()); print("   model     : %s" % (item.get("model") or "-")); print("   bindings  : %s" % item.get("bindings",0)); print("   default   : %s" % ("yes" if item.get("isDefault") else "no"))' "$(openclaw_multiagent_agents_json)"
+	}
+
+	openclaw_multiagent_add_agent() {
+		send_stats "OpenClaw多智能体-新增Agent"
+		openclaw_multiagent_require_openclaw || return 1
+		local agent_id workspace confirm
+		read -e -p "请输入新的 Agent ID: " agent_id
+		[ -z "$agent_id" ] && echo "已取消：Agent ID 不能为空。" && return 1
+		read -e -p "请输入 workspace 路径（默认 ~/.openclaw/workspace-${agent_id}）: " workspace
+		[ -z "$workspace" ] && workspace="~/.openclaw/workspace-${agent_id}"
+		echo "将创建 Agent: $agent_id"
+		echo "Workspace: $workspace"
+		read -e -p "输入 yes 确认继续: " confirm
+		[ "$confirm" = "yes" ] || { echo "已取消"; return 1; }
+		if openclaw agents add "$agent_id" --workspace "$workspace"; then
+			echo "✅ Agent 创建成功: $agent_id"
+		else
+			echo "❌ Agent 创建失败"
+			return 1
+		fi
+	}
+
+	openclaw_multiagent_delete_agent() {
+		send_stats "OpenClaw多智能体-删除Agent"
+		openclaw_multiagent_require_openclaw || return 1
+		local agent_id confirm
+		read -e -p "请输入要删除的 Agent ID: " agent_id
+		[ -z "$agent_id" ] && echo "已取消：Agent ID 不能为空。" && return 1
+		echo "⚠️ 删除 Agent 可能影响其 workspace、bindings 与 session 路由。"
+		read -e -p "输入 DELETE 确认删除 ${agent_id}: " confirm
+		[ "$confirm" = "DELETE" ] || { echo "已取消"; return 1; }
+		if openclaw agents delete "$agent_id"; then
+			echo "✅ Agent 删除成功: $agent_id"
+		else
+			echo "❌ Agent 删除失败"
+			return 1
+		fi
+	}
+
+	openclaw_multiagent_list_bindings() {
+		send_stats "OpenClaw多智能体-查看Bindings"
+		openclaw_multiagent_require_openclaw || return 1
+		python3 -c 'import json,sys; bindings=json.loads(sys.argv[1] or "[]");
+if not bindings: print("暂无 routing bindings。"); raise SystemExit(0)
+for idx,item in enumerate(bindings,1):
+ bind=item.get("bind") or item.get("binding") or item.get("scope") or "-"; print("%s. agent=%s | bind=%s" % (idx, item.get("agentId","?"), bind))' "$(openclaw_multiagent_bindings_json)"
+	}
+
+	openclaw_multiagent_add_binding() {
+		send_stats "OpenClaw多智能体-新增Binding"
+		openclaw_multiagent_require_openclaw || return 1
+		local agent_id bind_value confirm
+		read -e -p "请输入 Agent ID: " agent_id
+		read -e -p "请输入绑定值（如 telegram:ops / discord:guild-a）: " bind_value
+		{ [ -z "$agent_id" ] || [ -z "$bind_value" ]; } && echo "已取消：参数不能为空。" && return 1
+		echo "将绑定 Agent [$agent_id] -> [$bind_value]"
+		read -e -p "输入 yes 确认继续: " confirm
+		[ "$confirm" = "yes" ] || { echo "已取消"; return 1; }
+		if openclaw agents bind --agent "$agent_id" --bind "$bind_value"; then
+			echo "✅ Binding 添加成功"
+		else
+			echo "❌ Binding 添加失败"
+			return 1
+		fi
+	}
+
+	openclaw_multiagent_remove_binding() {
+		send_stats "OpenClaw多智能体-移除Binding"
+		openclaw_multiagent_require_openclaw || return 1
+		local agent_id bind_value confirm
+		read -e -p "请输入 Agent ID: " agent_id
+		read -e -p "请输入要移除的绑定值: " bind_value
+		{ [ -z "$agent_id" ] || [ -z "$bind_value" ]; } && echo "已取消：参数不能为空。" && return 1
+		echo "将移除 Agent [$agent_id] 的 binding [$bind_value]"
+		read -e -p "输入 yes 确认继续: " confirm
+		[ "$confirm" = "yes" ] || { echo "已取消"; return 1; }
+		if openclaw agents unbind --agent "$agent_id" --bind "$bind_value"; then
+			echo "✅ Binding 移除成功"
+		else
+			echo "❌ Binding 移除失败"
+			return 1
+		fi
+	}
+
+	openclaw_multiagent_set_identity() {
+		send_stats "OpenClaw多智能体-设置Identity"
+		openclaw_multiagent_require_openclaw || return 1
+		local agent_id name theme emoji confirm
+		read -e -p "请输入 Agent ID: " agent_id
+		[ -z "$agent_id" ] && echo "已取消：Agent ID 不能为空。" && return 1
+		read -e -p "Identity name（可留空）: " name
+		read -e -p "Identity theme（可留空）: " theme
+		read -e -p "Identity emoji（可留空）: " emoji
+		[ -z "$name$theme$emoji" ] && echo "已取消：至少填写一个 identity 字段。" && return 1
+		echo "将更新 Agent [$agent_id] 的 identity。"
+		read -e -p "输入 yes 确认继续: " confirm
+		[ "$confirm" = "yes" ] || { echo "已取消"; return 1; }
+		local cmd="openclaw agents set-identity --agent '$agent_id'"
+		[ -n "$name" ] && cmd="$cmd --name '$(printf %s "$name" | sed "s/'/'\\''/g")'"
+		[ -n "$theme" ] && cmd="$cmd --theme '$(printf %s "$theme" | sed "s/'/'\\''/g")'"
+		[ -n "$emoji" ] && cmd="$cmd --emoji '$(printf %s "$emoji" | sed "s/'/'\\''/g")'"
+		eval "$cmd"
+	}
+
+	openclaw_multiagent_show_sessions() {
+		send_stats "OpenClaw多智能体-Session概况"
+		openclaw_multiagent_require_openclaw || return 1
+		python3 -c 'import json,sys; obj=json.loads(sys.argv[1] or "{}"); sessions=obj.get("sessions",[]) if isinstance(obj,dict) else [];
+if not sessions: print("暂无 session 数据。"); raise SystemExit(0)
+by_agent={}
+for item in sessions: by_agent[item.get("agentId","?")]=by_agent.get(item.get("agentId","?"),0)+1
+print("Session 汇总:")
+for agent_id,count in sorted(by_agent.items()): print("- %s: %s" % (agent_id, count))
+print("---------------------------------------")
+for item in sessions[:10]: print("%s | %s | %s" % (item.get("agentId","?"), item.get("key","-"), item.get("model") or "-"))' "$(openclaw_multiagent_sessions_json)"
+	}
+
+	openclaw_multiagent_health_check() {
+		send_stats "OpenClaw多智能体-健康检查"
+		openclaw_multiagent_require_openclaw || return 1
+		local config_file
+		config_file=$(openclaw_multiagent_config_file)
+		echo "检查配置文件: ${config_file:-$(openclaw_permission_config_file)}"
+		openclaw config validate || echo "⚠️ 配置校验未通过，请检查上方输出。"
+		python3 -c 'import json,sys,os; agents=json.loads(sys.argv[1] or "[]"); bindings=json.loads(sys.argv[2] or "[]"); print("---------------------------------------");
+if not agents: print("⚠️ 未发现已配置 agent。");
+else:
+ for item in agents:
+  ws=item.get("workspace") or ""; state="OK" if ws and os.path.isdir(os.path.expanduser(ws)) else "MISSING"; print("agent=%s workspace=%s [%s]" % (item.get("id","?"), ws or "-", state))
+print("bindings=%s" % len(bindings)); print("✅ 多智能体健康检查完成")' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)"
+	}
+
+	openclaw_multiagent_menu() {
+		send_stats "OpenClaw多智能体管理"
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw 多智能体管理"
+			echo "======================================="
+			openclaw_multiagent_render_status
+			echo "---------------------------------------"
+			echo "1. 查看当前多智能体状态"
+			echo "2. 列出所有 Agent"
+			echo "3. 新增 Agent"
+			echo "4. 删除 Agent"
+			echo "5. 查看 Bindings"
+			echo "6. 新增 Binding"
+			echo "7. 移除 Binding"
+			echo "8. 设置 Agent Identity"
+			echo "9. 查看 Session 概况"
+			echo "10. 运行多智能体健康检查"
+			echo "0. 返回上一级"
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " multi_choice
+			case "$multi_choice" in
+				1) openclaw_multiagent_render_status; break_end ;;
+				2) openclaw_multiagent_list_agents; break_end ;;
+				3) openclaw_multiagent_add_agent; break_end ;;
+				4) openclaw_multiagent_delete_agent; break_end ;;
+				5) openclaw_multiagent_list_bindings; break_end ;;
+				6) openclaw_multiagent_add_binding; break_end ;;
+				7) openclaw_multiagent_remove_binding; break_end ;;
+				8) openclaw_multiagent_set_identity; break_end ;;
+				9) openclaw_multiagent_show_sessions; break_end ;;
+				10) openclaw_multiagent_health_check; break_end ;;
+				0) return 0 ;;
+				*) echo "无效的选择，请重试。"; sleep 1 ;;
+			esac
+		done
+	}
+
+
+openclaw_backup_restore_menu() {
 
 		send_stats "OpenClaw备份与还原"
 		while true; do
@@ -14221,9 +14753,10 @@ PY
 			 	;;
 			15) openclaw_memory_menu ;;
 			16) openclaw_permission_menu ;;
-			17) openclaw_backup_restore_menu ;;
-			18) update_moltbot ;;
-			19) uninstall_moltbot ;;
+			17) openclaw_multiagent_menu ;;
+			18) openclaw_backup_restore_menu ;;
+			19) update_moltbot ;;
+			20) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
