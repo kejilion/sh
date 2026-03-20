@@ -13984,8 +13984,12 @@ EOF
 
 		if openclaw_has_command openclaw; then
 			local value
-			value=$(openclaw config get "$path" 2>/dev/null | head -n 1)
+			value=$(openclaw config get "$path" 2>&1 | head -n 1)
 			if [ -n "$value" ]; then
+				if echo "$value" | grep -qi "config path not found"; then
+					echo "(unset)"
+					return 0
+				fi
 				if [ "$value" = "null" ]; then
 					echo "(unset)"
 				else
@@ -14044,8 +14048,8 @@ PY
 		if openclaw config unset "$key" >/dev/null 2>&1; then
 			return 0
 		fi
-		probe=$(openclaw config get "$key" 2>/dev/null | head -n 1)
-		if [ -z "$probe" ] || [ "$probe" = "null" ] || [ "$probe" = "(unset)" ]; then
+		probe=$(openclaw config get "$key" 2>&1 | head -n 1)
+		if [ -z "$probe" ] || [ "$probe" = "null" ] || [ "$probe" = "(unset)" ] || echo "$probe" | grep -qi "config path not found"; then
 			return 0
 		fi
 		return 1
