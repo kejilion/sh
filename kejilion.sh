@@ -14472,7 +14472,7 @@ if not agents: print("当前未配置任何多智能体。")
 else:
  import itertools
  for item in itertools.islice(agents, 8):
-  identity=item.get("identityName") or "-"; emoji=item.get("identityEmoji") or ""; ws=item.get("workspace") or "-"; is_default="是" if item.get("isDefault") else "否"; print("- 智能体ID: %s" % item.get("id","?")); print("  身份名称: %s %s" % (identity, emoji)); print("  工作目录: %s" % ws); print("  默认智能体: %s" % is_default); print("  路由绑定数: %s" % item.get("bindings",0))' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)" "$(openclaw_multiagent_sessions_json)"
+  identity=item.get("identityName") or item.get("name") or "-"; emoji=item.get("identityEmoji") or ""; ws=item.get("workspace") or "-"; is_default="是" if item.get("isDefault") else "否"; print("- 智能体ID: %s" % item.get("id","?")); print("  身份名称: %s %s" % (identity, emoji)); print("  工作目录: %s" % ws); print("  默认智能体: %s" % is_default); print("  路由绑定数: %s" % item.get("bindings",0))' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)" "$(openclaw_multiagent_sessions_json)"
 	}
 
 	openclaw_multiagent_list_agents() {
