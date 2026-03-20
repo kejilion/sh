@@ -14503,7 +14503,7 @@ for idx,item in enumerate(agents,1):
 			read -e -p "请输入智能体性格主题 (如: 严谨、高效): " theme
 			[ -z "$theme" ] && theme="助手"
 			echo "正在配置智能体身份..."
-			openclaw agents identity "$agent_id" --name "$name" --theme "$theme"
+			openclaw agents set-identity --agent "$agent_id" --name "$name" --theme "$theme"
 		else
 			echo "❌ 智能体创建失败"
 			return 1
