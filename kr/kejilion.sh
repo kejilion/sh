@@ -10054,10 +10054,11 @@ moltbot_menu() {
 		echo "13. WebUI访问与设置"
 		echo "14. TUI命令行对话窗口"
 		echo "15. 记忆/Memory"
+		echo "16. 权限管理"
 		echo "--------------------"
-		echo "16. 备份与还原"
-		echo "17. 更新"
-		echo "18. 卸载"
+		echo "17. 备份与还原"
+		echo "18. 更新"
+		echo "19. 卸载"
 		echo "--------------------"
 		echo "0. 返回上一级选单"
 		echo "--------------------"
@@ -13632,6 +13633,217 @@ EOF
 		done
 	}
 
+	openclaw_permission_config_file() {
+		echo "${HOME}/.openclaw/openclaw.json"
+	}
+
+	openclaw_permission_restart_gateway() {
+		if command -v openclaw >/dev/null 2>&1; then
+			echo "正在重启 OpenClaw Gateway..."
+			openclaw gateway restart >/dev/null 2>&1 || {
+				openclaw gateway stop >/dev/null 2>&1
+				openclaw gateway start >/dev/null 2>&1
+			}
+		fi
+	}
+
+	openclaw_permission_get_value() {
+		local path="$1"
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		[ -f "$config_file" ] || return 1
+		python3 - "$config_file" "$path" <<'PY'
+import json, sys
+path = sys.argv[2]
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    obj = json.load(f)
+cur = obj
+for part in path.split('.'):
+    if isinstance(cur, dict) and part in cur:
+        cur = cur[part]
+    else:
+        print('(unset)')
+        raise SystemExit(0)
+if isinstance(cur, bool):
+    print('true' if cur else 'false')
+elif cur is None:
+    print('(unset)')
+else:
+    print(json.dumps(cur, ensure_ascii=False) if isinstance(cur, (dict, list)) else str(cur))
+PY
+	}
+
+	openclaw_permission_detect_mode() {
+		local profile security ask elevated bash_enabled apply_patch workspace_only
+		profile=$(openclaw_permission_get_value "tools.profile")
+		security=$(openclaw_permission_get_value "tools.exec.security")
+		ask=$(openclaw_permission_get_value "tools.exec.ask")
+		elevated=$(openclaw_permission_get_value "tools.elevated.enabled")
+		bash_enabled=$(openclaw_permission_get_value "commands.bash")
+		apply_patch=$(openclaw_permission_get_value "tools.exec.applyPatch.enabled")
+		workspace_only=$(openclaw_permission_get_value "tools.exec.applyPatch.workspaceOnly")
+
+		if [ "$profile" = "coding" ] && [ "$security" = "allowlist" ] && [ "$ask" = "on-miss" ] && [ "$elevated" = "false" ] && [ "$bash_enabled" = "false" ] && [ "$apply_patch" = "false" ]; then
+			echo "标准安全模式"
+		elif [ "$profile" = "coding" ] && [ "$security" = "allowlist" ] && [ "$ask" = "on-miss" ] && [ "$elevated" = "true" ] && [ "$bash_enabled" = "true" ] && [ "$apply_patch" = "true" ] && [ "$workspace_only" = "true" ]; then
+			echo "开发增强模式"
+		elif { [ "$profile" = "full" ] || [ "$profile" = "(unset)" ]; } && [ "$security" = "full" ] && [ "$ask" = "off" ] && [ "$elevated" = "true" ] && [ "$bash_enabled" = "true" ] && [ "$apply_patch" = "true" ]; then
+			echo "完全开放模式"
+		else
+			echo "自定义模式"
+		fi
+	}
+
+	openclaw_permission_render_status() {
+		local config_file mode
+		config_file=$(openclaw_permission_config_file)
+		mode=$(openclaw_permission_detect_mode)
+		echo "配置文件: $config_file"
+		echo "当前模式: $mode"
+		echo "---------------------------------------"
+		printf "%-28s %s\n" "tools.profile" "$(openclaw_permission_get_value tools.profile)"
+		printf "%-28s %s\n" "tools.allow" "$(openclaw_permission_get_value tools.allow)"
+		printf "%-28s %s\n" "tools.deny" "$(openclaw_permission_get_value tools.deny)"
+		printf "%-28s %s\n" "tools.byProvider" "$(openclaw_permission_get_value tools.byProvider)"
+		printf "%-28s %s\n" "tools.exec.security" "$(openclaw_permission_get_value tools.exec.security)"
+		printf "%-28s %s\n" "tools.exec.ask" "$(openclaw_permission_get_value tools.exec.ask)"
+		printf "%-28s %s\n" "tools.elevated.enabled" "$(openclaw_permission_get_value tools.elevated.enabled)"
+		printf "%-28s %s\n" "commands.bash" "$(openclaw_permission_get_value commands.bash)"
+		printf "%-28s %s\n" "applyPatch.enabled" "$(openclaw_permission_get_value tools.exec.applyPatch.enabled)"
+		printf "%-28s %s\n" "applyPatch.workspaceOnly" "$(openclaw_permission_get_value tools.exec.applyPatch.workspaceOnly)"
+	}
+
+	openclaw_permission_apply_standard() {
+		send_stats "OpenClaw权限-标准安全模式"
+		openclaw config set tools.profile coding
+		openclaw config unset tools.byProvider >/dev/null 2>&1 || true
+		openclaw config unset tools.allow >/dev/null 2>&1 || true
+		openclaw config set tools.deny '[]' --json
+		openclaw config set tools.exec.security allowlist
+		openclaw config set tools.exec.ask on-miss
+		openclaw config set tools.elevated.enabled false
+		openclaw config set commands.bash false
+		openclaw config set tools.exec.applyPatch.enabled false
+		openclaw config set tools.exec.applyPatch.workspaceOnly true
+		openclaw_permission_restart_gateway
+		echo "✅ 已切换为标准安全模式"
+	}
+
+	openclaw_permission_apply_developer() {
+		send_stats "OpenClaw权限-开发增强模式"
+		openclaw config set tools.profile coding
+		openclaw config unset tools.byProvider >/dev/null 2>&1 || true
+		openclaw config unset tools.allow >/dev/null 2>&1 || true
+		openclaw config set tools.deny '[]' --json
+		openclaw config set tools.exec.security allowlist
+		openclaw config set tools.exec.ask on-miss
+		openclaw config set tools.elevated.enabled true
+		openclaw config set commands.bash true
+		openclaw config set tools.exec.applyPatch.enabled true
+		openclaw config set tools.exec.applyPatch.workspaceOnly true
+		openclaw_permission_restart_gateway
+		echo "✅ 已切换为开发增强模式"
+	}
+
+	openclaw_permission_apply_full() {
+		send_stats "OpenClaw权限-完全开放模式"
+		openclaw config set tools.profile full
+		openclaw config unset tools.byProvider >/dev/null 2>&1 || true
+		openclaw config unset tools.allow >/dev/null 2>&1 || true
+		openclaw config set tools.deny '[]' --json
+		openclaw config set tools.exec.security full
+		openclaw config set tools.exec.ask off
+		openclaw config set tools.elevated.enabled true
+		openclaw config set commands.bash true
+		openclaw config set tools.exec.applyPatch.enabled true
+		openclaw config set tools.exec.applyPatch.workspaceOnly true
+		openclaw_permission_restart_gateway
+		echo "✅ 已切换为完全开放模式"
+	}
+
+	openclaw_permission_restore_official_defaults() {
+		send_stats "OpenClaw权限-恢复官方默认"
+		openclaw config unset tools.profile >/dev/null 2>&1 || true
+		openclaw config unset tools.byProvider >/dev/null 2>&1 || true
+		openclaw config unset tools.allow >/dev/null 2>&1 || true
+		openclaw config unset tools.deny >/dev/null 2>&1 || true
+		openclaw config unset tools.exec.security >/dev/null 2>&1 || true
+		openclaw config unset tools.exec.ask >/dev/null 2>&1 || true
+		openclaw config unset tools.elevated.enabled >/dev/null 2>&1 || true
+		openclaw config unset commands.bash >/dev/null 2>&1 || true
+		openclaw config unset tools.exec.applyPatch.enabled >/dev/null 2>&1 || true
+		openclaw config unset tools.exec.applyPatch.workspaceOnly >/dev/null 2>&1 || true
+		openclaw_permission_restart_gateway
+		echo "✅ 已恢复为 OpenClaw 官方默认策略（清除显式覆盖）"
+	}
+
+	openclaw_permission_run_audit() {
+		send_stats "OpenClaw权限-安全审计"
+		openclaw security audit
+	}
+
+	openclaw_permission_menu() {
+		send_stats "OpenClaw权限管理"
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw 权限管理"
+			echo "======================================="
+			openclaw_permission_render_status
+			echo "---------------------------------------"
+			echo "1. 查看当前权限状态"
+			echo "2. 切换为标准安全模式（推荐）"
+			echo "3. 切换为开发增强模式"
+			echo "4. 切换为完全开放模式（高风险）"
+			echo "5. 恢复官方默认策略"
+			echo "6. 运行安全审计"
+			echo "0. 返回上一级"
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " perm_choice
+			case "$perm_choice" in
+				1)
+					openclaw_permission_render_status
+					break_end
+					;;
+				2)
+					echo "将应用：标准安全模式"
+					read -e -p "输入 yes 确认: " confirm
+					[ "$confirm" = "yes" ] && openclaw_permission_apply_standard || echo "已取消"
+					break_end
+					;;
+				3)
+					echo "将应用：开发增强模式"
+					read -e -p "输入 yes 确认: " confirm
+					[ "$confirm" = "yes" ] && openclaw_permission_apply_developer || echo "已取消"
+					break_end
+					;;
+				4)
+					echo "⚠️ 完全开放模式会关闭 exec 审批、启用提权与 bash，仅建议可信单用户环境使用。"
+					read -e -p "输入 FULL 确认继续: " confirm
+					[ "$confirm" = "FULL" ] && openclaw_permission_apply_full || echo "已取消"
+					break_end
+					;;
+				5)
+					echo "将清除脚本写入的显式权限覆盖，恢复到 OpenClaw 官方默认策略。"
+					read -e -p "输入 yes 确认: " confirm
+					[ "$confirm" = "yes" ] && openclaw_permission_restore_official_defaults || echo "已取消"
+					break_end
+					;;
+				6)
+					openclaw_permission_run_audit
+					break_end
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "无效的选择，请重试。"
+					sleep 1
+					;;
+			esac
+		done
+	}
+
 	openclaw_backup_restore_menu() {
 
 		send_stats "OpenClaw备份与还原"
@@ -13877,9 +14089,10 @@ EOF
 				break_end
 			 	;;
 			15) openclaw_memory_menu ;;
-			16) openclaw_backup_restore_menu ;;
-			17) update_moltbot ;;
-			18) uninstall_moltbot ;;
+			16) openclaw_permission_menu ;;
+			17) openclaw_backup_restore_menu ;;
+			18) update_moltbot ;;
+			19) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
