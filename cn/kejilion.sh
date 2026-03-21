@@ -11719,7 +11719,8 @@ PYTHON_EOF
 			[ -z "$default_model" ] && default_model="(unknown)"
 
 			clear
-
+			install_gum
+			install gum
 			# 若 gum 不存在，降级为原始手动输入流程
 			if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
 				echo "--- 模型管理 ---"
@@ -11750,8 +11751,6 @@ PYTHON_EOF
 				break_end
 				return 0
 			else
-				install_gum
-				install gum
 				if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
 					echo "gum 不可用，返回旧版输入模式。"
 					sleep 1
