@@ -11456,7 +11456,8 @@ PY
 	    if command -v gum >/dev/null 2>&1; then
 	        return 0
 	    fi
-	    if [ -f /etc/debian_version ]; then
+		
+ 		if command -v apt >/dev/null 2>&1; then
 	        mkdir -p /etc/apt/keyrings
 	        curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
 	        echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | tee /etc/apt/sources.list.d/charm.list > /dev/null
