@@ -28,7 +28,13 @@ if [[ "$cmd" == "config get"* ]]; then
   key="$3"
   case "$key" in
     memory.backend) echo "qmd" ;;
-    memory.qmd.includeDefaultMemory) echo "true" ;;
+    memory.qmd.includeDefaultMemory)
+      if [ -f "${HOME}/.openclaw/includeDefaultMemory" ]; then
+        cat "${HOME}/.openclaw/includeDefaultMemory"
+      else
+        echo "true"
+      fi
+      ;;
     memory.qmd.command) echo "qmd" ;;
     agents.defaults.memorySearch.local.modelPath) echo "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf" ;;
     agents.defaults.memorySearch.provider) echo "local" ;;
@@ -171,7 +177,8 @@ run_menu "0\n" "status" "$WORKDIR/out_status.txt"
 run_menu "1\nyes\n\n\n0\n" "index" "$WORKDIR/out_index.txt"
 # 3) 查看记忆文件（列表+查看）
 run_menu "2\n1\n\n\n\n\n0\n0\n" "files" "$WORKDIR/out_files.txt"
-# 4) 索引修复（执行修复 + 不立即重建）
+# 4) 索引修复（检测到 includeDefaultMemory=false → 恢复为 true 并重建）
+echo "false" > "$HOME/.openclaw/includeDefaultMemory"
 run_menu "3\ny\n\n\n0\n" "fix" "$WORKDIR/out_fix.txt"
 # 5) 记忆方案（自动推荐并取消）
 run_menu "4\n1\n\n0\n0\n" "scheme" "$WORKDIR/out_scheme.txt"
@@ -190,8 +197,8 @@ flag_path = os.path.expanduser('~/.openclaw/includeDefaultMemory')
 if not os.path.exists(flag_path):
     raise SystemExit('includeDefaultMemory not updated')
 flag = open(flag_path, 'r', encoding='utf-8').read().strip()
-if flag != 'false':
-    raise SystemExit('includeDefaultMemory not updated')
+if flag != 'true':
+    raise SystemExit('includeDefaultMemory not restored to true')
 # ensure backup created
 baks = glob.glob(os.path.expanduser('~/.openclaw/workspace/memory/index.sqlite.bak.*'))
 if not baks:

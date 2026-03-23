@@ -13188,11 +13188,15 @@ PY
 
 	openclaw_memory_rebuild_index_all() {
 		local count=0
+		local agent_lines agent_id workspace
+		agent_lines=$(openclaw_memory_list_agents)
 		while IFS=$'\t' read -r agent_id workspace; do
 			[ -z "$agent_id" ] && continue
 			openclaw_memory_rebuild_index_single "$agent_id"
 			count=$((count+1))
-		done < <(openclaw_memory_list_agents)
+		done <<EOF
+$agent_lines
+EOF
 		openclaw gateway restart
 		echo "✅ 索引已重建并自动重启网关"
 		echo "✅ 已为 ${count} 个智能体重建索引"
@@ -13218,17 +13222,22 @@ PY
 
 	openclaw_memory_prepare_workspace_all() {
 		local count=0
-		echo "检查并准备 $(openclaw_memory_list_agents | sed '/^\s*$/d' | wc -l | tr -d ' ') 个智能体工作区"
+		local agent_lines agent_id workspace
+		agent_lines=$(openclaw_memory_list_agents)
+		echo "检查并准备 $(printf '%s\n' "$agent_lines" | sed '/^\s*$/d' | wc -l | tr -d ' ') 个智能体工作区"
 		while IFS=$'\t' read -r agent_id workspace; do
 			[ -z "$agent_id" ] && continue
 			openclaw_memory_prepare_workspace "$agent_id"
 			count=$((count+1))
-		done < <(openclaw_memory_list_agents)
+		done <<EOF
+$agent_lines
+EOF
 		return 0
 	}
 
 	openclaw_memory_render_status() {
-		local agent_id workspace status_output status_lines first="true"
+		local agent_lines agent_id workspace status_output status_lines first="true"
+		agent_lines=$(openclaw_memory_list_agents)
 		while IFS=$'\t' read -r agent_id workspace; do
 			[ -z "$agent_id" ] && continue
 			status_output=$(openclaw memory status --agent "$agent_id" 2>/dev/null)
@@ -13245,7 +13254,9 @@ PY
 			else
 				echo "$status_lines"
 			fi
-		done < <(openclaw_memory_list_agents)
+		done <<EOF
+$agent_lines
+EOF
 	}
 
 	openclaw_memory_get_backend() {
@@ -13788,32 +13799,46 @@ PY
 	}
 
 	openclaw_memory_fix_index() {
-		local backend
+		local backend include_dm
 		backend=$(openclaw_memory_get_backend)
 		if [ "$backend" = "qmd" ] && ! command -v qmd >/dev/null 2>&1; then
 			echo "⚠️ 检测到当前方案为 QMD，但未安装 qmd 命令。"
 			echo "   可切换 Local，或安装 bun + qmd 后再试。"
 		fi
-		echo "适用场景：Indexed 分子 > 分母（重复 collection 导致计数异常）"
-		read -e -p "确认将 includeDefaultMemory 设为 false？(y/N): " confirm_fix
-		if [[ ! "$confirm_fix" =~ ^[Yy]$ ]]; then
-			echo "已取消。"
-			break_end
-			return 0
-		fi
-		openclaw_memory_config_set "memory.qmd.includeDefaultMemory" false
-		if [ $? -ne 0 ]; then
-			echo "❌ 写入配置失败"
-			break_end
-			return 1
-		fi
-		echo "✅ 已设置 includeDefaultMemory=false"
-		echo "推荐执行：清理并重建索引"
-		read -e -p "是否执行清理并重建索引（推荐）？(Y/n): " rebuild_choice
-		if [[ ! "$rebuild_choice" =~ ^[Nn]$ ]]; then
-			openclaw_memory_rebuild_index_safe
+		include_dm=$(openclaw config get memory.qmd.includeDefaultMemory 2>/dev/null)
+		echo "======================================="
+		echo "索引修复诊断"
+		echo "======================================="
+		echo "当前 includeDefaultMemory: ${include_dm:-未设置}"
+		echo ""
+		if [ "$include_dm" = "false" ]; then
+			echo "⚠️ 检测到 includeDefaultMemory=false"
+			echo "   这会导致默认记忆文件（MEMORY.md + memory/*.md）不被索引"
+			echo "   所以 Indexed 会一直显示 0/N"
+			echo ""
+			read -e -p "是否恢复为 true 并重建索引？(Y/n): " fix_choice
+			if [[ ! "$fix_choice" =~ ^[Nn]$ ]]; then
+				openclaw_memory_config_set "memory.qmd.includeDefaultMemory" true
+				if [ $? -ne 0 ]; then
+					echo "❌ 写入配置失败"
+					break_end
+					return 1
+				fi
+				echo "✅ 已恢复 includeDefaultMemory=true"
+				openclaw_memory_rebuild_index_all
+			else
+				echo "已取消。"
+			fi
 		else
-			echo "可稍后在记忆管理中查看状态。"
+			echo "includeDefaultMemory 配置正常。"
+			echo "将执行：清理旧索引 → 全量重建所有智能体索引"
+			echo ""
+			read -e -p "确认执行？(Y/n): " confirm_fix
+			if [[ ! "$confirm_fix" =~ ^[Nn]$ ]]; then
+				openclaw_memory_rebuild_index_all
+			else
+				echo "已取消。"
+			fi
 		fi
 		break_end
 	}
@@ -13870,7 +13895,8 @@ PY
 	openclaw_memory_file_collect() {
 		OPENCLAW_MEMORY_FILES=()
 		OPENCLAW_MEMORY_FILE_LABELS=()
-		local agent_id base_dir memory_dir memory_file rel
+		local agent_lines agent_id base_dir memory_dir memory_file rel
+		agent_lines=$(openclaw_memory_list_agents)
 		while IFS=$'\t' read -r agent_id base_dir; do
 			[ -z "$agent_id" ] && continue
 			memory_dir="$base_dir/memory"
@@ -13887,7 +13913,9 @@ PY
 					OPENCLAW_MEMORY_FILE_LABELS+=("$agent_id/$rel")
 				done < <(find "$memory_dir" -type f -name '*.md' | sort)
 			fi
-		done < <(openclaw_memory_list_agents)
+		done <<EOF
+$agent_lines
+EOF
 	}
 
 	openclaw_memory_file_render_list() {
@@ -14020,9 +14048,16 @@ PY
 					if [ "$confirm_step3" = "rebuild" ]; then
 						openclaw_memory_rebuild_index_all
 					else
-						openclaw memory index --agent main --force
+						local fl_agent_lines fl_agent_id fl_workspace
+						fl_agent_lines=$(openclaw_memory_list_agents)
+						while IFS=$'\t' read -r fl_agent_id fl_workspace; do
+							[ -z "$fl_agent_id" ] && continue
+							openclaw memory index --agent "$fl_agent_id" --force
+						done <<EOF
+$fl_agent_lines
+EOF
 						openclaw gateway restart
-						echo "✅ 已对主智能体执行 force 重建并自动重启网关"
+						echo "✅ 已对所有智能体执行 force 重建并自动重启网关"
 					fi
 				else
 					openclaw memory index
