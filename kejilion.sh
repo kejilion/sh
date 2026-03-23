@@ -13069,6 +13069,38 @@ if os.path.isdir(agents_root):
 	}
 
 	openclaw_memory_list_agents() {
+		if command -v openclaw >/dev/null 2>&1; then
+			local agents_json
+			agents_json=$(openclaw agents list --json 2>/dev/null || true)
+			if [ -n "$agents_json" ]; then
+				python3 - <<'PY' "$agents_json"
+import json, os, sys
+raw = sys.argv[1]
+try:
+    data = json.loads(raw)
+except Exception:
+    data = None
+seen = set()
+results = []
+if isinstance(data, list):
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        aid = item.get('id')
+        if not aid or aid in seen:
+            continue
+        ws = item.get('workspace') or ("~/.openclaw/workspace" if aid == 'main' else f"~/.openclaw/workspace-{aid}")
+        results.append((aid, os.path.expanduser(ws)))
+        seen.add(aid)
+if results:
+    for aid, ws in results:
+        print(f"{aid}\t{ws}")
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
+				[ $? -eq 0 ] && return 0
+			fi
+		fi
 		local config_path
 		config_path=$(openclaw_memory_config_file)
 		python3 - "$config_path" <<'PY'
