@@ -12465,10 +12465,10 @@ openclaw_json_get_bool() {
 					break_end
 					;;
 				2)
-					read -e -p "请输入飞书机器人收到的连接码 (例如 NYA99R2F)（输入 0 退出）： " code
-					if [ "$code" = "0" ]; then continue; fi
-					if [ -z "$code" ]; then echo "错误：连接码不能为空。"; sleep 1; continue; fi
-					openclaw pairing approve feishu "$code"
+					npx -y @larksuite/openclaw-lark install
+					openclaw config set channels.feishu.streaming true
+					openclaw config set channels.feishu.requireMention true --json
+					sh /workspace/projects/scripts/restart.sh
 					break_end
 					;;
 				3)
