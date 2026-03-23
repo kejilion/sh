@@ -12449,7 +12449,8 @@ openclaw_json_get_bool() {
 			echo "1. Telegram 机器人对接"
 			echo "2. 飞书 (Lark) 机器人对接"
 			echo "3. WhatsApp 机器人对接"
-			echo "4. 微信机器人对接"
+			echo "4. QQ 机器人对接"
+			echo "5. 微信机器人对接"
 			echo "----------------------------------------"
 			echo "0. 返回上一级选单"
 			echo "----------------------------------------"
@@ -12478,6 +12479,11 @@ openclaw_json_get_bool() {
 					break_end
 					;;
 				4)
+					echo "QQ 官方对接地址："
+					echo "https://q.qq.com/qqbot/openclaw/login.html"
+					break_end
+					;;
+				5)
 					npx -y @tencent-weixin/openclaw-weixin-cli@latest install
 					break_end
 					;;
