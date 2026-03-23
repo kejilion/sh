@@ -53,7 +53,16 @@ if [[ "$cmd" == "config set"* ]]; then
   fi
   exit 0
 fi
-if [[ "$cmd" == "memory status" ]]; then
+if [[ "$1" == "memory" && "$2" == "status" ]]; then
+  agent="main"
+  while [ $# -gt 0 ]; do
+    if [ "$1" = "--agent" ] && [ $# -ge 2 ]; then
+      agent="$2"
+      shift 2
+      continue
+    fi
+    shift
+  done
   cat <<TXT
 Provider: qmd (requested: qmd)
 Vector: ready
@@ -63,7 +72,7 @@ Store: ${OPENCLAW_STORE:-~/.openclaw/workspace/memory/index.sqlite}
 TXT
   exit 0
 fi
-if [[ "$cmd" == "memory index"* ]]; then
+if [[ "$1" == "memory" && "$2" == "index" ]]; then
   echo "$cmd" >> "${HOME}/.openclaw/index_calls"
   echo "index ok"
   exit 0
@@ -193,7 +202,7 @@ if not os.path.exists(calls_path):
     raise SystemExit('index calls not recorded')
 with open(calls_path, 'r', encoding='utf-8') as fh:
     calls = fh.read()
-if 'memory index --force' not in calls:
+if 'memory index' not in calls or '--force' not in calls:
     raise SystemExit('force index not called for missing store')
 # ensure gateway restart called after rebuild
 gw_calls_path = os.path.expanduser('~/.openclaw/gateway_calls')

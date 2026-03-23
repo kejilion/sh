@@ -45,7 +45,16 @@ if [[ "$cmd" == "config set"* ]]; then
   echo "$val" > "$file"
   exit 0
 fi
-if [[ "$cmd" == "memory status" ]]; then
+if [[ "$1" == "memory" && "$2" == "status" ]]; then
+  agent="main"
+  while [ $# -gt 0 ]; do
+    if [ "$1" = "--agent" ] && [ $# -ge 2 ]; then
+      agent="$2"
+      shift 2
+      continue
+    fi
+    shift
+  done
   cat <<TXT
 Provider: qmd (requested: qmd)
 Vector: ready
@@ -55,7 +64,7 @@ Store: ${OPENCLAW_STORE:-~/.openclaw/workspace/memory/index.sqlite}
 TXT
   exit 0
 fi
-if [[ "$cmd" == "memory index"* ]]; then
+if [[ "$1" == "memory" && "$2" == "index" ]]; then
   echo "$cmd" >> "${HOME}/.openclaw/index_calls"
   echo "index ok"
   exit 0
@@ -163,13 +172,13 @@ run_auto() {
 HOME_QMD=$(make_home "qmd")
 export HOME="$HOME_QMD"
 FAKE_COUNTRY=US FAKE_HF_OK=0 FAKE_MIRROR_OK=1 \
-  run_auto "yes-preheat\n" "qmd" "$WORKDIR/out_qmd.txt"
+  run_auto "yes\n" "qmd" "$WORKDIR/out_qmd.txt"
 
 # Case 2: local 模型不存在 -> 下载 -> 写入 modelPath -> index (CN)
 HOME_LOCAL=$(make_home "local")
 export HOME="$HOME_LOCAL"
 FAKE_COUNTRY=CN FAKE_HF_OK=1 FAKE_MIRROR_OK=0 \
-  run_auto "yes-preheat\n" "local" "$WORKDIR/out_local.txt"
+  run_auto "yes\n" "local" "$WORKDIR/out_local.txt"
 
 # Case 3: 已存在 -> 跳过下载/安装
 HOME_SKIP=$(make_home "skip")
@@ -208,7 +217,7 @@ qmd_cmd = (home_qmd / '.openclaw/config/memory_qmd_command').read_text().strip()
 if not qmd_cmd.startswith('/'):
     raise SystemExit('qmd command not absolute')
 index_calls = (home_qmd / '.openclaw/index_calls').read_text()
-if 'memory index --force' not in index_calls:
+if 'memory index' not in index_calls or '--force' not in index_calls:
     raise SystemExit('qmd preheat index not called')
 
 # Case2: local model downloaded + modelPath written

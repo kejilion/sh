@@ -13030,7 +13030,15 @@ if os.path.isdir(agents_root):
 	}
 
 	openclaw_memory_config_file() {
-		echo "$(openclaw_get_config_file)"
+		local user_config="${HOME}/.openclaw/openclaw.json"
+		local root_config="/root/.openclaw/openclaw.json"
+		if [ -f "$user_config" ]; then
+			echo "$user_config"
+		elif [ "$HOME" = "/root" ] && [ -f "$root_config" ]; then
+			echo "$root_config"
+		else
+			echo "$user_config"
+		fi
 	}
 
 	openclaw_memory_config_get() {
@@ -13060,9 +13068,46 @@ if os.path.isdir(agents_root):
 		openclaw_memory_config_unset "memory.local"
 	}
 
+	openclaw_memory_list_agents() {
+		local config_path
+		config_path=$(openclaw_memory_config_file)
+		python3 - "$config_path" <<'PY'
+import json, os, sys
+config_path = sys.argv[1]
+results = [("main", os.path.expanduser("~/.openclaw/workspace"))]
+seen = {"main"}
+try:
+    if os.path.exists(config_path):
+        with open(config_path, encoding='utf-8') as f:
+            data = json.load(f)
+        agents = data.get('agents', {}).get('list', [])
+        if isinstance(agents, list):
+            for item in agents:
+                if not isinstance(item, dict):
+                    continue
+                aid = item.get('id')
+                ws = item.get('workspace')
+                if not aid or aid in seen:
+                    continue
+                if not ws:
+                    ws = f"~/.openclaw/workspace-{aid}"
+                results.append((aid, os.path.expanduser(ws)))
+                seen.add(aid)
+except Exception:
+    pass
+for aid, ws in results:
+    print(f"{aid}\t{ws}")
+PY
+	}
+
 	openclaw_memory_status_value() {
 		local key="$1"
-		openclaw memory status 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
+		local agent_id="${2:-}"
+		if [ -n "$agent_id" ]; then
+			openclaw memory status --agent "$agent_id" 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
+		else
+			openclaw memory status 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
+		fi
 	}
 
 	openclaw_memory_expand_path() {
@@ -13079,58 +13124,96 @@ if os.path.isdir(agents_root):
 		fi
 	}
 
-	openclaw_memory_rebuild_index_safe() {
+	openclaw_memory_rebuild_index_single() {
+		local agent_id="${1:-main}"
 		local store_raw store_file ts backup_file
-		store_raw=$(openclaw_memory_status_value "Store")
+		store_raw=$(openclaw_memory_status_value "Store" "$agent_id")
 		store_file=$(openclaw_memory_expand_path "$store_raw")
 		if [ -z "$store_file" ] || [ ! -f "$store_file" ]; then
-			echo "⚠️ 未找到索引库文件，可能为空或不存在。"
+			echo "⚠️ [$agent_id] 未找到索引库文件，可能为空或不存在。"
 			echo "   Store 原始值: ${store_raw:-<空>}"
 			echo "   仍将执行重建索引。"
 		else
 			ts=$(date +%Y%m%d_%H%M%S)
 			backup_file="${store_file}.bak.${ts}"
 			if mv "$store_file" "$backup_file"; then
-				echo "✅ 已备份索引: $backup_file"
+				echo "✅ [$agent_id] 已备份索引: $backup_file"
 			else
-				echo "⚠️ 索引备份失败，继续重建。"
+				echo "⚠️ [$agent_id] 索引备份失败，继续重建。"
 			fi
 		fi
-		openclaw memory index --force
+		openclaw memory index --agent "$agent_id" --force
+	}
+
+	openclaw_memory_rebuild_index_safe() {
+		local agent_id="${1:-main}"
+		openclaw_memory_rebuild_index_single "$agent_id"
 		openclaw gateway restart
 		echo "✅ 索引已重建并自动重启网关"
 		echo ""
 		openclaw_memory_render_status
 	}
 
+	openclaw_memory_rebuild_index_all() {
+		local count=0
+		while IFS=$'\t' read -r agent_id workspace; do
+			[ -z "$agent_id" ] && continue
+			openclaw_memory_rebuild_index_single "$agent_id"
+			count=$((count+1))
+		done < <(openclaw_memory_list_agents)
+		openclaw gateway restart
+		echo "✅ 索引已重建并自动重启网关"
+		echo "✅ 已为 ${count} 个智能体重建索引"
+		echo ""
+		openclaw_memory_render_status
+	}
+
 	openclaw_memory_prepare_workspace() {
+		local agent_id="${1:-main}"
 		local workspace memory_dir
-		workspace=$(openclaw_memory_status_value "Workspace")
+		workspace=$(openclaw_memory_status_value "Workspace" "$agent_id")
 		if [ -z "$workspace" ]; then
-			echo "⚠️ 未能获取 Workspace 路径，跳过目录修复。"
-			return 1
+			workspace="$HOME/.openclaw/workspace"
+			[ "$agent_id" != "main" ] && workspace="$HOME/.openclaw/workspace-$agent_id"
 		fi
 		memory_dir="$workspace/memory"
 		if [ ! -d "$memory_dir" ]; then
-			echo "🔧 记忆目录不存在，已自动创建: $memory_dir"
+			echo "🔧 [$agent_id] 记忆目录不存在，已自动创建: $memory_dir"
 			mkdir -p "$memory_dir"
 		fi
 		return 0
 	}
 
+	openclaw_memory_prepare_workspace_all() {
+		local count=0
+		echo "检查并准备 $(openclaw_memory_list_agents | sed '/^\s*$/d' | wc -l | tr -d ' ') 个智能体工作区"
+		while IFS=$'\t' read -r agent_id workspace; do
+			[ -z "$agent_id" ] && continue
+			openclaw_memory_prepare_workspace "$agent_id"
+			count=$((count+1))
+		done < <(openclaw_memory_list_agents)
+		return 0
+	}
+
 	openclaw_memory_render_status() {
-		local status_output status_lines config_file config_display
-		status_output=$(openclaw memory status 2>/dev/null)
-		if [ $? -ne 0 ] || [ -z "$status_output" ]; then
-			echo "获取状态失败"
-		else
-			status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed)" | head -n 3 | sed -e 's/^Provider: /底层方案: /' -e 's/^Vector: /向量库状态: /' -e 's/^Indexed: /已收录文件: /')
+		local agent_id workspace status_output status_lines first="true"
+		while IFS=$'\t' read -r agent_id workspace; do
+			[ -z "$agent_id" ] && continue
+			status_output=$(openclaw memory status --agent "$agent_id" 2>/dev/null)
+			[ "$first" = "true" ] || echo ""
+			first="false"
+			echo "Agent: $agent_id"
+			if [ $? -ne 0 ] || [ -z "$status_output" ]; then
+				echo "获取状态失败"
+				continue
+			fi
+			status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed|Workspace|Store)" | head -n 5 | sed -e 's/^Provider: /底层方案: /' -e 's/^Vector: /向量库状态: /' -e 's/^Indexed: /已收录文件: /' -e 's/^Workspace: /工作区: /' -e 's/^Store: /索引库: /')
 			if [ -z "$status_lines" ]; then
 				echo "未安装/未启动"
 			else
 				echo "$status_lines"
 			fi
-		fi
+		done < <(openclaw_memory_list_agents)
 	}
 
 	openclaw_memory_get_backend() {
@@ -13477,8 +13560,8 @@ if os.path.isdir(agents_root):
 		fi
 		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
 			echo "🔥 预热索引（可能下载模型）"
-			openclaw_memory_prepare_workspace
-			openclaw memory index --force
+			openclaw_memory_prepare_workspace_all
+			openclaw memory index --agent main --force
 		else
 			echo "⏭️ 已跳过预热"
 		fi
@@ -13534,8 +13617,8 @@ if os.path.isdir(agents_root):
 		fi
 		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
 			echo "🔥 预热索引（可能下载模型）"
-			openclaw_memory_prepare_workspace
-			openclaw memory index --force
+			openclaw_memory_prepare_workspace_all
+			openclaw memory index --agent main --force
 		else
 			echo "⏭️ 已跳过预热"
 		fi
@@ -13754,30 +13837,39 @@ if os.path.isdir(agents_root):
 
 	openclaw_memory_file_collect() {
 		OPENCLAW_MEMORY_FILES=()
-		local base_dir="${HOME}/.openclaw/workspace"
-		local memory_dir="$base_dir/memory"
-		local memory_file="$base_dir/MEMORY.md"
-		[ -f "$memory_file" ] && OPENCLAW_MEMORY_FILES+=("$memory_file")
-		if [ -d "$memory_dir" ]; then
-			while IFS= read -r file; do
-				[ -f "$file" ] && OPENCLAW_MEMORY_FILES+=("$file")
-			done < <(find "$memory_dir" -type f -name '*.md' | sort)
-		fi
+		OPENCLAW_MEMORY_FILE_LABELS=()
+		local agent_id base_dir memory_dir memory_file rel
+		while IFS=$'\t' read -r agent_id base_dir; do
+			[ -z "$agent_id" ] && continue
+			memory_dir="$base_dir/memory"
+			memory_file="$base_dir/MEMORY.md"
+			if [ -f "$memory_file" ]; then
+				OPENCLAW_MEMORY_FILES+=("$memory_file")
+				OPENCLAW_MEMORY_FILE_LABELS+=("$agent_id/MEMORY.md")
+			fi
+			if [ -d "$memory_dir" ]; then
+				while IFS= read -r file; do
+					[ -f "$file" ] || continue
+					rel="${file#$base_dir/}"
+					OPENCLAW_MEMORY_FILES+=("$file")
+					OPENCLAW_MEMORY_FILE_LABELS+=("$agent_id/$rel")
+				done < <(find "$memory_dir" -type f -name '*.md' | sort)
+			fi
+		done < <(openclaw_memory_list_agents)
 	}
 
 	openclaw_memory_file_render_list() {
-		local base_dir="${HOME}/.openclaw/workspace"
 		openclaw_memory_file_collect
 		if [ ${#OPENCLAW_MEMORY_FILES[@]} -eq 0 ]; then
 			echo "未找到记忆文件。"
 			return 0
 		fi
-		echo "编号 | 相对路径 | 大小 | 修改时间"
+		echo "编号 | 归属 | 大小 | 修改时间"
 		echo "---------------------------------------"
 		local i file rel size mtime
 		for i in "${!OPENCLAW_MEMORY_FILES[@]}"; do
 			file="${OPENCLAW_MEMORY_FILES[$i]}"
-			rel="${file#$base_dir/}"
+			rel="${OPENCLAW_MEMORY_FILE_LABELS[$i]}"
 			size=$(ls -lh "$file" | awk '{print $5}')
 			mtime=$(date -d "$(stat -c %y "$file")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file" | awk '{print $1" "$2}')
 			printf "%s | %s | %s | %s\\n" "$((i+1))" "$rel" "$size" "$mtime"
@@ -13887,18 +13979,18 @@ if os.path.isdir(agents_root):
 						break_end
 						continue
 					fi
-				openclaw_memory_prepare_workspace
+				openclaw_memory_prepare_workspace_all
 				read -e -p "二次确认：输入 force 使用全量（留空为增量）: " confirm_step2
 				if [ "$confirm_step2" = "force" ]; then
 					echo "⚠️ 全量重建更彻底，但耗时更长。"
 					echo "推荐：输入 rebuild 进行安全重建（先备份索引库）。"
 					read -e -p "第三次确认：输入 rebuild 执行安全重建；直接回车继续普通 force: " confirm_step3
 					if [ "$confirm_step3" = "rebuild" ]; then
-						openclaw_memory_rebuild_index_safe
+						openclaw_memory_rebuild_index_all
 					else
-						openclaw memory index --force
+						openclaw memory index --agent main --force
 						openclaw gateway restart
-						echo "✅ 索引已重建并自动重启网关"
+						echo "✅ 已对主智能体执行 force 重建并自动重启网关"
 					fi
 				else
 					openclaw memory index
