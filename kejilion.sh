@@ -10803,6 +10803,7 @@ EOF
 			echo
 			echo "🔄 设置默认模型并重启网关..."
 			openclaw models set "$provider_name/$default_model"
+			openclaw_sync_sessions_model "$provider_name/$default_model"
 			start_gateway
 			echo "$finish_msg"
 			echo "✅ 当前 API 协议类型: $DETECTED_API"
@@ -11751,6 +11752,7 @@ PYTHON_EOF
 					break_end
 					return 1
 				fi
+				openclaw_sync_sessions_model "$selected_model"
 				start_gateway
 
 				break_end
@@ -11818,6 +11820,7 @@ PYTHON_EOF
 				break_end
 				return 1
 			fi
+			openclaw_sync_sessions_model "$selected_model"
 			start_gateway
 
 			break_end
@@ -11835,6 +11838,64 @@ PYTHON_EOF
 			else
 				echo "$user_config"
 			fi
+		}
+
+		openclaw_get_agents_dir() {
+			local user_agents="${HOME}/.openclaw/agents"
+			local root_agents="/root/.openclaw/agents"
+			if [ -d "$user_agents" ]; then
+				echo "$user_agents"
+			elif [ "$HOME" = "/root" ] && [ -d "$root_agents" ]; then
+				echo "$root_agents"
+			else
+				echo "$user_agents"
+			fi
+		}
+
+		openclaw_sync_sessions_model() {
+			local model_ref="$1"
+			[ -z "$model_ref" ] && return 1
+
+			local agents_dir
+			agents_dir=$(openclaw_get_agents_dir)
+			[ ! -d "$agents_dir" ] && return 0
+
+			local provider="${model_ref%%/*}"
+			local model="${model_ref#*/}"
+			[ "$provider" = "$model_ref" ] && { provider=""; model="$model_ref"; }
+
+			local count=0
+			local agent_dir sessions_file backup_file
+
+			for agent_dir in "$agents_dir"/*/; do
+				[ ! -d "$agent_dir" ] && continue
+				sessions_file="$agent_dir/sessions/sessions.json"
+				[ ! -f "$sessions_file" ] && continue
+
+				backup_file="${sessions_file}.bak"
+				cp "$sessions_file" "$backup_file" 2>/dev/null || continue
+
+				if command -v jq >/dev/null 2>&1; then
+					local tmp_json
+					tmp_json=$(mktemp)
+					if [ -n "$provider" ]; then
+						jq --arg model "$model" --arg provider "$provider" \
+							'to_entries | map(.value.modelOverride = $model | .value.providerOverride = $provider) | from_entries' \
+							"$sessions_file" > "$tmp_json" 2>/dev/null && \
+							mv "$tmp_json" "$sessions_file" && \
+							count=$((count + 1))
+					else
+						jq --arg model "$model" \
+							'to_entries | map(.value.modelOverride = $model | del(.value.providerOverride)) | from_entries' \
+							"$sessions_file" > "$tmp_json" 2>/dev/null && \
+							mv "$tmp_json" "$sessions_file" && \
+							count=$((count + 1))
+					fi
+				fi
+			done
+
+			[ "$count" -gt 0 ] && echo "✅ 已同步 $count 个 agent 的会话模型为 $model_ref"
+			return 0
 		}
 
 		resolve_openclaw_plugin_id() {
