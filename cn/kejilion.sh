@@ -13073,7 +13073,7 @@ if os.path.isdir(agents_root):
 			local agents_json
 			agents_json=$(openclaw agents list --json 2>/dev/null || true)
 			if [ -n "$agents_json" ]; then
-				python3 - <<'PY' "$agents_json"
+				python3 - "$agents_json" <<'PY'
 import json, os, sys
 raw = sys.argv[1]
 try:
