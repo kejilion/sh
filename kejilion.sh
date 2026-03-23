@@ -12335,18 +12335,24 @@ openclaw_json_get_bool() {
 		tg_status=$(openclaw_bot_status_text "$tg_enabled" "$tg_cfg" "$tg_connected" "$tg_abnormal")
 
 		local feishu_enabled feishu_cfg feishu_connected feishu_abnormal feishu_status
-		feishu_enabled=$(openclaw_json_get_bool '.plugins.entries.feishu.enabled // .channels.feishu.enabled // false')
+		feishu_enabled=$(openclaw_json_get_bool '.plugins.entries.feishu.enabled // .plugins.entries["openclaw-lark"].enabled // .channels.feishu.enabled // .channels.lark.enabled // false')
 		feishu_cfg=$(openclaw_channel_has_cfg "feishu")
+		if [ "$feishu_cfg" != "true" ]; then
+			feishu_cfg=$(openclaw_channel_has_cfg "lark")
+		fi
 		feishu_connected="false"
-		if openclaw_dir_has_files "${HOME}/.openclaw/feishu"; then
+		if openclaw_dir_has_files "${HOME}/.openclaw/feishu" || openclaw_dir_has_files "${HOME}/.openclaw/lark" || openclaw_dir_has_files "${HOME}/.openclaw/openclaw-lark"; then
 			feishu_connected="true"
 		fi
 		feishu_abnormal="false"
-		if [ "$feishu_enabled" = "true" ] && ! openclaw_plugin_local_installed "feishu"; then
+		if [ "$feishu_enabled" = "true" ] && ! openclaw_plugin_local_installed "feishu" && ! openclaw_plugin_local_installed "lark" && ! openclaw_plugin_local_installed "openclaw-lark"; then
 			feishu_abnormal="true"
 		fi
 		if [ "$feishu_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
 			feishu_abnormal="true"
+		fi
+		if [ "$feishu_connected" != "true" ] && [ "$feishu_enabled" = "true" ] && [ "$feishu_cfg" = "true" ] && { openclaw_plugin_local_installed "feishu" || openclaw_plugin_local_installed "lark" || openclaw_plugin_local_installed "openclaw-lark"; }; then
+			feishu_connected="true"
 		fi
 		feishu_status=$(openclaw_bot_status_text "$feishu_enabled" "$feishu_cfg" "$feishu_connected" "$feishu_abnormal")
 
