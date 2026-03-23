@@ -12452,6 +12452,7 @@ openclaw_json_get_bool() {
 			echo "1. Telegram 机器人对接"
 			echo "2. 飞书 (Lark) 机器人对接"
 			echo "3. WhatsApp 机器人对接"
+			echo "4. 微信机器人对接"
 			echo "----------------------------------------"
 			echo "0. 返回上一级选单"
 			echo "----------------------------------------"
@@ -12477,6 +12478,10 @@ openclaw_json_get_bool() {
 					if [ "$code" = "0" ]; then continue; fi
 					if [ -z "$code" ]; then echo "错误：连接码不能为空。"; sleep 1; continue; fi
 					openclaw pairing approve whatsapp "$code"
+					break_end
+					;;
+				4)
+					npx -y @tencent-weixin/openclaw-weixin-cli@latest install
 					break_end
 					;;
 				0)
