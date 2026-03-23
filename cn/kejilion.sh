@@ -13604,7 +13604,14 @@ EOF
 		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
 			echo "🔥 预热索引（可能下载模型）"
 			openclaw_memory_prepare_workspace_all
-			openclaw memory index --agent main --force
+			local preh_agent_lines preh_agent_id preh_workspace
+			preh_agent_lines=$(openclaw_memory_list_agents)
+			while IFS=$'\t' read -r preh_agent_id preh_workspace; do
+				[ -z "$preh_agent_id" ] && continue
+				openclaw memory index --agent "$preh_agent_id" --force
+			done <<EOF
+$preh_agent_lines
+EOF
 		else
 			echo "⏭️ 已跳过预热"
 		fi
@@ -13661,7 +13668,14 @@ EOF
 		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
 			echo "🔥 预热索引（可能下载模型）"
 			openclaw_memory_prepare_workspace_all
-			openclaw memory index --agent main --force
+			local preh_agent_lines preh_agent_id preh_workspace
+			preh_agent_lines=$(openclaw_memory_list_agents)
+			while IFS=$'\t' read -r preh_agent_id preh_workspace; do
+				[ -z "$preh_agent_id" ] && continue
+				openclaw memory index --agent "$preh_agent_id" --force
+			done <<EOF
+$preh_agent_lines
+EOF
 		else
 			echo "⏭️ 已跳过预热"
 		fi
