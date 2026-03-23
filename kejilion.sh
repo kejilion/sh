@@ -10091,7 +10091,8 @@ moltbot_menu() {
 	}
 
 	configure_openclaw_session_policy() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 
 		[ ! -f "$config_file" ] && return 1
 
@@ -10122,7 +10123,8 @@ PY
 
 
 	sync_openclaw_api_models() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 
 		[ ! -f "$config_file" ] && return 0
 
@@ -10593,7 +10595,8 @@ EOF
 		local base_url="$2"
 		local api_key="$3"
 		local models_array="$4"
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 
 		# 不再自动探测/纠正 API 协议；保持用户配置为准
 		DETECTED_API="openai-completions"
@@ -11261,7 +11264,8 @@ PY
 }
 
 	delete-openclaw-provider-interactive() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		send_stats "OpenClaw API删除入口"
 
 		if [ ! -f "$config_file" ]; then
@@ -11513,8 +11517,7 @@ REPO
 			local first_exit first_http first_latency second_exit second_http second_latency
 			local first_reply second_reply
 
-			oc_config="${HOME}/.openclaw/openclaw.json"
-			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
+			oc_config=$(openclaw_get_config_file)
 			[ ! -f "$oc_config" ] && {
 				OPENCLAW_PROBE_STATUS="ERROR"
 				OPENCLAW_PROBE_MESSAGE="未找到 openclaw 配置文件"
@@ -11701,8 +11704,7 @@ PYTHON_EOF
 
 			# 从配置文件读取模型键（不调用 openclaw models list）
 			local oc_config
-			oc_config="${HOME}/.openclaw/openclaw.json"
-			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
+			oc_config=$(openclaw_get_config_file)
 
 			models_raw=$(jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d')
 			if [ -z "$models_raw" ]; then
@@ -11823,6 +11825,18 @@ PYTHON_EOF
 		}
 
 
+		openclaw_get_config_file() {
+			local user_config="${HOME}/.openclaw/openclaw.json"
+			local root_config="/root/.openclaw/openclaw.json"
+			if [ -f "$user_config" ]; then
+				echo "$user_config"
+			elif [ "$HOME" = "/root" ] && [ -f "$root_config" ]; then
+				echo "$root_config"
+			else
+				echo "$user_config"
+			fi
+		}
+
 		resolve_openclaw_plugin_id() {
 			local raw_input="$1"
 			local plugin_id="$raw_input"
@@ -11839,12 +11853,8 @@ PYTHON_EOF
 			local plugin_id="$1"
 			[ -z "$plugin_id" ] && return 1
 
-			local home_config="${HOME}/.openclaw/openclaw.json"
-			local root_config="/root/.openclaw/openclaw.json"
-			local config_file="$home_config"
-			if [ ! -f "$home_config" ] && [ -f "$root_config" ]; then
-				config_file="$root_config"
-			fi
+			local config_file
+			config_file=$(openclaw_get_config_file)
 
 			mkdir -p "$(dirname "$config_file")"
 			if [ ! -s "$config_file" ]; then
@@ -11910,12 +11920,8 @@ PYTHON_EOF
 			local plugin_id="$1"
 			[ -z "$plugin_id" ] && return 1
 
-			local home_config="${HOME}/.openclaw/openclaw.json"
-			local root_config="/root/.openclaw/openclaw.json"
-			local config_file="$home_config"
-			if [ ! -f "$home_config" ] && [ -f "$root_config" ]; then
-				config_file="$root_config"
-			fi
+			local config_file
+			config_file=$(openclaw_get_config_file)
 
 			mkdir -p "$(dirname "$config_file")"
 			if [ ! -s "$config_file" ]; then
@@ -12229,7 +12235,8 @@ PYTHON_EOF
 
 openclaw_json_get_bool() {
 		local expr="$1"
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		if [ ! -s "$config_file" ]; then
 			echo "false"
 			return
@@ -12239,7 +12246,8 @@ openclaw_json_get_bool() {
 
 	openclaw_channel_has_cfg() {
 		local channel="$1"
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		if [ ! -s "$config_file" ]; then
 			echo "false"
 			return
@@ -12266,7 +12274,8 @@ openclaw_json_get_bool() {
 
 	openclaw_plugin_local_installed() {
 		local plugin="$1"
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		if [ -s "$config_file" ] && jq -e --arg p "$plugin" '.plugins.installs[$p]' "$config_file" >/dev/null 2>&1; then
 			return 0
 		fi
@@ -12316,7 +12325,8 @@ openclaw_json_get_bool() {
 	}
 
 	openclaw_show_bot_local_status_block() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		local json_ok="false"
 		if [ -s "$config_file" ] && jq empty "$config_file" >/dev/null 2>&1; then
 			json_ok="true"
@@ -12639,7 +12649,8 @@ EOF
 	}
 
 	openclaw_get_all_agent_workspaces() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		if [ -f "$config_file" ]; then
 			python3 - "$config_file" <<'PY'
 import json, sys, os
@@ -12716,7 +12727,10 @@ if os.path.isdir(agents_root):
 
 	openclaw_project_backup_export() {
 		send_stats "OpenClaw项目备份"
-		local openclaw_root="${HOME}/.openclaw"
+		local config_file
+		config_file=$(openclaw_get_config_file)
+		local openclaw_root
+		openclaw_root=$(dirname "$config_file")
 		if [ ! -d "$openclaw_root" ]; then
 			echo "❌ 未找到 OpenClaw 根目录: $openclaw_root"
 			break_end
@@ -12775,7 +12789,10 @@ if os.path.isdir(agents_root):
 
 	openclaw_project_backup_import() {
 		send_stats "OpenClaw项目还原"
-		local openclaw_root="${HOME}/.openclaw"
+		local config_file
+		config_file=$(openclaw_get_config_file)
+		local openclaw_root
+		openclaw_root=$(dirname "$config_file")
 		mkdir -p "$openclaw_root"
 
 		echo "⚠️ 高风险操作：项目还原会覆盖 OpenClaw 配置与工作区内容。"
@@ -13013,7 +13030,7 @@ if os.path.isdir(agents_root):
 	}
 
 	openclaw_memory_config_file() {
-		echo "${HOME}/.openclaw/openclaw.json"
+		echo "$(openclaw_get_config_file)"
 	}
 
 	openclaw_memory_config_get() {
@@ -13909,7 +13926,7 @@ if os.path.isdir(agents_root):
 	}
 
 	openclaw_permission_config_file() {
-		echo "${HOME}/.openclaw/openclaw.json"
+		echo "$(openclaw_get_config_file)"
 	}
 
 	openclaw_permission_backup_file() {
@@ -14728,7 +14745,7 @@ openclaw_backup_restore_menu() {
 	nano_openclaw_json() {
 		send_stats "编辑 OpenClaw 配置文件"
 		install nano
-		nano ~/.openclaw/openclaw.json
+		nano "$(openclaw_get_config_file)"
 		start_gateway
 	}
 
@@ -14803,7 +14820,7 @@ openclaw_backup_restore_menu() {
 		read
 		echo -e "${gl_kjlan}正在加载设备列表……${gl_bai}"
 		# 自动添加域名到 allowedOrigins
-		config_file="$HOME/.openclaw/openclaw.json"
+		config_file=$(openclaw_get_config_file)
 		if [ -f "$config_file" ]; then
 			new_origin="https://${yuming}"
 			# 使用 jq 安全修改 JSON，确保结构存在且不重复添加域名
