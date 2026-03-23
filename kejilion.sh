@@ -13475,9 +13475,13 @@ EOF
 		local qmd_path
 		qmd_path=$(command -v qmd 2>/dev/null || true)
 		if [ -n "$qmd_path" ]; then
-			echo "✅ qmd 已存在: $qmd_path"
-			OPENCLAW_MEMORY_QMD_PATH="$qmd_path"
-			return 0
+			if qmd --version >/dev/null 2>&1; then
+				echo "✅ qmd 已存在且可用: $qmd_path"
+				OPENCLAW_MEMORY_QMD_PATH="$qmd_path"
+				return 0
+			else
+				echo "⚠️ qmd 命令存在但模块损坏，重新安装..."
+			fi
 		fi
 		openclaw_memory_ensure_bun || return 1
 		local qmd_url="${OPENCLAW_MEMORY_GH_PROXY}github.com/tobi/qmd"
@@ -13489,6 +13493,10 @@ EOF
 		fi
 		if [ -z "$qmd_path" ]; then
 			echo "❌ qmd 安装失败"
+			return 1
+		fi
+		if ! qmd --version >/dev/null 2>&1; then
+			echo "❌ qmd 安装后仍无法运行"
 			return 1
 		fi
 		OPENCLAW_MEMORY_QMD_PATH="$qmd_path"
