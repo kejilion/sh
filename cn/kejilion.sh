@@ -13483,14 +13483,9 @@ EOF
 				echo "⚠️ qmd 命令存在但模块损坏，重新安装..."
 			fi
 		fi
-		openclaw_memory_ensure_bun || return 1
-		local qmd_url="${OPENCLAW_MEMORY_GH_PROXY}github.com/tobi/qmd"
-		echo "⬇️ 通过 bun 安装 qmd: $qmd_url"
-		bun install -g "$qmd_url"
+		echo "⬇️ 通过 npm 安装 qmd: @tobilu/qmd"
+		npm install -g @tobilu/qmd
 		qmd_path=$(command -v qmd 2>/dev/null || true)
-		if [ -z "$qmd_path" ] && [ -x "$HOME/.bun/bin/qmd" ]; then
-			qmd_path="$HOME/.bun/bin/qmd"
-		fi
 		if [ -z "$qmd_path" ]; then
 			echo "❌ qmd 安装失败"
 			return 1
