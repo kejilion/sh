@@ -12471,7 +12471,6 @@ openclaw_json_get_bool() {
 					npx -y @larksuite/openclaw-lark install
 					openclaw config set channels.feishu.streaming true
 					openclaw config set channels.feishu.requireMention true --json
-					sh /workspace/projects/scripts/restart.sh
 					break_end
 					;;
 				3)
