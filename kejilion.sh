@@ -14764,56 +14764,6 @@ for idx,item in enumerate(agents,1):
  print("%s. %s" % (idx, item.get("id","?"))); print("   workspace : %s" % item.get("workspace","-")); ident=(item.get("identityName") or "-") + ((" " + item.get("identityEmoji")) if item.get("identityEmoji") else ""); print("   identity  : %s" % ident.strip()); print("   model     : %s" % (item.get("model") or "-")); print("   bindings  : %s" % item.get("bindings",0)); print("   default   : %s" % ("yes" if item.get("isDefault") else "no"))' "$(openclaw_multiagent_agents_json)"
 	}
 
-	openclaw_update_memory_agent_routes() {
-		local memory_file="$HOME/.openclaw/workspace/MEMORY.md"
-		local agents_json
-		agents_json=$(openclaw agents list --json 2>/dev/null) || return 1
-
-		if [ ! -f "$memory_file" ]; then
-			echo "MEMORY.md 不存在，跳过路由规则更新"
-			return 0
-		fi
-
-		local routes_section
-		routes_section=$(python3 - "$agents_json" <<'PY'
-import json, sys
-agents = json.loads(sys.argv[1])
-lines = ["## 子智能体路由规则", "",
-    "当任务涉及以下领域时，自动调用对应子智能体：", "",
-    "| Agent ID | 身份 | 触发关键词 |",
-    "|----------|------|-----------|"]
-for a in agents:
-    aid = a.get("id", "?")
-    if aid == "main":
-        continue
-    name = a.get("identityName") or a.get("name") or aid
-    lines.append(f"| {aid} | {name} | （根据身份推断） |")
-lines.append("")
-lines.append("调用方式：`sessions_spawn(runtime=\"subagent\", agentId=\"<agent_id>\", task=\"...\")`")
-lines.append("")
-print("\n".join(lines))
-PY
-)
-
-		if grep -q "^## 子智能体路由规则" "$memory_file"; then
-			local tmp_file
-			tmp_file=$(mktemp)
-			awk -v section="$routes_section" '
-				BEGIN { in_section=0 }
-				/^## 子智能体路由规则/ { in_section=1; print section; next }
-				/^## / && in_section { in_section=0 }
-				!in_section { print }
-			' "$memory_file" > "$tmp_file" && mv "$tmp_file" "$memory_file"
-			echo "✅ 已更新 MEMORY.md 中的子智能体路由规则"
-		else
-			echo "" >> "$memory_file"
-			echo "$routes_section" >> "$memory_file"
-			echo "✅ 已添加子智能体路由规则到 MEMORY.md"
-		fi
-
-		openclaw memory index --force >/dev/null 2>&1 &
-	}
-
 	openclaw_multiagent_add_agent() {
 		send_stats "OpenClaw多智能体-新增Agent"
 		openclaw_multiagent_require_openclaw || return 1
@@ -14835,7 +14785,6 @@ PY
 			[ -z "$theme" ] && theme="助手"
 			echo "正在配置智能体身份..."
 			openclaw agents set-identity --agent "$agent_id" --name "$name" --theme "$theme"
-			openclaw_update_memory_agent_routes
 		else
 			echo "❌ 智能体创建失败"
 			return 1
@@ -14853,7 +14802,6 @@ PY
 		[ "$confirm" = "DELETE" ] || { echo "已取消"; return 1; }
 		if openclaw agents delete "$agent_id"; then
 			echo "✅ 智能体删除成功: $agent_id"
-			openclaw_update_memory_agent_routes
 		else
 			echo "❌ 智能体删除失败"
 			return 1
