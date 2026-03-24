@@ -10803,6 +10803,7 @@ EOF
 			echo
 			echo "🔄 设置默认模型并重启网关..."
 			openclaw models set "$provider_name/$default_model"
+			openclaw_sync_sessions_model "$provider_name/$default_model"
 			start_gateway
 			echo "$finish_msg"
 			echo "✅ 当前 API 协议类型: $DETECTED_API"
@@ -11413,6 +11414,54 @@ PY
 		break_end
 	}
 
+	openclaw_api_providers_showcase() {
+		send_stats "OpenClaw API厂商推荐"
+
+		clear
+		echo ""
+		echo -e "${gl_kjlan}╔════════════════════════════════════════════════════════════╗${gl_bai}"
+		echo -e "${gl_kjlan}║${gl_bai}            ${gl_huang}🌟 API 厂商推荐列表${gl_bai}                          ${gl_kjlan}║${gl_bai}"
+		echo -e "${gl_kjlan}║${gl_bai}            ${gl_zi}部分入口含 AFF${gl_bai}                            ${gl_kjlan}║${gl_bai}"
+		echo -e "${gl_kjlan}╚════════════════════════════════════════════════════════════╝${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● DeepSeek${gl_bai}"
+		echo -e "    ${gl_kjlan}https://api-docs.deepseek.com/${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● OpenRouter${gl_bai}"
+		echo -e "    ${gl_kjlan}https://openrouter.ai/${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● Kimi${gl_bai}"
+		echo -e "    ${gl_kjlan}https://platform.moonshot.cn/docs/guide/start-using-kimi-api${gl_bai}"
+		echo ""
+		echo -e "  ${gl_huang}● 优云智算${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "    ${gl_kjlan}https://passport.compshare.cn/register?referral_code=4mscFZXfutfFi8swMVsPuf${gl_bai}"
+		echo ""
+		echo -e "  ${gl_huang}● 硅基流动${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "    ${gl_kjlan}https://cloud.siliconflow.cn/i/irWVdPic${gl_bai}"
+		echo ""
+		echo -e "  ${gl_huang}● 智谱 GLM${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "    ${gl_kjlan}https://www.bigmodel.cn/glm-coding?ic=HYOTDOAJMR${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● MiniMax${gl_bai}"
+		echo -e "    ${gl_kjlan}https://www.minimaxi.com/${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● NVIDIA${gl_bai}"
+		echo -e "    ${gl_kjlan}https://build.nvidia.com/settings/api-keys${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● Ollama${gl_bai}"
+		echo -e "    ${gl_kjlan}https://ollama.com/${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● 白山云${gl_bai}"
+		echo -e "    ${gl_kjlan}https://ai.baishan.com/${gl_bai}"
+		echo ""
+		echo -e "${gl_kjlan}────────────────────────────────────────────────────────────${gl_bai}"
+		echo -e "  ${gl_zi}图例：${gl_lv}● 官方入口${gl_bai}  ${gl_huang}● AFF 推荐入口${gl_bai}"
+		echo ""
+		echo -e "${gl_huang}提示：复制链接到浏览器打开即可访问${gl_bai}"
+		echo ""
+		read -erp "按回车键返回..." dummy
+	}
+
 	openclaw_api_manage_menu() {
 		send_stats "OpenClaw API入口"
 		while true; do
@@ -11426,6 +11475,7 @@ PY
 			echo "2. 同步API供应商模型列表"
 			echo "3. 切换 API 类型（completions / responses）"
 			echo "4. 删除API"
+			echo "5. API 厂商推荐"
 			echo "0. 退出"
 			echo "---------------------------------------"
 			read -erp "请输入你的选择: " api_choice
@@ -11442,6 +11492,9 @@ PY
 					;;
 				4)
 					delete-openclaw-provider-interactive
+					;;
+				5)
+					openclaw_api_providers_showcase
 					;;
 				0)
 					return 0
@@ -11751,6 +11804,7 @@ PYTHON_EOF
 					break_end
 					return 1
 				fi
+				openclaw_sync_sessions_model "$selected_model"
 				start_gateway
 
 				break_end
@@ -11818,6 +11872,7 @@ PYTHON_EOF
 				break_end
 				return 1
 			fi
+			openclaw_sync_sessions_model "$selected_model"
 			start_gateway
 
 			break_end
@@ -11835,6 +11890,64 @@ PYTHON_EOF
 			else
 				echo "$user_config"
 			fi
+		}
+
+		openclaw_get_agents_dir() {
+			local user_agents="${HOME}/.openclaw/agents"
+			local root_agents="/root/.openclaw/agents"
+			if [ -d "$user_agents" ]; then
+				echo "$user_agents"
+			elif [ "$HOME" = "/root" ] && [ -d "$root_agents" ]; then
+				echo "$root_agents"
+			else
+				echo "$user_agents"
+			fi
+		}
+
+		openclaw_sync_sessions_model() {
+			local model_ref="$1"
+			[ -z "$model_ref" ] && return 1
+
+			local agents_dir
+			agents_dir=$(openclaw_get_agents_dir)
+			[ ! -d "$agents_dir" ] && return 0
+
+			local provider="${model_ref%%/*}"
+			local model="${model_ref#*/}"
+			[ "$provider" = "$model_ref" ] && { provider=""; model="$model_ref"; }
+
+			local count=0
+			local agent_dir sessions_file backup_file
+
+			for agent_dir in "$agents_dir"/*/; do
+				[ ! -d "$agent_dir" ] && continue
+				sessions_file="$agent_dir/sessions/sessions.json"
+				[ ! -f "$sessions_file" ] && continue
+
+				backup_file="${sessions_file}.bak"
+				cp "$sessions_file" "$backup_file" 2>/dev/null || continue
+
+				if command -v jq >/dev/null 2>&1; then
+					local tmp_json
+					tmp_json=$(mktemp)
+					if [ -n "$provider" ]; then
+						jq --arg model "$model" --arg provider "$provider" \
+							'to_entries | map(.value.modelOverride = $model | .value.providerOverride = $provider) | from_entries' \
+							"$sessions_file" > "$tmp_json" 2>/dev/null && \
+							mv "$tmp_json" "$sessions_file" && \
+							count=$((count + 1))
+					else
+						jq --arg model "$model" \
+							'to_entries | map(.value.modelOverride = $model | del(.value.providerOverride)) | from_entries' \
+							"$sessions_file" > "$tmp_json" 2>/dev/null && \
+							mv "$tmp_json" "$sessions_file" && \
+							count=$((count + 1))
+					fi
+				fi
+			done
+
+			[ "$count" -gt 0 ] && echo "✅ 已同步 $count 个 agent 的会话模型为 $model_ref"
+			return 0
 		}
 
 		resolve_openclaw_plugin_id() {
