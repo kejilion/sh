@@ -10996,11 +10996,16 @@ sync-openclaw-provider-interactive() {
 		return 1
 	fi
 
-	read -erp "同期する API 名 (プロバイダー) を入力してください:" provider_name
+	read -erp "同期する API 名 (プロバイダー) 、Enterで全部同期: " provider_name
 	if [ -z "$provider_name" ]; then
-		echo "❌ プロバイダー名を空にすることはできません"
-		break_end
-		return 1
+		if sync_openclaw_api_models; then
+			start_gateway
+		else
+			echo "❌ APIモデル同期失敗、ゲートウェイ再起動中止。provider /modelsを確認后再試行してください。"
+			break_end
+			return 1
+		fi
+		return 0
 	fi
 
 	install jq curl >/dev/null 2>&1

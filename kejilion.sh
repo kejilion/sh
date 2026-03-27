@@ -10941,11 +10941,16 @@ sync-openclaw-provider-interactive() {
 		return 1
 	fi
 
-	read -erp "请输入要同步的 API 名称(provider): " provider_name
+	read -erp "Enter the API name (provider) to sync, press Enter to sync all: " provider_name
 	if [ -z "$provider_name" ]; then
-		echo "❌ provider 名称不能为空"
-		break_end
-		return 1
+		if sync_openclaw_api_models; then
+			start_gateway
+		else
+			echo "❌ API model sync failed, gateway restart aborted. Check provider /models and retry."
+			break_end
+			return 1
+		fi
+		return 0
 	fi
 
 	install jq curl >/dev/null 2>&1
