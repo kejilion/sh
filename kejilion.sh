@@ -10941,15 +10941,15 @@ sync-openclaw-provider-interactive() {
 		return 1
 	fi
 
-	read -erp "Enter the API name (provider) to sync, press Enter to sync all: " provider_name
+	read -erp "请输入要同步的 API 名称(provider)，直接回车同步全部: " provider_name
 	if [ -z "$provider_name" ]; then
 		if sync_openclaw_api_models; then
 			start_gateway
 		else
-			echo "❌ API model sync failed, gateway restart aborted. Check provider /models and retry."
-			break_end
+			echo "❌ API 模型同步失败，已中止重启网关。请检查 provider /models 返回后重试。"
 			return 1
 		fi
+		break_end
 		return 0
 	fi
 
