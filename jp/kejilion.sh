@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.4.7"
+sh_v="4.4.9"
 
 
 gl_hui='\e[37m'
@@ -61,7 +61,7 @@ CheckFirstRun_true() {
 
 # この機能は、機能の埋め込み情報を収集し、現在のスクリプトのバージョン番号、使用時間、システム バージョン、CPU アーキテクチャ、マシンの国、およびユーザーが使用した機能名を記録します。機密情報は含まれませんので、ご安心ください。信じてください！
 # なぜこの機能が設計されたのでしょうか?その目的は、ユーザーが使いたい機能をより深く理解し、機能をさらに最適化し、ユーザーのニーズを満たす機能をさらに投入することです。
-# send_stats 関数の呼び出し位置を全文検索できます。これは透明性があり、オープンソースです。ご不安がある場合はご利用をお断りすることも可能です。
+# send_stats 関数の呼び出し位置を全文検索できます。これは透明性があり、オープンソースです。ご心配な場合はご利用をお断りすることも可能です。
 
 
 
@@ -254,7 +254,7 @@ remove() {
 	fi
 
 	for package in "$@"; do
-		echo -e "${gl_kjlan}アンインストールする$package...${gl_bai}"
+		echo -e "${gl_kjlan}アンインストール中$package...${gl_bai}"
 		if command -v dnf &>/dev/null; then
 			dnf remove -y "$package"
 		elif command -v yum &>/dev/null; then
@@ -924,12 +924,12 @@ allow_ip() {
 		# 許可ルールを追加する
 		if ! iptables -C INPUT -s $ip -j ACCEPT 2>/dev/null; then
 			iptables -I INPUT 1 -s $ip -j ACCEPT
-			echo "リリース済みIP$ip"
+			echo "リリースされたIP$ip"
 		fi
 	done
 
 	save_iptables_rules
-	send_stats "リリース済みIP"
+	send_stats "リリースされたIP"
 }
 
 block_ip() {
@@ -2231,10 +2231,10 @@ web_security() {
 					  ;;
 
 				  22)
-					  send_stats "高負荷により5秒シールドが可能"
+					  send_stats "高負荷で5秒シールド可能"
 					  echo -e "${gl_huang}Web サイトは 5 分ごとに自動的に検出します。高負荷を検出すると自動的にシールドが開き、低負荷を検出すると5秒間自動的にシールドが閉じます。${gl_bai}"
 					  echo "--------------"
-					  echo "CFパラメータを取得します。"
+					  echo "CF パラメータを取得します。"
 					  echo -e "cf バックエンドの右上隅にある私のプロフィールに移動し、左側で API トークンを選択して、${gl_huang}Global API Key${gl_bai}"
 					  echo -e "cf バックエンド ドメイン名の概要ページの右下に移動して取得します。${gl_huang}エリアID${gl_bai}"
 					  echo "https://dash.cloudflare.com/login"
@@ -2318,7 +2318,7 @@ check_nginx_compression() {
 
 	# zstd がオンでコメントが解除されているかどうかを確認します (行全体が zstd on で始まります)。
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status="zstd圧縮がオンになっています"
+		zstd_status="zstd圧縮が有効になっています"
 	else
 		zstd_status=""
 	fi
@@ -3215,7 +3215,7 @@ f2b_sshd() {
 
 # 基本パラメータ設定: 禁止期間 (bantime)、時間枠 (findtime)、再試行回数 (maxretry)
 # 例証します:
-# - /etc/fail2ban/jail.d/sshd.local への書き込みを優先します (デフォルトのjail設定を上書きし、アップグレード時に失われにくくなります)
+# - /etc/fail2ban/jail.d/sshd.local への書き込みを優先します (デフォルトのjail設定をオーバーライドし、アップグレード時に失われにくくなります)
 # - Alpine で、jail 名が異なる場合でも、sshd.local と書き込みます。 Fail2Ban は、jail 名に従って一致します。
 f2b_basic_config() {
 	root_use
@@ -3284,7 +3284,7 @@ f2b_edit_config() {
 	[ -f "$cfg" ] || printf "[sshd]\n# bantime/findtime/maxretry\n" > "$cfg"
 
 	nano "$cfg"
-	echo -e "${gl_lv}保存されました${gl_bai}、fail2ban をリロード中..."
+	echo -e "${gl_lv}保存されました${gl_bai}、fail2ban をリロードしています..."
 	fail2ban-client reload >/dev/null 2>&1 || true
 }
 
@@ -3690,7 +3690,7 @@ stream_panel() {
 			4)
 				ldnmp_Proxy_backend_stream
 				add_app_id
-				send_stats "レイヤー 4 プロキシを追加する"
+				send_stats "レイヤ 4 プロキシを追加する"
 				;;
 			5)
 				send_stats "転送設定の編集"
@@ -3746,7 +3746,7 @@ ldnmp_Proxy_backend_stream() {
 		*) echo "無効な選択"; return 1 ;;
 	esac
 
-	read -e -p "1 つ以上のバックエンド IP + ポートをスペースで区切って入力してください (例: 10.13.0.2:3306 10.13.0.3:3306)。" reverseproxy_port
+	read -e -p "1 つ以上のバックエンド IP + ポートをスペースで区切って入力してください (例: 10.13.0.2:3306 10.13.0.3:3306):" reverseproxy_port
 
 	nginx_install_status
 	cd /home && mkdir -p web/stream.d
@@ -3957,7 +3957,7 @@ ldnmp_web_status() {
 
 			8)
 				send_stats "サイト構成を編集する"
-				read -e -p "サイト設定を編集するには、編集するドメイン名を入力してください:" yuming
+				read -e -p "サイト構成を編集するには、編集するドメイン名を入力してください:" yuming
 				install nano
 				nano /home/web/conf.d/$yuming.conf
 				docker exec nginx nginx -s reload
@@ -4304,7 +4304,7 @@ generate_access_urls() {
 			done
 		fi
 
-		# HTTPS 構成を処理する
+		# HTTPS 構成の処理
 		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
 				local frps_search_pattern="${ipv4_address}:${port}"
@@ -4773,7 +4773,7 @@ linux_clean() {
 
 bbr_on() {
 
-# カーネルチューニングモジュールとの競合を防ぐためのsysctl.dへの書き込みを統合
+# カーネル チューニング モジュールとの競合を防ぐための sysctl.d への書き込みを統合しました。
 local CONF="/etc/sysctl.d/99-kejilion-bbr.conf"
 mkdir -p /etc/sysctl.d
 echo "net.core.default_qdisc=fq" > "$CONF"
@@ -5468,7 +5468,7 @@ dd_xitong() {
 				;;
 
 			  30)
-				send_stats "centos9を再インストールする"
+				send_stats "CentOS9を再インストールする"
 				dd_xitong_3
 				bash reinstall.sh centos 9
 				reboot
@@ -5850,7 +5850,7 @@ clamav_scan() {
 		MOUNT_PARAMS+="--mount type=bind,source=${dir},target=/mnt/host${dir} "
 	done
 
-	# clamscan コマンドパラメータを構築する
+	# clamscan コマンドのパラメータを構築する
 	local SCAN_PARAMS=""
 	for dir in "$@"; do
 		SCAN_PARAMS+="/mnt/host${dir} "
@@ -6243,7 +6243,7 @@ optimize_web_server() {
 	_kernel_optimize_core "ウェブサイト構築最適化モード" "web"
 }
 
-# ── 还原默认设置（完全清理） ──
+# ── 初期設定に戻す（完全クリーン） ──
 restore_defaults() {
 	echo -e "${gl_lv}デフォルト設定に戻す...${gl_bai}"
 
@@ -6279,7 +6279,7 @@ Kernel_optimize() {
 	root_use
 	while true; do
 	  clear
-	  send_stats "Linuxカーネルチューニング管理"
+	  send_stats "Linux カーネルのチューニング管理"
 	  local current_mode=$(grep "^# モード:" /etc/sysctl.d/99-kejilion-optimize.conf 2>/dev/null | sed 's/# モード: //' | awk -F'|' '{print $1}' | xargs)
 	  [ -z "$current_mode" ] && [ -f /etc/sysctl.d/99-network-optimize.conf ] && current_mode="オートチューニングモード"
 	  echo "Linuxシステムのカーネルパラメータの最適化"
@@ -6421,7 +6421,7 @@ while true; do
   case $choice in
 	  1)
 		  update_locale "en_US.UTF-8" "en_US.UTF-8"
-		  send_stats "英語に切り替えて"
+		  send_stats "英語に切り替えてください"
 		  ;;
 	  2)
 		  update_locale "zh_CN.UTF-8" "zh_CN.UTF-8"
@@ -6726,7 +6726,7 @@ linux_backup() {
 			3) delete_backup ;;
 			*) break ;;
 		esac
-		read -e -p "続行するには Enter キーを押してください..."
+		read -e -p "Enter を押して続行します..."
 	done
 }
 
@@ -7049,7 +7049,7 @@ list_partitions() {
 
 # 永続的にマウントされたパーティション
 mount_partition() {
-	send_stats "パーティションのマウント"
+	send_stats "パーティションをマウントする"
 	read -e -p "マウントするパーティションの名前を入力してください (例: sda1):" PARTITION
 
 	DEVICE="/dev/$PARTITION"
@@ -7207,7 +7207,7 @@ disk_manager() {
 	send_stats "ハードディスク管理機能"
 	while true; do
 		clear
-		echo "ハードドライブのパーティション管理"
+		echo "ハードディスクのパーティション管理"
 		echo -e "${gl_huang}この機能は内部テスト中であるため、運用環境では使用しないでください。${gl_bai}"
 		echo "------------------------"
 		list_partitions
@@ -7226,7 +7226,7 @@ disk_manager() {
 			5) check_partition ;;
 			*) break ;;
 		esac
-		read -e -p "続行するには Enter キーを押してください..."
+		read -e -p "Enter を押して続行します..."
 	done
 }
 
@@ -7386,7 +7386,7 @@ run_task() {
 	else
 		echo "同期に失敗しました!以下の点をご確認ください。"
 		echo "1. ネットワーク接続は正常ですか?"
-		echo "2. リモート ホストにアクセスできますか?"
+		echo "2. リモートホストにアクセスできるかどうか"
 		echo "3. 認証情報は正しいですか?"
 		echo "4. ローカル ディレクトリとリモート ディレクトリには正しいアクセス許可がありますか?"
 	fi
@@ -7395,7 +7395,7 @@ run_task() {
 
 # スケジュールされたタスクを作成する
 schedule_task() {
-	send_stats "同期スケジュールされたタスクを追加する"
+	send_stats "同期のスケジュールされたタスクを追加する"
 
 	read -e -p "定期的に同期するタスク番号を入力してください:" num
 	if ! [[ "$num" =~ ^[0-9]+$ ]]; then
@@ -7485,7 +7485,7 @@ rsync_manager() {
 			0) break ;;
 			*) echo "選択が無効です。もう一度お試しください。" ;;
 		esac
-		read -e -p "続行するには Enter キーを押してください..."
+		read -e -p "Enter を押して続行します..."
 	done
 }
 
@@ -7547,7 +7547,7 @@ linux_info() {
 
 	local swap_info=$(free -m | awk 'NR==3{used=$3; total=$2; if (total == 0) {percentage=0} else {percentage=used*100/total}; printf "%dM/%dM (%d%%)", used, total, percentage}')
 
-	local runtime=$(cat /proc/uptime | awk -F. '{run_days=int($1 / 86400);run_hours=int(($1 % 86400) / 3600);run_minutes=int(($1% 3600) / 60); if (run_days > 0) printf("%d day ", run_days); if (実行時間 > 0) printf("%d 時間 ", 実行時間); printf("%d 分\n", run_ minutes)}')
+	local runtime=$(cat /proc/uptime | awk -F. '{run_days=int($1 / 86400);run_hours=int(($1 % 86400) / 3600);run_minutes=int(($1% 3600) / 60); if (run_days > 0) printf("%d day ", run_days); if (run_hours > 0) printf("%d 時間 ", run_hours); printf("%d 分\n", run_ minutes)}')
 
 	local timezone=$(current_timezone)
 
@@ -7667,7 +7667,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}btop 最新の監視ツール${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}レンジャーファイル管理ツール"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}ncdu ディスク使用量表示ツール${gl_kjlan}14.  ${gl_bai}fzf グローバル検索ツール"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}vim テキストエディタ${gl_kjlan}16.  ${gl_bai}ナノテキストエディタ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}git バージョン管理システム${gl_kjlan}18.  ${gl_bai}opencode AI プログラミング アシスタント${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}17.  ${gl_bai}git バージョン管理システム${gl_kjlan}18.  ${gl_bai}opencode AIプログラミングアシスタント${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}マトリックス スクリーンセーバー${gl_kjlan}22.  ${gl_bai}走る電車のスクリーンセーバー"
 	  echo -e "${gl_kjlan}26.  ${gl_bai}テトリスのミニゲーム${gl_kjlan}27.  ${gl_bai}ヘビのミニゲーム"
@@ -7727,7 +7727,7 @@ linux_tools() {
 			  install iftop
 			  clear
 			  iftop
-			  send_stats "iftopをインストールする"
+			  send_stats "iftop をインストールする"
 			  ;;
 			7)
 			  clear
@@ -7785,7 +7785,7 @@ linux_tools() {
 			  clear
 			  ncdu
 			  cd ~
-			  send_stats "ncdu をインストールする"
+			  send_stats "ncduをインストールする"
 			  ;;
 			14)
 			  clear
@@ -8029,7 +8029,7 @@ docker_ssh_migration() {
 			docker inspect "$c" > "$inspect_file"
 
 			if is_compose_container "$c"; then
-				echo -e "${gl_kjlan}検出されました$cdocker-compose コンテナーです${gl_bai}"
+				echo -e "${gl_kjlan}検出されました$cdocker-composeコンテナです${gl_bai}"
 				local project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
 				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
@@ -8206,7 +8206,7 @@ docker_ssh_migration() {
 
 		[[ "$has_container" == false ]] && echo -e "${gl_huang}共通コンテナのバックアップ情報が見つかりません${gl_bai}"
 
-		# /home/docker 下のファイルを復元します
+		# /home/docker 下のファイルを復元する
 		if [ -f "$BACKUP_DIR/home_docker_files.tar.gz" ]; then
 			echo -e "${gl_kjlan}/home/docker の下にファイルを復元しています...${gl_bai}"
 			mkdir -p /home/docker
@@ -8238,7 +8238,7 @@ docker_ssh_migration() {
 
 		echo -e "${gl_huang}バックアップを転送中...${gl_bai}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# キーを使用してログインする
+			# キーでログイン
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -8735,7 +8735,7 @@ linux_test() {
 		  32)
 			  send_stats "Spiritysdx フュージョンモンスター レビュー"
 			  clear
-			  curl -L ${gh_proxy}gitlab.com/spiritysdx/za/-/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
+			  curl -L ${gh_proxy}github.com/spiritLHLS/ecs/raw/main/ecs.sh -o ecs.sh && chmod +x ecs.sh && bash ecs.sh
 			  ;;
 
 		  33)
@@ -10035,7 +10035,8 @@ moltbot_menu() {
 		local update_message=$(check_openclaw_update)
 
 		echo "======================================="
-		echo -e "ClawdBot > MoltBot > OpenClaw 管理"
+		echo -e "🦞 KEJILION による OPENCLAW 管理ツール 🦞"
+		echo -e "💡 ターミナル実行 \033[1;33mk 爪\033[0m ですぐにメニューに入ります"
 		echo -e "$install_status $running_status $update_message"
 		echo "======================================="
 		echo "1. インストール"
@@ -10054,10 +10055,12 @@ moltbot_menu() {
 		echo "13. WebUI へのアクセスと設定"
 		echo "14. TUIコマンドラインダイアログウィンドウ"
 		echo "15. 記憶・記憶"
+		echo "16. 権限管理"
+		echo "17. マルチエージェント管理"
 		echo "--------------------"
-		echo "16. バックアップと復元"
-		echo "17. アップデート"
-		echo "18. アンインストール"
+		echo "18. バックアップと復元"
+		echo "19. アップデート"
+		echo "20. アンインストール"
 		echo "--------------------"
 		echo "0. 前のメニューに戻る"
 		echo "--------------------"
@@ -10088,7 +10091,8 @@ moltbot_menu() {
 	}
 
 	configure_openclaw_session_policy() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 
 		[ ! -f "$config_file" ] && return 1
 
@@ -10119,7 +10123,8 @@ PY
 
 
 	sync_openclaw_api_models() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 
 		[ ! -f "$config_file" ] && return 0
 
@@ -10138,36 +10143,6 @@ from datetime import datetime, timezone
 path = sys.argv[1]
 stats_enabled = (sys.argv[2].lower() == "true") if len(sys.argv) > 2 else True
 script_version = sys.argv[3] if len(sys.argv) > 3 else ""
-
-def probe_endpoint(base_url, api_key, path, timeout=6):
-    url = base_url.rstrip('/') + path
-    req = urllib.request.Request(
-        url,
-        data=b'{}',
-        headers={
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
-            'User-Agent': 'OpenClaw-API-Manage/1.0',
-        },
-        method='POST',
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.getcode(), None
-    except urllib.error.HTTPError as e:
-        return e.code, None
-    except Exception as e:
-        return None, e
-
-
-def detect_api_protocol(base_url, api_key):
-    code, err = probe_endpoint(base_url, api_key, '/responses')
-    if code is not None and code not in (404, 405):
-        return 'openai-responses', f'POST /responses -> HTTP {code}', None
-    if err:
-        return 'openai-completions', 'fallback: probe failed', err
-    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
-
 
 def send_stat(action):
     if not stats_enabled:
@@ -10302,7 +10277,7 @@ def rebind_defaults_before_delete(name):
         if ref_provider(val) == name:
             repl = get_replacement()
             if not repl:
-                summary.append(f'❌ {name}: {fk} はプロバイダーを指しますが、使用可能な代替モデルがないため、削除は中止されました')
+                summary.append(f'❌ {name}: {fk} はプロバイダーを指していますが、利用可能な代替モデルがないため、削除は中止されました')
                 return False
             defaults[fk] = repl
             changed = True
@@ -10329,36 +10304,6 @@ def delete_provider_and_refs(name):
 
     summary.append(f'🗑️ プロバイダー {name} が削除され、defaults.models の下の {len(removed_refs)} モデル参照が削除されました')
     return True
-
-
-def probe_endpoint(base_url, api_key, path, timeout=6):
-    url = base_url.rstrip('/') + path
-    req = urllib.request.Request(
-        url,
-        data=b'{}',
-        headers={
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
-            'User-Agent': 'OpenClaw-API-Manage/1.0',
-        },
-        method='POST',
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.getcode(), None
-    except urllib.error.HTTPError as e:
-        return e.code, None
-    except Exception as e:
-        return None, e
-
-
-def detect_api_protocol(base_url, api_key):
-    code, err = probe_endpoint(base_url, api_key, '/responses')
-    if code is not None and code not in (404, 405):
-        return 'openai-responses', f'POST /responses -> HTTP {code}', None
-    if err:
-        return 'openai-completions', 'fallback: probe failed', err
-    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 
 def fetch_remote_models_with_retry(name, base_url, api_key, retries=3):
@@ -10402,16 +10347,6 @@ for name, provider in list(providers.items()):
         provider['api'] = ''
         api = ''
         changed = True
-
-    try:
-        detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
-        if detected_api and api != detected_api:
-            provider['api'] = detected_api
-            api = detected_api
-            changed = True
-            summary.append(f'🔁 {name}: プロトコルは自動的に {detected_api} ({detected_reason}) に修正されました')
-    except Exception as e:
-        summary.append(f'⚠️ {name}: プロトコルの検出に失敗しました。修正をスキップします ({type(e).__name__}: {e})')
 
     data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
     if err is not None:
@@ -10459,15 +10394,6 @@ for name, provider in list(providers.items()):
     removed_ids = [mid for mid in local_ids if mid not in remote_set]
     added_ids = [mid for mid in remote_ids if mid not in local_set]
 
-    if added_ids:
-        summary.append(f'➕ 新しいモデルを追加します ({len(added_ids)}):')
-        for mid in added_ids:
-            summary.append(f'  + {mid}')
-    if removed_ids:
-        summary.append(f'➖ モデルを削除します ({len(removed_ids)}):')
-        for mid in removed_ids:
-            summary.append(f'  - {mid}')
-
     kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
     new_models = kept_models[:]
 
@@ -10514,7 +10440,17 @@ for name, provider in list(providers.items()):
         provider['models'] = new_models
         changed = True
 
-    summary.append(f'✅ {name}: {len(removed_ids)} を削除、{len(added_ids)} を追加、現在の {len(new_models)}')
+    summary.append(f'✅ {name}: {len(added_ids)} を追加、{len(removed_ids)} を削除、現在は {len(new_models)}')
+
+    if added_ids:
+        summary.append(f'➕ 新しいモデルを追加します ({len(added_ids)}):')
+        for mid in added_ids:
+            summary.append(f'  + {mid}')
+    if removed_ids:
+        summary.append(f'➖ モデルを削除します ({len(removed_ids)}):')
+        for mid in removed_ids:
+            summary.append(f'  - {mid}')
+
 
 if fatal_errors:
     for line in summary:
@@ -10543,6 +10479,7 @@ PY
 	install_moltbot() {
 		echo "OpenClaw のインストールを開始します..."
 		send_stats "OpenClaw のインストールを開始します..."
+		install git jq
 
 		install_node_and_tools
 
@@ -10551,12 +10488,13 @@ PY
 			npm config set registry https://registry.npmmirror.com
 		fi
 
-		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
-		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
+		git config --global url."${gh_proxy}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_proxy}github.com/".insteadOf git@github.com:
 
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
 		openclaw config set tools.profile full
+		openclaw config set tools.elevated.enabled true
 		# ヒント: 構成を変更してすぐに有効にする必要がある場合は、ゲートウェイを再起動します: openclaw ゲートウェイの再起動
 		configure_openclaw_session_policy
 		start_gateway
@@ -10594,91 +10532,23 @@ PY
 
 
 
-	# OpenClaw API プロトコル検出 (優先応答 -> 完了)
-	openclaw_probe_api_endpoint() {
-		local base_url="$1"
-		local api_key="$2"
-		local path="$3"
-		local url="${base_url%/}${path}"
-		local http_code
-		http_code=$(curl -s -o /dev/null -w "%{http_code}" -m 8 \
-			-X POST \
-			-H "Authorization: Bearer $api_key" \
-			-H "Content-Type: application/json" \
-			-d '{}' "$url" 2>/dev/null || echo "000")
-		if [ -z "$http_code" ]; then
-			http_code="000"
-		fi
-		echo "$http_code"
-	}
+	# OpenClaw API プロトコル検出ロジックが削除されました。API タイプは自動的に検出/決定されなくなりました。
+	# 注: API タイプはユーザー (models.providers.<name>.api) によって明示的に構成され、スクリプトは推論のために /responses を呼び出そうとしなくなりました。
 
-	openclaw_detect_api_protocol() {
-		local base_url="$1"
-		local api_key="$2"
-		local code_responses="000"
-
-		DETECTED_API="openai-completions"
-		DETECTED_REASON="fallback: /responses not supported"
-
-		code_responses=$(openclaw_probe_api_endpoint "$base_url" "$api_key" "/responses")
-		if [[ "$code_responses" != "404" && "$code_responses" != "405" && "$code_responses" != "000" ]]; then
-			DETECTED_API="openai-responses"
-			DETECTED_REASON="POST /responses -> HTTP $code_responses"
-			return 0
-		fi
-
-		DETECTED_API="openai-completions"
-		DETECTED_REASON="POST /responses=$code_responses -> fallback /completions"
-		return 0
-	}
-
-	# コア機能: すべてのモデルの取得と追加
-	add-all-models-from-provider() {
+	# モデル構成 JSON の構築
+	build-openclaw-provider-models-json() {
 		local provider_name="$1"
-		local base_url="$2"
-		local api_key="$3"
-		local config_file="${HOME}/.openclaw/openclaw.json"
-
-		echo "🔍 取得中$provider_name利用可能なすべてのモデル..."
-
-		# API プロトコルを自動的に識別する
-		install curl >/dev/null 2>&1
-		openclaw_detect_api_protocol "$base_url" "$api_key"
-
-		# モデルリストの取得
-		local models_json=$(curl -s -m 10 \
-			-H "Authorization: Bearer $api_key" \
-			"${base_url}/models")
-
-		if [[ -z "$models_json" ]]; then
-			echo "❌ モデルリストを取得できません"
-			return 1
-		fi
-
-		# すべてのモデル ID を抽出します
-		local model_ids=$(echo "$models_json" | grep -oP '"id":\s*"\K[^"]+')
-
-		if [[ -z "$model_ids" ]]; then
-			echo "❌ モデルが見つかりません"
-			return 1
-		fi
-
-		local model_count=$(echo "$model_ids" | wc -l)
-		echo "✅ 発見する$model_countモデル"
-
-		# モデルパラメータのインテリジェントな推論
+		local model_ids="$2"
 		local models_array="["
 		local first=true
 
 		while read -r model_id; do
+			[ -z "$model_id" ] && continue
 			[[ $first == false ]] && models_array+=","
 			first=false
 
-			# context と max_tokens は完全にロードされているため、大きな問題を恐れる必要はありません
 			local context_window=1048576
 			local max_tokens=128000
-
-			# 評価する必要があるのは価格だけです
 			local input_cost=0.15
 			local output_cost=0.60
 
@@ -10716,11 +10586,23 @@ EOF
 		done <<< "$model_ids"
 
 		models_array+="]"
+		echo "$models_array"
+	}
 
-		# バックアップ構成
+	# プロバイダーとモデルの構成を書き込む
+	write-openclaw-provider-models() {
+		local provider_name="$1"
+		local base_url="$2"
+		local api_key="$3"
+		local models_array="$4"
+		local config_file
+		config_file=$(openclaw_get_config_file)
+
+		# API プロトコルを自動的に検出/修正しなくなりました。ユーザー設定を維持します
+		DETECTED_API="openai-completions"
+
 		[[ -f "$config_file" ]] && cp "$config_file" "${config_file}.bak.$(date +%s)"
 
-		# jq を使用してすべてのモデルを挿入し、defaults.models を同期します。
 		jq --arg prov "$provider_name" \
 		   --arg url "$base_url" \
 		   --arg key "$api_key" \
@@ -10754,10 +10636,70 @@ EOF
 			)
 		)
 		' "$config_file" > "${config_file}.tmp" && mv "${config_file}.tmp" "$config_file"
+	}
+
+	# コア機能: すべてのモデルの取得と追加
+	add-all-models-from-provider() {
+		local provider_name="$1"
+		local base_url="$2"
+		local api_key="$3"
+
+		echo "🔍 取得中$provider_name利用可能なすべてのモデル..."
+
+		local models_json=$(curl -s -m 10 \
+			-H "Authorization: Bearer $api_key" \
+			"${base_url}/models")
+
+		if [[ -z "$models_json" ]]; then
+			echo "❌ モデルリストを取得できません"
+			return 1
+		fi
+
+		local model_ids=$(echo "$models_json" | grep -oP '"id":\s*"\K[^"]+')
+
+		if [[ -z "$model_ids" ]]; then
+			echo "❌ モデルが見つかりません"
+			return 1
+		fi
+
+		local model_count=$(echo "$model_ids" | wc -l)
+		echo "✅ 発見する$model_countモデル"
+
+		local models_array
+		models_array=$(build-openclaw-provider-models-json "$provider_name" "$model_ids")
+
+		write-openclaw-provider-models "$provider_name" "$base_url" "$api_key" "$models_array"
 
 		if [[ $? -eq 0 ]]; then
 			echo "✅ 正常に追加されました$model_countモデルが到着$provider_name"
 			echo "📦 モデル参照形式:$provider_name/<model-id>"
+			return 0
+		else
+			echo "❌ 構成の挿入に失敗しました"
+			return 1
+		fi
+	}
+
+	# デフォルトのモデルのみを追加し、プロバイダーはそのままにします
+	add-default-model-only-to-provider() {
+		local provider_name="$1"
+		local base_url="$2"
+		local api_key="$3"
+		local default_model="$4"
+
+		if [[ -z "$default_model" ]]; then
+			echo "❌ デフォルトのモデルを空にすることはできません"
+			return 1
+		fi
+
+		local models_array
+		models_array=$(build-openclaw-provider-models-json "$provider_name" "$default_model")
+
+		write-openclaw-provider-models "$provider_name" "$base_url" "$api_key" "$models_array"
+
+		if [[ $? -eq 0 ]]; then
+			echo "✅ プロバイダーが追加しました:$provider_name"
+			echo "✅ デフォルトのモデルにのみ書き込みます:$default_model"
 			return 0
 		else
 			echo "❌ 構成の挿入に失敗しました"
@@ -10793,9 +10735,7 @@ EOF
 			echo
 		done
 
-		# 4. プロトコル検出 (無意味)
-		install curl >/dev/null 2>&1
-		openclaw_detect_api_protocol "$base_url" "$api_key"
+		# 4. API タイプを検出/決定しなくなりました。プロトコルはユーザー自身によって選択および維持されます
 
 		# 5. モデルリストの取得
 		echo "🔍 利用可能なモデルのリストを取得中..."
@@ -10824,7 +10764,7 @@ EOF
 
 		# 5. デフォルトのモデルを選択します
 		echo
-		read -erp "デフォルトのモデル ID (またはシリアル番号、最初のものを使用する場合は空白のままにしておきます) を入力してください:" input_model
+		read -erp "デフォルトのモデル ID (またはシリアル番号。最初のものを使用する場合は空白のままにします) を入力してください。" input_model
 
 		if [[ -z "$input_model" && -n "$available_models" ]]; then
 			default_model=$(echo "$available_models" | head -1)
@@ -10846,22 +10786,27 @@ EOF
 		echo "モデルの総数:$model_count"
 		echo "======================"
 
-		read -erp "すべて追加することを確認します$model_countA model? (y/N):" confirm
-		if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
-			echo "❎ キャンセルされました"
-			return 1
-		fi
+		read -erp "他の利用可能なモデルをすべて同時に追加しますか? (y/N):" confirm
 
 		install jq
-		add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
+		if [[ "$confirm" =~ ^[Yy]$ ]]; then
+			add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
+			add_result=$?
+			finish_msg="✅完了！全て$model_countロードされたモデル"
+		else
+			add-default-model-only-to-provider "$provider_name" "$base_url" "$api_key" "$default_model"
+			add_result=$?
+			finish_msg="✅完了！プロバイダーは保持され、デフォルトのモデルのみがロードされます。$default_model"
+		fi
 
-		if [[ $? -eq 0 ]]; then
+		if [[ $add_result -eq 0 ]]; then
 			echo
-			echo "🔄 设置默认模型并重启网关..."
+			echo "🔄 デフォルトのモデルを設定し、ゲートウェイを再起動します..."
 			openclaw models set "$provider_name/$default_model"
+			openclaw_sync_sessions_model "$provider_name/$default_model"
 			start_gateway
-			echo "✅完了！全て$model_countロードされたモデル"
-			echo "✅ 契約は次のように自動的に識別されます。$DETECTED_API"
+			echo "$finish_msg"
+			echo "✅ 現在の API プロトコルの種類:$DETECTED_API"
 		fi
 
 		break_end
@@ -10996,15 +10941,15 @@ sync-openclaw-provider-interactive() {
 		return 1
 	fi
 
-	read -erp "同期する API 名 (プロバイダー) 、Enterで全部同期: " provider_name
+	read -erp "同期する API 名 (プロバイダー) を入力し、Enter キーを押してすべてを同期してください。" provider_name
 	if [ -z "$provider_name" ]; then
 		if sync_openclaw_api_models; then
 			start_gateway
 		else
-			echo "❌ APIモデル同期失敗、ゲートウェイ再起動中止。provider /modelsを確認后再試行してください。"
-			break_end
+			echo "❌ API モデルの同期に失敗しました。ゲートウェイの再起動は中止されました。プロバイダー/モデルを確認し、戻ってからもう一度お試しください。"
 			return 1
 		fi
+		break_end
 		return 0
 	fi
 
@@ -11020,35 +10965,6 @@ import urllib.request
 path = sys.argv[1]
 target = sys.argv[2]
 SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
-
-def probe_endpoint(base_url, api_key, path, timeout=6):
-    url = base_url.rstrip('/') + path
-    req = urllib.request.Request(
-        url,
-        data=b'{}',
-        headers={
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
-            'User-Agent': 'OpenClaw-API-Manage/1.0',
-        },
-        method='POST',
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.getcode(), None
-    except urllib.error.HTTPError as e:
-        return e.code, None
-    except Exception as e:
-        return None, e
-
-
-def detect_api_protocol(base_url, api_key):
-    code, err = probe_endpoint(base_url, api_key, '/responses')
-    if code is not None and code not in (404, 405):
-        return 'openai-responses', f'POST /responses -> HTTP {code}', None
-    if err:
-        return 'openai-completions', 'fallback: probe failed', err
-    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
 
 with open(path, 'r', encoding='utf-8') as f:
     obj = json.load(f)
@@ -11133,19 +11049,9 @@ if not base_url or not api_key or not isinstance(model_list, list) or not model_
     raise SystemExit(3)
 
 if api not in SUPPORTED_APIS:
-    print(f'ℹ️ プロバイダー {target} の現在の api={api}、プロトコルを再検出して続行します')
-    provider['api'] = ''
-    api = ''
+    print(f'ℹ️ プロバイダー {target} は現在 api={api} ですが、スクリプトはプロトコルを検出/修正しなくなりました。手動で openai-completions または openai-responses に設定してください。')
 
 protocol_msg = None
-try:
-    detected_api, detected_reason, detect_err = detect_api_protocol(base_url, api_key)
-    if detected_api and api != detected_api:
-        provider['api'] = detected_api
-        api = detected_api
-        protocol_msg = f'🔁 自動修正されたプロトコル: {target} {api} ({detected_reason})'
-except Exception as e:
-    protocol_msg = f'⚠️ プロトコルの検出に失敗しました。修正をスキップしました: {target} ({type(e).__name__}: {e})'
 
 data, err, attempts = fetch_remote_models_with_retry(base_url, api_key, retries=3)
 if err is not None:
@@ -11176,15 +11082,6 @@ if template is None:
 
 removed_ids = [mid for mid in local_ids if mid not in remote_set]
 added_ids = [mid for mid in remote_ids if mid not in local_set]
-
-if added_ids:
-    print(f'➕ 新しいモデルを追加します ({len(added_ids)}):')
-    for mid in added_ids:
-        print(f'  + {mid}')
-if removed_ids:
-    print(f'➖ モデルを削除します ({len(removed_ids)}):')
-    for mid in removed_ids:
-        print(f'  - {mid}')
 
 kept_models = [copy.deepcopy(m) for m in local_models if str(m['id']) in remote_set]
 new_models = kept_models[:]
@@ -11232,15 +11129,23 @@ if removed_ids or added_ids or len(local_models) != len(new_models):
     provider['models'] = new_models
     changed = True
 
-if protocol_msg:
-    print(protocol_msg)
 
 if changed:
     with open(path, 'w', encoding='utf-8') as f:
         json.dump(work, f, ensure_ascii=False, indent=2)
         f.write('\n')
 
-print(f'✅ {target}: {len(removed_ids)} を削除、{len(added_ids)} を追加、現在の {len(new_models)}')
+print(f'✅ {target}: {len(added_ids)} を追加、{len(removed_ids)} を削除、現在の {len(new_models)}')
+
+if added_ids:
+    print(f'➕ 新しいモデルを追加します ({len(added_ids)}):')
+    for mid in added_ids:
+        print(f'  + {mid}')
+if removed_ids:
+    print(f'➖ モデルを削除します ({len(removed_ids)}):')
+    for mid in removed_ids:
+        print(f'  - {mid}')
+
 if changed:
     print('✅ 指定されたプロバイダーモデルの整合性同期が完了し、設定が書き込まれました')
 else:
@@ -11249,7 +11154,7 @@ PY2
 	local rc=$?
 	case "$rc" in
 		0)
-			echo "✅ 同期実行が完了しました"
+			echo "✅ 同期実行完了"
 			start_gateway
 			;;
 		2)
@@ -11265,7 +11170,7 @@ PY2
 			echo "❌ 同期に失敗しました: 上流モデルが空であるか、同期後に使用可能なモデルがありません"
 			;;
 		*)
-			echo "❌ 同期に失敗しました: 設定ファイルの構造またはログ出力を確認してください。"
+			echo "❌ 同期に失敗しました: 構成ファイルの構造またはログ出力を確認してください。"
 			;;
 	esac
 
@@ -11273,85 +11178,15 @@ PY2
 }
 
 openclaw_detect_api_protocol_by_provider() {
-	local config_file="$1"
-	local provider_name="$2"
-
-	python3 - "$config_file" "$provider_name" <<'PY'
-import json
-import sys
-import urllib.request
-
-path = sys.argv[1]
-name = sys.argv[2]
-SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
-
-def probe_endpoint(base_url, api_key, path, timeout=6):
-    url = base_url.rstrip('/') + path
-    req = urllib.request.Request(
-        url,
-        data=b'{}',
-        headers={
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json',
-            'User-Agent': 'OpenClaw-API-Manage/1.0',
-        },
-        method='POST',
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.getcode(), None
-    except urllib.error.HTTPError as e:
-        return e.code, None
-    except Exception as e:
-        return None, e
-
-
-def detect_api_protocol(base_url, api_key):
-    code, err = probe_endpoint(base_url, api_key, '/responses')
-    if code is not None and code not in (404, 405):
-        return 'openai-responses', f'POST /responses -> HTTP {code}', None
-    if err:
-        return 'openai-completions', 'fallback: probe failed', err
-    return 'openai-completions', f'POST /responses={code} -> fallback /completions', None
-
-try:
-    with open(path, 'r', encoding='utf-8') as f:
-        obj = json.load(f)
-except FileNotFoundError:
-    print('❌ openclaw.json が見つかりません')
-    raise SystemExit(2)
-
-providers = ((obj.get('models') or {}).get('providers') or {})
-provider = providers.get(name) if isinstance(providers, dict) else None
-if not isinstance(provider, dict):
-    print(f'❌ プロバイダー: {name} が見つかりません')
-    raise SystemExit(2)
-
-base_url = provider.get('baseUrl')
-api_key = provider.get('apiKey')
-if not base_url or not api_key:
-    print(f'❌ プロバイダー {name} に BaseUrl/apiKey がありません')
-    raise SystemExit(3)
-
-current_api = provider.get('api', '')
-if current_api not in SUPPORTED_APIS:
-    current_api = ''
-
-api, reason, err = detect_api_protocol(base_url, api_key)
-if api and api != current_api:
-    provider['api'] = api
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(obj, f, ensure_ascii=False, indent=2)
-        f.write('\n')
-    print(f'✅ プロバイダー {name} プロトコルを更新しました: {current_api または "(unset)"} -> {api} ({reason})')
-else:
-    print(f'ℹ️ 更新は必要ありません: プロトコルは {current_api または api} のままです')
-PY
+	# プロトコル検出ロジックが削除されました。スクリプトは API タイプを自動的に検出/決定しなくなりました。
+	# この関数はメニュー呼び出しとの互換性のために残されていますが、書き換えは行われません。
+	echo "ℹ️ プロトコル検出がオフになっています: 手動で行ってください${HOME}/.openclaw/openclaw.json の Provider.api を openai-completions または openai-responses に設定します"
+	return 0
 }
 
 fix-openclaw-provider-protocol-interactive() {
 	local config_file="${HOME}/.openclaw/openclaw.json"
-	send_stats "OpenClaw API プロトコルの修正"
+	send_stats "OpenClaw APIプロトコルの切り替え"
 
 	if [ ! -f "$config_file" ]; then
 		echo "❌ 設定ファイルが見つかりません:$config_file"
@@ -11359,29 +11194,75 @@ fix-openclaw-provider-protocol-interactive() {
 		return 1
 	fi
 
-	read -erp "修復するプロトコルの API 名 (プロバイダー) を入力してください:" provider_name
+	read -erp "プロトコルを切り替えるための API 名 (プロバイダー) を入力してください:" provider_name
 	if [ -z "$provider_name" ]; then
 		echo "❌ プロバイダー名を空にすることはできません"
 		break_end
 		return 1
 	fi
 
-	install jq curl >/dev/null 2>&1
-	openclaw_detect_api_protocol_by_provider "$config_file" "$provider_name"
+	echo "設定したい API タイプを選択してください:"
+	echo "1. openai-completions"
+	echo "2. openai-responses"
+	read -erp "選択肢を入力してください (1/2):" proto_choice
+
+	local new_api=""
+	case "$proto_choice" in
+		1) new_api="openai-completions" ;;
+		2) new_api="openai-responses" ;;
+		*)
+			echo "❌ 選択が無効です"
+			break_end
+			return 1
+			;;
+	esac
+
+	install python3 >/dev/null 2>&1
+
+	python3 - "$config_file" "$provider_name" "$new_api" <<'PY'
+import copy
+import json
+import sys
+
+path = sys.argv[1]
+name = sys.argv[2]
+new_api = sys.argv[3]
+
+SUPPORTED_APIS = {'openai-completions', 'openai-responses'}
+if new_api not in SUPPORTED_APIS:
+    print('❌ 不正なプロトコル値')
+    raise SystemExit(3)
+
+with open(path, 'r', encoding='utf-8') as f:
+    obj = json.load(f)
+
+work = copy.deepcopy(obj)
+providers = ((work.get('models') or {}).get('providers') or {})
+if not isinstance(providers, dict) or name not in providers or not isinstance(providers.get(name), dict):
+    print(f'❌ プロバイダー: {name} が見つかりません')
+    raise SystemExit(2)
+
+providers[name]['api'] = new_api
+
+with open(path, 'w', encoding='utf-8') as f:
+    json.dump(work, f, ensure_ascii=False, indent=2)
+    f.write('\n')
+
+print(f'✅ プロバイダー {name} プロトコルが {new_api} に更新されました。')
+PY
 	local rc=$?
 	case "$rc" in
 		0)
-			echo "✅契約はテストされ、更新されています（変更される可能性があります）"
 			start_gateway
 			;;
 		2)
-			echo "❌ 修復に失敗しました: プロバイダーが存在しないか、構成されていません"
+			echo "❌ 切り替えに失敗しました: プロバイダーが存在しないか、構成されていません"
 			;;
 		3)
-			echo "❌ 修復に失敗しました: プロバイダーの構成が不完全です"
+			echo "❌ 切り替えに失敗しました: プロトコル値が不正です"
 			;;
 		*)
-			echo "❌ 修復に失敗しました: 設定ファイルの構造またはログ出力を確認してください。"
+			echo "❌ 切り替えに失敗しました: 設定ファイルの構造またはログ出力を確認してください。"
 			;;
 	esac
 
@@ -11389,7 +11270,8 @@ fix-openclaw-provider-protocol-interactive() {
 }
 
 	delete-openclaw-provider-interactive() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		send_stats "OpenClaw API エントリの削除"
 
 		if [ ! -f "$config_file" ]; then
@@ -11537,6 +11419,66 @@ PY
 		break_end
 	}
 
+	openclaw_api_providers_showcase() {
+		send_stats "OpenClaw API ベンダーの推奨事項"
+
+		clear
+		echo ""
+		echo -e "${gl_kjlan}╔════════════════════════════════════════════════════════════╗${gl_bai}"
+		echo -e "${gl_kjlan}║${gl_bai}            ${gl_huang}🌟 APIベンダー推奨リスト${gl_bai}                          ${gl_kjlan}║${gl_bai}"
+		echo -e "${gl_kjlan}║${gl_bai}            ${gl_zi}一部の入り口にはAFFが含まれています${gl_bai}                            ${gl_kjlan}║${gl_bai}"
+		echo -e "${gl_kjlan}╚════════════════════════════════════════════════════════════╝${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● DeepSeek${gl_bai}"
+		echo -e "    ${gl_kjlan}https://api-docs.deepseek.com/${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● OpenRouter${gl_bai}"
+		echo -e "    ${gl_kjlan}https://openrouter.ai/${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● Kimi${gl_bai}"
+		echo -e "    ${gl_kjlan}https://platform.moonshot.cn/docs/guide/start-using-kimi-api${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● スーパーコンピューティング インターネット${gl_bai}"
+		echo -e "    ${gl_kjlan}https://www.scnet.cn/${gl_bai}"
+		echo ""
+		echo -e "  ${gl_huang}● ユユン インテリジェント コンピューティング${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "    ${gl_kjlan}https://passport.compshare.cn/register?referral_code=4mscFZXfutfFi8swMVsPuf${gl_bai}"
+		echo ""
+		echo -e "  ${gl_huang}●シリコンベースのフロー${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "    ${gl_kjlan}https://cloud.siliconflow.cn/i/irWVdPic${gl_bai}"
+		echo ""
+		echo -e "  ${gl_huang}●GLM${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "    ${gl_kjlan}https://www.bigmodel.cn/glm-coding?ic=HYOTDOAJMR${gl_bai}"
+		echo ""
+		echo -e "  ${gl_huang}● PackyAPI${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "    ${gl_kjlan}https://www.packyapi.com/register?aff=wHri${gl_bai}"
+		echo ""
+		echo -e "  ${gl_huang}● クラウドAPI${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "    ${gl_kjlan}https://yunwu.ai/register?aff=ZuyK${gl_bai}"
+		echo ""
+		echo -e "  ${gl_huang}●プラトンAI${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "    ${gl_kjlan}https://api.bltcy.ai/register?aff=TBzb114019${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● MiniMax${gl_bai}"
+		echo -e "    ${gl_kjlan}https://www.minimaxi.com/${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● NVIDIA${gl_bai}"
+		echo -e "    ${gl_kjlan}https://build.nvidia.com/settings/api-keys${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}● Ollama${gl_bai}"
+		echo -e "    ${gl_kjlan}https://ollama.com/${gl_bai}"
+		echo ""
+		echo -e "  ${gl_lv}●白山雲${gl_bai}"
+		echo -e "    ${gl_kjlan}https://ai.baishan.com/${gl_bai}"
+		echo ""
+		echo -e "${gl_kjlan}────────────────────────────────────────────────────────────${gl_bai}"
+		echo -e "  ${gl_zi}伝説：${gl_lv}●正式な入り口${gl_bai}  ${gl_huang}●AFF推奨入口${gl_bai}"
+		echo ""
+		echo -e "${gl_huang}ヒント: リンクをコピーし、ブラウザで開いてアクセスします。${gl_bai}"
+		echo ""
+		read -erp "戻るには Enter を押してください..." dummy
+	}
+
 	openclaw_api_manage_menu() {
 		send_stats "OpenClaw APIの入口"
 		while true; do
@@ -11548,8 +11490,9 @@ PY
 			echo "---------------------------------------"
 			echo "1. APIの追加"
 			echo "2. APIプロバイダーモデルリストを同期する"
-			echo "3. APIの削除"
-			echo "4. プロトコルの修復/再検出"
+			echo "3. API タイプの切り替え (完了/応答)"
+			echo "4. APIの削除"
+			echo "5. APIベンダーによる推奨"
 			echo "0.終了"
 			echo "---------------------------------------"
 			read -erp "選択肢を入力してください:" api_choice
@@ -11562,10 +11505,13 @@ PY
 					sync-openclaw-provider-interactive
 					;;
 				3)
-					delete-openclaw-provider-interactive
+					fix-openclaw-provider-protocol-interactive
 					;;
 				4)
-					fix-openclaw-provider-protocol-interactive
+					delete-openclaw-provider-interactive
+					;;
+				5)
+					openclaw_api_providers_showcase
 					;;
 				0)
 					return 0
@@ -11584,7 +11530,8 @@ PY
 	    if command -v gum >/dev/null 2>&1; then
 	        return 0
 	    fi
-	    if [ -f /etc/debian_version ]; then
+		
+ 		if command -v apt >/dev/null 2>&1; then
 	        mkdir -p /etc/apt/keyrings
 	        curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
 	        echo "deb [signed-by=/etc/apt/keyrings/charm.gpg] https://repo.charm.sh/apt/ * *" | tee /etc/apt/sources.list.d/charm.list > /dev/null
@@ -11617,15 +11564,217 @@ REPO
 
 		local orange="#FF8C00"
 
+		openclaw_probe_status_line() {
+			local status_text="$1"
+			local status_color_ok='[32m'
+			local status_color_fail='[31m'
+			local status_color_reset='[0m'
+			if [ "$status_text" = "利用可能" ]; then
+				printf "%b最小检测结果：%s%b
+" "$status_color_ok" "$status_text" "$status_color_reset"
+			else
+				printf "%b最小检测结果：%s%b
+" "$status_color_fail" "$status_text" "$status_color_reset"
+			fi
+		}
+
+		openclaw_model_probe() {
+			local target_model="$1"
+			local probe_timeout=25
+			local tmp_payload tmp_response probe_result probe_status reply_preview reply_trimmed
+			local oc_config provider_name base_url api_key request_model
+			local first_endpoint second_endpoint
+			local first_exit first_http first_latency second_exit second_http second_latency
+			local first_reply second_reply
+
+			oc_config=$(openclaw_get_config_file)
+			[ ! -f "$oc_config" ] && {
+				OPENCLAW_PROBE_STATUS="ERROR"
+				OPENCLAW_PROBE_MESSAGE="openclaw 設定ファイルが見つかりません"
+				OPENCLAW_PROBE_LATENCY="-"
+				OPENCLAW_PROBE_REPLY="-"
+				return 1
+			}
+
+			provider_name="${target_model%%/*}"
+			request_model="${target_model#*/}"
+			base_url=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].baseUrl // empty' "$oc_config" 2>/dev/null)
+			api_key=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].apiKey // empty' "$oc_config" 2>/dev/null)
+			if [ -z "$provider_name" ] || [ -z "$base_url" ] || [ -z "$api_key" ]; then
+				OPENCLAW_PROBE_STATUS="ERROR"
+				OPENCLAW_PROBE_MESSAGE="Provider/baseUrl/apiKey が読み込まれていません"
+				OPENCLAW_PROBE_LATENCY="-"
+				OPENCLAW_PROBE_REPLY="-"
+				return 1
+			fi
+
+			base_url="${base_url%/}"
+			first_endpoint="/responses"
+			second_endpoint="/chat/completions"
+
+			openclaw_extract_probe_reply() {
+				python3 - "$1" <<'PYTHON_EOF'
+import json
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+raw = path.read_text(encoding='utf-8', errors='replace').strip()
+reply = ''
+if raw:
+    try:
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            choices = data.get('choices') or []
+            if choices and isinstance(choices[0], dict):
+                message = choices[0].get('message') or {}
+                if isinstance(message, dict):
+                    reply = message.get('content') or ''
+            if not reply:
+                output = data.get('output') or []
+                if isinstance(output, list):
+                    texts = []
+                    for item in output:
+                        if not isinstance(item, dict):
+                            continue
+                        for content in item.get('content') or []:
+                            if not isinstance(content, dict):
+                                continue
+                            text = content.get('text')
+                            if isinstance(text, str) and text.strip():
+                                texts.append(text.strip())
+                        if texts:
+                            break
+                    if texts:
+                        reply = ' '.join(texts)
+            if not reply:
+                for key in ('error', 'message', 'detail'):
+                    value = data.get(key)
+                    if isinstance(value, str) and value.strip():
+                        reply = value.strip()
+                        break
+                    if isinstance(value, dict):
+                        nested = value.get('message')
+                        if isinstance(nested, str) and nested.strip():
+                            reply = nested.strip()
+                            break
+    except Exception:
+        reply = raw
+reply = ' '.join(str(reply).split())
+print(reply)
+PYTHON_EOF
+			}
+
+			openclaw_run_probe() {
+				local endpoint="$1"
+				tmp_payload=$(mktemp)
+				tmp_response=$(mktemp)
+				if [ "$endpoint" = "/responses" ]; then
+					printf '{"model":"%s","input":"hi","temperature":0,"max_output_tokens":16}' "$request_model" > "$tmp_payload"
+				else
+					printf '{"model":"%s","messages":[{"role":"user","content":"hi"}],"temperature":0,"max_tokens":16}' "$request_model" > "$tmp_payload"
+				fi
+
+				probe_result=$(python3 - "$base_url" "$api_key" "$tmp_payload" "$tmp_response" "$probe_timeout" "$endpoint" <<'PYTHON_EOF'
+import sys
+import time
+import urllib.error
+import urllib.request
+
+base_url, api_key, payload_path, response_path, timeout, endpoint = sys.argv[1:7]
+timeout = int(timeout)
+url = base_url + endpoint
+payload = open(payload_path, 'rb').read()
+req = urllib.request.Request(
+    url,
+    data=payload,
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+    },
+    method='POST',
+)
+start = time.time()
+body = b''
+status = 0
+exit_code = 0
+try:
+    with urllib.request.urlopen(req, timeout=timeout) as resp:
+        status = getattr(resp, 'status', 200)
+        body = resp.read()
+except urllib.error.HTTPError as e:
+    status = getattr(e, 'code', 0) or 0
+    body = e.read()
+    exit_code = 22
+except Exception as e:
+    body = str(e).encode('utf-8', errors='replace')
+    exit_code = 1
+elapsed = int((time.time() - start) * 1000)
+with open(response_path, 'wb') as f:
+    f.write(body)
+print(f"{exit_code}|{status}|{elapsed}")
+PYTHON_EOF
+)
+				probe_status=$?
+				reply_preview=$(openclaw_extract_probe_reply "$tmp_response")
+				rm -f "$tmp_payload" "$tmp_response"
+				return $probe_status
+			}
+
+			openclaw_run_probe "$first_endpoint"
+			first_exit=${probe_result%%|*}
+			first_http=${probe_result#*|}
+			first_http=${first_http%%|*}
+			first_latency=${probe_result##*|}
+			first_reply="$reply_preview"
+
+			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed="(空のリターン)"
+
+			if [ "$first_exit" = "0" ] && [ "$first_http" -ge 200 ] && [ "$first_http" -lt 300 ]; then
+				OPENCLAW_PROBE_STATUS="OK"
+				OPENCLAW_PROBE_MESSAGE="${first_endpoint} -> HTTP ${first_http}"
+				OPENCLAW_PROBE_LATENCY="${first_latency}ms"
+				OPENCLAW_PROBE_REPLY="$reply_trimmed"
+				return 0
+			fi
+
+			openclaw_run_probe "$second_endpoint"
+			second_exit=${probe_result%%|*}
+			second_http=${probe_result#*|}
+			second_http=${second_http%%|*}
+			second_latency=${probe_result##*|}
+			second_reply="$reply_preview"
+
+			reply_trimmed=$(printf '%s' "$second_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed="(空のリターン)"
+
+			if [ "$second_exit" = "0" ] && [ "$second_http" -ge 200 ] && [ "$second_http" -lt 300 ]; then
+				OPENCLAW_PROBE_STATUS="OK"
+				OPENCLAW_PROBE_MESSAGE="${first_endpoint}-> HTTP ${first_http:-0}、スイッチ${second_endpoint} -> HTTP ${second_http}"
+				OPENCLAW_PROBE_LATENCY="${second_latency}ms"
+				OPENCLAW_PROBE_REPLY="$reply_trimmed"
+				return 0
+			fi
+
+			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed=$(printf '%s' "$second_reply" | cut -c1-120)
+			[ -z "$reply_trimmed" ] && reply_trimmed="(空のリターン)"
+
+			OPENCLAW_PROBE_STATUS="FAIL"
+			OPENCLAW_PROBE_MESSAGE="${first_endpoint} -> HTTP ${first_http:-0} / exit ${first_exit:-1}；${second_endpoint} -> HTTP ${second_http:-0} / exit ${second_exit:-1}"
+			OPENCLAW_PROBE_LATENCY="${first_latency:-?}ms -> ${second_latency:-?}ms"
+			OPENCLAW_PROBE_REPLY="$reply_trimmed"
+			return 1
+		}
+
 		clear
 
 		while true; do
-			local models_raw models_list default_model model_count selected_model
+			local models_raw models_list default_model model_count selected_model confirm_switch
 
 			# 構成ファイルからモデル キーを読み取ります (openclaw モデル リストを呼び出すことなく)
 			local oc_config
-			oc_config="${HOME}/.openclaw/openclaw.json"
-			[ ! -f "$oc_config" ] && [ -f /root/.openclaw/openclaw.json ] && oc_config="/root/.openclaw/openclaw.json"
+			oc_config=$(openclaw_get_config_file)
 
 			models_raw=$(jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d')
 			if [ -z "$models_raw" ]; then
@@ -11642,53 +11791,55 @@ REPO
 			default_model=$(jq -r '.agents.defaults.model.primary // empty' "$oc_config" 2>/dev/null)
 			[ -z "$default_model" ] && default_model="(unknown)"
 
+			clear
 
 			install_gum
 			install gum
-
-			clear
-
-				# ガムが存在しない場合は、元の手動入力プロセスにダウングレードします (以前とまったく同じままです)。
-			if ! command -v gum >/dev/null 2>&1; then
+			
+			# ガムが存在しない場合は、元の手入力プロセスにダウングレードされます。
+			if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
 				echo "---モデル管理---"
 				echo "現在入手可能なモデル:"
 				jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d'
 				echo "----------------"
 				read -e -p "設定するモデル名を入力してください (例: openrouter/openai/gpt-4o) (終了するには 0 を入力します):" selected_model
 
-				# 1.終了するには0を入力したかどうかを確認します
 				if [ "$selected_model" = "0" ]; then
 					echo "操作がキャンセルされました。終了しています..."
-					break  # 跳出 while 循环
+					break
 				fi
 
-				# 2. 入力が空であることを確認します
 				if [ -z "$selected_model" ]; then
 					echo "エラー: モデル名を空にすることはできません。もう一度試してください。"
-					echo "" # 换行美化
-					continue # 跳过本次循环，重新开始
+					echo ""
+					continue
 				fi
+
+				echo "切り替わる機種は以下の通りです。$selected_model ..."
+				if ! openclaw models set "$selected_model"; then
+					echo "切り替えに失敗しました: openclaw モデル セットがエラーを返しました。"
+					break_end
+					return 1
+				fi
+				openclaw_sync_sessions_model "$selected_model"
+				start_gateway
+
+				break_end
+				return 0
 			else
+				if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
+					echo "ガムは使用できなくなり、古い入力モードに戻ります。"
+					sleep 1
+					continue
+				fi
 				gum style --foreground "$orange" --bold "モデル管理"
 				gum style --foreground "$orange" "利用可能なモデル (認証=はい):${model_count}"
 				gum style --foreground "$orange" "現在のデフォルト:${default_model}"
 				echo ""
-
-				# ボトムチップ
-				gum style --faint "↑↓ 選択 / Enter で確認 / Esc で終了"
+				gum style --faint "↑↓ 選択 / Enter でテスト / Esc で終了"
 				echo ""
 
-				# ガムフィルター: 検索付き;ガムのバージョンは大きく異なります。ここでは最も互換性のあるフラグのみが使用されます
-				selected_model=$(echo "$models_list" | gum filter \
-					--placeholder "モデルの検索 (cli-api/gpt-5.2 など)" \
-					--prompt "モデルを選択 >" \
-					--indicator "➜ " \
-					--prompt.foreground "$orange" \
-					--indicator.foreground "$orange" \
-					--cursor-text.foreground "$orange" \
-					--match.foreground "$orange" \
-					--header "" \
-					--height 35)
+				selected_model=$(echo "$models_list" | gum filter 					--placeholder "モデルの検索 (cli-api/gpt-5.2 など)" 					--prompt "モデルを選択 >" 					--indicator "➜ " 					--prompt.foreground "$orange" 					--indicator.foreground "$orange" 					--cursor-text.foreground "$orange" 					--match.foreground "$orange" 					--header "" 					--height 35)
 
 				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -iqE '^(error|usage|gum:)'; then
 					echo "操作がキャンセルされました。終了しています..."
@@ -11696,22 +11847,125 @@ REPO
 				fi
 			fi
 
-			# 番号の接頭辞を削除します: 「(10) モデル」 -> 「モデル」
 			selected_model=$(echo "$selected_model" | sed -E 's/^\([0-9]+\)[[:space:]]+//')
 
-			# スイッチの実行
+			echo ""
+			echo "検出モデル:$selected_model"
+			if openclaw_model_probe "$selected_model"; then
+				openclaw_probe_status_line "利用可能"
+			else
+				openclaw_probe_status_line "利用不可"
+			fi
+			echo "州：$OPENCLAW_PROBE_MESSAGE"
+			echo "遅れ：$OPENCLAW_PROBE_LATENCY"
+			echo "まとめ：$OPENCLAW_PROBE_REPLY"
+			echo ""
+
+			printf "このモデルに切り替えますか? [y/N、Esc でリストに戻る]:"
+			IFS= read -rsn1 confirm_switch
+			echo ""
+			if [ "$confirm_switch" = $'' ]; then
+				confirm_switch="no"
+			else
+				case "$confirm_switch" in
+					[yY])
+						IFS= read -rsn1 -t 5 _enter_key
+						confirm_switch="yes"
+						;;
+					[nN]|"") confirm_switch="no" ;;
+					*) confirm_switch="no" ;;
+				esac
+			fi
+
+			if [ "$confirm_switch" != "yes" ]; then
+				echo "モデル選択リストが返されました。"
+				sleep 1
+				continue
+			fi
+
 			echo "切り替わる機種は以下の通りです。$selected_model ..."
 			if ! openclaw models set "$selected_model"; then
 				echo "切り替えに失敗しました: openclaw モデル セットがエラーを返しました。"
 				break_end
 				return 1
 			fi
+			openclaw_sync_sessions_model "$selected_model"
 			start_gateway
 
 			break_end
 			done
-	}
+		}
 
+
+		openclaw_get_config_file() {
+			local user_config="${HOME}/.openclaw/openclaw.json"
+			local root_config="/root/.openclaw/openclaw.json"
+			if [ -f "$user_config" ]; then
+				echo "$user_config"
+			elif [ "$HOME" = "/root" ] && [ -f "$root_config" ]; then
+				echo "$root_config"
+			else
+				echo "$user_config"
+			fi
+		}
+
+		openclaw_get_agents_dir() {
+			local user_agents="${HOME}/.openclaw/agents"
+			local root_agents="/root/.openclaw/agents"
+			if [ -d "$user_agents" ]; then
+				echo "$user_agents"
+			elif [ "$HOME" = "/root" ] && [ -d "$root_agents" ]; then
+				echo "$root_agents"
+			else
+				echo "$user_agents"
+			fi
+		}
+
+		openclaw_sync_sessions_model() {
+			local model_ref="$1"
+			[ -z "$model_ref" ] && return 1
+
+			local agents_dir
+			agents_dir=$(openclaw_get_agents_dir)
+			[ ! -d "$agents_dir" ] && return 0
+
+			local provider="${model_ref%%/*}"
+			local model="${model_ref#*/}"
+			[ "$provider" = "$model_ref" ] && { provider=""; model="$model_ref"; }
+
+			local count=0
+			local agent_dir sessions_file backup_file
+
+			for agent_dir in "$agents_dir"/*/; do
+				[ ! -d "$agent_dir" ] && continue
+				sessions_file="$agent_dir/sessions/sessions.json"
+				[ ! -f "$sessions_file" ] && continue
+
+				backup_file="${sessions_file}.bak"
+				cp "$sessions_file" "$backup_file" 2>/dev/null || continue
+
+				if command -v jq >/dev/null 2>&1; then
+					local tmp_json
+					tmp_json=$(mktemp)
+					if [ -n "$provider" ]; then
+						jq --arg model "$model" --arg provider "$provider" \
+							'to_entries | map(.value.modelOverride = $model | .value.providerOverride = $provider) | from_entries' \
+							"$sessions_file" > "$tmp_json" 2>/dev/null && \
+							mv "$tmp_json" "$sessions_file" && \
+							count=$((count + 1))
+					else
+						jq --arg model "$model" \
+							'to_entries | map(.value.modelOverride = $model | del(.value.providerOverride)) | from_entries' \
+							"$sessions_file" > "$tmp_json" 2>/dev/null && \
+							mv "$tmp_json" "$sessions_file" && \
+							count=$((count + 1))
+					fi
+				fi
+			done
+
+			[ "$count" -gt 0 ] && echo "✅ 同期済み$countエージェントのセッション モデルは次のとおりです。$model_ref"
+			return 0
+		}
 
 		resolve_openclaw_plugin_id() {
 			local raw_input="$1"
@@ -11729,12 +11983,8 @@ REPO
 			local plugin_id="$1"
 			[ -z "$plugin_id" ] && return 1
 
-			local home_config="${HOME}/.openclaw/openclaw.json"
-			local root_config="/root/.openclaw/openclaw.json"
-			local config_file="$home_config"
-			if [ ! -f "$home_config" ] && [ -f "$root_config" ]; then
-				config_file="$root_config"
-			fi
+			local config_file
+			config_file=$(openclaw_get_config_file)
 
 			mkdir -p "$(dirname "$config_file")"
 			if [ ! -s "$config_file" ]; then
@@ -11800,12 +12050,8 @@ PYTHON_EOF
 			local plugin_id="$1"
 			[ -z "$plugin_id" ] && return 1
 
-			local home_config="${HOME}/.openclaw/openclaw.json"
-			local root_config="/root/.openclaw/openclaw.json"
-			local config_file="$home_config"
-			if [ ! -f "$home_config" ] && [ -f "$root_config" ]; then
-				config_file="$root_config"
-			fi
+			local config_file
+			config_file=$(openclaw_get_config_file)
 
 			mkdir -p "$(dirname "$config_file")"
 			if [ ! -s "$config_file" ]; then
@@ -11891,7 +12137,7 @@ PYTHON_EOF
 			echo "- [whatsapp] #WhatsApp オートメーション"
 			echo ""
 			echo "🧠 メモリと AI:"
-			echo "- [memory-core] # 基本メモリ (ファイル取得)"
+			echo "- [memory-core] # 基本メモリ (ファイル検索)"
 			echo "- [memory-lancedb] # メモリの強化 (ベクターデータベース)"
 			echo "- [copilot-proxy] # コパイロットインターフェイスの転送"
 			echo ""
@@ -11956,7 +12202,8 @@ PYTHON_EOF
 					fi
 
 					echo "📥 ローカルに見つかりません。ダウンロードしてインストールしてください:$plugin_full"
-					rm -rf "/root/.openclaw/extensions/$plugin_id"
+					rm -rf "${HOME}/.openclaw/extensions/$plugin_id"
+					[ "$HOME" != "/root" ] && rm -rf "/root/.openclaw/extensions/$plugin_id"
 					if openclaw plugins install "$plugin_full"; then
 						echo "✅ ダウンロードに成功しました。アクティブ化しています..."
 						if openclaw plugins enable "$plugin_id"; then
@@ -12118,7 +12365,8 @@ PYTHON_EOF
 
 openclaw_json_get_bool() {
 		local expr="$1"
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		if [ ! -s "$config_file" ]; then
 			echo "false"
 			return
@@ -12128,7 +12376,8 @@ openclaw_json_get_bool() {
 
 	openclaw_channel_has_cfg() {
 		local channel="$1"
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		if [ ! -s "$config_file" ]; then
 			echo "false"
 			return
@@ -12155,7 +12404,8 @@ openclaw_json_get_bool() {
 
 	openclaw_plugin_local_installed() {
 		local plugin="$1"
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		if [ -s "$config_file" ] && jq -e --arg p "$plugin" '.plugins.installs[$p]' "$config_file" >/dev/null 2>&1; then
 			return 0
 		fi
@@ -12205,7 +12455,8 @@ openclaw_json_get_bool() {
 	}
 
 	openclaw_show_bot_local_status_block() {
-		local config_file="${HOME}/.openclaw/openclaw.json"
+		local config_file
+		config_file=$(openclaw_get_config_file)
 		local json_ok="false"
 		if [ -s "$config_file" ] && jq empty "$config_file" >/dev/null 2>&1; then
 			json_ok="true"
@@ -12225,18 +12476,24 @@ openclaw_json_get_bool() {
 		tg_status=$(openclaw_bot_status_text "$tg_enabled" "$tg_cfg" "$tg_connected" "$tg_abnormal")
 
 		local feishu_enabled feishu_cfg feishu_connected feishu_abnormal feishu_status
-		feishu_enabled=$(openclaw_json_get_bool '.plugins.entries.feishu.enabled // .channels.feishu.enabled // false')
+		feishu_enabled=$(openclaw_json_get_bool '.plugins.entries.feishu.enabled // .plugins.entries["openclaw-lark"].enabled // .channels.feishu.enabled // .channels.lark.enabled // false')
 		feishu_cfg=$(openclaw_channel_has_cfg "feishu")
+		if [ "$feishu_cfg" != "true" ]; then
+			feishu_cfg=$(openclaw_channel_has_cfg "lark")
+		fi
 		feishu_connected="false"
-		if openclaw_dir_has_files "${HOME}/.openclaw/feishu"; then
+		if openclaw_dir_has_files "${HOME}/.openclaw/feishu" || openclaw_dir_has_files "${HOME}/.openclaw/lark" || openclaw_dir_has_files "${HOME}/.openclaw/openclaw-lark"; then
 			feishu_connected="true"
 		fi
 		feishu_abnormal="false"
-		if [ "$feishu_enabled" = "true" ] && ! openclaw_plugin_local_installed "feishu"; then
+		if [ "$feishu_enabled" = "true" ] && ! openclaw_plugin_local_installed "feishu" && ! openclaw_plugin_local_installed "lark" && ! openclaw_plugin_local_installed "openclaw-lark"; then
 			feishu_abnormal="true"
 		fi
 		if [ "$feishu_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
 			feishu_abnormal="true"
+		fi
+		if [ "$feishu_connected" != "true" ] && [ "$feishu_enabled" = "true" ] && [ "$feishu_cfg" = "true" ] && { openclaw_plugin_local_installed "feishu" || openclaw_plugin_local_installed "lark" || openclaw_plugin_local_installed "openclaw-lark"; }; then
+			feishu_connected="true"
 		fi
 		feishu_status=$(openclaw_bot_status_text "$feishu_enabled" "$feishu_cfg" "$feishu_connected" "$feishu_abnormal")
 
@@ -12301,6 +12558,25 @@ openclaw_json_get_bool() {
 		fi
 		qq_status=$(openclaw_bot_status_text "$qq_enabled" "$qq_cfg" "$qq_connected" "$qq_abnormal")
 
+		local wx_enabled wx_cfg wx_connected wx_abnormal wx_status
+		wx_enabled=$(openclaw_json_get_bool '.plugins.entries.weixin.enabled // .plugins.entries["openclaw-weixin"].enabled // .channels.weixin.enabled // .channels["openclaw-weixin"].enabled // false')
+		wx_cfg=$(openclaw_channel_has_cfg "weixin")
+		if [ "$wx_cfg" != "true" ]; then
+			wx_cfg=$(openclaw_channel_has_cfg "openclaw-weixin")
+		fi
+		wx_connected="false"
+		if openclaw_dir_has_files "${HOME}/.openclaw/weixin" || openclaw_dir_has_files "${HOME}/.openclaw/openclaw-weixin"; then
+			wx_connected="true"
+		fi
+		wx_abnormal="false"
+		if [ "$wx_enabled" = "true" ] && ! openclaw_plugin_local_installed "weixin" && ! openclaw_plugin_local_installed "openclaw-weixin"; then
+			wx_abnormal="true"
+		fi
+		if [ "$wx_enabled" = "true" ] && [ "$json_ok" != "true" ]; then
+			wx_abnormal="true"
+		fi
+		wx_status=$(openclaw_bot_status_text "$wx_enabled" "$wx_cfg" "$wx_connected" "$wx_abnormal")
+
 		echo "ローカル ステータス (ローカル構成/キャッシュのみ、ネットワーク検出なし):"
 		openclaw_print_bot_status_line "Telegram" "$tg_status"
 		openclaw_print_bot_status_line "ヒバリ" "$feishu_status"
@@ -12308,6 +12584,7 @@ openclaw_json_get_bool() {
 		openclaw_print_bot_status_line "Discord" "$dc_status"
 		openclaw_print_bot_status_line "Slack" "$slack_status"
 		openclaw_print_bot_status_line "QQ Bot" "$qq_status"
+		openclaw_print_bot_status_line "WeChat (微信)" "$wx_status"
 	}
 
 	change_tg_bot_code() {
@@ -12322,6 +12599,8 @@ openclaw_json_get_bool() {
 			echo "1. テレグラムロボットドッキング"
 			echo "2.フェイシュ(ヒバリ)ロボットドッキング"
 			echo "3. WhatsApp ボットのドッキング"
+			echo "4. QQロボットドッキング"
+			echo "5.WeChatロボットのドッキング"
 			echo "----------------------------------------"
 			echo "0. 前のメニューに戻る"
 			echo "----------------------------------------"
@@ -12336,10 +12615,9 @@ openclaw_json_get_bool() {
 					break_end
 					;;
 				2)
-					read -e -p "Feishu Robot が受信した接続コード (例: NYA99R2F) を入力してください (終了するには 0 を入力します)。" code
-					if [ "$code" = "0" ]; then continue; fi
-					if [ -z "$code" ]; then echo "エラー: 接続コードを空にすることはできません。"; sleep 1; continue; fi
-					openclaw pairing approve feishu "$code"
+					npx -y @larksuite/openclaw-lark install
+					openclaw config set channels.feishu.streaming true
+					openclaw config set channels.feishu.requireMention true --json
 					break_end
 					;;
 				3)
@@ -12347,6 +12625,15 @@ openclaw_json_get_bool() {
 					if [ "$code" = "0" ]; then continue; fi
 					if [ -z "$code" ]; then echo "エラー: 接続コードを空にすることはできません。"; sleep 1; continue; fi
 					openclaw pairing approve whatsapp "$code"
+					break_end
+					;;
+				4)
+					echo "QQ の公式ドッキング アドレス:"
+					echo "https://q.qq.com/qqbot/openclaw/login.html"
+					break_end
+					;;
+				5)
+					npx -y @tencent-weixin/openclaw-weixin-cli@latest install
 					break_end
 					;;
 				0)
@@ -12491,132 +12778,89 @@ EOF
 		return 0
 	}
 
+	openclaw_get_all_agent_workspaces() {
+		local config_file
+		config_file=$(openclaw_get_config_file)
+		if [ -f "$config_file" ]; then
+			python3 - "$config_file" <<'PY'
+import json, sys, os
+try:
+    with open(sys.argv[1]) as f: data = json.load(f)
+    agents = data.get("agents", {}).get("list", [])
+    results = [{"id": "main", "ws": os.path.expanduser("~/.openclaw/workspace")}]
+    for a in agents:
+        aid = a.get("id"); ws = a.get("workspace")
+        if aid and ws and aid != "main": results.append({"id": aid, "ws": os.path.expanduser(ws)})
+    print(json.dumps(results))
+except: print("[]")
+PY
+		else
+			echo '[{"id": "main", "ws": "'"${HOME}"'/.openclaw/workspace"}]'
+		fi
+	}
+
 	openclaw_memory_backup_export() {
 		send_stats "OpenClaw メモリの完全バックアップ"
-		local workspace_dir="${HOME}/.openclaw/workspace"
-		local backup_root
-		backup_root=$(openclaw_backup_root)
-		local ts
-		ts=$(date +%Y%m%d-%H%M%S)
+		local backup_root=$(openclaw_backup_root)
+		local ts=$(date +%Y%m%d-%H%M%S)
 		local out_file="$backup_root/openclaw-memory-full-${ts}.tar.gz"
-
 		mkdir -p "$backup_root"
-		if [ ! -d "$workspace_dir" ]; then
-			echo "❌ ワークスペース ディレクトリが見つかりません:$workspace_dir"
-			break_end
-			return 1
-		fi
-
-		local tmp_payload
-		tmp_payload=$(mktemp -d) || return 1
-
-		[ -f "$workspace_dir/MEMORY.md" ] && cp -a "$workspace_dir/MEMORY.md" "$tmp_payload/"
-		[ -d "$workspace_dir/memory" ] && cp -a "$workspace_dir/memory" "$tmp_payload/"
-
-		read -e -p "AGENTS/USER/SOUL/TOOLS ファイルは付属していますか? (y/N):" include_optional
-		if [[ "$include_optional" =~ ^[Yy]$ ]]; then
-			for f in AGENTS.md USER.md SOUL.md TOOLS.md; do
-				[ -f "$workspace_dir/$f" ] && cp -a "$workspace_dir/$f" "$tmp_payload/"
-			done
-		fi
-
+		local tmp_payload=$(mktemp -d) || return 1
+		local workspaces_json=$(openclaw_get_all_agent_workspaces)
+		python3 -c "import json, sys, os, shutil; 
+workspaces = json.loads(sys.argv[1]); tmp_payload = sys.argv[2]
+for item in workspaces:
+    aid = item['id']; ws = item['ws']
+    if not os.path.isdir(ws): continue
+    target_dir = os.path.join(tmp_payload, 'agents', aid)
+    os.makedirs(target_dir, exist_ok=True)
+    for f in ['MEMORY.md', 'memory']:
+        src = os.path.join(ws, f)
+        if os.path.exists(src):
+            if os.path.isfile(src): shutil.copy2(src, target_dir)
+            else: shutil.copytree(src, os.path.join(target_dir, f), dirs_exist_ok=True)
+" "$workspaces_json" "$tmp_payload"
 		if ! find "$tmp_payload" -mindepth 1 -print -quit | grep -q .; then
-			echo "❌ バックアップメモリ​​ファイルが見つかりません"
-			rm -rf "$tmp_payload"
-			break_end
-			return 1
+			echo "❌ バックアップメモリ​​ファイルが見つかりません"; rm -rf "$tmp_payload"; break_end; return 1
 		fi
-
-		if openclaw_pack_backup_archive "memory-full" "default" "$tmp_payload" "$out_file"; then
-			echo "✅ メモリ全体のバックアップが完了しました:$out_file"
-			openclaw_offer_transfer_hint "$out_file"
+		if openclaw_pack_backup_archive "memory-full" "multi-agent" "$tmp_payload" "$out_file"; then
+			echo "✅ フルメモリバックアップが完了しました (マルチエージェントを含む):$out_file"; openclaw_offer_transfer_hint "$out_file"
 		else
 			echo "❌ フルメモリバックアップに失敗しました"
 		fi
-
-		rm -rf "$tmp_payload"
-		break_end
-	}
-
-	openclaw_read_import_path() {
-		local prompt_text="$1"
-		local file_input file_path backup_root
-		echo "$prompt_text" >&2
-
-		echo "まず scp/sftp 経由でバックアップ パッケージをサーバーにアップロードし、次にパスを入力します。" >&2
-		echo "scp の例: scp /local/backup package.tar.gz root@yourserver:/tmp/" >&2
-		echo "ヒント: ファイル名を入力すると、デフォルトではバックアップ ディレクトリ内で検索されます。 / を含むパスを入力すると、フルパスで検証されます。" >&2
-		read -e -p "バックアップ ファイル名またはパスを入力してください:" file_input
-		[ -z "$file_input" ] && { echo ""; return 0; }
-
-		backup_root=$(openclaw_backup_root)
-		mkdir -p "$backup_root"
-
-		if [[ "$file_input" == */* ]]; then
-			file_path="$file_input"
-		else
-			file_path="$backup_root/$file_input"
-		fi
-
-		if [ ! -f "$file_path" ]; then
-			echo "❌ バックアップ ファイルが存在しません:$file_path" >&2
-			echo ""
-			return 1
-		fi
-
-		echo "$file_path"
+		rm -rf "$tmp_payload"; break_end
 	}
 
 	openclaw_memory_backup_import() {
 		send_stats "OpenClaw メモリ完全復元"
-		local workspace_dir="${HOME}/.openclaw/workspace"
-		mkdir -p "$workspace_dir"
-
-		local archive_path
-		archive_path=$(openclaw_read_import_path "復元前に、タイプ検証 + sha256 検証 + パス ホワイトリスト検証が実行されます。")
-		[ -z "$archive_path" ] && { echo "❌ バックアップ パスが入力されていません"; break_end; return 1; }
-
-		local tmp_unpack
-		tmp_unpack=$(mktemp -d) || return 1
-		local pkg_dir
-		pkg_dir=$(openclaw_prepare_import_archive "memory-full" "$archive_path" "$tmp_unpack") || { rm -rf "$tmp_unpack"; break_end; return 1; }
-
-		local invalid=0
-		local valid_list
-		valid_list=$(mktemp)
-		while IFS= read -r rel; do
-			[ -z "$rel" ] && continue
-			if ! openclaw_is_safe_relpath "$rel" || ! openclaw_restore_path_allowed memory "$rel"; then
-				echo "❌ 違法または無許可のパスが検出されました:$rel"
-				invalid=1
-				break
-			fi
-			echo "$rel" >> "$valid_list"
-		done < "$pkg_dir/manifest.files"
-
-		if [ "$invalid" -ne 0 ]; then
-			rm -f "$valid_list"
-			rm -rf "$tmp_unpack"
-			echo "❌ 復元は中止されました: 安全でないパスが存在します"
-			break_end
-			return 1
-		fi
-
-
-		while IFS= read -r rel; do
-			mkdir -p "$workspace_dir/$(dirname "$rel")"
-			cp -a "$pkg_dir/payload/$rel" "$workspace_dir/$rel"
-		done < "$valid_list"
-
-		rm -f "$valid_list"
-		rm -rf "$tmp_unpack"
-		echo "✅ 完全なメモリ復元が完了しました"
-		break_end
+		local archive_path=$(openclaw_read_import_path "メモリの全量を復元します (マルチエージェントをサポート)")
+		[ -z "$archive_path" ] && { echo "❌ パスが入力されていません"; break_end; return 1; }
+		local tmp_unpack=$(mktemp -d) || return 1
+		local pkg_dir=$(openclaw_prepare_import_archive "memory-full" "$archive_path" "$tmp_unpack") || { rm -rf "$tmp_unpack"; break_end; return 1; }
+		local workspaces_json=$(openclaw_get_all_agent_workspaces)
+		python3 -c 'import json, sys, os, shutil;
+workspaces = {item["id"]: item["ws"] for item in json.loads(sys.argv[1])};
+payload_dir = sys.argv[2]; agents_root = os.path.join(payload_dir, "agents")
+if os.path.isdir(agents_root):
+    for aid in os.listdir(agents_root):
+        if aid in workspaces:
+            src_agent_dir = os.path.join(agents_root, aid); dest_ws = workspaces[aid]
+            os.makedirs(dest_ws, exist_ok=True)
+            for f in os.listdir(src_agent_dir):
+                src = os.path.join(src_agent_dir, f); dest = os.path.join(dest_ws, f)
+                if os.path.isfile(src): shutil.copy2(src, dest)
+                else: shutil.copytree(src, dest, dirs_exist_ok=True)
+            print(f"✅ エージェントの記憶が復元されました: {aid}")' "$workspaces_json" "$pkg_dir/payload"
+		rm -rf "$tmp_unpack"; echo "✅ 完全なメモリ復元が完了しました"; break_end
 	}
+
 
 	openclaw_project_backup_export() {
 		send_stats "OpenClaw プロジェクトのバックアップ"
-		local openclaw_root="${HOME}/.openclaw"
+		local config_file
+		config_file=$(openclaw_get_config_file)
+		local openclaw_root
+		openclaw_root=$(dirname "$config_file")
 		if [ ! -d "$openclaw_root" ]; then
 			echo "❌ OpenClaw ルート ディレクトリが見つかりません:$openclaw_root"
 			break_end
@@ -12675,7 +12919,10 @@ EOF
 
 	openclaw_project_backup_import() {
 		send_stats "OpenClaw プロジェクトの復元"
-		local openclaw_root="${HOME}/.openclaw"
+		local config_file
+		config_file=$(openclaw_get_config_file)
+		local openclaw_root
+		openclaw_root=$(dirname "$config_file")
 		mkdir -p "$openclaw_root"
 
 		echo "⚠️ リスクの高い操作: プロジェクトを復元すると、OpenClaw 構成とワークスペースのコンテンツが上書きされます。"
@@ -12769,7 +13016,7 @@ EOF
 
 		echo "バックアップディレクトリ:$backup_root"
 		if [ ${#OPENCLAW_BACKUP_FILES[@]} -eq 0 ]; then
-			echo "まだバックアップファイルがありません"
+			echo "バックアップファイルはまだありません"
 			return 0
 		fi
 
@@ -12913,7 +13160,15 @@ EOF
 	}
 
 	openclaw_memory_config_file() {
-		echo "${HOME}/.openclaw/openclaw.json"
+		local user_config="${HOME}/.openclaw/openclaw.json"
+		local root_config="/root/.openclaw/openclaw.json"
+		if [ -f "$user_config" ]; then
+			echo "$user_config"
+		elif [ "$HOME" = "/root" ] && [ -f "$root_config" ]; then
+			echo "$root_config"
+		else
+			echo "$user_config"
+		fi
 	}
 
 	openclaw_memory_config_get() {
@@ -12943,9 +13198,78 @@ EOF
 		openclaw_memory_config_unset "memory.local"
 	}
 
+	openclaw_memory_list_agents() {
+		if command -v openclaw >/dev/null 2>&1; then
+			local agents_json
+			agents_json=$(openclaw agents list --json 2>/dev/null || true)
+			if [ -n "$agents_json" ]; then
+				python3 - "$agents_json" <<'PY'
+import json, os, sys
+raw = sys.argv[1]
+try:
+    data = json.loads(raw)
+except Exception:
+    data = None
+seen = set()
+results = []
+if isinstance(data, list):
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        aid = item.get('id')
+        if not aid or aid in seen:
+            continue
+        ws = item.get('workspace') or ("~/.openclaw/workspace" if aid == 'main' else f"~/.openclaw/workspace-{aid}")
+        results.append((aid, os.path.expanduser(ws)))
+        seen.add(aid)
+if results:
+    for aid, ws in results:
+        print(f"{aid}\t{ws}")
+    raise SystemExit(0)
+raise SystemExit(1)
+PY
+				[ $? -eq 0 ] && return 0
+			fi
+		fi
+		local config_path
+		config_path=$(openclaw_memory_config_file)
+		python3 - "$config_path" <<'PY'
+import json, os, sys
+config_path = sys.argv[1]
+results = [("main", os.path.expanduser("~/.openclaw/workspace"))]
+seen = {"main"}
+try:
+    if os.path.exists(config_path):
+        with open(config_path, encoding='utf-8') as f:
+            data = json.load(f)
+        agents = data.get('agents', {}).get('list', [])
+        if isinstance(agents, list):
+            for item in agents:
+                if not isinstance(item, dict):
+                    continue
+                aid = item.get('id')
+                ws = item.get('workspace')
+                if not aid or aid in seen:
+                    continue
+                if not ws:
+                    ws = f"~/.openclaw/workspace-{aid}"
+                results.append((aid, os.path.expanduser(ws)))
+                seen.add(aid)
+except Exception:
+    pass
+for aid, ws in results:
+    print(f"{aid}\t{ws}")
+PY
+	}
+
 	openclaw_memory_status_value() {
 		local key="$1"
-		openclaw memory status 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
+		local agent_id="${2:-}"
+		if [ -n "$agent_id" ]; then
+			openclaw memory status --agent "$agent_id" 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
+		else
+			openclaw memory status 2>/dev/null | awk -F': ' -v k="$key" '$1==k {print $2; exit}'
+		fi
 	}
 
 	openclaw_memory_expand_path() {
@@ -12962,58 +13286,107 @@ EOF
 		fi
 	}
 
-	openclaw_memory_rebuild_index_safe() {
+	openclaw_memory_rebuild_index_single() {
+		local agent_id="${1:-main}"
 		local store_raw store_file ts backup_file
-		store_raw=$(openclaw_memory_status_value "Store")
+		store_raw=$(openclaw_memory_status_value "Store" "$agent_id")
 		store_file=$(openclaw_memory_expand_path "$store_raw")
 		if [ -z "$store_file" ] || [ ! -f "$store_file" ]; then
-			echo "⚠️ インデックス ライブラリ ファイルが見つかりませんでした。空であるか、存在しない可能性があります。"
+			echo "⚠️ [$agent_id] インデックス ライブラリ ファイルが見つかりません。空か存在しない可能性があります。"
 			echo "生の値を保存: ${store_raw:-<empty>}"
 			echo "インデックスの再作成は引き続き実行されます。"
 		else
 			ts=$(date +%Y%m%d_%H%M%S)
 			backup_file="${store_file}.bak.${ts}"
 			if mv "$store_file" "$backup_file"; then
-				echo "✅ インデックスのバックアップ:$backup_file"
+				echo "✅ [$agent_id] インデックスがバックアップされました:$backup_file"
 			else
-				echo "⚠️ インデックスのバックアップに失敗しました。再構築を続けてください。"
+				echo "⚠️ [$agent_id] インデックスのバックアップに失敗しました。再構築を続行します。"
 			fi
 		fi
-		openclaw memory index --force
+		openclaw memory index --agent "$agent_id" --force
+	}
+
+	openclaw_memory_rebuild_index_safe() {
+		local agent_id="${1:-main}"
+		openclaw_memory_rebuild_index_single "$agent_id"
 		openclaw gateway restart
 		echo "✅ インデックスが再構築され、ゲートウェイが自動的に再起動されました。"
 		echo ""
 		openclaw_memory_render_status
 	}
 
+	openclaw_memory_rebuild_index_all() {
+		local count=0
+		local agent_lines agent_id workspace
+		agent_lines=$(openclaw_memory_list_agents)
+		while IFS=$'\t' read -r agent_id workspace; do
+			[ -z "$agent_id" ] && continue
+			openclaw_memory_rebuild_index_single "$agent_id"
+			count=$((count+1))
+		done <<EOF
+$agent_lines
+EOF
+		openclaw gateway restart
+		echo "✅ インデックスが再構築され、ゲートウェイが自動的に再起動されました。"
+		echo "✅ すでに${count}エージェントがインデックスを再構築する"
+		echo ""
+		openclaw_memory_render_status
+	}
+
 	openclaw_memory_prepare_workspace() {
+		local agent_id="${1:-main}"
 		local workspace memory_dir
-		workspace=$(openclaw_memory_status_value "Workspace")
+		workspace=$(openclaw_memory_status_value "Workspace" "$agent_id")
 		if [ -z "$workspace" ]; then
-			echo "⚠️ ワークスペースのパスを取得できませんでした。ディレクトリの修復はスキップされました。"
-			return 1
+			workspace="$HOME/.openclaw/workspace"
+			[ "$agent_id" != "main" ] && workspace="$HOME/.openclaw/workspace-$agent_id"
 		fi
 		memory_dir="$workspace/memory"
 		if [ ! -d "$memory_dir" ]; then
-			echo "🔧 メモリ ディレクトリは存在しないため、自動的に作成されます。$memory_dir"
+			echo "🔧 [$agent_id] メモリ ディレクトリは存在しないため、自動的に作成されました:$memory_dir"
 			mkdir -p "$memory_dir"
 		fi
 		return 0
 	}
 
+	openclaw_memory_prepare_workspace_all() {
+		local count=0
+		local agent_lines agent_id workspace
+		agent_lines=$(openclaw_memory_list_agents)
+		echo "確認して準備します $(printf '%s\n'"$agent_lines"| sed '/^\s*$/d' |トイレ -l | tr -d ' ') エージェントワークスペース"
+		while IFS=$'\t' read -r agent_id workspace; do
+			[ -z "$agent_id" ] && continue
+			openclaw_memory_prepare_workspace "$agent_id"
+			count=$((count+1))
+		done <<EOF
+$agent_lines
+EOF
+		return 0
+	}
+
 	openclaw_memory_render_status() {
-		local status_output status_lines config_file config_display
-		status_output=$(openclaw memory status 2>/dev/null)
-		if [ $? -ne 0 ] || [ -z "$status_output" ]; then
-			echo "ステータスの取得に失敗しました"
-		else
-			status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed)" | head -n 3 | sed -e 's/^プロバイダ: /基礎となるソリューション: /' -e 's/^Vector: /Vector ライブラリのステータス: /' -e 's/^インデックス付き: /含まれるファイル: /')
+		local agent_lines agent_id workspace status_output status_lines first="true"
+		agent_lines=$(openclaw_memory_list_agents)
+		while IFS=$'\t' read -r agent_id workspace; do
+			[ -z "$agent_id" ] && continue
+			status_output=$(openclaw memory status --agent "$agent_id" 2>/dev/null)
+			[ "$first" = "true" ] || echo ""
+			first="false"
+			echo "Agent: $agent_id"
+			if [ $? -ne 0 ] || [ -z "$status_output" ]; then
+				echo "ステータスの取得に失敗しました"
+				continue
+			fi
+			status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed|Workspace|Store)" | head -n 5 | sed -e 's/^プロバイダ: /基礎となるソリューション: /' -e 's/^Vector: /Vector ライブラリのステータス: /' -e 's/^インデックス付き: /含まれるファイル: /' -e 's/^ワークスペース: /ワークスペース: /' -e 's/^ストア: /index ライブラリ: /')
 			if [ -z "$status_lines" ]; then
 				echo "インストールされていない/起動されていない"
 			else
 				echo "$status_lines"
 			fi
-		fi
+		done <<EOF
+$agent_lines
+EOF
 	}
 
 	openclaw_memory_get_backend() {
@@ -13232,20 +13605,23 @@ EOF
 		local qmd_path
 		qmd_path=$(command -v qmd 2>/dev/null || true)
 		if [ -n "$qmd_path" ]; then
-			echo "✅ qmd はすでに存在します:$qmd_path"
-			OPENCLAW_MEMORY_QMD_PATH="$qmd_path"
-			return 0
+			if qmd --version >/dev/null 2>&1; then
+				echo "✅ qmd はすでに存在しており、利用可能です。$qmd_path"
+				OPENCLAW_MEMORY_QMD_PATH="$qmd_path"
+				return 0
+			else
+				echo "⚠️ qmd コマンドは存在しますが、モジュールが破損しています。再インストールしてください..."
+			fi
 		fi
-		openclaw_memory_ensure_bun || return 1
-		local qmd_url="${OPENCLAW_MEMORY_GH_PROXY}github.com/tobi/qmd"
-		echo "⬇️ bun 経由で qmd をインストールします。$qmd_url"
-		bun install -g "$qmd_url"
+		echo "⬇️ npm 経由で qmd をインストールします: @tobilu/qmd"
+		npm install -g @tobilu/qmd
 		qmd_path=$(command -v qmd 2>/dev/null || true)
-		if [ -z "$qmd_path" ] && [ -x "$HOME/.bun/bin/qmd" ]; then
-			qmd_path="$HOME/.bun/bin/qmd"
-		fi
 		if [ -z "$qmd_path" ]; then
 			echo "❌ qmd のインストールに失敗しました"
+			return 1
+		fi
+		if ! qmd --version >/dev/null 2>&1; then
+			echo "❌ インストール後も qmd が実行できない"
 			return 1
 		fi
 		OPENCLAW_MEMORY_QMD_PATH="$qmd_path"
@@ -13360,8 +13736,15 @@ EOF
 		fi
 		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
 			echo "🔥 ウォームインデックス (おそらくダウンロードモデル)"
-			openclaw_memory_prepare_workspace
-			openclaw memory index --force
+			openclaw_memory_prepare_workspace_all
+			local preh_agent_lines preh_agent_id preh_workspace
+			preh_agent_lines=$(openclaw_memory_list_agents)
+			while IFS=$'\t' read -r preh_agent_id preh_workspace; do
+				[ -z "$preh_agent_id" ] && continue
+				openclaw memory index --agent "$preh_agent_id" --force
+			done <<EOF
+$preh_agent_lines
+EOF
 		else
 			echo "⏭️ 予熱をスキップしました"
 		fi
@@ -13417,8 +13800,15 @@ EOF
 		fi
 		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
 			echo "🔥 ウォームインデックス (おそらくダウンロードモデル)"
-			openclaw_memory_prepare_workspace
-			openclaw memory index --force
+			openclaw_memory_prepare_workspace_all
+			local preh_agent_lines preh_agent_id preh_workspace
+			preh_agent_lines=$(openclaw_memory_list_agents)
+			while IFS=$'\t' read -r preh_agent_id preh_workspace; do
+				[ -z "$preh_agent_id" ] && continue
+				openclaw memory index --agent "$preh_agent_id" --force
+			done <<EOF
+$preh_agent_lines
+EOF
 		else
 			echo "⏭️ 予熱をスキップしました"
 		fi
@@ -13481,7 +13871,7 @@ EOF
 		while true; do
 			clear
 			echo "======================================="
-			echo "メモリソリューションの自動導入"
+			echo "メモリソリューションの自動展開"
 			echo "======================================="
 			echo "1. QMD"
 			echo "2. Local"
@@ -13542,7 +13932,7 @@ EOF
 	}
 
 	openclaw_memory_offer_restart() {
-		echo "設定は書き込まれており、OpenClaw ゲートウェイの再起動後に有効にするには、再起動する必要があります。"
+		echo "構成は書き込まれており、OpenClaw ゲートウェイの再起動後に有効にするには、再起動する必要があります。"
 		read -e -p "今すぐ OpenClaw ゲートウェイを再起動しますか? (はい/いいえ):" restart_choice
 		if [[ "$restart_choice" =~ ^[Nn]$ ]]; then
 			echo "再起動はスキップされました。後で実行できます: openclaw ゲートウェイの再起動"
@@ -13556,32 +13946,46 @@ EOF
 	}
 
 	openclaw_memory_fix_index() {
-		local backend
+		local backend include_dm
 		backend=$(openclaw_memory_get_backend)
 		if [ "$backend" = "qmd" ] && ! command -v qmd >/dev/null 2>&1; then
 			echo "⚠️ 現在のスキームは QMD として検出されますが、qmd コマンドがインストールされていません。"
 			echo "ローカルに切り替えるか、bun + qmd をインストールして再試行してください。"
 		fi
-		echo "適用可能なシナリオ: インデックス付きの分子 > 分母 (収集を繰り返すと異常なカウントが発生します)"
-		read -e -p "includeDefaultMemory を false に設定してもよろしいですか? (y/N):" confirm_fix
-		if [[ ! "$confirm_fix" =~ ^[Yy]$ ]]; then
-			echo "キャンセル。"
-			break_end
-			return 0
-		fi
-		openclaw_memory_config_set "memory.qmd.includeDefaultMemory" false
-		if [ $? -ne 0 ]; then
-			echo "❌ 設定の書き込みに失敗しました"
-			break_end
-			return 1
-		fi
-		echo "✅ includeDefaultMemory=false セット"
-		echo "推奨される実行: インデックスをクリーンアップして再構築する"
-		read -e -p "インデックスをクリーンして再構築しますか (推奨)? (はい/いいえ):" rebuild_choice
-		if [[ ! "$rebuild_choice" =~ ^[Nn]$ ]]; then
-			openclaw_memory_rebuild_index_safe
+		include_dm=$(openclaw config get memory.qmd.includeDefaultMemory 2>/dev/null)
+		echo "======================================="
+		echo "インデックス修復診断"
+		echo "======================================="
+		echo "現在の includeDefaultMemory: ${include_dm:-not set}"
+		echo ""
+		if [ "$include_dm" = "false" ]; then
+			echo "⚠️ includeDefaultMemory=false が検出されました"
+			echo "これにより、デフォルトのメモリ ファイル (MEMORY.md +memory/*.md) のインデックスが作成されなくなります。"
+			echo "したがって、インデックス付きでは常に 0/N が表示されます。"
+			echo ""
+			read -e -p "true に戻してインデックスを再構築しますか? (はい/いいえ):" fix_choice
+			if [[ ! "$fix_choice" =~ ^[Nn]$ ]]; then
+				openclaw_memory_config_set "memory.qmd.includeDefaultMemory" true
+				if [ $? -ne 0 ]; then
+					echo "❌ 設定の書き込みに失敗しました"
+					break_end
+					return 1
+				fi
+				echo "✅ includeDefaultMemory=true が復元されました"
+				openclaw_memory_rebuild_index_all
+			else
+				echo "キャンセル。"
+			fi
 		else
-			echo "ステータスは後でメモリ管理で確認できます。"
+			echo "includeDefaultMemory 構成は正常です。"
+			echo "実行内容: 古いインデックスを削除 → すべてのエージェント インデックスを完全に再構築"
+			echo ""
+			read -e -p "実行を確認しますか? (はい/いいえ):" confirm_fix
+			if [[ ! "$confirm_fix" =~ ^[Nn]$ ]]; then
+				openclaw_memory_rebuild_index_all
+			else
+				echo "キャンセル。"
+			fi
 		fi
 		break_end
 	}
@@ -13637,30 +14041,42 @@ EOF
 
 	openclaw_memory_file_collect() {
 		OPENCLAW_MEMORY_FILES=()
-		local base_dir="${HOME}/.openclaw/workspace"
-		local memory_dir="$base_dir/memory"
-		local memory_file="$base_dir/MEMORY.md"
-		[ -f "$memory_file" ] && OPENCLAW_MEMORY_FILES+=("$memory_file")
-		if [ -d "$memory_dir" ]; then
-			while IFS= read -r file; do
-				[ -f "$file" ] && OPENCLAW_MEMORY_FILES+=("$file")
-			done < <(find "$memory_dir" -type f -name '*.md' | sort)
-		fi
+		OPENCLAW_MEMORY_FILE_LABELS=()
+		local agent_lines agent_id base_dir memory_dir memory_file rel
+		agent_lines=$(openclaw_memory_list_agents)
+		while IFS=$'\t' read -r agent_id base_dir; do
+			[ -z "$agent_id" ] && continue
+			memory_dir="$base_dir/memory"
+			memory_file="$base_dir/MEMORY.md"
+			if [ -f "$memory_file" ]; then
+				OPENCLAW_MEMORY_FILES+=("$memory_file")
+				OPENCLAW_MEMORY_FILE_LABELS+=("$agent_id/MEMORY.md")
+			fi
+			if [ -d "$memory_dir" ]; then
+				while IFS= read -r file; do
+					[ -f "$file" ] || continue
+					rel="${file#$base_dir/}"
+					OPENCLAW_MEMORY_FILES+=("$file")
+					OPENCLAW_MEMORY_FILE_LABELS+=("$agent_id/$rel")
+				done < <(find "$memory_dir" -type f -name '*.md' | sort)
+			fi
+		done <<EOF
+$agent_lines
+EOF
 	}
 
 	openclaw_memory_file_render_list() {
-		local base_dir="${HOME}/.openclaw/workspace"
 		openclaw_memory_file_collect
 		if [ ${#OPENCLAW_MEMORY_FILES[@]} -eq 0 ]; then
 			echo "メモリファイルが見つかりません。"
 			return 0
 		fi
-		echo "番号 |相対パス |サイズ |修正時間"
+		echo "番号 |帰属 |サイズ |変更時間"
 		echo "---------------------------------------"
 		local i file rel size mtime
 		for i in "${!OPENCLAW_MEMORY_FILES[@]}"; do
 			file="${OPENCLAW_MEMORY_FILES[$i]}"
-			rel="${file#$base_dir/}"
+			rel="${OPENCLAW_MEMORY_FILE_LABELS[$i]}"
 			size=$(ls -lh "$file" | awk '{print $5}')
 			mtime=$(date -d "$(stat -c %y "$file")" '+%Y-%m-%d %H:%M:%S' 2>/dev/null || stat -c %y "$file" | awk '{print $1" "$2}')
 			printf "%s | %s | %s | %s\\n" "$((i+1))" "$rel" "$size" "$mtime"
@@ -13678,9 +14094,9 @@ EOF
 		local default_lines=120
 		local start_line count
 		echo "書類：$file"
-		echo "総行数:$total_lines"
+		echo "合計行数:$total_lines"
 		read -e -p "開始行を入力してください (Enter キーを押すとデフォルトで行の終わりになります)$default_linesわかりました）：" start_line
-		read -e -p "表示する行数を入力してください (デフォルトでは Enter を押します)$default_lines）: " count
+		read -e -p "表示する行数を入力してください (デフォルトでは Enter キーを押します)$default_lines）: " count
 		[ -z "$count" ] && count=$default_lines
 		if [ -z "$start_line" ]; then
 			if [ "$total_lines" -le "$count" ]; then
@@ -13770,18 +14186,25 @@ EOF
 						break_end
 						continue
 					fi
-				openclaw_memory_prepare_workspace
+				openclaw_memory_prepare_workspace_all
 				read -e -p "2 番目の確認: 全額を使用するには、force を入力します (増分の場合は空白のままにします):" confirm_step2
 				if [ "$confirm_step2" = "force" ]; then
 					echo "⚠️ 完全な再構築はより徹底的ですが、時間がかかります。"
 					echo "推奨事項: 安全に再構築するには、再構築を入力してください (最初にインデックス データベースをバックアップします)。"
 					read -e -p "3 番目の確認: 安全な再構築を実行するには、「再構築」と入力します。 Enter キーを押して通常の力で続行します。" confirm_step3
 					if [ "$confirm_step3" = "rebuild" ]; then
-						openclaw_memory_rebuild_index_safe
+						openclaw_memory_rebuild_index_all
 					else
-						openclaw memory index --force
+						local fl_agent_lines fl_agent_id fl_workspace
+						fl_agent_lines=$(openclaw_memory_list_agents)
+						while IFS=$'\t' read -r fl_agent_id fl_workspace; do
+							[ -z "$fl_agent_id" ] && continue
+							openclaw memory index --agent "$fl_agent_id" --force
+						done <<EOF
+$fl_agent_lines
+EOF
 						openclaw gateway restart
-						echo "✅ インデックスが再構築され、ゲートウェイが自動的に再起動されました。"
+						echo "✅ すべてのエージェントで強制再構築が実行され、ゲートウェイが自動的に再起動されました。"
 					fi
 				else
 					openclaw memory index
@@ -13808,7 +14231,759 @@ EOF
 		done
 	}
 
-	openclaw_backup_restore_menu() {
+	openclaw_permission_config_file() {
+		echo "$(openclaw_get_config_file)"
+	}
+
+	openclaw_permission_backup_file() {
+		local backup_root
+		backup_root=$(openclaw_backup_root)
+		echo "${backup_root}/openclaw-permission-last.json"
+	}
+
+	openclaw_permission_require_openclaw() {
+		if ! openclaw_has_command openclaw; then
+			echo "❌ openclaw コマンドが検出されません。最初に OpenClaw をインストールまたは初期化してください。"
+			return 1
+		fi
+		return 0
+	}
+
+	openclaw_permission_backup_current() {
+		local config_file backup_file
+		config_file=$(openclaw_permission_config_file)
+		backup_file=$(openclaw_permission_backup_file)
+		if [ ! -s "$config_file" ]; then
+			echo "⚠️ OpenClaw 設定ファイルが見つからないため、権限のバックアップがスキップされました。"
+			return 1
+		fi
+		mkdir -p "$(dirname "$backup_file")"
+		cp -f "$config_file" "$backup_file" >/dev/null 2>&1 || {
+			echo "⚠️ 権限のバックアップが失敗しました:$backup_file"
+			return 1
+		}
+		echo "✅ 現在の権限設定がバックアップされました:$backup_file"
+		return 0
+	}
+
+	openclaw_permission_restore_backup() {
+		local config_file backup_file
+		config_file=$(openclaw_permission_config_file)
+		backup_file=$(openclaw_permission_backup_file)
+		if [ ! -s "$backup_file" ]; then
+			echo "❌ 復元可能な権限のバックアップ ファイルが見つかりません。"
+			return 1
+		fi
+		cp -f "$backup_file" "$config_file" >/dev/null 2>&1 || {
+			echo "❌ 権限の回復に失敗しました:$backup_file"
+			return 1
+		}
+		echo "✅ スイッチが復元される前の権限設定"
+		openclaw_permission_restart_gateway || true
+		return 0
+	}
+
+	openclaw_permission_restart_gateway() {
+		if ! openclaw_has_command openclaw; then
+			echo "❌ openclaw が検出されず、OpenClaw Gateway を再起動できません。"
+			return 1
+		fi
+		echo "OpenClaw ゲートウェイを再起動しています..."
+		openclaw gateway restart >/dev/null 2>&1 || {
+			openclaw gateway stop >/dev/null 2>&1
+			openclaw gateway start >/dev/null 2>&1
+		}
+	}
+
+	openclaw_permission_get_value() {
+		local path="$1"
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+
+		if openclaw_has_command openclaw; then
+			local value
+			value=$(openclaw config get "$path" 2>&1 | head -n 1)
+			if [ -n "$value" ]; then
+				if echo "$value" | grep -qi "config path not found"; then
+					echo "(unset)"
+					return 0
+				fi
+				if [ "$value" = "null" ]; then
+					echo "(unset)"
+				else
+					if echo "$value" | grep -q '^".*"$'; then
+						value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//')
+					fi
+					echo "$value"
+				fi
+				return 0
+			fi
+		fi
+
+		[ -f "$config_file" ] || { echo "(unset)"; return 0; }
+
+		if openclaw_has_command jq; then
+			local jq_value
+			jq_value=$(jq -r --arg p "$path" 'getpath($p|split(".")) // "(unset)"' "$config_file" 2>/dev/null) || jq_value="(unset)"
+			[ "$jq_value" = "null" ] && jq_value="(unset)"
+			echo "$jq_value"
+			return 0
+		fi
+
+		if openclaw_has_command python3; then
+			python3 - "$config_file" "$path" <<'PY'
+import json, sys
+path = sys.argv[2]
+with open(sys.argv[1], 'r', encoding='utf-8') as f:
+    obj = json.load(f)
+cur = obj
+for part in path.split('.'):
+    if isinstance(cur, dict) and part in cur:
+        cur = cur[part]
+    else:
+        print('(unset)')
+        raise SystemExit(0)
+if isinstance(cur, bool):
+    print('true' if cur else 'false')
+elif cur is None:
+    print('(unset)')
+else:
+    print(json.dumps(cur, ensure_ascii=False) if isinstance(cur, (dict, list)) else str(cur))
+PY
+			return 0
+		fi
+
+		echo "(unset)"
+		return 0
+	}
+
+	openclaw_permission_unset_optional() {
+		local key="$1"
+		local probe
+		if ! openclaw_has_command openclaw; then
+			return 1
+		fi
+		if openclaw config unset "$key" >/dev/null 2>&1; then
+			return 0
+		fi
+		probe=$(openclaw config get "$key" 2>&1 | head -n 1)
+		if [ -z "$probe" ] || [ "$probe" = "null" ] || [ "$probe" = "(unset)" ] || echo "$probe" | grep -qi "config path not found"; then
+			return 0
+		fi
+		return 1
+	}
+
+	openclaw_permission_detect_mode() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		[ ! -f "$config_file" ] && { echo "不明なモード"; return; }
+
+		python3 - "$config_file" <<'PY'
+import json, sys
+
+def get_v(o, p):
+    for k in p.split('.'):
+        if isinstance(o, dict) and k in o:
+            o = o[k]
+        else:
+            return "(unset)"
+    return str(o).lower()
+
+try:
+    with open(sys.argv[1], 'r', encoding='utf-8') as f:
+        d = json.load(f)
+    p = get_v(d, "tools.profile")
+    s = get_v(d, "tools.exec.security")
+    a = get_v(d, "tools.exec.ask")
+    e = get_v(d, "tools.elevated.enabled")
+    b = get_v(d, "commands.bash")
+    ap = get_v(d, "tools.exec.applyPatch.enabled")
+    w = get_v(d, "tools.exec.applyPatch.workspaceOnly")
+
+    if p == "coding" and s == "allowlist" and a == "on-miss" and e == "false" and b == "false" and ap == "false":
+        print("標準セーフモード")
+    elif p == "coding" and s == "allowlist" and a == "on-miss" and e == "true" and b == "true" and ap == "true" and w == "true":
+        print("拡張モードの開発")
+    elif (p == "full" or p == "(unset)") and s == "full" and a == "off" and e == "true" and b == "true" and ap == "true":
+        print("フルオープンモード")
+    else:
+        print("カスタムモード")
+except Exception:
+    print("カスタムモード")
+PY
+	}
+
+		openclaw_permission_render_status() {
+		local config_file mode
+		config_file=$(openclaw_permission_config_file)
+		mode=$(openclaw_permission_detect_mode)
+		echo "設定ファイル:$config_file"
+		[ ! -s "$config_file" ] && echo "⚠️ OpenClaw 設定ファイルが見つかりません (まだ初期化されていない可能性があります)。"
+		echo "現在のモード:$mode"
+		echo "---------------------------------------"
+
+		# Python を使用してすべての権限フィールドを一度に効率的に解析する
+		python3 - "$config_file" <<'PY'
+import json, sys
+def get_val(obj, path, default="(unset)"):
+    parts = path.split('.')
+    for p in parts:
+        if isinstance(obj, dict) and p in obj: obj = obj[p]
+        else: return default
+    if isinstance(obj, (list, dict)): return json.dumps(obj)
+    return str(obj)
+
+try:
+    with open(sys.argv[1], 'r') as f: data = json.load(f)
+    fields = [
+        ("tools.profile", "tools.profile"),
+        ("tools.allow", "tools.allow"),
+        ("tools.deny", "tools.deny"),
+        ("tools.byProvider", "tools.byProvider"),
+        ("tools.exec.security", "tools.exec.security"),
+        ("tools.exec.ask", "tools.exec.ask"),
+        ("tools.elevated.enabled", "tools.elevated.enabled"),
+        ("commands.bash", "commands.bash"),
+        ("applyPatch.enabled", "tools.exec.applyPatch.enabled"),
+        ("applyPatch.workspaceOnly", "tools.exec.applyPatch.workspaceOnly")
+    ]
+    for label, path in fields:
+        val = get_val(data, path)
+        print("%-28s %s" % (label, val))
+except Exception as e:
+    print("❌ 構成ファイルの解析に失敗しました: %s" % e)
+PY
+	}
+
+	openclaw_permission_apply_standard() {
+		send_stats "OpenClaw 権限 - 標準セキュリティ モード"
+		openclaw_permission_require_openclaw || return 1
+		openclaw_permission_backup_current || true
+		local failed=0
+		openclaw config set tools.profile coding || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
+		openclaw config set tools.deny '[]' --json || failed=1
+		openclaw config set tools.exec.security allowlist || failed=1
+		openclaw config set tools.exec.ask on-miss || failed=1
+		openclaw config set tools.elevated.enabled false || failed=1
+		openclaw config set commands.bash false || failed=1
+		openclaw config set tools.exec.applyPatch.enabled false || failed=1
+		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
+		if [ "$failed" -ne 0 ]; then
+			echo "❌ 切り替え失敗：書き込み権限の設定中にエラーが発生しました。"
+			openclaw_permission_restore_backup || true
+			return 1
+		fi
+		if ! openclaw_permission_restart_gateway; then
+			echo "⚠️ 設定は書き込まれましたが、再起動に失敗しました。手動で実行してください: openclaw ゲートウェイの再起動"
+			return 1
+		fi
+		echo "✅ 標準の安全モードに切り替えられました"
+	}
+
+	openclaw_permission_apply_developer() {
+		send_stats "OpenClaw 権限 - 開発拡張モード"
+		openclaw_permission_require_openclaw || return 1
+		openclaw_permission_backup_current || true
+		local failed=0
+		openclaw config set tools.profile coding || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
+		openclaw config set tools.deny '[]' --json || failed=1
+		openclaw config set tools.exec.security allowlist || failed=1
+		openclaw config set tools.exec.ask on-miss || failed=1
+		openclaw config set tools.elevated.enabled true || failed=1
+		openclaw config set commands.bash true || failed=1
+		openclaw config set tools.exec.applyPatch.enabled true || failed=1
+		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
+		if [ "$failed" -ne 0 ]; then
+			echo "❌ 切り替え失敗：書き込み権限の設定中にエラーが発生しました。"
+			openclaw_permission_restore_backup || true
+			return 1
+		fi
+		if ! openclaw_permission_restart_gateway; then
+			echo "⚠️ 設定は書き込まれましたが、再起動に失敗しました。手動で実行してください: openclaw ゲートウェイの再起動"
+			return 1
+		fi
+		echo "✅ 開発強化モードに切り替えました"
+	}
+
+	openclaw_permission_apply_full() {
+		send_stats "OpenClaw 権限 - 完全オープン モード"
+		openclaw_permission_require_openclaw || return 1
+		openclaw_permission_backup_current || true
+		local failed=0
+		openclaw config set tools.profile full || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
+		openclaw config set tools.deny '[]' --json || failed=1
+		openclaw config set tools.exec.security full || failed=1
+		openclaw config set tools.exec.ask off || failed=1
+		openclaw config set tools.elevated.enabled true || failed=1
+		openclaw config set commands.bash true || failed=1
+		openclaw config set tools.exec.applyPatch.enabled true || failed=1
+		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
+		if [ "$failed" -ne 0 ]; then
+			echo "❌ 切り替え失敗：書き込み権限の設定中にエラーが発生しました。"
+			openclaw_permission_restore_backup || true
+			return 1
+		fi
+		if ! openclaw_permission_restart_gateway; then
+			echo "⚠️ 設定は書き込まれましたが、再起動に失敗しました。手動で実行してください: openclaw ゲートウェイの再起動"
+			return 1
+		fi
+		echo "✅ 全開モードに切り替えました"
+	}
+
+	openclaw_permission_restore_official_defaults() {
+		send_stats "OpenClaw 権限 - 公式のデフォルトに戻す"
+		openclaw_permission_require_openclaw || return 1
+		openclaw_permission_backup_current || true
+		local failed=0
+		openclaw_permission_unset_optional tools.profile || failed=1
+		openclaw_permission_unset_optional tools.byProvider || failed=1
+		openclaw_permission_unset_optional tools.allow || failed=1
+		openclaw_permission_unset_optional tools.deny || failed=1
+		openclaw_permission_unset_optional tools.exec.security || failed=1
+		openclaw_permission_unset_optional tools.exec.ask || failed=1
+		openclaw_permission_unset_optional tools.elevated.enabled || failed=1
+		openclaw_permission_unset_optional commands.bash || failed=1
+		openclaw_permission_unset_optional tools.exec.applyPatch.enabled || failed=1
+		openclaw_permission_unset_optional tools.exec.applyPatch.workspaceOnly || failed=1
+		if [ "$failed" -ne 0 ]; then
+			echo "❌ 回復に失敗しました: 明示的なアクセス許可のオーバーライドをクリーニング中にエラーが発生しました。"
+			openclaw_permission_restore_backup || true
+			return 1
+		fi
+		if ! openclaw_permission_restart_gateway; then
+			echo "⚠️ 設定は書き込まれましたが、再起動に失敗しました。手動で実行してください: openclaw ゲートウェイの再起動"
+			return 1
+		fi
+		echo "✅ OpenClaw 公式のデフォルト戦略に戻しました (明示的なオーバーライドをクリアしました)"
+	}
+
+	openclaw_permission_run_audit() {
+		send_stats "OpenClaw 権限 - セキュリティ監査"
+		openclaw_permission_require_openclaw || return 1
+		openclaw security audit
+	}
+
+	openclaw_permission_menu() {
+		send_stats "OpenClaw権限管理"
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw権限管理"
+			echo "======================================="
+			openclaw_permission_render_status
+			echo "---------------------------------------"
+			echo "1.標準のセーフモードに切り替える（推奨）"
+			echo "2. 開発強化モードに切り替える"
+			echo "3. 全開モードへの切り替え（高リスク）"
+			echo "4. 公式のデフォルト戦略を復元する"
+			echo "5. セキュリティ監査を実行する"
+			echo "0. 前のレベルに戻ります"
+			echo "---------------------------------------"
+			read -e -p "選択肢を入力してください:" perm_choice
+			case "$perm_choice" in
+				1)
+					echo "適用: 標準セキュリティ モード"
+					read -e -p "確認するには「yes」と入力します。" confirm
+					[ "$confirm" = "yes" ] && openclaw_permission_apply_standard || echo "キャンセル"
+					break_end
+					;;
+				2)
+					echo "適用される: 開発拡張モード"
+					read -e -p "確認するには「yes」と入力します。" confirm
+					[ "$confirm" = "yes" ] && openclaw_permission_apply_developer || echo "キャンセル"
+					break_end
+					;;
+				3)
+					echo "⚠️ フルオープン モードは実行承認をオフにし、特権エスカレーションと bash を有効にし、信頼できるシングルユーザー環境にのみ推奨されます。"
+					read -e -p "続行することを確認するには「FULL」と入力します。" confirm
+					[ "$confirm" = "FULL" ] && openclaw_permission_apply_full || echo "キャンセル"
+					break_end
+					;;
+				4)
+					echo "クリーンアップ スクリプトによって書き込まれた明示的なアクセス許可をオーバーライドし、公式の OpenClaw デフォルト ポリシーに戻します。"
+					read -e -p "確認するには「yes」と入力します。" confirm
+					[ "$confirm" = "yes" ] && openclaw_permission_restore_official_defaults || echo "キャンセル"
+					break_end
+					;;
+				5)
+					openclaw_permission_run_audit
+					break_end
+					;;
+				0)
+					return 0
+					;;
+				*)
+					echo "選択が無効です。もう一度お試しください。"
+					sleep 1
+					;;
+			esac
+		done
+	}
+
+	openclaw_multiagent_config_file() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		if [ -s "$config_file" ]; then
+			echo "$config_file"
+			return 0
+		fi
+		openclaw config file 2>/dev/null | tail -n 1
+	}
+
+	openclaw_multiagent_default_agent() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		if [ -s "$config_file" ]; then
+			python3 - "$config_file" <<'PY'
+import json,sys,os
+path=sys.argv[1]
+value="(unset)"
+try:
+    with open(path) as f:
+        data=json.load(f)
+    defaults=data.get("agents",{}).get("defaults",{}) if isinstance(data,dict) else {}
+    value=defaults.get("agent") or None
+    if not value:
+        for item in data.get("agents",{}).get("list",[]) or []:
+            if isinstance(item,dict) and (item.get("isDefault") or item.get("default")):
+                value=item.get("id")
+                break
+    if not value:
+        for item in data.get("agents",{}).get("list",[]) or []:
+            if isinstance(item,dict) and item.get("id"):
+                value=item.get("id")
+                break
+except Exception:
+    value="(unset)"
+print(value or "(unset)")
+PY
+			return 0
+		fi
+		local value
+		value=$(openclaw config get agents.defaults.agent 2>&1 | head -n 1)
+		if [ -z "$value" ] || echo "$value" | grep -qi "config path not found"; then
+			value=$(openclaw agents list --json 2>/dev/null | python3 -c 'import json,sys
+try:
+ data=json.load(sys.stdin)
+ print(next((x.get("id","(unset)") for x in data if x.get("isDefault")), "(unset)"))
+except Exception:
+ print("(unset)")' 2>/dev/null)
+		fi
+		[ -z "$value" ] && value="(unset)"
+		if echo "$value" | grep -q '^".*"$'; then
+			value=$(echo "$value" | sed -e 's/^"//' -e 's/"$//')
+		fi
+		echo "$value"
+	}
+
+	openclaw_multiagent_require_openclaw() {
+		if ! openclaw_has_command openclaw; then
+			echo "❌ openclaw コマンドが検出されません。最初に OpenClaw をインストールまたは初期化してください。"
+			return 1
+		fi
+		return 0
+	}
+
+	openclaw_multiagent_agents_json() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		if [ -s "$config_file" ]; then
+			python3 - "$config_file" <<'PY'
+import json,sys,os
+path=sys.argv[1]
+try:
+    with open(path) as f:
+        data=json.load(f)
+    agents=data.get("agents",{}).get("list",[])
+    if not isinstance(agents,list):
+        agents=[]
+    print(json.dumps(agents, ensure_ascii=False))
+except Exception:
+    print("[]")
+PY
+			return 0
+		fi
+		openclaw agents list --json 2>/dev/null || echo '[]'
+	}
+
+	openclaw_multiagent_bindings_json() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		if [ -s "$config_file" ]; then
+			python3 - "$config_file" <<'PY'
+import json,sys,os
+path=sys.argv[1]
+results=[]
+
+def add_item(item):
+    if not isinstance(item,dict):
+        return
+    bind=item.get("bind") or item.get("binding") or item.get("scope") or item.get("route")
+    agent=item.get("agentId") or item.get("agent")
+    if agent or bind:
+        results.append({"agentId": agent or "?", "bind": bind or "-"})
+
+def walk(obj):
+    if isinstance(obj,dict):
+        if "agentId" in obj and any(k in obj for k in ("bind","binding","scope","route")):
+            add_item(obj)
+        for v in obj.values():
+            walk(v)
+    elif isinstance(obj,list):
+        for v in obj:
+            walk(v)
+
+try:
+    with open(path) as f:
+        data=json.load(f)
+    bindings=data.get("agents",{}).get("bindings") if isinstance(data,dict) else None
+    if isinstance(bindings,list):
+        for item in bindings:
+            add_item(item)
+    walk(data)
+    print(json.dumps(results, ensure_ascii=False))
+except Exception:
+    print("[]")
+PY
+			return 0
+		fi
+		openclaw agents bindings --json 2>/dev/null || echo '[]'
+	}
+
+	openclaw_multiagent_sessions_json() {
+		local config_file
+		config_file=$(openclaw_permission_config_file)
+		python3 - "$config_file" <<'PY'
+import json,sys,os
+config_path=sys.argv[1] if len(sys.argv)>1 else ""
+
+def load_agents(path):
+    if path and os.path.exists(path):
+        try:
+            with open(path) as f:
+                data=json.load(f)
+            agents=data.get("agents",{}).get("list",[])
+            if isinstance(agents,list) and agents:
+                ids=[a.get("id") for a in agents if isinstance(a,dict) and a.get("id")]
+                if ids:
+                    return ids
+        except Exception:
+            pass
+    base=os.path.expanduser("~/.openclaw/agents")
+    try:
+        return [d for d in os.listdir(base) if os.path.isdir(os.path.join(base,d))]
+    except Exception:
+        return []
+
+agent_ids=load_agents(config_path)
+sessions=[]
+for agent_id in agent_ids:
+    path=os.path.expanduser(f"~/.openclaw/agents/{agent_id}/sessions/sessions.json")
+    if not os.path.exists(path):
+        continue
+    try:
+        with open(path) as f:
+            data=json.load(f)
+    except Exception:
+        continue
+    if isinstance(data,dict):
+        items=data.items()
+    elif isinstance(data,list):
+        items=[(item.get("key") or item.get("sessionKey") or "?", item) for item in data if isinstance(item,dict)]
+    else:
+        continue
+    for key,item in items:
+        if not isinstance(item,dict):
+            continue
+        model=item.get("model")
+        if not model:
+            report=item.get("systemPromptReport") or {}
+            if isinstance(report,dict):
+                model=report.get("model") or report.get("modelProvider") or report.get("provider")
+        sessions.append({"agentId": agent_id, "key": key, "model": model or "-"})
+print(json.dumps({"sessions": sessions}, ensure_ascii=False))
+PY
+	}
+
+	openclaw_multiagent_render_status() {
+		local config_file default_agent
+		config_file=$(openclaw_multiagent_config_file)
+		default_agent=$(openclaw_multiagent_default_agent)
+		echo "設定ファイル: ${config_file:-$(openclaw_permission_config_file)}"
+		echo "デフォルトのエージェント:$default_agent"
+		python3 -c 'import json,sys; agents=json.loads(sys.argv[1] or "[]"); bindings=json.loads(sys.argv[2] or "[]"); obj=json.loads(sys.argv[3] or "{}"); sessions=obj.get("sessions",[]) if isinstance(obj,dict) else []; print("構成されたエージェントの数: %s" % len(agents)); print("ルート バインディングの数: %s" % len(bindings)); print("合計セッション数: %s" % len(sessions)); print("---------------------------------------");
+if not agents: print("現在、マルチエージェントは構成されていません。")
+else:
+ import itertools
+ for item in itertools.islice(agents, 8):
+  ident_obj=item.get("identity") if isinstance(item.get("identity"),dict) else {}; identity=ident_obj.get("name") or item.get("identityName") or item.get("name") or "-"; emoji=item.get("identityEmoji") or ""; ws=item.get("workspace") or "-"; print("- エージェント ID: [1;36m%s [0m" % item.get("id","?")); print("アイデンティティ名: %s %s" % (identity, emoji)); print("作業ディレクトリ: %s" % ws)' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)" "$(openclaw_multiagent_sessions_json)"
+	}
+
+	openclaw_multiagent_list_agents() {
+		send_stats "OpenClaw マルチエージェント - エージェントのリスト"
+		python3 -c 'import json,sys; agents=json.loads(sys.argv[1] or "[]");
+if not agents: print("エージェントはまだ構成されていません。"); raise SystemExit(0)
+for idx,item in enumerate(agents,1):
+ print("%s. %s" % (idx, item.get("id","?"))); print("   workspace : %s" % item.get("workspace","-")); ident=(item.get("identityName") or "-") + ((" " + item.get("identityEmoji")) if item.get("identityEmoji") else ""); print("   identity  : %s" % ident.strip()); print("   model     : %s" % (item.get("model") or "-")); print("   bindings  : %s" % item.get("bindings",0)); print("   default   : %s" % ("yes" if item.get("isDefault") else "no"))' "$(openclaw_multiagent_agents_json)"
+	}
+
+	openclaw_multiagent_add_agent() {
+		send_stats "OpenClaw マルチエージェント - 新しいエージェント"
+		openclaw_multiagent_require_openclaw || return 1
+		local agent_id workspace confirm
+		read -e -p "新しいエージェント ID を入力してください:" agent_id
+		[ -z "$agent_id" ] && echo "キャンセル: エージェント ID を空にすることはできません。" && return 1
+		read -e -p "ワークスペースのパスを入力してください (デフォルトは ~/.openclaw/workspace-${agent_id}）: " workspace
+		[ -z "$workspace" ] && workspace="~/.openclaw/workspace-${agent_id}"
+		echo "エージェントが作成されます。$agent_id"
+		echo "作業ディレクトリ:$workspace"
+		read -e -p "続行することを確認するには「yes」と入力します。" confirm
+		[ "$confirm" = "yes" ] || { echo "キャンセル"; return 1; }
+		if openclaw agents add "$agent_id" --workspace "$workspace"; then
+			echo "✅ エージェントが正常に作成されました:$agent_id"
+			local name theme
+			read -e -p "エージェント ID 名を入力してください (例: コード エキスパート):" name
+			[ -z "$name" ] && name="$agent_id"
+			read -e -p "エージェントの性格テーマを入力してください (例: 厳格、効率的):" theme
+			[ -z "$theme" ] && theme="アシスタント"
+			echo "エージェント ID を構成しています..."
+			openclaw agents set-identity --agent "$agent_id" --name "$name" --theme "$theme"
+		else
+			echo "❌ エージェントの作成に失敗しました"
+			return 1
+		fi
+	}
+
+	openclaw_multiagent_delete_agent() {
+		send_stats "OpenClaw マルチエージェント - エージェントの削除"
+		openclaw_multiagent_require_openclaw || return 1
+		local agent_id confirm
+		read -e -p "削除するエージェント ID を入力してください:" agent_id
+		[ -z "$agent_id" ] && echo "キャンセル: エージェント ID を空にすることはできません。" && return 1
+		echo "⚠️ エージェントを削除すると、その作業ディレクトリ、ルート バインディング、およびセッション ルーティングに影響する可能性があります。"
+		read -e -p "「DELETE」と入力して削除を確認します${agent_id}: " confirm
+		[ "$confirm" = "DELETE" ] || { echo "キャンセル"; return 1; }
+		if openclaw agents delete "$agent_id"; then
+			echo "✅ エージェントは正常に削除されました:$agent_id"
+		else
+			echo "❌ エージェントの削除に失敗しました"
+			return 1
+		fi
+	}
+
+	openclaw_multiagent_list_bindings() {
+		send_stats "OpenClaw マルチエージェント - ルーティング バインディングの表示"
+		python3 -c 'import json,sys; bindings=json.loads(sys.argv[1] or "[]");
+if not bindings: print("まだルート バインディングはありません。"); raise SystemExit(0)
+for idx,item in enumerate(bindings,1):
+ bind=item.get("bind") or item.get("binding") or item.get("scope") or "-"; print("%s. agent=%s | bind=%s" % (idx, item.get("agentId","?"), bind))' "$(openclaw_multiagent_bindings_json)"
+	}
+
+	openclaw_multiagent_add_binding() {
+		send_stats "OpenClaw マルチエージェント - 新しいルーティング バインディング"
+		openclaw_multiagent_require_openclaw || return 1
+		local agent_id bind_value confirm
+		read -e -p "エージェント ID を入力してください:" agent_id
+		read -e -p "ルート バインディング値 (telegram:ops / discord:guild-a など) を入力してください。" bind_value
+		{ [ -z "$agent_id" ] || [ -z "$bind_value" ]; } && echo "キャンセル: パラメータを空にすることはできません。" && return 1
+		echo "エージェントをバインドします [$agent_id] -> [$bind_value]"
+		read -e -p "続行することを確認するには「yes」と入力します。" confirm
+		[ "$confirm" = "yes" ] || { echo "キャンセル"; return 1; }
+		if openclaw agents bind --agent "$agent_id" --bind "$bind_value"; then
+			echo "✅ ルートバインディングが正常に追加されました"
+		else
+			echo "❌ ルート バインディングの追加に失敗しました"
+			return 1
+		fi
+	}
+
+	openclaw_multiagent_remove_binding() {
+		send_stats "OpenClaw マルチエージェント - ルーティング バインディングの削除"
+		openclaw_multiagent_require_openclaw || return 1
+		local agent_id bind_value confirm
+		read -e -p "エージェント ID を入力してください:" agent_id
+		read -e -p "削除するルート バインディング値を入力してください:" bind_value
+		{ [ -z "$agent_id" ] || [ -z "$bind_value" ]; } && echo "キャンセル: パラメータを空にすることはできません。" && return 1
+		echo "エージェントを削除します [$agent_id] ルート バインディング [$bind_value]"
+		read -e -p "続行することを確認するには「yes」と入力します。" confirm
+		[ "$confirm" = "yes" ] || { echo "キャンセル"; return 1; }
+		if openclaw agents unbind --agent "$agent_id" --bind "$bind_value"; then
+			echo "✅ ルートバインディングが正常に削除されました"
+		else
+			echo "❌ ルートバインディングの削除に失敗しました"
+			return 1
+		fi
+	}
+
+
+	openclaw_multiagent_show_sessions() {
+		send_stats "OpenClaw マルチエージェント - セッションの概要"
+		python3 -c 'import json,sys; obj=json.loads(sys.argv[1] or "{}"); sessions=obj.get("sessions",[]) if isinstance(obj,dict) else [];
+if not sessions: print("まだセッション データがありません。"); raise SystemExit(0)
+by_agent={}
+for item in sessions: by_agent[item.get("agentId","?")]=by_agent.get(item.get("agentId","?"),0)+1
+print("セッションの概要:")
+for agent_id,count in sorted(by_agent.items()): print("- %s: %s" % (agent_id, count))
+print("---------------------------------------")
+for item in sessions[:10]: print("%s | %s | %s" % (item.get("agentId","?"), item.get("key","-"), item.get("model") or "-"))' "$(openclaw_multiagent_sessions_json)"
+	}
+
+	openclaw_multiagent_health_check() {
+		send_stats "OpenClaw マルチエージェントヘルスチェック"
+		openclaw_multiagent_require_openclaw || return 1
+		local config_file
+		config_file=$(openclaw_multiagent_config_file)
+		echo "設定ファイルを確認します: ${config_file:-$(openclaw_permission_config_file)}"
+		openclaw config validate || echo "⚠️ 構成の検証に失敗しました。上記の出力を確認してください。"
+		python3 -c 'import json,sys,os; agents=json.loads(sys.argv[1] or "[]"); bindings=json.loads(sys.argv[2] or "[]"); print("---------------------------------------");
+if not agents: print("⚠️ 設定されたエージェントが見つかりません。");
+else:
+ for item in agents:
+  ws=item.get("workspace") or ""; aid=item.get("id","?"); state="OK" if ws and os.path.isdir(os.path.expanduser(ws)) else ("OK" if aid=="main" else "MISSING"); print("agent=%s workspace=%s [%s]" % (aid, ws or "-", state))
+print("ルート バインディングの数 = %s" % len(bindings)); print("✅マルチエージェントのヘルスチェックが完了しました")' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)"
+	}
+
+	openclaw_multiagent_menu() {
+		send_stats "OpenClaw マルチエージェント管理"
+		while true; do
+			clear
+			echo "======================================="
+			echo "OpenClaw マルチエージェント管理"
+			echo "======================================="
+			openclaw_multiagent_render_status
+			echo "---------------------------------------"
+			echo "1. 新しいインテリジェント エージェントを追加する"
+			echo "2. エージェントを削除する"
+			echo "3. ルーティング バインディングを表示する"
+			echo "4. 新しいルート バインディングを追加する"
+			echo "5.ルートバインディングを削除する"
+			echo "6. セッションの概要を表示する"
+			echo "7. マルチエージェントのヘルスチェックを実行する"
+			echo "0. 前のレベルに戻ります"
+			echo "---------------------------------------"
+			read -e -p "選択肢を入力してください:" multi_choice
+			case "$multi_choice" in
+				1) openclaw_multiagent_add_agent; break_end ;;
+				2) openclaw_multiagent_delete_agent; break_end ;;
+				3) openclaw_multiagent_list_bindings; break_end ;;
+				4) openclaw_multiagent_add_binding; break_end ;;
+				5) openclaw_multiagent_remove_binding; break_end ;;
+				6) openclaw_multiagent_show_sessions; break_end ;;
+				7) openclaw_multiagent_health_check; break_end ;;
+				0) return 0 ;;
+				*) echo "選択が無効です。もう一度お試しください。"; sleep 1 ;;
+			esac
+		done
+	}
+
+
+openclaw_backup_restore_menu() {
 
 		send_stats "OpenClaw のバックアップと復元"
 		while true; do
@@ -13847,8 +15022,8 @@ EOF
 		echo "OpenClaw を更新..."
 		send_stats "OpenClaw を更新..."
 		install_node_and_tools
-		git config --global url."${gh_https_url}github.com/".insteadOf ssh://git@github.com/
-		git config --global url."${gh_https_url}github.com/".insteadOf git@github.com:
+		git config --global url."${gh_proxy}github.com/".insteadOf ssh://git@github.com/
+		git config --global url."${gh_proxy}github.com/".insteadOf git@github.com:
 		npm install -g openclaw@latest
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
 		start_gateway
@@ -13865,7 +15040,8 @@ EOF
 		openclaw uninstall
 		npm uninstall -g openclaw
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
-		rm -rf /root/.openclaw
+		rm -rf "$HOME/.openclaw"
+		[ "$HOME" != "/root" ] && [ -d /root/.openclaw ] && echo "⚠️ ルートディレクトリに /root/.openclaw がまだ存在していることが検出されます。掃除が必要な場合は手動で行ってください。"
 		hash -r
 		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 		echo "アンインストールが完了しました"
@@ -13875,7 +15051,7 @@ EOF
 	nano_openclaw_json() {
 		send_stats "OpenClaw 設定ファイルを編集する"
 		install nano
-		nano ~/.openclaw/openclaw.json
+		nano "$(openclaw_get_config_file)"
 		start_gateway
 	}
 
@@ -13950,7 +15126,7 @@ EOF
 		read
 		echo -e "${gl_kjlan}デバイスリストをロード中...${gl_bai}"
 		# ドメイン名を allowedOrigins に自動的に追加する
-		config_file="$HOME/.openclaw/openclaw.json"
+		config_file=$(openclaw_get_config_file)
 		if [ -f "$config_file" ]; then
 			new_origin="https://${yuming}"
 			# jq を使用して JSON を安全に変更し、構造が存在し、ドメイン名が繰り返し追加されないようにします。
@@ -14053,9 +15229,11 @@ EOF
 				break_end
 			 	;;
 			15) openclaw_memory_menu ;;
-			16) openclaw_backup_restore_menu ;;
-			17) update_moltbot ;;
-			18) uninstall_moltbot ;;
+			16) openclaw_permission_menu ;;
+			17) openclaw_multiagent_menu ;;
+			18) openclaw_backup_restore_menu ;;
+			19) update_moltbot ;;
+			20) uninstall_moltbot ;;
 			*) break ;;
 		esac
 	done
@@ -14391,7 +15569,7 @@ while true; do
 			check_docker_app
 			check_docker_image_update $docker_name
 			clear
-			echo -e "ネザ監視$check_docker $update_status"
+			echo -e "ネザモニタリング$check_docker $update_status"
 			echo "オープンソースの軽量で使いやすいサーバー監視および運用保守ツール"
 			echo "公式 Web サイト構築ドキュメント: https://nezha.wiki/guide/dashboard.html"
 			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
@@ -14400,7 +15578,7 @@ while true; do
 			fi
 			echo ""
 			echo "------------------------"
-			echo "1. 使用方法"
+			echo "1. 使用する"
 			echo "------------------------"
 			echo "0. 前のメニューに戻る"
 			echo "------------------------"
@@ -15336,7 +16514,7 @@ while true; do
 
 		local docker_describe="ミニマリストの瞬間、模倣性の高いWeChatの瞬間、あなたの素晴らしい人生を記録してください"
 		local docker_url="公式サイト紹介：${gh_proxy}github.com/kingwrcy/moments?tab=readme-ov-file"
-		local docker_use="echo 「アカウント: admin パスワード: a123456」"
+		local docker_use="echo \"アカウント: admin パスワード: a123456\""
 		local docker_passwd=""
 		local app_size="1"
 		docker_app
@@ -15968,7 +17146,7 @@ while true; do
 	  62|ragflow)
 		local app_id="62"
 		local app_name="RAGFlow ナレッジベース"
-		local app_text="ドキュメントの深い理解に基づくオープンソース RAG (Retrieval Augmented Generation) エンジン"
+		local app_text="ドキュメントの深い理解に基づいたオープンソース RAG (Retrieval Augmented Generation) エンジン"
 		local app_url="公式ウェブサイト:${gh_https_url}github.com/infiniflow/ragflow"
 		local docker_name="ragflow-server"
 		local docker_port="8062"
@@ -16794,7 +17972,7 @@ while true; do
 
 		}
 
-		local docker_describe="リモートで映画や生放送を一緒に見るプログラム。同時視聴、ライブブロードキャスト、チャットなどの機能を提供します"
+		local docker_describe="リモートで映画や生放送を一緒に視聴するプログラム。同時視聴、ライブブロードキャスト、チャットなどの機能を提供します"
 		local docker_url="公式サイト紹介：${gh_https_url}github.com/synctv-org/synctv"
 		local docker_use="echo \"初期アカウントとパスワード: root。ログイン後、時間内にログイン パスワードを変更してください\""
 		local docker_passwd=""
@@ -17938,7 +19116,7 @@ linux_work() {
 	  echo -e "バックエンドワークスペース"
 	  echo -e "システムは、バックグラウンドで永続的に実行できるワークスペースを提供し、長期的なタスクを実行するために使用できます。"
 	  echo -e "SSH を切断しても、ワークスペース内のタスクは中断されず、タスクはバックグラウンドで残ります。"
-	  echo -e "${gl_huang}ヒント：${gl_bai}ワークスペースに入ったら、Ctrl+b を使用し、d を単独で押してワークスペースを終了します。"
+	  echo -e "${gl_huang}ヒント：${gl_bai}ワークスペースに入ったら、Ctrl+b を使用し、d だけを押してワークスペースを終了します。"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo "現在存在するワークスペースのリスト"
 	  echo -e "${gl_kjlan}------------------------"
@@ -18276,7 +19454,7 @@ net_menu() {
 				else
 					echo "✘ ネットワークカードが存在しません"
 				fi
-				read -erp "続行するには Enter キーを押してください..."
+				read -erp "Enter を押して続行します..."
 				;;
 			2)
 				send_stats "ネットワークカードを無効にする"
@@ -18286,7 +19464,7 @@ net_menu() {
 				else
 					echo "✘ ネットワークカードが存在しません"
 				fi
-				read -erp "続行するには Enter キーを押してください..."
+				read -erp "Enter を押して続行します..."
 				;;
 			3)
 				send_stats "ネットワークカードの詳細を表示する"
@@ -18298,7 +19476,7 @@ net_menu() {
 				else
 					echo "✘ ネットワークカードが存在しません"
 				fi
-				read -erp "続行するには Enter キーを押してください..."
+				read -erp "Enter を押して続行します..."
 				;;
 			4)
 				send_stats "ネットワークカード情報を更新する"
@@ -18324,7 +19502,7 @@ log_menu() {
 		echo "[/var/logディレクトリ占有]"
 		du -sh /var/log 2>/dev/null
 		echo
-		echo "【日記ログ職業】"
+		echo "【日記帳の職業】"
 		journalctl --disk-usage 2>/dev/null
 		echo "========================================"
 	}
@@ -18349,7 +19527,7 @@ log_menu() {
 				read -erp "最近のログ行を何行表示しましたか? [デフォルト 100]:" lines
 				lines=${lines:-100}
 				journalctl -n "$lines" --no-pager
-				read -erp "続行するには Enter キーを押してください..."
+				read -erp "Enter を押して続行します..."
 				;;
 			2)
 				send_stats "指定したサービスログを表示する"
@@ -18359,7 +19537,7 @@ log_menu() {
 				else
 					echo "✘ サービスが存在しないか、ログがありません"
 				fi
-				read -erp "続行するには Enter キーを押してください..."
+				read -erp "Enter を押して続行します..."
 				;;
 			3)
 				send_stats "ログイン/セキュリティログの表示"
@@ -18374,7 +19552,7 @@ log_menu() {
 				else
 					echo "セキュリティログファイルが見つかりません"
 				fi
-				read -erp "続行するには Enter キーを押してください..."
+				read -erp "Enter を押して続行します..."
 				;;
 			4)
 				send_stats "リアルタイム追跡ログ"
@@ -18462,7 +19640,7 @@ env_menu() {
 
 		echo
 		echo "==============================================="
-		read -erp "続行するには Enter キーを押してください..."
+		read -erp "Enter を押して続行します..."
 	}
 
 
@@ -18477,7 +19655,7 @@ env_menu() {
 		else
 			echo "ファイルが存在しません:$file"
 		fi
-		read -erp "続行するには Enter キーを押してください..."
+		read -erp "Enter を押して続行します..."
 	}
 
 	edit_file() {
@@ -18493,7 +19671,7 @@ env_menu() {
 		source "$BASHRC"
 		source "$PROFILE"
 		echo "✔ 環境変数がリロードされました"
-		read -erp "続行するには Enter キーを押してください..."
+		read -erp "Enter を押して続行します..."
 	}
 
 	while true; do
@@ -18621,7 +19799,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}スクリプト起動のショートカットキーを設定する${gl_kjlan}2.   ${gl_bai}ログインパスワードを変更する"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}ユーザーパスワードログインモード${gl_kjlan}4.   ${gl_bai}指定されたバージョンの Python をインストールします"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}すべてのポートを開く${gl_kjlan}6.   ${gl_bai}SSH接続ポートを変更する"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}すべてのポートを開く${gl_kjlan}6.   ${gl_bai}SSH接続ポートの変更"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}DNSアドレスを最適化する${gl_kjlan}8.   ${gl_bai}ワンクリックでシステムを再インストールします${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}ROOTアカウントを無効にして新しいアカウントを作成する${gl_kjlan}10.  ${gl_bai}スイッチ優先度 ipv4/ipv6"
 	  echo -e "${gl_kjlan}------------------------"
@@ -18877,8 +20055,8 @@ EOF
 						;;
 					2)
 						rm -f /etc/gai.conf
-						echo "IPv6優先に切り替えました"
-						send_stats "IPv6優先に切り替えました"
+						echo "最初にIPv6に切り替えました"
+						send_stats "最初にIPv6に切り替えました"
 						;;
 
 					3)
@@ -19085,7 +20263,7 @@ EOF
 				# 現在のシステムのタイムゾーンを取得する
 				local timezone=$(current_timezone)
 
-				# 現在のシステム時刻を取得します
+				# 現在のシステム時刻を取得する
 				local current_time=$(date +"%Y-%m-%d %H:%M:%S")
 
 				# タイムゾーンと時間を表示する
@@ -19100,7 +20278,7 @@ EOF
 				echo "3. 東京、日本時間 4. ソウル、韓国時間"
 				echo "5. シンガポール時間 6. インド、コルカタ時間"
 				echo "7. アラブ首長国連邦、ドバイ時間 8. オーストラリア、シドニー時間"
-				echo "9.タイ・バンコク時間"
+				echo "9. タイ・バンコク時間"
 				echo "------------------------"
 				echo "ヨーロッパ"
 				echo "11. ロンドン、イギリス時間 12. パリ、フランス時間"
@@ -19679,7 +20857,7 @@ EOF
 			  fi
 
 			  echo "プライバシーとセキュリティ"
-			  echo "スクリプトはユーザーの機能使用に関するデータを収集し、スクリプト エクスペリエンスを最適化し、より楽しくて便利な機能を作成します。"
+			  echo "スクリプトはユーザーによる機能の使用に関するデータを収集し、スクリプト エクスペリエンスを最適化し、より楽しくて便利な機能を作成します。"
 			  echo "スクリプトのバージョン番号、使用時間、システムバージョン、CPUアーキテクチャ、マシンの国、使用された機能の名前が収集されます。"
 			  echo "------------------------------------------------"
 			  echo -e "現在のステータス:$status_message"
@@ -20015,7 +21193,7 @@ while true; do
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}サーバーリスト管理${gl_bai}"
 	  echo -e "${gl_kjlan}1.  ${gl_bai}サーバーの追加${gl_kjlan}2.  ${gl_bai}サーバーの削除${gl_kjlan}3.  ${gl_bai}サーバーの編集"
-	  echo -e "${gl_kjlan}4.  ${gl_bai}バックアップクラスタ${gl_kjlan}5.  ${gl_bai}クラスターを復元する"
+	  echo -e "${gl_kjlan}4.  ${gl_bai}バックアップクラスター${gl_kjlan}5.  ${gl_bai}クラスタを復元する"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}タスクをバッチで実行する${gl_bai}"
 	  echo -e "${gl_kjlan}11. ${gl_bai}テクノロジ ライオン スクリプトをインストールする${gl_kjlan}12. ${gl_bai}アップデートシステム${gl_kjlan}13. ${gl_bai}システムをクリーンアップする"
@@ -20053,14 +21231,14 @@ while true; do
 
 		  4)
 			  clear
-			  send_stats "バックアップクラスタ"
+			  send_stats "バックアップクラスター"
 			  echo -e "変更してください${gl_huang}/root/cluster/servers.py${gl_bai}ファイルをダウンロードしてバックアップを完了してください。"
 			  break_end
 			  ;;
 
 		  5)
 			  clear
-			  send_stats "クラスターを復元する"
+			  send_stats "クラスタを復元する"
 			  echo "servers.py をアップロードし、任意のキーを押してアップロードを開始してください。"
 			  echo -e "をアップロードしてください${gl_huang}servers.py${gl_bai}ファイルに${gl_huang}/root/cluster/${gl_bai}復元完了！"
 			  break_end
@@ -20137,7 +21315,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 月額 6.9 ドル 東京ソフトバンク 2 コア 1G メモリ 20G ハードドライブ 月額 1T トラフィック${gl_bai}"
 echo -e "${gl_bai}URL：https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}さらに人気のある VPS オファー${gl_bai}"
+echo -e "${gl_kjlan}さらに人気のある VPS セール${gl_bai}"
 echo -e "${gl_bai}ウェブサイト：https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -20343,7 +21521,7 @@ echo -e "${gl_kjlan}16.  ${gl_bai}ゲームサーバー起動スクリプト集"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}00.  ${gl_bai}スクリプトの更新"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}0.   ${gl_bai}終了スクリプト"
+echo -e "${gl_kjlan}0.   ${gl_bai}スクリプトを終了します"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -e -p "選択肢を入力してください:" choice
 
@@ -20382,8 +21560,8 @@ echo "ビデオ紹介: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "以下は、k コマンドの参考使用例です。"
 echo "スクリプトkを開始します"
 echo "パッケージをインストールします k install nano wget | k ナノ wget を追加 | nano wgetをインストールします"
-echo "パッケージをアンインストールします。 k 削除 nano wget | kデルナノwget | nano wget をアンインストールする | nano wgetをアンインストールします"
-echo "システム k アップデートを更新 | kアップデート"
+echo "パッケージをアンインストールします。 k 削除 nano wget | kデルナノwget | k nano wget をアンインストールする | nano wgetをアンインストールします"
+echo "システム k 更新を更新します。 kアップデート"
 echo "クリーン系ジャンククリーン |きれいだ"
 echo "システムパネルを再度取り付けます。 k再インストール"
 echo "BBR3 コントロール パネル K BBR3 | k bbrv3"
@@ -20616,7 +21794,7 @@ else
 			shift
 			case $1 in
 				install|安装)
-					send_stats "Docker をすばやくインストールする"
+					send_stats "Dockerを素早くインストールする"
 					install_docker
 					;;
 				ps|容器)
@@ -20655,6 +21833,9 @@ else
 			linux_panel "$@"
 			;;
 
+		claw|oc|OpenClaw)
+			moltbot_menu
+			;;
 
 		info)
 			linux_info
