@@ -10947,9 +10947,9 @@ sync-openclaw-provider-interactive() {
 			start_gateway
 		else
 			echo "❌ API 模型同步失败，已中止重启网关。请检查 provider /models 返回后重试。"
-			break_end
 			return 1
 		fi
+		break_end
 		return 0
 	fi
 
