@@ -14470,7 +14470,7 @@ try:
 except Exception:
     print('  (配置文件解析失败)')
 "
-		else:
+		else
 			echo "  (未配置，强制使用系统内置安全兜底策略)"
 		fi
 	}
