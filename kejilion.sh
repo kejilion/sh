@@ -14451,6 +14451,26 @@ with open(path, 'w') as f:
 		echo "应用层配置: ~/.openclaw/openclaw.json"
 		echo "宿主机审批: ~/.openclaw/exec-approvals.json"
 		echo "---------------------------------------"
+		local current_profile=$(openclaw config get tools.profile 2>/dev/null)
+		local sec_val
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			sec_val=$(python3 -c "import json, sys; print(json.load(open('$HOME/.openclaw/exec-approvals.json')).get('defaults', {}).get('security', 'unset'))" 2>/dev/null || echo "unset")
+		else
+			sec_val="unset"
+		fi
+
+		local current_mode="未知 / 自定义"
+		if [ "$current_profile" = "coding" ] && [ "$sec_val" = "allowlist" ]; then
+			current_mode="\033[1;32m标准安全模式\033[0m"
+		elif [ "$current_profile" = "full" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;31m完全开放模式\033[0m"
+		elif [ "$current_profile" = "coding" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;33m开发增强模式\033[0m"
+		elif [ -z "$current_profile" ] && [ "$sec_val" = "unset" ]; then
+			current_mode="\033[1;36m官方沙盒兜底\033[0m"
+		fi
+		echo -e "  当前综合安全等级: ${current_mode}"
+		echo "---------------------------------------"
 		echo -e "${gl_huang}[应用层 Tool Policy 状态]${gl_bai}"
 		openclaw config get tools.profile 2>/dev/null | sed 's/^/  Profile (预设): /' || echo "  Profile: (unset)"
 		openclaw config get tools.exec.security 2>/dev/null | sed 's/^/  Exec 限制: /' || echo "  Exec 限制: (unset)"
