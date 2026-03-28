@@ -14413,160 +14413,155 @@ except Exception:
 PY
 	}
 
-		openclaw_permission_render_status() {
-		local config_file mode
-		config_file=$(openclaw_permission_config_file)
-		mode=$(openclaw_permission_detect_mode)
-		echo "配置文件: $config_file"
-		[ ! -s "$config_file" ] && echo "⚠️ 未找到 OpenClaw 配置文件（可能尚未初始化）。"
-		echo "当前模式: $mode"
-		echo "---------------------------------------"
-
-		# 使用 Python 一次性高效解析所有权限字段
-		python3 - "$config_file" <<'PY'
-import json, sys
-def get_val(obj, path, default="(unset)"):
-    parts = path.split('.')
-    for p in parts:
-        if isinstance(obj, dict) and p in obj: obj = obj[p]
-        else: return default
-    if isinstance(obj, (list, dict)): return json.dumps(obj)
-    return str(obj)
-
+		openclaw_permission_update_exec_approvals() {
+		local sec="$1"
+		local ask="$2"
+		local fallback="$3"
+		local approvals_file="$HOME/.openclaw/exec-approvals.json"
+		
+		mkdir -p "$HOME/.openclaw"
+		
+		# 使用 Python 安全更新或创建 exec-approvals.json
+		python3 -c "
+import json, sys, os
+path = sys.argv[1]
 try:
-    with open(sys.argv[1], 'r') as f: data = json.load(f)
-    fields = [
-        ("tools.profile", "tools.profile"),
-        ("tools.allow", "tools.allow"),
-        ("tools.deny", "tools.deny"),
-        ("tools.byProvider", "tools.byProvider"),
-        ("tools.exec.security", "tools.exec.security"),
-        ("tools.exec.ask", "tools.exec.ask"),
-        ("tools.elevated.enabled", "tools.elevated.enabled"),
-        ("commands.bash", "commands.bash"),
-        ("applyPatch.enabled", "tools.exec.applyPatch.enabled"),
-        ("applyPatch.workspaceOnly", "tools.exec.applyPatch.workspaceOnly")
-    ]
-    for label, path in fields:
-        val = get_val(data, path)
-        print("%-28s %s" % (label, val))
-except Exception as e:
-    print("❌ 配置文件解析失败: %s" % e)
-PY
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+    else:
+        data = {'version': 1, 'defaults': {}}
+except Exception:
+    data = {'version': 1, 'defaults': {}}
+
+if 'defaults' not in data:
+    data['defaults'] = {}
+
+data['defaults']['security'] = sys.argv[2]
+data['defaults']['ask'] = sys.argv[3]
+data['defaults']['askFallback'] = sys.argv[4]
+data['defaults']['autoAllowSkills'] = True
+
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+" "$approvals_file" "$sec" "$ask" "$fallback"
+	}
+
+	openclaw_permission_render_status() {
+		echo "应用层配置: ~/.openclaw/openclaw.json"
+		echo "宿主机审批: ~/.openclaw/exec-approvals.json"
+		echo "---------------------------------------"
+		echo -e "${gl_huang}[应用层 Tool Policy 状态]${gl_bai}"
+		openclaw config get tools.profile 2>/dev/null | sed 's/^/  Profile (预设): /' || echo "  Profile: (unset)"
+		openclaw config get tools.exec.security 2>/dev/null | sed 's/^/  Exec 限制: /' || echo "  Exec 限制: (unset)"
+		openclaw config get tools.exec.ask 2>/dev/null | sed 's/^/  审批提示: /' || echo "  审批提示: (unset)"
+		openclaw config get tools.elevated.enabled 2>/dev/null | sed 's/^/  提权开关: /' || echo "  提权开关: (unset)"
+		
+		echo -e "\n${gl_huang}[底层 Exec Approvals 状态]${gl_bai}"
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			python3 -c "
+import json, sys
+try:
+    with open('$HOME/.openclaw/exec-approvals.json') as f:
+        d = json.load(f).get('defaults', {})
+        print('  拦截策略 (Security): ' + str(d.get('security', '(unset)')))
+        print('  提示策略 (Ask): ' + str(d.get('ask', '(unset)')))
+        print('  无UI兜底 (AskFallback): ' + str(d.get('askFallback', '(unset)')))
+except Exception:
+    print('  (配置文件解析失败)')
+"
+		else:
+			echo "  (未配置，强制使用系统内置安全兜底策略)"
+		fi
 	}
 
 	openclaw_permission_apply_standard() {
 		send_stats "OpenClaw权限-标准安全模式"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled false || failed=1
-		openclaw config set commands.bash false || failed=1
-		openclaw config set tools.exec.applyPatch.enabled false || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 切换失败：写入权限配置过程中出现错误。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 已写入配置，但重启失败，请手动执行: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ 已切换为标准安全模式"
+		
+		echo "正在配置应用层策略..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled false >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval true >/dev/null 2>&1  # 拦截危险的内联代码
+		openclaw config unset commands.bash >/dev/null 2>&1 # 废弃旧版参数
+		
+		echo "正在配置宿主机审批拦截..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 已切换为标准安全模式 (所有危险命令将通过UI/TG请求你的审批)${gl_bai}"
 	}
 
 	openclaw_permission_apply_developer() {
 		send_stats "OpenClaw权限-开发增强模式"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 切换失败：写入权限配置过程中出现错误。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 已写入配置，但重启失败，请手动执行: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ 已切换为开发增强模式"
+		
+		echo "正在配置应用层策略..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1 # 允许智能体申请提权
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "正在配置宿主机审批拦截..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 已切换为开发增强模式 (允许提权，但常规危险命令依然需要审批)${gl_bai}"
 	}
 
 	openclaw_permission_apply_full() {
 		send_stats "OpenClaw权限-完全开放模式"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile full || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security full || failed=1
-		openclaw config set tools.exec.ask off || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 切换失败：写入权限配置过程中出现错误。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 已写入配置，但重启失败，请手动执行: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ 已切换为完全开放模式"
+		
+		echo "正在配置应用层策略..."
+		openclaw config set tools.profile full >/dev/null 2>&1
+		openclaw config set tools.exec.security full >/dev/null 2>&1
+		openclaw config set tools.exec.ask off >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "正在瓦解宿主机拦截防御..."
+		# 这里的 full 和 off 将彻底绕过底层宿主机的 exec 审批系统
+		openclaw_permission_update_exec_approvals "full" "off" "full"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 已切换为完全开放模式 (警告：所有宿主机命令拦截已失效，智能体具有最高权限)${gl_bai}"
 	}
 
 	openclaw_permission_restore_official_defaults() {
 		send_stats "OpenClaw权限-恢复官方默认"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw_permission_unset_optional tools.profile || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw_permission_unset_optional tools.deny || failed=1
-		openclaw_permission_unset_optional tools.exec.security || failed=1
-		openclaw_permission_unset_optional tools.exec.ask || failed=1
-		openclaw_permission_unset_optional tools.elevated.enabled || failed=1
-		openclaw_permission_unset_optional commands.bash || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.enabled || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.workspaceOnly || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 恢复失败：清理显式权限覆盖时出现错误。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 已写入配置，但重启失败，请手动执行: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ 已恢复为 OpenClaw 官方默认策略（清除显式覆盖）"
+		
+		echo "清理应用层强制覆盖..."
+		openclaw config unset tools.profile >/dev/null 2>&1
+		openclaw config unset tools.exec.security >/dev/null 2>&1
+		openclaw config unset tools.exec.ask >/dev/null 2>&1
+		openclaw config unset tools.elevated.enabled >/dev/null 2>&1
+		openclaw config unset tools.exec.strictInlineEval >/dev/null 2>&1
+		
+		echo "清理宿主机拦截配置..."
+		rm -f "$HOME/.openclaw/exec-approvals.json"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 已恢复到 OpenClaw 官方安全沙盒防御机制${gl_bai}"
 	}
 
 	openclaw_permission_run_audit() {
-		send_stats "OpenClaw权限-安全审计"
-		openclaw_permission_require_openclaw || return 1
+		echo "======================================="
+		echo "运行 OpenClaw 官方安全审计与体检..."
+		echo "======================================="
 		openclaw security audit
+		echo "---------------------------------------"
+		read -e -p "是否尝试自动修复发现的安全隐患？(y/n): " fix_choice
+		if [[ "$fix_choice" == "y" || "$fix_choice" == "Y" || "$fix_choice" == "yes" ]]; then
+			openclaw security audit --fix
+			echo -e "${gl_lv}✅ 自动修复完成。${gl_bai}"
+		fi
+		echo "按任意键返回..."
+		read -n 1 -s
 	}
 
 	openclaw_permission_menu() {
@@ -14574,46 +14569,45 @@ PY
 		while true; do
 			clear
 			echo "======================================="
-			echo "OpenClaw 权限管理"
+			echo " OpenClaw 权限管理 (双层架构深度适配)"
 			echo "======================================="
 			openclaw_permission_render_status
 			echo "---------------------------------------"
-			echo "1. 切换为标准安全模式（推荐）"
-			echo "2. 切换为开发增强模式"
-			echo "3. 切换为完全开放模式（高风险）"
-			echo "4. 恢复官方默认策略"
-			echo "5. 运行安全审计"
-			echo "0. 返回上一级"
+			echo -e "${gl_kjlan}1.${gl_bai} 切换为标准安全模式（日常推荐，弹卡片审批）"
+			echo -e "${gl_kjlan}2.${gl_bai} 切换为开发增强模式（允许智能体申请提权）"
+			echo -e "${gl_kjlan}3.${gl_bai} 切换为完全开放模式（${gl_hong}高风险！彻底解除所有宿主机拦截${gl_bai}）"
+			echo -e "${gl_kjlan}4.${gl_bai} 恢复官方默认沙盒防御策略"
+			echo -e "${gl_kjlan}5.${gl_bai} 运行底层安全审计与自动修复"
+			echo -e "${gl_kjlan}0.${gl_bai} 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " perm_choice
 			case "$perm_choice" in
 				1)
-					echo "将应用：标准安全模式"
+					echo "准备应用：标准安全模式"
 					read -e -p "输入 yes 确认: " confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_standard || echo "已取消"
 					break_end
 					;;
 				2)
-					echo "将应用：开发增强模式"
+					echo "准备应用：开发增强模式"
 					read -e -p "输入 yes 确认: " confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_developer || echo "已取消"
 					break_end
 					;;
 				3)
-					echo "⚠️ 完全开放模式会关闭 exec 审批、启用提权与 bash，仅建议可信单用户环境使用。"
+					echo -e "${gl_hong}⚠️ 完全开放模式会彻底瓦解 exec 审批并自动放行高危代码。${gl_bai}"
 					read -e -p "输入 FULL 确认继续: " confirm
 					[ "$confirm" = "FULL" ] && openclaw_permission_apply_full || echo "已取消"
 					break_end
 					;;
 				4)
-					echo "将清除脚本写入的显式权限覆盖，恢复到 OpenClaw 官方默认策略。"
+					echo "将清除所有定制覆盖，恢复 OpenClaw 刚安装时的严格沙盒状态。"
 					read -e -p "输入 yes 确认: " confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_restore_official_defaults || echo "已取消"
 					break_end
 					;;
 				5)
 					openclaw_permission_run_audit
-					break_end
 					;;
 				0)
 					return 0
