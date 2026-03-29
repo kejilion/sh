@@ -14195,6 +14195,22 @@ EOF
 			done
 	}
 
+
+	openclaw_memory_search_test() {
+		read -e -p "输入搜索关键词: " query
+		if [ -z "$query" ]; then
+			echo "关键词不能为空。"
+			return 1
+		fi
+		echo "正在搜索记忆..."
+		openclaw memory search "$query" --max-results 5
+	}
+
+	openclaw_memory_deep_status() {
+		echo "正在探测嵌入模型就绪状态..."
+		openclaw memory status --deep
+	}
+
 	openclaw_memory_menu() {
 		send_stats "OpenClaw记忆管理"
 		while true; do
@@ -14207,6 +14223,8 @@ EOF
 			echo "2. 查看记忆文件"
 			echo "3. 索引修复（Indexed 异常）"
 			echo "4. 记忆方案（QMD/Local/Auto）"
+			echo "5. 搜索测试（验证索引是否工作）"
+			echo "6. 深度状态探测（检查嵌入模型）"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " memory_choice
@@ -14252,6 +14270,14 @@ EOF
 					;;
 				4)
 					openclaw_memory_scheme_menu
+					;;
+				5)
+					openclaw_memory_search_test
+					break_end
+					;;
+				6)
+					openclaw_memory_deep_status
+					break_end
 					;;
 				0)
 					return 0
@@ -14658,6 +14684,66 @@ except Exception:
 		read -n 1 -s
 	}
 
+
+	openclaw_permission_manage_allowlist() {
+		while true; do
+			clear
+			echo "======================================="
+			echo " Exec 命令白名单管理"
+			echo "======================================="
+			echo "当前白名单："
+			local allowlist_json
+			allowlist_json=$(openclaw approvals get --json 2>/dev/null)
+			if [ -n "$allowlist_json" ]; then
+				python3 -c '
+import json, sys
+try:
+    d = json.loads(sys.argv[1])
+    f = d.get("file", {})
+    agents = f.get("agents", {})
+    found = False
+    for agent_id, agent_data in agents.items():
+        al = agent_data.get("allowlist", [])
+        if al:
+            found = True
+            print("  智能体 [%s]:" % agent_id)
+            for item in al:
+                print("    - %s" % item)
+    if not found:
+        print("  (空，未配置任何白名单规则)")
+except Exception as e:
+    print("  (解析失败: " + str(e) + ")")
+' "$allowlist_json"
+			else
+				echo "  (无法获取)"
+			fi
+			echo "---------------------------------------"
+			echo "1. 添加白名单规则"
+			echo "2. 移除白名单规则"
+			echo "0. 返回"
+			echo "---------------------------------------"
+			read -e -p "请选择: " al_choice
+			case "$al_choice" in
+				1)
+					read -e -p "输入要放行的命令路径 (支持 glob，如 /usr/bin/git): " pattern
+					[ -z "$pattern" ] && { echo "不能为空"; break_end; continue; }
+					read -e -p "指定智能体ID (留空=所有智能体 *): " agent_id
+					agent_id="${agent_id:-*}"
+					openclaw approvals allowlist add --agent "$agent_id" "$pattern"
+					break_end
+					;;
+				2)
+					read -e -p "输入要移除的命令路径: " pattern
+					[ -z "$pattern" ] && { echo "不能为空"; break_end; continue; }
+					openclaw approvals allowlist remove "$pattern"
+					break_end
+					;;
+				0) return 0 ;;
+				*) echo "无效选择"; sleep 1 ;;
+			esac
+		done
+	}
+
 	openclaw_permission_menu() {
 		send_stats "OpenClaw权限管理"
 		while true; do
@@ -14672,6 +14758,7 @@ except Exception:
 			echo -e "${gl_kjlan}3.${gl_bai} 切换为完全开放模式（${gl_hong}高风险！彻底解除所有宿主机拦截${gl_bai}）"
 			echo -e "${gl_kjlan}4.${gl_bai} 恢复官方默认沙盒防御策略"
 			echo -e "${gl_kjlan}5.${gl_bai} 运行底层安全审计与自动修复"
+			echo -e "${gl_kjlan}6.${gl_bai} 管理 Exec 命令白名单"
 			echo -e "${gl_kjlan}0.${gl_bai} 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " perm_choice
@@ -14702,6 +14789,9 @@ except Exception:
 					;;
 				5)
 					openclaw_permission_run_audit
+					;;
+				6)
+					openclaw_permission_manage_allowlist
 					;;
 				0)
 					return 0
@@ -15091,6 +15181,34 @@ print("✅ 多智能体健康检查完成")
 		openclaw security audit 2>/dev/null || echo "⚠️ 安全审计命令不可用"
 	}
 
+
+	openclaw_multiagent_set_identity() {
+		openclaw_multiagent_require_openclaw || return 1
+		openclaw_multiagent_list_agents
+		read -e -p "输入要修改身份的智能体ID: " agent_id
+		[ -z "$agent_id" ] && { echo "ID 不能为空"; return 1; }
+		echo "修改选项（留空跳过）："
+		read -e -p "  新名称: " new_name
+		read -e -p "  新 Emoji: " new_emoji
+		local cmd="openclaw agents set-identity --agent $agent_id"
+		[ -n "$new_name" ] && cmd="$cmd --name $new_name"
+		[ -n "$new_emoji" ] && cmd="$cmd --emoji $new_emoji"
+		echo "也可以从 IDENTITY.md 自动读取身份信息。"
+		read -e -p "是否从 IDENTITY.md 读取？(y/n): " from_id
+		if [ "$from_id" = "y" ]; then
+			cmd="openclaw agents set-identity --agent $agent_id --from-identity"
+		fi
+		eval "$cmd"
+	}
+
+	openclaw_multiagent_cleanup_sessions() {
+		openclaw_multiagent_require_openclaw || return 1
+		echo "即将清理过期/冗余会话数据..."
+		read -e -p "输入 yes 确认: " confirm
+		[ "$confirm" != "yes" ] && { echo "已取消"; return 0; }
+		openclaw sessions cleanup
+	}
+
 	openclaw_multiagent_menu() {
 		send_stats "OpenClaw多智能体管理"
 		while true; do
@@ -15107,6 +15225,8 @@ print("✅ 多智能体健康检查完成")
 			echo "5. 移除路由绑定"
 			echo "6. 查看会话概况"
 			echo "7. 运行多智能体健康检查"
+			echo "8. 修改智能体身份（名称/Emoji）"
+			echo "9. 清理过期会话"
 			echo "0. 返回上一级"
 			echo "---------------------------------------"
 			read -e -p "请输入你的选择: " multi_choice
@@ -15118,6 +15238,8 @@ print("✅ 多智能体健康检查完成")
 				5) openclaw_multiagent_remove_binding; break_end ;;
 				6) openclaw_multiagent_show_sessions; break_end ;;
 				7) openclaw_multiagent_health_check; break_end ;;
+				8) openclaw_multiagent_set_identity; break_end ;;
+				9) openclaw_multiagent_cleanup_sessions; break_end ;;
 				0) return 0 ;;
 				*) echo "无效的选择，请重试。"; sleep 1 ;;
 			esac
