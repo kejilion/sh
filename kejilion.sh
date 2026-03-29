@@ -13366,27 +13366,60 @@ EOF
 	}
 
 	openclaw_memory_render_status() {
-		local agent_lines agent_id workspace status_output status_lines first="true"
-		agent_lines=$(openclaw_memory_list_agents)
-		while IFS=$'\t' read -r agent_id workspace; do
-			[ -z "$agent_id" ] && continue
-			status_output=$(openclaw memory status --agent "$agent_id" 2>/dev/null)
-			[ "$first" = "true" ] || echo ""
-			first="false"
-			echo "Agent: $agent_id"
-			if [ $? -ne 0 ] || [ -z "$status_output" ]; then
-				echo "获取状态失败"
-				continue
-			fi
-			status_lines=$(echo "$status_output" | grep -E "^(Provider|Vector|Indexed|Workspace|Store)" | head -n 5 | sed -e 's/^Provider: /底层方案: /' -e 's/^Vector: /向量库状态: /' -e 's/^Indexed: /已收录文件: /' -e 's/^Workspace: /工作区: /' -e 's/^Store: /索引库: /')
-			if [ -z "$status_lines" ]; then
-				echo "未安装/未启动"
-			else
-				echo "$status_lines"
-			fi
-		done <<EOF
-$agent_lines
-EOF
+		local json_output
+		json_output=$(openclaw memory status --json 2>/dev/null)
+		if [ -z "$json_output" ]; then
+			echo "获取记忆状态失败（openclaw memory status --json 无输出）"
+			return 1
+		fi
+		python3 - "$json_output" <<'PY'
+import json, sys
+raw = sys.argv[1]
+try:
+    data = json.loads(raw)
+except Exception:
+    print("获取记忆状态失败（JSON 解析错误）")
+    raise SystemExit(1)
+if not isinstance(data, list) or len(data) == 0:
+    print("未检测到任何智能体记忆状态。")
+    raise SystemExit(0)
+first = True
+for entry in data:
+    if not isinstance(entry, dict):
+        continue
+    agent_id = entry.get("agentId", "?")
+    s = entry.get("status", {})
+    if not isinstance(s, dict):
+        s = {}
+    if not first:
+        print("")
+    first = False
+    print("Agent: %s" % agent_id)
+    backend = s.get("backend") or s.get("provider") or "-"
+    print("  底层方案: %s" % backend)
+    files = s.get("files", 0)
+    chunks = s.get("chunks", 0)
+    print("  已收录: %s 文件 / %s 块" % (files, chunks))
+    dirty = s.get("dirty")
+    dirty_str = "是" if dirty else "否"
+    print("  待刷新: %s" % dirty_str)
+    vec = s.get("vector", {})
+    if isinstance(vec, dict) and vec.get("enabled"):
+        vec_str = "就绪" if vec.get("available") else "已启用(不可用)"
+    else:
+        vec_str = "未启用"
+    print("  向量库: %s" % vec_str)
+    ws = s.get("workspaceDir") or "-"
+    print("  工作区: %s" % ws)
+    db = s.get("dbPath") or "-"
+    print("  索引库: %s" % db)
+    scan = entry.get("scan", {})
+    if isinstance(scan, dict):
+        issues = scan.get("issues", [])
+        if issues:
+            for issue in issues[:3]:
+                print("  ⚠️ %s" % issue)
+PY
 	}
 
 	openclaw_memory_get_backend() {
@@ -14421,75 +14454,111 @@ PY
 		
 		mkdir -p "$HOME/.openclaw"
 		
-		# 使用 Python 安全更新或创建 exec-approvals.json
-		python3 -c "
+		# 生成 JSON 并通过 openclaw approvals set --stdin 写入（优先）
+		# 若 CLI 不支持则回退直接写文件
+		local json_payload
+		json_payload=$(python3 -c '
 import json, sys, os
 path = sys.argv[1]
 try:
     if os.path.exists(path):
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             data = json.load(f)
     else:
-        data = {'version': 1, 'defaults': {}}
+        data = {"version": 1, "defaults": {}}
 except Exception:
-    data = {'version': 1, 'defaults': {}}
-
-if 'defaults' not in data:
-    data['defaults'] = {}
-
-data['defaults']['security'] = sys.argv[2]
-data['defaults']['ask'] = sys.argv[3]
-data['defaults']['askFallback'] = sys.argv[4]
-data['defaults']['autoAllowSkills'] = True
-
-with open(path, 'w') as f:
-    json.dump(data, f, indent=2)
-" "$approvals_file" "$sec" "$ask" "$fallback"
+    data = {"version": 1, "defaults": {}}
+if "defaults" not in data:
+    data["defaults"] = {}
+data["defaults"]["security"] = sys.argv[2]
+data["defaults"]["ask"] = sys.argv[3]
+data["defaults"]["askFallback"] = sys.argv[4]
+data["defaults"]["autoAllowSkills"] = True
+print(json.dumps(data, indent=2))
+' "$approvals_file" "$sec" "$ask" "$fallback")
+		
+		if openclaw_has_command openclaw && echo "$json_payload" | openclaw approvals set --stdin >/dev/null 2>&1; then
+			return 0
+		fi
+		# 回退：直接写文件
+		echo "$json_payload" > "$approvals_file"
 	}
 
 	openclaw_permission_render_status() {
 		echo "应用层配置: ~/.openclaw/openclaw.json"
 		echo "宿主机审批: ~/.openclaw/exec-approvals.json"
 		echo "---------------------------------------"
-		local current_profile=$(openclaw config get tools.profile 2>/dev/null)
-		local sec_val
-		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
-			sec_val=$(python3 -c "import json, sys; print(json.load(open('$HOME/.openclaw/exec-approvals.json')).get('defaults', {}).get('security', 'unset'))" 2>/dev/null || echo "unset")
-		else
-			sec_val="unset"
-		fi
+		local current_profile current_sec current_ask current_elevated
+		current_profile=$(openclaw config get tools.profile 2>/dev/null | head -n 1 | sed 's/^"//;s/"$//')
+		current_sec=$(openclaw config get tools.exec.security 2>/dev/null | head -n 1 | sed 's/^"//;s/"$//')
+		current_ask=$(openclaw config get tools.exec.ask 2>/dev/null | head -n 1 | sed 's/^"//;s/"$//')
+		current_elevated=$(openclaw config get tools.elevated.enabled 2>/dev/null | head -n 1 | sed 's/^"//;s/"$//')
+		# 清理空值
+		[ -z "$current_profile" ] || echo "$current_profile" | grep -qi "config path not found" && current_profile=""
+		[ -z "$current_sec" ] || echo "$current_sec" | grep -qi "config path not found" && current_sec=""
+		[ -z "$current_ask" ] || echo "$current_ask" | grep -qi "config path not found" && current_ask=""
+		[ -z "$current_elevated" ] || echo "$current_elevated" | grep -qi "config path not found" && current_elevated=""
 
 		local current_mode="未知 / 自定义"
-		if [ "$current_profile" = "coding" ] && [ "$sec_val" = "allowlist" ]; then
-			current_mode="\033[1;32m标准安全模式\033[0m"
-		elif [ "$current_profile" = "full" ] && [ "$sec_val" = "full" ]; then
+		if [ "$current_profile" = "full" ] && [ "$current_sec" = "full" ] && [ "$current_ask" = "off" ]; then
 			current_mode="\033[1;31m完全开放模式\033[0m"
-		elif [ "$current_profile" = "coding" ] && [ "$sec_val" = "full" ]; then
+		elif [ "$current_profile" = "coding" ] && [ "$current_sec" = "allowlist" ] && [ "$current_ask" = "on-miss" ] && [ "$current_elevated" = "true" ]; then
 			current_mode="\033[1;33m开发增强模式\033[0m"
-		elif [ -z "$current_profile" ] && [ "$sec_val" = "unset" ]; then
+		elif [ "$current_profile" = "coding" ] && [ "$current_sec" = "allowlist" ] && [ "$current_ask" = "on-miss" ]; then
+			current_mode="\033[1;32m标准安全模式\033[0m"
+		elif [ -z "$current_profile" ] && [ -z "$current_sec" ]; then
 			current_mode="\033[1;36m官方沙盒兜底\033[0m"
 		fi
 		echo -e "  当前综合安全等级: ${current_mode}"
 		echo "---------------------------------------"
 		echo -e "${gl_huang}[应用层 Tool Policy 状态]${gl_bai}"
-		openclaw config get tools.profile 2>/dev/null | sed 's/^/  Profile (预设): /' || echo "  Profile: (unset)"
-		openclaw config get tools.exec.security 2>/dev/null | sed 's/^/  Exec 限制: /' || echo "  Exec 限制: (unset)"
-		openclaw config get tools.exec.ask 2>/dev/null | sed 's/^/  审批提示: /' || echo "  审批提示: (unset)"
-		openclaw config get tools.elevated.enabled 2>/dev/null | sed 's/^/  提权开关: /' || echo "  提权开关: (unset)"
+		echo "  Profile (预设): ${current_profile:-(unset)}"
+		echo "  Exec 限制: ${current_sec:-(unset)}"
+		echo "  审批提示: ${current_ask:-(unset)}"
+		echo "  提权开关: ${current_elevated:-(unset)}"
 		
 		echo -e "\n${gl_huang}[底层 Exec Approvals 状态]${gl_bai}"
-		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
-			python3 -c "
+		if openclaw_has_command openclaw; then
+			local approvals_json
+			approvals_json=$(openclaw approvals get --json 2>/dev/null)
+			if [ -n "$approvals_json" ]; then
+				python3 -c '
 import json, sys
 try:
-    with open('$HOME/.openclaw/exec-approvals.json') as f:
-        d = json.load(f).get('defaults', {})
-        print('  拦截策略 (Security): ' + str(d.get('security', '(unset)')))
-        print('  提示策略 (Ask): ' + str(d.get('ask', '(unset)')))
-        print('  无UI兜底 (AskFallback): ' + str(d.get('askFallback', '(unset)')))
+    d = json.loads(sys.argv[1])
+    defaults = d.get("file", {}).get("defaults", {})
+    if not defaults:
+        defaults = d.get("defaults", {})
+    sec = defaults.get("security", "(unset)")
+    ask = defaults.get("ask", "(unset)")
+    fb = defaults.get("askFallback", "(unset)")
+    auto = defaults.get("autoAllowSkills", False)
+    print("  拦截策略 (Security): " + str(sec))
+    print("  提示策略 (Ask): " + str(ask))
+    print("  无UI兜底 (AskFallback): " + str(fb))
+    print("  自动放行技能 (autoAllowSkills): " + ("on" if auto else "off"))
+    exists = d.get("exists", True)
+    if not exists:
+        print("  (审批文件不存在，使用系统内置安全兜底)")
+except Exception as e:
+    print("  (解析失败: " + str(e) + ")")
+' "$approvals_json"
+			else
+				echo "  (openclaw approvals get --json 无输出)"
+			fi
+		elif [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			python3 -c '
+import json, os
+path = os.path.expanduser("~/.openclaw/exec-approvals.json")
+try:
+    with open(path) as f:
+        d = json.load(f).get("defaults", {})
+    print("  拦截策略 (Security): " + str(d.get("security", "(unset)")))
+    print("  提示策略 (Ask): " + str(d.get("ask", "(unset)")))
+    print("  无UI兜底 (AskFallback): " + str(d.get("askFallback", "(unset)")))
 except Exception:
-    print('  (配置文件解析失败)')
-"
+    print("  (配置文件解析失败)")
+'
 		else
 			echo "  (未配置，强制使用系统内置安全兜底策略)"
 		fi
@@ -14563,7 +14632,12 @@ except Exception:
 		openclaw config unset tools.exec.strictInlineEval >/dev/null 2>&1
 		
 		echo "清理宿主机拦截配置..."
-		rm -f "$HOME/.openclaw/exec-approvals.json"
+		# 优先通过 CLI 清空审批配置，回退直接删文件
+		if echo '{"version":1,"defaults":{}}' | openclaw approvals set --stdin >/dev/null 2>&1; then
+			true
+		else
+			rm -f "$HOME/.openclaw/exec-approvals.json"
+		fi
 		
 		openclaw_permission_restart_gateway
 		echo -e "${gl_lv}✅ 已恢复到 OpenClaw 官方安全沙盒防御机制${gl_bai}"
@@ -14705,6 +14779,15 @@ except Exception:
 	}
 
 	openclaw_multiagent_agents_json() {
+		local result
+		if openclaw_has_command openclaw; then
+			result=$(openclaw agents list --json 2>/dev/null)
+			if [ -n "$result" ] && python3 -c "import json,sys; json.loads(sys.argv[1])" "$result" 2>/dev/null; then
+				echo "$result"
+				return 0
+			fi
+		fi
+		# 回退：从配置文件读取
 		local config_file
 		config_file=$(openclaw_permission_config_file)
 		if [ -s "$config_file" ]; then
@@ -14723,82 +14806,65 @@ except Exception:
 PY
 			return 0
 		fi
-		openclaw agents list --json 2>/dev/null || echo '[]'
+		echo '[]'
 	}
 
 	openclaw_multiagent_bindings_json() {
+		local result
+		if openclaw_has_command openclaw; then
+			result=$(openclaw agents bindings --json 2>/dev/null)
+			if [ -n "$result" ] && python3 -c "import json,sys; json.loads(sys.argv[1])" "$result" 2>/dev/null; then
+				echo "$result"
+				return 0
+			fi
+		fi
+		# 回退：从配置文件读取
 		local config_file
 		config_file=$(openclaw_permission_config_file)
 		if [ -s "$config_file" ]; then
 			python3 - "$config_file" <<'PY'
-import json,sys,os
+import json,sys
 path=sys.argv[1]
-results=[]
-
-def add_item(item):
-    if not isinstance(item,dict):
-        return
-    bind=item.get("bind") or item.get("binding") or item.get("scope") or item.get("route")
-    agent=item.get("agentId") or item.get("agent")
-    if agent or bind:
-        results.append({"agentId": agent or "?", "bind": bind or "-"})
-
-def walk(obj):
-    if isinstance(obj,dict):
-        if "agentId" in obj and any(k in obj for k in ("bind","binding","scope","route")):
-            add_item(obj)
-        for v in obj.values():
-            walk(v)
-    elif isinstance(obj,list):
-        for v in obj:
-            walk(v)
-
 try:
     with open(path) as f:
         data=json.load(f)
-    bindings=data.get("agents",{}).get("bindings") if isinstance(data,dict) else None
-    if isinstance(bindings,list):
-        for item in bindings:
-            add_item(item)
-    walk(data)
+    bindings=data.get("agents",{}).get("bindings",[])
+    if not isinstance(bindings,list):
+        bindings=[]
+    results=[]
+    for item in bindings:
+        if not isinstance(item,dict):
+            continue
+        results.append({"agentId": item.get("agentId") or item.get("agent") or "?", "description": item.get("description") or "-"})
     print(json.dumps(results, ensure_ascii=False))
 except Exception:
     print("[]")
 PY
 			return 0
 		fi
-		openclaw agents bindings --json 2>/dev/null || echo '[]'
+		echo '[]'
 	}
 
 	openclaw_multiagent_sessions_json() {
-		local config_file
-		config_file=$(openclaw_permission_config_file)
-		python3 - "$config_file" <<'PY'
-import json,sys,os
-config_path=sys.argv[1] if len(sys.argv)>1 else ""
-
-def load_agents(path):
-    if path and os.path.exists(path):
-        try:
-            with open(path) as f:
-                data=json.load(f)
-            agents=data.get("agents",{}).get("list",[])
-            if isinstance(agents,list) and agents:
-                ids=[a.get("id") for a in agents if isinstance(a,dict) and a.get("id")]
-                if ids:
-                    return ids
-        except Exception:
-            pass
-    base=os.path.expanduser("~/.openclaw/agents")
-    try:
-        return [d for d in os.listdir(base) if os.path.isdir(os.path.join(base,d))]
-    except Exception:
-        return []
-
-agent_ids=load_agents(config_path)
+		local result
+		if openclaw_has_command openclaw; then
+			result=$(openclaw sessions --json 2>/dev/null | grep -v '^\[')
+			if [ -n "$result" ] && python3 -c "import json,sys; json.loads(sys.argv[1])" "$result" 2>/dev/null; then
+				echo "$result"
+				return 0
+			fi
+		fi
+		# 回退：从文件系统读取
+		python3 <<'PY'
+import json,os
+base=os.path.expanduser("~/.openclaw/agents")
 sessions=[]
-for agent_id in agent_ids:
-    path=os.path.expanduser(f"~/.openclaw/agents/{agent_id}/sessions/sessions.json")
+try:
+    agent_dirs=[d for d in os.listdir(base) if os.path.isdir(os.path.join(base,d))]
+except Exception:
+    agent_dirs=[]
+for agent_id in agent_dirs:
+    path=os.path.join(base,agent_id,"sessions","sessions.json")
     if not os.path.exists(path):
         continue
     try:
@@ -14809,19 +14875,15 @@ for agent_id in agent_ids:
     if isinstance(data,dict):
         items=data.items()
     elif isinstance(data,list):
-        items=[(item.get("key") or item.get("sessionKey") or "?", item) for item in data if isinstance(item,dict)]
+        items=[(item.get("key") or "?", item) for item in data if isinstance(item,dict)]
     else:
         continue
     for key,item in items:
         if not isinstance(item,dict):
             continue
-        model=item.get("model")
-        if not model:
-            report=item.get("systemPromptReport") or {}
-            if isinstance(report,dict):
-                model=report.get("model") or report.get("modelProvider") or report.get("provider")
-        sessions.append({"agentId": agent_id, "key": key, "model": model or "-"})
-print(json.dumps({"sessions": sessions}, ensure_ascii=False))
+        model=item.get("model") or "-"
+        sessions.append({"agentId": agent_id, "key": key, "model": model})
+print(json.dumps({"path":"(filesystem)","count":len(sessions),"sessions":sessions}, ensure_ascii=False))
 PY
 	}
 
@@ -14831,12 +14893,34 @@ PY
 		default_agent=$(openclaw_multiagent_default_agent)
 		echo "配置文件: ${config_file:-$(openclaw_permission_config_file)}"
 		echo "默认智能体: $default_agent"
-		python3 -c 'import json,sys; agents=json.loads(sys.argv[1] or "[]"); bindings=json.loads(sys.argv[2] or "[]"); obj=json.loads(sys.argv[3] or "{}"); sessions=obj.get("sessions",[]) if isinstance(obj,dict) else []; print("已配置智能体数: %s" % len(agents)); print("路由绑定数: %s" % len(bindings)); print("会话总数: %s" % len(sessions)); print("---------------------------------------");
-if not agents: print("当前未配置任何多智能体。")
+		python3 -c '
+import json,sys
+agents=json.loads(sys.argv[1] or "[]")
+bindings=json.loads(sys.argv[2] or "[]")
+sess_obj=json.loads(sys.argv[3] or "{}")
+sessions=sess_obj.get("sessions",[]) if isinstance(sess_obj,dict) else []
+print("已配置智能体数: %s" % len(agents))
+print("路由绑定数: %s" % len(bindings))
+print("会话总数: %s" % len(sessions))
+print("---------------------------------------")
+if not agents:
+    print("当前未配置任何多智能体。")
 else:
- import itertools
- for item in itertools.islice(agents, 8):
-  ident_obj=item.get("identity") if isinstance(item.get("identity"),dict) else {}; identity=ident_obj.get("name") or item.get("identityName") or item.get("name") or "-"; emoji=item.get("identityEmoji") or ""; ws=item.get("workspace") or "-"; print("- 智能体ID: [1;36m%s[0m" % item.get("id","?")); print("  身份名称: %s %s" % (identity, emoji)); print("  工作目录: %s" % ws)' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)" "$(openclaw_multiagent_sessions_json)"
+    for item in agents[:8]:
+        aid = item.get("id","?")
+        identity = item.get("identityName") or item.get("name") or "-"
+        emoji = item.get("identityEmoji") or ""
+        ws = item.get("workspace") or "-"
+        model = item.get("model") or "-"
+        is_default = item.get("isDefault", False)
+        bcount = item.get("bindings", 0)
+        default_tag = " [默认]" if is_default else ""
+        print("- 智能体ID: \033[1;36m%s\033[0m%s" % (aid, default_tag))
+        print("  身份名称: %s %s" % (identity, emoji))
+        print("  模型: %s" % model)
+        print("  工作目录: %s" % ws)
+        print("  绑定数: %s" % bcount)
+' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)" "$(openclaw_multiagent_sessions_json)"
 	}
 
 	openclaw_multiagent_list_agents() {
@@ -14893,10 +14977,16 @@ for idx,item in enumerate(agents,1):
 
 	openclaw_multiagent_list_bindings() {
 		send_stats "OpenClaw多智能体-查看路由绑定"
-		python3 -c 'import json,sys; bindings=json.loads(sys.argv[1] or "[]");
-if not bindings: print("暂无路由绑定。"); raise SystemExit(0)
+		python3 -c '
+import json,sys
+bindings=json.loads(sys.argv[1] or "[]")
+if not bindings:
+    print("暂无路由绑定。")
+    raise SystemExit(0)
 for idx,item in enumerate(bindings,1):
- bind=item.get("bind") or item.get("binding") or item.get("scope") or "-"; print("%s. agent=%s | bind=%s" % (idx, item.get("agentId","?"), bind))' "$(openclaw_multiagent_bindings_json)"
+    desc = item.get("description") or "-"
+    print("%s. agent=%s | %s" % (idx, item.get("agentId","?"), desc))
+' "$(openclaw_multiagent_bindings_json)"
 	}
 
 	openclaw_multiagent_add_binding() {
@@ -14938,14 +15028,32 @@ for idx,item in enumerate(bindings,1):
 
 	openclaw_multiagent_show_sessions() {
 		send_stats "OpenClaw多智能体-会话概况"
-		python3 -c 'import json,sys; obj=json.loads(sys.argv[1] or "{}"); sessions=obj.get("sessions",[]) if isinstance(obj,dict) else [];
-if not sessions: print("暂无 session 数据。"); raise SystemExit(0)
+		python3 -c '
+import json,sys
+sess_obj=json.loads(sys.argv[1] or "{}")
+sessions=sess_obj.get("sessions",[]) if isinstance(sess_obj,dict) else []
+if not sessions:
+    print("暂无 session 数据。")
+    raise SystemExit(0)
 by_agent={}
-for item in sessions: by_agent[item.get("agentId","?")]=by_agent.get(item.get("agentId","?"),0)+1
+for item in sessions:
+    aid = item.get("agentId","?")
+    by_agent[aid] = by_agent.get(aid, 0) + 1
 print("会话汇总:")
-for agent_id,count in sorted(by_agent.items()): print("- %s: %s" % (agent_id, count))
+for agent_id,count in sorted(by_agent.items()):
+    print("- %s: %s" % (agent_id, count))
 print("---------------------------------------")
-for item in sessions[:10]: print("%s | %s | %s" % (item.get("agentId","?"), item.get("key","-"), item.get("model") or "-"))' "$(openclaw_multiagent_sessions_json)"
+for item in sessions[:10]:
+    key = item.get("key","-")
+    model = item.get("model") or "-"
+    aid = item.get("agentId","?")
+    tokens = ""
+    it = item.get("inputTokens")
+    ot = item.get("outputTokens")
+    if it is not None:
+        tokens = " | in=%s out=%s" % (it, ot or 0)
+    print("%s | %s | %s%s" % (aid, key, model, tokens))
+' "$(openclaw_multiagent_sessions_json)"
 	}
 
 	openclaw_multiagent_health_check() {
@@ -14955,12 +15063,32 @@ for item in sessions[:10]: print("%s | %s | %s" % (item.get("agentId","?"), item
 		config_file=$(openclaw_multiagent_config_file)
 		echo "检查配置文件: ${config_file:-$(openclaw_permission_config_file)}"
 		openclaw config validate || echo "⚠️ 配置校验未通过，请检查上方输出。"
-		python3 -c 'import json,sys,os; agents=json.loads(sys.argv[1] or "[]"); bindings=json.loads(sys.argv[2] or "[]"); print("---------------------------------------");
-if not agents: print("⚠️ 未发现已配置智能体。");
+		python3 -c '
+import json,sys,os
+agents=json.loads(sys.argv[1] or "[]")
+bindings=json.loads(sys.argv[2] or "[]")
+print("---------------------------------------")
+if not agents:
+    print("⚠️ 未发现已配置智能体。")
 else:
- for item in agents:
-  ws=item.get("workspace") or ""; aid=item.get("id","?"); state="OK" if ws and os.path.isdir(os.path.expanduser(ws)) else ("OK" if aid=="main" else "MISSING"); print("agent=%s workspace=%s [%s]" % (aid, ws or "-", state))
-print("路由绑定数=%s" % len(bindings)); print("✅ 多智能体健康检查完成")' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)"
+    for item in agents:
+        ws = item.get("workspace") or ""
+        aid = item.get("id","?")
+        if ws and os.path.isdir(os.path.expanduser(ws)):
+            state = "OK"
+        elif aid == "main":
+            state = "OK"
+        else:
+            state = "MISSING"
+        model = item.get("model") or "-"
+        bcount = item.get("bindings", 0)
+        print("agent=%s workspace=%s model=%s bindings=%s [%s]" % (aid, ws or "-", model, bcount, state))
+print("路由绑定数=%s" % len(bindings))
+print("✅ 多智能体健康检查完成")
+' "$(openclaw_multiagent_agents_json)" "$(openclaw_multiagent_bindings_json)"
+		echo ""
+		echo "运行安全审计..."
+		openclaw security audit 2>/dev/null || echo "⚠️ 安全审计命令不可用"
 	}
 
 	openclaw_multiagent_menu() {
