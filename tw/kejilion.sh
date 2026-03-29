@@ -1221,7 +1221,7 @@ iptables_panel() {
 add_swap() {
 	local new_swap=$1  # 获取传入的参数
 
-	# 取得目前系統中所有的 swap 分區
+	# 取得目前系統中所有的 swap 分割區
 	local swap_partitions=$(grep -E '^/dev/' /proc/swaps | awk '{print $1}')
 
 	# 遍歷並刪除所有的 swap 分割區
@@ -1492,7 +1492,7 @@ ssl_ps
 
 ssl_ps() {
 	echo -e "${gl_huang}已申請的證書到期情況${gl_bai}"
-	echo "網站資訊 證書到期時間"
+	echo "站點資訊 證書到期時間"
 	echo "------------------------"
 	for cert_dir in /etc/letsencrypt/live/*; do
 	  local cert_file="$cert_dir/fullchain.pem"
@@ -3694,11 +3694,11 @@ stream_panel() {
 				;;
 			5)
 				send_stats "編輯轉送配置"
-				read -e -p "請輸入你要編輯的服務名稱:" stream_name
+				read -e -p "请输入你要编辑的服务名: " stream_name
 				install nano
 				nano /home/web/stream.d/$stream_name.conf
 				docker restart nginx
-				send_stats "修改四層代理"
+				send_stats "修改四层代理"
 				;;
 			6)
 				send_stats "刪除轉送配置"
@@ -3724,8 +3724,8 @@ ldnmp_Proxy_backend_stream() {
 	send_stats "安裝$webname"
 	echo "開始部署$webname"
 
-	# 取得代理名稱
-	read -erp "請輸入代理轉發名稱 (如 mysql_proxy):" proxy_name
+	# 获取代理名称
+	read -erp "请输入代理转发名称 (如 mysql_proxy): " proxy_name
 	if [ -z "$proxy_name" ]; then
 		echo "名稱不能為空"; return 1
 	fi
@@ -3884,7 +3884,7 @@ ldnmp_web_status() {
 			2)
 				send_stats "克隆站點域名"
 				read -e -p "請輸入舊網域名稱:" oddyuming
-				read -e -p "請輸入新網域名稱:" yuming
+				read -e -p "請輸入新網域:" yuming
 				install_certbot
 				install_ssltls
 				certs_status
@@ -3925,7 +3925,7 @@ ldnmp_web_status() {
 				send_stats "建立關聯站點"
 				echo -e "為現有的站點再關聯一個新網域用於訪問"
 				read -e -p "請輸入現有的網域名稱:" oddyuming
-				read -e -p "請輸入新網域名稱:" yuming
+				read -e -p "請輸入新網域:" yuming
 				install_certbot
 				install_ssltls
 				certs_status
@@ -4078,8 +4078,8 @@ donlond_frp() {
 
 generate_frps_config() {
 
-	send_stats "安裝frp服務端"
-	# 產生隨機連接埠和憑證
+	send_stats "安装frp服务端"
+	# 生成随机端口和凭证
 	local bind_port=8055
 	local dashboard_port=8056
 	local token=$(openssl rand -hex 16)
@@ -4163,7 +4163,7 @@ remote_port = ${remote_port}
 EOF
 
 	# 輸出產生的信息
-	echo "服務$service_name已成功加入 frpc.toml"
+	echo "服務$service_name已成功加入到 frpc.toml"
 
 	docker restart frpc
 
@@ -4779,7 +4779,7 @@ mkdir -p /etc/sysctl.d
 echo "net.core.default_qdisc=fq" > "$CONF"
 echo "net.ipv4.tcp_congestion_control=bbr" >> "$CONF"
 
-# 清理可能導致衝突的舊版本 sysctl.conf 殘留
+# 清理可能導致衝突的舊版 sysctl.conf 殘留
 sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf 2>/dev/null
 sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf 2>/dev/null
 
@@ -5037,7 +5037,7 @@ fetch_remote_ssh_keys() {
 		return 1
 	fi
 
-	# 檢查內容是否有效
+	# 检查内容是否有效
 	if [[ ! -s "${temp_file}" ]]; then
 		echo "錯誤：下載到的檔案為空，URL 可能不包含任何公鑰" >&2
 		rm -f "${temp_file}"
@@ -5209,7 +5209,7 @@ add_sshpasswd() {
 	# 回車不輸入，預設 root
 	target_user=${target_user:-root}
 
-	# 校驗用戶是否存在
+	# 校验用户是否存在
 	if ! id "$target_user" >/dev/null 2>&1; then
 		echo "錯誤：用戶$target_user不存在"
 		return 1
@@ -6334,21 +6334,21 @@ Kernel_optimize() {
 			  cd ~
 			  clear
 			  _kernel_optimize_core "遊戲服優化模式" "game"
-			  send_stats "遊戲服優化"
+			  send_stats "游戏服优化"
 			  ;;
 		  6)
 			  cd ~
 			  clear
 			  restore_defaults
 			  curl -sS ${gh_proxy}raw.githubusercontent.com/kejilion/sh/refs/heads/main/network-optimize.sh -o /tmp/network-optimize.sh && source /tmp/network-optimize.sh && restore_network_defaults
-			  send_stats "還原預設設定"
+			  send_stats "还原默认设置"
 			  ;;
 
 		  7)
 			  cd ~
 			  clear
 			  curl -sS ${gh_proxy}raw.githubusercontent.com/kejilion/sh/refs/heads/main/network-optimize.sh | bash
-			  send_stats "核心自動調優"
+			  send_stats "内核自动调优"
 			  ;;
 
 		  *)
@@ -6378,7 +6378,7 @@ update_locale() {
 				locale-gen
 				echo "LANG=${lang}" > /etc/default/locale
 				export LANG=${lang}
-				echo -e "${gl_lv}系統語言已經修改為:$lang重新連線SSH生效。${gl_bai}"
+				echo -e "${gl_lv}系統語言已經修改為:$lang 重新连接SSH生效。${gl_bai}"
 				hash -r
 				break_end
 
@@ -6387,17 +6387,17 @@ update_locale() {
 				install glibc-langpack-zh
 				localectl set-locale LANG=${lang}
 				echo "LANG=${lang}" | tee /etc/locale.conf
-				echo -e "${gl_lv}系統語言已經修改為:$lang重新連線SSH生效。${gl_bai}"
+				echo -e "${gl_lv}系統語言已經修改為:$lang 重新连接SSH生效。${gl_bai}"
 				hash -r
 				break_end
 				;;
 			*)
-				echo "不支援的系統:$ID"
+				echo "不支持的系统: $ID"
 				break_end
 				;;
 		esac
 	else
-		echo "不支援的系統，無法辨識系統類型。"
+		echo "不支持的系统，无法识别系统类型。"
 		break_end
 	fi
 }
@@ -6910,7 +6910,7 @@ add_connection() {
 	send_stats "新增連接"
 	echo "建立新連接範例："
 	echo "- 連線名稱: my_server"
-	echo "- IP位址: 192.168.1.100"
+	echo "  - IP地址: 192.168.1.100"
 	echo "- 使用者名稱: root"
 	echo "- 連接埠: 22"
 	echo "------------------------"
@@ -6930,7 +6930,7 @@ add_connection() {
 # 刪除連接
 delete_connection() {
 	send_stats "刪除連接"
-	read -e -p "請輸入要刪除的連接編號:" num
+	read -e -p "请输入要删除的连接编号: " num
 
 	local connection=$(sed -n "${num}p" "$CONFIG_FILE")
 	if [[ -z "$connection" ]]; then
@@ -7011,7 +7011,7 @@ ssh_manager() {
 	while true; do
 		clear
 		echo "SSH 遠端連線工具"
-		echo "可以透過SSH連接到其他Linux系統上"
+		echo "可以通过SSH连接到其他Linux系统上"
 		echo "------------------------"
 		list_connections
 		echo "1. 建立新連接 2. 使用連接 3. 刪除連接"
@@ -7091,7 +7091,7 @@ mount_partition() {
 		return 1
 	fi
 
-	echo "分區已成功掛載到$MOUNT_POINT"
+	echo "分割區已成功掛載到$MOUNT_POINT"
 
 	# 檢查 /etc/fstab 是否已經存在 UUID 或掛載點
 	if grep -qE "UUID=$UUID|[[:space:]]$MOUNT_POINT[[:space:]]" /etc/fstab; then
@@ -7099,10 +7099,10 @@ mount_partition() {
 		return 0
 	fi
 
-	# 寫入 /etc/fstab
+	# 写入 /etc/fstab
 	echo "UUID=$UUID $MOUNT_POINT $FSTYPE defaults,nofail 0 2" >> /etc/fstab
 
-	echo "已寫入 /etc/fstab，實現持久化掛載"
+	echo "已写入 /etc/fstab，实现持久化挂载"
 }
 
 
@@ -8271,7 +8271,7 @@ docker_ssh_migration() {
 			echo -e "1. 備份docker項目"
 			echo -e "2. 遷移docker項目"
 			echo -e "3. 還原docker項目"
-			echo -e "4. 刪除docker專案的備份文件"
+			echo -e "4. 删除docker项目的备份文件"
 			echo "------------------------"
 			echo -e "0. 返回上一級選單"
 			echo "------------------------"
@@ -8785,7 +8785,7 @@ linux_Oracle() {
 	  case $sub_choice in
 		  1)
 			  clear
-			  echo "活躍腳本: CPU佔用10-20% 記憶體佔用20%"
+			  echo "活跃脚本: CPU占用10-20% 内存占用20% "
 			  read -e -p "確定安裝嗎？ (Y/N):" choice
 			  case "$choice" in
 				[Yy])
@@ -9659,7 +9659,7 @@ linux_ldnmp() {
 	  # find "$(realpath .)" -name "index.html" -print
 	  find "$(realpath .)" -name "index.html" -print | xargs -I {} dirname {}
 
-	  read -e -p "請輸入index.html的路徑，類似（/home/web/html/$yuming/index/）： " index_lujing
+	  read -e -p "请输入index.html的路径，类似（/home/web/html/$yuming/index/）： " index_lujing
 
 	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
 	  sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
@@ -9987,7 +9987,7 @@ moltbot_menu() {
 			return 1
 		fi
 
-		# 加上 --no-update-notifier，並確保錯誤重定向位置正確
+		# 加上 --no-update-notifier，并确保错误重定向位置正确
 		local_version=$(npm list -g openclaw --depth=0 --no-update-notifier 2>/dev/null | grep openclaw | awk '{print $NF}' | sed 's/^.*@//')
 
 		if [ -z "$local_version" ]; then
@@ -10003,7 +10003,7 @@ moltbot_menu() {
 		if [ "$local_version" != "$remote_version" ]; then
 			echo "${gl_huang}偵測到新版本:$remote_version${gl_bai}"
 		else
-			echo "${gl_lv}目前版本已是最新:$local_version${gl_bai}"
+			echo "${gl_lv}当前版本已是最新:$local_version${gl_bai}"
 		fi
 	}
 
@@ -10709,7 +10709,7 @@ EOF
 
 	add-openclaw-provider-interactive() {
 		send_stats "OpenClaw API新增"
-		echo "=== 互動式加入 OpenClaw Provider (全量模型) ==="
+		echo "=== 互動式新增 OpenClaw Provider (全量模型) ==="
 
 		# 1. Provider 名稱
 		read -erp "請輸入 Provider 名稱 (如: deepseek):" provider_name
@@ -11161,7 +11161,7 @@ PY2
 			echo "❌ 同步失敗：provider 不存在或未配置"
 			;;
 		3)
-			echo "❌ 同步失敗：provider 配置不完整或類型不支持"
+			echo "❌ 同步失败：provider 配置不完整或类型不支持"
 			;;
 		4)
 			echo "❌ 同步失敗：上游 /models 請求失敗"
@@ -11370,7 +11370,7 @@ replacement = replacement_candidates[0] if replacement_candidates else None
 primary_ref = get_primary_ref(defaults)
 if ref_provider(primary_ref) == name:
     if not replacement:
-        print('❌ 刪除中止：預設主模型指向該 provider，且無可用替代模型')
+        print('❌ 删除中止：默认主模型指向该 provider，且无可用替代模型')
         raise SystemExit(3)
     set_primary_ref(defaults, replacement)
     print(f'🔁 預設主模型切換: {primary_ref} -> {replacement}')
@@ -12173,12 +12173,12 @@ PYTHON_EOF
 				[ -z "$plugin_id" ] && continue
 
 				if [ "$plugin_action" = "1" ]; then
-					echo "🔍 正在檢查插件狀態:$plugin_id"
+					echo "🔍 正在检查插件状态: $plugin_id"
 					local plugin_list
 					plugin_list=$(openclaw plugins list 2>/dev/null)
 
 					if echo "$plugin_list" | grep -qw "$plugin_id" && echo "$plugin_list" | grep "$plugin_id" | grep -q "disabled"; then
-						echo "💡 插件 [$plugin_id] 已預先安裝，正在啟動..."
+						echo "💡 插件 [$plugin_id] 已预装，正在激活..."
 						if openclaw plugins enable "$plugin_id"; then
 							sync_openclaw_plugin_allowlist "$plugin_id"
 							success_list="$success_list $plugin_id"
@@ -12276,7 +12276,7 @@ PYTHON_EOF
 			echo "----------------------------------------"
 
 			echo "1) 安裝技能"
-			echo "2) 刪除技能"
+			echo "2) 删除技能"
 			echo "0) 返回"
 			read -e -p "請選擇操作：" skill_action
 
@@ -13119,7 +13119,7 @@ if os.path.isdir(agents_root):
 		fi
 
 		if [ ! -f "$target_path" ]; then
-			echo "❌ 目標檔案不存在:$target_path"
+			echo "❌ 目标文件不存在: $target_path"
 			break_end
 			return 1
 		fi
@@ -13724,7 +13724,7 @@ EOF
 			echo "✅ memory.backend 已是 qmd"
 		else
 			openclaw_memory_config_set "memory.backend" "qmd"
-			echo "✅ 已設定 memory.backend=qmd"
+			echo "✅ 已设置 memory.backend=qmd"
 		fi
 		local qmd_cmd
 		qmd_cmd=$(openclaw_memory_config_get "memory.qmd.command")
@@ -14163,11 +14163,11 @@ EOF
 	}
 
 	openclaw_memory_menu() {
-		send_stats "OpenClaw記憶管理"
+		send_stats "OpenClaw记忆管理"
 		while true; do
 			clear
 			echo "======================================="
-			echo "OpenClaw 記憶管理"
+			echo "OpenClaw 记忆管理"
 			echo "======================================="
 			openclaw_memory_render_status
 			echo "1. 更新記憶索引"
@@ -14413,160 +14413,175 @@ except Exception:
 PY
 	}
 
-		openclaw_permission_render_status() {
-		local config_file mode
-		config_file=$(openclaw_permission_config_file)
-		mode=$(openclaw_permission_detect_mode)
-		echo "設定檔:$config_file"
-		[ ! -s "$config_file" ] && echo "⚠️ 未找到 OpenClaw 設定檔（可能尚未初始化）。"
-		echo "當前模式:$mode"
-		echo "---------------------------------------"
-
-		# 使用 Python 一次高效能解析所有權限字段
-		python3 - "$config_file" <<'PY'
-import json, sys
-def get_val(obj, path, default="(unset)"):
-    parts = path.split('.')
-    for p in parts:
-        if isinstance(obj, dict) and p in obj: obj = obj[p]
-        else: return default
-    if isinstance(obj, (list, dict)): return json.dumps(obj)
-    return str(obj)
-
+		openclaw_permission_update_exec_approvals() {
+		local sec="$1"
+		local ask="$2"
+		local fallback="$3"
+		local approvals_file="$HOME/.openclaw/exec-approvals.json"
+		
+		mkdir -p "$HOME/.openclaw"
+		
+		# 使用 Python 安全性更新或建立 exec-approvals.json
+		python3 -c "
+import json, sys, os
+path = sys.argv[1]
 try:
-    with open(sys.argv[1], 'r') as f: data = json.load(f)
-    fields = [
-        ("tools.profile", "tools.profile"),
-        ("tools.allow", "tools.allow"),
-        ("tools.deny", "tools.deny"),
-        ("tools.byProvider", "tools.byProvider"),
-        ("tools.exec.security", "tools.exec.security"),
-        ("tools.exec.ask", "tools.exec.ask"),
-        ("tools.elevated.enabled", "tools.elevated.enabled"),
-        ("commands.bash", "commands.bash"),
-        ("applyPatch.enabled", "tools.exec.applyPatch.enabled"),
-        ("applyPatch.workspaceOnly", "tools.exec.applyPatch.workspaceOnly")
-    ]
-    for label, path in fields:
-        val = get_val(data, path)
-        print("%-28s %s" % (label, val))
-except Exception as e:
-    print("❌ 設定檔解析失敗: %s" % e)
-PY
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+    else:
+        data = {'version': 1, 'defaults': {}}
+except Exception:
+    data = {'version': 1, 'defaults': {}}
+
+if 'defaults' not in data:
+    data['defaults'] = {}
+
+data['defaults']['security'] = sys.argv[2]
+data['defaults']['ask'] = sys.argv[3]
+data['defaults']['askFallback'] = sys.argv[4]
+data['defaults']['autoAllowSkills'] = True
+
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+" "$approvals_file" "$sec" "$ask" "$fallback"
+	}
+
+	openclaw_permission_render_status() {
+		echo "應用層配置: ~/.openclaw/openclaw.json"
+		echo "宿主機核准: ~/.openclaw/exec-approvals.json"
+		echo "---------------------------------------"
+		local current_profile=$(openclaw config get tools.profile 2>/dev/null)
+		local sec_val
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			sec_val=$(python3 -c "import json, sys; print(json.load(open('$HOME/.openclaw/exec-approvals.json')).get('defaults', {}).get('security', 'unset'))" 2>/dev/null || echo "unset")
+		else
+			sec_val="unset"
+		fi
+
+		local current_mode="未知 / 自訂"
+		if [ "$current_profile" = "coding" ] && [ "$sec_val" = "allowlist" ]; then
+			current_mode="\033[1;32m標準安全模式\033[0m"
+		elif [ "$current_profile" = "full" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;31m完全開放模式\033[0m"
+		elif [ "$current_profile" = "coding" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;33m開發增強模式\033[0m"
+		elif [ -z "$current_profile" ] && [ "$sec_val" = "unset" ]; then
+			current_mode="\033[1;36m官方沙盒兜底\033[0m"
+		fi
+		echo -e "當前綜合安全等級:${current_mode}"
+		echo "---------------------------------------"
+		echo -e "${gl_huang}[應用層 Tool Policy 狀態]${gl_bai}"
+		openclaw config get tools.profile 2>/dev/null | sed 's/^/ Profile (預設): /' || echo "  Profile: (unset)"
+		openclaw config get tools.exec.security 2>/dev/null | sed 's/^/ Exec 限制: /' || echo "Exec 限制: (unset)"
+		openclaw config get tools.exec.ask 2>/dev/null | sed 's/^/ 審核提示: /' || echo "審核提示: (unset)"
+		openclaw config get tools.elevated.enabled 2>/dev/null | sed 's/^/ 提權開關: /' || echo "提權開關: (unset)"
+		
+		echo -e "\n${gl_huang}[底層 Exec Approvals 狀態]${gl_bai}"
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			python3 -c "
+import json, sys
+try:
+    with open('$HOME/.openclaw/exec-approvals.json') as f:
+        d = json.load(f).get('defaults', {})
+        print('攔截策略 (Security):' + str(d.get('security', '(unset)')))
+        print('提示策略 (Ask):' + str(d.get('ask', '(unset)')))
+        print('無UI兜底 (AskFallback):' + str(d.get('askFallback', '(unset)')))
+except Exception:
+    print('(設定檔解析失敗)')
+"
+		else
+			echo "(未配置，強制使用系統內建安全兜底策略)"
+		fi
 	}
 
 	openclaw_permission_apply_standard() {
 		send_stats "OpenClaw權限-標準安全模式"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled false || failed=1
-		openclaw config set commands.bash false || failed=1
-		openclaw config set tools.exec.applyPatch.enabled false || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 切換失敗：寫入權限配置過程中出現錯誤。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 已寫入配置，但重啟失敗，請手動執行: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ 已切換為標準安全模式"
+		
+		echo "正在設定應用層策略..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled false >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval true >/dev/null 2>&1  # 拦截危险的内联代码
+		openclaw config unset commands.bash >/dev/null 2>&1 # 废弃旧版参数
+		
+		echo "正在設定宿主機審批攔截..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 已切換為標準安全模式 (所有危險命令將透過UI/TG請求你的批准)${gl_bai}"
 	}
 
 	openclaw_permission_apply_developer() {
 		send_stats "OpenClaw權限-開發增強模式"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 切換失敗：寫入權限配置過程中出現錯誤。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 已寫入配置，但重啟失敗，請手動執行: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ 已切換為開發增強模式"
+		
+		echo "正在設定應用層策略..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1 # 允许智能体申请提权
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "正在設定宿主機審批攔截..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 已切換為開發增強模式 (允許提權，但常規危險命令仍需審批)${gl_bai}"
 	}
 
 	openclaw_permission_apply_full() {
 		send_stats "OpenClaw權限-完全開放模式"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile full || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security full || failed=1
-		openclaw config set tools.exec.ask off || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 切換失敗：寫入權限配置過程中出現錯誤。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 已寫入配置，但重啟失敗，請手動執行: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ 已切換為完全開放模式"
+		
+		echo "正在設定應用層策略..."
+		openclaw config set tools.profile full >/dev/null 2>&1
+		openclaw config set tools.exec.security full >/dev/null 2>&1
+		openclaw config set tools.exec.ask off >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "正在瓦解宿主機攔截防禦..."
+		# 這裡的 full 和 off 將徹底繞過底層宿主機的 exec 審批系統
+		openclaw_permission_update_exec_approvals "full" "off" "full"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 已切換為完全開放模式 (警告：所有宿主機指令攔截已失效，智能體具有最高權限)${gl_bai}"
 	}
 
 	openclaw_permission_restore_official_defaults() {
 		send_stats "OpenClaw權限-恢復官方默認"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw_permission_unset_optional tools.profile || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw_permission_unset_optional tools.deny || failed=1
-		openclaw_permission_unset_optional tools.exec.security || failed=1
-		openclaw_permission_unset_optional tools.exec.ask || failed=1
-		openclaw_permission_unset_optional tools.elevated.enabled || failed=1
-		openclaw_permission_unset_optional commands.bash || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.enabled || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.workspaceOnly || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 恢復失敗：清理明確權限覆蓋時發生錯誤。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 已寫入配置，但重啟失敗，請手動執行: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ 已恢復為 OpenClaw 官方預設策略（清除明確覆蓋）"
+		
+		echo "清理應用層強制覆蓋..."
+		openclaw config unset tools.profile >/dev/null 2>&1
+		openclaw config unset tools.exec.security >/dev/null 2>&1
+		openclaw config unset tools.exec.ask >/dev/null 2>&1
+		openclaw config unset tools.elevated.enabled >/dev/null 2>&1
+		openclaw config unset tools.exec.strictInlineEval >/dev/null 2>&1
+		
+		echo "清理宿主機攔截配置..."
+		rm -f "$HOME/.openclaw/exec-approvals.json"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 已恢復到 OpenClaw 官方安全沙盒防禦機制${gl_bai}"
 	}
 
 	openclaw_permission_run_audit() {
-		send_stats "OpenClaw權限-安全性審計"
-		openclaw_permission_require_openclaw || return 1
+		echo "======================================="
+		echo "運行 OpenClaw 官方安全審計與體檢..."
+		echo "======================================="
 		openclaw security audit
+		echo "---------------------------------------"
+		read -e -p "是否嘗試自動修復發現的安全隱患？ (y/n):" fix_choice
+		if [[ "$fix_choice" == "y" || "$fix_choice" == "Y" || "$fix_choice" == "yes" ]]; then
+			openclaw security audit --fix
+			echo -e "${gl_lv}✅ 自動修復完成。${gl_bai}"
+		fi
+		echo "按任意鍵返回..."
+		read -n 1 -s
 	}
 
 	openclaw_permission_menu() {
@@ -14574,46 +14589,45 @@ PY
 		while true; do
 			clear
 			echo "======================================="
-			echo "OpenClaw 權限管理"
+			echo "OpenClaw 權限管理 (雙層架構深度適配)"
 			echo "======================================="
 			openclaw_permission_render_status
 			echo "---------------------------------------"
-			echo "1. 切換為標準安全模式（建議）"
-			echo "2. 切換為開發增強模式"
-			echo "3. 切換為完全開放模式（高風險）"
-			echo "4. 恢復官方預設策略"
-			echo "5. 運行安全審計"
-			echo "0. 返回上一級"
+			echo -e "${gl_kjlan}1.${gl_bai}切換為標準安全模式（日常推薦，彈卡核准）"
+			echo -e "${gl_kjlan}2.${gl_bai}切換為開發增強模式（允許智能體申請提權）"
+			echo -e "${gl_kjlan}3.${gl_bai}切換為完全開放模式（${gl_hong}高風險！徹底解除所有宿主機攔截${gl_bai}）"
+			echo -e "${gl_kjlan}4.${gl_bai}恢復官方預設沙盒防禦策略"
+			echo -e "${gl_kjlan}5.${gl_bai}運行底層安全審計與自動修復"
+			echo -e "${gl_kjlan}0.${gl_bai}回上一級"
 			echo "---------------------------------------"
 			read -e -p "請輸入你的選擇:" perm_choice
 			case "$perm_choice" in
 				1)
-					echo "將應用：標準安全模式"
+					echo "準備應用：標準安全模式"
 					read -e -p "輸入 yes 確認:" confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_standard || echo "已取消"
 					break_end
 					;;
 				2)
-					echo "將應用：開發增強模式"
+					echo "準備應用：開發增強模式"
 					read -e -p "輸入 yes 確認:" confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_developer || echo "已取消"
 					break_end
 					;;
 				3)
-					echo "⚠️ 完全開放模式會關閉 exec 審核、啟用提權與 bash，僅建議可信任單一使用者環境使用。"
-					read -e -p "輸入 FULL 確認繼續:" confirm
+					echo -e "${gl_hong}⚠️ 完全開放模式會徹底瓦解 exec 審核並自動放行高風險程式碼。${gl_bai}"
+					read -e -p "输入 FULL 确认继续: " confirm
 					[ "$confirm" = "FULL" ] && openclaw_permission_apply_full || echo "已取消"
 					break_end
 					;;
 				4)
-					echo "將清除腳本寫入的明確權限覆寫，恢復到 OpenClaw 官方預設策略。"
+					echo "将清除所有定制覆盖，恢复 OpenClaw 刚安装时的严格沙盒状态。"
 					read -e -p "輸入 yes 確認:" confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_restore_official_defaults || echo "已取消"
 					break_end
 					;;
 				5)
 					openclaw_permission_run_audit
-					break_end
 					;;
 				0)
 					return 0
@@ -14855,7 +14869,7 @@ for idx,item in enumerate(agents,1):
 			echo "正在配置智能體身份..."
 			openclaw agents set-identity --agent "$agent_id" --name "$name" --theme "$theme"
 		else
-			echo "❌ 智能體建立失敗"
+			echo "❌ 智能體創建失敗"
 			return 1
 		fi
 	}
@@ -15097,7 +15111,7 @@ openclaw_backup_restore_menu() {
 
 		domains=$(openclaw_find_webui_domain)
 		if [ -n "$domains" ]; then
-			echo "網域名稱地址："
+			echo "網域地址："
 			echo "$domains" | while read d; do
 				echo "https://${d}/#token=${token}"
 			done
@@ -15289,7 +15303,7 @@ while true; do
 	  echo -e "${gl_kjlan}17.  ${color17}AdGuardHome去廣告軟體${gl_kjlan}18.  ${color18}onlyoffice線上辦公OFFICE"
 	  echo -e "${gl_kjlan}19.  ${color19}雷池WAF防火牆面板${gl_kjlan}20.  ${color20}portainer容器管理面板"
 	  echo -e "${gl_kjlan}-------------------------"
-	  echo -e "${gl_kjlan}21.  ${color21}VScode網頁版${gl_kjlan}22.  ${color22}UptimeKuma監控工具"
+	  echo -e "${gl_kjlan}21.  ${color21}VScode網頁版${gl_kjlan}22.  ${color22}UptimeKuma监控工具"
 	  echo -e "${gl_kjlan}23.  ${color23}Memos網頁備忘錄${gl_kjlan}24.  ${color24}Webtop遠端桌面網頁版${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}25.  ${color25}Nextcloud網站${gl_kjlan}26.  ${color26}QD-Today定時任務管理框架"
 	  echo -e "${gl_kjlan}27.  ${color27}Dockge容器堆疊管理面板${gl_kjlan}28.  ${color28}LibreSpeed測速工具"
@@ -16773,7 +16787,7 @@ while true; do
 			ip_address
 			echo "已經安裝完成"
 			check_docker_app_ip
-			echo "初始使用者名稱密碼皆為: admin"
+			echo "初始使用者名稱密碼均為: admin"
 		}
 
 		docker_app_update() {
@@ -17388,7 +17402,7 @@ while true; do
 
 		}
 
-		local docker_describe="是一個輕量、高效能的音樂串流伺服器"
+		local docker_describe="是一个轻量、高性能的音乐流媒体服务器"
 		local docker_url="官網介紹: https://www.navidrome.org/"
 		local docker_use=""
 		local docker_passwd=""
@@ -19670,16 +19684,16 @@ env_menu() {
 		send_stats "正在重新載入環境變數"
 		source "$BASHRC"
 		source "$PROFILE"
-		echo "✔ 環境變數已重新載入"
+		echo "✔ 环境变量已重新加载"
 		read -erp "按回車繼續..."
 	}
 
 	while true; do
 		clear
-		echo "=========== 系統環境變數管理 =========="
+		echo "=========== 系统环境变量管理 =========="
 		echo "目前使用者：$USER"
 		echo "--------------------------------------"
-		echo "1. 查看目前常用環境變數"
+		echo "1. 查看当前常用环境变量"
 		echo "2. 查看 ~/.bashrc"
 		echo "3. 查看 ~/.profile"
 		echo "4. 編輯 ~/.bashrc"
@@ -19727,7 +19741,7 @@ create_user_with_sshkey() {
 	local sshkey_vl
 
 	if [[ -z "$new_username" ]]; then
-		echo "用法：create_user_with_sshkey <使用者名稱>"
+		echo "用法：create_user_with_sshkey <用户名>"
 		return 1
 	fi
 
@@ -19817,7 +19831,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}31.  ${gl_bai}切換系統語言${gl_kjlan}32.  ${gl_bai}命令列美化工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${gl_bai}設定係統回收站${gl_kjlan}34.  ${gl_bai}系統備份與復原"
-	  echo -e "${gl_kjlan}35.  ${gl_bai}ssh遠端連線工具${gl_kjlan}36.  ${gl_bai}硬碟分割區管理工具"
+	  echo -e "${gl_kjlan}35.  ${gl_bai}ssh遠端連線工具${gl_kjlan}36.  ${gl_bai}硬盘分区管理工具"
 	  echo -e "${gl_kjlan}37.  ${gl_bai}命令列歷史記錄${gl_kjlan}38.  ${gl_bai}rsync遠端同步工具"
 	  echo -e "${gl_kjlan}39.  ${gl_bai}命令收藏夾${gl_huang}★${gl_bai}                       ${gl_kjlan}40.  ${gl_bai}網路卡管理工具"
 	  echo -e "${gl_kjlan}------------------------"
@@ -19981,7 +19995,7 @@ EOF
 						send_stats "SSH連接埠已修改"
 						new_ssh_port $new_port
 					elif [[ $new_port -eq 0 ]]; then
-						send_stats "退出SSH埠修改"
+						send_stats "退出SSH連接埠修改"
 						break
 					else
 						echo "連接埠號碼無效，請輸入1到65535之間的數字。"
@@ -20608,7 +20622,7 @@ EOF
 			  echo "TG-bot監控預警功能"
 			  echo "影片介紹: https://youtu.be/vLL-eb3Z_TY"
 			  echo "------------------------------------------------"
-			  echo "您需要設定tg機器人API和接收預警的使用者ID，即可實現本機CPU，內存，硬碟，流量，SSH登入的即時監控預警"
+			  echo "您需要設定tg機器人API和接收預警的用戶ID，即可實現本機CPU，內存，硬碟，流量，SSH登入的即時監控預警"
 			  echo "到達閾值後會向用戶發送預警訊息"
 			  echo -e "${gl_hui}-關於流量，重啟伺服器將重新計算-${gl_bai}"
 			  read -e -p "確定繼續嗎？ (Y/N):" choice
@@ -20959,7 +20973,7 @@ linux_file() {
 		echo "1. 進入目錄 2. 建立目錄 3. 修改目錄權限 4. 重新命名目錄"
 		echo "5. 刪除目錄 6. 返回上一層選單目錄"
 		echo "------------------------"
-		echo "11. 建立檔案 12. 編輯檔案 13. 修改檔案權限 14. 重新命名文件"
+		echo "11. 建立文件 12. 編輯文件 13. 修改文件權限 14. 重新命名文件"
 		echo "15. 刪除文件"
 		echo "------------------------"
 		echo "21. 壓縮檔案目錄 22. 解壓縮檔案目錄 23. 行動檔案目錄 24. 複製檔案目錄"
@@ -21022,7 +21036,7 @@ linux_file() {
 				read -e -p "請輸入目前檔名:" current_name
 				read -e -p "請輸入新檔名:" new_name
 				mv "$current_name" "$new_name" && echo "文件已重新命名" || echo "重新命名失敗"
-				send_stats "重新命名文件"
+				send_stats "重命名文件"
 				;;
 			15) # 删除文件
 				read -e -p "請輸入要刪除的檔名:" filename
@@ -21312,7 +21326,7 @@ echo "------------------------"
 echo -e "${gl_lan}DMIT 28刀每季 美國CN2GIA 1核心 2G記憶體 20G硬碟 800G流量每月${gl_bai}"
 echo -e "${gl_bai}網址: https://www.dmit.io/aff.php?aff=4966&pid=100${gl_bai}"
 echo "------------------------"
-echo -e "${gl_zi}V.PS 6.9刀每月 東京軟銀 2核心 1G內存 20G硬碟 1T流量每月${gl_bai}"
+echo -e "${gl_zi}V.PS 6.9刀每月 东京软银 2核心 1G内存 20G硬盘 1T流量每月${gl_bai}"
 echo -e "${gl_bai}網址: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
 echo -e "${gl_kjlan}VPS更多熱門優惠${gl_bai}"
@@ -21794,7 +21808,7 @@ else
 			shift
 			case $1 in
 				install|安装)
-					send_stats "快速安裝docker"
+					send_stats "快捷安装docker"
 					install_docker
 					;;
 				ps|容器)

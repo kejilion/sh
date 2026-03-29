@@ -1093,7 +1093,7 @@ iptables_panel() {
 		  echo "3. 모든 포트를 엽니다. 4. 모든 포트를 닫습니다."
 		  echo "------------------------"
 		  echo "5. IP 화이트리스트 6. IP 블랙리스트"
-		  echo "7. 지정된 IP를 삭제합니다."
+		  echo "7. 지정된 IP 지우기"
 		  echo "------------------------"
 		  echo "11. PING 허용 12. PING 비활성화"
 		  echo "------------------------"
@@ -1200,7 +1200,7 @@ iptables_panel() {
 				  ;;
 
 			  17)
-				  read -e -p "삭제된 국가 코드를 입력하십시오(여러 국가 코드는 CN US JP와 같이 공백으로 구분될 수 있음)." country_code
+				  read -e -p "지워진 국가 코드를 입력하십시오(여러 국가 코드는 CN US JP와 같이 공백으로 구분될 수 있음)." country_code
 				  manage_country_rules unblock $country_code
 				  send_stats "명확한 국가$country_codeIP"
 				  ;;
@@ -1262,7 +1262,7 @@ check_swap() {
 
 local swap_total=$(free -m | awk 'NR==3{print $2}')
 
-# 가상 메모리를 만들어야 하는지 확인
+# 가상 메모리를 생성해야 하는지 결정
 [ "$swap_total" -gt 0 ] || add_swap 1024
 
 
@@ -2318,7 +2318,7 @@ check_nginx_compression() {
 
 	# zstd가 켜져 있고 주석 처리가 해제되어 있는지 확인하세요. (전체 줄은 zstd on으로 시작됩니다.)
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status="zstd 압축이 활성화되었습니다"
+		zstd_status="zstd 압축이 켜져 있습니다"
 	else
 		zstd_status=""
 	fi
@@ -2783,7 +2783,7 @@ clear_host_port_rules() {
 	install iptables
 
 
-	# 다른 모든 IP의 접근을 차단하는 규칙을 해제하세요.
+	# 다른 모든 IP의 접근을 차단하는 규칙을 삭제하세요.
 	if iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
 		iptables -D INPUT -p tcp --dport "$port" -j DROP
 	fi
@@ -2799,7 +2799,7 @@ clear_host_port_rules() {
 	fi
 
 
-	# 다른 모든 IP의 접근을 차단하는 규칙을 해제하세요.
+	# 다른 모든 IP의 접근을 차단하는 규칙을 삭제하세요.
 	if iptables -C INPUT -p udp --dport "$port" -j DROP &>/dev/null; then
 		iptables -D INPUT -p udp --dport "$port" -j DROP
 	fi
@@ -2887,7 +2887,7 @@ while true; do
 			setup_docker_dir
 			check_disk_space $app_size /home/docker
 			while true; do
-				read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
+				read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter 키를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
 				local app_port=${app_port:-${docker_port}}
 
 				if ss -tuln | grep -q ":$app_port "; then
@@ -3010,7 +3010,7 @@ docker_app_plus() {
 				check_disk_space $app_size /home/docker
 
 				while true; do
-					read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
+					read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter 키를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
 					local app_port=${app_port:-${docker_port}}
 
 					if ss -tuln | grep -q ":$app_port "; then
@@ -3215,7 +3215,7 @@ f2b_sshd() {
 
 # 기본 매개변수 구성: 금지 기간(bantime), 기간(findtime), 재시도 횟수(maxretry)
 # 설명하다:
-# - /etc/fail2ban/jail.d/sshd.local에 대한 쓰기 우선 순위를 지정합니다(기본 감옥 구성을 무시하고 업그레이드 시 손실되기 쉽지 않습니다).
+# - /etc/fail2ban/jail.d/sshd.local에 쓰기 우선 순위를 지정합니다(기본 감옥 구성을 덮어쓰며 업그레이드 시 손실되기 쉽지 않습니다).
 # - Alpine이고 감옥 이름이 다른 경우에도 sshd.local을 작성하세요. Fail2Ban은 감옥 이름에 따라 일치합니다.
 f2b_basic_config() {
 	root_use
@@ -3503,7 +3503,7 @@ ldnmp_Proxy() {
 	check_ip_and_get_access_port "$yuming"
 
 	if [ -z "$reverseproxy" ]; then
-		read -e -p "세대 방지 IP를 입력하십시오(기본값은 로컬 IP 127.0.0.1로 설정하려면 Enter를 누르십시오)." reverseproxy
+		read -e -p "안티 세대 IP를 입력하십시오(기본값은 로컬 IP 127.0.0.1로 설정하려면 Enter를 누르십시오)." reverseproxy
 		reverseproxy=${reverseproxy:-127.0.0.1}
 	fi
 
@@ -4409,7 +4409,7 @@ frps_panel() {
 
 			8)
 				send_stats "IP 접근 차단"
-				echo "역방향 도메인 이름 접근이 있는 경우, 이 기능을 사용하면 IP+포트 접근을 차단할 수 있어 더욱 안전합니다."
+				echo "역방향 도메인 이름 접근을 가지고 있는 경우, 이 기능을 사용하면 IP+포트 접근을 차단할 수 있어 더욱 안전합니다."
 				read -e -p "차단할 포트를 입력하세요:" frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
@@ -4773,7 +4773,7 @@ linux_clean() {
 
 bbr_on() {
 
-# 커널 튜닝 모듈과의 충돌을 방지하기 위해 sysctl.d에 대한 통합 쓰기
+# 커널 조정 모듈과의 충돌을 방지하기 위해 sysctl.d에 대한 통합 쓰기
 local CONF="/etc/sysctl.d/99-kejilion-bbr.conf"
 mkdir -p /etc/sysctl.d
 echo "net.core.default_qdisc=fq" > "$CONF"
@@ -5802,7 +5802,7 @@ elrepo() {
 		  echo "영상 소개: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"
 		  echo "------------------------------------------------"
 		  echo "Red Hat 시리즈 배포판 CentOS/RedHat/Alma/Rocky/oracle만 지원"
-		  echo "Linux 커널을 업그레이드하면 시스템 성능과 보안이 향상될 수 있습니다. 가능하다면 시도해 보시고, 프로덕션 환경을 주의해서 업그레이드하시는 것을 추천드립니다!"
+		  echo "Linux 커널을 업그레이드하면 시스템 성능과 보안이 향상될 수 있습니다. 가능하다면 시도해 보시고, 프로덕션 환경도 주의해서 업그레이드하시는 것을 추천드립니다!"
 		  echo "------------------------------------------------"
 		  read -e -p "계속하시겠습니까? (예/아니요):" choice
 
@@ -5838,7 +5838,7 @@ clamav_freshclam() {
 
 clamav_scan() {
 	if [ $# -eq 0 ]; then
-		echo "스캔할 디렉터리를 지정하십시오."
+		echo "스캔할 디렉터리를 지정하세요."
 		return
 	fi
 
@@ -5951,7 +5951,7 @@ _kernel_optimize_core() {
 
 	echo -e "${gl_lv}로 전환하다${mode_name}...${gl_bai}"
 
-	# ──장면에 따라 매개변수를 설정하세요──
+	# ──장면에 따라 매개변수를 설정합니다──
 	local SWAPPINESS DIRTY_RATIO DIRTY_BG_RATIO OVERCOMMIT MIN_FREE_KB VFS_PRESSURE
 	local RMEM_MAX WMEM_MAX TCP_RMEM TCP_WMEM
 	local SOMAXCONN BACKLOG SYN_BACKLOG
@@ -6538,7 +6538,7 @@ linux_trash() {
 
 	clear
 	echo -e "현재 휴지통${trash_status}"
-	echo -e "활성화한 후에는 중요한 파일이 실수로 삭제되는 것을 방지하기 위해 rm으로 삭제된 파일이 먼저 휴지통에 저장됩니다!"
+	echo -e "활성화한 후에는 중요한 파일이 실수로 삭제되는 것을 방지하기 위해 rm으로 삭제된 파일이 먼저 휴지통에 들어갑니다!"
 	echo "------------------------------------------------"
 	ls -l --color=auto "$TRASH_DIR" 2>/dev/null || echo "휴지통이 비어 있습니다."
 	echo "------------------------"
@@ -7997,7 +7997,7 @@ docker_ssh_migration() {
 
 		echo -e "${gl_kjlan}Docker 컨테이너 백업 중...${gl_bai}"
 		docker ps --format '{{.Names}}'
-		read -e -p  "백업할 컨테이너의 이름을 입력하십시오(실행 중인 모든 컨테이너를 백업하려면 여러 개의 공백을 구분하고 Enter 키를 누르십시오)." containers
+		read -e -p  "백업할 컨테이너의 이름을 입력하십시오(여러 개의 공백을 구분하고 Enter를 눌러 실행 중인 모든 컨테이너를 백업하십시오)." containers
 
 		install tar jq gzip
 		install_docker
@@ -8136,7 +8136,7 @@ docker_ssh_migration() {
 
 				mkdir -p "$original_path"
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
-				echo -e "${gl_lv}프로젝트 작성 [$project_name]가 다음 위치로 추출되었습니다.$original_path${gl_bai}"
+				echo -e "${gl_lv}프로젝트 작성 [$project_name]는 다음 위치로 추출되었습니다.$original_path${gl_bai}"
 
 				cd "$original_path" || return
 				docker compose down || true
@@ -8238,7 +8238,7 @@ docker_ssh_migration() {
 
 		echo -e "${gl_huang}백업 전송 중...${gl_bai}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# 키로 로그인
+			# 키를 사용하여 로그인
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -8271,7 +8271,7 @@ docker_ssh_migration() {
 			echo -e "1. 도커 프로젝트 백업"
 			echo -e "2. 도커 프로젝트 마이그레이션"
 			echo -e "3. 도커 프로젝트 복원"
-			echo -e "4. Docker 프로젝트의 백업 파일을 삭제합니다."
+			echo -e "4. docker 프로젝트 백업 파일 삭제"
 			echo "------------------------"
 			echo -e "0. 이전 메뉴로 돌아가기"
 			echo "------------------------"
@@ -8786,7 +8786,7 @@ linux_Oracle() {
 		  1)
 			  clear
 			  echo "활성 스크립트: CPU 사용량 10-20% 메모리 사용량 20%"
-			  read -e -p "정말로 설치하시겠습니까? (예/아니요):" choice
+			  read -e -p "설치하시겠습니까? (예/아니요):" choice
 			  case "$choice" in
 				[Yy])
 
@@ -11783,7 +11783,7 @@ PYTHON_EOF
 				return 1
 			fi
 
-			# 빠른 찾기를 위해 각 모델에 번호를 매깁니다(예: "(10) or-api/...:free")
+			# 빠른 위치를 쉽게 찾을 수 있도록 각 모델에 번호를 매깁니다(예: "(10) or-api/...:free")
 			models_list=$(echo "$models_raw" | awk '{print "(" NR ") " $0}')
 			model_count=$(echo "$models_list" | sed '/^\s*$/d' | wc -l | tr -d ' ')
 
@@ -12149,7 +12149,7 @@ PYTHON_EOF
 
 			echo "1) 플러그인 설치/활성화"
 			echo "2) 플러그인 삭제/비활성화"
-			echo "0) 반품"
+			echo "0) 복귀"
 			read -e -p "작업을 선택하십시오:" plugin_action
 
 			[ "$plugin_action" = "0" ] && break
@@ -12173,7 +12173,7 @@ PYTHON_EOF
 				[ -z "$plugin_id" ] && continue
 
 				if [ "$plugin_action" = "1" ]; then
-					echo "🔍 플러그인 상태 확인:$plugin_id"
+					echo "🔍 플러그인 상태 확인 중:$plugin_id"
 					local plugin_list
 					plugin_list=$(openclaw plugins list 2>/dev/null)
 
@@ -12190,7 +12190,7 @@ PYTHON_EOF
 					fi
 
 					if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_id" ]; then
-						echo "💡 플러그인이 시스템 내장 디렉토리에 존재하는 것을 발견했습니다. 직접 활성화해 보십시오..."
+						echo "💡 시스템 내장 디렉토리에 플러그인이 존재하는 것을 발견했습니다. 직접 활성화해 보세요..."
 						if openclaw plugins enable "$plugin_id"; then
 							sync_openclaw_plugin_allowlist "$plugin_id"
 							success_list="$success_list $plugin_id"
@@ -12277,7 +12277,7 @@ PYTHON_EOF
 
 			echo "1) 설치 기술"
 			echo "2) 스킬 삭제"
-			echo "0) 반품"
+			echo "0) 복귀"
 			read -e -p "작업을 선택하십시오:" skill_action
 
 			[ "$skill_action" = "0" ] && break
@@ -13461,7 +13461,7 @@ EOF
 
 		OPENCLAW_MEMORY_RECOMMEND_REASON=()
 		if [ "$qmd_ok" = "true" ]; then
-			OPENCLAW_MEMORY_RECOMMEND_REASON+=("QMD 사용 가능")
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("QMD 可用")
 		else
 			OPENCLAW_MEMORY_RECOMMEND_REASON+=("QMD가 감지되지 않음")
 		fi
@@ -13587,7 +13587,7 @@ EOF
 		elif command -v wget >/dev/null 2>&1; then
 			wget -qO- https://bun.sh/install | bash
 		else
-			echo "❌ 컬 또는 wget이 감지되지 않아 롤빵을 설치할 수 없습니다."
+			echo "❌ 컬이나 wget이 감지되지 않아 롤빵을 설치할 수 없습니다."
 			return 1
 		fi
 		if [ -d "$HOME/.bun/bin" ]; then
@@ -13732,7 +13732,7 @@ EOF
 			openclaw_memory_config_set "memory.qmd.command" "$OPENCLAW_MEMORY_QMD_PATH"
 			echo "✅ memory.qmd.command에 작성:$OPENCLAW_MEMORY_QMD_PATH"
 		else
-			echo "✅ memory.qmd.command가 정확합니다"
+			echo "✅ memory.qmd.command가 정확합니다."
 		fi
 		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
 			echo "🔥 따뜻한 지수(모델 다운로드 가능)"
@@ -14007,7 +14007,7 @@ EOF
 			echo ""
 			echo "QMD: qmd 명령을 사용하는 경량 인덱스(네트워크 제약 조건에 적합)"
 			echo "로컬: 임베딩 모델 파일에 따라 달라지는 로컬 벡터 검색"
-			echo "자동: 자동 추천(가용성 + 네트워크 감지 기반)"
+			echo "자동: 자동 추천(가용성 + 네트워크 감지 기준)"
 			echo "---------------------------------------"
 			echo "1. QMD 전환(자동 배포/이미 설치된 경우 건너뛰기)"
 			echo "2. 로컬로 전환(자동 배포/이미 설치된 경우 건너뛰기)"
@@ -14190,7 +14190,7 @@ EOF
 				read -e -p "2차 확인: 전체 금액을 사용하려면 강제를 입력하세요(증분하려면 비워 두세요)." confirm_step2
 				if [ "$confirm_step2" = "force" ]; then
 					echo "⚠️ 전체 재구성은 더 철저하지만 시간이 더 오래 걸립니다."
-					echo "권장 사항: 안전한 재구성을 위해 다시 빌드를 입력합니다(인덱스 데이터베이스를 먼저 백업)."
+					echo "권장 사항: 안전한 재구축을 위해 재구축을 입력하세요(인덱스 데이터베이스를 먼저 백업하세요)."
 					read -e -p "세 번째 확인: 재구축을 입력하여 안전한 재구축을 수행합니다. 수직력을 계속하려면 Enter를 누르십시오." confirm_step3
 					if [ "$confirm_step3" = "rebuild" ]; then
 						openclaw_memory_rebuild_index_all
@@ -14413,160 +14413,175 @@ except Exception:
 PY
 	}
 
-		openclaw_permission_render_status() {
-		local config_file mode
-		config_file=$(openclaw_permission_config_file)
-		mode=$(openclaw_permission_detect_mode)
-		echo "구성 파일:$config_file"
-		[ ! -s "$config_file" ] && echo "⚠️ OpenClaw 구성 파일을 찾을 수 없습니다(아직 초기화되지 않았을 수 있음)."
-		echo "현재 모드:$mode"
-		echo "---------------------------------------"
-
-		# Python을 사용하여 모든 권한 필드를 한 번에 효율적으로 구문 분석
-		python3 - "$config_file" <<'PY'
-import json, sys
-def get_val(obj, path, default="(unset)"):
-    parts = path.split('.')
-    for p in parts:
-        if isinstance(obj, dict) and p in obj: obj = obj[p]
-        else: return default
-    if isinstance(obj, (list, dict)): return json.dumps(obj)
-    return str(obj)
-
+		openclaw_permission_update_exec_approvals() {
+		local sec="$1"
+		local ask="$2"
+		local fallback="$3"
+		local approvals_file="$HOME/.openclaw/exec-approvals.json"
+		
+		mkdir -p "$HOME/.openclaw"
+		
+		# Python 보안 업데이트를 사용하거나 exec-approvals.json을 생성하세요.
+		python3 -c "
+import json, sys, os
+path = sys.argv[1]
 try:
-    with open(sys.argv[1], 'r') as f: data = json.load(f)
-    fields = [
-        ("tools.profile", "tools.profile"),
-        ("tools.allow", "tools.allow"),
-        ("tools.deny", "tools.deny"),
-        ("tools.byProvider", "tools.byProvider"),
-        ("tools.exec.security", "tools.exec.security"),
-        ("tools.exec.ask", "tools.exec.ask"),
-        ("tools.elevated.enabled", "tools.elevated.enabled"),
-        ("commands.bash", "commands.bash"),
-        ("applyPatch.enabled", "tools.exec.applyPatch.enabled"),
-        ("applyPatch.workspaceOnly", "tools.exec.applyPatch.workspaceOnly")
-    ]
-    for label, path in fields:
-        val = get_val(data, path)
-        print("%-28s %s" % (label, val))
-except Exception as e:
-    print("❌ 구성 파일 구문 분석 실패: %s" % e)
-PY
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+    else:
+        data = {'version': 1, 'defaults': {}}
+except Exception:
+    data = {'version': 1, 'defaults': {}}
+
+if 'defaults' not in data:
+    data['defaults'] = {}
+
+data['defaults']['security'] = sys.argv[2]
+data['defaults']['ask'] = sys.argv[3]
+data['defaults']['askFallback'] = sys.argv[4]
+data['defaults']['autoAllowSkills'] = True
+
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+" "$approvals_file" "$sec" "$ask" "$fallback"
+	}
+
+	openclaw_permission_render_status() {
+		echo "애플리케이션 계층 구성: ~/.openclaw/openclaw.json"
+		echo "호스트 승인: ~/.openclaw/exec-approvals.json"
+		echo "---------------------------------------"
+		local current_profile=$(openclaw config get tools.profile 2>/dev/null)
+		local sec_val
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			sec_val=$(python3 -c "import json, sys; print(json.load(open('$HOME/.openclaw/exec-approvals.json')).get('defaults', {}).get('security', 'unset'))" 2>/dev/null || echo "unset")
+		else
+			sec_val="unset"
+		fi
+
+		local current_mode="알 수 없음/커스텀"
+		if [ "$current_profile" = "coding" ] && [ "$sec_val" = "allowlist" ]; then
+			current_mode="\033[1;32m표준 안전 모드\033[0m"
+		elif [ "$current_profile" = "full" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;31m완전 개방 모드\033[0m"
+		elif [ "$current_profile" = "coding" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;33m향상된 모드 개발\033[0m"
+		elif [ -z "$current_profile" ] && [ "$sec_val" = "unset" ]; then
+			current_mode="\033[1;36m공식 샌드박스가 진실을 말해줍니다\033[0m"
+		fi
+		echo -e "현재 포괄적인 보안 수준:${current_mode}"
+		echo "---------------------------------------"
+		echo -e "${gl_huang}[애플리케이션 레이어 도구 정책 현황]${gl_bai}"
+		openclaw config get tools.profile 2>/dev/null | sed 's/^/ 프로필(기본값): /' || echo "  Profile: (unset)"
+		openclaw config get tools.exec.security 2>/dev/null | sed 's/^/ 실행 제한: /' || echo "실행 한도: (설정되지 않음)"
+		openclaw config get tools.exec.ask 2>/dev/null | sed 's/^/ 승인 메시지: /' || echo "승인 메시지: (설정되지 않음)"
+		openclaw config get tools.elevated.enabled 2>/dev/null | sed 's/^/ 권한 상승 스위치: /' || echo "권한 에스컬레이션 스위치: (설정되지 않음)"
+		
+		echo -e "\n${gl_huang}[기본 Exec 승인 상태]${gl_bai}"
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			python3 -c "
+import json, sys
+try:
+    with open('$HOME/.openclaw/exec-approvals.json') as f:
+        d = json.load(f).get('defaults', {})
+        print('차단 전략(보안):' + str(d.get('security', '(unset)')))
+        print('신속한 전략(질문):' + str(d.get('ask', '(unset)')))
+        print('UI 커버 없음(AskFallback):' + str(d.get('askFallback', '(unset)')))
+except Exception:
+    print('(구성 파일 구문 분석 실패)')
+"
+		else
+			echo "(구성되지 않음, 시스템에 내장된 보안 정책을 강제로 사용함)"
+		fi
 	}
 
 	openclaw_permission_apply_standard() {
 		send_stats "OpenClaw 권한 - 표준 보안 모드"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled false || failed=1
-		openclaw config set commands.bash false || failed=1
-		openclaw config set tools.exec.applyPatch.enabled false || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 전환 실패: 쓰기 권한 구성 중 오류가 발생했습니다."
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 구성이 작성되었지만 다시 시작에 실패했습니다. 수동으로 실행하십시오: openclaw Gateway restart"
-			return 1
-		fi
-		echo "✅ 표준 안전 모드로 전환됨"
+		
+		echo "애플리케이션 레이어 정책 구성 중..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled false >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval true >/dev/null 2>&1  # 拦截危险的内联代码
+		openclaw config unset commands.bash >/dev/null 2>&1 # 废弃旧版参数
+		
+		echo "호스트 승인 차단 구성 중..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 표준 안전 모드로 전환(위험한 명령은 모두 UI/TG를 통해 승인을 요청합니다)${gl_bai}"
 	}
 
 	openclaw_permission_apply_developer() {
 		send_stats "OpenClaw 권한 - 개발 강화 모드"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 전환 실패: 쓰기 권한 구성 중 오류가 발생했습니다."
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 구성이 작성되었지만 다시 시작에 실패했습니다. 수동으로 실행하십시오: openclaw Gateway restart"
-			return 1
-		fi
-		echo "✅ 개발 강화 모드로 전환됨"
+		
+		echo "애플리케이션 레이어 정책 구성 중..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1 # 允许智能体申请提权
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "호스트 승인 차단 구성 중..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 개발 강화 모드로 전환(권한 상승은 허용되지만, 일반적으로 위험한 명령은 여전히 ​​승인이 필요함)${gl_bai}"
 	}
 
 	openclaw_permission_apply_full() {
 		send_stats "OpenClaw 권한 - 완전 개방 모드"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile full || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security full || failed=1
-		openclaw config set tools.exec.ask off || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 전환 실패: 쓰기 권한 구성 중 오류가 발생했습니다."
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 구성이 작성되었지만 다시 시작에 실패했습니다. 수동으로 실행하십시오: openclaw Gateway restart"
-			return 1
-		fi
-		echo "✅ 완전 개방 모드로 전환됨"
+		
+		echo "애플리케이션 레이어 정책 구성 중..."
+		openclaw config set tools.profile full >/dev/null 2>&1
+		openclaw config set tools.exec.security full >/dev/null 2>&1
+		openclaw config set tools.exec.ask off >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "호스트 차단 방어 붕괴…"
+		# 여기서 전체 및 해제는 기본 호스트의 실행 승인 시스템을 완전히 우회합니다.
+		openclaw_permission_update_exec_approvals "full" "off" "full"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 완전 개방 모드로 전환되었습니다. (경고: 모든 호스트 명령 차단이 만료되었으며 에이전트는 가장 높은 권한을 가집니다.)${gl_bai}"
 	}
 
 	openclaw_permission_restore_official_defaults() {
 		send_stats "OpenClaw 권한-공식 기본값 복원"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw_permission_unset_optional tools.profile || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw_permission_unset_optional tools.deny || failed=1
-		openclaw_permission_unset_optional tools.exec.security || failed=1
-		openclaw_permission_unset_optional tools.exec.ask || failed=1
-		openclaw_permission_unset_optional tools.elevated.enabled || failed=1
-		openclaw_permission_unset_optional commands.bash || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.enabled || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.workspaceOnly || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 복구 실패: 명시적 권한 재정의를 정리하는 동안 오류가 발생했습니다."
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 구성이 작성되었지만 다시 시작에 실패했습니다. 수동으로 실행하십시오: openclaw Gateway restart"
-			return 1
-		fi
-		echo "✅ OpenClaw 공식 기본 전략으로 되돌림(명시적 재정의 삭제)"
+		
+		echo "깨끗한 애플리케이션 레이어 힘 범위..."
+		openclaw config unset tools.profile >/dev/null 2>&1
+		openclaw config unset tools.exec.security >/dev/null 2>&1
+		openclaw config unset tools.exec.ask >/dev/null 2>&1
+		openclaw config unset tools.elevated.enabled >/dev/null 2>&1
+		openclaw config unset tools.exec.strictInlineEval >/dev/null 2>&1
+		
+		echo "호스트 차단 구성을 정리합니다..."
+		rm -f "$HOME/.openclaw/exec-approvals.json"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ OpenClaw 공식 보안 샌드박스 방어 메커니즘으로 복귀${gl_bai}"
 	}
 
 	openclaw_permission_run_audit() {
-		send_stats "OpenClaw 권한-보안 감사"
-		openclaw_permission_require_openclaw || return 1
+		echo "======================================="
+		echo "공식 OpenClaw 보안 감사를 실행하고 물리적..."
+		echo "======================================="
 		openclaw security audit
+		echo "---------------------------------------"
+		read -e -p "발견된 보안 취약점을 자동으로 해결하려고 합니까? (예/아니요):" fix_choice
+		if [[ "$fix_choice" == "y" || "$fix_choice" == "Y" || "$fix_choice" == "yes" ]]; then
+			openclaw security audit --fix
+			echo -e "${gl_lv}✅ 자동 복구가 완료되었습니다.${gl_bai}"
+		fi
+		echo "돌아가려면 아무 키나 누르세요..."
+		read -n 1 -s
 	}
 
 	openclaw_permission_menu() {
@@ -14574,46 +14589,45 @@ PY
 		while true; do
 			clear
 			echo "======================================="
-			echo "OpenClaw 권한 관리"
+			echo "OpenClaw 권한 관리(이중 레이어 아키텍처 심층 적응)"
 			echo "======================================="
 			openclaw_permission_render_status
 			echo "---------------------------------------"
-			echo "1. 표준 안전 모드로 전환(권장)"
-			echo "2. 개발 강화 모드로 전환"
-			echo "3. 완전 개방 모드로 전환(고위험)"
-			echo "4. 공식 기본 전략 복원"
-			echo "5. 보안 감사 실행"
-			echo "0. 이전 레벨로 돌아갑니다"
+			echo -e "${gl_kjlan}1.${gl_bai}표준보안모드로 전환(일일권장, 팝업카드 승인)"
+			echo -e "${gl_kjlan}2.${gl_bai}개발 강화 모드로 전환(에이전트가 권한 승격을 신청할 수 있도록 허용)"
+			echo -e "${gl_kjlan}3.${gl_bai}완전 개방 모드로 전환(${gl_hong}위험! 모든 호스트 차단을 완전히 제거합니다.${gl_bai}）"
+			echo -e "${gl_kjlan}4.${gl_bai}공식 기본 샌드박스 방어 전략 복원"
+			echo -e "${gl_kjlan}5.${gl_bai}기본 보안 감사 및 자동 복구 실행"
+			echo -e "${gl_kjlan}0.${gl_bai}이전 레벨로 돌아가기"
 			echo "---------------------------------------"
 			read -e -p "선택사항을 입력하세요:" perm_choice
 			case "$perm_choice" in
 				1)
-					echo "적용 예정: 표준 보안 모드"
+					echo "적용 준비: 표준 안전 모드"
 					read -e -p "확인하려면 yes를 입력하세요." confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_standard || echo "취소"
 					break_end
 					;;
 				2)
-					echo "적용 예정: 개발 강화 모드"
+					echo "앱 준비: 고급 모드 개발"
 					read -e -p "확인하려면 yes를 입력하세요." confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_developer || echo "취소"
 					break_end
 					;;
 				3)
-					echo "⚠️ 완전 개방 모드는 exec 승인을 끄고 권한 상승 및 bash를 활성화하며 신뢰할 수 있는 단일 사용자 환경에만 권장됩니다."
+					echo -e "${gl_hong}⚠️ 완전 개방 모드는 실행 승인을 완전히 무너뜨리고 고위험 코드를 자동으로 공개합니다.${gl_bai}"
 					read -e -p "계속하려면 FULL을 입력하여 확인하세요." confirm
 					[ "$confirm" = "FULL" ] && openclaw_permission_apply_full || echo "취소"
 					break_end
 					;;
 				4)
-					echo "정리 스크립트로 작성된 명시적 권한을 재정의하여 공식 OpenClaw 기본 정책으로 되돌립니다."
+					echo "모든 사용자 정의 재정의가 지워지고 OpenClaw를 처음 설치할 때 엄격한 샌드박스 상태로 복원됩니다."
 					read -e -p "확인하려면 yes를 입력하세요." confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_restore_official_defaults || echo "취소"
 					break_end
 					;;
 				5)
 					openclaw_permission_run_audit
-					break_end
 					;;
 				0)
 					return 0
@@ -14904,7 +14918,7 @@ for idx,item in enumerate(bindings,1):
 	}
 
 	openclaw_multiagent_remove_binding() {
-		send_stats "OpenClaw 다중 에이전트 - 라우팅 바인딩 제거"
+		send_stats "OpenClaw 다중 에이전트 - 경로 바인딩 제거"
 		openclaw_multiagent_require_openclaw || return 1
 		local agent_id bind_value confirm
 		read -e -p "상담원 ID를 입력하세요:" agent_id
@@ -15213,7 +15227,7 @@ openclaw_backup_restore_menu() {
 				openclaw onboard --install-daemon
 				break_end
 				;;
-			12) send_stats "상태 감지 및 수리"
+			12) send_stats "상태 감지 및 복구"
 				openclaw doctor --fix
 				send_stats "OpenClaw API 동기식 트리거링"
 				if sync_openclaw_api_models; then
@@ -15279,7 +15293,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}파고다 패널 공식 버전${gl_kjlan}2.   ${color2}aaPanel Pagoda 국제 버전"
 	  echo -e "${gl_kjlan}3.   ${color3}1패널 차세대 관리 패널${gl_kjlan}4.   ${color4}NginxProxyManager 시각화 패널"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList 다중 저장소 파일 목록 프로그램${gl_kjlan}6.   ${color6}Ubuntu 원격 데스크톱 웹 버전"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList 다중 저장소 파일 목록 프로그램${gl_kjlan}6.   ${color6}Ubuntu 원격 데스크톱 웹 에디션"
 	  echo -e "${gl_kjlan}7.   ${color7}나타 프로브 VPS 모니터링 패널${gl_kjlan}8.   ${color8}QB 오프라인 BT 자기 다운로드 패널"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io 메일 서버 프로그램${gl_kjlan}10.  ${color10}RocketChat 다자간 온라인 채팅 시스템"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -15319,7 +15333,7 @@ while true; do
 	  echo -e "${gl_kjlan}67.  ${color67}ddns-go 동적 DNS 관리 도구${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${color68}AllinSSL 인증서 관리 플랫폼"
 	  echo -e "${gl_kjlan}69.  ${color69}SFTPGo 파일 전송 도구${gl_kjlan}70.  ${color70}AstrBot 챗봇 프레임워크"
 	  echo -e "${gl_kjlan}-------------------------"
-	  echo -e "${gl_kjlan}71.  ${color71}Navidrome 개인 음악 서버${gl_kjlan}72.  ${color72}비트워드 비밀번호 관리자${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}71.  ${color71}Navidrome 개인 음악 서버${gl_kjlan}72.  ${color72}비트워든 비밀번호 관리자${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}73.  ${color73}LibreTV 개인 영화${gl_kjlan}74.  ${color74}MoonTV 개인 영화"
 	  echo -e "${gl_kjlan}75.  ${color75}멜로디 음악 마법사${gl_kjlan}76.  ${color76}온라인 DOS 오래된 게임"
 	  echo -e "${gl_kjlan}77.  ${color77}Thunder 오프라인 다운로드 도구${gl_kjlan}78.  ${color78}PandaWiki 지능형 문서 관리 시스템"
@@ -15339,7 +15353,7 @@ while true; do
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}101. ${color101}AI 영상 생성 도구${gl_kjlan}102. ${color102}VoceChat 다자간 온라인 채팅 시스템"
 	  echo -e "${gl_kjlan}103. ${color103}Umami 웹사이트 통계 도구${gl_kjlan}104. ${color104}스트림 4계층 프록시 전달 도구"
-	  echo -e "${gl_kjlan}105. ${color105}쓰위안 노트${gl_kjlan}106. ${color106}Drawix 오픈 소스 화이트보드 도구"
+	  echo -e "${gl_kjlan}105. ${color105}쓰위안 노트${gl_kjlan}106. ${color106}Drawnix 오픈 소스 화이트보드 도구"
 	  echo -e "${gl_kjlan}107. ${color107}PanSou 네트워크 디스크 검색${gl_kjlan}108. ${color108}LangBot 챗봇"
 	  echo -e "${gl_kjlan}109. ${color109}ZFile 온라인 네트워크 디스크${gl_kjlan}110. ${color110}Karakeep 북마크 관리"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -15649,7 +15663,7 @@ while true; do
 			check_docker_image_update $docker_name
 
 			clear
-			echo -e "우정$check_docker $update_status"
+			echo -e "우편 서비스$check_docker $update_status"
 			echo "poste.io는 오픈 소스 메일 서버 솔루션입니다."
 			echo "영상 소개: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 
@@ -17082,7 +17096,7 @@ while true; do
 
 		local app_id="60"
 		local app_name="JumpServer 오픈 소스 요새 머신"
-		local app_text="오픈소스 권한 있는 액세스 관리(PAM) 도구입니다. 이 프로그램은 포트 80을 사용하며 액세스를 위한 도메인 이름 추가를 지원하지 않습니다."
+		local app_text="오픈소스 PAM(Privileged Access Management) 도구입니다. 이 프로그램은 포트 80을 사용하며 액세스를 위한 도메인 이름 추가를 지원하지 않습니다."
 		local app_url="공식 소개:${gh_https_url}github.com/jumpserver/jumpserver"
 		local docker_name="jms_web"
 		local docker_port="80"
@@ -19126,7 +19140,7 @@ linux_work() {
 	  echo -e "${gl_kjlan}2.   ${gl_bai}작업 영역 2"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}작업 영역 3"
 	  echo -e "${gl_kjlan}4.   ${gl_bai}작업 영역 4"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}작업 공간 5번"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}작업 영역 5"
 	  echo -e "${gl_kjlan}6.   ${gl_bai}작업 영역 6"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}작업 영역 7"
 	  echo -e "${gl_kjlan}8.   ${gl_bai}작업 영역 8"
@@ -19524,7 +19538,7 @@ log_menu() {
 		case $choice in
 			1)
 				send_stats "최근 로그 보기"
-				read -erp "최근 로그 줄을 몇 개나 보셨나요? [기본값 100]:" lines
+				read -erp "가장 최근 로그 줄을 보시겠습니까? [기본값 100]:" lines
 				lines=${lines:-100}
 				journalctl -n "$lines" --no-pager
 				read -erp "계속하려면 Enter를 누르세요..."
@@ -19573,7 +19587,7 @@ log_menu() {
 				echo "⚠️ 일지를 청소하세요(안전한 방법)"
 				echo "1) 최근 7일을 보관"
 				echo "2) 최근 3일을 보관한다"
-				echo "3) 최대 로그 크기를 500M로 제한하십시오."
+				echo "3) 최대 로그 크기를 500M로 제한합니다."
 				read -erp "청소 방법을 선택하세요:" c
 				case $c in
 					1) journalctl --vacuum-time=7d ;;
@@ -19679,7 +19693,7 @@ env_menu() {
 		echo "=========== 시스템 환경 변수 관리 =========="
 		echo "현재 사용자:$USER"
 		echo "--------------------------------------"
-		echo "1. 현재 일반적으로 사용되는 환경변수를 확인하세요."
+		echo "1. 현재 일반적으로 사용되는 환경변수를 확인한다"
 		echo "2. ~/.bashrc 보기"
 		echo "3. ~/.profile 보기"
 		echo "4. ~/.bashrc 편집"
@@ -19798,7 +19812,7 @@ linux_Settings() {
 	  echo -e "시스템 도구"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}스크립트 시작 단축키 설정${gl_kjlan}2.   ${gl_bai}로그인 비밀번호 변경"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}사용자 비밀번호 로그인 모드${gl_kjlan}4.   ${gl_bai}지정된 버전의 Python 설치"
+	  echo -e "${gl_kjlan}3.   ${gl_bai}사용자 비밀번호 로그인 모드${gl_kjlan}4.   ${gl_bai}지정된 Python 버전을 설치합니다."
 	  echo -e "${gl_kjlan}5.   ${gl_bai}모든 포트 열기${gl_kjlan}6.   ${gl_bai}SSH 연결 포트 수정"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}DNS 주소 최적화${gl_kjlan}8.   ${gl_bai}한 번의 클릭으로 시스템을 다시 설치${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}ROOT 계정을 비활성화하고 새 계정을 만듭니다.${gl_kjlan}10.  ${gl_bai}우선 순위 ipv4/ipv6 전환"
@@ -20099,7 +20113,7 @@ EOF
 
 				case "$choice" in
 				  1)
-					send_stats "1G 가상 메모리가 설정되었습니다."
+					send_stats "1G 가상 메모리가 설정되었습니다"
 					add_swap 1024
 
 					;;
@@ -20283,7 +20297,7 @@ EOF
 				echo "유럽"
 				echo "11. 영국 런던 시간 12. 프랑스 파리 시간"
 				echo "13. 독일 베를린 시간 14. 러시아 모스크바 시간"
-				echo "15. 네덜란드 유트라흐트 시간 16. 스페인 마드리드 시간"
+				echo "15. 네덜란드 위트라흐트 시간 16. 스페인 마드리드 시간"
 				echo "------------------------"
 				echo "미국"
 				echo "21. 미국 서부 시간 22. 미국 동부 시간"
@@ -21164,7 +21178,7 @@ run_commands_on_servers() {
 		local username=${SERVER_ARRAY[i+3]}
 		local password=${SERVER_ARRAY[i+4]}
 		echo
-		echo -e "${gl_huang}연결 대상$name ($hostname)...${gl_bai}"
+		echo -e "${gl_huang}연결하다$name ($hostname)...${gl_bai}"
 		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 	done
@@ -21315,7 +21329,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 월 6.9달러 도쿄 소프트뱅크 2코어 1G 메모리 20G 하드드라이브 월 1T 트래픽${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}더 인기 있는 VPS 거래${gl_bai}"
+echo -e "${gl_kjlan}더 인기 있는 VPS 혜택${gl_bai}"
 echo -e "${gl_bai}홈페이지: https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -21598,7 +21612,7 @@ echo "k 포트 닫기 gbdk 7800 |k 포트 7800 닫기"
 echo "릴리스 IP k fxip 127.0.0.0/8 |k 릴리스 IP 127.0.0.0/8"
 echo "IP 차단 k zzip 177.5.25.36 |k IP 177.5.25.36 차단"
 echo "명령 즐겨찾기 k 즐겨찾기 | k 명령 즐겨찾기"
-echo "애플리케이션 시장관리 kapp"
+echo "애플리케이션 시장 관리 k app"
 echo "신청번호의 빠른 관리 k app 26 | k 앱 1패널 | k 앱 npm"
 echo "Fail2ban 관리 k Fail2ban | 케이 F2B"
 echo "시스템 정보 표시 k 정보"

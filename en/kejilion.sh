@@ -2318,7 +2318,7 @@ check_nginx_compression() {
 
 	# Check whether zstd is on and uncommented (the whole line starts with zstd on;)
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status="zstd compression is enabled"
+		zstd_status="zstd compression is on"
 	else
 		zstd_status=""
 	fi
@@ -2936,7 +2936,7 @@ while true; do
 			rm -f /home/docker/${docker_name}_port.conf
 
 			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 			send_stats "uninstall$docker_name"
 			;;
 
@@ -3215,7 +3215,7 @@ f2b_sshd() {
 
 # Basic parameter configuration: ban duration (bantime), time window (findtime), number of retries (maxretry)
 # illustrate:
-# - Prioritize writing to /etc/fail2ban/jail.d/sshd.local (overrides the default jail configuration and is not easy to lose when upgrading)
+# - Prioritize writing to /etc/fail2ban/jail.d/sshd.local (overwrites the default jail configuration and is not easy to lose when upgrading)
 # - If it is Alpine and the jail names are different, still write sshd.local; Fail2Ban will match according to the jail name.
 f2b_basic_config() {
 	root_use
@@ -3596,7 +3596,7 @@ ldnmp_Proxy_backend() {
 list_stream_services() {
 
 	STREAM_DIR="/home/web/stream.d"
-	printf "%-25s %-18s %-25s %-20s\n" "Service name" "Communication type" "local address" "Backend address"
+	printf "%-25s %-18s %-25s %-20s\n" "Service name" "Communication type" "Local address" "Backend address"
 
 	if [ -z "$(ls -A "$STREAM_DIR")" ]; then
 		return
@@ -4386,7 +4386,7 @@ frps_panel() {
 				close_port 8055 8056
 
 				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-				echo "App has been uninstalled"
+				echo "App uninstalled"
 				;;
 			5)
 				echo "Reverse intranet penetration service into domain name access"
@@ -4483,7 +4483,7 @@ frpc_panel() {
 				close_port 8055
 
 				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-				echo "App has been uninstalled"
+				echo "App uninstalled"
 				;;
 
 			4)
@@ -5088,7 +5088,7 @@ fetch_github_ssh_keys() {
 	local base_dir="${2:-$HOME}"
 
 	echo "Before proceeding, make sure you have added your SSH public key to your GitHub account:"
-	echo "1. Log in${gh_https_url}github.com/settings/keys"
+	echo "1. Login${gh_https_url}github.com/settings/keys"
 	echo "2. Click New SSH key or Add SSH key"
 	echo "3. Title can be filled in as desired (for example: Home Laptop 2026)"
 	echo "4. Paste the contents of the local public key (usually the entire contents of ~/.ssh/id_ed25519.pub or id_rsa.pub) into the Key field"
@@ -7091,7 +7091,7 @@ mount_partition() {
 		return 1
 	fi
 
-	echo "Partition successfully mounted to$MOUNT_POINT"
+	echo "The partition was successfully mounted to$MOUNT_POINT"
 
 	# Check /etc/fstab to see if the UUID or mount point already exists
 	if grep -qE "UUID=$UUID|[[:space:]]$MOUNT_POINT[[:space:]]" /etc/fstab; then
@@ -8238,7 +8238,7 @@ docker_ssh_migration() {
 
 		echo -e "${gl_huang}Transferring backup...${gl_bai}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# Log in with key
+			# Log in using key
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -10339,7 +10339,7 @@ for name, provider in list(providers.items()):
     model_list = provider.get('models', [])
 
     if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
-        summary.append(f'ℹ️ Skip {name}: None baseUrl/apiKey/models')
+        summary.append(f'ℹ️ 跳过 {name}: 无 baseUrl/apiKey/models')
         continue
 
     if api not in SUPPORTED_APIS:
@@ -12149,7 +12149,7 @@ PYTHON_EOF
 
 			echo "1) Install/enable plugin"
 			echo "2) Delete/disable plugins"
-			echo "0) Return"
+			echo "0) return"
 			read -e -p "Please select an action:" plugin_action
 
 			[ "$plugin_action" = "0" ] && break
@@ -12277,7 +12277,7 @@ PYTHON_EOF
 
 			echo "1) Installation skills"
 			echo "2) Delete skills"
-			echo "0) Return"
+			echo "0) return"
 			read -e -p "Please select an action:" skill_action
 
 			[ "$skill_action" = "0" ] && break
@@ -14113,7 +14113,7 @@ EOF
 			start_line=1
 		fi
 		if [ "$count" -le 0 ]; then
-			echo "❌ Number of rows must be greater than 0."
+			echo "❌ The number of rows must be greater than 0."
 			return 1
 		fi
 		local end_line=$((start_line + count - 1))
@@ -14413,160 +14413,175 @@ except Exception:
 PY
 	}
 
-		openclaw_permission_render_status() {
-		local config_file mode
-		config_file=$(openclaw_permission_config_file)
-		mode=$(openclaw_permission_detect_mode)
-		echo "Configuration file:$config_file"
-		[ ! -s "$config_file" ] && echo "⚠️ OpenClaw configuration file not found (may not have been initialized yet)."
-		echo "Current mode:$mode"
-		echo "---------------------------------------"
-
-		# Use Python to efficiently parse all permission fields at once
-		python3 - "$config_file" <<'PY'
-import json, sys
-def get_val(obj, path, default="(unset)"):
-    parts = path.split('.')
-    for p in parts:
-        if isinstance(obj, dict) and p in obj: obj = obj[p]
-        else: return default
-    if isinstance(obj, (list, dict)): return json.dumps(obj)
-    return str(obj)
-
+		openclaw_permission_update_exec_approvals() {
+		local sec="$1"
+		local ask="$2"
+		local fallback="$3"
+		local approvals_file="$HOME/.openclaw/exec-approvals.json"
+		
+		mkdir -p "$HOME/.openclaw"
+		
+		# Use Python security updates or create exec-approvals.json
+		python3 -c "
+import json, sys, os
+path = sys.argv[1]
 try:
-    with open(sys.argv[1], 'r') as f: data = json.load(f)
-    fields = [
-        ("tools.profile", "tools.profile"),
-        ("tools.allow", "tools.allow"),
-        ("tools.deny", "tools.deny"),
-        ("tools.byProvider", "tools.byProvider"),
-        ("tools.exec.security", "tools.exec.security"),
-        ("tools.exec.ask", "tools.exec.ask"),
-        ("tools.elevated.enabled", "tools.elevated.enabled"),
-        ("commands.bash", "commands.bash"),
-        ("applyPatch.enabled", "tools.exec.applyPatch.enabled"),
-        ("applyPatch.workspaceOnly", "tools.exec.applyPatch.workspaceOnly")
-    ]
-    for label, path in fields:
-        val = get_val(data, path)
-        print("%-28s %s" % (label, val))
-except Exception as e:
-    print("❌ Configuration file parsing failed: %s" % e)
-PY
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+    else:
+        data = {'version': 1, 'defaults': {}}
+except Exception:
+    data = {'version': 1, 'defaults': {}}
+
+if 'defaults' not in data:
+    data['defaults'] = {}
+
+data['defaults']['security'] = sys.argv[2]
+data['defaults']['ask'] = sys.argv[3]
+data['defaults']['askFallback'] = sys.argv[4]
+data['defaults']['autoAllowSkills'] = True
+
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+" "$approvals_file" "$sec" "$ask" "$fallback"
+	}
+
+	openclaw_permission_render_status() {
+		echo "Application layer configuration: ~/.openclaw/openclaw.json"
+		echo "Host approval: ~/.openclaw/exec-approvals.json"
+		echo "---------------------------------------"
+		local current_profile=$(openclaw config get tools.profile 2>/dev/null)
+		local sec_val
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			sec_val=$(python3 -c "import json, sys; print(json.load(open('$HOME/.openclaw/exec-approvals.json')).get('defaults', {}).get('security', 'unset'))" 2>/dev/null || echo "unset")
+		else
+			sec_val="unset"
+		fi
+
+		local current_mode="Unknown / Custom"
+		if [ "$current_profile" = "coding" ] && [ "$sec_val" = "allowlist" ]; then
+			current_mode="\033[1;32mStandard safe mode\033[0m"
+		elif [ "$current_profile" = "full" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;31mFull open mode\033[0m"
+		elif [ "$current_profile" = "coding" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;33mDevelop enhanced mode\033[0m"
+		elif [ -z "$current_profile" ] && [ "$sec_val" = "unset" ]; then
+			current_mode="\033[1;36mThe official sandbox tells the truth\033[0m"
+		fi
+		echo -e "Current comprehensive security level:${current_mode}"
+		echo "---------------------------------------"
+		echo -e "${gl_huang}[Application Layer Tool Policy Status]${gl_bai}"
+		openclaw config get tools.profile 2>/dev/null | sed 's/^/ Profile (default): /' || echo "  Profile: (unset)"
+		openclaw config get tools.exec.security 2>/dev/null | sed 's/^/ Exec limit: /' || echo "Exec limit: (unset)"
+		openclaw config get tools.exec.ask 2>/dev/null | sed 's/^/ Approval prompt: /' || echo "Approval prompt: (unset)"
+		openclaw config get tools.elevated.enabled 2>/dev/null | sed 's/^/ Privilege escalation switch: /' || echo "Privilege escalation switch: (unset)"
+		
+		echo -e "\n${gl_huang}[Underlying Exec Approvals status]${gl_bai}"
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			python3 -c "
+import json, sys
+try:
+    with open('$HOME/.openclaw/exec-approvals.json') as f:
+        d = json.load(f).get('defaults', {})
+        print('Interception strategy (Security):' + str(d.get('security', '(unset)')))
+        print('Prompt strategy (Ask):' + str(d.get('ask', '(unset)')))
+        print('No UI cover (AskFallback):' + str(d.get('askFallback', '(unset)')))
+except Exception:
+    print('(Configuration file parsing failed)')
+"
+		else
+			echo "(Not configured, forced to use the system's built-in security policy)"
+		fi
 	}
 
 	openclaw_permission_apply_standard() {
 		send_stats "OpenClaw Permissions - Standard Security Mode"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled false || failed=1
-		openclaw config set commands.bash false || failed=1
-		openclaw config set tools.exec.applyPatch.enabled false || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ Switching failed: An error occurred during write permission configuration."
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ The configuration has been written, but the restart failed, please execute it manually: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ Switched to standard safety mode"
+		
+		echo "Configuring application layer policy..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled false >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval true >/dev/null 2>&1  # 拦截危险的内联代码
+		openclaw config unset commands.bash >/dev/null 2>&1 # 废弃旧版参数
+		
+		echo "Configuring host approval interception..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ Switched to standard safety mode (all dangerous commands will ask for your approval through UI/TG)${gl_bai}"
 	}
 
 	openclaw_permission_apply_developer() {
 		send_stats "OpenClaw Permissions - Development Enhanced Mode"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ Switching failed: An error occurred during write permission configuration."
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ The configuration has been written, but the restart failed, please execute it manually: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ Switched to development enhancement mode"
+		
+		echo "Configuring application layer policy..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1 # 允许智能体申请提权
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "Configuring host approval interception..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ Switched to development enhancement mode (privilege escalation is allowed, but common dangerous commands still require approval)${gl_bai}"
 	}
 
 	openclaw_permission_apply_full() {
 		send_stats "OpenClaw Permissions - Fully Open Mode"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile full || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security full || failed=1
-		openclaw config set tools.exec.ask off || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ Switching failed: An error occurred during write permission configuration."
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ The configuration has been written, but the restart failed, please execute it manually: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ Switched to fully open mode"
+		
+		echo "Configuring application layer policy..."
+		openclaw config set tools.profile full >/dev/null 2>&1
+		openclaw config set tools.exec.security full >/dev/null 2>&1
+		openclaw config set tools.exec.ask off >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "Disintegrating host interception defense..."
+		# The full and off here will completely bypass the exec approval system of the underlying host.
+		openclaw_permission_update_exec_approvals "full" "off" "full"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ Has been switched to fully open mode (Warning: All host command interceptions have expired, and the agent has the highest permissions)${gl_bai}"
 	}
 
 	openclaw_permission_restore_official_defaults() {
 		send_stats "OpenClaw permissions-restore official default"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw_permission_unset_optional tools.profile || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw_permission_unset_optional tools.deny || failed=1
-		openclaw_permission_unset_optional tools.exec.security || failed=1
-		openclaw_permission_unset_optional tools.exec.ask || failed=1
-		openclaw_permission_unset_optional tools.elevated.enabled || failed=1
-		openclaw_permission_unset_optional commands.bash || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.enabled || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.workspaceOnly || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ Recovery failed: An error occurred while cleaning explicit permission overrides."
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ The configuration has been written, but the restart failed, please execute it manually: openclaw gateway restart"
-			return 1
-		fi
-		echo "✅ Reverted to OpenClaw official default strategy (cleared explicit overrides)"
+		
+		echo "Clean application layer force coverage..."
+		openclaw config unset tools.profile >/dev/null 2>&1
+		openclaw config unset tools.exec.security >/dev/null 2>&1
+		openclaw config unset tools.exec.ask >/dev/null 2>&1
+		openclaw config unset tools.elevated.enabled >/dev/null 2>&1
+		openclaw config unset tools.exec.strictInlineEval >/dev/null 2>&1
+		
+		echo "Clean host interception configuration..."
+		rm -f "$HOME/.openclaw/exec-approvals.json"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ Reverted to OpenClaw official security sandbox defense mechanism${gl_bai}"
 	}
 
 	openclaw_permission_run_audit() {
-		send_stats "OpenClaw Permissions-Security Audit"
-		openclaw_permission_require_openclaw || return 1
+		echo "======================================="
+		echo "Run the official OpenClaw security audit and physical..."
+		echo "======================================="
 		openclaw security audit
+		echo "---------------------------------------"
+		read -e -p "Attempt to automatically remediate discovered security vulnerabilities? (y/n):" fix_choice
+		if [[ "$fix_choice" == "y" || "$fix_choice" == "Y" || "$fix_choice" == "yes" ]]; then
+			openclaw security audit --fix
+			echo -e "${gl_lv}✅ Automatic repair completed.${gl_bai}"
+		fi
+		echo "Press any key to return..."
+		read -n 1 -s
 	}
 
 	openclaw_permission_menu() {
@@ -14574,46 +14589,45 @@ PY
 		while true; do
 			clear
 			echo "======================================="
-			echo "OpenClaw permission management"
+			echo "OpenClaw permission management (dual-layer architecture deep adaptation)"
 			echo "======================================="
 			openclaw_permission_render_status
 			echo "---------------------------------------"
-			echo "1. Switch to standard safe mode (recommended)"
-			echo "2. Switch to development enhancement mode"
-			echo "3. Switch to fully open mode (high risk)"
-			echo "4. Restore official default strategy"
-			echo "5. Run a security audit"
-			echo "0. Return to the previous level"
+			echo -e "${gl_kjlan}1.${gl_bai}Switch to standard security mode (daily recommendations, pop-up card approval)"
+			echo -e "${gl_kjlan}2.${gl_bai}Switch to development enhancement mode (allowing agents to apply for privilege escalation)"
+			echo -e "${gl_kjlan}3.${gl_bai}Switch to fully open mode (${gl_hong}High risk! Completely remove all host interceptions${gl_bai}）"
+			echo -e "${gl_kjlan}4.${gl_bai}Restore the official default sandbox defense strategy"
+			echo -e "${gl_kjlan}5.${gl_bai}Run underlying security audits and automatic repairs"
+			echo -e "${gl_kjlan}0.${gl_bai}Return to previous level"
 			echo "---------------------------------------"
 			read -e -p "Please enter your choice:" perm_choice
 			case "$perm_choice" in
 				1)
-					echo "Will apply: Standard security mode"
+					echo "Prepare to apply: Standard safe mode"
 					read -e -p "Enter yes to confirm:" confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_standard || echo "Canceled"
 					break_end
 					;;
 				2)
-					echo "Will apply: development enhancement mode"
+					echo "Preparing the App: Developing Enhanced Mode"
 					read -e -p "Enter yes to confirm:" confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_developer || echo "Canceled"
 					break_end
 					;;
 				3)
-					echo "⚠️ Fully open mode will turn off exec approval, enable privilege escalation and bash, and is only recommended for trusted single-user environments."
+					echo -e "${gl_hong}⚠️ Fully open mode will completely collapse exec approval and automatically release high-risk code.${gl_bai}"
 					read -e -p "Enter FULL to confirm to continue:" confirm
 					[ "$confirm" = "FULL" ] && openclaw_permission_apply_full || echo "Canceled"
 					break_end
 					;;
 				4)
-					echo "Override explicit permissions written by cleanup scripts, reverting to the official OpenClaw default policy."
+					echo "All custom overrides will be cleared, restoring OpenClaw to its strictly sandboxed state when first installed."
 					read -e -p "Enter yes to confirm:" confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_restore_official_defaults || echo "Canceled"
 					break_end
 					;;
 				5)
 					openclaw_permission_run_audit
-					break_end
 					;;
 				0)
 					return 0
@@ -14904,7 +14918,7 @@ for idx,item in enumerate(bindings,1):
 	}
 
 	openclaw_multiagent_remove_binding() {
-		send_stats "OpenClaw multi-agent - remove routing binding"
+		send_stats "OpenClaw multi-agent - remove route binding"
 		openclaw_multiagent_require_openclaw || return 1
 		local agent_id bind_value confirm
 		read -e -p "Please enter the agent ID:" agent_id
@@ -15279,7 +15293,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}Pagoda panel official version${gl_kjlan}2.   ${color2}aaPanel Pagoda International Version"
 	  echo -e "${gl_kjlan}3.   ${color3}1Panel new generation management panel${gl_kjlan}4.   ${color4}NginxProxyManager visualization panel"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList multi-store file list program${gl_kjlan}6.   ${color6}Ubuntu Remote Desktop Web Version"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList multi-store file list program${gl_kjlan}6.   ${color6}Ubuntu Remote Desktop Web Edition"
 	  echo -e "${gl_kjlan}7.   ${color7}Nezha Probe VPS Monitoring Panel${gl_kjlan}8.   ${color8}QB offline BT magnetic download panel"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io mail server program${gl_kjlan}10.  ${color10}RocketChat multi-person online chat system"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -15649,7 +15663,7 @@ while true; do
 			check_docker_image_update $docker_name
 
 			clear
-			echo -e "postal service$check_docker $update_status"
+			echo -e "postal services$check_docker $update_status"
 			echo "poste.io is an open source mail server solution,"
 			echo "Video introduction: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 
@@ -15753,7 +15767,7 @@ while true; do
 					rm -rf /home/docker/mail
 
 					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-					echo "App has been uninstalled"
+					echo "App uninstalled"
 					;;
 
 				*)
@@ -15807,7 +15821,7 @@ while true; do
 			docker rm -f db
 			docker rmi -f mongo:latest
 			rm -rf /home/docker/mongo
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -15905,7 +15919,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/cloud/ && docker compose down --rmi all
 			rm -rf /home/docker/cloud
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -16791,7 +16805,7 @@ while true; do
 			docker rmi -f grafana/grafana:latest
 
 			rm -rf /home/docker/monitoring
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -17018,7 +17032,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/dify/docker/ && docker compose down --rmi all
 			rm -rf /home/docker/dify
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -17070,7 +17084,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/new-api/ && docker compose down --rmi all
 			rm -rf /home/docker/new-api
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -17111,7 +17125,7 @@ while true; do
 			cd /opt
 			rm -rf jumpserver-installer*/
 			rm -rf jumpserver
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -17174,7 +17188,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/ragflow/docker/ && docker compose down --rmi all
 			rm -rf /home/docker/ragflow
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -17388,7 +17402,7 @@ while true; do
 
 		}
 
-		local docker_describe="Is a lightweight, high-performance music streaming server"
+		local docker_describe="It is a lightweight, high-performance music streaming server"
 		local docker_url="Official website introduction: https://www.navidrome.org/"
 		local docker_use=""
 		local docker_passwd=""
@@ -17502,7 +17516,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/moontv/ && docker compose down --rmi all
 			rm -rf /home/docker/moontv
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -17723,7 +17737,7 @@ while true; do
 		  docker_app_uninstall() {
 			  cd /home/docker/linkwarden && docker compose down --rmi all
 			  rm -rf /home/docker/linkwarden
-			  echo "App has been uninstalled"
+			  echo "App uninstalled"
 		  }
 
 		  docker_app_plus
@@ -17773,7 +17787,7 @@ while true; do
 			  cd "$(ls -dt */ | head -n 1)"
 			  docker compose down --rmi all
 			  rm -rf /home/docker/jitsi
-			  echo "App has been uninstalled"
+			  echo "App uninstalled"
 		  }
 
 		  docker_app_plus
@@ -17909,7 +17923,7 @@ while true; do
 		  docker_app_uninstall() {
 			  cd /home/docker/${docker_name} && docker compose down --rmi all
 			  rm -rf /home/docker/${docker_name}
-			  echo "App has been uninstalled"
+			  echo "App uninstalled"
 		  }
 
 		  docker_app_plus
@@ -18136,7 +18150,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/gitea/ && docker compose down --rmi all
 			rm -rf /home/docker/gitea
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -18274,7 +18288,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/paperless/ && docker compose down --rmi all
 			rm -rf /home/docker/paperless
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -18328,7 +18342,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/2fauth/ && docker compose down --rmi all
 			rm -rf /home/docker/2fauth
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -18561,7 +18575,7 @@ while true; do
 		docker_app_uninstall() {
 			cd /home/docker/dsm/ && docker compose down --rmi all
 			rm -rf /home/docker/dsm
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -18632,7 +18646,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
 			rm -rf /home/docker/MoneyPrinterTurbo
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -18701,7 +18715,7 @@ while true; do
 		docker_app_uninstall() {
 			cd  /home/docker/umami/ && docker compose down --rmi all
 			rm -rf /home/docker/umami
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -18842,7 +18856,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		docker_app_uninstall() {
 			cd  /home/docker/LangBot/docker/ && docker compose down --rmi all
 			rm -rf /home/docker/LangBot
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -18912,7 +18926,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		docker_app_uninstall() {
 			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
 			rm -rf /home/docker/karakeep
-			echo "App has been uninstalled"
+			echo "App uninstalled"
 		}
 
 		docker_app_plus
@@ -19126,7 +19140,7 @@ linux_work() {
 	  echo -e "${gl_kjlan}2.   ${gl_bai}Work Area 2"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}Work Area 3"
 	  echo -e "${gl_kjlan}4.   ${gl_bai}Work Area 4"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}Workspace No. 5"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}Work Area 5"
 	  echo -e "${gl_kjlan}6.   ${gl_bai}Work Area 6"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}Work Area 7"
 	  echo -e "${gl_kjlan}8.   ${gl_bai}Work Area 8"
@@ -19524,7 +19538,7 @@ log_menu() {
 		case $choice in
 			1)
 				send_stats "View recent logs"
-				read -erp "How many recent log lines have you viewed? [Default 100]:" lines
+				read -erp "View the most recent log lines? [Default 100]:" lines
 				lines=${lines:-100}
 				journalctl -n "$lines" --no-pager
 				read -erp "Press Enter to continue..."
@@ -19869,7 +19883,7 @@ linux_Settings() {
 			echo "python version management"
 			echo "Video introduction: https://www.bilibili.com/video/BV1Pm42157cK?t=0.1"
 			echo "---------------------------------------"
-			echo "This function can seamlessly install any version officially supported by python!"
+			echo "This function can seamlessly install any version officially supported by Python!"
 			local VERSION=$(python3 -V 2>&1 | awk '{print $2}')
 			echo -e "Current python version number:${gl_huang}$VERSION${gl_bai}"
 			echo "------------"
@@ -21164,7 +21178,7 @@ run_commands_on_servers() {
 		local username=${SERVER_ARRAY[i+3]}
 		local password=${SERVER_ARRAY[i+4]}
 		echo
-		echo -e "${gl_huang}Connect to$name ($hostname)...${gl_bai}"
+		echo -e "${gl_huang}connect to$name ($hostname)...${gl_bai}"
 		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 	done
@@ -21315,7 +21329,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 6.9 dollars per month Tokyo Softbank 2 cores 1G memory 20G hard drive 1T traffic per month${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}More popular VPS deals${gl_bai}"
+echo -e "${gl_kjlan}More popular VPS offers${gl_bai}"
 echo -e "${gl_bai}Website: https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""

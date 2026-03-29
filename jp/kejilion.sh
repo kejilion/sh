@@ -254,7 +254,7 @@ remove() {
 	fi
 
 	for package in "$@"; do
-		echo -e "${gl_kjlan}アンインストール中$package...${gl_bai}"
+		echo -e "${gl_kjlan}アンインストールする$package...${gl_bai}"
 		if command -v dnf &>/dev/null; then
 			dnf remove -y "$package"
 		elif command -v yum &>/dev/null; then
@@ -924,12 +924,12 @@ allow_ip() {
 		# 許可ルールを追加する
 		if ! iptables -C INPUT -s $ip -j ACCEPT 2>/dev/null; then
 			iptables -I INPUT 1 -s $ip -j ACCEPT
-			echo "リリースされたIP$ip"
+			echo "リリース済みIP$ip"
 		fi
 	done
 
 	save_iptables_rules
-	send_stats "リリースされたIP"
+	send_stats "リリース済みIP"
 }
 
 block_ip() {
@@ -1985,7 +1985,7 @@ nginx_br() {
 		sed -i '/brotli_types/,+6 s/^\(\s*\)#\s*/\1/' /home/web/nginx.conf
 
 	elif [ "$mode" == "off" ]; then
-		# ブロトリを閉じる: コメントを追加
+		# Brotliを閉じる: コメントを追加
 		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 
@@ -2231,10 +2231,10 @@ web_security() {
 					  ;;
 
 				  22)
-					  send_stats "高負荷で5秒シールド可能"
+					  send_stats "高負荷により5秒シールドが可能"
 					  echo -e "${gl_huang}Web サイトは 5 分ごとに自動的に検出します。高負荷を検出すると自動的にシールドが開き、低負荷を検出すると5秒間自動的にシールドが閉じます。${gl_bai}"
 					  echo "--------------"
-					  echo "CF パラメータを取得します。"
+					  echo "CFパラメータを取得します。"
 					  echo -e "cf バックエンドの右上隅にある私のプロフィールに移動し、左側で API トークンを選択して、${gl_huang}Global API Key${gl_bai}"
 					  echo -e "cf バックエンド ドメイン名の概要ページの右下に移動して取得します。${gl_huang}エリアID${gl_bai}"
 					  echo "https://dash.cloudflare.com/login"
@@ -2318,7 +2318,7 @@ check_nginx_compression() {
 
 	# zstd がオンでコメントが解除されているかどうかを確認します (行全体が zstd on で始まります)。
 	if grep -qE '^\s*zstd\s+on;' "$CONFIG_FILE"; then
-		zstd_status="zstd圧縮が有効になっています"
+		zstd_status="zstd圧縮がオンになっています"
 	else
 		zstd_status=""
 	fi
@@ -2555,7 +2555,7 @@ check_docker_image_update() {
 		# --- シナリオ A: GitHub (ghcr.io) 上のミラー ---
 		# ウェアハウスのパスを抽出します (例: ghcr.io/onexru/oneimg -> onexru/oneimg)
 		local repo_path=$(echo "$full_image_name" | sed 's/ghcr.io\///' | cut -d':' -f1)
-		# 注: ghcr.io の API は比較的複雑です。通常、最も早い方法は、GitHub リポジトリのリリースを確認することです。
+		# 注: ghcr.io の API は比較的複雑です。通常、最も早い方法は、GitHub リポジトリのリリースを確認することです
 		local api_url="https://api.github.com/repos/$repo_path/releases/latest"
 		local remote_date=$(curl -s "$api_url" | jq -r '.published_at' 2>/dev/null)
 
@@ -2614,7 +2614,7 @@ block_container_port() {
 		iptables -I DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
 
-	# ローカルネットワーク127.0.0.0/8を確認して許可します。
+	# ローカルネットワーク127.0.0.0/8をチェックして許可します。
 	if ! iptables -C DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -I DOCKER-USER -p tcp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	fi
@@ -2631,7 +2631,7 @@ block_container_port() {
 		iptables -I DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
 
-	# ローカルネットワーク127.0.0.0/8を確認して許可します。
+	# ローカルネットワーク127.0.0.0/8をチェックして許可します。
 	if ! iptables -C DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -I DOCKER-USER -p udp -s 127.0.0.0/8 -d "$container_ip" -j ACCEPT
 	fi
@@ -3215,7 +3215,7 @@ f2b_sshd() {
 
 # 基本パラメータ設定: 禁止期間 (bantime)、時間枠 (findtime)、再試行回数 (maxretry)
 # 例証します:
-# - /etc/fail2ban/jail.d/sshd.local への書き込みを優先します (デフォルトのjail設定をオーバーライドし、アップグレード時に失われにくくなります)
+# - /etc/fail2ban/jail.d/sshd.local への書き込みを優先します (デフォルトのjail設定を上書きし、アップグレード時に失われにくくなります)
 # - Alpine で、jail 名が異なる場合でも、sshd.local と書き込みます。 Fail2Ban は、jail 名に従って一致します。
 f2b_basic_config() {
 	root_use
@@ -3284,7 +3284,7 @@ f2b_edit_config() {
 	[ -f "$cfg" ] || printf "[sshd]\n# bantime/findtime/maxretry\n" > "$cfg"
 
 	nano "$cfg"
-	echo -e "${gl_lv}保存されました${gl_bai}、fail2ban をリロードしています..."
+	echo -e "${gl_lv}保存されました${gl_bai}、fail2ban をリロード中..."
 	fail2ban-client reload >/dev/null 2>&1 || true
 }
 
@@ -3690,7 +3690,7 @@ stream_panel() {
 			4)
 				ldnmp_Proxy_backend_stream
 				add_app_id
-				send_stats "レイヤ 4 プロキシを追加する"
+				send_stats "レイヤー 4 プロキシを追加する"
 				;;
 			5)
 				send_stats "転送設定の編集"
@@ -3746,7 +3746,7 @@ ldnmp_Proxy_backend_stream() {
 		*) echo "無効な選択"; return 1 ;;
 	esac
 
-	read -e -p "1 つ以上のバックエンド IP + ポートをスペースで区切って入力してください (例: 10.13.0.2:3306 10.13.0.3:3306):" reverseproxy_port
+	read -e -p "1 つ以上のバックエンド IP + ポートをスペースで区切って入力してください (例: 10.13.0.2:3306 10.13.0.3:3306)。" reverseproxy_port
 
 	nginx_install_status
 	cd /home && mkdir -p web/stream.d
@@ -4304,7 +4304,7 @@ generate_access_urls() {
 			done
 		fi
 
-		# HTTPS 構成の処理
+		# HTTPS 構成を処理する
 		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
 				local frps_search_pattern="${ipv4_address}:${port}"
@@ -4409,7 +4409,7 @@ frps_panel() {
 
 			8)
 				send_stats "IPアクセスをブロックする"
-				echo "ドメイン名アクセスを逆にしている場合は、この機能を使用して IP+ポート アクセスをブロックすることができ、より安全になります。"
+				echo "ドメイン名アクセスを反転している場合は、この機能を使用して IP+ポート アクセスをブロックすることができ、より安全です。"
 				read -e -p "ブロックするポートを入力してください:" frps_port
 				block_host_port "$frps_port" "$ipv4_address"
 				;;
@@ -4773,7 +4773,7 @@ linux_clean() {
 
 bbr_on() {
 
-# カーネル チューニング モジュールとの競合を防ぐための sysctl.d への書き込みを統合しました。
+# カーネルチューニングモジュールとの競合を防ぐためのsysctl.dへの書き込みを統合
 local CONF="/etc/sysctl.d/99-kejilion-bbr.conf"
 mkdir -p /etc/sysctl.d
 echo "net.core.default_qdisc=fq" > "$CONF"
@@ -5468,7 +5468,7 @@ dd_xitong() {
 				;;
 
 			  30)
-				send_stats "CentOS9を再インストールする"
+				send_stats "centos9を再インストールする"
 				dd_xitong_3
 				bash reinstall.sh centos 9
 				reboot
@@ -5802,7 +5802,7 @@ elrepo() {
 		  echo "ビデオ紹介: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"
 		  echo "------------------------------------------------"
 		  echo "Red Hat シリーズのディストリビューション CentOS/RedHat/Alma/Rocky/oracle のみをサポートします"
-		  echo "Linux カーネルをアップグレードすると、システムのパフォーマンスとセキュリティが向上します。可能であれば試して、慎重に実稼働環境をアップグレードすることをお勧めします。"
+		  echo "Linux カーネルをアップグレードすると、システムのパフォーマンスとセキュリティが向上します。可能であれば試してみて、慎重に実稼働環境をアップグレードすることをお勧めします。"
 		  echo "------------------------------------------------"
 		  read -e -p "続行してもよろしいですか? (はい/いいえ):" choice
 
@@ -5850,7 +5850,7 @@ clamav_scan() {
 		MOUNT_PARAMS+="--mount type=bind,source=${dir},target=/mnt/host${dir} "
 	done
 
-	# clamscan コマンドのパラメータを構築する
+	# clamscan コマンドパラメータを構築する
 	local SCAN_PARAMS=""
 	for dir in "$@"; do
 		SCAN_PARAMS+="/mnt/host${dir} "
@@ -6279,7 +6279,7 @@ Kernel_optimize() {
 	root_use
 	while true; do
 	  clear
-	  send_stats "Linux カーネルのチューニング管理"
+	  send_stats "Linuxカーネルチューニング管理"
 	  local current_mode=$(grep "^# モード:" /etc/sysctl.d/99-kejilion-optimize.conf 2>/dev/null | sed 's/# モード: //' | awk -F'|' '{print $1}' | xargs)
 	  [ -z "$current_mode" ] && [ -f /etc/sysctl.d/99-network-optimize.conf ] && current_mode="オートチューニングモード"
 	  echo "Linuxシステムのカーネルパラメータの最適化"
@@ -6421,7 +6421,7 @@ while true; do
   case $choice in
 	  1)
 		  update_locale "en_US.UTF-8" "en_US.UTF-8"
-		  send_stats "英語に切り替えてください"
+		  send_stats "英語に切り替えて"
 		  ;;
 	  2)
 		  update_locale "zh_CN.UTF-8" "zh_CN.UTF-8"
@@ -6726,7 +6726,7 @@ linux_backup() {
 			3) delete_backup ;;
 			*) break ;;
 		esac
-		read -e -p "Enter を押して続行します..."
+		read -e -p "続行するには Enter キーを押してください..."
 	done
 }
 
@@ -7049,7 +7049,7 @@ list_partitions() {
 
 # 永続的にマウントされたパーティション
 mount_partition() {
-	send_stats "パーティションをマウントする"
+	send_stats "パーティションのマウント"
 	read -e -p "マウントするパーティションの名前を入力してください (例: sda1):" PARTITION
 
 	DEVICE="/dev/$PARTITION"
@@ -7091,7 +7091,7 @@ mount_partition() {
 		return 1
 	fi
 
-	echo "パーティションが正常にマウントされました$MOUNT_POINT"
+	echo "パーティションは正常にマウントされました$MOUNT_POINT"
 
 	# /etc/fstab をチェックして、UUID またはマウント ポイントがすでに存在するかどうかを確認します。
 	if grep -qE "UUID=$UUID|[[:space:]]$MOUNT_POINT[[:space:]]" /etc/fstab; then
@@ -7226,7 +7226,7 @@ disk_manager() {
 			5) check_partition ;;
 			*) break ;;
 		esac
-		read -e -p "Enter を押して続行します..."
+		read -e -p "続行するには Enter キーを押してください..."
 	done
 }
 
@@ -7395,7 +7395,7 @@ run_task() {
 
 # スケジュールされたタスクを作成する
 schedule_task() {
-	send_stats "同期のスケジュールされたタスクを追加する"
+	send_stats "同期スケジュールされたタスクを追加する"
 
 	read -e -p "定期的に同期するタスク番号を入力してください:" num
 	if ! [[ "$num" =~ ^[0-9]+$ ]]; then
@@ -7485,7 +7485,7 @@ rsync_manager() {
 			0) break ;;
 			*) echo "選択が無効です。もう一度お試しください。" ;;
 		esac
-		read -e -p "Enter を押して続行します..."
+		read -e -p "続行するには Enter キーを押してください..."
 	done
 }
 
@@ -7667,7 +7667,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}btop 最新の監視ツール${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}レンジャーファイル管理ツール"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}ncdu ディスク使用量表示ツール${gl_kjlan}14.  ${gl_bai}fzf グローバル検索ツール"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}vim テキストエディタ${gl_kjlan}16.  ${gl_bai}ナノテキストエディタ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}git バージョン管理システム${gl_kjlan}18.  ${gl_bai}opencode AIプログラミングアシスタント${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}17.  ${gl_bai}git バージョン管理システム${gl_kjlan}18.  ${gl_bai}opencode AI プログラミング アシスタント${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}マトリックス スクリーンセーバー${gl_kjlan}22.  ${gl_bai}走る電車のスクリーンセーバー"
 	  echo -e "${gl_kjlan}26.  ${gl_bai}テトリスのミニゲーム${gl_kjlan}27.  ${gl_bai}ヘビのミニゲーム"
@@ -7727,7 +7727,7 @@ linux_tools() {
 			  install iftop
 			  clear
 			  iftop
-			  send_stats "iftop をインストールする"
+			  send_stats "iftopをインストールする"
 			  ;;
 			7)
 			  clear
@@ -7785,7 +7785,7 @@ linux_tools() {
 			  clear
 			  ncdu
 			  cd ~
-			  send_stats "ncduをインストールする"
+			  send_stats "ncdu をインストールする"
 			  ;;
 			14)
 			  clear
@@ -8029,7 +8029,7 @@ docker_ssh_migration() {
 			docker inspect "$c" > "$inspect_file"
 
 			if is_compose_container "$c"; then
-				echo -e "${gl_kjlan}検出されました$cdocker-composeコンテナです${gl_bai}"
+				echo -e "${gl_kjlan}検出されました$cdocker-compose コンテナーです${gl_bai}"
 				local project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
 				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
@@ -8206,7 +8206,7 @@ docker_ssh_migration() {
 
 		[[ "$has_container" == false ]] && echo -e "${gl_huang}共通コンテナのバックアップ情報が見つかりません${gl_bai}"
 
-		# /home/docker 下のファイルを復元する
+		# /home/docker 下のファイルを復元します
 		if [ -f "$BACKUP_DIR/home_docker_files.tar.gz" ]; then
 			echo -e "${gl_kjlan}/home/docker の下にファイルを復元しています...${gl_bai}"
 			mkdir -p /home/docker
@@ -8238,7 +8238,7 @@ docker_ssh_migration() {
 
 		echo -e "${gl_huang}バックアップを転送中...${gl_bai}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# キーでログイン
+			# キーを使用してログインする
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -8455,7 +8455,7 @@ linux_docker() {
 				  echo ""
 				  echo "ボリューム操作"
 				  echo "------------------------"
-				  echo "1. 新しいボリュームを作成する"
+				  echo "1. 新しいボリュームを作成します"
 				  echo "2. 指定したボリュームを削除します"
 				  echo "3. すべてのボリュームを削除します"
 				  echo "------------------------"
@@ -9181,7 +9181,7 @@ linux_ldnmp() {
 	  echo "バックエンドのログイン パス: /admin"
 	  echo "------------------------"
 	  echo "ユーザー名: 管理者"
-	  echo "パスワード: 管理者"
+	  echo "密码: admin"
 	  echo "------------------------"
 	  echo "ログイン時に右上隅に赤色の error0 が表示される場合は、次のコマンドを使用してください。"
 	  echo "私も、なぜユニコーンナンバーカードがこんなに面倒で、問題が多いのか、とても腹が立っています。"
@@ -10598,7 +10598,7 @@ EOF
 		local config_file
 		config_file=$(openclaw_get_config_file)
 
-		# API プロトコルを自動的に検出/修正しなくなりました。ユーザー設定を維持します
+		# API プロトコルを自動的に検出/修正しなくなりました。ユーザー構成を維持します
 		DETECTED_API="openai-completions"
 
 		[[ -f "$config_file" ]] && cp "$config_file" "${config_file}.bak.$(date +%s)"
@@ -10764,7 +10764,7 @@ EOF
 
 		# 5. デフォルトのモデルを選択します
 		echo
-		read -erp "デフォルトのモデル ID (またはシリアル番号。最初のものを使用する場合は空白のままにします) を入力してください。" input_model
+		read -erp "デフォルトのモデル ID (またはシリアル番号、最初のものを使用する場合は空白のままにしておきます) を入力してください:" input_model
 
 		if [[ -z "$input_model" && -n "$available_models" ]]; then
 			default_model=$(echo "$available_models" | head -1)
@@ -11154,7 +11154,7 @@ PY2
 	local rc=$?
 	case "$rc" in
 		0)
-			echo "✅ 同期実行完了"
+			echo "✅ 同期実行が完了しました"
 			start_gateway
 			;;
 		2)
@@ -11201,7 +11201,7 @@ fix-openclaw-provider-protocol-interactive() {
 		return 1
 	fi
 
-	echo "設定したい API タイプを選択してください:"
+	echo "セットアップする API タイプを選択してください:"
 	echo "1. openai-completions"
 	echo "2. openai-responses"
 	read -erp "選択肢を入力してください (1/2):" proto_choice
@@ -11480,7 +11480,7 @@ PY
 	}
 
 	openclaw_api_manage_menu() {
-		send_stats "OpenClaw APIの入口"
+		send_stats "OpenClaw APIの入り口"
 		while true; do
 			clear
 			echo "======================================="
@@ -12238,7 +12238,7 @@ PYTHON_EOF
 			[ -n "$skipped_list" ] && echo "⏭️スキップ:$skipped_list"
 
 			if [ "$changed" = true ]; then
-				echo "🔄 変更をロードするために OpenClaw サービスを再起動しています..."
+				echo "🔄 OpenClaw サービスを再起動して変更をロードしています..."
 				start_gateway
 			fi
 			break_end
@@ -12247,7 +12247,7 @@ PYTHON_EOF
 
 
 	install_skill() {
-		send_stats "スキル管理"
+		send_stats "スキルマネジメント"
 		while true; do
 			clear
 			echo "========================================"
@@ -12356,7 +12356,7 @@ PYTHON_EOF
 			[ -n "$skipped_list" ] && echo "⏭️スキップ:$skipped_list"
 
 			if [ "$changed" = true ]; then
-				echo "🔄 変更をロードするために OpenClaw サービスを再起動しています..."
+				echo "🔄 OpenClaw サービスを再起動して変更をロードしています..."
 				start_gateway
 			fi
 			break_end
@@ -13682,7 +13682,7 @@ EOF
 			echo "考えられるトラフィック/ディスク使用量: 実際の状況によって異なります"
 		fi
 		echo "確認後、自動的にインストール/ダウンロード、構成の書き込み、インデックスの構築、ゲートウェイの再起動が行われます。"
-		echo "詳細オプション: config を入力して構成のみを書き込みます (インストールなし、ダウンロードなし、インデックス作成なし、再起動なし)。"
+		echo "詳細オプション: config と入力して構成のみを書き込みます (インストールなし、ダウンロードなし、インデックス作成なし、再起動なし)。"
 		read -e -p "続行することを確認するには「yes」と入力します (デフォルトは N):" confirm_step
 		case "$confirm_step" in
 			yes|YES)
@@ -13871,7 +13871,7 @@ EOF
 		while true; do
 			clear
 			echo "======================================="
-			echo "メモリソリューションの自動展開"
+			echo "メモリソリューションの自動導入"
 			echo "======================================="
 			echo "1. QMD"
 			echo "2. Local"
@@ -14094,7 +14094,7 @@ EOF
 		local default_lines=120
 		local start_line count
 		echo "書類：$file"
-		echo "合計行数:$total_lines"
+		echo "総行数:$total_lines"
 		read -e -p "開始行を入力してください (Enter キーを押すとデフォルトで行の終わりになります)$default_linesわかりました）：" start_line
 		read -e -p "表示する行数を入力してください (デフォルトでは Enter キーを押します)$default_lines）: " count
 		[ -z "$count" ] && count=$default_lines
@@ -14413,160 +14413,175 @@ except Exception:
 PY
 	}
 
-		openclaw_permission_render_status() {
-		local config_file mode
-		config_file=$(openclaw_permission_config_file)
-		mode=$(openclaw_permission_detect_mode)
-		echo "設定ファイル:$config_file"
-		[ ! -s "$config_file" ] && echo "⚠️ OpenClaw 設定ファイルが見つかりません (まだ初期化されていない可能性があります)。"
-		echo "現在のモード:$mode"
-		echo "---------------------------------------"
-
-		# Python を使用してすべての権限フィールドを一度に効率的に解析する
-		python3 - "$config_file" <<'PY'
-import json, sys
-def get_val(obj, path, default="(unset)"):
-    parts = path.split('.')
-    for p in parts:
-        if isinstance(obj, dict) and p in obj: obj = obj[p]
-        else: return default
-    if isinstance(obj, (list, dict)): return json.dumps(obj)
-    return str(obj)
-
+		openclaw_permission_update_exec_approvals() {
+		local sec="$1"
+		local ask="$2"
+		local fallback="$3"
+		local approvals_file="$HOME/.openclaw/exec-approvals.json"
+		
+		mkdir -p "$HOME/.openclaw"
+		
+		# Python セキュリティ更新プログラムを使用するか、exec-approvals.json を作成します。
+		python3 -c "
+import json, sys, os
+path = sys.argv[1]
 try:
-    with open(sys.argv[1], 'r') as f: data = json.load(f)
-    fields = [
-        ("tools.profile", "tools.profile"),
-        ("tools.allow", "tools.allow"),
-        ("tools.deny", "tools.deny"),
-        ("tools.byProvider", "tools.byProvider"),
-        ("tools.exec.security", "tools.exec.security"),
-        ("tools.exec.ask", "tools.exec.ask"),
-        ("tools.elevated.enabled", "tools.elevated.enabled"),
-        ("commands.bash", "commands.bash"),
-        ("applyPatch.enabled", "tools.exec.applyPatch.enabled"),
-        ("applyPatch.workspaceOnly", "tools.exec.applyPatch.workspaceOnly")
-    ]
-    for label, path in fields:
-        val = get_val(data, path)
-        print("%-28s %s" % (label, val))
-except Exception as e:
-    print("❌ 構成ファイルの解析に失敗しました: %s" % e)
-PY
+    if os.path.exists(path):
+        with open(path, 'r') as f:
+            data = json.load(f)
+    else:
+        data = {'version': 1, 'defaults': {}}
+except Exception:
+    data = {'version': 1, 'defaults': {}}
+
+if 'defaults' not in data:
+    data['defaults'] = {}
+
+data['defaults']['security'] = sys.argv[2]
+data['defaults']['ask'] = sys.argv[3]
+data['defaults']['askFallback'] = sys.argv[4]
+data['defaults']['autoAllowSkills'] = True
+
+with open(path, 'w') as f:
+    json.dump(data, f, indent=2)
+" "$approvals_file" "$sec" "$ask" "$fallback"
+	}
+
+	openclaw_permission_render_status() {
+		echo "アプリケーション層の構成: ~/.openclaw/openclaw.json"
+		echo "ホストの承認: ~/.openclaw/exec-approvals.json"
+		echo "---------------------------------------"
+		local current_profile=$(openclaw config get tools.profile 2>/dev/null)
+		local sec_val
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			sec_val=$(python3 -c "import json, sys; print(json.load(open('$HOME/.openclaw/exec-approvals.json')).get('defaults', {}).get('security', 'unset'))" 2>/dev/null || echo "unset")
+		else
+			sec_val="unset"
+		fi
+
+		local current_mode="不明 / カスタム"
+		if [ "$current_profile" = "coding" ] && [ "$sec_val" = "allowlist" ]; then
+			current_mode="\033[1;32m標準セーフモード\033[0m"
+		elif [ "$current_profile" = "full" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;31m全開モード\033[0m"
+		elif [ "$current_profile" = "coding" ] && [ "$sec_val" = "full" ]; then
+			current_mode="\033[1;33m開発拡張モード\033[0m"
+		elif [ -z "$current_profile" ] && [ "$sec_val" = "unset" ]; then
+			current_mode="\033[1;36m公式サンドボックスが真実を語る\033[0m"
+		fi
+		echo -e "現在の包括的なセキュリティ レベル:${current_mode}"
+		echo "---------------------------------------"
+		echo -e "${gl_huang}[アプリケーション層ツールのポリシーのステータス]${gl_bai}"
+		openclaw config get tools.profile 2>/dev/null | sed 's/^/ プロファイル (デフォルト): /' || echo "  Profile: (unset)"
+		openclaw config get tools.exec.security 2>/dev/null | sed 's/^/ 実行制限: /' || echo "実行制限: (未設定)"
+		openclaw config get tools.exec.ask 2>/dev/null | sed 's/^/ 承認プロンプト: /' || echo "承認プロンプト: (未設定)"
+		openclaw config get tools.elevated.enabled 2>/dev/null | sed 's/^/ 権限昇格スイッチ: /' || echo "権限昇格スイッチ: (未設定)"
+		
+		echo -e "\n${gl_huang}[基本的な幹部の承認ステータス]${gl_bai}"
+		if [ -f "$HOME/.openclaw/exec-approvals.json" ]; then
+			python3 -c "
+import json, sys
+try:
+    with open('$HOME/.openclaw/exec-approvals.json') as f:
+        d = json.load(f).get('defaults', {})
+        print('傍受戦略 (セキュリティ):' + str(d.get('security', '(unset)')))
+        print('即時戦略 (質問):' + str(d.get('ask', '(unset)')))
+        print('UI カバーなし (AskFallback):' + str(d.get('askFallback', '(unset)')))
+except Exception:
+    print('(設定ファイルの解析に失敗しました)')
+"
+		else
+			echo "(未構成。システムの組み込みセキュリティ ポリシーの使用が強制されます)"
+		fi
 	}
 
 	openclaw_permission_apply_standard() {
 		send_stats "OpenClaw 権限 - 標準セキュリティ モード"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled false || failed=1
-		openclaw config set commands.bash false || failed=1
-		openclaw config set tools.exec.applyPatch.enabled false || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 切り替え失敗：書き込み権限の設定中にエラーが発生しました。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 設定は書き込まれましたが、再起動に失敗しました。手動で実行してください: openclaw ゲートウェイの再起動"
-			return 1
-		fi
-		echo "✅ 標準の安全モードに切り替えられました"
+		
+		echo "アプリケーション層ポリシーを構成しています..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled false >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval true >/dev/null 2>&1  # 拦截危险的内联代码
+		openclaw config unset commands.bash >/dev/null 2>&1 # 废弃旧版参数
+		
+		echo "ホスト承認インターセプトを構成しています..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 標準セーフティモードに切り替えられました (すべての危険なコマンドは UI/TG を通じて承認を求めます)${gl_bai}"
 	}
 
 	openclaw_permission_apply_developer() {
 		send_stats "OpenClaw 権限 - 開発拡張モード"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile coding || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security allowlist || failed=1
-		openclaw config set tools.exec.ask on-miss || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 切り替え失敗：書き込み権限の設定中にエラーが発生しました。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 設定は書き込まれましたが、再起動に失敗しました。手動で実行してください: openclaw ゲートウェイの再起動"
-			return 1
-		fi
-		echo "✅ 開発強化モードに切り替えました"
+		
+		echo "アプリケーション層ポリシーを構成しています..."
+		openclaw config set tools.profile coding >/dev/null 2>&1
+		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
+		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1 # 允许智能体申请提权
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "ホスト承認インターセプトを構成しています..."
+		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 開発拡張モードに切り替えました (権限昇格は許可されていますが、一般的な危険なコマンドには引き続き承認が必要です)${gl_bai}"
 	}
 
 	openclaw_permission_apply_full() {
 		send_stats "OpenClaw 権限 - 完全オープン モード"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw config set tools.profile full || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw config set tools.deny '[]' --json || failed=1
-		openclaw config set tools.exec.security full || failed=1
-		openclaw config set tools.exec.ask off || failed=1
-		openclaw config set tools.elevated.enabled true || failed=1
-		openclaw config set commands.bash true || failed=1
-		openclaw config set tools.exec.applyPatch.enabled true || failed=1
-		openclaw config set tools.exec.applyPatch.workspaceOnly true || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 切り替え失敗：書き込み権限の設定中にエラーが発生しました。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 設定は書き込まれましたが、再起動に失敗しました。手動で実行してください: openclaw ゲートウェイの再起動"
-			return 1
-		fi
-		echo "✅ 全開モードに切り替えました"
+		
+		echo "アプリケーション層ポリシーを構成しています..."
+		openclaw config set tools.profile full >/dev/null 2>&1
+		openclaw config set tools.exec.security full >/dev/null 2>&1
+		openclaw config set tools.exec.ask off >/dev/null 2>&1
+		openclaw config set tools.elevated.enabled true >/dev/null 2>&1
+		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
+		
+		echo "ホストの迎撃防御が崩壊中..."
+		# ここでの full と off は、基礎となるホストの実行承認システムを完全にバイパスします。
+		openclaw_permission_update_exec_approvals "full" "off" "full"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ 完全オープン モードに切り替えられています (警告: すべてのホスト コマンドのインターセプトの有効期限が切れており、エージェントには最高の権限が与えられています)${gl_bai}"
 	}
 
 	openclaw_permission_restore_official_defaults() {
 		send_stats "OpenClaw 権限 - 公式のデフォルトに戻す"
 		openclaw_permission_require_openclaw || return 1
-		openclaw_permission_backup_current || true
-		local failed=0
-		openclaw_permission_unset_optional tools.profile || failed=1
-		openclaw_permission_unset_optional tools.byProvider || failed=1
-		openclaw_permission_unset_optional tools.allow || failed=1
-		openclaw_permission_unset_optional tools.deny || failed=1
-		openclaw_permission_unset_optional tools.exec.security || failed=1
-		openclaw_permission_unset_optional tools.exec.ask || failed=1
-		openclaw_permission_unset_optional tools.elevated.enabled || failed=1
-		openclaw_permission_unset_optional commands.bash || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.enabled || failed=1
-		openclaw_permission_unset_optional tools.exec.applyPatch.workspaceOnly || failed=1
-		if [ "$failed" -ne 0 ]; then
-			echo "❌ 回復に失敗しました: 明示的なアクセス許可のオーバーライドをクリーニング中にエラーが発生しました。"
-			openclaw_permission_restore_backup || true
-			return 1
-		fi
-		if ! openclaw_permission_restart_gateway; then
-			echo "⚠️ 設定は書き込まれましたが、再起動に失敗しました。手動で実行してください: openclaw ゲートウェイの再起動"
-			return 1
-		fi
-		echo "✅ OpenClaw 公式のデフォルト戦略に戻しました (明示的なオーバーライドをクリアしました)"
+		
+		echo "クリーンなアプリケーション層の適用範囲を強化します..."
+		openclaw config unset tools.profile >/dev/null 2>&1
+		openclaw config unset tools.exec.security >/dev/null 2>&1
+		openclaw config unset tools.exec.ask >/dev/null 2>&1
+		openclaw config unset tools.elevated.enabled >/dev/null 2>&1
+		openclaw config unset tools.exec.strictInlineEval >/dev/null 2>&1
+		
+		echo "クリーンなホストインターセプト構成..."
+		rm -f "$HOME/.openclaw/exec-approvals.json"
+		
+		openclaw_permission_restart_gateway
+		echo -e "${gl_lv}✅ OpenClaw 公式セキュリティ サンドボックス防御メカニズムに戻しました${gl_bai}"
 	}
 
 	openclaw_permission_run_audit() {
-		send_stats "OpenClaw 権限 - セキュリティ監査"
-		openclaw_permission_require_openclaw || return 1
+		echo "======================================="
+		echo "公式の OpenClaw セキュリティ監査と物理的な監査を実行します。"
+		echo "======================================="
 		openclaw security audit
+		echo "---------------------------------------"
+		read -e -p "発見されたセキュリティ脆弱性を自動的に修復してみますか? (y/n):" fix_choice
+		if [[ "$fix_choice" == "y" || "$fix_choice" == "Y" || "$fix_choice" == "yes" ]]; then
+			openclaw security audit --fix
+			echo -e "${gl_lv}✅ 自動修復が完了しました。${gl_bai}"
+		fi
+		echo "戻るには任意のキーを押してください..."
+		read -n 1 -s
 	}
 
 	openclaw_permission_menu() {
@@ -14574,46 +14589,45 @@ PY
 		while true; do
 			clear
 			echo "======================================="
-			echo "OpenClaw権限管理"
+			echo "OpenClaw 権限管理 (デュアルレイヤー アーキテクチャの高度な適応)"
 			echo "======================================="
 			openclaw_permission_render_status
 			echo "---------------------------------------"
-			echo "1.標準のセーフモードに切り替える（推奨）"
-			echo "2. 開発強化モードに切り替える"
-			echo "3. 全開モードへの切り替え（高リスク）"
-			echo "4. 公式のデフォルト戦略を復元する"
-			echo "5. セキュリティ監査を実行する"
-			echo "0. 前のレベルに戻ります"
+			echo -e "${gl_kjlan}1.${gl_bai}標準セキュリティ モードに切り替える (毎日の推奨事項、ポップアップ カードの承認)"
+			echo -e "${gl_kjlan}2.${gl_bai}開発拡張モードに切り替える (エージェントが権限昇格を申請できるようにする)"
+			echo -e "${gl_kjlan}3.${gl_bai}全開モードに切り替えます（${gl_hong}ハイリスク！すべてのホストインターセプトを完全に削除します${gl_bai}）"
+			echo -e "${gl_kjlan}4.${gl_bai}公式のデフォルトのサンドボックス防御戦略を復元する"
+			echo -e "${gl_kjlan}5.${gl_bai}基盤となるセキュリティ監査と自動修復を実行する"
+			echo -e "${gl_kjlan}0.${gl_bai}前のレベルに戻る"
 			echo "---------------------------------------"
 			read -e -p "選択肢を入力してください:" perm_choice
 			case "$perm_choice" in
 				1)
-					echo "適用: 標準セキュリティ モード"
+					echo "適用の準備: 標準セーフ モード"
 					read -e -p "確認するには「yes」と入力します。" confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_standard || echo "キャンセル"
 					break_end
 					;;
 				2)
-					echo "適用される: 開発拡張モード"
+					echo "アプリの準備: 拡張モードの開発"
 					read -e -p "確認するには「yes」と入力します。" confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_apply_developer || echo "キャンセル"
 					break_end
 					;;
 				3)
-					echo "⚠️ フルオープン モードは実行承認をオフにし、特権エスカレーションと bash を有効にし、信頼できるシングルユーザー環境にのみ推奨されます。"
+					echo -e "${gl_hong}⚠️ フルオープンモードでは、実行承認が完全に崩壊し、高リスクコードが自動的にリリースされます。${gl_bai}"
 					read -e -p "続行することを確認するには「FULL」と入力します。" confirm
 					[ "$confirm" = "FULL" ] && openclaw_permission_apply_full || echo "キャンセル"
 					break_end
 					;;
 				4)
-					echo "クリーンアップ スクリプトによって書き込まれた明示的なアクセス許可をオーバーライドし、公式の OpenClaw デフォルト ポリシーに戻します。"
+					echo "すべてのカスタム オーバーライドがクリアされ、OpenClaw が最初にインストールされたときの厳密にサンドボックス化された状態に戻ります。"
 					read -e -p "確認するには「yes」と入力します。" confirm
 					[ "$confirm" = "yes" ] && openclaw_permission_restore_official_defaults || echo "キャンセル"
 					break_end
 					;;
 				5)
 					openclaw_permission_run_audit
-					break_end
 					;;
 				0)
 					return 0
@@ -14904,13 +14918,13 @@ for idx,item in enumerate(bindings,1):
 	}
 
 	openclaw_multiagent_remove_binding() {
-		send_stats "OpenClaw マルチエージェント - ルーティング バインディングの削除"
+		send_stats "OpenClaw マルチエージェント - ルート バインディングの削除"
 		openclaw_multiagent_require_openclaw || return 1
 		local agent_id bind_value confirm
 		read -e -p "エージェント ID を入力してください:" agent_id
 		read -e -p "削除するルート バインディング値を入力してください:" bind_value
 		{ [ -z "$agent_id" ] || [ -z "$bind_value" ]; } && echo "キャンセル: パラメータを空にすることはできません。" && return 1
-		echo "エージェントを削除します [$agent_id] ルート バインディング [$bind_value]"
+		echo "エージェントを削除します [$agent_id]ルートバインディング[$bind_value]"
 		read -e -p "続行することを確認するには「yes」と入力します。" confirm
 		[ "$confirm" = "yes" ] || { echo "キャンセル"; return 1; }
 		if openclaw agents unbind --agent "$agent_id" --bind "$bind_value"; then
@@ -15049,7 +15063,7 @@ openclaw_backup_restore_menu() {
 	}
 
 	nano_openclaw_json() {
-		send_stats "OpenClaw 設定ファイルを編集する"
+		send_stats "OpenClaw 構成ファイルを編集する"
 		install nano
 		nano "$(openclaw_get_config_file)"
 		start_gateway
@@ -15209,7 +15223,7 @@ openclaw_backup_restore_menu() {
 			8) install_plugin ;;
 			9) install_skill ;;
 			10) nano_openclaw_json ;;
-			11) send_stats "初期設定ウィザード"
+			11) send_stats "初期構成ウィザード"
 				openclaw onboard --install-daemon
 				break_end
 				;;
@@ -15279,7 +15293,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}パゴダパネル正式版${gl_kjlan}2.   ${color2}aaPanel パゴダ国際版"
 	  echo -e "${gl_kjlan}3.   ${color3}1Panel 新世代管理パネル${gl_kjlan}4.   ${color4}NginxProxyManager 視覚化パネル"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList マルチストア ファイル リスト プログラム${gl_kjlan}6.   ${color6}Ubuntu リモート デスクトップ Web バージョン"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList マルチストア ファイル リスト プログラム${gl_kjlan}6.   ${color6}Ubuntu リモート デスクトップ Web エディション"
 	  echo -e "${gl_kjlan}7.   ${color7}Nezha Probe VPS 監視パネル${gl_kjlan}8.   ${color8}QBオフラインBT磁気ダウンロードパネル"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io メール サーバー プログラム${gl_kjlan}10.  ${color10}RocketChat 複数人オンライン チャット システム"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -16514,7 +16528,7 @@ while true; do
 
 		local docker_describe="ミニマリストの瞬間、模倣性の高いWeChatの瞬間、あなたの素晴らしい人生を記録してください"
 		local docker_url="公式サイト紹介：${gh_proxy}github.com/kingwrcy/moments?tab=readme-ov-file"
-		local docker_use="echo \"アカウント: admin パスワード: a123456\""
+		local docker_use="echo 「アカウント: admin パスワード: a123456」"
 		local docker_passwd=""
 		local app_size="1"
 		docker_app
@@ -17146,7 +17160,7 @@ while true; do
 	  62|ragflow)
 		local app_id="62"
 		local app_name="RAGFlow ナレッジベース"
-		local app_text="ドキュメントの深い理解に基づいたオープンソース RAG (Retrieval Augmented Generation) エンジン"
+		local app_text="ドキュメントの深い理解に基づくオープンソース RAG (Retrieval Augmented Generation) エンジン"
 		local app_url="公式ウェブサイト:${gh_https_url}github.com/infiniflow/ragflow"
 		local docker_name="ragflow-server"
 		local docker_port="8062"
@@ -19126,7 +19140,7 @@ linux_work() {
 	  echo -e "${gl_kjlan}2.   ${gl_bai}作業エリア 2"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}作業エリア 3"
 	  echo -e "${gl_kjlan}4.   ${gl_bai}作業エリア 4"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}ワークスペースNo.5"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}作業エリア5"
 	  echo -e "${gl_kjlan}6.   ${gl_bai}作業エリア6"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}作業エリア 7"
 	  echo -e "${gl_kjlan}8.   ${gl_bai}作業エリア8"
@@ -19454,7 +19468,7 @@ net_menu() {
 				else
 					echo "✘ ネットワークカードが存在しません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			2)
 				send_stats "ネットワークカードを無効にする"
@@ -19464,7 +19478,7 @@ net_menu() {
 				else
 					echo "✘ ネットワークカードが存在しません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			3)
 				send_stats "ネットワークカードの詳細を表示する"
@@ -19476,7 +19490,7 @@ net_menu() {
 				else
 					echo "✘ ネットワークカードが存在しません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			4)
 				send_stats "ネットワークカード情報を更新する"
@@ -19502,7 +19516,7 @@ log_menu() {
 		echo "[/var/logディレクトリ占有]"
 		du -sh /var/log 2>/dev/null
 		echo
-		echo "【日記帳の職業】"
+		echo "【日記ログ職業】"
 		journalctl --disk-usage 2>/dev/null
 		echo "========================================"
 	}
@@ -19524,10 +19538,10 @@ log_menu() {
 		case $choice in
 			1)
 				send_stats "最近のログを表示する"
-				read -erp "最近のログ行を何行表示しましたか? [デフォルト 100]:" lines
+				read -erp "最新のログ行を表示しますか? [デフォルト 100]:" lines
 				lines=${lines:-100}
 				journalctl -n "$lines" --no-pager
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			2)
 				send_stats "指定したサービスログを表示する"
@@ -19537,7 +19551,7 @@ log_menu() {
 				else
 					echo "✘ サービスが存在しないか、ログがありません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			3)
 				send_stats "ログイン/セキュリティログの表示"
@@ -19552,7 +19566,7 @@ log_menu() {
 				else
 					echo "セキュリティログファイルが見つかりません"
 				fi
-				read -erp "Enter を押して続行します..."
+				read -erp "続行するには Enter キーを押してください..."
 				;;
 			4)
 				send_stats "リアルタイム追跡ログ"
@@ -19640,7 +19654,7 @@ env_menu() {
 
 		echo
 		echo "==============================================="
-		read -erp "Enter を押して続行します..."
+		read -erp "続行するには Enter キーを押してください..."
 	}
 
 
@@ -19655,7 +19669,7 @@ env_menu() {
 		else
 			echo "ファイルが存在しません:$file"
 		fi
-		read -erp "Enter を押して続行します..."
+		read -erp "続行するには Enter キーを押してください..."
 	}
 
 	edit_file() {
@@ -19671,7 +19685,7 @@ env_menu() {
 		source "$BASHRC"
 		source "$PROFILE"
 		echo "✔ 環境変数がリロードされました"
-		read -erp "Enter を押して続行します..."
+		read -erp "続行するには Enter キーを押してください..."
 	}
 
 	while true; do
@@ -19682,7 +19696,7 @@ env_menu() {
 		echo "1. 現在一般的に使用されている環境変数を確認します。"
 		echo "2. ~/.bashrc を表示する"
 		echo "3. ~/.profile を表示する"
-		echo "4. ~/.bashrc を編集する"
+		echo "4. ~/.bashrc を編集します"
 		echo "5. ~/.profile を編集する"
 		echo "6. 環境変数（ソース）をリロードします。"
 		echo "--------------------------------------"
@@ -19799,7 +19813,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}スクリプト起動のショートカットキーを設定する${gl_kjlan}2.   ${gl_bai}ログインパスワードを変更する"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}ユーザーパスワードログインモード${gl_kjlan}4.   ${gl_bai}指定されたバージョンの Python をインストールします"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}すべてのポートを開く${gl_kjlan}6.   ${gl_bai}SSH接続ポートの変更"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}すべてのポートを開く${gl_kjlan}6.   ${gl_bai}SSH接続ポートを変更する"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}DNSアドレスを最適化する${gl_kjlan}8.   ${gl_bai}ワンクリックでシステムを再インストールします${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}ROOTアカウントを無効にして新しいアカウントを作成する${gl_kjlan}10.  ${gl_bai}スイッチ優先度 ipv4/ipv6"
 	  echo -e "${gl_kjlan}------------------------"
@@ -20263,7 +20277,7 @@ EOF
 				# 現在のシステムのタイムゾーンを取得する
 				local timezone=$(current_timezone)
 
-				# 現在のシステム時刻を取得する
+				# 現在のシステム時刻を取得します
 				local current_time=$(date +"%Y-%m-%d %H:%M:%S")
 
 				# タイムゾーンと時間を表示する
@@ -20857,7 +20871,7 @@ EOF
 			  fi
 
 			  echo "プライバシーとセキュリティ"
-			  echo "スクリプトはユーザーによる機能の使用に関するデータを収集し、スクリプト エクスペリエンスを最適化し、より楽しくて便利な機能を作成します。"
+			  echo "スクリプトはユーザーの機能使用に関するデータを収集し、スクリプト エクスペリエンスを最適化し、より楽しくて便利な機能を作成します。"
 			  echo "スクリプトのバージョン番号、使用時間、システムバージョン、CPUアーキテクチャ、マシンの国、使用された機能の名前が収集されます。"
 			  echo "------------------------------------------------"
 			  echo -e "現在のステータス:$status_message"
@@ -21164,7 +21178,7 @@ run_commands_on_servers() {
 		local username=${SERVER_ARRAY[i+3]}
 		local password=${SERVER_ARRAY[i+4]}
 		echo
-		echo -e "${gl_huang}に接続します$name ($hostname)...${gl_bai}"
+		echo -e "${gl_huang}に接続する$name ($hostname)...${gl_bai}"
 		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 	done
@@ -21315,7 +21329,7 @@ echo "------------------------"
 echo -e "${gl_zi}V.PS 月額 6.9 ドル 東京ソフトバンク 2 コア 1G メモリ 20G ハードドライブ 月額 1T トラフィック${gl_bai}"
 echo -e "${gl_bai}URL：https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
-echo -e "${gl_kjlan}さらに人気のある VPS セール${gl_bai}"
+echo -e "${gl_kjlan}さらに人気のある VPS オファー${gl_bai}"
 echo -e "${gl_bai}ウェブサイト：https://kejilion.pro/topvps/${gl_bai}"
 echo "------------------------"
 echo ""
@@ -21521,7 +21535,7 @@ echo -e "${gl_kjlan}16.  ${gl_bai}ゲームサーバー起動スクリプト集"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}00.  ${gl_bai}スクリプトの更新"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}0.   ${gl_bai}スクリプトを終了します"
+echo -e "${gl_kjlan}0.   ${gl_bai}終了スクリプト"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -e -p "選択肢を入力してください:" choice
 
@@ -21560,8 +21574,8 @@ echo "ビデオ紹介: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "以下は、k コマンドの参考使用例です。"
 echo "スクリプトkを開始します"
 echo "パッケージをインストールします k install nano wget | k ナノ wget を追加 | nano wgetをインストールします"
-echo "パッケージをアンインストールします。 k 削除 nano wget | kデルナノwget | k nano wget をアンインストールする | nano wgetをアンインストールします"
-echo "システム k 更新を更新します。 kアップデート"
+echo "パッケージをアンインストールします。 k 削除 nano wget | kデルナノwget | nano wget をアンインストールする | nano wgetをアンインストールします"
+echo "システム k アップデートを更新 | kアップデート"
 echo "クリーン系ジャンククリーン |きれいだ"
 echo "システムパネルを再度取り付けます。 k再インストール"
 echo "BBR3 コントロール パネル K BBR3 | k bbrv3"
