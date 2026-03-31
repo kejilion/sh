@@ -10109,8 +10109,7 @@ with open(path, 'r', encoding='utf-8') as f:
     obj = json.load(f)
 
 session = obj.setdefault('session', {})
-session['dmScope'] = session.get('dmScope', 'per-channel-peer')
-session['resetTriggers'] = ['/new', '/reset']
+session.setdefault('dmScope', 'per-channel-peer')
 session['reset'] = {
     'mode': 'idle',
     'idleMinutes': 10080
