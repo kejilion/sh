@@ -10498,8 +10498,6 @@ PY
 
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
-		openclaw config set tools.profile full
-		openclaw config set tools.elevated.enabled true
 		# 提示：修改配置后如需立即生效，可重启 gateway：openclaw gateway restart
 		configure_openclaw_session_policy
 		start_gateway
