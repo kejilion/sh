@@ -10096,37 +10096,6 @@ moltbot_menu() {
 		fi
 	}
 
-	configure_openclaw_session_policy() {
-		local config_file
-		config_file=$(openclaw_get_config_file)
-
-		[ ! -f "$config_file" ] && return 1
-
-		python3 - "$config_file" <<'PY'
-import json, sys
-path = sys.argv[1]
-with open(path, 'r', encoding='utf-8') as f:
-    obj = json.load(f)
-
-session = obj.setdefault('session', {})
-session.setdefault('dmScope', 'per-channel-peer')
-session['reset'] = {
-    'mode': 'idle',
-    'idleMinutes': 10080
-}
-session['resetByType'] = {
-    'direct': {'mode': 'idle', 'idleMinutes': 10080},
-    'thread': {'mode': 'idle', 'idleMinutes': 1440},
-    'group': {'mode': 'idle', 'idleMinutes': 120}
-}
-
-with open(path, 'w', encoding='utf-8') as f:
-    json.dump(obj, f, ensure_ascii=False, indent=2)
-    f.write('\n')
-PY
-	}
-
-
 	sync_openclaw_api_models() {
 		local config_file
 		config_file=$(openclaw_get_config_file)
@@ -10498,8 +10467,6 @@ PY
 
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
-		# 提示：修改配置后如需立即生效，可重启 gateway：openclaw gateway restart
-		configure_openclaw_session_policy
 		start_gateway
 		add_app_id
 		break_end
