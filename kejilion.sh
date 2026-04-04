@@ -3341,6 +3341,193 @@ output_status() {
 
 }
 
+traffic_limit_is_number() {
+	[[ "$1" =~ ^[0-9]+$ ]]
+}
+
+traffic_limit_paths() {
+	TL_SCRIPT="$HOME/Limiting_Shut_down.sh"
+	TL_CONFIG="$HOME/.kejilion_traffic_limit.conf"
+	TL_STATE="$HOME/.kejilion_traffic_limit.state"
+	TL_PROFILE="/etc/profile.d/kejilion-traffic-limit.sh"
+}
+
+traffic_limit_format_bytes() {
+	local bytes="${1:-0}"
+	local units=("Bytes" "K" "M" "G" "T" "P")
+	local unit_index=0
+	local value="$bytes"
+
+	while [ "$(printf '%.0f' "$value")" -ge 1024 ] && [ "$unit_index" -lt 5 ]; do
+		value=$(awk -v v="$value" 'BEGIN { printf "%.2f", v / 1024 }')
+		unit_index=$((unit_index + 1))
+	done
+
+	printf "%s%s" "$value" "${units[$unit_index]}"
+}
+
+traffic_limit_format_seconds() {
+	local seconds="${1:-0}"
+	(( seconds < 0 )) && seconds=0
+
+	local hours=$((seconds / 3600))
+	local minutes=$(((seconds % 3600) / 60))
+
+	if (( hours > 0 )); then
+		printf "%d小时%d分钟" "$hours" "$minutes"
+	else
+		printf "%d分钟" "$minutes"
+	fi
+}
+
+traffic_limit_load_settings() {
+	local rx_threshold_gb="" tx_threshold_gb="" reset_day="" persist_after_reboot="" boot_grace_minutes=""
+
+	traffic_limit_paths
+	TL_RX_THRESHOLD_GB=""
+	TL_TX_THRESHOLD_GB=""
+	TL_RESET_DAY=1
+	TL_PERSIST_AFTER_REBOOT=0
+	TL_BOOT_GRACE_MINUTES=15
+
+	if [ -f "$TL_CONFIG" ]; then
+		# shellcheck disable=SC1090
+		. "$TL_CONFIG"
+		TL_RX_THRESHOLD_GB="$rx_threshold_gb"
+		TL_TX_THRESHOLD_GB="$tx_threshold_gb"
+		TL_RESET_DAY="$reset_day"
+		TL_PERSIST_AFTER_REBOOT="$persist_after_reboot"
+		TL_BOOT_GRACE_MINUTES="$boot_grace_minutes"
+	elif [ -f "$TL_SCRIPT" ]; then
+		TL_RX_THRESHOLD_GB=$(grep -oP '^rx_threshold_gb=\K\d+' "$TL_SCRIPT" | head -n 1)
+		TL_TX_THRESHOLD_GB=$(grep -oP '^tx_threshold_gb=\K\d+' "$TL_SCRIPT" | head -n 1)
+		TL_RESET_DAY=$(crontab -l 2>/dev/null | awk '/KEJILION_TRAFFIC_LIMIT_RESET/ {print $3; exit}')
+		[ -n "$TL_RESET_DAY" ] || TL_RESET_DAY=$(crontab -l 2>/dev/null | awk '/^0 1 [0-9]+ \* \* reboot$/ {print $3; exit}')
+	fi
+
+	traffic_limit_is_number "$TL_RX_THRESHOLD_GB" || TL_RX_THRESHOLD_GB=100
+	traffic_limit_is_number "$TL_TX_THRESHOLD_GB" || TL_TX_THRESHOLD_GB=100
+	traffic_limit_is_number "$TL_RESET_DAY" || TL_RESET_DAY=1
+	traffic_limit_is_number "$TL_PERSIST_AFTER_REBOOT" || TL_PERSIST_AFTER_REBOOT=0
+	traffic_limit_is_number "$TL_BOOT_GRACE_MINUTES" || TL_BOOT_GRACE_MINUTES=15
+
+	(( TL_RESET_DAY < 1 )) && TL_RESET_DAY=1
+	(( TL_RESET_DAY > 31 )) && TL_RESET_DAY=31
+	(( TL_BOOT_GRACE_MINUTES < 1 )) && TL_BOOT_GRACE_MINUTES=15
+	[ "$TL_PERSIST_AFTER_REBOOT" -eq 1 ] || TL_PERSIST_AFTER_REBOOT=0
+}
+
+traffic_limit_load_state() {
+	local total_rx=0 total_tx=0 maintenance_until=0 session_skip_boot_id=""
+
+	traffic_limit_paths
+	TL_TOTAL_RX=0
+	TL_TOTAL_TX=0
+	TL_MAINTENANCE_UNTIL=0
+	TL_SESSION_SKIP_BOOT_ID=""
+
+	if [ -f "$TL_STATE" ]; then
+		# shellcheck disable=SC1090
+		. "$TL_STATE"
+		TL_TOTAL_RX="$total_rx"
+		TL_TOTAL_TX="$total_tx"
+		TL_MAINTENANCE_UNTIL="$maintenance_until"
+		TL_SESSION_SKIP_BOOT_ID="$session_skip_boot_id"
+	fi
+
+	traffic_limit_is_number "$TL_TOTAL_RX" || TL_TOTAL_RX=0
+	traffic_limit_is_number "$TL_TOTAL_TX" || TL_TOTAL_TX=0
+	traffic_limit_is_number "$TL_MAINTENANCE_UNTIL" || TL_MAINTENANCE_UNTIL=0
+}
+
+traffic_limit_write_settings() {
+	local rx_threshold_gb="$1"
+	local tx_threshold_gb="$2"
+	local reset_day="$3"
+	local persist_after_reboot="$4"
+	local boot_grace_minutes="$5"
+
+	traffic_limit_paths
+	cat > "$TL_CONFIG" <<EOF
+rx_threshold_gb=$rx_threshold_gb
+tx_threshold_gb=$tx_threshold_gb
+reset_day=$reset_day
+persist_after_reboot=$persist_after_reboot
+boot_grace_minutes=$boot_grace_minutes
+EOF
+	chmod 600 "$TL_CONFIG"
+}
+
+traffic_limit_install_prompt_profile() {
+	traffic_limit_paths
+	cat > "$TL_PROFILE" <<'EOF'
+if [ "$(id -u 2>/dev/null)" -ne 0 ]; then
+	return 0 2>/dev/null || exit 0
+fi
+case "$-" in
+	*i*) ;;
+	*) return 0 2>/dev/null || exit 0 ;;
+esac
+if [ -x /root/Limiting_Shut_down.sh ]; then
+	/root/Limiting_Shut_down.sh --login-prompt
+fi
+EOF
+	chmod 644 "$TL_PROFILE"
+}
+
+traffic_limit_remove_prompt_profile() {
+	traffic_limit_paths
+	rm -f "$TL_PROFILE"
+}
+
+traffic_limit_filter_existing_cron() {
+	crontab -l 2>/dev/null \
+		| grep -v 'KEJILION_TRAFFIC_LIMIT' \
+		| grep -v '~/Limiting_Shut_down.sh' \
+		| grep -vE '^0 1 [0-9]{1,2} \* \* reboot$' || true
+}
+
+traffic_limit_apply_cron() {
+	local persist_mode="$1"
+	local reset_day="$2"
+
+	check_crontab_installed
+	{
+		traffic_limit_filter_existing_cron
+		echo "* * * * * ~/Limiting_Shut_down.sh # KEJILION_TRAFFIC_LIMIT_MONITOR"
+		if [ "$persist_mode" -eq 1 ]; then
+			echo "@reboot ~/Limiting_Shut_down.sh --boot-check # KEJILION_TRAFFIC_LIMIT_BOOT"
+		else
+			echo "0 1 $reset_day * * reboot # KEJILION_TRAFFIC_LIMIT_RESET"
+		fi
+	} | crontab -
+}
+
+traffic_limit_remove_cron() {
+	check_crontab_installed
+	traffic_limit_filter_existing_cron | crontab -
+}
+
+traffic_limit_template_path() {
+	local script_path
+
+	script_path=$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")
+	printf '%s/Limiting_Shut_down1.sh\n' "$(dirname "$script_path")"
+}
+
+traffic_limit_install_script() {
+	local template_path
+
+	traffic_limit_paths
+	template_path=$(traffic_limit_template_path)
+	if [ -f "$template_path" ]; then
+		cp "$template_path" "$TL_SCRIPT"
+	else
+		curl -Ss -o "$TL_SCRIPT" ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh
+	fi
+	chmod +x "$TL_SCRIPT"
+}
+
 
 
 
@@ -20759,77 +20946,135 @@ EOF
 			  ;;
 
 
-		  23)
-			root_use
-			send_stats "限流关机功能"
-			while true; do
-				clear
-				echo "限流关机功能"
-				echo "视频介绍: https://www.bilibili.com/video/BV1mC411j7Qd?t=0.1"
-				echo "------------------------------------------------"
-				echo "当前流量使用情况，重启服务器流量计算会清零！"
-				output_status
-				echo -e "${gl_kjlan}总接收: ${gl_bai}$rx"
-				echo -e "${gl_kjlan}总发送: ${gl_bai}$tx"
+			  23)
+				root_use
+				send_stats "限流关机功能"
+				while true; do
+					clear
+					local current_boot_id current_ts
+					echo "限流关机功能"
+					echo "视频介绍: https://www.bilibili.com/video/BV1mC411j7Qd?t=0.1"
+					echo "------------------------------------------------"
+					echo "当前本次开机流量使用情况"
+					output_status
+					echo -e "${gl_kjlan}总接收: ${gl_bai}$rx"
+					echo -e "${gl_kjlan}总发送: ${gl_bai}$tx"
+					traffic_limit_load_settings
+					current_boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)
+					current_ts=$(date +%s)
 
-				# 检查是否存在 Limiting_Shut_down.sh 文件
-				if [ -f ~/Limiting_Shut_down.sh ]; then
-					# 获取 threshold_gb 的值
-					local rx_threshold_gb=$(grep -oP 'rx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
-					local tx_threshold_gb=$(grep -oP 'tx_threshold_gb=\K\d+' ~/Limiting_Shut_down.sh)
-					echo -e "${gl_lv}当前设置的进站限流阈值为: ${gl_huang}${rx_threshold_gb}${gl_lv}G${gl_bai}"
-					echo -e "${gl_lv}当前设置的出站限流阈值为: ${gl_huang}${tx_threshold_gb}${gl_lv}GB${gl_bai}"
-				else
-					echo -e "${gl_hui}当前未启用限流关机功能${gl_bai}"
-				fi
+					if [ -f "$TL_SCRIPT" ]; then
+						echo -e "${gl_lv}当前设置的进站限流阈值为: ${gl_huang}${TL_RX_THRESHOLD_GB}${gl_lv}G${gl_bai}"
+						echo -e "${gl_lv}当前设置的出站限流阈值为: ${gl_huang}${TL_TX_THRESHOLD_GB}${gl_lv}G${gl_bai}"
+						echo -e "${gl_lv}当前流量重置日为: ${gl_huang}每月 ${TL_RESET_DAY} 日${gl_bai}"
+						if [ "$TL_PERSIST_AFTER_REBOOT" -eq 1 ]; then
+							traffic_limit_load_state
+							echo -e "${gl_lv}当前统计模式: ${gl_huang}重启后保留累计数据${gl_bai}"
+							echo -e "${gl_lv}当前累计接收: ${gl_huang}$(traffic_limit_format_bytes "$TL_TOTAL_RX")${gl_bai}"
+							echo -e "${gl_lv}当前累计发送: ${gl_huang}$(traffic_limit_format_bytes "$TL_TOTAL_TX")${gl_bai}"
+							echo -e "${gl_lv}超限后默认维护窗口: ${gl_huang}${TL_BOOT_GRACE_MINUTES}${gl_lv}分钟${gl_bai}"
+							if [ "$TL_SESSION_SKIP_BOOT_ID" = "$current_boot_id" ] && [ -n "$current_boot_id" ]; then
+								echo -e "${gl_hui}当前开机已暂停自动关机，下次重启后若仍超限会再次提示。${gl_bai}"
+							elif [ "$TL_MAINTENANCE_UNTIL" -gt "$current_ts" ]; then
+								echo -e "${gl_hui}当前维护窗口剩余: $(traffic_limit_format_seconds $((TL_MAINTENANCE_UNTIL - current_ts)))${gl_bai}"
+							fi
+						else
+							echo -e "${gl_lv}当前统计模式: ${gl_huang}重启后清零${gl_bai}"
+						fi
+					else
+						echo -e "${gl_hui}当前未启用限流关机功能${gl_bai}"
+					fi
 
-				echo
-				echo "------------------------------------------------"
-				echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！"
-				echo "------------------------"
-				echo "1. 开启限流关机功能          2. 停用限流关机功能"
-				echo "------------------------"
-				echo "0. 返回上一级选单"
-				echo "------------------------"
-				read -e -p "请输入你的选择: " Limiting
+					echo
+					echo "------------------------------------------------"
+					echo "系统每分钟会检测实际流量是否到达阈值，到达后会自动关闭服务器！"
+					echo "超限后手动开机时，会提示立即关机、设置维护窗口或本次开机不再自动关机。"
+					echo "------------------------"
+					echo "1. 开启/更新限流关机功能     2. 停用限流关机功能"
+					echo "3. 清零累计流量数据"
+					echo "------------------------"
+					echo "0. 返回上一级选单"
+					echo "------------------------"
+					read -e -p "请输入你的选择: " Limiting
 
-				case "$Limiting" in
-				  1)
-					# 输入新的虚拟内存大小
-					echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出。"
-					read -e -p "请输入进站流量阈值（单位为G，默认100G）: " rx_threshold_gb
-					rx_threshold_gb=${rx_threshold_gb:-100}
-					read -e -p "请输入出站流量阈值（单位为G，默认100G）: " tx_threshold_gb
-					tx_threshold_gb=${tx_threshold_gb:-100}
-					read -e -p "请输入流量重置日期（默认每月1日重置）: " cz_day
-					cz_day=${cz_day:-1}
+					case "$Limiting" in
+					  1)
+						local rx_threshold_gb tx_threshold_gb cz_day persist_choice persist_mode boot_grace_minutes existing_persist
+						existing_persist="$TL_PERSIST_AFTER_REBOOT"
+						echo "如果实际服务器就100G流量，可设置阈值为95G，提前关机，以免出现流量误差或溢出。"
+						read -e -p "请输入进站流量阈值（单位为G，默认100G）: " rx_threshold_gb
+						rx_threshold_gb=${rx_threshold_gb:-100}
+						read -e -p "请输入出站流量阈值（单位为G，默认100G）: " tx_threshold_gb
+						tx_threshold_gb=${tx_threshold_gb:-100}
+						read -e -p "请输入流量重置日期（1-31，默认每月1日重置）: " cz_day
+						cz_day=${cz_day:-1}
+						read -e -p "重启后是否保留累计流量？(Y/N，默认N): " persist_choice
 
-					cd ~
-					curl -Ss -o ~/Limiting_Shut_down.sh ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh
-					chmod +x ~/Limiting_Shut_down.sh
-					sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
-					sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
-					check_crontab_installed
-					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
-					(crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
-					crontab -l | grep -v 'reboot' | crontab -
-					(crontab -l ; echo "0 1 $cz_day * * reboot") | crontab - > /dev/null 2>&1
-					echo "限流关机已设置"
-					send_stats "限流关机已设置"
-					;;
-				  2)
-					check_crontab_installed
-					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
-					crontab -l | grep -v 'reboot' | crontab -
-					rm ~/Limiting_Shut_down.sh
-					echo "已关闭限流关机功能"
-					;;
-				  *)
-					break
-					;;
-				esac
-			done
-			  ;;
+						if ! traffic_limit_is_number "$rx_threshold_gb" || [ "$rx_threshold_gb" -le 0 ]; then
+							rx_threshold_gb=100
+						fi
+						if ! traffic_limit_is_number "$tx_threshold_gb" || [ "$tx_threshold_gb" -le 0 ]; then
+							tx_threshold_gb=100
+						fi
+						if ! traffic_limit_is_number "$cz_day" || [ "$cz_day" -lt 1 ] || [ "$cz_day" -gt 31 ]; then
+							cz_day=1
+						fi
+
+						case "$persist_choice" in
+							[Yy]) persist_mode=1 ;;
+							*) persist_mode=0 ;;
+						esac
+
+						boot_grace_minutes=15
+						if [ "$persist_mode" -eq 1 ]; then
+							read -e -p "请输入超限后手动开机的默认维护窗口分钟数（默认15分钟）: " boot_grace_minutes
+							boot_grace_minutes=${boot_grace_minutes:-15}
+							if ! traffic_limit_is_number "$boot_grace_minutes" || [ "$boot_grace_minutes" -le 0 ]; then
+								boot_grace_minutes=15
+							fi
+						fi
+
+						cd ~
+						traffic_limit_install_script
+						traffic_limit_write_settings "$rx_threshold_gb" "$tx_threshold_gb" "$cz_day" "$persist_mode" "$boot_grace_minutes"
+
+						if [ "$persist_mode" -eq 1 ]; then
+							traffic_limit_install_prompt_profile
+							if [ "$existing_persist" -ne 1 ] || [ ! -f "$TL_STATE" ]; then
+								"$TL_SCRIPT" --boot-check > /dev/null 2>&1
+							fi
+						else
+							traffic_limit_remove_prompt_profile
+							rm -f "$TL_STATE"
+						fi
+
+						traffic_limit_apply_cron "$persist_mode" "$cz_day"
+						echo "限流关机已设置"
+						send_stats "限流关机已设置"
+						;;
+					  2)
+						traffic_limit_remove_cron
+						traffic_limit_remove_prompt_profile
+						rm -f "$TL_SCRIPT" "$TL_CONFIG" "$TL_STATE"
+						echo "已关闭限流关机功能"
+						;;
+					  3)
+						if [ ! -x "$TL_SCRIPT" ]; then
+							echo "当前未启用限流关机功能"
+						elif [ "$TL_PERSIST_AFTER_REBOOT" -ne 1 ]; then
+							echo "当前模式为重启清零，无需手动清零累计数据。"
+						else
+							"$TL_SCRIPT" --reset-state > /dev/null 2>&1
+							echo "累计流量数据已清零"
+						fi
+						;;
+					  *)
+						break
+						;;
+					esac
+					sleep 1
+				done
+				  ;;
 
 
 		  24)
