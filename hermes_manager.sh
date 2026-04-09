@@ -78,13 +78,17 @@ show_menu() {
             if check_installed; then
                 echo -e "${YELLOW}正在启动 Gateway...${NC}"
                 hermes gateway start
-            else echo -e "${RED}请先安装 Hermes。${NC}"; fi
+            else 
+                hermes gateway install
+            fi
             ;;
         3)
             if check_installed; then
                 echo -e "${YELLOW}正在停止 Gateway...${NC}"
                 hermes gateway stop
-            else echo -e "${RED}请先安装 Hermes。${NC}"; fi
+            else 
+                hermes gateway install
+            fi
             ;;
         4)
             if check_installed; then
