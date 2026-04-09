@@ -77,6 +77,7 @@ show_menu() {
         2)
             if check_installed; then
                 echo -e "${YELLOW}正在启动 Gateway...${NC}"
+                systemctl --user start hermes-gateway
                 hermes gateway start
             else echo -e "${RED}请先安装 Hermes。${NC}"; fi
             ;;
