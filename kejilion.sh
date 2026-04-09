@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.4.9"
+sh_v="4.4.10"
 
 
 gl_hui='\e[37m'
@@ -10783,7 +10783,7 @@ EOF
 	}
 
 
-	
+
 openclaw_api_manage_list() {
 	local config_file="${HOME}/.openclaw/openclaw.json"
 	send_stats "OpenClaw API列表"
@@ -11500,7 +11500,7 @@ PY
 	    if command -v gum >/dev/null 2>&1; then
 	        return 0
 	    fi
-		
+
  		if command -v apt >/dev/null 2>&1; then
 	        mkdir -p /etc/apt/keyrings
 	        curl -fsSL https://repo.charm.sh/apt/gpg.key | gpg --dearmor -o /etc/apt/keyrings/charm.gpg
@@ -11528,7 +11528,7 @@ REPO
 	}
 
 
-	
+
 	change_model() {
 		send_stats "换模型"
 
@@ -11765,7 +11765,7 @@ PYTHON_EOF
 
 			install_gum
 			install gum
-			
+
 			# 若 gum 不存在，降级为原始手动输入流程
 			if ! command -v gum >/dev/null 2>&1 || ! gum --version >/dev/null 2>&1; then
 				echo "--- 模型管理 ---"
@@ -12085,7 +12085,7 @@ PYTHON_EOF
 
 
 
-		
+
 		install_plugin() {
 		send_stats "插件管理"
 		while true; do
@@ -12777,7 +12777,7 @@ PY
 		mkdir -p "$backup_root"
 		local tmp_payload=$(mktemp -d) || return 1
 		local workspaces_json=$(openclaw_get_all_agent_workspaces)
-		python3 -c "import json, sys, os, shutil; 
+		python3 -c "import json, sys, os, shutil;
 workspaces = json.loads(sys.argv[1]); tmp_payload = sys.argv[2]
 for item in workspaces:
     aid = item['id']; ws = item['ws']
@@ -14447,9 +14447,9 @@ PY
 		local ask="$2"
 		local fallback="$3"
 		local approvals_file="$HOME/.openclaw/exec-approvals.json"
-		
+
 		mkdir -p "$HOME/.openclaw"
-		
+
 		# 生成 JSON 并通过 openclaw approvals set --stdin 写入（优先）
 		# 若 CLI 不支持则回退直接写文件
 		local json_payload
@@ -14472,7 +14472,7 @@ data["defaults"]["askFallback"] = sys.argv[4]
 data["defaults"]["autoAllowSkills"] = True
 print(json.dumps(data, indent=2))
 ' "$approvals_file" "$sec" "$ask" "$fallback")
-		
+
 		if openclaw_has_command openclaw && echo "$json_payload" | openclaw approvals set --stdin >/dev/null 2>&1; then
 			return 0
 		fi
@@ -14512,7 +14512,7 @@ print(json.dumps(data, indent=2))
 		echo "  Exec 限制: ${current_sec:-(unset)}"
 		echo "  审批提示: ${current_ask:-(unset)}"
 		echo "  提权开关: ${current_elevated:-(unset)}"
-		
+
 		echo -e "\n${gl_huang}[底层 Exec Approvals 状态]${gl_bai}"
 		if openclaw_has_command openclaw; then
 			local approvals_json
@@ -14563,7 +14563,7 @@ except Exception:
 	openclaw_permission_apply_standard() {
 		send_stats "OpenClaw权限-标准安全模式"
 		openclaw_permission_require_openclaw || return 1
-		
+
 		echo "正在配置应用层策略..."
 		openclaw config set tools.profile coding >/dev/null 2>&1
 		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
@@ -14571,10 +14571,10 @@ except Exception:
 		openclaw config set tools.elevated.enabled false >/dev/null 2>&1
 		openclaw config set tools.exec.strictInlineEval true >/dev/null 2>&1  # 拦截危险的内联代码
 		openclaw config unset commands.bash >/dev/null 2>&1 # 废弃旧版参数
-		
+
 		echo "正在配置宿主机审批拦截..."
 		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
-		
+
 		openclaw_permission_restart_gateway
 		echo -e "${gl_lv}✅ 已切换为标准安全模式 (所有危险命令将通过UI/TG请求你的审批)${gl_bai}"
 	}
@@ -14582,17 +14582,17 @@ except Exception:
 	openclaw_permission_apply_developer() {
 		send_stats "OpenClaw权限-开发增强模式"
 		openclaw_permission_require_openclaw || return 1
-		
+
 		echo "正在配置应用层策略..."
 		openclaw config set tools.profile coding >/dev/null 2>&1
 		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
 		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
 		openclaw config set tools.elevated.enabled true >/dev/null 2>&1 # 允许智能体申请提权
 		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
-		
+
 		echo "正在配置宿主机审批拦截..."
 		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
-		
+
 		openclaw_permission_restart_gateway
 		echo -e "${gl_lv}✅ 已切换为开发增强模式 (允许提权，但常规危险命令依然需要审批)${gl_bai}"
 	}
@@ -14600,18 +14600,18 @@ except Exception:
 	openclaw_permission_apply_full() {
 		send_stats "OpenClaw权限-完全开放模式"
 		openclaw_permission_require_openclaw || return 1
-		
+
 		echo "正在配置应用层策略..."
 		openclaw config set tools.profile full >/dev/null 2>&1
 		openclaw config set tools.exec.security full >/dev/null 2>&1
 		openclaw config set tools.exec.ask off >/dev/null 2>&1
 		openclaw config set tools.elevated.enabled true >/dev/null 2>&1
 		openclaw config set tools.exec.strictInlineEval false >/dev/null 2>&1
-		
+
 		echo "正在瓦解宿主机拦截防御..."
 		# 这里的 full 和 off 将彻底绕过底层宿主机的 exec 审批系统
 		openclaw_permission_update_exec_approvals "full" "off" "full"
-		
+
 		openclaw_permission_restart_gateway
 		echo -e "${gl_lv}✅ 已切换为完全开放模式 (警告：所有宿主机命令拦截已失效，智能体具有最高权限)${gl_bai}"
 	}
@@ -14619,14 +14619,14 @@ except Exception:
 	openclaw_permission_restore_official_defaults() {
 		send_stats "OpenClaw权限-恢复官方默认"
 		openclaw_permission_require_openclaw || return 1
-		
+
 		echo "清理应用层强制覆盖..."
 		openclaw config unset tools.profile >/dev/null 2>&1
 		openclaw config unset tools.exec.security >/dev/null 2>&1
 		openclaw config unset tools.exec.ask >/dev/null 2>&1
 		openclaw config unset tools.elevated.enabled >/dev/null 2>&1
 		openclaw config unset tools.exec.strictInlineEval >/dev/null 2>&1
-		
+
 		echo "清理宿主机拦截配置..."
 		# 优先通过 CLI 清空审批配置，回退直接删文件
 		if echo '{"version":1,"defaults":{}}' | openclaw approvals set --stdin >/dev/null 2>&1; then
@@ -14634,7 +14634,7 @@ except Exception:
 		else
 			rm -f "$HOME/.openclaw/exec-approvals.json"
 		fi
-		
+
 		openclaw_permission_restart_gateway
 		echo -e "${gl_lv}✅ 已恢复到 OpenClaw 官方安全沙盒防御机制${gl_bai}"
 	}
@@ -15579,6 +15579,7 @@ while true; do
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}111. ${color111}多格式文件转换工具                  ${gl_kjlan}112. ${color112}Lucky大内网穿透工具"
 	  echo -e "${gl_kjlan}113. ${color113}Firefox浏览器                       ${gl_kjlan}114. ${color114}OpenClaw机器人管理工具${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}115. ${color115}Hermes机器人管理工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}第三方应用列表"
   	  echo -e "${gl_kjlan}想要让你的应用出现在这里？查看开发者指南: ${gl_huang}https://dev.kejilion.sh/${gl_bai}"
@@ -19246,6 +19247,9 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 	  	  moltbot_menu
 		  ;;
 
+	  115|hermes)
+	  	  bash <(curl -sL ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/hermes_manager.sh)
+		  ;;
 
 	  b)
 	  	clear
