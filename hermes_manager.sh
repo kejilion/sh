@@ -25,8 +25,6 @@ check_installed() {
 get_version() {
     if check_installed; then
         hermes --version | head -n 1
-    else
-        echo "未安装"
     fi
 }
 
