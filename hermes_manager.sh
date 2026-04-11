@@ -42,6 +42,16 @@ get_gateway_status() {
     fi
 }
 
+
+refresh_hermes_path() {
+    if ! command -v hermes >/dev/null 2>&1; then
+        if [ -d "$HOME/.hermes/hermes-agent/venv/bin" ]; then
+            export PATH="$HOME/.hermes/hermes-agent/venv/bin:$PATH"
+        fi
+    fi
+}
+
+
 # 主菜单UI
 show_menu() {
     clear
@@ -71,7 +81,7 @@ show_menu() {
         1)
             echo -e "${YELLOW}开始安装 Hermes Agent...${NC}"
             curl -fsSL https://raw.githubusercontent.com/NousResearch/hermes-agent/main/scripts/install.sh | bash
-            source ~/.bashrc
+            refresh_hermes_path
             hermes gateway install
             hermes gateway start
             ;;
