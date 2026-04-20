@@ -458,6 +458,27 @@ install_add_docker_cn
 
 install_add_docker() {
 	echo -e "${gl_kjlan}正在安装docker环境...${gl_bai}"
+
+	# 选择 Docker 数据目录
+	echo -e "${gl_kjlan}------------------------"
+	echo -e "${gl_kjlan}1. ${gl_bai}安装Docker到系统默认路径 (/home/docker)"
+	echo -e "${gl_kjlan}2. ${gl_bai}安装Docker到其他数据盘"
+	echo -e "${gl_kjlan}------------------------${gl_bai}"
+	read -e -p "请输入你的选择 (默认1): " docker_dir_choice
+	docker_dir_choice=${docker_dir_choice:-1}
+
+	local DOCKER_DIR="/home/docker"
+	if [ "$docker_dir_choice" = "2" ]; then
+		read -e -p "请输入Docker数据目录路径 (例如 /mnt/sdb/docker): " custom_docker_dir
+		if [ -n "$custom_docker_dir" ]; then
+			DOCKER_DIR="$custom_docker_dir"
+		fi
+	fi
+
+	# 保存配置
+	set_docker_dir "$DOCKER_DIR"
+	mkdir -p "$DOCKER_DIR"
+
 	if command -v apt &>/dev/null || command -v yum &>/dev/null || command -v dnf &>/dev/null; then
 		linuxmirrors_install_docker
 	else
@@ -465,6 +486,12 @@ install_add_docker() {
 		install_add_docker_cn
 
 	fi
+
+	# 如果选择了数据盘，配置 Docker data-root
+	if [ "$DOCKER_DIR" != "/home/docker" ]; then
+		configure_docker_data_root "$DOCKER_DIR"
+	fi
+
 	sleep 2
 }
 
@@ -2826,34 +2853,183 @@ clear_host_port_rules() {
 
 }
 
+# 获取 Docker 数据目录配置
+get_docker_dir() {
+    if [ -f "/etc/docker/kejilion_docker_dir.conf" ]; then
+        cat /etc/docker/kejilion_docker_dir.conf
+    else
+        echo "/home/docker"
+    fi
+}
+
+# 设置 Docker 数据目录
+set_docker_dir() {
+    local docker_dir="$1"
+    mkdir -p /etc/docker
+    echo "$docker_dir" > /etc/docker/kejilion_docker_dir.conf
+}
+
+# 配置 Docker data-root
+configure_docker_data_root() {
+    local docker_dir="$1"
+    install jq
+
+    local CONFIG_FILE="/etc/docker/daemon.json"
+    local DATA_ROOT="$docker_dir/docker-data"
+
+    mkdir -p "$DATA_ROOT"
+
+    if [ ! -f "$CONFIG_FILE" ]; then
+        echo "{\"data-root\": \"$DATA_ROOT\"}" | jq . > "$CONFIG_FILE"
+    else
+        local ORIGINAL_CONFIG=$(<"$CONFIG_FILE")
+        local UPDATED_CONFIG=$(echo "$ORIGINAL_CONFIG" | jq --arg dr "$DATA_ROOT" '. + {"data-root": $dr}')
+        echo "$UPDATED_CONFIG" | jq . > "$CONFIG_FILE"
+    fi
+
+    restart docker
+    echo -e "${gl_lv}Docker数据目录已设置为: $DATA_ROOT${gl_bai}"
+    echo -e "${gl_lv}Docker应用数据目录已设置为: $docker_dir${gl_bai}"
+}
+
+# 显示应用安装信息（数据目录、compose文件路径、挂载卷）
+show_app_info() {
+    local app_name="$1"
+    local DOCKER_DIR=$(get_docker_dir)
+
+    echo "------------------------"
+    echo -e "${gl_kjlan}应用信息:${gl_bai}"
+    echo -e "  数据目录: ${gl_lv}$DOCKER_DIR/$app_name${gl_bai}"
+
+    # 检查是否为 docker-compose 安装
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$app_name"; then
+        local compose_project=$(docker inspect "$app_name" 2>/dev/null | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty' 2>/dev/null)
+        if [ -n "$compose_project" ]; then
+            echo -e "  docker-compose文件: ${gl_lv}$compose_project/docker-compose.yml${gl_bai}"
+        fi
+    fi
+
+    # 列出所有挂载卷
+    if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$app_name"; then
+        local volumes=$(docker inspect "$app_name" 2>/dev/null | jq -r '.[0].Mounts[] | "\(.Source) -> \(.Destination)"' 2>/dev/null)
+        if [ -n "$volumes" ]; then
+            echo -e "  挂载目录:"
+            echo "$volumes" | while read -r line; do
+                echo -e "    ${gl_lv}$line${gl_bai}"
+            done
+        fi
+    fi
+    echo "------------------------"
+}
+
+# 迁移 Docker 数据目录
+migrate_docker_dir() {
+    local CURRENT_DIR=$(get_docker_dir)
+    echo -e "${gl_kjlan}迁移Docker数据目录${gl_bai}"
+    echo -e "当前Docker应用数据目录: ${gl_lv}$CURRENT_DIR${gl_bai}"
+
+    # 显示当前 Docker data-root
+    if command -v docker &>/dev/null; then
+        local CURRENT_DATA_ROOT=$(docker info 2>/dev/null | grep "Docker Root Dir" | awk '{print $NF}')
+        echo -e "当前Docker系统数据目录: ${gl_lv}$CURRENT_DATA_ROOT${gl_bai}"
+    fi
+
+    echo ""
+    echo -e "${gl_kjlan}------------------------"
+    echo -e "${gl_kjlan}1. ${gl_bai}迁移到其他数据盘"
+    echo -e "${gl_kjlan}0. ${gl_bai}返回"
+    echo -e "${gl_kjlan}------------------------${gl_bai}"
+    read -e -p "请输入你的选择: " mig_choice
+
+    if [ "$mig_choice" = "1" ]; then
+        read -e -p "请输入目标数据目录路径 (例如 /mnt/sdb/docker): " target_dir
+        if [ -z "$target_dir" ]; then
+            echo "未输入目标路径，取消迁移"
+            return
+        fi
+
+        if [ "$target_dir" = "$CURRENT_DIR" ]; then
+            echo -e "${gl_huang}目标路径与当前路径相同，无需迁移${gl_bai}"
+            return
+        fi
+
+        # 检查 rsync
+        install rsync
+
+        echo -e "${gl_huang}即将执行迁移操作，请确保已停止所有运行中的Docker容器${gl_bai}"
+        read -e -p "是否停止所有Docker容器并继续迁移？(Y/N): " confirm
+        if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+            echo "取消迁移"
+            return
+        fi
+
+        # 停止所有容器
+        docker ps -q | xargs -r docker stop
+
+        # 迁移应用数据
+        echo "正在迁移应用数据 $CURRENT_DIR -> $target_dir ..."
+        mkdir -p "$target_dir"
+        rsync -avHAXS --progress "$CURRENT_DIR/" "$target_dir/"
+
+        # 迁移 Docker 系统数据
+        local CURRENT_DATA_ROOT=$(docker info 2>/dev/null | grep "Docker Root Dir" | awk '{print $NF}')
+        local TARGET_DATA_ROOT="$target_dir/docker-data"
+
+        if [ -n "$CURRENT_DATA_ROOT" ] && [ "$CURRENT_DATA_ROOT" != "$TARGET_DATA_ROOT" ]; then
+            echo "正在迁移Docker系统数据 $CURRENT_DATA_ROOT -> $TARGET_DATA_ROOT ..."
+            mkdir -p "$TARGET_DATA_ROOT"
+            rsync -avHAXS --progress "$CURRENT_DATA_ROOT/" "$TARGET_DATA_ROOT/"
+
+            # 更新 daemon.json
+            configure_docker_data_root "$target_dir"
+        fi
+
+        # 更新配置
+        set_docker_dir "$target_dir"
+
+        # 启动 Docker
+        start docker
+
+        echo -e "${gl_lv}迁移完成！${gl_bai}"
+        echo -e "新的应用数据目录: ${gl_lv}$target_dir${gl_bai}"
+        echo -e "新的Docker系统数据目录: ${gl_lv}$TARGET_DATA_ROOT${gl_bai}"
+        echo -e "${gl_huang}提示: 确认一切正常后，可手动删除旧目录: $CURRENT_DIR 和 $CURRENT_DATA_ROOT${gl_bai}"
+    fi
+}
+
+
 
 
 setup_docker_dir() {
 
-	mkdir -p /home /home/docker 2>/dev/null
+	local DOCKER_DIR=$(get_docker_dir)
+	mkdir -p "$DOCKER_DIR" 2>/dev/null
 
-	if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
-		cp -f /home/docker /home/docker1 2>/dev/null
-		rm -rf /home/docker 2>/dev/null
-		mkdir -p /vol1/1000/docker 2>/dev/null
-		ln -s /vol1/1000/docker /home/docker 2>/dev/null
+	# 群晖兼容逻辑仅在默认路径时生效
+	if [ "$DOCKER_DIR" = "/home/docker" ]; then
+		if [ -d "/vol1/1000/" ] && [ ! -d "/vol1/1000/docker" ]; then
+			cp -f /home/docker /home/docker1 2>/dev/null
+			rm -rf /home/docker 2>/dev/null
+			mkdir -p /vol1/1000/docker 2>/dev/null
+			ln -s /vol1/1000/docker /home/docker 2>/dev/null
+		fi
+
+		if [ -d "/volume1/" ] && [ ! -d "/volume1/docker" ]; then
+			cp -f /home/docker /home/docker1 2>/dev/null
+			rm -rf /home/docker 2>/dev/null
+			mkdir -p /volume1/docker 2>/dev/null
+			ln -s /volume1/docker /home/docker 2>/dev/null
+		fi
 	fi
-
-	if [ -d "/volume1/" ] && [ ! -d "/volume1/docker" ]; then
-		cp -f /home/docker /home/docker1 2>/dev/null
-		rm -rf /home/docker 2>/dev/null
-		mkdir -p /volume1/docker 2>/dev/null
-		ln -s /volume1/docker /home/docker 2>/dev/null
-	fi
-
 
 }
 
 
 add_app_id() {
-mkdir -p /home/docker
-touch /home/docker/appno.txt
-grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
+local DOCKER_DIR=$(get_docker_dir)
+mkdir -p "$DOCKER_DIR"
+touch "$DOCKER_DIR/appno.txt"
+grep -qxF "${app_id}" "$DOCKER_DIR/appno.txt" || echo "${app_id}" >> "$DOCKER_DIR/appno.txt"
 
 }
 
@@ -2869,13 +3045,14 @@ while true; do
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
+	local DOCKER_DIR=$(get_docker_dir)
 	if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
-		if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
+		if [ ! -f "${DOCKER_DIR}/${docker_name}_port.conf" ]; then
 			local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 			docker_port=${docker_port:-0000}
-			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+			echo "$docker_port" > "${DOCKER_DIR}/${docker_name}_port.conf"
 		fi
-		local docker_port=$(cat "/home/docker/${docker_name}_port.conf")
+		local docker_port=$(cat "${DOCKER_DIR}/${docker_name}_port.conf")
 		check_docker_app_ip
 	fi
 	echo ""
@@ -2891,7 +3068,7 @@ while true; do
 	 case $choice in
 		1)
 			setup_docker_dir
-			check_disk_space $app_size /home/docker
+			check_disk_space $app_size $(get_docker_dir)
 			while true; do
 				read -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
 				local app_port=${app_port:-${docker_port}}
@@ -2908,7 +3085,7 @@ while true; do
 			install jq
 			install_docker
 			docker_rum
-			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+			echo "$docker_port" > "${DOCKER_DIR}/${docker_name}_port.conf"
 
 			add_app_id
 
@@ -2918,6 +3095,7 @@ while true; do
 			echo ""
 			$docker_use
 			$docker_passwd
+			show_app_info "$docker_name"
 			send_stats "安装$docker_name"
 			;;
 		2)
@@ -2938,10 +3116,11 @@ while true; do
 		3)
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
-			rm -rf "/home/docker/$docker_name"
-			rm -f /home/docker/${docker_name}_port.conf
+			local DOCKER_DIR=$(get_docker_dir)
+			rm -rf "${DOCKER_DIR}/$docker_name"
+			rm -f "${DOCKER_DIR}/${docker_name}_port.conf"
 
-			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+			sed -i "/\b${app_id}\b/d" "${DOCKER_DIR}/appno.txt"
 			echo "应用已卸载"
 			send_stats "卸载$docker_name"
 			;;
@@ -2991,13 +3170,14 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
+		local DOCKER_DIR=$(get_docker_dir)
 		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
-			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
+			if [ ! -f "${DOCKER_DIR}/${docker_name}_port.conf" ]; then
 				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
-				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+				echo "$docker_port" > "${DOCKER_DIR}/${docker_name}_port.conf"
 			fi
-			local docker_port=$(cat "/home/docker/${docker_name}_port.conf")
+			local docker_port=$(cat "${DOCKER_DIR}/${docker_name}_port.conf")
 			check_docker_app_ip
 		fi
 		echo ""
@@ -3013,7 +3193,7 @@ docker_app_plus() {
 		case $choice in
 			1)
 				setup_docker_dir
-				check_disk_space $app_size /home/docker
+				check_disk_space $app_size $(get_docker_dir)
 
 				while true; do
 					read -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
@@ -3031,7 +3211,7 @@ docker_app_plus() {
 				install jq
 				install_docker
 				docker_app_install
-				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+				echo "$docker_port" > "${DOCKER_DIR}/${docker_name}_port.conf"
 
 				add_app_id
 				send_stats "$app_name 安装"
@@ -3045,9 +3225,10 @@ docker_app_plus() {
 
 			3)
 				docker_app_uninstall
-				rm -f /home/docker/${docker_name}_port.conf
+				local DOCKER_DIR=$(get_docker_dir)
+				rm -f "${DOCKER_DIR}/${docker_name}_port.conf"
 
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+				sed -i "/\b${app_id}\b/d" "${DOCKER_DIR}/appno.txt"
 				send_stats "$app_name 卸载"
 				;;
 
@@ -3085,8 +3266,8 @@ docker_app_plus() {
 
 prometheus_install() {
 
-local PROMETHEUS_DIR="/home/docker/monitoring/prometheus"
-local GRAFANA_DIR="/home/docker/monitoring/grafana"
+local PROMETHEUS_DIR="$(get_docker_dir)/monitoring/prometheus"
+local GRAFANA_DIR="$(get_docker_dir)/monitoring/grafana"
 local NETWORK_NAME="monitoring"
 
 # Create necessary directories
@@ -3684,7 +3865,7 @@ stream_panel() {
 				read -e -p "确定要删除 nginx 容器吗？这可能会影响网站功能！(y/N): " confirm
 				if [[ "$confirm" =~ ^[Yy]$ ]]; then
 					docker rm -f nginx
-					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					sed -i "/\b${app_id}\b/d" $(get_docker_dir)/appno.txt
 					send_stats "更新Stream四层代理"
 					echo "nginx 容器已删除。"
 				else
@@ -4039,7 +4220,7 @@ while true; do
 		3)
 			panel_app_uninstall
 
-			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+			sed -i "/\b${app_id}\b/d" $(get_docker_dir)/appno.txt
 			send_stats "${panelname}卸载"
 			;;
 		*)
@@ -4391,7 +4572,7 @@ frps_panel() {
 
 				close_port 8055 8056
 
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+				sed -i "/\b${app_id}\b/d" $(get_docker_dir)/appno.txt
 				echo "应用已卸载"
 				;;
 			5)
@@ -4488,7 +4669,7 @@ frpc_panel() {
 				rm -rf /home/frp
 				close_port 8055
 
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+				sed -i "/\b${app_id}\b/d" $(get_docker_dir)/appno.txt
 				echo "应用已卸载"
 				;;
 
@@ -4576,7 +4757,7 @@ yt_menu_pro() {
 				echo "正在卸载 yt-dlp..."
 				rm -f /usr/local/bin/yt-dlp
 
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+				sed -i "/\b${app_id}\b/d" $(get_docker_dir)/appno.txt
 				echo "卸载完成。按任意键继续..."
 				read ;;
 			5)
@@ -5862,19 +6043,19 @@ clamav_scan() {
 		SCAN_PARAMS+="/mnt/host${dir} "
 	done
 
-	mkdir -p /home/docker/clamav/log/ > /dev/null 2>&1
-	> /home/docker/clamav/log/scan.log > /dev/null 2>&1
+	mkdir -p $(get_docker_dir)/clamav/log/ > /dev/null 2>&1
+	> $(get_docker_dir)/clamav/log/scan.log > /dev/null 2>&1
 
 	# 执行 Docker 命令
 	docker run --rm \
 		--name clamav \
 		--mount source=clam_db,target=/var/lib/clamav \
 		$MOUNT_PARAMS \
-		-v /home/docker/clamav/log/:/var/log/clamav/ \
+		-v $(get_docker_dir)/clamav/log/:/var/log/clamav/ \
 		clamav/clamav-debian:latest \
 		clamscan -r --log=/var/log/clamav/scan.log $SCAN_PARAMS
 
-	echo -e "${gl_lv}$@ 扫描完成，病毒报告存放在${gl_huang}/home/docker/clamav/log/scan.log${gl_bai}"
+	echo -e "${gl_lv}$@ 扫描完成，病毒报告存放在${gl_huang}$(get_docker_dir)/clamav/log/scan.log${gl_bai}"
 	echo -e "${gl_lv}如果有病毒请在${gl_huang}scan.log${gl_lv}文件中搜索FOUND关键字确认病毒位置 ${gl_bai}"
 
 }
@@ -8093,11 +8274,11 @@ docker_ssh_migration() {
 		done
 
 
-		# 备份 /home/docker 下的所有文件（不含子目录）
-		if [ -d "/home/docker" ]; then
-			echo -e "${gl_kjlan}备份 /home/docker 下的文件...${gl_bai}"
-			find /home/docker -maxdepth 1 -type f | tar -czf "${BACKUP_DIR}/home_docker_files.tar.gz" -T -
-			echo -e "${gl_lv}/home/docker 下的文件已打包到: ${BACKUP_DIR}/home_docker_files.tar.gz${gl_bai}"
+		# 备份 $(get_docker_dir) 下的所有文件（不含子目录）
+		if [ -d "$(get_docker_dir)" ]; then
+			echo -e "${gl_kjlan}备份 $(get_docker_dir) 下的文件...${gl_bai}"
+			find $(get_docker_dir) -maxdepth 1 -type f | tar -czf "${BACKUP_DIR}/home_docker_files.tar.gz" -T -
+			echo -e "${gl_lv}$(get_docker_dir) 下的文件已打包到: ${BACKUP_DIR}/home_docker_files.tar.gz${gl_bai}"
 		fi
 
 		chmod +x "$RESTORE_SCRIPT"
@@ -8212,14 +8393,14 @@ docker_ssh_migration() {
 
 		[[ "$has_container" == false ]] && echo -e "${gl_huang}未找到普通容器的备份信息${gl_bai}"
 
-		# 还原 /home/docker 下的文件
+		# 还原 $(get_docker_dir) 下的文件
 		if [ -f "$BACKUP_DIR/home_docker_files.tar.gz" ]; then
-			echo -e "${gl_kjlan}正在还原 /home/docker 下的文件...${gl_bai}"
-			mkdir -p /home/docker
+			echo -e "${gl_kjlan}正在还原 $(get_docker_dir) 下的文件...${gl_bai}"
+			mkdir -p $(get_docker_dir)
 			tar -xzf "$BACKUP_DIR/home_docker_files.tar.gz" -C /
-			echo -e "${gl_lv}/home/docker 下的文件已还原完成${gl_bai}"
+			echo -e "${gl_lv}$(get_docker_dir) 下的文件已还原完成${gl_bai}"
 		else
-			echo -e "${gl_huang}未找到 /home/docker 下文件的备份，跳过...${gl_bai}"
+			echo -e "${gl_huang}未找到 $(get_docker_dir) 下文件的备份，跳过...${gl_bai}"
 		fi
 
 
@@ -8325,6 +8506,7 @@ linux_docker() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}开启Docker-ipv6访问"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}关闭Docker-ipv6访问"
+	  echo -e "${gl_kjlan}13.  ${gl_bai}迁移Docker数据目录 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}备份/迁移/还原Docker环境"
 	  echo -e "${gl_kjlan}20.  ${gl_bai}卸载Docker环境"
@@ -8547,6 +8729,12 @@ linux_docker() {
 			  clear
 			  send_stats "Docker v6 关"
 			  docker_ipv6_off
+			  ;;
+
+		  13)
+			  clear
+			  send_stats "迁移Docker数据目录"
+			  migrate_docker_dir
 			  ;;
 
 		  19)
@@ -15277,7 +15465,7 @@ openclaw_backup_restore_menu() {
 		rm -rf "$HOME/.openclaw"
 		[ "$HOME" != "/root" ] && [ -d /root/.openclaw ] && echo "⚠️ 检测到 root 目录下仍存在 /root/.openclaw，如需清理请手动处理"
 		hash -r
-		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+		sed -i "/\b${app_id}\b/d" $(get_docker_dir)/appno.txt
 		echo "卸载完成"
 		break_end
 	}
@@ -15500,7 +15688,7 @@ while true; do
 	  echo -e "应用市场"
 	  echo -e "${gl_kjlan}-------------------------"
 
-	  local app_numbers=$([ -f /home/docker/appno.txt ] && cat /home/docker/appno.txt || echo "")
+	  local app_numbers=$([ -f $(get_docker_dir)/appno.txt ] && cat $(get_docker_dir)/appno.txt || echo "")
 
 	  # 用循环设置颜色
 	  for i in {1..150}; do
@@ -15700,8 +15888,8 @@ while true; do
 			  -p ${docker_port}:81 \
 			  -p 80:80 \
 			  -p 443:443 \
-			  -v /home/docker/npm/data:/data \
-			  -v /home/docker/npm/letsencrypt:/etc/letsencrypt \
+			  -v $(get_docker_dir)/npm/data:/data \
+			  -v $(get_docker_dir)/npm/letsencrypt:/etc/letsencrypt \
 			  --restart=always \
 			  $docker_img
 
@@ -15727,12 +15915,12 @@ while true; do
 
 		docker_rum() {
 
-			mkdir -p /home/docker/openlist
-			chmod -R 777 /home/docker/openlist
+			mkdir -p $(get_docker_dir)/openlist
+			chmod -R 777 $(get_docker_dir)/openlist
 
 			docker run -d \
 				--restart=always \
-				-v /home/docker/openlist:/opt/openlist/data \
+				-v $(get_docker_dir)/openlist:/opt/openlist/data \
 				-p ${docker_port}:5244 \
 				-e PUID=0 \
 				-e PGID=0 \
@@ -15774,7 +15962,7 @@ while true; do
 			  -e CUSTOM_USER=${admin} \
 			  -e PASSWORD=${admin_password} \
 			  -p ${docker_port}:3000 \
-			  -v /home/docker/webtop/data:/config \
+			  -v $(get_docker_dir)/webtop/data:/config \
 			  -v /var/run/docker.sock:/var/run/docker.sock \
 			  --shm-size="1gb" \
 			  --restart=always \
@@ -15857,8 +16045,8 @@ while true; do
 			  -p ${docker_port}:${docker_port} \
 			  -p 56881:56881 \
 			  -p 56881:56881/udp \
-			  -v /home/docker/qbittorrent/config:/config \
-			  -v /home/docker/qbittorrent/downloads:/downloads \
+			  -v $(get_docker_dir)/qbittorrent/config:/config \
+			  -v $(get_docker_dir)/qbittorrent/downloads:/downloads \
 			  --restart=always \
 			  lscr.io/linuxserver/qbittorrent:latest
 
@@ -15900,7 +16088,7 @@ while true; do
 			echo ""
 
 			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
-				yuming=$(cat /home/docker/mail.txt)
+				yuming=$(cat $(get_docker_dir)/mail.txt)
 				echo "访问地址: "
 				echo "https://$yuming"
 			fi
@@ -15915,10 +16103,10 @@ while true; do
 			case $choice in
 				1)
 					setup_docker_dir
-					check_disk_space 2 /home/docker
+					check_disk_space 2 $(get_docker_dir)
 					read -e -p "请设置邮箱域名 例如 mail.yuming.com : " yuming
-					mkdir -p /home/docker
-					echo "$yuming" > /home/docker/mail.txt
+					mkdir -p $(get_docker_dir)
+					echo "$yuming" > $(get_docker_dir)/mail.txt
 					echo "------------------------"
 					ip_address
 					echo "先解析这些DNS记录"
@@ -15940,7 +16128,7 @@ while true; do
 					docker run \
 						--net=host \
 						-e TZ=Europe/Prague \
-						-v /home/docker/mail:/data \
+						-v $(get_docker_dir)/mail:/data \
 						--name "mailserver" \
 						-h "$yuming" \
 						--restart=always \
@@ -15951,6 +16139,7 @@ while true; do
 
 					clear
 					echo "poste.io已经安装完成"
+					show_app_info "$docker_name"
 					echo "------------------------"
 					echo "您可以使用以下地址访问poste.io:"
 					echo "https://$yuming"
@@ -15961,11 +16150,11 @@ while true; do
 				2)
 					docker rm -f mailserver
 					docker rmi -f analogic/poste.i
-					yuming=$(cat /home/docker/mail.txt)
+					yuming=$(cat $(get_docker_dir)/mail.txt)
 					docker run \
 						--net=host \
 						-e TZ=Europe/Prague \
-						-v /home/docker/mail:/data \
+						-v $(get_docker_dir)/mail:/data \
 						--name "mailserver" \
 						-h "$yuming" \
 						--restart=always \
@@ -15976,6 +16165,7 @@ while true; do
 
 					clear
 					echo "poste.io已经安装完成"
+					show_app_info "$docker_name"
 					echo "------------------------"
 					echo "您可以使用以下地址访问poste.io:"
 					echo "https://$yuming"
@@ -15984,10 +16174,10 @@ while true; do
 				3)
 					docker rm -f mailserver
 					docker rmi -f analogic/poste.io
-					rm /home/docker/mail.txt
-					rm -rf /home/docker/mail
+					rm $(get_docker_dir)/mail.txt
+					rm -rf $(get_docker_dir)/mail
 
-					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					sed -i "/\b${app_id}\b/d" $(get_docker_dir)/appno.txt
 					echo "应用已卸载"
 					;;
 
@@ -16013,7 +16203,7 @@ while true; do
 
 		docker_app_install() {
 			docker run --name db -d --restart=always \
-				-v /home/docker/mongo/dump:/dump \
+				-v $(get_docker_dir)/mongo/dump:/dump \
 				mongo:latest --replSet rs5 --oplogSize 256
 			sleep 1
 			docker exec db mongosh --eval "printjson(rs.initiate())"
@@ -16023,6 +16213,7 @@ while true; do
 			clear
 			ip_address
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
@@ -16033,6 +16224,7 @@ while true; do
 			clear
 			ip_address
 			echo "rocket.chat已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
@@ -16041,7 +16233,7 @@ while true; do
 			docker rmi -f rocket.chat
 			docker rm -f db
 			docker rmi -f mongo:latest
-			rm -rf /home/docker/mongo
+			rm -rf $(get_docker_dir)/mongo
 			echo "应用已卸载"
 		}
 
@@ -16063,7 +16255,7 @@ while true; do
 			docker run -d -p ${docker_port}:80 \
 			  -e ADMINER_USER="root" -e ADMINER_PASSWD="password" \
 			  -e BIND_ADDRESS="false" \
-			  -v /home/docker/zentao-server/:/opt/zbox/ \
+			  -v $(get_docker_dir)/zentao-server/:/opt/zbox/ \
 			  --add-host smtp.exmail.qq.com:163.177.90.125 \
 			  --name zentao-server \
 			  --restart=always \
@@ -16091,7 +16283,7 @@ while true; do
 
 
 			docker run -d \
-			  -v /home/docker/qinglong/data:/ql/data \
+			  -v $(get_docker_dir)/qinglong/data:/ql/data \
 			  -p ${docker_port}:5700 \
 			  --name qinglong \
 			  --hostname qinglong \
@@ -16121,25 +16313,26 @@ while true; do
 
 		docker_app_install() {
 			cd /home/ && mkdir -p docker/cloud && cd docker/cloud && mkdir temp_data && mkdir -vp cloudreve/{uploads,avatar} && touch cloudreve/conf.ini && touch cloudreve/cloudreve.db && mkdir -p aria2/config && mkdir -p data/aria2 && chmod -R 777 data/aria2
-			curl -o /home/docker/cloud/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
-			sed -i "s/5212:5212/${docker_port}:5212/g" /home/docker/cloud/docker-compose.yml
-			cd /home/docker/cloud/
+			curl -o $(get_docker_dir)/cloud/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/cloudreve-docker-compose.yml
+			sed -i "s/5212:5212/${docker_port}:5212/g" $(get_docker_dir)/cloud/docker-compose.yml
+			cd $(get_docker_dir)/cloud/
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 
 		docker_app_update() {
-			cd /home/docker/cloud/ && docker compose down --rmi all
-			cd /home/docker/cloud/ && docker compose up -d
+			cd $(get_docker_dir)/cloud/ && docker compose down --rmi all
+			cd $(get_docker_dir)/cloud/ && docker compose up -d
 		}
 
 
 		docker_app_uninstall() {
-			cd /home/docker/cloud/ && docker compose down --rmi all
-			rm -rf /home/docker/cloud
+			cd $(get_docker_dir)/cloud/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/cloud
 			echo "应用已卸载"
 		}
 
@@ -16159,8 +16352,8 @@ while true; do
 			  -e TZ=Asia/Shanghai \
 			  -e PUID=1000 \
 			  -e PGID=1000 \
-			  -v /home/docker/easyimage/config:/app/web/config \
-			  -v /home/docker/easyimage/i:/app/web/i \
+			  -v $(get_docker_dir)/easyimage/config:/app/web/config \
+			  -v $(get_docker_dir)/easyimage/i:/app/web/i \
 			  --restart=always \
 			  ddsderek/easyimage:latest
 
@@ -16183,9 +16376,9 @@ while true; do
 		docker_rum() {
 
 			docker run -d --name=emby --restart=always \
-				-v /home/docker/emby/config:/config \
-				-v /home/docker/emby/share1:/mnt/share1 \
-				-v /home/docker/emby/share2:/mnt/share2 \
+				-v $(get_docker_dir)/emby/config:/config \
+				-v $(get_docker_dir)/emby/share1:/mnt/share1 \
+				-v $(get_docker_dir)/emby/share2:/mnt/share2 \
 				-v /mnt/notify:/mnt/notify \
 				-p ${docker_port}:8096 \
 				-e UID=1000 -e GID=100 -e GIDLIST=100 \
@@ -16234,8 +16427,8 @@ while true; do
 
 			docker run -d \
 				--name adguardhome \
-				-v /home/docker/adguardhome/work:/opt/adguardhome/work \
-				-v /home/docker/adguardhome/conf:/opt/adguardhome/conf \
+				-v $(get_docker_dir)/adguardhome/work:/opt/adguardhome/work \
+				-v $(get_docker_dir)/adguardhome/conf:/opt/adguardhome/conf \
 				-p 53:53/tcp \
 				-p 53:53/udp \
 				-p ${docker_port}:3000/tcp \
@@ -16268,8 +16461,8 @@ while true; do
 			docker run -d -p ${docker_port}:80 \
 				--restart=always \
 				--name onlyoffice \
-				-v /home/docker/onlyoffice/DocumentServer/logs:/var/log/onlyoffice  \
-				-v /home/docker/onlyoffice/DocumentServer/data:/var/www/onlyoffice/Data  \
+				-v $(get_docker_dir)/onlyoffice/DocumentServer/logs:/var/log/onlyoffice  \
+				-v $(get_docker_dir)/onlyoffice/DocumentServer/data:/var/www/onlyoffice/Data  \
 				 onlyoffice/documentserver
 
 
@@ -16317,6 +16510,7 @@ while true; do
 					add_app_id
 					clear
 					echo "雷池WAF面板已经安装完成"
+					show_app_info "$docker_name"
 					check_docker_app_ip
 					docker exec safeline-mgt resetadmin
 
@@ -16339,7 +16533,7 @@ while true; do
 					cd /data/safeline
 					docker compose down --rmi all
 
-					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					sed -i "/\b${app_id}\b/d" $(get_docker_dir)/appno.txt
 					echo "如果你是默认安装目录那现在项目已经卸载。如果你是自定义安装目录你需要到安装目录下自行执行:"
 					echo "docker compose down && docker compose down --rmi all"
 					;;
@@ -16365,7 +16559,7 @@ while true; do
 				--name portainer \
 				-p ${docker_port}:9000 \
 				-v /var/run/docker.sock:/var/run/docker.sock \
-				-v /home/docker/portainer:/data \
+				-v $(get_docker_dir)/portainer:/data \
 				--restart=always \
 				portainer/portainer
 
@@ -16390,7 +16584,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d -p ${docker_port}:8080 -v /home/docker/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart=always codercom/code-server
+			docker run -d -p ${docker_port}:8080 -v $(get_docker_dir)/vscode-web:/home/coder/.local/share/code-server --name vscode-web --restart=always codercom/code-server
 
 		}
 
@@ -16416,7 +16610,7 @@ while true; do
 			docker run -d \
 				--name=uptime-kuma \
 				-p ${docker_port}:3001 \
-				-v /home/docker/uptime-kuma/uptime-kuma-data:/app/data \
+				-v $(get_docker_dir)/uptime-kuma/uptime-kuma-data:/app/data \
 				--restart=always \
 				louislam/uptime-kuma:latest
 
@@ -16439,7 +16633,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --name memos -p ${docker_port}:5230 -v /home/docker/memos:/var/opt/memos --restart=always neosmemo/memos:stable
+			docker run -d --name memos -p ${docker_port}:5230 -v $(get_docker_dir)/memos:/var/opt/memos --restart=always neosmemo/memos:stable
 
 		}
 
@@ -16475,7 +16669,7 @@ while true; do
 			  -e DOCKER_MODS=linuxserver/mods:universal-package-install \
 			  -e INSTALL_PACKAGES=font-noto-cjk \
 			  -p ${docker_port}:3000 \
-			  -v /home/docker/webtop/data:/config \
+			  -v $(get_docker_dir)/webtop/data:/config \
 			  -v /var/run/docker.sock:/var/run/docker.sock \
 			  --shm-size="1gb" \
 			  --restart=always \
@@ -16501,7 +16695,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --name nextcloud --restart=always -p ${docker_port}:80 -v /home/docker/nextcloud:/var/www/html -e NEXTCLOUD_ADMIN_USER=nextcloud -e NEXTCLOUD_ADMIN_PASSWORD=$rootpasswd nextcloud
+			docker run -d --name nextcloud --restart=always -p ${docker_port}:80 -v $(get_docker_dir)/nextcloud:/var/www/html -e NEXTCLOUD_ADMIN_USER=nextcloud -e NEXTCLOUD_ADMIN_PASSWORD=$rootpasswd nextcloud
 
 		}
 
@@ -16521,7 +16715,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --name qd -p ${docker_port}:80 -v /home/docker/qd/config:/usr/src/app/config qdtoday/qd
+			docker run -d --name qd -p ${docker_port}:80 -v $(get_docker_dir)/qd/config:/usr/src/app/config qdtoday/qd
 
 		}
 
@@ -16541,7 +16735,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --name dockge --restart=always -p ${docker_port}:5001 -v /var/run/docker.sock:/var/run/docker.sock -v /home/docker/dockge/data:/app/data -v  /home/docker/dockge/stacks:/home/docker/dockge/stacks -e DOCKGE_STACKS_DIR=/home/docker/dockge/stacks louislam/dockge
+			docker run -d --name dockge --restart=always -p ${docker_port}:5001 -v /var/run/docker.sock:/var/run/docker.sock -v $(get_docker_dir)/dockge/data:/app/data -v  $(get_docker_dir)/dockge/stacks:$(get_docker_dir)/dockge/stacks -e DOCKGE_STACKS_DIR=$(get_docker_dir)/dockge/stacks louislam/dockge
 
 		}
 
@@ -16585,7 +16779,7 @@ while true; do
 			  --name searxng \
 			  --restart=always \
 			  -p ${docker_port}:8080 \
-			  -v "/home/docker/searxng:/etc/searxng" \
+			  -v "$(get_docker_dir)/searxng:/etc/searxng" \
 			  searxng/searxng
 
 		}
@@ -16615,8 +16809,8 @@ while true; do
 				-p ${docker_port}:2342 \
 				-e PHOTOPRISM_UPLOAD_NSFW="true" \
 				-e PHOTOPRISM_ADMIN_PASSWORD="$rootpasswd" \
-				-v /home/docker/photoprism/storage:/photoprism/storage \
-				-v /home/docker/photoprism/Pictures:/photoprism/originals \
+				-v $(get_docker_dir)/photoprism/storage:/photoprism/storage \
+				-v $(get_docker_dir)/photoprism/Pictures:/photoprism/originals \
 				photoprism/photoprism
 
 		}
@@ -16643,9 +16837,9 @@ while true; do
 				--name s-pdf \
 				--restart=always \
 				 -p ${docker_port}:8080 \
-				 -v /home/docker/s-pdf/trainingData:/usr/share/tesseract-ocr/5/tessdata \
-				 -v /home/docker/s-pdf/extraConfigs:/configs \
-				 -v /home/docker/s-pdf/logs:/logs \
+				 -v $(get_docker_dir)/s-pdf/trainingData:/usr/share/tesseract-ocr/5/tessdata \
+				 -v $(get_docker_dir)/s-pdf/extraConfigs:/configs \
+				 -v $(get_docker_dir)/s-pdf/logs:/logs \
 				 -e DOCKER_ENABLE_SECURITY=false \
 				 frooodle/s-pdf:latest
 		}
@@ -16666,7 +16860,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --restart=always --name drawio -p ${docker_port}:8080 -v /home/docker/drawio:/var/lib/drawio jgraph/drawio
+			docker run -d --restart=always --name drawio -p ${docker_port}:8080 -v $(get_docker_dir)/drawio:/var/lib/drawio jgraph/drawio
 
 		}
 
@@ -16688,9 +16882,9 @@ while true; do
 		docker_rum() {
 
 			docker run -d --restart=always -p ${docker_port}:3002 \
-				-v /home/docker/sun-panel/conf:/app/conf \
-				-v /home/docker/sun-panel/uploads:/app/uploads \
-				-v /home/docker/sun-panel/database:/app/database \
+				-v $(get_docker_dir)/sun-panel/conf:/app/conf \
+				-v $(get_docker_dir)/sun-panel/uploads:/app/uploads \
+				-v $(get_docker_dir)/sun-panel/database:/app/database \
 				--name sun-panel \
 				hslr/sun-panel
 
@@ -16716,7 +16910,7 @@ while true; do
 				--name pingvin-share \
 				--restart=always \
 				-p ${docker_port}:3000 \
-				-v /home/docker/pingvin-share/data:/opt/app/backend/data \
+				-v $(get_docker_dir)/pingvin-share/data:/opt/app/backend/data \
 				stonith404/pingvin-share
 		}
 
@@ -16739,7 +16933,7 @@ while true; do
 
 			docker run -d --restart=always \
 				-p ${docker_port}:3000 \
-				-v /home/docker/moments/data:/app/data \
+				-v $(get_docker_dir)/moments/data:/app/data \
 				-v /etc/localtime:/etc/localtime:ro \
 				-v /etc/timezone:/etc/timezone:ro \
 				--name moments \
@@ -16810,9 +17004,9 @@ while true; do
 
 	  39|bililive)
 
-		if [ ! -d /home/docker/bililive-go/ ]; then
-			mkdir -p /home/docker/bililive-go/ > /dev/null 2>&1
-			wget -O /home/docker/bililive-go/config.yml ${gh_proxy}raw.githubusercontent.com/hr3lxphr6j/bililive-go/master/config.yml > /dev/null 2>&1
+		if [ ! -d $(get_docker_dir)/bililive-go/ ]; then
+			mkdir -p $(get_docker_dir)/bililive-go/ > /dev/null 2>&1
+			wget -O $(get_docker_dir)/bililive-go/config.yml ${gh_proxy}raw.githubusercontent.com/hr3lxphr6j/bililive-go/master/config.yml > /dev/null 2>&1
 		fi
 
 		local app_id="39"
@@ -16822,7 +17016,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run --restart=always --name bililive-go -v /home/docker/bililive-go/config.yml:/etc/bililive-go/config.yml -v /home/docker/bililive-go/Videos:/srv/bililive -p ${docker_port}:8080 -d chigusa/bililive-go
+			docker run --restart=always --name bililive-go -v $(get_docker_dir)/bililive-go/config.yml:/etc/bililive-go/config.yml -v $(get_docker_dir)/bililive-go/Videos:/srv/bililive -p ${docker_port}:8080 -d chigusa/bililive-go
 
 		}
 
@@ -16891,7 +17085,7 @@ while true; do
 			  --name nexterm \
 			  -e ENCRYPTION_KEY=${ENCRYPTION_KEY} \
 			  -p ${docker_port}:6989 \
-			  -v /home/docker/nexterm:/app/data \
+			  -v $(get_docker_dir)/nexterm:/app/data \
 			  --restart=always \
 			  germannewsmaker/nexterm:latest
 
@@ -16913,7 +17107,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run --name hbbs -v /home/docker/hbbs/data:/root -td --net=host --restart=always rustdesk/rustdesk-server hbbs
+			docker run --name hbbs -v $(get_docker_dir)/hbbs/data:/root -td --net=host --restart=always rustdesk/rustdesk-server hbbs
 
 		}
 
@@ -16934,7 +17128,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run --name hbbr -v /home/docker/hbbr/data:/root -td --net=host --restart=always rustdesk/rustdesk-server hbbr
+			docker run --name hbbr -v $(get_docker_dir)/hbbr/data:/root -td --net=host --restart=always rustdesk/rustdesk-server hbbr
 
 		}
 
@@ -16957,7 +17151,7 @@ while true; do
 			docker run -d \
 				-p ${docker_port}:5000 \
 				--name registry \
-				-v /home/docker/registry:/var/lib/registry \
+				-v $(get_docker_dir)/registry:/var/lib/registry \
 				-e REGISTRY_PROXY_REMOTEURL=https://registry-1.docker.io \
 				--restart=always \
 				registry:2
@@ -16980,7 +17174,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d --name ghproxy --restart=always -p ${docker_port}:8080 -v /home/docker/ghproxy/config:/data/ghproxy/config wjqserver/ghproxy:latest
+			docker run -d --name ghproxy --restart=always -p ${docker_port}:8080 -v $(get_docker_dir)/ghproxy/config:/data/ghproxy/config wjqserver/ghproxy:latest
 
 		}
 
@@ -17007,6 +17201,7 @@ while true; do
 			clear
 			ip_address
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 			echo "初始用户名密码均为: admin"
 		}
@@ -17025,7 +17220,7 @@ while true; do
 			docker rmi -f prom/prometheus:latest
 			docker rmi -f grafana/grafana:latest
 
-			rm -rf /home/docker/monitoring
+			rm -rf $(get_docker_dir)/monitoring
 			echo "应用已卸载"
 		}
 
@@ -17097,7 +17292,7 @@ while true; do
 		docker_rum() {
 
 			docker run -d --restart=always -p ${docker_port}:5000 \
-				-v /home/docker/datastore:/datastore \
+				-v $(get_docker_dir)/datastore:/datastore \
 				--name changedetection dgtlmoon/changedetection.io:latest
 
 		}
@@ -17130,7 +17325,7 @@ while true; do
 			docker run -d --name dpanel --restart=always \
 				-p ${docker_port}:8080 -e APP_NAME=dpanel \
 				-v /var/run/docker.sock:/var/run/docker.sock \
-				-v /home/docker/dpanel:/dpanel \
+				-v $(get_docker_dir)/dpanel:/dpanel \
 				dpanel/dpanel:lite
 
 		}
@@ -17151,7 +17346,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart=always ghcr.io/open-webui/open-webui:ollama
+			docker run -d -p ${docker_port}:8080 -v $(get_docker_dir)/ollama:/root/.ollama -v $(get_docker_dir)/ollama/open-webui:/app/backend/data --name ollama --restart=always ghcr.io/open-webui/open-webui:ollama
 
 		}
 
@@ -17203,7 +17398,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d -p ${docker_port}:8080 -v /home/docker/ollama:/root/.ollama -v /home/docker/ollama/open-webui:/app/backend/data --name ollama --restart=always ghcr.io/open-webui/open-webui:ollama
+			docker run -d -p ${docker_port}:8080 -v $(get_docker_dir)/ollama:/root/.ollama -v $(get_docker_dir)/ollama/open-webui:/app/backend/data --name ollama --restart=always ghcr.io/open-webui/open-webui:ollama
 
 		}
 
@@ -17227,32 +17422,33 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
-			sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" /home/docker/dify/docker/.env
+			mkdir -p  $(get_docker_dir)/ && cd $(get_docker_dir)/ && git clone ${gh_proxy}github.com/langgenius/dify.git && cd dify/docker && cp .env.example .env
+			sed -i "s/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=${docker_port}/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/" $(get_docker_dir)/dify/docker/.env
 
 			docker compose up -d
 
-			chown -R 1001:1001 /home/docker/dify/docker/volumes/app/storage
-			chmod -R 755 /home/docker/dify/docker/volumes/app/storage
+			chown -R 1001:1001 $(get_docker_dir)/dify/docker/volumes/app/storage
+			chmod -R 755 $(get_docker_dir)/dify/docker/volumes/app/storage
 			docker compose down
 			docker compose up -d
 
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 		docker_app_update() {
-			cd  /home/docker/dify/docker/ && docker compose down --rmi all
-			cd  /home/docker/dify/
+			cd  $(get_docker_dir)/dify/docker/ && docker compose down --rmi all
+			cd  $(get_docker_dir)/dify/
 			git pull ${gh_proxy}github.com/langgenius/dify.git main > /dev/null 2>&1
-			sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' /home/docker/dify/docker/.env
-			cd  /home/docker/dify/docker/ && docker compose up -d
+			sed -i 's/^EXPOSE_NGINX_PORT=.*/EXPOSE_NGINX_PORT=8058/; s/^EXPOSE_NGINX_SSL_PORT=.*/EXPOSE_NGINX_SSL_PORT=8858/' $(get_docker_dir)/dify/docker/.env
+			cd  $(get_docker_dir)/dify/docker/ && docker compose up -d
 		}
 
 		docker_app_uninstall() {
-			cd  /home/docker/dify/docker/ && docker compose down --rmi all
-			rm -rf /home/docker/dify
+			cd  $(get_docker_dir)/dify/docker/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/dify
 			echo "应用已卸载"
 		}
 
@@ -17271,7 +17467,7 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/Calcium-Ion/new-api.git && cd new-api
+			mkdir -p  $(get_docker_dir)/ && cd $(get_docker_dir)/ && git clone ${gh_proxy}github.com/Calcium-Ion/new-api.git && cd new-api
 
 			sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
 				   -e 's/container_name: redis/container_name: redis-new-api/g' \
@@ -17282,12 +17478,13 @@ while true; do
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 		docker_app_update() {
-			cd  /home/docker/new-api/ && docker compose down --rmi all
-			cd  /home/docker/new-api/
+			cd  $(get_docker_dir)/new-api/ && docker compose down --rmi all
+			cd  $(get_docker_dir)/new-api/
 
 			git pull ${gh_proxy}github.com/Calcium-Ion/new-api.git main > /dev/null 2>&1
 			sed -i -e "s/- \"3000:3000\"/- \"${docker_port}:3000\"/g" \
@@ -17298,13 +17495,14 @@ while true; do
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 
 		}
 
 		docker_app_uninstall() {
-			cd  /home/docker/new-api/ && docker compose down --rmi all
-			rm -rf /home/docker/new-api
+			cd  $(get_docker_dir)/new-api/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/new-api
 			echo "应用已卸载"
 		}
 
@@ -17327,6 +17525,7 @@ while true; do
 			curl -sSL ${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh | bash
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 			echo "初始用户名: admin"
 			echo "初始密码: ChangeMe"
@@ -17389,26 +17588,27 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/infiniflow/ragflow.git && cd ragflow/docker
+			mkdir -p  $(get_docker_dir)/ && cd $(get_docker_dir)/ && git clone ${gh_proxy}github.com/infiniflow/ragflow.git && cd ragflow/docker
 			sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 		docker_app_update() {
-			cd  /home/docker/ragflow/docker/ && docker compose down --rmi all
-			cd  /home/docker/ragflow/
+			cd  $(get_docker_dir)/ragflow/docker/ && docker compose down --rmi all
+			cd  $(get_docker_dir)/ragflow/
 			git pull ${gh_proxy}github.com/infiniflow/ragflow.git main > /dev/null 2>&1
-			cd  /home/docker/ragflow/docker/
+			cd  $(get_docker_dir)/ragflow/docker/
 			sed -i "s/- 80:80/- ${docker_port}:80/; /- 443:443/d" docker-compose.yml
 			docker compose up -d
 		}
 
 		docker_app_uninstall() {
-			cd  /home/docker/ragflow/docker/ && docker compose down --rmi all
-			rm -rf /home/docker/ragflow
+			cd  $(get_docker_dir)/ragflow/docker/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/ragflow
 			echo "应用已卸载"
 		}
 
@@ -17425,7 +17625,7 @@ while true; do
 
 		docker_rum() {
 
-			docker run -d -p ${docker_port}:8080 -v /home/docker/open-webui:/app/backend/data --name open-webui --restart=always ghcr.io/open-webui/open-webui:main
+			docker run -d -p ${docker_port}:8080 -v $(get_docker_dir)/open-webui:/app/backend/data --name open-webui --restart=always ghcr.io/open-webui/open-webui:main
 
 		}
 
@@ -17465,13 +17665,13 @@ while true; do
 		docker_rum() {
 
 			add_yuming
-			mkdir -p /home/docker/n8n
-			chmod -R 777 /home/docker/n8n
+			mkdir -p $(get_docker_dir)/n8n
+			chmod -R 777 $(get_docker_dir)/n8n
 
 			docker run -d --name n8n \
 			  --restart=always \
 			  -p ${docker_port}:5678 \
-			  -v /home/docker/n8n:/home/node/.n8n \
+			  -v $(get_docker_dir)/n8n:/home/node/.n8n \
 			  -e N8N_HOST=${yuming} \
 			  -e N8N_PORT=5678 \
 			  -e N8N_PROTOCOL=https \
@@ -17507,7 +17707,7 @@ while true; do
 				--name ddns-go \
 				--restart=always \
 				-p ${docker_port}:9876 \
-				-v /home/docker/ddns-go:/root \
+				-v $(get_docker_dir)/ddns-go:/root \
 				jeessy/ddns-go
 
 		}
@@ -17527,7 +17727,7 @@ while true; do
 		local docker_port=8068
 
 		docker_rum() {
-			docker run -d --name allinssl -p ${docker_port}:8888 -v /home/docker/allinssl/data:/www/allinssl/data -e ALLINSSL_USER=allinssl -e ALLINSSL_PWD=allinssldocker -e ALLINSSL_URL=allinssl allinssl/allinssl:latest
+			docker run -d --name allinssl -p ${docker_port}:8888 -v $(get_docker_dir)/allinssl/data:/www/allinssl/data -e ALLINSSL_USER=allinssl -e ALLINSSL_PWD=allinssldocker -e ALLINSSL_URL=allinssl allinssl/allinssl:latest
 		}
 
 		local docker_describe="开源免费的 SSL 证书自动化管理平台"
@@ -17547,17 +17747,17 @@ while true; do
 
 		docker_rum() {
 
-			mkdir -p /home/docker/sftpgo/data
-			mkdir -p /home/docker/sftpgo/config
-			chown -R 1000:1000 /home/docker/sftpgo
+			mkdir -p $(get_docker_dir)/sftpgo/data
+			mkdir -p $(get_docker_dir)/sftpgo/config
+			chown -R 1000:1000 $(get_docker_dir)/sftpgo
 
 			docker run -d \
 			  --name sftpgo \
 			  --restart=always \
 			  -p ${docker_port}:8080 \
 			  -p 22022:2022 \
-			  --mount type=bind,source=/home/docker/sftpgo/data,target=/srv/sftpgo \
-			  --mount type=bind,source=/home/docker/sftpgo/config,target=/var/lib/sftpgo \
+			  --mount type=bind,source=$(get_docker_dir)/sftpgo/data,target=/srv/sftpgo \
+			  --mount type=bind,source=$(get_docker_dir)/sftpgo/config,target=/var/lib/sftpgo \
 			  drakkan/sftpgo:latest
 
 		}
@@ -17579,7 +17779,7 @@ while true; do
 
 		docker_rum() {
 
-			mkdir -p /home/docker/astrbot/data
+			mkdir -p $(get_docker_dir)/astrbot/data
 
 			docker run -d \
 			  -p ${docker_port}:6185 \
@@ -17587,7 +17787,7 @@ while true; do
 			  -p 6196:6196 \
 			  -p 6199:6199 \
 			  -p 11451:11451 \
-			  -v /home/docker/astrbot/data:/AstrBot/data \
+			  -v $(get_docker_dir)/astrbot/data:/AstrBot/data \
 			  --restart=always \
 			  --name astrbot \
 			  soulter/astrbot:latest
@@ -17615,8 +17815,8 @@ while true; do
 			  --name navidrome \
 			  --restart=always \
 			  --user $(id -u):$(id -g) \
-			  -v /home/docker/navidrome/music:/music \
-			  -v /home/docker/navidrome/data:/data \
+			  -v $(get_docker_dir)/navidrome/music:/music \
+			  -v $(get_docker_dir)/navidrome/data:/data \
 			  -p ${docker_port}:4533 \
 			  -e ND_LOGLEVEL=info \
 			  deluan/navidrome:latest
@@ -17645,7 +17845,7 @@ while true; do
 				--name bitwarden \
 				--restart=always \
 				-p ${docker_port}:80 \
-				-v /home/docker/bitwarden/data:/data \
+				-v $(get_docker_dir)/bitwarden/data:/data \
 				vaultwarden/server
 
 		}
@@ -17710,33 +17910,34 @@ while true; do
 			read -e -p "输入授权码: " shouquanma
 
 
-			mkdir -p /home/docker/moontv
-			mkdir -p /home/docker/moontv/config
-			mkdir -p /home/docker/moontv/data
-			cd /home/docker/moontv
+			mkdir -p $(get_docker_dir)/moontv
+			mkdir -p $(get_docker_dir)/moontv/config
+			mkdir -p $(get_docker_dir)/moontv/data
+			cd $(get_docker_dir)/moontv
 
-			curl -o /home/docker/moontv/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/moontv-docker-compose.yml
-			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/moontv/docker-compose.yml
-			sed -i "s|admin_password|${admin_password}|g" /home/docker/moontv/docker-compose.yml
-			sed -i "s|admin|${admin}|g" /home/docker/moontv/docker-compose.yml
-			sed -i "s|shouquanma|${shouquanma}|g" /home/docker/moontv/docker-compose.yml
-			cd /home/docker/moontv/
+			curl -o $(get_docker_dir)/moontv/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/moontv-docker-compose.yml
+			sed -i "s/3000:3000/${docker_port}:3000/g" $(get_docker_dir)/moontv/docker-compose.yml
+			sed -i "s|admin_password|${admin_password}|g" $(get_docker_dir)/moontv/docker-compose.yml
+			sed -i "s|admin|${admin}|g" $(get_docker_dir)/moontv/docker-compose.yml
+			sed -i "s|shouquanma|${shouquanma}|g" $(get_docker_dir)/moontv/docker-compose.yml
+			cd $(get_docker_dir)/moontv/
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 
 		docker_app_update() {
-			cd /home/docker/moontv/ && docker compose down --rmi all
-			cd /home/docker/moontv/ && docker compose up -d
+			cd $(get_docker_dir)/moontv/ && docker compose down --rmi all
+			cd $(get_docker_dir)/moontv/ && docker compose up -d
 		}
 
 
 		docker_app_uninstall() {
-			cd /home/docker/moontv/ && docker compose down --rmi all
-			rm -rf /home/docker/moontv
+			cd $(get_docker_dir)/moontv/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/moontv
 			echo "应用已卸载"
 		}
 
@@ -17758,7 +17959,7 @@ while true; do
 			  --name melody \
 			  --restart=always \
 			  -p ${docker_port}:5566 \
-			  -v /home/docker/melody/.profile:/app/backend/.profile \
+			  -v $(get_docker_dir)/melody/.profile:/app/backend/.profile \
 			  foamzou/melody:latest
 
 
@@ -17819,8 +18020,8 @@ while true; do
 			  --privileged \
 			  -e XL_DASHBOARD_USERNAME=${app_use} \
 			  -e XL_DASHBOARD_PASSWORD=${app_passwd} \
-			  -v /home/docker/xunlei/data:/xunlei/data \
-			  -v /home/docker/xunlei/downloads:/xunlei/downloads \
+			  -v $(get_docker_dir)/xunlei/data:/xunlei/data \
+			  -v $(get_docker_dir)/xunlei/downloads:/xunlei/downloads \
 			  -p ${docker_port}:2345 \
 			  cnk3x/xunlei
 
@@ -17874,11 +18075,11 @@ while true; do
 
 		docker_rum() {
 
-			mkdir -p /home/docker/beszel && \
+			mkdir -p $(get_docker_dir)/beszel && \
 			docker run -d \
 			  --name beszel \
 			  --restart=always \
-			  -v /home/docker/beszel:/beszel_data \
+			  -v $(get_docker_dir)/beszel:/beszel_data \
 			  -p ${docker_port}:8090 \
 			  henrygd/beszel
 
@@ -17906,7 +18107,7 @@ while true; do
 
 		  docker_app_install() {
 			  install git openssl
-			  mkdir -p /home/docker/linkwarden && cd /home/docker/linkwarden
+			  mkdir -p $(get_docker_dir)/linkwarden && cd $(get_docker_dir)/linkwarden
 
 			  # 下载官方 docker-compose 和 env 文件
 			  curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
@@ -17925,19 +18126,20 @@ while true; do
 			  echo "ADMIN_EMAIL=${ADMIN_EMAIL}" >> .env
 			  echo "ADMIN_PASSWORD=${ADMIN_PASSWORD}" >> .env
 
-			  sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
+			  sed -i "s/3000:3000/${docker_port}:3000/g" $(get_docker_dir)/linkwarden/docker-compose.yml
 
 			  # 启动容器
 			  docker compose up -d
 
 			  clear
 			  echo "已经安装完成"
+			  show_app_info "$docker_name"
 		  	  check_docker_app_ip
 
 		  }
 
 		  docker_app_update() {
-			  cd /home/docker/linkwarden && docker compose down --rmi all
+			  cd $(get_docker_dir)/linkwarden && docker compose down --rmi all
 			  curl -O ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/docker-compose.yml
 			  curl -L ${gh_proxy}raw.githubusercontent.com/linkwarden/linkwarden/refs/heads/main/.env.sample -o ".env.new"
 
@@ -17950,14 +18152,14 @@ while true; do
 			  echo "MEILI_MASTER_KEY=$MEILI_MASTER_KEY" >> .env
 			  echo "ADMIN_EMAIL=$ADMIN_EMAIL" >> .env
 			  echo "ADMIN_PASSWORD=$ADMIN_PASSWORD" >> .env
-			  sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/linkwarden/docker-compose.yml
+			  sed -i "s/3000:3000/${docker_port}:3000/g" $(get_docker_dir)/linkwarden/docker-compose.yml
 
 			  docker compose up -d
 		  }
 
 		  docker_app_uninstall() {
-			  cd /home/docker/linkwarden && docker compose down --rmi all
-			  rm -rf /home/docker/linkwarden
+			  cd $(get_docker_dir)/linkwarden && docker compose down --rmi all
+			  rm -rf $(get_docker_dir)/linkwarden
 			  echo "应用已卸载"
 		  }
 
@@ -17979,7 +18181,7 @@ while true; do
 		  docker_app_install() {
 
 			  add_yuming
-			  mkdir -p /home/docker/jitsi && cd /home/docker/jitsi
+			  mkdir -p $(get_docker_dir)/jitsi && cd $(get_docker_dir)/jitsi
 			  wget $(wget -q -O - https://api.github.com/repos/jitsi/docker-jitsi-meet/releases/latest | grep zip | cut -d\" -f4)
 			  unzip "$(ls -t | head -n 1)"
 			  cd "$(ls -dt */ | head -n 1)"
@@ -17996,7 +18198,7 @@ while true; do
 		  }
 
 		  docker_app_update() {
-			  cd /home/docker/jitsi
+			  cd $(get_docker_dir)/jitsi
 			  cd "$(ls -dt */ | head -n 1)"
 			  docker compose down --rmi all
 			  docker compose up -d
@@ -18004,10 +18206,10 @@ while true; do
 		  }
 
 		  docker_app_uninstall() {
-			  cd /home/docker/jitsi
+			  cd $(get_docker_dir)/jitsi
 			  cd "$(ls -dt */ | head -n 1)"
 			  docker compose down --rmi all
-			  rm -rf /home/docker/jitsi
+			  rm -rf $(get_docker_dir)/jitsi
 			  echo "应用已卸载"
 		  }
 
@@ -18028,11 +18230,11 @@ while true; do
 
 			read -e -p "设置${docker_name}的登录密钥（sk-开头字母和数字组合）如: sk-159kejilionyyds163: " app_passwd
 
-			mkdir -p /home/docker/gpt-load && \
+			mkdir -p $(get_docker_dir)/gpt-load && \
 			docker run -d --name gpt-load \
 				-p ${docker_port}:3001 \
 				-e AUTH_KEY=${app_passwd} \
-				-v "/home/docker/gpt-load/data":/app/data \
+				-v "$(get_docker_dir)/gpt-load/data":/app/data \
 				tbphp/gpt-load:latest
 
 		}
@@ -18057,11 +18259,11 @@ while true; do
 
 		docker_rum() {
 
-			mkdir -p /home/docker/komari && \
+			mkdir -p $(get_docker_dir)/komari && \
 			docker run -d \
 			  --name komari \
 			  -p ${docker_port}:25774 \
-			  -v /home/docker/komari:/app/data \
+			  -v $(get_docker_dir)/komari:/app/data \
 			  -e ADMIN_USERNAME=admin \
 			  -e ADMIN_PASSWORD=1212156 \
 			  -e TZ=Asia/Shanghai \
@@ -18090,10 +18292,10 @@ while true; do
 
 		docker_rum() {
 
-			mkdir -p /home/docker/wallos && \
+			mkdir -p $(get_docker_dir)/wallos && \
 			docker run -d --name wallos \
-			  -v /home/docker/wallos/db:/var/www/html/db \
-			  -v /home/docker/wallos/logos:/var/www/html/images/uploads/logos \
+			  -v $(get_docker_dir)/wallos/db:/var/www/html/db \
+			  -v $(get_docker_dir)/wallos/logos:/var/www/html/images/uploads/logos \
 			  -e TZ=UTC \
 			  -p ${docker_port}:80 \
 			  --restart=always \
@@ -18122,28 +18324,29 @@ while true; do
 
 		  docker_app_install() {
 			  install git openssl wget
-			  mkdir -p /home/docker/${docker_name} && cd /home/docker/${docker_name}
+			  mkdir -p $(get_docker_dir)/${docker_name} && cd $(get_docker_dir)/${docker_name}
 
 			  wget -O docker-compose.yml ${gh_proxy}github.com/immich-app/immich/releases/latest/download/docker-compose.yml
 			  wget -O .env ${gh_proxy}github.com/immich-app/immich/releases/latest/download/example.env
-			  sed -i "s/2283:2283/${docker_port}:2283/g" /home/docker/${docker_name}/docker-compose.yml
+			  sed -i "s/2283:2283/${docker_port}:2283/g" $(get_docker_dir)/${docker_name}/docker-compose.yml
 
 			  docker compose up -d
 
 			  clear
 			  echo "已经安装完成"
+			  show_app_info "$docker_name"
 		  	  check_docker_app_ip
 
 		  }
 
 		  docker_app_update() {
-				cd /home/docker/${docker_name} && docker compose down --rmi all
+				cd $(get_docker_dir)/${docker_name} && docker compose down --rmi all
 				docker_app_install
 		  }
 
 		  docker_app_uninstall() {
-			  cd /home/docker/${docker_name} && docker compose down --rmi all
-			  rm -rf /home/docker/${docker_name}
+			  cd $(get_docker_dir)/${docker_name} && docker compose down --rmi all
+			  rm -rf $(get_docker_dir)/${docker_name}
 			  echo "应用已卸载"
 		  }
 
@@ -18162,15 +18365,15 @@ while true; do
 
 		docker_rum() {
 
-			mkdir -p /home/docker/jellyfin/media
-			chmod -R 777 /home/docker/jellyfin
+			mkdir -p $(get_docker_dir)/jellyfin/media
+			chmod -R 777 $(get_docker_dir)/jellyfin
 
 			docker run -d \
 			  --name jellyfin \
 			  --user root \
-			  --volume /home/docker/jellyfin/config:/config \
-			  --volume /home/docker/jellyfin/cache:/cache \
-			  --mount type=bind,source=/home/docker/jellyfin/media,target=/media \
+			  --volume $(get_docker_dir)/jellyfin/config:/config \
+			  --volume $(get_docker_dir)/jellyfin/cache:/cache \
+			  --mount type=bind,source=$(get_docker_dir)/jellyfin/media,target=/media \
 			  -p ${docker_port}:8096 \
 			  -p 7359:7359/udp \
 			  --restart=always \
@@ -18200,7 +18403,7 @@ while true; do
 
 			docker run -d \
 				--name synctv \
-				-v /home/docker/synctv:/root/.synctv \
+				-v $(get_docker_dir)/synctv:/root/.synctv \
 				-p ${docker_port}:8080 \
 				--restart=always \
 				synctvorg/synctv
@@ -18230,7 +18433,7 @@ while true; do
 				--name owncast \
 				-p ${docker_port}:8080 \
 				-p 1935:1935 \
-				-v /home/docker/owncast/data:/app/data \
+				-v $(get_docker_dir)/owncast/data:/app/data \
 				--restart=always \
 				owncast/owncast:latest
 
@@ -18260,7 +18463,7 @@ while true; do
 			docker run -d \
 			  --name file-code-box \
 			  -p ${docker_port}:12345 \
-			  -v /home/docker/file-code-box/data:/app/data \
+			  -v $(get_docker_dir)/file-code-box/data:/app/data \
 			  --restart=always \
 			  lanol/filecodebox:latest
 
@@ -18289,9 +18492,9 @@ while true; do
 
 			add_yuming
 
-			if [ ! -d /home/docker/matrix/data ]; then
+			if [ ! -d $(get_docker_dir)/matrix/data ]; then
 				docker run --rm \
-				  -v /home/docker/matrix/data:/data \
+				  -v $(get_docker_dir)/matrix/data:/data \
 				  -e SYNAPSE_SERVER_NAME=${yuming} \
 				  -e SYNAPSE_REPORT_STATS=yes \
 				  --name matrix \
@@ -18300,7 +18503,7 @@ while true; do
 
 			docker run -d \
 			  --name matrix \
-			  -v /home/docker/matrix/data:/data \
+			  -v $(get_docker_dir)/matrix/data:/data \
 			  -p ${docker_port}:8008 \
 			  --restart=always \
 			  matrixdotorg/synapse:latest
@@ -18310,10 +18513,10 @@ while true; do
 			  http://localhost:8008 \
 			  -c /data/homeserver.yaml
 
-			sed -i '/^enable_registration:/d' /home/docker/matrix/data/homeserver.yaml
-			sed -i '/^# vim:ft=yaml/i enable_registration: true' /home/docker/matrix/data/homeserver.yaml
-			sed -i '/^enable_registration_without_verification:/d' /home/docker/matrix/data/homeserver.yaml
-			sed -i '/^# vim:ft=yaml/i enable_registration_without_verification: true' /home/docker/matrix/data/homeserver.yaml
+			sed -i '/^enable_registration:/d' $(get_docker_dir)/matrix/data/homeserver.yaml
+			sed -i '/^# vim:ft=yaml/i enable_registration: true' $(get_docker_dir)/matrix/data/homeserver.yaml
+			sed -i '/^enable_registration_without_verification:/d' $(get_docker_dir)/matrix/data/homeserver.yaml
+			sed -i '/^# vim:ft=yaml/i enable_registration_without_verification: true' $(get_docker_dir)/matrix/data/homeserver.yaml
 
 			docker restart matrix
 
@@ -18346,31 +18549,32 @@ while true; do
 
 		docker_app_install() {
 
-			mkdir -p /home/docker/gitea
-			mkdir -p /home/docker/gitea/gitea
-			mkdir -p /home/docker/gitea/data
-			mkdir -p /home/docker/gitea/postgres
-			cd /home/docker/gitea
+			mkdir -p $(get_docker_dir)/gitea
+			mkdir -p $(get_docker_dir)/gitea/gitea
+			mkdir -p $(get_docker_dir)/gitea/data
+			mkdir -p $(get_docker_dir)/gitea/postgres
+			cd $(get_docker_dir)/gitea
 
-			curl -o /home/docker/gitea/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/gitea-docker-compose.yml
-			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/gitea/docker-compose.yml
-			cd /home/docker/gitea/
+			curl -o $(get_docker_dir)/gitea/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/gitea-docker-compose.yml
+			sed -i "s/3000:3000/${docker_port}:3000/g" $(get_docker_dir)/gitea/docker-compose.yml
+			cd $(get_docker_dir)/gitea/
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 
 		docker_app_update() {
-			cd /home/docker/gitea/ && docker compose down --rmi all
-			cd /home/docker/gitea/ && docker compose up -d
+			cd $(get_docker_dir)/gitea/ && docker compose down --rmi all
+			cd $(get_docker_dir)/gitea/ && docker compose up -d
 		}
 
 
 		docker_app_uninstall() {
-			cd /home/docker/gitea/ && docker compose down --rmi all
-			rm -rf /home/docker/gitea
+			cd $(get_docker_dir)/gitea/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/gitea
 			echo "应用已卸载"
 		}
 
@@ -18394,8 +18598,8 @@ while true; do
 				--name filebrowser \
 				--restart=always \
 				-p ${docker_port}:8080 \
-				-v /home/docker/filebrowser/data:/data \
-				-v /home/docker/filebrowser/config:/config \
+				-v $(get_docker_dir)/filebrowser/data:/data \
+				-v $(get_docker_dir)/filebrowser/config:/config \
 				-e FB_BASEURL=/filebrowser \
 				hurlenko/filebrowser
 
@@ -18422,7 +18626,7 @@ while true; do
 			docker run -d \
 			  --name ${docker_name} \
 			  --restart=always \
-			  -v /home/docker/${docker_name}:/data \
+			  -v $(get_docker_dir)/${docker_name}:/data \
 			  -p ${docker_port}:5000 \
 			  ${docker_img} /data -A
 
@@ -18452,8 +18656,8 @@ while true; do
 			docker run -d \
 			  --name ${docker_name} \
 			  --restart=always \
-			  -v /home/docker/${docker_name}/downloads:/app/Downloads \
-			  -v /home/docker/${docker_name}/storage:/app/storage \
+			  -v $(get_docker_dir)/${docker_name}/downloads:/app/Downloads \
+			  -v $(get_docker_dir)/${docker_name}/storage:/app/storage \
 			  -p ${docker_port}:9999 \
 			  ${docker_img} -u ${app_use} -p ${app_passwd}
 
@@ -18483,32 +18687,33 @@ while true; do
 
 		docker_app_install() {
 
-			mkdir -p /home/docker/paperless
-			mkdir -p /home/docker/paperless/export
-			mkdir -p /home/docker/paperless/consume
-			cd /home/docker/paperless
+			mkdir -p $(get_docker_dir)/paperless
+			mkdir -p $(get_docker_dir)/paperless/export
+			mkdir -p $(get_docker_dir)/paperless/consume
+			cd $(get_docker_dir)/paperless
 
-			curl -o /home/docker/paperless/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/docker-compose.postgres-tika.yml
-			curl -o /home/docker/paperless/docker-compose.env ${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/.env
+			curl -o $(get_docker_dir)/paperless/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/docker-compose.postgres-tika.yml
+			curl -o $(get_docker_dir)/paperless/docker-compose.env ${gh_proxy}raw.githubusercontent.com/paperless-ngx/paperless-ngx/refs/heads/main/docker/compose/.env
 
-			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/paperless/docker-compose.yml
-			cd /home/docker/paperless
+			sed -i "s/8000:8000/${docker_port}:8000/g" $(get_docker_dir)/paperless/docker-compose.yml
+			cd $(get_docker_dir)/paperless
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 
 		docker_app_update() {
-			cd /home/docker/paperless/ && docker compose down --rmi all
+			cd $(get_docker_dir)/paperless/ && docker compose down --rmi all
 			docker_app_install
 		}
 
 
 		docker_app_uninstall() {
-			cd /home/docker/paperless/ && docker compose down --rmi all
-			rm -rf /home/docker/paperless
+			cd $(get_docker_dir)/paperless/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/paperless
 			echo "应用已卸载"
 		}
 
@@ -18533,16 +18738,16 @@ while true; do
 
 			add_yuming
 
-			mkdir -p /home/docker/2fauth
-			mkdir -p /home/docker/2fauth/data
-			chmod -R 777 /home/docker/2fauth/
-			cd /home/docker/2fauth
+			mkdir -p $(get_docker_dir)/2fauth
+			mkdir -p $(get_docker_dir)/2fauth/data
+			chmod -R 777 $(get_docker_dir)/2fauth/
+			cd $(get_docker_dir)/2fauth
 
-			curl -o /home/docker/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
+			curl -o $(get_docker_dir)/2fauth/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/2fauth-docker-compose.yml
 
-			sed -i "s/8000:8000/${docker_port}:8000/g" /home/docker/2fauth/docker-compose.yml
-			sed -i "s/yuming.com/${yuming}/g" /home/docker/2fauth/docker-compose.yml
-			cd /home/docker/2fauth
+			sed -i "s/8000:8000/${docker_port}:8000/g" $(get_docker_dir)/2fauth/docker-compose.yml
+			sed -i "s/yuming.com/${yuming}/g" $(get_docker_dir)/2fauth/docker-compose.yml
+			cd $(get_docker_dir)/2fauth
 			docker compose up -d
 
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
@@ -18550,19 +18755,20 @@ while true; do
 
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 
 		docker_app_update() {
-			cd /home/docker/2fauth/ && docker compose down --rmi all
+			cd $(get_docker_dir)/2fauth/ && docker compose down --rmi all
 			docker_app_install
 		}
 
 
 		docker_app_uninstall() {
-			cd /home/docker/2fauth/ && docker compose down --rmi all
-			rm -rf /home/docker/2fauth
+			cd $(get_docker_dir)/2fauth/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/2fauth
 			echo "应用已卸载"
 		}
 
@@ -18606,7 +18812,7 @@ while true; do
 		  -e ALLOWEDIPS=${NETWORK}/24 \
 		  -e PERSISTENTKEEPALIVE_PEERS=all \
 		  -e LOG_CONFS=true \
-		  -v /home/docker/wireguard/config:/config \
+		  -v $(get_docker_dir)/wireguard/config:/config \
 		  -v /lib/modules:/lib/modules \
 		  --restart=always \
 		  lscr.io/linuxserver/wireguard:latest
@@ -18688,9 +18894,9 @@ while true; do
 
 		docker_rum() {
 
-			mkdir -p /home/docker/wireguard/config/
+			mkdir -p $(get_docker_dir)/wireguard/config/
 
-			local CONFIG_FILE="/home/docker/wireguard/config/wg0.conf"
+			local CONFIG_FILE="$(get_docker_dir)/wireguard/config/wg0.conf"
 
 			# 创建目录（如果不存在）
 			mkdir -p "$(dirname "$CONFIG_FILE")"
@@ -18726,7 +18932,7 @@ while true; do
 			  --network host \
 			  --cap-add NET_ADMIN \
 			  --cap-add SYS_MODULE \
-			  -v /home/docker/wireguard/config:/config \
+			  -v $(get_docker_dir)/wireguard/config:/config \
 			  -v /lib/modules:/lib/modules:ro \
 			  --restart=always \
 			  kjlion/wireguard:alpine
@@ -18768,34 +18974,35 @@ while true; do
 			read -e -p "设置内存大小 (默认 4G): " RAM_SIZE
 			local RAM_SIZE=${RAM_SIZE:-4}
 
-			mkdir -p /home/docker/dsm
-			mkdir -p /home/docker/dsm/dev
-			chmod -R 777 /home/docker/dsm/
-			cd /home/docker/dsm
+			mkdir -p $(get_docker_dir)/dsm
+			mkdir -p $(get_docker_dir)/dsm/dev
+			chmod -R 777 $(get_docker_dir)/dsm/
+			cd $(get_docker_dir)/dsm
 
-			curl -o /home/docker/dsm/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/dsm-docker-compose.yml
+			curl -o $(get_docker_dir)/dsm/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/dsm-docker-compose.yml
 
-			sed -i "s/5000:5000/${docker_port}:5000/g" /home/docker/dsm/docker-compose.yml
-			sed -i "s|CPU_CORES: "2"|CPU_CORES: "${CPU_CORES}"|g" /home/docker/dsm/docker-compose.yml
-			sed -i "s|RAM_SIZE: "2G"|RAM_SIZE: "${RAM_SIZE}G"|g" /home/docker/dsm/docker-compose.yml
-			cd /home/docker/dsm
+			sed -i "s/5000:5000/${docker_port}:5000/g" $(get_docker_dir)/dsm/docker-compose.yml
+			sed -i "s|CPU_CORES: "2"|CPU_CORES: "${CPU_CORES}"|g" $(get_docker_dir)/dsm/docker-compose.yml
+			sed -i "s|RAM_SIZE: "2G"|RAM_SIZE: "${RAM_SIZE}G"|g" $(get_docker_dir)/dsm/docker-compose.yml
+			cd $(get_docker_dir)/dsm
 			docker compose up -d
 
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 
 		docker_app_update() {
-			cd /home/docker/dsm/ && docker compose down --rmi all
+			cd $(get_docker_dir)/dsm/ && docker compose down --rmi all
 			docker_app_install
 		}
 
 
 		docker_app_uninstall() {
-			cd /home/docker/dsm/ && docker compose down --rmi all
-			rm -rf /home/docker/dsm
+			cd $(get_docker_dir)/dsm/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/dsm
 			echo "应用已卸载"
 		}
 
@@ -18821,7 +19028,7 @@ while true; do
 			  -p 22000:22000/tcp \
 			  -p 22000:22000/udp \
 			  -p 21027:21027/udp \
-			  -v /home/docker/syncthing:/var/syncthing \
+			  -v $(get_docker_dir)/syncthing:/var/syncthing \
 			  syncthing/syncthing:latest
 		}
 
@@ -18846,27 +19053,28 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
-			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
+			mkdir -p  $(get_docker_dir)/ && cd $(get_docker_dir)/ && git clone ${gh_proxy}github.com/harry0703/MoneyPrinterTurbo.git && cd MoneyPrinterTurbo/
+			sed -i "s/8501:8501/${docker_port}:8501/g" $(get_docker_dir)/MoneyPrinterTurbo/docker-compose.yml
 
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 		docker_app_update() {
-			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
-			cd  /home/docker/MoneyPrinterTurbo/
+			cd  $(get_docker_dir)/MoneyPrinterTurbo/ && docker compose down --rmi all
+			cd  $(get_docker_dir)/MoneyPrinterTurbo/
 
 			git pull ${gh_proxy}github.com/harry0703/MoneyPrinterTurbo.git main > /dev/null 2>&1
-			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/MoneyPrinterTurbo/docker-compose.yml
-			cd  /home/docker/MoneyPrinterTurbo/ && docker compose up -d
+			sed -i "s/8501:8501/${docker_port}:8501/g" $(get_docker_dir)/MoneyPrinterTurbo/docker-compose.yml
+			cd  $(get_docker_dir)/MoneyPrinterTurbo/ && docker compose up -d
 		}
 
 		docker_app_uninstall() {
-			cd  /home/docker/MoneyPrinterTurbo/ && docker compose down --rmi all
-			rm -rf /home/docker/MoneyPrinterTurbo
+			cd  $(get_docker_dir)/MoneyPrinterTurbo/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/MoneyPrinterTurbo
 			echo "应用已卸载"
 		}
 
@@ -18888,7 +19096,7 @@ while true; do
 			docker run -d --restart=always \
 			  -p ${docker_port}:3000 \
 			  --name vocechat-server \
-			  -v /home/docker/vocechat/data:/home/vocechat-server/data \
+			  -v $(get_docker_dir)/vocechat/data:/home/vocechat-server/data \
 			  privoce/vocechat-server:latest
 
 		}
@@ -18914,28 +19122,29 @@ while true; do
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/umami-software/umami.git && cd umami
-			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/umami/docker-compose.yml
+			mkdir -p  $(get_docker_dir)/ && cd $(get_docker_dir)/ && git clone ${gh_proxy}github.com/umami-software/umami.git && cd umami
+			sed -i "s/3000:3000/${docker_port}:3000/g" $(get_docker_dir)/umami/docker-compose.yml
 
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 			echo "初始用户名: admin"
 			echo "初始密码: umami"
 		}
 
 		docker_app_update() {
-			cd  /home/docker/umami/ && docker compose down --rmi all
-			cd  /home/docker/umami/
+			cd  $(get_docker_dir)/umami/ && docker compose down --rmi all
+			cd  $(get_docker_dir)/umami/
 			git pull ${gh_proxy}github.com/umami-software/umami.git main > /dev/null 2>&1
-			sed -i "s/8501:8501/${docker_port}:8501/g" /home/docker/umami/docker-compose.yml
-			cd  /home/docker/umami/ && docker compose up -d
+			sed -i "s/8501:8501/${docker_port}:8501/g" $(get_docker_dir)/umami/docker-compose.yml
+			cd  $(get_docker_dir)/umami/ && docker compose up -d
 		}
 
 		docker_app_uninstall() {
-			cd  /home/docker/umami/ && docker compose down --rmi all
-			rm -rf /home/docker/umami
+			cd  $(get_docker_dir)/umami/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/umami
 			echo "应用已卸载"
 		}
 
@@ -18962,7 +19171,7 @@ while true; do
 			docker run -d \
 			  --name siyuan \
 			  --restart=always \
-			  -v /home/docker/siyuan/workspace:/siyuan/workspace \
+			  -v $(get_docker_dir)/siyuan/workspace:/siyuan/workspace \
 			  -p ${docker_port}:6806 \
 			  -e PUID=1001 \
 			  -e PGID=1002 \
@@ -19022,8 +19231,8 @@ while true; do
 			  --name pansou \
 			  --restart=always \
 			  -p ${docker_port}:80 \
-			  -v /home/docker/pansou/data:/app/data \
-			  -v /home/docker/pansou/logs:/app/logs \
+			  -v $(get_docker_dir)/pansou/data:/app/data \
+			  -v $(get_docker_dir)/pansou/logs:/app/logs \
 			  -e ENABLED_PLUGINS="hunhepan,jikepan,panwiki,pansearch,panta,qupansou,
 susu,thepiratebay,wanou,xuexizhinan,panyq,zhizhen,labi,muou,ouge,shandian,
 duoduo,huban,cyg,erxiao,miaoso,fox4k,pianku,clmao,wuji,cldi,xiaozhang,
@@ -19057,26 +19266,27 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/langbot-app/LangBot && cd LangBot/docker
-			sed -i "s/5300:5300/${docker_port}:5300/g" /home/docker/LangBot/docker/docker-compose.yaml
+			mkdir -p  $(get_docker_dir)/ && cd $(get_docker_dir)/ && git clone ${gh_proxy}github.com/langbot-app/LangBot && cd LangBot/docker
+			sed -i "s/5300:5300/${docker_port}:5300/g" $(get_docker_dir)/LangBot/docker/docker-compose.yaml
 
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 		docker_app_update() {
-			cd  /home/docker/LangBot/docker && docker compose down --rmi all
-			cd  /home/docker/LangBot/
+			cd  $(get_docker_dir)/LangBot/docker && docker compose down --rmi all
+			cd  $(get_docker_dir)/LangBot/
 			git pull ${gh_proxy}github.com/langbot-app/LangBot main > /dev/null 2>&1
-			sed -i "s/5300:5300/${docker_port}:5300/g" /home/docker/LangBot/docker/docker-compose.yaml
-			cd  /home/docker/LangBot/docker/ && docker compose up -d
+			sed -i "s/5300:5300/${docker_port}:5300/g" $(get_docker_dir)/LangBot/docker/docker-compose.yaml
+			cd  $(get_docker_dir)/LangBot/docker/ && docker compose up -d
 		}
 
 		docker_app_uninstall() {
-			cd  /home/docker/LangBot/docker/ && docker compose down --rmi all
-			rm -rf /home/docker/LangBot
+			cd  $(get_docker_dir)/LangBot/docker/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/LangBot
 			echo "应用已卸载"
 		}
 
@@ -19097,10 +19307,10 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 			docker run -d --name=zfile --restart=always \
 				-p ${docker_port}:8080 \
-				-v /home/docker/zfile/db:/root/.zfile-v4/db \
-				-v /home/docker/zfile/logs:/root/.zfile-v4/logs \
-				-v /home/docker/zfile/file:/data/file \
-				-v /home/docker/zfile/application.properties:/root/.zfile-v4/application.properties \
+				-v $(get_docker_dir)/zfile/db:/root/.zfile-v4/db \
+				-v $(get_docker_dir)/zfile/logs:/root/.zfile-v4/logs \
+				-v $(get_docker_dir)/zfile/file:/data/file \
+				-v $(get_docker_dir)/zfile/application.properties:/root/.zfile-v4/application.properties \
 				zhaojun1998/zfile:latest
 
 
@@ -19127,26 +19337,27 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 		docker_app_install() {
 			install git
-			mkdir -p  /home/docker/ && cd /home/docker/ && git clone ${gh_proxy}github.com/karakeep-app/karakeep.git && cd karakeep/docker && cp .env.sample .env
-			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/karakeep/docker/docker-compose.yml
+			mkdir -p  $(get_docker_dir)/ && cd $(get_docker_dir)/ && git clone ${gh_proxy}github.com/karakeep-app/karakeep.git && cd karakeep/docker && cp .env.sample .env
+			sed -i "s/3000:3000/${docker_port}:3000/g" $(get_docker_dir)/karakeep/docker/docker-compose.yml
 
 			docker compose up -d
 			clear
 			echo "已经安装完成"
+			show_app_info "$docker_name"
 			check_docker_app_ip
 		}
 
 		docker_app_update() {
-			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
-			cd  /home/docker/karakeep/
+			cd  $(get_docker_dir)/karakeep/docker/ && docker compose down --rmi all
+			cd  $(get_docker_dir)/karakeep/
 			git pull ${gh_proxy}github.com/karakeep-app/karakeep.git main > /dev/null 2>&1
-			sed -i "s/3000:3000/${docker_port}:3000/g" /home/docker/karakeep/docker/docker-compose.yml
-			cd  /home/docker/karakeep/docker/ && docker compose up -d
+			sed -i "s/3000:3000/${docker_port}:3000/g" $(get_docker_dir)/karakeep/docker/docker-compose.yml
+			cd  $(get_docker_dir)/karakeep/docker/ && docker compose up -d
 		}
 
 		docker_app_uninstall() {
-			cd  /home/docker/karakeep/docker/ && docker compose down --rmi all
-			rm -rf /home/docker/karakeep
+			cd  $(get_docker_dir)/karakeep/docker/ && docker compose down --rmi all
+			rm -rf $(get_docker_dir)/karakeep
 			echo "应用已卸载"
 		}
 
@@ -19167,7 +19378,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 			docker run -d --name=${docker_name} --restart=always \
 				-p ${docker_port}:3000 \
-				-v /home/docker/convertx:/app/data \
+				-v $(get_docker_dir)/convertx:/app/data \
 				${docker_img}
 
 		}
@@ -19194,7 +19405,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 			docker run -d --name=${docker_name} --restart=always \
 				--network host \
-				-v /home/docker/lucky/conf:/app/conf \
+				-v $(get_docker_dir)/lucky/conf:/app/conf \
 				-v /var/run/docker.sock:/var/run/docker.sock \
 				${docker_img}
 
@@ -19227,7 +19438,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 			docker run -d --name=${docker_name} --restart=always \
 				-p ${docker_port}:5800 \
-				-v /home/docker/firefox:/config:rw \
+				-v $(get_docker_dir)/firefox:/config:rw \
 				-e ENABLE_CJK_FONT=1 \
 				-e WEB_AUDIO=1 \
 				-e VNC_PASSWORD="${admin_password}" \
