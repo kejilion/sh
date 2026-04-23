@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="default"
+canshu="CN"
 permission_granted="false"
 ENABLE_STATS="true"
 
@@ -15449,14 +15449,8 @@ openclaw_backup_restore_menu() {
 				;;
 			12) send_stats "健康检测与修复"
 				openclaw doctor --fix
-				send_stats "OpenClaw API同步触发"
-				if sync_openclaw_api_models; then
-					start_gateway
-				else
-					echo "❌ API 模型同步失败，已中止重启网关。请检查 provider /models 返回后重试。"
-				fi
 				break_end
-			 	;;
+				;;
 			13) openclaw_webui_menu ;;
 			14) send_stats "TUI命令行对话"
 				openclaw tui

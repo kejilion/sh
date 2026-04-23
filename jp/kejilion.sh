@@ -15449,12 +15449,7 @@ openclaw_backup_restore_menu() {
 				;;
 			12) send_stats "健全性の検出と修復"
 				openclaw doctor --fix
-				send_stats "OpenClaw API の同期トリガー"
-				if sync_openclaw_api_models; then
-					start_gateway
-				else
-					echo "❌ API モデルの同期に失敗しました。ゲートウェイの再起動は中止されました。プロバイダー/モデルを確認し、戻ってからもう一度お試しください。"
-				fi
+				
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;

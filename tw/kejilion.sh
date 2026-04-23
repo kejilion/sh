@@ -15449,12 +15449,7 @@ openclaw_backup_restore_menu() {
 				;;
 			12) send_stats "健康檢測與修復"
 				openclaw doctor --fix
-				send_stats "OpenClaw API同步觸發"
-				if sync_openclaw_api_models; then
-					start_gateway
-				else
-					echo "❌ API 模型同步失敗，已中止重新啟動網關。請檢查 provider /models 返回後重試。"
-				fi
+				
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;

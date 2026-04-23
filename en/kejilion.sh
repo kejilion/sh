@@ -15449,12 +15449,7 @@ openclaw_backup_restore_menu() {
 				;;
 			12) send_stats "Health detection and repair"
 				openclaw doctor --fix
-				send_stats "OpenClaw API synchronous triggering"
-				if sync_openclaw_api_models; then
-					start_gateway
-				else
-					echo "❌ API model synchronization failed, restarting the gateway has been aborted. Please check provider /models and try again after returning."
-				fi
+				
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;

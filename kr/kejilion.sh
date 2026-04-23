@@ -15449,12 +15449,7 @@ openclaw_backup_restore_menu() {
 				;;
 			12) send_stats "상태 감지 및 복구"
 				openclaw doctor --fix
-				send_stats "OpenClaw API 동기식 트리거링"
-				if sync_openclaw_api_models; then
-					start_gateway
-				else
-					echo "❌ API 모델 동기화에 실패하여 게이트웨이 다시 시작이 중단되었습니다. 공급자/모델을 확인하고 반환 후 다시 시도하십시오."
-				fi
+				
 				break_end
 			 	;;
 			13) openclaw_webui_menu ;;
