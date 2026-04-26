@@ -4503,7 +4503,7 @@ sed -i 's/^\s*#\?\s*PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_confi
 sed -i 's/^\s*#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/g' /etc/ssh/sshd_config;
 rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 restart_ssh
-echo -e "${gl_lv}ROOT login setup is completed!${gl_bai}"
+echo -e "${gl_lv}ROOT login setup is complete!${gl_bai}"
 
 }
 
@@ -7479,7 +7479,7 @@ linux_test() {
 	  echo -e "${gl_kjlan}14.  ${gl_bai}nxtrace fast backhaul test script"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}nxtrace specifies IP backhaul test script"
 	  echo -e "${gl_kjlan}16.  ${gl_bai}ludashi2020 three network line test"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}i-abc multifunctional speed test script"
+	  echo -e "${gl_kjlan}17.  ${gl_bai}i-abc multi-function speed test script"
 	  echo -e "${gl_kjlan}18.  ${gl_bai}NetQuality network quality check script${gl_huang}★${gl_bai}"
 
 	  echo -e "${gl_kjlan}------------------------"
@@ -8815,7 +8815,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}Pagoda panel official version${gl_kjlan}2.   ${color2}aaPanel Pagoda International Version"
 	  echo -e "${gl_kjlan}3.   ${color3}1Panel new generation management panel${gl_kjlan}4.   ${color4}NginxProxyManager visualization panel"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList multi-store file list program${gl_kjlan}6.   ${color6}Ubuntu Remote Desktop Web Edition"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList multi-store file list program${gl_kjlan}6.   ${color6}Ubuntu Remote Desktop Web Version"
 	  echo -e "${gl_kjlan}7.   ${color7}Nezha Probe VPS Monitoring Panel${gl_kjlan}8.   ${color8}QB offline BT magnetic download panel"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io mail server program${gl_kjlan}10.  ${color10}RocketChat multi-person online chat system"
 	  echo -e "${gl_kjlan}------------------------"
@@ -8835,37 +8835,37 @@ while true; do
 	  echo -e "${gl_kjlan}33.  ${color33}Sun-Panel Navigation Panel${gl_kjlan}34.  ${color34}Pingvin-Share file sharing platform"
 	  echo -e "${gl_kjlan}35.  ${color35}Minimalist circle of friends${gl_kjlan}36.  ${color36}LobeChatAI chat aggregation website"
 	  echo -e "${gl_kjlan}37.  ${color37}MyIP Toolbox${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${color38}Xiaoya alist family bucket"
-	  echo -e "${gl_kjlan}39.  ${color39}Bililive live broadcast recording tool${gl_kjlan}40.  ${color40}webssh web version SSH connection tool"
+	  echo -e "${gl_kjlan}39.  ${color39}Bililive直播录制工具                ${gl_kjlan}40.  ${color40}webssh网页版SSH连接工具"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}41.  ${color41}Mouse management panel${gl_kjlan}42.  ${color42}Nexterm remote connection tool"
+	  echo -e "${gl_kjlan}41.  ${color41}Mouse management panel${gl_kjlan}42.  ${color42}Nexterm远程连接工具"
 	  echo -e "${gl_kjlan}43.  ${color43}RustDesk remote desktop (server)${gl_huang}★${gl_bai}          ${gl_kjlan}44.  ${color44}RustDesk remote desktop (relay)${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}45.  ${color45}Docker acceleration station${gl_kjlan}46.  ${color46}GitHub acceleration station${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}47.  ${color47}Prometheus monitoring${gl_kjlan}48.  ${color48}Prometheus (host monitoring)"
 	  echo -e "${gl_kjlan}49.  ${color49}Prometheus (container monitoring)${gl_kjlan}50.  ${color50}Replenishment monitoring tools"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}51.  ${color51}PVE open chick panel${gl_kjlan}52.  ${color52}DPanel container management panel"
-	  echo -e "${gl_kjlan}53.  ${color53}llama3 chat AI large model${gl_kjlan}54.  ${color54}AMH host website building management panel"
-	  echo -e "${gl_kjlan}55.  ${color55}FRP intranet penetration (server)${gl_huang}★${gl_bai}	         ${gl_kjlan}56.  ${color56}FRP intranet penetration (client)${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}57.  ${color57}Deepseek chat AI large model${gl_kjlan}58.  ${color58}Dify large model knowledge base${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}59.  ${color59}NewAPI large model asset management${gl_kjlan}60.  ${color60}JumpServer open source bastion machine"
+	  echo -e "${gl_kjlan}53.  ${color53}llama3 chat AI large model${gl_kjlan}54.  ${color54}AMH主机建站管理面板"
+	  echo -e "${gl_kjlan}55.  ${color55}FRP内网穿透(服务端) ${gl_huang}★${gl_bai}	         ${gl_kjlan}56.  ${color56}FRP内网穿透(客户端) ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}57.  ${color57}Deepseek聊天AI大模型                ${gl_kjlan}58.  ${color58}Dify large model knowledge base${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}59.  ${color59}NewAPI大模型资产管理                ${gl_kjlan}60.  ${color60}JumpServer开源堡垒机"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}61.  ${color61}Online translation server${gl_kjlan}62.  ${color62}RAGFlow large model knowledge base"
-	  echo -e "${gl_kjlan}63.  ${color63}OpenWebUI self-hosted AI platform${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${color64}it-tools toolbox"
-	  echo -e "${gl_kjlan}65.  ${color65}n8n automated workflow platform${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${color66}yt-dlp video download tool"
-	  echo -e "${gl_kjlan}67.  ${color67}ddns-go dynamic DNS management tool${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${color68}AllinSSL certificate management platform"
-	  echo -e "${gl_kjlan}69.  ${color69}SFTPGo file transfer tool${gl_kjlan}70.  ${color70}AstrBot chatbot framework"
+	  echo -e "${gl_kjlan}61.  ${color61}Online translation server${gl_kjlan}62.  ${color62}RAGFlow大模型知识库"
+	  echo -e "${gl_kjlan}63.  ${color63}OpenWebUI自托管AI平台 ${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${color64}it-tools toolbox"
+	  echo -e "${gl_kjlan}65.  ${color65}n8n自动化工作流平台 ${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${color66}yt-dlp video download tool"
+	  echo -e "${gl_kjlan}67.  ${color67}ddns-go动态DNS管理工具 ${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${color68}AllinSSL证书管理平台"
+	  echo -e "${gl_kjlan}69.  ${color69}SFTPGo file transfer tool${gl_kjlan}70.  ${color70}AstrBot聊天机器人框架"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}71.  ${color71}Navidrome private music server${gl_kjlan}72.  ${color72}bitwarden password manager${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}71.  ${color71}Navidrome私有音乐服务器             ${gl_kjlan}72.  ${color72}bitwarden password manager${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}73.  ${color73}LibreTV Private Movies${gl_kjlan}74.  ${color74}MoonTV private movies"
 	  echo -e "${gl_kjlan}75.  ${color75}Melody music wizard${gl_kjlan}76.  ${color76}Online DOS old games"
-	  echo -e "${gl_kjlan}77.  ${color77}Thunder offline download tool${gl_kjlan}78.  ${color78}PandaWiki intelligent document management system"
+	  echo -e "${gl_kjlan}77.  ${color77}Thunder offline download tool${gl_kjlan}78.  ${color78}PandaWiki智能文档管理系统"
 	  echo -e "${gl_kjlan}79.  ${color79}Beszel server monitoring${gl_kjlan}80.  ${color80}linkwarden bookmark management"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet video conference${gl_kjlan}82.  ${color82}gpt-load high-performance AI transparent proxy"
-	  echo -e "${gl_kjlan}83.  ${color83}komari server monitoring tool${gl_kjlan}84.  ${color84}Wallos personal financial management tool"
-	  echo -e "${gl_kjlan}85.  ${color85}immich picture video manager${gl_kjlan}86.  ${color86}jellyfin media management system"
-	  echo -e "${gl_kjlan}87.  ${color87}SyncTV is a great tool for watching movies together${gl_kjlan}88.  ${color88}Owncast self-hosted live streaming platform"
-	  echo -e "${gl_kjlan}89.  ${color89}FileCodeBox file express${gl_kjlan}90.  ${color90}matrix decentralized chat protocol"
+	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet video conference${gl_kjlan}82.  ${color82}gpt-load高性能AI透明代理"
+	  echo -e "${gl_kjlan}83.  ${color83}komari服务器监控工具                ${gl_kjlan}84.  ${color84}Wallos个人财务管理工具"
+	  echo -e "${gl_kjlan}85.  ${color85}immich图片视频管理器                ${gl_kjlan}86.  ${color86}jellyfin媒体管理系统"
+	  echo -e "${gl_kjlan}87.  ${color87}SyncTV is a great tool for watching movies together${gl_kjlan}88.  ${color88}Owncast自托管直播平台"
+	  echo -e "${gl_kjlan}89.  ${color89}FileCodeBox file express${gl_kjlan}90.  ${color90}matrix去中心化聊天协议"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}91.  ${color91}gitea private code repository${gl_kjlan}92.  ${color92}FileBrowser file manager"
 	  echo -e "${gl_kjlan}93.  ${color93}Dufs minimalist static file server${gl_kjlan}94.  ${color94}Gopeed high-speed download tool"
@@ -9153,7 +9153,7 @@ while true; do
 			check_docker_image_update $docker_name
 
 			clear
-			echo -e "postal services$check_docker $update_status"
+			echo -e "postal service$check_docker $update_status"
 			echo "poste.io is an open source mail server solution,"
 			echo "Video introduction: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 
@@ -12140,7 +12140,7 @@ while true; do
 	  r)
 	  	root_use
 	  	send_stats "Restore all apps"
-	  	echo "Available application backups"
+	  	echo "Available app backups"
 	  	echo "-------------------------"
 	  	ls -lt /app*.gz | awk '{print $NF}'
 	  	echo ""
@@ -13728,7 +13728,7 @@ linux_file() {
 				read -e -p "Please enter the file or directory path to copy:" src_path
 				if [ ! -e "$src_path" ]; then
 					echo "Error: File or directory does not exist."
-					send_stats "Copying file or directory failed: File or directory does not exist"
+					send_stats "Failed to copy file or directory: File or directory does not exist"
 					continue
 				fi
 
@@ -14043,7 +14043,7 @@ while true; do
 
 	if [ -n "$existing_cron" ]; then
 		echo "------------------------"
-		echo -e "${gl_lv}Automatic updates are turned on, and the script will be automatically updated at 2 a.m. every day!${gl_bai}"
+		echo -e "${gl_lv}自动更新已开启，每天凌晨2点脚本会自动更新！${gl_bai}"
 	fi
 
 	echo "------------------------"
@@ -14175,7 +14175,7 @@ done
 
 
 k_info() {
-send_stats "k command reference use case"
+send_stats "k command reference examples"
 echo "-------------------"
 echo "Video introduction: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "The following is a reference use case for the k command:"
