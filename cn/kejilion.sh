@@ -10022,8 +10022,8 @@ moltbot_menu() {
 		fi
 	}
 
-	get_running_status() {
-		if pgrep -f "openclaw-gatewa" >/dev/null 2>&1; then
+	get_running_status() {		
+		if pgrep -f "openclaw.*gateway" >/dev/null 2>&1; then
 			echo "${gl_lv}运行中${gl_bai}"
 		else
 			echo "${gl_hui}未运行${gl_bai}"
