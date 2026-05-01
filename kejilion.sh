@@ -5600,10 +5600,15 @@ bbrv3() {
 		  xanmod_add_repo() {
 				local keyring="/usr/share/keyrings/xanmod-archive-keyring.gpg"
 				local list_file="/etc/apt/sources.list.d/xanmod-release.list"
+				local key_url="https://dl.xanmod.org/archive.key"
+				local fallback_key_url="${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/archive.key"
 
 				install wget gnupg ca-certificates
 				mkdir -p /usr/share/keyrings /etc/apt/sources.list.d
-				wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o "$keyring" --yes || return 1
+				if ! wget -qO - "$key_url" | gpg --dearmor -o "$keyring" --yes; then
+					echo "官方密钥下载失败，尝试备用下载源..."
+					wget -qO - "$fallback_key_url" | gpg --dearmor -o "$keyring" --yes || return 1
+				fi
 				chmod 644 "$keyring"
 				echo "deb [signed-by=$keyring] http://deb.xanmod.org releases main" > "$list_file"
 		  }
