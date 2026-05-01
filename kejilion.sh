@@ -5597,6 +5597,76 @@ bbrv3() {
 		  root_use
 		  send_stats "bbrv3管理"
 
+		  xanmod_add_repo() {
+				local keyring="/usr/share/keyrings/xanmod-archive-keyring.gpg"
+				local list_file="/etc/apt/sources.list.d/xanmod-release.list"
+
+				install wget gnupg ca-certificates
+				mkdir -p /usr/share/keyrings /etc/apt/sources.list.d
+				wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o "$keyring" --yes || return 1
+				chmod 644 "$keyring"
+				echo "deb [signed-by=$keyring] http://deb.xanmod.org releases main" > "$list_file"
+		  }
+
+		  xanmod_detect_package() {
+				local psabi_output=""
+				local psabi_level=""
+				psabi_output=$(awk 'BEGIN {
+					while (!/flags/) if (getline < "/proc/cpuinfo" != 1) exit 1
+					if (/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/) level = 1
+					if (level == 1 && /cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/) level = 2
+					if (level == 2 && /avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/) level = 3
+					if (level == 3 && /avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/) level = 4
+					if (level > 0) { print level; exit }
+					exit 1
+				}' /proc/cpuinfo 2>/dev/null) || return 1
+				psabi_level=$(printf '%s' "$psabi_output" | tr -dc '0-9' | head -c 1)
+				[ -n "$psabi_level" ] || return 1
+				printf 'linux-xanmod-x64v%s\n' "$psabi_level"
+		  }
+
+		  xanmod_installed() {
+				dpkg-query -W -f='${Package}\n' 'linux-*xanmod*' 2>/dev/null | grep -q '^linux-.*xanmod'
+		  }
+
+		  xanmod_install_or_update() {
+				local action="$1"
+				local package=""
+
+				check_disk_space 3
+				check_swap
+				xanmod_add_repo || {
+					echo "XanMod官方仓库配置失败，请稍后重试"
+					return 1
+				}
+
+				package=$(xanmod_detect_package) || {
+					echo "无法识别当前CPU的x86-64 psABI等级，已取消安装"
+					return 1
+				}
+
+				apt update -y
+				if [ "$action" = "update" ]; then
+					apt install -y --only-upgrade "$package" || apt install -y "$package"
+				else
+					apt install -y "$package"
+				fi
+
+				bbr_on
+				echo "XanMod BBRv3内核处理完成。重启后生效"
+				server_reboot
+		  }
+
+		  xanmod_uninstall() {
+				apt purge -y 'linux-*xanmod*'
+				apt autoremove -y
+				update-grub 2>/dev/null || true
+				rm -f /etc/apt/sources.list.d/xanmod-release.list
+				rm -f /usr/share/keyrings/xanmod-archive-keyring.gpg
+				echo "XanMod内核已卸载。重启后生效"
+				server_reboot
+		  }
+
 		  local cpu_arch=$(uname -m)
 		  if [ "$cpu_arch" = "aarch64" ]; then
 			bash <(curl -sL jhb.ovh/jb/bbrv3arm.sh)
@@ -5604,7 +5674,20 @@ bbrv3() {
 			linux_Settings
 		  fi
 
-		  if dpkg -l | grep -q 'linux-xanmod'; then
+		  if [ -r /etc/os-release ]; then
+			. /etc/os-release
+			if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
+				echo "当前环境不支持，仅支持Debian和Ubuntu系统"
+				break_end
+				linux_Settings
+			fi
+		  else
+			echo "无法确定操作系统类型"
+			break_end
+			linux_Settings
+		  fi
+
+		  if xanmod_installed; then
 			while true; do
 				  clear
 				  local kernel_version=$(uname -r)
@@ -5622,38 +5705,14 @@ bbrv3() {
 
 				  case $sub_choice in
 					  1)
-						apt purge -y 'linux-*xanmod1*'
-						update-grub
-
-						# wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
-						wget -qO - ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
-
-						# 步骤3：添加存储库
-						echo 'deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] http://deb.xanmod.org releases main' | tee /etc/apt/sources.list.d/xanmod-release.list
-
-						# version=$(wget -q https://dl.xanmod.org/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
-						local version=$(wget -q ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
-
-						apt update -y
-						apt install -y linux-xanmod-x64v$version
-
-						echo "XanMod内核已更新。重启后生效"
-						rm -f /etc/apt/sources.list.d/xanmod-release.list
-						rm -f check_x86-64_psabi.sh*
-
-						server_reboot
-
-						  ;;
+						xanmod_install_or_update update
+						;;
 					  2)
-						apt purge -y 'linux-*xanmod1*'
-						update-grub
-						echo "XanMod内核已卸载。重启后生效"
-						server_reboot
-						  ;;
-
+						xanmod_uninstall
+						;;
 					  *)
-						  break  # 跳出循环，退出菜单
-						  ;;
+						break
+						;;
 
 				  esac
 			done
@@ -5670,42 +5729,7 @@ bbrv3() {
 
 		  case "$choice" in
 			[Yy])
-			check_disk_space 3
-			if [ -r /etc/os-release ]; then
-				. /etc/os-release
-				if [ "$ID" != "debian" ] && [ "$ID" != "ubuntu" ]; then
-					echo "当前环境不支持，仅支持Debian和Ubuntu系统"
-					break_end
-					linux_Settings
-				fi
-			else
-				echo "无法确定操作系统类型"
-				break_end
-				linux_Settings
-			fi
-
-			check_swap
-			install wget gnupg
-
-			# wget -qO - https://dl.xanmod.org/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
-			wget -qO - ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/archive.key | gpg --dearmor -o /usr/share/keyrings/xanmod-archive-keyring.gpg --yes
-
-			# 步骤3：添加存储库
-			echo 'deb [signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] http://deb.xanmod.org releases main' | tee /etc/apt/sources.list.d/xanmod-release.list
-
-			# version=$(wget -q https://dl.xanmod.org/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
-			local version=$(wget -q ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/check_x86-64_psabi.sh && chmod +x check_x86-64_psabi.sh && ./check_x86-64_psabi.sh | grep -oP 'x86-64-v\K\d+|x86-64-v\d+')
-
-			apt update -y
-			apt install -y linux-xanmod-x64v$version
-
-			bbr_on
-
-			echo "XanMod内核安装并BBR3启用成功。重启后生效"
-			rm -f /etc/apt/sources.list.d/xanmod-release.list
-			rm -f check_x86-64_psabi.sh*
-			server_reboot
-
+			xanmod_install_or_update install
 			  ;;
 			[Nn])
 			  echo "已取消"
@@ -5717,7 +5741,6 @@ bbrv3() {
 		fi
 
 }
-
 
 elrepo_install() {
 	# 导入 ELRepo GPG 公钥
