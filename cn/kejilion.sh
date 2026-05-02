@@ -5610,6 +5610,11 @@ bbrv3() {
 					os_codename=$(. /etc/os-release && echo "$VERSION_CODENAME")
 				fi
 				
+				# 兼容官方已移除的老系统代号（回退使用 releases 尝试旧包库）
+				if ! echo "bookworm trixie forky sid noble plucky questing resolute faye gigi wilma xia zara zena jammy" | grep -qw "$os_codename"; then
+					os_codename="releases"
+				fi
+
 				if [ -z "$os_codename" ]; then
 					echo "无法获取系统代号，无法配置XanMod源"
 					return 1
