@@ -5602,6 +5602,18 @@ bbrv3() {
 				local list_file="/etc/apt/sources.list.d/xanmod-release.list"
 				local key_url="https://dl.xanmod.org/archive.key"
 				local fallback_key_url="${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/archive.key"
+				local os_codename=""
+
+				if command -v lsb_release >/dev/null 2>&1; then
+					os_codename=$(lsb_release -sc)
+				elif [ -r /etc/os-release ]; then
+					os_codename=$(. /etc/os-release && echo "$VERSION_CODENAME")
+				fi
+				
+				if [ -z "$os_codename" ]; then
+					echo "无法获取系统代号，无法配置XanMod源"
+					return 1
+				fi
 
 				install wget gnupg ca-certificates
 				mkdir -p /usr/share/keyrings /etc/apt/sources.list.d
@@ -5610,12 +5622,11 @@ bbrv3() {
 					wget -qO - "$fallback_key_url" | gpg --dearmor -o "$keyring" --yes || return 1
 				fi
 				chmod 644 "$keyring"
-				echo "deb [signed-by=$keyring] http://deb.xanmod.org releases main" > "$list_file"
+				echo "deb [signed-by=$keyring] http://deb.xanmod.org $os_codename main" > "$list_file"
 		  }
 
-		  xanmod_detect_package() {
+		  xanmod_detect_psabi_level() {
 				local psabi_output=""
-				local psabi_level=""
 				psabi_output=$(awk 'BEGIN {
 					while (!/flags/) if (getline < "/proc/cpuinfo" != 1) exit 1
 					if (/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/) level = 1
@@ -5625,9 +5636,43 @@ bbrv3() {
 					if (level > 0) { print level; exit }
 					exit 1
 				}' /proc/cpuinfo 2>/dev/null) || return 1
-				psabi_level=$(printf '%s' "$psabi_output" | tr -dc '0-9' | head -c 1)
+				printf '%s' "$psabi_output" | tr -dc '0-9' | head -c 1
+		  }
+
+		  xanmod_package_available() {
+				local package="$1"
+				apt-cache policy "$package" 2>/dev/null | grep -q 'Candidate: [^ ]'
+		  }
+
+		  xanmod_detect_package() {
+				local psabi_level=""
+				local level=""
+				local package=""
+				local prefix_list="linux-xanmod linux-xanmod-lts"
+
+				psabi_level=$(xanmod_detect_psabi_level) || return 1
 				[ -n "$psabi_level" ] || return 1
-				printf 'linux-xanmod-x64v%s\n' "$psabi_level"
+				[ "$psabi_level" -gt 3 ] && psabi_level=3
+
+				apt update -y >/dev/null 2>&1
+
+				for prefix in $prefix_list; do
+					level="$psabi_level"
+					while [ "$level" -ge 1 ]; do
+						package="${prefix}-x64v${level}"
+						if xanmod_package_available "$package"; then
+							if [ "$level" != "$psabi_level" ] || [ "$prefix" = "linux-xanmod-lts" ]; then
+								echo "已自动匹配合适安装包: $package" >&2
+							fi
+							printf '%s\n' "$package"
+							return 0
+						fi
+						level=$((level - 1))
+					done
+				done
+
+				echo "软件源中未找到适配此CPU的XanMod内核包" >&2
+				return 1
 		  }
 
 		  xanmod_installed() {
@@ -5646,18 +5691,27 @@ bbrv3() {
 				}
 
 				package=$(xanmod_detect_package) || {
-					echo "无法识别当前CPU的x86-64 psABI等级，已取消安装"
+					echo "无法识别当前CPU或找不到匹配内核包，已取消安装"
 					return 1
 				}
 
 				apt update -y
 				if [ "$action" = "update" ]; then
-					apt install -y --only-upgrade "$package" || apt install -y "$package"
+					apt install -y --only-upgrade "$package" || apt install -y "$package" || {
+						echo "XanMod内核更新失败，请检查软件源或稍后重试"
+						return 1
+					}
 				else
-					apt install -y "$package"
+					apt install -y "$package" || {
+						echo "XanMod内核安装失败，请检查软件源或稍后重试"
+						return 1
+					}
 				fi
 
-				bbr_on
+				bbr_on || {
+					echo "BBR3参数写入失败，请检查系统配置"
+					return 1
+				}
 				echo "XanMod BBRv3内核处理完成。重启后生效"
 				server_reboot
 		  }
