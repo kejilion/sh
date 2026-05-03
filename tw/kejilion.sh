@@ -58,7 +58,7 @@ CheckFirstRun_true() {
 
 
 # 收集功能埋藏資訊的函數，記錄當前腳本版本號，使用時間，系統版本，CPU架構，機器所在國家和用戶使用的功能名稱，絕對不涉及任何敏感信息，請放心！請相信我！
-# 為什麼要設計這個功能，目的更好的了解使用者喜歡使用的功能，進一步優化功能推出更多符合使用者需求的功能。
+# 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求的功能。
 # 全文可搜尋 send_stats 函數呼叫位置，透明開源，如有顧慮可拒絕使用。
 
 
@@ -550,7 +550,7 @@ while true; do
 			docker restart $dockername
 			;;
 		6)
-			send_stats "启动所有容器"
+			send_stats "啟動所有容器"
 			docker start $(docker ps -a -q)
 			;;
 		7)
@@ -659,7 +659,7 @@ while true; do
 			send_stats "拉取鏡像"
 			read -e -p "請輸入鏡像名稱（多個鏡像名稱請以空格分隔）:" imagenames
 			for name in $imagenames; do
-				echo -e "${gl_huang}正在取得鏡像:$name${gl_bai}"
+				echo -e "${gl_huang}正在获取镜像: $name${gl_bai}"
 				docker pull $name
 			done
 			;;
@@ -756,7 +756,7 @@ install_crontab() {
 				service cron start
 				;;
 			*)
-				echo "不支持的发行版: $ID"
+				echo "不支援的發行版:$ID"
 				return
 				;;
 		esac
@@ -814,7 +814,7 @@ docker_ipv6_off() {
 
 	# 檢查設定檔是否存在
 	if [ ! -f "$CONFIG_FILE" ]; then
-		echo -e "${gl_hong}設定檔不存在${gl_bai}"
+		echo -e "${gl_hong}配置文件不存在${gl_bai}"
 		return
 	fi
 
@@ -1179,12 +1179,12 @@ iptables_panel() {
 				  ;;
 
 			  5)
-				  # IP 白名单
-				  read -e -p "请输入放行的IP或IP段: " o_ip
+				  # IP 白名單
+				  read -e -p "請輸入放行的IP或IP段:" o_ip
 				  allow_ip $o_ip
 				  ;;
 			  6)
-				  # IP 黑名单
+				  # IP 黑名單
 				  read -e -p "請輸入封鎖的IP或IP段:" c_ip
 				  block_ip $c_ip
 				  ;;
@@ -1250,7 +1250,7 @@ iptables_panel() {
 add_swap() {
 	local new_swap=$1  # 获取传入的参数
 
-	# 取得目前系統中所有的 swap 分割區
+	# 获取当前系统中所有的 swap 分区
 	local swap_partitions=$(grep -E '^/dev/' /proc/swaps | awk '{print $1}')
 
 	# 遍歷並刪除所有的 swap 分割區
@@ -1552,7 +1552,7 @@ fi
 add_yuming() {
 	  ip_address
 	  echo -e "先將網域名稱解析到本機IP:${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
-	  read -e -p "請輸入你的IP或解析過的網域名稱:" yuming
+	  read -e -p "请输入你的IP或者解析过的域名: " yuming
 }
 
 
@@ -1745,7 +1745,7 @@ nginx_waf() {
 		sed -i 's|^\(\s*\)modsecurity on;|\1# modsecurity on;|' /home/web/nginx.conf > /dev/null 2>&1
 		sed -i 's|^\(\s*\)modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|\1# modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|' /home/web/nginx.conf > /dev/null 2>&1
 	else
-		echo "無效的參數：使用 'on' 或 'off'"
+		echo "无效的参数：使用 'on' 或 'off'"
 		return 1
 	fi
 
@@ -2115,7 +2115,7 @@ web_security() {
 					  echo -e "${gl_huang}網站每5分鐘自動偵測，當達偵測到高負載會自動開盾，低負載也會自動關閉5秒盾。${gl_bai}"
 					  echo "--------------"
 					  echo "取得CF參數:"
-					  echo -e "到cf後台右上角我的個人資料，選擇左側API令牌，取得${gl_huang}Global API Key${gl_bai}"
+					  echo -e "到cf后台右上角我的个人资料，选择左侧API令牌，获取${gl_huang}Global API Key${gl_bai}"
 					  echo -e "到cf後台域名概要頁面右下方獲取${gl_huang}區域ID${gl_bai}"
 					  echo "https://dash.cloudflare.com/login"
 					  echo "--------------"
@@ -2467,7 +2467,7 @@ block_container_port() {
 	local container_name_or_id=$1
 	local allowed_ip=$2
 
-	# 取得容器的 IP 位址
+	# 获取容器的 IP 地址
 	local container_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$container_name_or_id")
 
 	if [ -z "$container_ip" ]; then
@@ -3111,7 +3111,7 @@ ldnmp_install_status_one() {
    if docker inspect "php" &>/dev/null; then
 	clear
 	send_stats "無法再次安裝LDNMP環境"
-	echo -e "${gl_huang}提示:${gl_bai}建站環境已安裝。無需再次安裝！"
+	echo -e "${gl_huang}提示:${gl_bai}建站环境已安装。无需再次安装！"
 	break_end
 	linux_ldnmp
    fi
@@ -3124,7 +3124,7 @@ cd ~
 send_stats "安裝LDNMP環境"
 root_use
 clear
-echo -e "${gl_huang}LDNMP環境未安裝，開始安裝LDNMP環境...${gl_bai}"
+echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境...${gl_bai}"
 check_disk_space 3 /home
 check_port
 install_dependency
@@ -3287,7 +3287,7 @@ ldnmp_Proxy_backend() {
 	fi
 
 	if [ -z "$reverseproxy_port" ]; then
-		read -e -p "請輸入你的多個反代IP+埠以空格隔開（例如 127.0.0.1:3000 127.0.0.1:3002）：" reverseproxy_port
+		read -e -p "请输入你的多个反代IP+端口用空格隔开（例如 127.0.0.1:3000 127.0.0.1:3002）： " reverseproxy_port
 	fi
 
 	nginx_install_status
@@ -3620,16 +3620,16 @@ EOF
 
 	donlond_frp frps
 
-	# 輸出產生的信息
+	# 输出生成的信息
 	ip_address
 	echo "------------------------"
 	echo "客戶端部署時所需使用的參數"
-	echo "服務IP:$ipv4_address"
+	echo "服务IP: $ipv4_address"
 	echo "token: $token"
 	echo
 	echo "FRP面板資訊"
 	echo "FRP面板位址: http://$ipv4_address:$dashboard_port"
-	echo "FRP面板使用者名稱:$dashboard_user"
+	echo "FRP面板用户名: $dashboard_user"
 	echo "FRP面板密碼:$dashboard_pwd"
 	echo
 
@@ -3663,7 +3663,7 @@ EOF
 
 add_forwarding_service() {
 	send_stats "新增frp內網服務"
-	# 提示使用者輸入服務名稱和轉發訊息
+	# 提示用户输入服务名称和转发信息
 	read -e -p "請輸入服務名稱:" service_name
 	read -e -p "請輸入轉送類型 (tcp/udp) [回​​車預設tcp]:" service_type
 	local service_type=${service_type:-tcp}
@@ -3695,7 +3695,7 @@ EOF
 
 delete_forwarding_service() {
 	send_stats "刪除frp內網服務"
-	# 提示用户输入需要删除的服务名称
+	# 提示使用者輸入需要刪除的服務名稱
 	read -e -p "請輸入需要刪除的服務名稱:" service_name
 	# 使用 sed 刪除該服務及其相關配置
 	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frpc.toml
@@ -3772,7 +3772,7 @@ list_forwarding_services() {
 	}
 
 	END {
-		# 列印最後一個服務的訊息
+		# 打印最后一个服务的信息
 		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
 			printf "%-16s %-21s %-26s %-10s\n", \
 				current_service, \
@@ -3790,7 +3790,7 @@ get_frp_ports() {
 	mapfile -t ports < <(ss -tulnape | grep frps | awk '{print $5}' | awk -F':' '{print $NF}' | sort -u)
 }
 
-# 產生訪問地址
+# 生成访问地址
 generate_access_urls() {
 	# 首先獲取所有連接埠
 	get_frp_ports
@@ -4488,7 +4488,7 @@ import_sshkey() {
 
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 	restart_ssh
-	echo -e "${gl_lv}公鑰已成功匯入，ROOT私鑰登入已開啟，已關閉ROOT密碼登錄，重連將會生效${gl_bai}"
+	echo -e "${gl_lv}公钥已成功导入，ROOT私钥登录已开启，已关闭ROOT密码登录，重连将会生效${gl_bai}"
 
 }
 
@@ -4909,7 +4909,7 @@ bbrv3() {
 
 		  clear
 		  echo "設定BBR3加速"
-		  echo "影片介紹: https://www.bilibili.com/video/BV14K421x7BS?t=0.1"
+		  echo "视频介绍: https://www.bilibili.com/video/BV14K421x7BS?t=0.1"
 		  echo "------------------------------------------------"
 		  echo "僅支援Debian/Ubuntu"
 		  echo "請備份數據，將為你升級Linux核心開啟BBR3"
@@ -5186,7 +5186,7 @@ clamav() {
 
 
 
-# 高效能模式最佳化函數
+# 高性能模式优化函数
 optimize_high_performance() {
 	echo -e "${gl_lv}切換到${tiaoyou_moshi}...${gl_bai}"
 
@@ -5662,7 +5662,7 @@ create_backup() {
 	# 提示使用者輸入備份目錄
 	echo "建立備份範例："
 	echo "- 備份單一目錄: /var/www"
-	echo "- 備份多個目錄: /etc /home /var/log"
+	echo "  - 备份多个目录: /etc /home /var/log"
 	echo "- 直接回車將使用預設目錄 (/etc /usr /home)"
 	read -r -p "請輸入要備份的目錄（多個目錄以空格分隔，直接回車則使用預設目錄）：" input
 
@@ -5811,7 +5811,7 @@ list_connections() {
 add_connection() {
 	send_stats "新增連接"
 	echo "建立新連接範例："
-	echo "- 連線名稱: my_server"
+	echo "  - 连接名称: my_server"
 	echo "- IP位址: 192.168.1.100"
 	echo "- 使用者名稱: root"
 	echo "- 連接埠: 22"
@@ -6047,9 +6047,9 @@ list_mounted_partitions() {
 	df -h | grep -v "tmpfs\|udev\|overlay"
 }
 
-# 格式化分割區
+# 格式化分区
 format_partition() {
-	send_stats "格式化分割區"
+	send_stats "格式化分区"
 	read -e -p "請輸入要格式化的分割區名稱（例如 sda1）:" PARTITION
 
 	# 檢查分割區是否存在
@@ -6060,11 +6060,11 @@ format_partition() {
 
 	# 檢查分割區是否已經掛載
 	if lsblk -o MOUNTPOINT | grep -w "$PARTITION" > /dev/null; then
-		echo "分割區已經掛載，請先卸載！"
+		echo "分区已经挂载，请先卸载！"
 		return
 	fi
 
-	# 選擇檔案系統類型
+	# 选择文件系统类型
 	echo "請選擇檔案系統類型："
 	echo "1. ext4"
 	echo "2. xfs"
@@ -6233,7 +6233,7 @@ add_task() {
 # 刪除任務
 delete_task() {
 	send_stats "刪除同步任務"
-	read -e -p "請輸入要刪除的任務編號:" num
+	read -e -p "请输入要删除的任务编号: " num
 
 	local task=$(sed -n "${num}p" "$CONFIG_FILE")
 	if [[ -z "$task" ]]; then
@@ -6243,7 +6243,7 @@ delete_task() {
 
 	IFS='|' read -r name local_path remote remote_path port options auth_method password_or_key <<< "$task"
 
-	# 如果任務使用的是金鑰文件，則刪除該金鑰文件
+	# 如果任务使用的是密钥文件，则删除该密钥文件
 	if [[ "$auth_method" == "key" && "$password_or_key" == "$KEY_DIR"* ]]; then
 		rm -f "$password_or_key"
 	fi
@@ -6542,7 +6542,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}curl 下載工具${gl_huang}★${gl_bai}                   ${gl_kjlan}2.   ${gl_bai}wget 下載工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}3.   ${gl_bai}sudo 超級管理權限工具${gl_kjlan}4.   ${gl_bai}socat 通訊連接工具"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}htop 系統監控工具${gl_kjlan}6.   ${gl_bai}iftop 網路流量監控工具"
+	  echo -e "${gl_kjlan}5.   ${gl_bai}htop 系統監控工具${gl_kjlan}6.   ${gl_bai}iftop 网络流量监控工具"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}unzip ZIP壓縮解壓縮工具${gl_kjlan}8.   ${gl_bai}tar GZ壓縮解壓縮工具"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}tmux 多路後台運行工具${gl_kjlan}10.  ${gl_bai}ffmpeg 視訊編碼直播推流工具"
 	  echo -e "${gl_kjlan}------------------------"
@@ -6921,7 +6921,7 @@ docker_ssh_migration() {
 					echo "compose" > "${BACKUP_DIR}/backup_type_${project_name}"
 					echo "$project_dir" > "${BACKUP_DIR}/compose_path_${project_name}.txt"
 					tar -czf "${BACKUP_DIR}/compose_project_${project_name}.tar.gz" -C "$project_dir" .
-					echo "# docker-compose 恢復:$project_name" >> "$RESTORE_SCRIPT"
+					echo "# docker-compose 恢复: $project_name" >> "$RESTORE_SCRIPT"
 					echo "cd \"$project_dir\" && docker compose up -d" >> "$RESTORE_SCRIPT"
 					PACKED_COMPOSE_PATHS["$project_dir"]=1
 					echo -e "${GREEN}Compose 項目 [$project_name] 已打包:${project_dir}${NC}"
@@ -6989,7 +6989,7 @@ docker_ssh_migration() {
 		install tar jq gzip
 		install_docker
 
-		# --------- 優先還原 Compose 專案 ---------
+		# --------- 优先还原 Compose 项目 ---------
 		for f in "$BACKUP_DIR"/backup_type_*; do
 			[[ ! -f "$f" ]] && continue
 			if grep -q "compose" "$f"; then
@@ -7544,7 +7544,7 @@ linux_test() {
 			  ;;
 		  15)
 			  clear
-			  send_stats "nxtrace指定IP回程測試腳本"
+			  send_stats "nxtrace指定IP回程测试脚本"
 			  echo "可參考的IP列表"
 			  echo "------------------------"
 			  echo "北京電信: 219.141.136.12"
@@ -7845,8 +7845,8 @@ linux_ldnmp() {
 	echo -e "${gl_huang}9.   ${gl_bai}安裝LinkStack分享連結平台${gl_huang}20.  ${gl_bai}自訂動態站點"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}21.  ${gl_bai}僅安裝nginx${gl_huang}★${gl_bai}                     ${gl_huang}22.  ${gl_bai}網站重定向"
-	echo -e "${gl_huang}23.  ${gl_bai}站點反向代理-IP+端口${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}站点反向代理-域名"
-	echo -e "${gl_huang}25.  ${gl_bai}安装Bitwarden密码管理平台         ${gl_huang}26.  ${gl_bai}安装Halo博客网站"
+	echo -e "${gl_huang}23.  ${gl_bai}站點反向代理-IP+端口${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}站點反向代理-域名"
+	echo -e "${gl_huang}25.  ${gl_bai}安裝Bitwarden密碼管理平台${gl_huang}26.  ${gl_bai}安裝Halo部落格網站"
 	echo -e "${gl_huang}27.  ${gl_bai}安裝AI繪畫提示詞產生器${gl_huang}28.  ${gl_bai}站點反向代理-負載平衡"
 	echo -e "${gl_huang}30.  ${gl_bai}自訂靜態站點"
 	echo -e "${gl_huang}------------------------"
@@ -8079,7 +8079,7 @@ linux_ldnmp() {
 	  echo "資料庫名稱:$dbname"
 	  echo "使用者名稱:$dbuse"
 	  echo "密碼:$dbusepasswd"
-	  echo "表字首: flarum_"
+	  echo "表前缀: flarum_"
 	  echo "管理員資訊自行設定"
 
 		;;
@@ -8113,7 +8113,7 @@ linux_ldnmp() {
 
 	  clear
 	  ldnmp_web_on
-	  echo "資料庫前綴: typecho_"
+	  echo "数据库前缀: typecho_"
 	  echo "資料庫位址: mysql"
 	  echo "使用者名稱:$dbuse"
 	  echo "密碼:$dbusepasswd"
@@ -8644,7 +8644,7 @@ linux_ldnmp() {
 		  fi
 		  echo "------------------------"
 		  echo
-		  echo "1. 更新nginx 2. 更新mysql 3. 更新php 4. 更新redis"
+		  echo "1. 更新nginx               2. 更新mysql              3. 更新php              4. 更新redis"
 		  echo "------------------------"
 		  echo "5. 更新完整環境"
 		  echo "------------------------"
@@ -8862,8 +8862,8 @@ while true; do
 	  echo -e "${gl_kjlan}79.  ${color79}Beszel伺服器監控${gl_kjlan}80.  ${color80}linkwarden書籤管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet視訊會議${gl_kjlan}82.  ${color82}gpt-load高性能AI透明代理"
-	  echo -e "${gl_kjlan}83.  ${color83}komari伺服器監控工具${gl_kjlan}84.  ${color84}Wallos個人財務管理工具"
-	  echo -e "${gl_kjlan}85.  ${color85}immich圖片影片管理器${gl_kjlan}86.  ${color86}jellyfin媒體管理系統"
+	  echo -e "${gl_kjlan}83.  ${color83}komari服务器监控工具                ${gl_kjlan}84.  ${color84}Wallos个人财务管理工具"
+	  echo -e "${gl_kjlan}85.  ${color85}immich圖片影片管理器${gl_kjlan}86.  ${color86}jellyfin媒体管理系统"
 	  echo -e "${gl_kjlan}87.  ${color87}SyncTV一起看片神器${gl_kjlan}88.  ${color88}Owncast自架直播平台"
 	  echo -e "${gl_kjlan}89.  ${color89}FileCodeBox檔案快遞${gl_kjlan}90.  ${color90}matrix去中心化聊天協議"
 	  echo -e "${gl_kjlan}------------------------"
@@ -11073,7 +11073,7 @@ while true; do
 		docker_rum() {
 
 			read -e -p "設定登入用戶名:" app_use
-			read -e -p "設定登入密碼:" app_passwd
+			read -e -p "设置登录密码: " app_passwd
 
 			docker run -d \
 			  --name xunlei \
@@ -13021,7 +13021,7 @@ EOF
 					  1)
 						  read -e -p "請輸入新任務的執行指令:" newquest
 						  echo "------------------------"
-						  echo "1. 每月任务                 2. 每周任务"
+						  echo "1. 每月任務 2. 每週任務"
 						  echo "3. 每天任務 4. 每小時任務"
 						  echo "------------------------"
 						  read -e -p "請輸入你的選擇:" dingshi
@@ -13160,7 +13160,7 @@ EOF
 			while true; do
 				clear
 				echo "限流關機功能"
-				echo "影片介紹: https://www.bilibili.com/video/BV1mC411j7Qd?t=0.1"
+				echo "视频介绍: https://www.bilibili.com/video/BV1mC411j7Qd?t=0.1"
 				echo "------------------------------------------------"
 				echo "目前流量使用情況，重啟伺服器流量計算會清除！"
 				output_status
@@ -13416,16 +13416,16 @@ EOF
 			  send_stats "一條龍調優"
 			  echo "一條龍系統調優"
 			  echo "------------------------------------------------"
-			  echo "將對以下內容進行操作與優化"
-			  echo "1. 更新系統到最新"
+			  echo "将对以下内容进行操作与优化"
+			  echo "1. 更新系统到最新"
 			  echo "2. 清理系統垃圾文件"
 			  echo -e "3. 設定虛擬內存${gl_huang}1G${gl_bai}"
 			  echo -e "4. 設定SSH埠號為${gl_huang}5522${gl_bai}"
-			  echo -e "5. 開放所有端口"
-			  echo -e "6. 開啟${gl_huang}BBR${gl_bai}加速"
-			  echo -e "7. 設定時區到${gl_huang}上海${gl_bai}"
-			  echo -e "8. 自動優化DNS位址${gl_huang}海外: 1.1.1.1 8.8.8.8 國內: 223.5.5.5${gl_bai}"
-			  echo -e "9. 安裝基礎工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
+			  echo -e "5. 开放所有端口"
+			  echo -e "6. 开启${gl_huang}BBR${gl_bai}加速"
+			  echo -e "7. 设置时区到${gl_huang}上海${gl_bai}"
+			  echo -e "8. 自动优化DNS地址${gl_huang}海外: 1.1.1.1 8.8.8.8  国内: 223.5.5.5 ${gl_bai}"
+			  echo -e "9. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 			  echo -e "10. Linux系統核心參數優化切換到${gl_huang}均衡最佳化模式${gl_bai}"
 			  echo "------------------------------------------------"
 			  read -e -p "確定一鍵保養嗎？ (Y/N):" choice
@@ -13624,7 +13624,7 @@ linux_file() {
 		echo "11. 建立文件 12. 編輯文件 13. 修改文件權限 14. 重新命名文件"
 		echo "15. 刪除文件"
 		echo "------------------------"
-		echo "21. 壓縮檔案目錄 22. 解壓縮檔案目錄 23. 行動檔案目錄 24. 複製檔案目錄"
+		echo "21. 压缩文件目录       22. 解压文件目录         23. 移动文件目录         24. 复制文件目录"
 		echo "25. 傳文件至其他伺服器"
 		echo "------------------------"
 		echo "0. 返回上一級選單"
@@ -13638,7 +13638,7 @@ linux_file() {
 				send_stats "進入目錄"
 				;;
 			2)  # 创建目录
-				read -e -p "請輸入要建立的目錄名稱:" dirname
+				read -e -p "请输入要创建的目录名: " dirname
 				mkdir -p "$dirname" && echo "目錄已建立" || echo "創建失敗"
 				send_stats "建立目錄"
 				;;
@@ -13678,7 +13678,7 @@ linux_file() {
 				read -e -p "請輸入檔名:" filename
 				read -e -p "請輸入權限 (如 755):" perm
 				chmod "$perm" "$filename" && echo "權限已修改" || echo "修改失敗"
-				send_stats "修改文件权限"
+				send_stats "修改檔案權限"
 				;;
 			14) # 重命名文件
 				read -e -p "請輸入目前檔名:" current_name
@@ -13987,7 +13987,7 @@ echo "------------------------"
 echo -e "${gl_lan}DMIT 28刀每季 美國CN2GIA 1核心 2G記憶體 20G硬碟 800G流量每月${gl_bai}"
 echo -e "${gl_bai}網址: https://www.dmit.io/aff.php?aff=4966&pid=100${gl_bai}"
 echo "------------------------"
-echo -e "${gl_zi}V.PS 6.9刀每月 東京軟銀 2核心 1G內存 20G硬碟 1T流量每月${gl_bai}"
+echo -e "${gl_zi}V.PS 6.9刀每月 东京软银 2核心 1G内存 20G硬盘 1T流量每月${gl_bai}"
 echo -e "${gl_bai}網址: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
 echo -e "${gl_kjlan}VPS更多熱門優惠${gl_bai}"
