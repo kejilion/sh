@@ -22,7 +22,14 @@ fi
 CONFIG_FILE="$HOME/.hermes/config.yaml"
 
 config_tool() {
-    python3 - "$CONFIG_FILE" "$@" <<'EOF'
+    # 优先使用 Hermes Agent 自身的虚拟环境 Python，以确保 PyYAML (yaml) 依赖可用
+    local python_bin="python3"
+    if [ -f "$HOME/.hermes/hermes-agent/venv/bin/python3" ]; then
+        python_bin="$HOME/.hermes/hermes-agent/venv/bin/python3"
+    elif [ -f "$HOME/.hermes/hermes-agent/venv/bin/python" ]; then
+        python_bin="$HOME/.hermes/hermes-agent/venv/bin/python"
+    fi
+    $python_bin - "$CONFIG_FILE" "$@" <<'EOF'
 import sys, yaml, json, os
 
 path = sys.argv[1]
