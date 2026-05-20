@@ -101,6 +101,40 @@ try:
                 groups.append({"name": g, "count": cnt})
         print(json.dumps(groups))
     
+    elif action == "list_groups_latency":
+        import threading, urllib.request, time
+        ps = data.get('custom_providers', [])
+        groups = {}
+        for p in (ps if isinstance(ps, list) else []):
+            name = p.get('name', '')
+            g = name.split('/')[0] if '/' in name else name
+            if g not in groups:
+                groups[g] = {'name': g, 'base_url': p.get('base_url', ''), 'api_key': p.get('api_key', ''), 'count': 0}
+            groups[g]['count'] += 1
+        results = {}
+        def worker(g, url, key):
+            start = time.time()
+            try:
+                url = url.rstrip('/') + '/models'
+                req = urllib.request.Request(url, headers={'Authorization': f'Bearer {key}'} if key else {})
+                with urllib.request.urlopen(req, timeout=1.5) as r:
+                    r.read()
+                results[g] = f"{int((time.time() - start) * 1000)}ms"
+            except urllib.error.HTTPError:
+                results[g] = f"{int((time.time() - start) * 1000)}ms"
+            except Exception:
+                results[g] = "timeout"
+        threads = []
+        for g, info in groups.items():
+            t = threading.Thread(target=worker, args=(g, info['base_url'], info['api_key']))
+            t.start()
+            threads.append(t)
+        for t in threads:
+            t.join()
+        out = []
+        for g, info in groups.items():
+            out.append({'name': g, 'base_url': info['base_url'], 'count': info['count'], 'latency': results.get(g, 'N/A')})
+        print(json.dumps(out))
     elif action == "switch":
         n, u, k, m = sys.argv[3:7]
         data['model'] = {"default": m, "provider": "custom", "base_url": u, "api_key": k}
@@ -379,11 +413,30 @@ api_management_submenu() {
         echo -e "${CYAN}当前激活模型:${NC} ${GREEN}$(echo $info | jq -r .m)${NC}"
         echo -e "---------------------------------------"
         echo -e "${CYAN}已配置 API 列表:${NC}"
-        ps_list=$(config_tool list_p)
-        if [ "$(echo "$ps_list" | jq '. | length')" -eq 0 ]; then
+        local groups_lat_json
+        groups_lat_json=$(config_tool list_groups_latency)
+        if [ "$(echo "$groups_lat_json" | jq '. | length' 2>/dev/null)" -eq 0 ] 2>/dev/null || [ -z "$groups_lat_json" ]; then
             echo -e "  ${YELLOW}(暂无配置)${NC}"
         else
-            echo "$ps_list" | jq -r '.[] | "  ● [\(.name)] \(.model) | \(.base_url)"'
+            while read -r row; do
+                local g_name g_url g_count g_latency lat_color lat_num
+                g_name=$(echo "$row" | jq -r .name)
+                g_url=$(echo "$row" | jq -r .base_url)
+                g_count=$(echo "$row" | jq -r .count)
+                g_latency=$(echo "$row" | jq -r .latency)
+                lat_color="${GREEN}"
+                if [ "$g_latency" = "timeout" ] || [ "$g_latency" = "N/A" ]; then
+                    lat_color="${RED}"
+                elif [[ "$g_latency" =~ ^[0-9]+ms$ ]]; then
+                    lat_num=$(echo "$g_latency" | tr -d 'ms')
+                    if [ "$lat_num" -gt 800 ]; then
+                        lat_color="${RED}"
+                    elif [ "$lat_num" -gt 300 ]; then
+                        lat_color="${YELLOW}"
+                    fi
+                fi
+                echo -e "  ● [${g_name}] (${g_count} 个模型) | 延迟: ${lat_color}${g_latency}${NC} | ${g_url}"
+            done < <(echo "$groups_lat_json" | jq -c '.[]')
         fi
         echo -e "---------------------------------------"
         echo -e "1. ${YELLOW}切换模型 (带测速)${NC}"
