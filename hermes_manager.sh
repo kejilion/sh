@@ -509,14 +509,58 @@ get_version() {
     fi
 }
 
+# 提取语义版本号，例如 v0.13.0 / 0.13.0
+extract_semver() {
+    echo "$1" | grep -Eo 'v?[0-9]+\.[0-9]+\.[0-9]+' | head -n 1
+}
+
+# 比较两个版本号：$1 < $2 返回 0
+version_lt() {
+    [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" != "$2" ] && [ "$1" != "$2" ]
+}
+
+# 获取 PyPI 最新版本，失败时静默，避免影响主菜单显示
+get_latest_version() {
+    python3 - <<'PY' 2>/dev/null
+import json
+import urllib.request
+
+try:
+    with urllib.request.urlopen('https://pypi.org/pypi/hermes-agent/json', timeout=3) as response:
+        data = json.load(response)
+    version = (data.get('info') or {}).get('version') or ''
+    if version:
+        print('v' + version.lstrip('v'))
+except Exception:
+    pass
+PY
+}
+
+# 检查是否有新版本
+get_update_notice() {
+    if ! check_installed; then
+        return
+    fi
+
+    local current_version latest_version current_plain latest_plain
+    current_version="$(extract_semver "$(get_version)")"
+    latest_version="$(extract_semver "$(get_latest_version)")"
+    current_plain="${current_version#v}"
+    latest_plain="${latest_version#v}"
+
+    if [ -n "$current_plain" ] && [ -n "$latest_plain" ] && version_lt "$current_plain" "$latest_plain"; then
+        echo -e "  ${YELLOW}有新版本 ${latest_version^^}${NC}"
+    fi
+}
+
 # 获取网关状态
 get_gateway_status() {
     if check_installed; then
         # 匹配后台 gateway 进程或 systemd 服务
         if pgrep -f "hermes_cli.main gateway" > /dev/null || pgrep -f "hermes gateway run" > /dev/null || pgrep -f "hermes-gateway" > /dev/null; then
-            echo -e "${GREEN}运行中${NC}"
+            echo -e "${GREEN}运行中${NC}$(get_update_notice)"
         else
-            echo -e "${RED}已停止${NC}"
+            echo -e "${RED}已停止${NC}$(get_update_notice)"
         fi
     else
         echo -e "${RED}未安装${NC}"
