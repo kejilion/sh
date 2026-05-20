@@ -769,11 +769,34 @@ check_installed() {
     if command -v hermes >/dev/null 2>&1; then return 0; else return 1; fi
 }
 
-# 获取版本号
+# 获取版本号（优先直接读取安装元数据，避免启动 hermes CLI 导致菜单变慢）
 get_version() {
-    if check_installed; then
-        hermes --version 2>/dev/null | sed -n '1p'
+    if ! check_installed; then
+        return
     fi
+
+    local hermes_bin python_bin venv_dir metadata version
+    hermes_bin="$(command -v hermes 2>/dev/null)"
+
+    # pip/venv 生成的 hermes 入口第一行通常指向 venv/bin/python3。
+    # 直接读 dist-info/METADATA，比执行 `hermes --version` 更快。
+    if [ -n "$hermes_bin" ] && [ -r "$hermes_bin" ]; then
+        python_bin="$(sed -n '1s/^#!//p' "$hermes_bin" 2>/dev/null)"
+        if [ -n "$python_bin" ] && [ -x "$python_bin" ]; then
+            venv_dir="$(dirname "$(dirname "$python_bin")")"
+            for metadata in "$venv_dir"/lib/python*/site-packages/hermes_agent-*.dist-info/METADATA; do
+                [ -r "$metadata" ] || continue
+                version="$(sed -n 's/^Version: //p' "$metadata" 2>/dev/null | sed -n '1p')"
+                if [ -n "$version" ]; then
+                    echo "Hermes Agent v${version#v}"
+                    return
+                fi
+            done
+        fi
+    fi
+
+    # 兜底：兼容非标准安装方式。
+    hermes --version 2>/dev/null | sed -n '1p'
 }
 
 # 提取语义版本号，例如 v0.13.0 / 0.13.0
@@ -786,21 +809,64 @@ version_lt() {
     [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -n 1)" != "$2" ] && [ "$1" != "$2" ]
 }
 
-# 获取 PyPI 最新版本，失败时静默，避免影响主菜单显示
+# 获取 PyPI 最新版本：优先读缓存，过期后后台刷新，避免拖慢主菜单显示
 get_latest_version() {
-    python3 - <<'PY' 2>/dev/null
-import json
-import urllib.request
+    local cache_dir cache_file lock_dir now cache_mtime lock_mtime ttl lock_ttl version
+    cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hermes-manager"
+    cache_file="$cache_dir/hermes-agent-latest-version"
+    lock_dir="$cache_dir/hermes-agent-latest-version.lock"
+    ttl=21600       # 6 小时内不重复联网检查
+    lock_ttl=300    # 后台刷新失败时，5 分钟内不重复启动刷新任务
+    now="$(date +%s 2>/dev/null || echo 0)"
 
+    mkdir -p "$cache_dir" 2>/dev/null || true
+
+    # 缓存未过期：直接返回，菜单无网络等待。
+    if [ -r "$cache_file" ]; then
+        cache_mtime="$(stat -c %Y "$cache_file" 2>/dev/null || echo 0)"
+        if [ $((now - cache_mtime)) -lt "$ttl" ]; then
+            sed -n '1p' "$cache_file" 2>/dev/null
+            return
+        fi
+        # 缓存过期也先返回旧值，刷新放后台做，避免卡界面。
+        version="$(sed -n '1p' "$cache_file" 2>/dev/null)"
+    fi
+
+    # 后台刷新：用锁避免每次打开菜单都发起 PyPI 请求。
+    if mkdir "$lock_dir" 2>/dev/null; then
+        (
+            python3 - "$cache_file" <<'PY' 2>/dev/null
+import json
+import sys
+import tempfile
+import urllib.request
+from pathlib import Path
+
+cache_file = Path(sys.argv[1])
 try:
-    with urllib.request.urlopen('https://pypi.org/pypi/hermes-agent/json', timeout=3) as response:
+    with urllib.request.urlopen('https://pypi.org/pypi/hermes-agent/json', timeout=2) as response:
         data = json.load(response)
     version = (data.get('info') or {}).get('version') or ''
     if version:
-        print('v' + version.lstrip('v'))
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile('w', dir=str(cache_file.parent), delete=False) as f:
+            f.write('v' + version.lstrip('v') + '\n')
+            tmp = f.name
+        Path(tmp).replace(cache_file)
 except Exception:
     pass
 PY
+            rmdir "$lock_dir" 2>/dev/null || true
+        ) >/dev/null 2>&1 &
+    elif [ -d "$lock_dir" ]; then
+        lock_mtime="$(stat -c %Y "$lock_dir" 2>/dev/null || echo "$now")"
+        if [ $((now - lock_mtime)) -gt "$lock_ttl" ]; then
+            rmdir "$lock_dir" 2>/dev/null || true
+        fi
+    fi
+
+    # 首次无缓存时不输出，不阻塞菜单；下次打开菜单会读到后台刷新结果。
+    [ -n "$version" ] && echo "$version"
 }
 
 # 检查是否有新版本
@@ -822,15 +888,30 @@ get_update_notice() {
 
 # 获取网关状态
 get_gateway_status() {
-    if check_installed; then
-        # 匹配后台 gateway 进程或 systemd 服务
-        if pgrep -f "hermes_cli.main gateway" > /dev/null || pgrep -f "hermes gateway run" > /dev/null || pgrep -f "hermes-gateway" > /dev/null; then
-            echo -e "${GREEN}运行中${NC}$(get_update_notice)"
-        else
-            echo -e "${RED}已停止${NC}$(get_update_notice)"
-        fi
-    else
+    if ! check_installed; then
         echo -e "${RED}未安装${NC}"
+        return
+    fi
+
+    # 优先检查 Hermes 安装的 user systemd 服务，速度快且比扫进程更准。
+    if command -v systemctl >/dev/null 2>&1; then
+        case "$(systemctl --user is-active hermes-gateway.service 2>/dev/null)" in
+            active)
+                echo -e "${GREEN}运行中${NC}$(get_update_notice)"
+                return
+                ;;
+            inactive|failed|activating|deactivating)
+                echo -e "${RED}已停止${NC}$(get_update_notice)"
+                return
+                ;;
+        esac
+    fi
+
+    # 兜底：兼容非 systemd 或手动启动的 gateway。
+    if pgrep -u "$(id -u)" -f "(^|[[:space:]])(([^[:space:]]*/)?python[0-9.]*[[:space:]]+-m[[:space:]]+hermes_cli\.main[[:space:]]+gateway[[:space:]]+run|([^[:space:]]*/)?hermes[[:space:]]+gateway[[:space:]]+run|hermes-gateway)([[:space:]]|$)" >/dev/null 2>&1; then
+        echo -e "${GREEN}运行中${NC}$(get_update_notice)"
+    else
+        echo -e "${RED}已停止${NC}$(get_update_notice)"
     fi
 }
 
