@@ -505,7 +505,7 @@ check_installed() {
 # 获取版本号
 get_version() {
     if check_installed; then
-        hermes --version | head -n 1
+        hermes --version 2>/dev/null | sed -n '1p'
     fi
 }
 
