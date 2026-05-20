@@ -22,13 +22,70 @@ fi
 CONFIG_FILE="$HOME/.hermes/config.yaml"
 
 config_tool() {
-    # 优先使用 Hermes Agent 自身的虚拟环境 Python，以确保 PyYAML (yaml) 依赖可用
-    local python_bin="python3"
-    if [ -f "$HOME/.hermes/hermes-agent/venv/bin/python3" ]; then
-        python_bin="$HOME/.hermes/hermes-agent/venv/bin/python3"
-    elif [ -f "$HOME/.hermes/hermes-agent/venv/bin/python" ]; then
-        python_bin="$HOME/.hermes/hermes-agent/venv/bin/python"
+    # 自动适配 CONFIG_FILE 路径
+    if [ ! -f "$CONFIG_FILE" ]; then
+        local p
+        for p in "/root/.hermes/config.yaml" /home/*/.hermes/config.yaml; do
+            if [ -f "$p" ]; then
+                CONFIG_FILE="$p"
+                break
+            fi
+        done
     fi
+
+    # 寻找可用的 Python 解释器，优先使用带有 pyyaml (yaml) 的环境
+    local python_bin=""
+
+    # 1. 尝试从 command -v hermes 指向的文件的 shebang 中提取 python 路径
+    local hermes_cmd
+    hermes_cmd=$(command -v hermes)
+    if [ -n "$hermes_cmd" ] && [ -f "$hermes_cmd" ]; then
+        local shebang
+        shebang=$(head -n 1 "$hermes_cmd" 2>/dev/null)
+        if [[ "$shebang" =~ ^#\! ]]; then
+            local potential_py="${shebang#\#!}"
+            if [ -f "$potential_py" ]; then
+                # 检查该 interpreter 是否有 yaml 模块
+                if "$potential_py" -c "import yaml" >/dev/null 2>&1; then
+                    python_bin="$potential_py"
+                fi
+            fi
+        fi
+    fi
+
+    # 2. 尝试从常见绝对路径查找
+    if [ -z "$python_bin" ]; then
+        local paths=(
+            "$HOME/.hermes/hermes-agent/venv/bin/python3"
+            "$HOME/.hermes/hermes-agent/venv/bin/python"
+            "/root/.hermes/hermes-agent/venv/bin/python3"
+            "/root/.hermes/hermes-agent/venv/bin/python"
+            "$HOME/.hermes/hermes-agent/.venv/bin/python3"
+            "/root/.hermes/hermes-agent/.venv/bin/python3"
+            /home/*/.hermes/hermes-agent/venv/bin/python3
+            /home/*/.hermes/hermes-agent/venv/bin/python
+            /home/*/.hermes/hermes-agent/.venv/bin/python3
+        )
+        local p
+        for p in "${paths[@]}"; do
+            if [ -f "$p" ]; then
+                if "$p" -c "import yaml" >/dev/null 2>&1; then
+                    python_bin="$p"
+                    break
+                fi
+            fi
+        done
+    fi
+
+    # 3. 兜底退回到系统全局 python3 或 python
+    if [ -z "$python_bin" ]; then
+        if command -v python3 >/dev/null 2>&1; then
+            python_bin="python3"
+        else
+            python_bin="python"
+        fi
+    fi
+
     $python_bin - "$CONFIG_FILE" "$@" <<'EOF'
 import sys, yaml, json, os
 
