@@ -263,6 +263,105 @@ hermes_probe_status_line() {
     fi
 }
 
+sync_single_api_provider_models() {
+    local provider_name="$1"
+    local ps_json="$2"
+
+    local entry base_url api_key m_json m_list_str old_list added_list deleted_list
+    entry=$(echo "$ps_json" | jq -c --arg n "$provider_name" '[.[] | select(.name == $n or (.name | startswith($n + "/")))] | .[0] // empty' 2>/dev/null)
+    if [ -z "$entry" ] || [ "$entry" = "null" ]; then
+        echo -e "${RED}❌ $provider_name: 未找到供应商配置${NC}"
+        return 1
+    fi
+
+    base_url=$(echo "$entry" | jq -r '.base_url // empty')
+    api_key=$(echo "$entry" | jq -r '.api_key // empty')
+    base_url="${base_url%/}"
+    if [ -z "$base_url" ]; then
+        echo -e "${RED}❌ $provider_name: Base URL 为空${NC}"
+        return 1
+    fi
+
+    m_json=$(curl -s -m 20 -H "Authorization: Bearer ${api_key}" "$base_url/models")
+    m_list_str=$(echo "$m_json" | jq -r '.data[]?.id' 2>/dev/null | sed '/^$/d' | sort -u)
+    if [ -z "$m_list_str" ]; then
+        echo -e "${RED}❌ $provider_name: 无法获取模型列表${NC}"
+        return 1
+    fi
+
+    old_list=$(echo "$ps_json" | jq -r --arg n "$provider_name" '
+        .[]
+        | select(.name == $n or (.name | startswith($n + "/")))
+        | if .name == $n then (.model // empty) else ((.name | sub("^" + $n + "/"; "")) // .model // empty) end
+    ' 2>/dev/null | sed '/^$/d' | sort -u)
+
+    added_list=$(comm -13 <(printf '%s\n' "$old_list") <(printf '%s\n' "$m_list_str"))
+    deleted_list=$(comm -23 <(printf '%s\n' "$old_list") <(printf '%s\n' "$m_list_str"))
+
+    local added_count deleted_count current_count m_json_list
+    added_count=$(printf '%s\n' "$added_list" | sed '/^$/d' | wc -l | tr -d ' ')
+    deleted_count=$(printf '%s\n' "$deleted_list" | sed '/^$/d' | wc -l | tr -d ' ')
+    current_count=$(printf '%s\n' "$m_list_str" | sed '/^$/d' | wc -l | tr -d ' ')
+
+    m_json_list=$(printf '%s\n' "$m_list_str" | jq -R . | jq -s -c .)
+    config_tool bulk_add "$provider_name" "$base_url" "$api_key" "$m_json_list"
+
+    echo -e "${GREEN}✅ $provider_name: 新增 $added_count 个，删除 $deleted_count 个，当前 $current_count 个${NC}"
+    if [ "$added_count" -gt 0 ]; then
+        echo -e "${GREEN}＋ 新增模型($added_count):${NC}"
+        printf '%s\n' "$added_list" | sed '/^$/d' | sed 's/^/  + /'
+    fi
+    if [ "$deleted_count" -gt 0 ]; then
+        echo -e "${YELLOW}－ 删除模型($deleted_count):${NC}"
+        printf '%s\n' "$deleted_list" | sed '/^$/d' | sed 's/^/  - /'
+    fi
+    return 0
+}
+
+sync_api_provider_models() {
+    local target_provider="$1"
+    local ps_json groups_json g_count synced_count failed_count provider_name
+
+    ps_json=$(config_tool list_p)
+    if [ "$(echo "$ps_json" | jq '. | length' 2>/dev/null)" -eq 0 ] 2>/dev/null; then
+        echo -e "${RED}无 API 配置! 请先添加供应商。${NC}"
+        return 1
+    fi
+
+    groups_json=$(config_tool list_groups)
+    g_count=$(echo "$groups_json" | jq '. | length' 2>/dev/null)
+    if [ "$g_count" -eq 0 ] 2>/dev/null || [ -z "$g_count" ]; then
+        echo -e "${RED}无 API 供应商分组可同步。${NC}"
+        return 1
+    fi
+
+    synced_count=0
+    failed_count=0
+    if [ -n "$target_provider" ]; then
+        if sync_single_api_provider_models "$target_provider" "$ps_json"; then
+            synced_count=$((synced_count + 1))
+        else
+            failed_count=$((failed_count + 1))
+        fi
+    else
+        while read -r provider_name; do
+            [ -z "$provider_name" ] && continue
+            ps_json=$(config_tool list_p)
+            if sync_single_api_provider_models "$provider_name" "$ps_json"; then
+                synced_count=$((synced_count + 1))
+            else
+                failed_count=$((failed_count + 1))
+            fi
+        done < <(echo "$groups_json" | jq -r '.[].name')
+    fi
+
+    if [ "$failed_count" -eq 0 ]; then
+        echo -e "${GREEN}✅ API 供应商模型列表同步完成并已写入配置${NC}"
+    else
+        echo -e "${YELLOW}⚠️ API 供应商模型列表同步完成：成功 $synced_count 个，失败 $failed_count 个${NC}"
+    fi
+}
+
 api_management_submenu() {
     while true; do
         clear
@@ -282,7 +381,8 @@ api_management_submenu() {
         echo -e "---------------------------------------"
         echo -e "1. ${YELLOW}切换模型 (带测速)${NC}"
         echo -e "2. 添加 API 供应商 (自动同步)${NC}"
-        echo -e "3. 删除 API 供应商"
+        echo -e "3. ${YELLOW}同步 API 供应商模型列表${NC}"
+        echo -e "4. 删除 API 供应商"
         echo -e "0. 返回主菜单"
         echo -e "---------------------------------------"
         read -p "选择序号: " sub_choice
@@ -465,6 +565,23 @@ api_management_submenu() {
                 sleep 2
                 ;;
             3)
+                echo -e "${CYAN}--- 同步 API 供应商模型列表 ---${NC}"
+                echo -e "${CYAN}已配置的供应商分组:${NC}"
+                groups_json=$(config_tool list_groups)
+                g_count=$(echo "$groups_json" | jq '. | length' 2>/dev/null)
+                if [ "$g_count" -eq 0 ] 2>/dev/null || [ -z "$g_count" ]; then
+                    echo -e "  ${YELLOW}(暂无配置)${NC}"
+                    sleep 1
+                    continue
+                fi
+                echo "$groups_json" | jq -r '.[] | "  ● \(.name) (\(.count) 个模型)"'
+                echo ""
+                read -p "请输入要同步的 API 名称(provider)，直接回车同步全部: " sync_provider
+                sync_api_provider_models "$sync_provider"
+                echo ""
+                read -p "按回车键继续..."
+                ;;
+            4)
                 echo -e "${CYAN}已配置的供应商分组:${NC}"
                 groups_json=$(config_tool list_groups)
                 g_count=$(echo "$groups_json" | jq '. | length')
