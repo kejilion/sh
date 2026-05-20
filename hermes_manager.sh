@@ -36,18 +36,42 @@ config_tool() {
     # 寻找可用的 Python 解释器，优先使用带有 pyyaml (yaml) 的环境
     local python_bin=""
 
-    # 1. 尝试从 command -v hermes 指向的文件的 shebang 中提取 python 路径
+    # 1. 尝试从 command -v hermes 指向的文件的 shebang/内容中提取 python 路径
     local hermes_cmd
     hermes_cmd=$(command -v hermes)
     if [ -n "$hermes_cmd" ] && [ -f "$hermes_cmd" ]; then
+        # A. 检查第一行是否是 shebang
         local shebang
         shebang=$(head -n 1 "$hermes_cmd" 2>/dev/null)
         if [[ "$shebang" =~ ^#\! ]]; then
             local potential_py="${shebang#\#!}"
             if [ -f "$potential_py" ]; then
-                # 检查该 interpreter 是否有 yaml 模块
                 if "$potential_py" -c "import yaml" >/dev/null 2>&1; then
                     python_bin="$potential_py"
+                fi
+            fi
+        fi
+        # B. 检查是否是 Bash wrapper，追踪其实际指向的 bin 并提取 python3
+        if [ -z "$python_bin" ]; then
+            local wrapped_bin
+            wrapped_bin=$(grep -Eo '"/[^"]+/venv/bin/hermes"' "$hermes_cmd" | tr -d '"' | head -n 1)
+            if [ -z "$wrapped_bin" ]; then
+                wrapped_bin=$(grep -Eo '/[a-zA-Z0-9_\.\-]+/hermes-agent/venv/bin/hermes' "$hermes_cmd" | head -n 1)
+            fi
+            if [ -n "$wrapped_bin" ] && [ -f "$wrapped_bin" ]; then
+                local wrapped_shebang
+                wrapped_shebang=$(head -n 1 "$wrapped_bin" 2>/dev/null)
+                if [[ "$wrapped_shebang" =~ ^#\! ]]; then
+                    local potential_py="${wrapped_shebang#\#!}"
+                    if [ -f "$potential_py" ] && "$potential_py" -c "import yaml" >/dev/null 2>&1; then
+                        python_bin="$potential_py"
+                    fi
+                fi
+                if [ -z "$python_bin" ]; then
+                    local potential_py="${wrapped_bin%/hermes}/python3"
+                    if [ -f "$potential_py" ] && "$potential_py" -c "import yaml" >/dev/null 2>&1; then
+                        python_bin="$potential_py"
+                    fi
                 fi
             fi
         fi
@@ -60,8 +84,14 @@ config_tool() {
             "$HOME/.hermes/hermes-agent/venv/bin/python"
             "/root/.hermes/hermes-agent/venv/bin/python3"
             "/root/.hermes/hermes-agent/venv/bin/python"
+            "/usr/local/lib/hermes-agent/venv/bin/python3"
+            "/usr/local/lib/hermes-agent/venv/bin/python"
+            "/usr/lib/hermes-agent/venv/bin/python3"
+            "/usr/lib/hermes-agent/venv/bin/python"
             "$HOME/.hermes/hermes-agent/.venv/bin/python3"
             "/root/.hermes/hermes-agent/.venv/bin/python3"
+            "/usr/local/lib/hermes-agent/.venv/bin/python3"
+            "/usr/lib/hermes-agent/.venv/bin/python3"
             /home/*/.hermes/hermes-agent/venv/bin/python3
             /home/*/.hermes/hermes-agent/venv/bin/python
             /home/*/.hermes/hermes-agent/.venv/bin/python3
