@@ -170,6 +170,9 @@ try:
             groups[g]['count'] += 1
         results = {}
         def worker(g, url, key):
+            if not url or not (url.startswith('http://') or url.startswith('https://')):
+                results[g] = "N/A"
+                return
             start = time.time()
             try:
                 url = url.rstrip('/') + '/models'
