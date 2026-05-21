@@ -924,6 +924,14 @@ refresh_hermes_path() {
     fi
 }
 
+add_app_id() {
+mkdir -p /home/docker
+touch /home/docker/appno.txt
+grep -qxF "115" /home/docker/appno.txt || echo "115" >> /home/docker/appno.txt
+
+}
+
+
 
 # 主菜单UI
 show_menu() {
@@ -957,6 +965,7 @@ show_menu() {
             refresh_hermes_path
             hermes gateway install
             hermes gateway start
+            add_app_id
             ;;
         2)
             if check_installed; then
@@ -995,6 +1004,7 @@ show_menu() {
             if check_installed; then
                 echo -e "${YELLOW}正在检查更新...${NC}"
                 hermes update
+                add_app_id
             else echo -e "${RED}请先安装 Hermes。${NC}"; fi
             ;;
         8)
@@ -1002,6 +1012,7 @@ show_menu() {
                 read -p "确定要卸载 Hermes 吗？所有数据将被清除。(y/N): " confirm
                 if [[ "$confirm" =~ ^[Yy]$ ]]; then
                     hermes uninstall
+                    sed -i "/\b115\b/d" /home/docker/appno.txt
                 else echo "已取消。"; fi
             else echo -e "${RED}请先安装 Hermes。${NC}"; fi
             ;;
