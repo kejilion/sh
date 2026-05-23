@@ -5547,7 +5547,7 @@ dd_xitong() {
 			  43)
 				send_stats "重装windows7"
 				dd_xitong_4
-				bash reinstall.sh windows --iso="https://drive.massgrave.dev/cn_windows_7_professional_with_sp1_x64_dvd_u_677031.iso" --image-name='Windows 7 PROFESSIONAL'
+				bash reinstall.sh windows --iso="https://archive.org/download/en_windows_7_professional_with_sp1_x64_dvd_u_676939_201906/en_windows_7_professional_with_sp1_x64_dvd_u_676939.iso" --image-name='Windows 7 PROFESSIONAL'
 				reboot
 				exit
 				;;
