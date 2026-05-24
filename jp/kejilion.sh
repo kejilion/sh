@@ -5547,7 +5547,7 @@ dd_xitong() {
 			  43)
 				send_stats "Windows7を再インストールする"
 				dd_xitong_4
-				bash reinstall.sh windows --iso="https://drive.massgrave.dev/cn_windows_7_professional_with_sp1_x64_dvd_u_677031.iso" --image-name='Windows 7 PROFESSIONAL'
+				bash reinstall.sh windows --iso="https://drive.massgrave.dev/cn_windows_7_professional_with_sp1_x64_dvd_u_677031.iso" --image-name='windows 7 professional'
 				reboot
 				exit
 				;;
