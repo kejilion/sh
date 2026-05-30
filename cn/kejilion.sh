@@ -9124,8 +9124,11 @@ linux_ldnmp() {
 	  cd /home/web/html
 	  mkdir $yuming
 	  cd $yuming
-	  wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/main/Discuz_X3.5_SC_UTF8_20250901.zip
-	  unzip latest.zip
+	  LATEST_URL=$(curl -s https://api.gitee.com/api/v5/repos/Discuz/DiscuzX/releases/latest | grep -o 'https://[^"]*Discuz_X[^"]*SC_UTF8[^"]*\.zip' | head -n 1)
+	  wget -O latest.zip ${LATEST_URL}
+	  unzip -q latest.zip
+	  mv upload/* .
+	  rm -rf upload readme readme.html utility.html LICENSE qqqun.png
 	  rm latest.zip
 
 	  restart_ldnmp
