@@ -3763,8 +3763,8 @@ new_ssh_port() {
   # از فایلهای پیکربندی SSH پشتیبان تهیه کنید
   cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 
-  sed -i 's/^\s*#\?\s*Port/Port/' /etc/ssh/sshd_config
-  sed -i "s/Port [0-9]\+/Port $new_port/g" /etc/ssh/sshd_config
+  sed -i '/^\s*#\?\s*Port\s\+/d' /etc/ssh/sshd_config
+  sed -i "1i Port $new_port" /etc/ssh/sshd_config
 
   correct_ssh_config
   rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*

@@ -4911,7 +4911,7 @@ new_ssh_port() {
   cp /etc/ssh/sshd_config /etc/ssh/sshd_config.bak
 
   sed -i '/^\s*#\?\s*Port\s\+/d' /etc/ssh/sshd_config
-  echo "Port $new_port" >> /etc/ssh/sshd_config
+  sed -i "1i Port $new_port" /etc/ssh/sshd_config
 
   correct_ssh_config
 
