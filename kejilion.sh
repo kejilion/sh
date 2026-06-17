@@ -2865,7 +2865,7 @@ send_stats "${docker_name}管理"
 while true; do
 	clear
 	check_docker_app
-	check_docker_image_update $docker_name
+	check_docker_image_update "${docker_app_service:-$docker_name}"
 	echo -e "$docker_name $check_docker $update_status"
 	echo "$docker_describe"
 	echo "$docker_url"
@@ -2991,9 +2991,10 @@ docker_app_plus() {
 		echo -e "$app_name $check_docker $update_status"
 		echo "$app_text"
 		echo "$app_url"
-		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
+		local docker_check_name="${docker_app_service:-$docker_name}"
+		if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_check_name"; then
 			if [ ! -f "/home/docker/${docker_name}_port.conf" ]; then
-				local docker_port=$(docker port "$docker_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
+				local docker_port=$(docker port "$docker_check_name" | head -n1 | awk -F'[:]' '/->/ {print $NF; exit}')
 				docker_port=${docker_port:-0000}
 				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 			fi
@@ -3056,7 +3057,8 @@ docker_app_plus() {
 				send_stats "${docker_name}域名访问设置"
 				add_yuming
 				ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-				block_container_port "$docker_name" "$ipv4_address"
+				local docker_check_name="${docker_app_service:-$docker_name}"
+				block_container_port "$docker_check_name" "$ipv4_address"
 
 				;;
 			6)
@@ -3069,7 +3071,8 @@ docker_app_plus() {
 				;;
 			8)
 				send_stats "阻止IP访问 ${docker_name}"
-				block_container_port "$docker_name" "$ipv4_address"
+				local docker_check_name="${docker_app_service:-$docker_name}"
+				block_container_port "$docker_check_name" "$ipv4_address"
 				;;
 			*)
 				break
@@ -18063,6 +18066,7 @@ while true; do
 		  local app_text="一个开源的安全视频会议解决方案，支持多人在线会议、屏幕共享与加密通信。"
 		  local app_url="官方网站: https://jitsi.org/"
 		  local docker_name="jitsi"
+		  local docker_app_service="jitsi-web-1"
 		  local docker_port="8081"
 		  local app_size="3"
 
@@ -18070,32 +18074,45 @@ while true; do
 
 			  add_yuming
 			  mkdir -p /home/docker/jitsi && cd /home/docker/jitsi
-			  wget $(wget -q -O - https://api.github.com/repos/jitsi/docker-jitsi-meet/releases/latest | grep zip | cut -d\" -f4)
-			  unzip "$(ls -t | head -n 1)"
-			  cd "$(ls -dt */ | head -n 1)"
+			  rm -rf docker-jitsi-meet-* jitsi.zip
+			  local jitsi_zip_url=$(wget -q -O - https://api.github.com/repos/jitsi/docker-jitsi-meet/releases/latest | grep -m1 '"zipball_url"' | cut -d\" -f4)
+			  if [ -z "$jitsi_zip_url" ]; then
+				  echo "Failed to get Jitsi Meet latest download URL"
+				  return 1
+			  fi
+			  wget -O jitsi.zip "$jitsi_zip_url"
+			  unzip -q jitsi.zip
+			  cd "$(find . -maxdepth 1 -type d -name '*docker-jitsi-meet*' | head -n 1)"
 			  cp env.example .env
 			  ./gen-passwords.sh
-			  mkdir -p ~/.jitsi-meet-cfg/{web,transcripts,prosody/config,prosody/prosody-plugins-custom,jicofo,jvb,jigasi,jibri}
+			  mkdir -p /home/docker/jitsi/config/{web,transcripts,prosody/config,prosody/prosody-plugins-custom,jicofo,jvb,jigasi,jibri}
+			  sed -i "s|^CONFIG=.*|CONFIG=/home/docker/jitsi/config|" .env
+			  grep -q '^COMPOSE_PROJECT_NAME=' .env && sed -i "s|^COMPOSE_PROJECT_NAME=.*|COMPOSE_PROJECT_NAME=jitsi|" .env || echo "COMPOSE_PROJECT_NAME=jitsi" >> .env
 			  sed -i "s|^HTTP_PORT=.*|HTTP_PORT=${docker_port}|" .env
-			  sed -i "s|^#PUBLIC_URL=https://meet.example.com:\${HTTPS_PORT}|PUBLIC_URL=https://$yuming:443|" .env
+			  sed -i "s|^#\?PUBLIC_URL=.*|PUBLIC_URL=https://$yuming|" .env
+			  grep -q '^PUBLIC_URL=' .env || echo "PUBLIC_URL=https://$yuming" >> .env
+			  grep -q '^DISABLE_HTTPS=' .env && sed -i "s|^DISABLE_HTTPS=.*|DISABLE_HTTPS=1|" .env || echo "DISABLE_HTTPS=1" >> .env
+			  grep -q '^ENABLE_HTTP_REDIRECT=' .env && sed -i "s|^ENABLE_HTTP_REDIRECT=.*|ENABLE_HTTP_REDIRECT=0|" .env || echo "ENABLE_HTTP_REDIRECT=0" >> .env
+			  sed -i "/'\${HTTPS_PORT}:443'/d" docker-compose.yml
 			  docker compose up -d
 
 			  ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			  block_container_port "$docker_name" "$ipv4_address"
+			  local jitsi_web_container=$(docker compose ps -q web)
+			  [ -n "$jitsi_web_container" ] && block_container_port "$jitsi_web_container" "$ipv4_address"
 
 		  }
 
 		  docker_app_update() {
 			  cd /home/docker/jitsi
-			  cd "$(ls -dt */ | head -n 1)"
-			  docker compose down --rmi all
+			  cd "$(find . -maxdepth 1 -type d -name '*docker-jitsi-meet*' | head -n 1)"
+			  docker compose pull
 			  docker compose up -d
 
 		  }
 
 		  docker_app_uninstall() {
 			  cd /home/docker/jitsi
-			  cd "$(ls -dt */ | head -n 1)"
+			  cd "$(find . -maxdepth 1 -type d -name '*docker-jitsi-meet*' | head -n 1)"
 			  docker compose down --rmi all
 			  rm -rf /home/docker/jitsi
 			  echo "应用已卸载"
