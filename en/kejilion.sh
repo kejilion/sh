@@ -18094,9 +18094,9 @@ while true; do
 			  grep -q '^ENABLE_HTTP_REDIRECT=' .env && sed -i "s|^ENABLE_HTTP_REDIRECT=.*|ENABLE_HTTP_REDIRECT=0|" .env || echo "ENABLE_HTTP_REDIRECT=0" >> .env
 			  sed -i "/'\${HTTPS_PORT}:443'/d" docker-compose.yml
 			  docker compose up -d
+			  local jitsi_web_container=$(docker compose ps -q web)
 
 			  ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			  local jitsi_web_container=$(docker compose ps -q web)
 			  [ -n "$jitsi_web_container" ] && block_container_port "$jitsi_web_container" "$ipv4_address"
 
 		  }
