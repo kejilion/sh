@@ -2,6 +2,11 @@
 
 # 设置OpenSSH的版本号
 OPENSSH_VERSION=$(curl -s https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/ | grep -oP 'openssh-\K[0-9]+\.[0-9]+p[0-9]+' | sort -V | tail -n 1)
+SOURCE_ARCHIVE="openssh-${OPENSSH_VERSION}.tar.gz"
+SOURCE_DIR=""
+DOWNLOAD_DIR=$(pwd)
+DEPENDENCY_PACKAGES=()
+REMOVABLE_PACKAGES=()
 
 
 # 检测系统类型
@@ -26,22 +31,66 @@ fix_dpkg() {
     DEBIAN_FRONTEND=noninteractive dpkg --configure -a
 }
 
+# 检查软件包是否已安装
+is_package_installed() {
+    local package=$1
+    case $OS in
+        ubuntu|debian)
+            dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "ok installed"
+            ;;
+        centos|rhel|almalinux|rocky|fedora)
+            rpm -q "$package" >/dev/null 2>&1
+            ;;
+        alpine)
+            apk info -e "$package" >/dev/null 2>&1
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+# 只记录本次升级新增的构建依赖，避免误删系统原有软件包
+track_removable_packages() {
+    REMOVABLE_PACKAGES=()
+    local package
+
+    for package in "${DEPENDENCY_PACKAGES[@]}"; do
+        case "$package" in
+            wget|ntpdate)
+                continue
+                ;;
+        esac
+
+        if ! is_package_installed "$package"; then
+            REMOVABLE_PACKAGES+=("$package")
+        fi
+    done
+}
+
 # 安装依赖包
 install_dependencies() {
     case $OS in
         ubuntu|debian)
+            DEPENDENCY_PACKAGES=(build-essential zlib1g-dev libssl-dev libpam0g-dev wget ntpdate)
+            track_removable_packages
             wait_for_lock
             fix_dpkg
             DEBIAN_FRONTEND=noninteractive apt update
-            DEBIAN_FRONTEND=noninteractive apt install -y build-essential zlib1g-dev libssl-dev libpam0g-dev wget ntpdate -o Dpkg::Options::="--force-confnew"
+            DEBIAN_FRONTEND=noninteractive apt install -y -o Dpkg::Options::="--force-confnew" "${DEPENDENCY_PACKAGES[@]}"
             ;;
         centos|rhel|almalinux|rocky|fedora)
-            yum install -y epel-release
-            yum groupinstall -y "Development Tools"
-            yum install -y zlib-devel openssl-devel pam-devel wget ntpdate
+            DEPENDENCY_PACKAGES=(gcc make zlib-devel openssl-devel pam-devel wget ntpdate)
+            if [ "$OS" != "fedora" ]; then
+                DEPENDENCY_PACKAGES=(epel-release "${DEPENDENCY_PACKAGES[@]}")
+            fi
+            track_removable_packages
+            yum install -y "${DEPENDENCY_PACKAGES[@]}"
             ;;
         alpine)
-            apk add build-base zlib-dev openssl-dev pam-dev wget ntpdate
+            DEPENDENCY_PACKAGES=(build-base zlib-dev openssl-dev pam-dev wget ntpdate)
+            track_removable_packages
+            apk add "${DEPENDENCY_PACKAGES[@]}"
             ;;
         *)
             echo "不支持的操作系统：$OS"
@@ -53,13 +102,14 @@ install_dependencies() {
 
 # 下载、编译和安装OpenSSH
 install_openssh() {
-    wget --no-check-certificate https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-${OPENSSH_VERSION}.tar.gz
+    wget --no-check-certificate "https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/${SOURCE_ARCHIVE}"
 
     # 解压最新的 .tar.gz 文件
-    tar -xzf openssh-*.tar.gz
+    tar -xzf "$SOURCE_ARCHIVE"
 
     # 获取解压出来的目录名并进入（自动适配）
-    DIR_NAME=$(tar -tzf openssh-*.tar.gz | head -1 | cut -f1 -d"/")
+    DIR_NAME=$(tar -tzf "$SOURCE_ARCHIVE" | head -1 | cut -f1 -d"/")
+    SOURCE_DIR="$DIR_NAME"
     cd "$DIR_NAME"
 
 
@@ -108,9 +158,53 @@ verify_installation() {
 }
 
 # 清理下载的文件
+remove_dependencies() {
+    if [ ${#REMOVABLE_PACKAGES[@]} -eq 0 ]; then
+        return
+    fi
+
+    case $OS in
+        ubuntu|debian)
+            wait_for_lock
+            DEBIAN_FRONTEND=noninteractive apt remove -y --purge "${REMOVABLE_PACKAGES[@]}"
+            DEBIAN_FRONTEND=noninteractive apt autoremove -y --purge
+            ;;
+        centos|rhel|almalinux|rocky|fedora)
+            yum remove -y "${REMOVABLE_PACKAGES[@]}"
+            yum autoremove -y >/dev/null 2>&1 || true
+            ;;
+        alpine)
+            apk del "${REMOVABLE_PACKAGES[@]}"
+            ;;
+    esac
+}
+
+clean_package_cache() {
+    case $OS in
+        ubuntu|debian)
+            DEBIAN_FRONTEND=noninteractive apt clean
+            rm -rf /var/lib/apt/lists/*
+            ;;
+        centos|rhel|almalinux|rocky|fedora)
+            yum clean all
+            rm -rf /var/cache/yum
+            rm -rf /var/cache/dnf
+            ;;
+        alpine)
+            rm -rf /var/cache/apk/*
+            ;;
+    esac
+}
+
 clean_up() {
-    cd ..
-    rm -rf openssh-${OPENSSH_VERSION}*
+    remove_dependencies
+    clean_package_cache
+
+    cd "$DOWNLOAD_DIR" || return 1
+    rm -f "$SOURCE_ARCHIVE"
+    if [ -n "$SOURCE_DIR" ]; then
+        rm -rf "$SOURCE_DIR"
+    fi
 }
 
 
