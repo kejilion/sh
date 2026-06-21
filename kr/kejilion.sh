@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.1"
+sh_v="4.5.2"
 
 
 gl_hui='\e[37m'
@@ -65,7 +65,7 @@ CheckFirstRun_true() {
 
 # 이 기능은 함수에 묻혀있는 정보를 수집하고 사용자가 사용하는 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 시스템 국가 및 기능 이름을 기록합니다. 민감한 정보는 포함되어 있지 않으니 걱정하지 마세요! 저를 믿어주세요!
 # 이 기능은 왜 설계되었나요? 그 목적은 사용자가 사용하고 싶어하는 기능을 더 잘 이해하고, 기능을 더욱 최적화하고 사용자 요구에 맞는 더 많은 기능을 출시하는 것입니다.
-# send_stats 함수 호출 위치에 대한 전문을 검색할 수 있습니다. 투명하고 오픈 소스입니다. 불편하신 점이 있으시면 이용을 거부하실 수 있습니다.
+# send_stats 함수 호출 위치에 대한 전문을 검색할 수 있습니다. 투명하고 오픈 소스입니다. 우려되는 사항이 있는 경우 이용을 거부하실 수 있습니다.
 
 
 
@@ -1099,7 +1099,7 @@ iptables_panel() {
 		  echo "3. 모든 포트를 엽니다. 4. 모든 포트를 닫습니다."
 		  echo "------------------------"
 		  echo "5. IP 화이트리스트 6. IP 블랙리스트"
-		  echo "7. 지정된 IP 지우기"
+		  echo "7. 지정된 IP를 삭제합니다."
 		  echo "------------------------"
 		  echo "11. PING 허용 12. PING 비활성화"
 		  echo "------------------------"
@@ -1206,7 +1206,7 @@ iptables_panel() {
 				  ;;
 
 			  17)
-				  read -e -p "삭제된 국가 코드를 입력하십시오(여러 국가 코드는 CN US JP와 같이 공백으로 구분될 수 있음)." country_code
+				  read -e -p "지워진 국가 코드를 입력하십시오(여러 국가 코드는 CN US JP와 같이 공백으로 구분될 수 있음)." country_code
 				  manage_country_rules unblock $country_code
 				  send_stats "명확한 국가$country_codeIP"
 				  ;;
@@ -1852,7 +1852,7 @@ check_waf_status() {
 	if grep -q "^\s*#\s*modsecurity on;" /home/web/nginx.conf; then
 		waf_status=""
 	elif grep -q "modsecurity on;" /home/web/nginx.conf; then
-		waf_status="WAF가 켜져 있습니다."
+		waf_status="WAF가 켜져 있습니다"
 	else
 		waf_status=""
 	fi
@@ -2673,7 +2673,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p tcp -d "$container_ip" -j DROP
 	fi
 
-	# 지정된 IP를 허용하는 규칙을 지웁니다.
+	# 특정 IP를 허용하는 규칙 지우기
 	if iptables -C DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p tcp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -2692,7 +2692,7 @@ clear_container_rules() {
 		iptables -D DOCKER-USER -p udp -d "$container_ip" -j DROP
 	fi
 
-	# 지정된 IP를 허용하는 규칙을 지웁니다.
+	# 특정 IP를 허용하는 규칙 지우기
 	if iptables -C DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT &>/dev/null; then
 		iptables -D DOCKER-USER -p udp -s "$allowed_ip" -d "$container_ip" -j ACCEPT
 	fi
@@ -2893,7 +2893,7 @@ while true; do
 			setup_docker_dir
 			check_disk_space $app_size /home/docker
 			while true; do
-				read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter 키를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
+				read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
 				local app_port=${app_port:-${docker_port}}
 
 				if ss -tuln | grep -q ":$app_port "; then
@@ -3017,7 +3017,7 @@ docker_app_plus() {
 				check_disk_space $app_size /home/docker
 
 				while true; do
-					read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter 키를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
+					read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
 					local app_port=${app_port:-${docker_port}}
 
 					if ss -tuln | grep -q ":$app_port "; then
@@ -3071,7 +3071,8 @@ docker_app_plus() {
 				;;
 			8)
 				send_stats "IP 접근 차단${docker_name}"
-				block_container_port "$docker_name" "$ipv4_address"
+				local docker_check_name="${docker_app_service:-$docker_name}"
+				block_container_port "$docker_check_name" "$ipv4_address"
 				;;
 			*)
 				break
@@ -3223,7 +3224,7 @@ f2b_sshd() {
 
 # 기본 매개변수 구성: 금지 기간(bantime), 기간(findtime), 재시도 횟수(maxretry)
 # 설명하다:
-# - /etc/fail2ban/jail.d/sshd.local에 쓰기 우선 순위를 지정합니다(기본 감옥 구성을 덮어쓰며 업그레이드 시 손실되기 쉽지 않습니다).
+# - /etc/fail2ban/jail.d/sshd.local에 대한 쓰기 우선 순위를 지정합니다(기본 감옥 구성을 무시하고 업그레이드 시 손실되기 쉽지 않습니다).
 # - Alpine이고 감옥 이름이 다른 경우에도 sshd.local을 작성하세요. Fail2Ban은 감옥 이름에 따라 일치합니다.
 f2b_basic_config() {
 	root_use
@@ -3425,7 +3426,7 @@ ldnmp_web_on() {
 	  echo "당신의$webname건설되었습니다!"
 	  echo "https://$yuming"
 	  echo "------------------------"
-	  echo "$webname설치정보는 다음과 같습니다."
+	  echo "$webname설치 정보는 다음과 같습니다."
 
 }
 
@@ -3511,7 +3512,7 @@ ldnmp_Proxy() {
 	check_ip_and_get_access_port "$yuming"
 
 	if [ -z "$reverseproxy" ]; then
-		read -e -p "세대 방지 IP를 입력하십시오(기본값은 로컬 IP 127.0.0.1로 설정하려면 Enter를 누르십시오)." reverseproxy
+		read -e -p "안티 세대 IP를 입력하십시오(기본값은 로컬 IP 127.0.0.1로 설정하려면 Enter를 누르십시오)." reverseproxy
 		reverseproxy=${reverseproxy:-127.0.0.1}
 	fi
 
@@ -4108,7 +4109,7 @@ EOF
 
 	donlond_frp frps
 
-	# 생성된 정보를 출력
+	# 생성된 정보 출력
 	ip_address
 	echo "------------------------"
 	echo "클라이언트 배포에 필요한 매개변수"
@@ -4170,7 +4171,7 @@ remote_port = ${remote_port}
 
 EOF
 
-	# 생성된 정보를 출력
+	# 생성된 정보 출력
 	echo "제공하다$service_namefrpc.toml에 성공적으로 추가되었습니다."
 
 	docker restart frpc
@@ -4985,7 +4986,7 @@ import_sshkey() {
 	fi
 
 	if [[ ! "$public_key" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
-		echo -e "${gl_hong}오류: 합법적인 SSH 공개 키가 아닌 것 같습니다.${gl_bai}"
+		echo -e "${gl_hong}오류: 합법적인 SSH 공개 키처럼 보이지 않습니다.${gl_bai}"
 		return 1
 	fi
 
@@ -5060,7 +5061,7 @@ fetch_remote_ssh_keys() {
 	# 원본 인증_키 백업
 	if [[ -f "${authorized_keys}" ]]; then
 		cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
-		echo "원래 Authorized_keys 파일이 백업되었습니다."
+		echo "원본 Authorized_keys 파일이 백업되었습니다."
 	fi
 
 	# 공개 키 추가(중복 방지)
@@ -5137,7 +5138,7 @@ sshkey_panel() {
   	  echo -e "사용자 키 로그인 모드${IS_KEY_ENABLED}"
   	  echo "고급 게임플레이: https://blog.kejilion.pro/ssh-key"
   	  echo "------------------------------------------------"
-  	  echo "SSH를 통해 로그인하는 보다 안전한 방법인 키 쌍이 생성됩니다."
+  	  echo "SSH를 통해 더욱 안전하게 로그인할 수 있는 키 쌍이 생성됩니다."
 	  echo "------------------------"
 	  echo "1. 새 키 쌍 생성 2. 기존 공개 키를 수동으로 입력"
 	  echo "3. GitHub에서 기존 공개 키를 가져옵니다. 4. URL에서 기존 공개 키를 가져옵니다."
@@ -5724,7 +5725,7 @@ bbrv3() {
 					echo "BBR3 매개변수 쓰기에 실패했습니다. 시스템 구성을 확인하십시오."
 					return 1
 				}
-				echo "XanMod BBRv3 커널 처리가 완료되었습니다. 다시 시작한 후 적용"
+				echo "XanMod BBRv3 커널 처리가 완료되었습니다. 재시작 후 적용"
 				server_reboot
 		  }
 
@@ -5734,7 +5735,7 @@ bbrv3() {
 				update-grub 2>/dev/null || true
 				rm -f /etc/apt/sources.list.d/xanmod-release.list
 				rm -f /usr/share/keyrings/xanmod-archive-keyring.gpg
-				echo "XanMod 커널이 제거되었습니다. 다시 시작한 후 적용"
+				echo "XanMod 커널이 제거되었습니다. 재시작 후 적용"
 				server_reboot
 		  }
 
@@ -5884,7 +5885,7 @@ elrepo() {
 					  2)
 						dnf remove -y elrepo-release
 						rpm -qa | grep elrepo | grep kernel | xargs rpm -e --nodeps
-						echo "elrepo 커널이 제거되었습니다. 다시 시작한 후 적용"
+						echo "elrepo 커널이 제거되었습니다. 재시작 후 적용"
 						send_stats "Red Hat 커널 제거"
 						server_reboot
 
@@ -5902,7 +5903,7 @@ elrepo() {
 		  echo "영상 소개: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"
 		  echo "------------------------------------------------"
 		  echo "Red Hat 시리즈 배포판 CentOS/RedHat/Alma/Rocky/oracle만 지원"
-		  echo "Linux 커널을 업그레이드하면 시스템 성능과 보안이 향상될 수 있습니다. 가능하다면 시도해 보시고, 프로덕션 환경을 주의해서 업그레이드하시는 것을 추천드립니다!"
+		  echo "Linux 커널을 업그레이드하면 시스템 성능과 보안이 향상될 수 있습니다. 가능하다면 시도해 보시고, 프로덕션 환경도 주의해서 업그레이드하시는 것을 추천드립니다!"
 		  echo "------------------------------------------------"
 		  read -e -p "계속하시겠습니까? (예/아니요):" choice
 
@@ -7486,7 +7487,7 @@ run_task() {
 	else
 		echo "동기화에 실패했습니다! 다음 사항을 확인하세요."
 		echo "1. 네트워크 연결이 정상인가요?"
-		echo "2. 원격 호스트에 접근할 수 있나요?"
+		echo "2. 원격 호스트에 접근 가능한지 여부"
 		echo "3. 인증정보가 정확합니까?"
 		echo "4. 로컬 및 원격 디렉터리에 올바른 액세스 권한이 있습니까?"
 	fi
@@ -9287,7 +9288,7 @@ linux_ldnmp() {
 	  echo "사용자 이름: 관리자"
 	  echo "비밀번호: 관리자"
 	  echo "------------------------"
-	  echo "로그인 시 오른쪽 상단에 빨간색 error0이 나타나는 경우, 다음 명령어를 사용하시기 바랍니다."
+	  echo "로그인 시 오른쪽 상단에 빨간색 error0이 나타나는 경우, 다음 명령어를 사용해주세요."
 	  echo "유니콘 숫자카드가 왜 이렇게 귀찮고 이런 문제가 있는지에 대해서도 너무 화가 납니다!"
 	  echo "sed -i 's/ADMIN_HTTPS=false/ADMIN_HTTPS=true/g' /home/web/html/$yuming/dujiaoka/.env"
 
@@ -10950,12 +10951,12 @@ except FileNotFoundError:
     print('MSG\tℹ️ openclaw.json을 찾을 수 없습니다. 먼저 설치/초기화를 완료하세요.')
     raise SystemExit(0)
 except Exception as e:
-    print(f'MSG\t❌ 读取配置失败: {type(e).__name__}: {e}')
+    print(f'MSG\t❌ 구성을 읽지 못했습니다: {type(e).__name__}: {e}')
     raise SystemExit(0)
 
 providers = ((obj.get('models') or {}).get('providers') or {})
 if not isinstance(providers, dict) or not providers:
-    print('MSG\tℹ️ 当前未配置任何 API provider。')
+    print('MSG\tℹ️ 현재 구성된 API 제공업체가 없습니다.')
     raise SystemExit(0)
 
 print('MSG\t--- 구성된 API 목록 ---')
@@ -11001,7 +11002,7 @@ PY
 }
 sync-openclaw-provider-interactive() {
 	local config_file="${HOME}/.openclaw/openclaw.json"
-	send_stats "OpenClaw API按Provider同步"
+	send_stats "공급자별 OpenClaw API 동기화"
 
 	if [ ! -f "$config_file" ]; then
 		echo "❌ 구성 파일을 찾을 수 없습니다:$config_file"
@@ -11009,12 +11010,12 @@ sync-openclaw-provider-interactive() {
 		return 1
 	fi
 
-	read -erp "请输入要同步的 API 名称(provider)，直接回车同步全部: " provider_name
+	read -erp "동기화할 API 이름(공급자)을 입력하고 Enter를 눌러 모두 동기화하세요." provider_name
 	if [ -z "$provider_name" ]; then
 		if sync_openclaw_api_models; then
 			start_gateway
 		else
-			echo "❌ API 模型同步失败，已中止重启网关。请检查 provider /models 返回后重试。"
+			echo "❌ API 모델 동기화에 실패하여 게이트웨이 다시 시작이 중단되었습니다. 공급자/모델을 확인하고 반환 후 다시 시도하십시오."
 			return 1
 		fi
 		break_end
@@ -11041,7 +11042,7 @@ work = copy.deepcopy(obj)
 models_cfg = work.setdefault('models', {})
 providers = models_cfg.get('providers', {})
 if not isinstance(providers, dict) or not providers:
-    print('❌ 未检测到 API providers，无法同步')
+    print('❌ API 제공업체가 감지되지 않아 동기화할 수 없습니다.')
     raise SystemExit(2)
 
 provider = providers.get(target)
@@ -11117,7 +11118,7 @@ if not base_url or not api_key or not isinstance(model_list, list) or not model_
     raise SystemExit(3)
 
 if api not in SUPPORTED_APIS:
-    print(f'ℹ️ provider {target} 当前 api={api}，但脚本已不再探测/纠正协议；请手动设置为 openai-completions 或 openai-responses')
+    print(f'ℹ️ 공급자 {target}은 현재 api={api}이지만 스크립트는 더 이상 프로토콜을 감지/수정하지 않습니다. openai-completions 또는 openai-responses로 수동으로 설정하세요.')
 
 protocol_msg = None
 
@@ -11136,7 +11137,7 @@ for item in data['data']:
         remote_ids.append(str(item['id']))
 remote_set = set(remote_ids)
 if not remote_set:
-    print(f'❌ {target}: 上游 /models 为空，已中止同步')
+    print(f'❌ {target}: 업스트림 /models가 비어 있고 동기화가 중단되었습니다.')
     raise SystemExit(5)
 
 local_models = [m for m in model_list if isinstance(m, dict) and m.get('id')]
@@ -11145,7 +11146,7 @@ local_set = set(local_ids)
 
 template = copy.deepcopy(local_models[0]) if local_models else None
 if template is None:
-    print(f'❌ {target}: 本地 models 无有效模板模型，无法补全新增模型')
+    print(f'❌ {target}: 로컬 모델에 유효한 템플릿 모델이 없어 새 모델을 추가할 수 없습니다.')
     raise SystemExit(3)
 
 removed_ids = [mid for mid in local_ids if mid not in remote_set]
@@ -11161,7 +11162,7 @@ for mid in added_ids:
     new_models.append(nm)
 
 if not new_models:
-    print(f'❌ {target}: 同步后无可用模型，已中止写入')
+    print(f'❌ {target}: 동기화 후 사용할 수 있는 모델이 없어 쓰기가 중단되었습니다.')
     raise SystemExit(5)
 
 expected_refs = {model_ref(target, str(m['id'])) for m in new_models if isinstance(m, dict) and m.get('id')}
@@ -11203,7 +11204,7 @@ if changed:
         json.dump(work, f, ensure_ascii=False, indent=2)
         f.write('\n')
 
-print(f'✅ {target}: 新增 {len(added_ids)} 个，删除 {len(removed_ids)} 个，当前 {len(new_models)} 个')
+print(f'✅ {target}: {len(add_ids)} 추가, 삭제 {len(removed_ids)}, 현재 {len(new_models)}')
 
 if added_ids:
     print(f'➕ 새 모델 추가({len(add_ids)}):')
@@ -11215,30 +11216,30 @@ if removed_ids:
         print(f'  - {mid}')
 
 if changed:
-    print('✅ 指定 provider 模型一致性同步完成并已写入配置')
+    print('✅ 지정된 공급자 모델 일관성 동기화가 완료되고 구성이 작성되었습니다.')
 else:
-    print('ℹ️ 无需同步：该 provider 配置已与上游 /models 保持一致')
+    print('ℹ️ 동기화가 필요하지 않습니다. 공급자 구성이 이미 업스트림/모델과 일치합니다.')
 PY2
 	local rc=$?
 	case "$rc" in
 		0)
-			echo "✅ 同步执行完成"
+			echo "✅ 동기 실행 완료"
 			start_gateway
 			;;
 		2)
-			echo "❌ 同步失败：provider 不存在或未配置"
+			echo "❌ 동기화 실패: 공급자가 존재하지 않거나 구성되지 않았습니다."
 			;;
 		3)
 			echo "❌ 동기화 실패: 공급자 구성이 불완전하거나 유형이 지원되지 않습니다."
 			;;
 		4)
-			echo "❌ 同步失败：上游 /models 请求失败"
+			echo "❌ 동기화 실패: 업스트림 /models 요청 실패"
 			;;
 		5)
 			echo "❌ 동기화 실패: 업스트림 모델이 비어 있거나 동기화 후 사용 가능한 모델이 없습니다."
 			;;
 		*)
-			echo "❌ 同步失败：请检查配置文件结构或日志输出"
+			echo "❌ 동기화 실패: 구성 파일 구조 또는 로그 출력을 확인하세요."
 			;;
 	esac
 
@@ -11246,9 +11247,9 @@ PY2
 }
 
 openclaw_detect_api_protocol_by_provider() {
-	# 协议探测逻辑已移除：脚本不再自动探测/判定 API 类型。
+	# 프로토콜 감지 논리가 제거되었습니다. 스크립트는 더 이상 API 유형을 자동으로 감지/결정하지 않습니다.
 	# 이 기능은 메뉴 호출과의 호환성을 위해 유지되지만 재작성은 수행되지 않습니다.
-	echo "ℹ️ 프로토콜 감지가 꺼졌습니다. 수동으로 감지하세요.${HOME}/.openclaw/openclaw.json 中设置 provider.api 为 openai-completions 或 openai-responses"
+	echo "ℹ️ 프로토콜 감지가 꺼졌습니다. 수동으로 감지하세요.${HOME}/.openclaw/openclaw.json의 공급자.api를 openai-completions 또는 openai-responses로 설정합니다."
 	return 0
 }
 
@@ -11450,7 +11451,7 @@ for fk in ('modelFallback', 'imageModelFallback'):
             print(f'❌ 삭제가 중단되었습니다. {fk}가 공급자를 가리키며 대체 모델을 사용할 수 없습니다.')
             raise SystemExit(3)
         defaults[fk] = replacement
-        print(f'🔁 {fk} 切换: {val} -> {replacement}')
+        print(f'🔁 {fk} 스위치: {val} -> {교체}')
 
 removed_refs = [r for r in list(defaults_models.keys()) if r.startswith(name + '/')]
 for r in removed_refs:
@@ -11463,12 +11464,12 @@ with open(path, 'w', encoding='utf-8') as f:
     f.write('\n')
 
 print(f'🗑️ 삭제된 제공자: {name}')
-print(f'🧹 已清理 defaults.models 中 {len(removed_refs)} 个关联模型引用')
+print(f'🧹 defaults.models에서 {len(removed_refs)} 관련 모델 참조를 정리했습니다.')
 PY
 		local rc=$?
 		case "$rc" in
 			0)
-				send_stats "OpenClaw API删除确认"
+				send_stats "OpenClaw API 삭제 확인"
 				echo "✅삭제 완료"
 				start_gateway
 				;;
@@ -11477,10 +11478,10 @@ PY
 				;;
 			3)
 				send_stats "OpenClaw API 삭제 취소"
-				echo "❌ 删除失败：无可用替代模型，已保持原配置"
+				echo "❌ 삭제 실패: 사용 가능한 대체 모델이 없으며 원래 구성이 유지되었습니다."
 				;;
 			*)
-				echo "❌ 删除失败：请检查配置文件结构或日志输出"
+				echo "❌ 삭제 실패: 구성 파일 구조 또는 로그 출력을 확인하세요."
 				;;
 		esac
 
@@ -11488,12 +11489,12 @@ PY
 	}
 
 	openclaw_api_providers_showcase() {
-		send_stats "OpenClaw API 공급업체 권장 사항"
+		send_stats "OpenClaw API 공급업체 권장사항"
 
 		clear
 		echo ""
 		echo -e "${gl_kjlan}╔════════════════════════════════════════════════════════════╗${gl_bai}"
-		echo -e "${gl_kjlan}║${gl_bai}            ${gl_huang}🌟 API 厂商推荐列表${gl_bai}                          ${gl_kjlan}║${gl_bai}"
+		echo -e "${gl_kjlan}║${gl_bai}            ${gl_huang}🌟 API 벤더 추천 목록${gl_bai}                          ${gl_kjlan}║${gl_bai}"
 		echo -e "${gl_kjlan}║${gl_bai}            ${gl_zi}일부 입구에는 AFF가 포함되어 있습니다.${gl_bai}                            ${gl_kjlan}║${gl_bai}"
 		echo -e "${gl_kjlan}╚════════════════════════════════════════════════════════════╝${gl_bai}"
 		echo ""
@@ -11506,13 +11507,13 @@ PY
 		echo -e "  ${gl_lv}● Kimi${gl_bai}"
 		echo -e "    ${gl_kjlan}https://platform.moonshot.cn/docs/guide/start-using-kimi-api${gl_bai}"
 		echo ""
-		echo -e "  ${gl_lv}● 超算互联网${gl_bai}"
+		echo -e "  ${gl_lv}● 슈퍼컴퓨팅 인터넷${gl_bai}"
 		echo -e "    ${gl_kjlan}https://www.scnet.cn/${gl_bai}"
 		echo ""
-		echo -e "  ${gl_huang}● 优云智算${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "  ${gl_huang}● Youyun 지능형 컴퓨팅${gl_bai} ${gl_zi}[AFF]${gl_bai}"
 		echo -e "    ${gl_kjlan}https://passport.compshare.cn/register?referral_code=4mscFZXfutfFi8swMVsPuf${gl_bai}"
 		echo ""
-		echo -e "  ${gl_huang}● 硅基流动${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "  ${gl_huang}● 실리콘 기반 흐름${gl_bai} ${gl_zi}[AFF]${gl_bai}"
 		echo -e "    ${gl_kjlan}https://cloud.siliconflow.cn/i/irWVdPic${gl_bai}"
 		echo ""
 		echo -e "  ${gl_huang}● GLM${gl_bai} ${gl_zi}[AFF]${gl_bai}"
@@ -11521,10 +11522,10 @@ PY
 		echo -e "  ${gl_huang}● PackyAPI${gl_bai} ${gl_zi}[AFF]${gl_bai}"
 		echo -e "    ${gl_kjlan}https://www.packyapi.com/register?aff=wHri${gl_bai}"
 		echo ""
-		echo -e "  ${gl_huang}● 云雾 API${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "  ${gl_huang}● 클라우드 API${gl_bai} ${gl_zi}[AFF]${gl_bai}"
 		echo -e "    ${gl_kjlan}https://yunwu.ai/register?aff=ZuyK${gl_bai}"
 		echo ""
-		echo -e "  ${gl_huang}● 柏拉图AI${gl_bai} ${gl_zi}[AFF]${gl_bai}"
+		echo -e "  ${gl_huang}● 플라톤 AI${gl_bai} ${gl_zi}[AFF]${gl_bai}"
 		echo -e "    ${gl_kjlan}https://api.bltcy.ai/register?aff=TBzb114019${gl_bai}"
 		echo ""
 		echo -e "  ${gl_lv}● MiniMax${gl_bai}"
@@ -11540,9 +11541,9 @@ PY
 		echo -e "    ${gl_kjlan}https://ai.baishan.com/${gl_bai}"
 		echo ""
 		echo -e "${gl_kjlan}────────────────────────────────────────────────────────────${gl_bai}"
-		echo -e "  ${gl_zi}전설:${gl_lv}● 공식 입장${gl_bai}  ${gl_huang}● AFF 推荐入口${gl_bai}"
+		echo -e "  ${gl_zi}전설:${gl_lv}● 공식 입장${gl_bai}  ${gl_huang}● AFF 추천 입장${gl_bai}"
 		echo ""
-		echo -e "${gl_huang}提示：复制链接到浏览器打开即可访问${gl_bai}"
+		echo -e "${gl_huang}팁: 링크를 복사하고 브라우저에서 열어서 액세스하세요.${gl_bai}"
 		echo ""
 		read -erp "돌아가려면 Enter를 누르세요..." dummy
 	}
@@ -11552,7 +11553,7 @@ PY
 		while true; do
 			clear
 			echo "======================================="
-			echo "OpenClaw API 管理"
+			echo "OpenClaw API 관리"
 			echo "======================================="
 			openclaw_api_manage_list
 			echo "---------------------------------------"
@@ -11628,7 +11629,7 @@ REPO
 
 
 	change_model() {
-		send_stats "换模型"
+		send_stats "모델 변경"
 
 		local orange="#FF8C00"
 
@@ -11796,7 +11797,7 @@ PYTHON_EOF
 			first_reply="$reply_preview"
 
 			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
-			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
+			[ -z "$reply_trimmed" ] && reply_trimmed="(빈 반환)"
 
 			if [ "$first_exit" = "0" ] && [ "$first_http" -ge 200 ] && [ "$first_http" -lt 300 ]; then
 				OPENCLAW_PROBE_STATUS="OK"
@@ -11814,7 +11815,7 @@ PYTHON_EOF
 			second_reply="$reply_preview"
 
 			reply_trimmed=$(printf '%s' "$second_reply" | cut -c1-120)
-			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
+			[ -z "$reply_trimmed" ] && reply_trimmed="(빈 반환)"
 
 			if [ "$second_exit" = "0" ] && [ "$second_http" -ge 200 ] && [ "$second_http" -lt 300 ]; then
 				OPENCLAW_PROBE_STATUS="OK"
@@ -11826,7 +11827,7 @@ PYTHON_EOF
 
 			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
 			[ -z "$reply_trimmed" ] && reply_trimmed=$(printf '%s' "$second_reply" | cut -c1-120)
-			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
+			[ -z "$reply_trimmed" ] && reply_trimmed="(빈 반환)"
 
 			OPENCLAW_PROBE_STATUS="FAIL"
 			OPENCLAW_PROBE_MESSAGE="${first_endpoint} -> HTTP ${first_http:-0} / exit ${first_exit:-1}；${second_endpoint} -> HTTP ${second_http:-0} / exit ${second_exit:-1}"
@@ -11840,22 +11841,22 @@ PYTHON_EOF
 		while true; do
 			local models_raw models_list default_model model_count selected_model confirm_switch
 
-			# 从配置文件读取模型键（不调用 openclaw models list）
+			# 구성 파일에서 모델 키 읽기(openclaw 모델 목록을 호출하지 않고)
 			local oc_config
 			oc_config=$(openclaw_get_config_file)
 
 			models_raw=$(jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d')
 			if [ -z "$models_raw" ]; then
-				echo "获取模型列表失败：配置文件中未找到 agents.defaults.models。"
+				echo "모델 목록을 가져오지 못했습니다. 구성 파일에서 Agent.defaults.models를 찾을 수 없습니다."
 				break_end
 				return 1
 			fi
 
-			# 为每个模型加编号，便于快速定位（例如："(10) or-api/...:free"）
+			# 빠른 위치를 쉽게 찾을 수 있도록 각 모델에 번호를 매깁니다(예: "(10) or-api/...:free")
 			models_list=$(echo "$models_raw" | awk '{print "(" NR ") " $0}')
 			model_count=$(echo "$models_list" | sed '/^\s*$/d' | wc -l | tr -d ' ')
 
-			# Read default model from configuration file (faster); 실패 시 openclaw 명령으로 대체
+			# 구성 파일에서 기본 모델을 읽습니다(더 빠름). 실패 시 openclaw 명령으로 대체
 			default_model=$(jq -r '.agents.defaults.model.primary // empty' "$oc_config" 2>/dev/null)
 			[ -z "$default_model" ] && default_model="(unknown)"
 
@@ -11873,12 +11874,12 @@ PYTHON_EOF
 				read -e -p "설정할 모델 이름을 입력하세요(예: openrouter/openai/gpt-4o)(종료하려면 0 입력)." selected_model
 
 				if [ "$selected_model" = "0" ]; then
-					echo "操作已取消，正在退出..."
+					echo "작업이 취소되었습니다. 종료하는 중..."
 					break
 				fi
 
 				if [ -z "$selected_model" ]; then
-					echo "Error: Model name cannot be empty. 다시 시도해 주세요."
+					echo "오류: 모델 이름은 비워둘 수 없습니다. 다시 시도해 주세요."
 					echo ""
 					continue
 				fi
@@ -11904,10 +11905,10 @@ PYTHON_EOF
 				gum style --foreground "$orange" "사용 가능한 모델(인증=예):${model_count}"
 				gum style --foreground "$orange" "현재 기본값:${default_model}"
 				echo ""
-				gum style --faint "↑↓ 选择 / Enter 测试 / Esc 退出"
+				gum style --faint "↑↓ 테스트하려면 선택 / Enter / 종료하려면 Esc"
 				echo ""
 
-				selected_model=$(echo "$models_list" | gum filter 					--placeholder "검색 모델(예: cli-api/gpt-5.2)" 					--prompt "选择模型 > " 					--indicator "➜ " 					--prompt.foreground "$orange" 					--indicator.foreground "$orange" 					--cursor-text.foreground "$orange" 					--match.foreground "$orange" 					--header "" 					--height 35)
+				selected_model=$(echo "$models_list" | gum filter 					--placeholder "검색 모델(예: cli-api/gpt-5.2)" 					--prompt "모델 선택 >" 					--indicator "➜ " 					--prompt.foreground "$orange" 					--indicator.foreground "$orange" 					--cursor-text.foreground "$orange" 					--match.foreground "$orange" 					--header "" 					--height 35)
 
 				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -iqE '^(error|usage|gum:)'; then
 					echo "작업이 취소되었습니다. 종료하는 중..."
@@ -11929,7 +11930,7 @@ PYTHON_EOF
 			echo "요약:$OPENCLAW_PROBE_REPLY"
 			echo ""
 
-			printf "Switch to this model? [y/N, Esc가 목록으로 돌아갑니다]:"
+			printf "이 모델로 전환하시겠습니까? [y/N, Esc가 목록으로 돌아갑니다]:"
 			IFS= read -rsn1 confirm_switch
 			echo ""
 			if [ "$confirm_switch" = $'' ]; then
@@ -12031,7 +12032,7 @@ PYTHON_EOF
 				fi
 			done
 
-			[ "$count" -gt 0 ] && echo "✅ 已同步 $count에이전트의 세션 모델은 다음과 같습니다.$model_ref"
+			[ "$count" -gt 0 ] && echo "✅ 동기화됨$count에이전트의 세션 모델은 다음과 같습니다.$model_ref"
 			return 0
 		}
 
@@ -12110,7 +12111,7 @@ PYTHON_EOF
 				fi
 			fi
 
-			echo "⚠️ 已安装插件，但同步 plugins.allow 失败，请手动检查: $config_file"
+			echo "⚠️ 플러그인이 설치되었지만,plugins.allow의 동기화에 실패했습니다. 수동으로 확인하세요.$config_file"
 			return 1
 		}
 
@@ -12191,7 +12192,7 @@ PYTHON_EOF
 			echo "========================================"
 			echo "플러그인 관리(설치/제거)"
 			echo "========================================"
-			echo "当前插件列表:"
+			echo "현재 플러그인 목록:"
 			openclaw plugins list
 			echo "--------------------------------------------------------"
 			echo "일반적으로 사용되는 권장 플러그인 ID(괄호 안에 ID를 복사하면 됩니다):"
@@ -12199,25 +12200,25 @@ PYTHON_EOF
 			echo "📱 커뮤니케이션 채널:"
 			echo "- [feishu] # 페이슈/종달새 통합"
 			echo "- [텔레그램] # 텔레그램 봇"
-			echo "  - [slack]        	# Slack 企业通讯"
+			echo "- [slack] #Slack 기업 커뮤니케이션"
 			echo "  - [msteams]      	# Microsoft Teams"
-			echo "  - [discord]      	# Discord 社区管理"
+			echo "- [디스코드] # 디스코드 커뮤니티 관리"
 			echo "- [whatsapp] #WhatsApp 자동화"
 			echo ""
-			echo "🧠 记忆与 AI:"
-			echo "  - [memory-core]  	# 基础记忆 (文件检索)"
+			echo "🧠 메모리와 AI:"
+			echo "- [memory-core] # 기본 메모리(파일 검색)"
 			echo "- [memory-lancedb] # 향상된 메모리(벡터 데이터베이스)"
 			echo "- [copilot-proxy] # Copilot 인터페이스 전달"
 			echo ""
-			echo "⚙️ 功能扩展:"
+			echo "⚙️ 기능 확장:"
 			echo "- [랍스터] # 승인 흐름(수동 확인 포함)"
 			echo "- [음성통화] # 음성통화 기능"
-			echo "  - [nostr]        	# 加密隐私聊天"
+			echo "- [nostr] # 암호화된 비공개 채팅"
 			echo "--------------------------------------------------------"
 
-			echo "1) 安装/启用插件"
+			echo "1) 플러그인 설치/활성화"
 			echo "2) 플러그인 삭제/비활성화"
-			echo "0) 返回"
+			echo "0) 복귀"
 			read -e -p "작업을 선택하십시오:" plugin_action
 
 			[ "$plugin_action" = "0" ] && break
@@ -12258,7 +12259,7 @@ PYTHON_EOF
 					fi
 
 					if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_id" ]; then
-						echo "💡 发现系统内置目录存在该插件，尝试直接启用..."
+						echo "💡 플러그인이 시스템 내장 디렉토리에 존재하는 것을 발견했습니다. 직접 활성화해 보십시오..."
 						if openclaw plugins enable "$plugin_id"; then
 							sync_openclaw_plugin_allowlist "$plugin_id"
 							success_list="$success_list $plugin_id"
@@ -12282,14 +12283,14 @@ PYTHON_EOF
 							failed_list="$failed_list $plugin_id"
 						fi
 					else
-						echo "❌ 安装失败：$plugin_full"
+						echo "❌ 설치 실패:$plugin_full"
 						failed_list="$failed_list $plugin_id"
 					fi
 				else
-					echo "🗑️ 正在删除/禁用插件: $plugin_id"
+					echo "🗑️ 플러그인 제거/비활성화:$plugin_id"
 					openclaw plugins disable "$plugin_id" >/dev/null 2>&1
 					if openclaw plugins uninstall "$plugin_id"; then
-						echo "✅ 已卸载: $plugin_id"
+						echo "✅ 제거됨:$plugin_id"
 					else
 						echo "⚠️ 제거에 실패했습니다. 사전 설치된 플러그인일 수 있습니다. 다음만 비활성화하세요.$plugin_id"
 					fi
@@ -12327,8 +12328,8 @@ PYTHON_EOF
 
 			# 추천 실기 목록 출력
 			echo "추천 실기 (이름을 직접 복사해서 입력하셔도 됩니다):"
-			echo "github             # 管理 GitHub Issues/PR/CI (gh CLI)"
-			echo "notion             # 操作 Notion 页面、数据库和块"
+			echo "github # GitHub 문제/PR/CI 관리(gh CLI)"
+			echo "notion # Notion 페이지, 데이터베이스 및 블록을 조작합니다."
 			echo "apple-notes # macOS 기본 노트 관리(생성/편집/검색)"
 			echo "apple-reminders # macOS 미리 알림 관리(할 일 목록)"
 			echo "1password # 1Password 키 읽기 및 삽입 자동화"
@@ -12343,9 +12344,9 @@ PYTHON_EOF
 			echo "코딩 에이전트 # Claude Code/Codex와 같은 프로그래밍 도우미를 자동으로 실행합니다."
 			echo "----------------------------------------"
 
-			echo "1) 安装技能"
+			echo "1) 설치 기술"
 			echo "2) 스킬 삭제"
-			echo "0) 返回"
+			echo "0) 복귀"
 			read -e -p "작업을 선택하십시오:" skill_action
 
 			[ "$skill_action" = "0" ] && break
@@ -12362,7 +12363,7 @@ PYTHON_EOF
 			local token
 
 			if [ "$skill_action" = "2" ]; then
-				read -e -p "보조 확인: 삭제는 사용자 디렉터리 ~/.openclaw/workspace/skills에만 영향을 미칩니다. 계속하시겠습니까? (예/아니요):" confirm_del
+				read -e -p "보조 확인: 삭제는 사용자 디렉터리 ~/.openclaw/workspace/skills에만 영향을 미칩니다. Are you sure to continue? (예/아니요):" confirm_del
 				if [[ ! "$confirm_del" =~ ^[Yy]$ ]]; then
 					echo "삭제가 취소되었습니다."
 					break_end
@@ -12395,7 +12396,7 @@ PYTHON_EOF
 
 					echo "기술 설치:$skill_name ..."
 					if npx clawhub install "$skill_name" --yes --no-input 2>/dev/null || npx clawhub install "$skill_name"; then
-						echo "✅ 技能 $skill_name설치가 성공했습니다."
+						echo "✅ 스킬$skill_name설치가 성공했습니다."
 						success_list="$success_list $skill_name"
 						changed=true
 					else
@@ -12481,7 +12482,7 @@ openclaw_json_get_bool() {
 		# 두 가지 일반적인 디렉터리 이름과 호환됩니다.
 		# - ~/.openclaw/extensions/qqbot
 		# - ~/.openclaw/extensions/openclaw-qqbot
-		# 避免无脑 substring，优先精确匹配与 openclaw- 前缀匹配。
+		# 두뇌 없는 하위 문자열을 피하고 정확한 일치와 openclaw- 접두사 일치를 선호합니다.
 		[ -d "${HOME}/.openclaw/extensions/${plugin}" ] \
 			|| [ -d "${HOME}/.openclaw/extensions/openclaw-${plugin}" ] \
 			|| [ -d "/usr/lib/node_modules/openclaw/extensions/${plugin}" ] \
@@ -12689,7 +12690,7 @@ openclaw_json_get_bool() {
 					break_end
 					;;
 				3)
-					read -e -p "WhatsApp에서 받은 연결 코드(예: NYA99R2F)를 입력하세요(종료하려면 0 입력)." code
+					read -e -p "WhatsApp에서 수신한 연결 코드(예: NYA99R2F)를 입력하세요(종료하려면 0 입력)." code
 					if [ "$code" = "0" ]; then continue; fi
 					if [ -z "$code" ]; then echo "오류: 연결 코드는 비워둘 수 없습니다."; sleep 1; continue; fi
 					openclaw pairing approve whatsapp "$code"
@@ -12919,7 +12920,7 @@ if os.path.isdir(agents_root):
                 if os.path.isfile(src): shutil.copy2(src, dest)
                 else: shutil.copytree(src, dest, dirs_exist_ok=True)
             print(f"✅ 에이전트 메모리 복원됨: {aid}")' "$workspaces_json" "$pkg_dir/payload"
-		rm -rf "$tmp_unpack"; echo "✅ 메모리 전체 복구 완료"; break_end
+		rm -rf "$tmp_unpack"; echo "✅ 전체 메모리 복원 완료"; break_end
 	}
 
 
@@ -13397,7 +13398,7 @@ $agent_lines
 EOF
 		openclaw gateway restart
 		echo "✅ 인덱스가 재구축되었으며 게이트웨이가 자동으로 다시 시작되었습니다."
-		echo "✅ 이미${count}에이전트가 색인을 다시 작성합니다."
+		echo "✅ 이미${count}에이전트가 인덱스를 다시 작성합니다."
 		echo ""
 		openclaw_memory_render_status
 	}
@@ -13670,7 +13671,7 @@ PY
 		local ver
 		ver=$(sqlite3 --version 2>/dev/null | awk '{print $1}')
 		echo "✅ sqlite3 사용 가능: ${ver:-unknown}"
-		echo "ℹ️ sqlite 확장 지원은 안정적으로 감지할 수 없으며 계속됩니다."
+		echo "ℹ️ sqlite 확장 지원은 안정적으로 감지될 수 없으며 계속됩니다."
 		return 0
 	}
 
@@ -13782,7 +13783,7 @@ PY
 		else
 			echo "가능한 트래픽/디스크 사용량: 실제 상황에 따라 다름"
 		fi
-		echo "확인 후 자동으로 설치/다운로드하고, 구성을 작성하고, 인덱스를 작성하고, 게이트웨이를 다시 시작합니다."
+		echo "확인 후 자동으로 설치/다운로드, 구성 작성, 색인 작성 및 게이트웨이를 다시 시작합니다."
 		echo "고급 옵션: 구성만 작성하려면 구성을 입력하세요(설치 없음, 다운로드 없음, 인덱싱 없음, 다시 시작 없음)."
 		read -e -p "계속하려면 yes를 입력하세요(기본값 N)." confirm_step
 		case "$confirm_step" in
@@ -14108,7 +14109,7 @@ EOF
 			echo ""
 			echo "QMD: qmd 명령을 사용하는 경량 인덱스(네트워크 제약 조건에 적합)"
 			echo "로컬: 임베딩 모델 파일에 따라 달라지는 로컬 벡터 검색"
-			echo "자동: 자동 추천(가용성 + 네트워크 감지 기준)"
+			echo "자동: 자동 추천(가용성 + 네트워크 감지 기반)"
 			echo "---------------------------------------"
 			echo "1. QMD 전환(자동 배포/이미 설치된 경우 건너뛰기)"
 			echo "2. 로컬로 전환(자동 배포/이미 설치된 경우 건너뛰기)"
@@ -14309,7 +14310,7 @@ EOF
 				read -e -p "2차 확인: 전체 금액을 사용하려면 강제를 입력하세요(증분하려면 비워 두세요)." confirm_step2
 				if [ "$confirm_step2" = "force" ]; then
 					echo "⚠️ 전체 재구성은 더 철저하지만 시간이 더 오래 걸립니다."
-					echo "권장 사항: 안전한 재구성을 위해 다시 빌드를 입력합니다(인덱스 데이터베이스를 먼저 백업)."
+					echo "권장 사항: 안전한 재구축을 위해 재구축을 입력하세요(인덱스 데이터베이스를 먼저 백업하세요)."
 					read -e -p "세 번째 확인: 재구축을 입력하여 안전한 재구축을 수행합니다. 수직력을 계속하려면 Enter를 누르십시오." confirm_step3
 					if [ "$confirm_step3" = "rebuild" ]; then
 						openclaw_memory_rebuild_index_all
@@ -14801,7 +14802,7 @@ except Exception as e:
 					break_end
 					;;
 				2)
-					read -e -p "제거할 명령 경로를 입력하십시오:" pattern
+					read -e -p "제거할 명령 경로를 입력하세요." pattern
 					[ -z "$pattern" ] && { echo "비워둘 수 없습니다."; break_end; continue; }
 					openclaw approvals allowlist remove "$pattern"
 					break_end
@@ -15545,7 +15546,7 @@ openclaw_backup_restore_menu() {
 				openclaw onboard --install-daemon
 				break_end
 				;;
-			12) send_stats "상태 감지 및 복구"
+			12) send_stats "상태 감지 및 수리"
 				openclaw doctor --fix
 				break_end
 				;;
@@ -15605,7 +15606,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}파고다 패널 공식 버전${gl_kjlan}2.   ${color2}aaPanel Pagoda 국제 버전"
 	  echo -e "${gl_kjlan}3.   ${color3}1패널 차세대 관리 패널${gl_kjlan}4.   ${color4}NginxProxyManager 시각화 패널"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList 다중 저장소 파일 목록 프로그램${gl_kjlan}6.   ${color6}Ubuntu 원격 데스크톱 웹 버전"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList 다중 저장소 파일 목록 프로그램${gl_kjlan}6.   ${color6}Ubuntu 원격 데스크톱 웹 에디션"
 	  echo -e "${gl_kjlan}7.   ${color7}나타 프로브 VPS 모니터링 패널${gl_kjlan}8.   ${color8}QB 오프라인 BT 자기 다운로드 패널"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io 메일 서버 프로그램${gl_kjlan}10.  ${color10}RocketChat 다자간 온라인 채팅 시스템"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -15617,7 +15618,7 @@ while true; do
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}21.  ${color21}VScode 웹 버전${gl_kjlan}22.  ${color22}UptimeKuma 모니터링 도구"
 	  echo -e "${gl_kjlan}23.  ${color23}메모 웹 메모${gl_kjlan}24.  ${color24}Webtop 원격 데스크톱 웹 버전${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}25.  ${color25}Nextcloud 네트워크 디스크${gl_kjlan}26.  ${color26}QD-오늘 예약된 작업 관리 프레임워크"
+	  echo -e "${gl_kjlan}25.  ${color25}Nextcloud 네트워크 디스크${gl_kjlan}26.  ${color26}QD-Today 예약된 작업 관리 프레임워크"
 	  echo -e "${gl_kjlan}27.  ${color27}Dockge 컨테이너 스택 관리 패널${gl_kjlan}28.  ${color28}LibreSpeed ​​​​속도 테스트 도구"
 	  echo -e "${gl_kjlan}29.  ${color29}searxng 집계 검색 스테이션${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${color30}PhotoPrism 개인 앨범 시스템"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -15876,7 +15877,7 @@ while true; do
 		}
 
 
-		local docker_describe="webtop은 Ubuntu 기반 컨테이너입니다. 해당 IP에 접속할 수 없는 경우, 접속할 도메인 이름을 추가해 주세요."
+		local docker_describe="webtop은 Ubuntu 기반 컨테이너입니다. 해당 IP에 접근할 수 없는 경우, 접근할 도메인 이름을 추가해주세요."
 		local docker_url="공식 홈페이지 소개: https://docs.linuxserver.io/images/docker-webtop/"
 		local docker_use=""
 		local docker_passwd=""
@@ -15896,7 +15897,7 @@ while true; do
 			check_docker_app
 			check_docker_image_update $docker_name
 			clear
-			echo -e "나타 모니터링$check_docker $update_status"
+			echo -e "네자 모니터링$check_docker $update_status"
 			echo "오픈 소스, 가볍고 사용하기 쉬운 서버 모니터링 및 운영 및 유지 관리 도구"
 			echo "공식 웹사이트 구축 문서: https://nezha.wiki/guide/dashboard.html"
 			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
@@ -15976,7 +15977,7 @@ while true; do
 			check_docker_image_update $docker_name
 
 			clear
-			echo -e "우편 서비스$check_docker $update_status"
+			echo -e "우정$check_docker $update_status"
 			echo "poste.io는 오픈 소스 메일 서버 솔루션입니다."
 			echo "영상 소개: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 
@@ -16008,7 +16009,7 @@ while true; do
 				1)
 					setup_docker_dir
 					check_disk_space 2 /home/docker
-					read -e -p "이메일 도메인 이름을 설정하십시오(예: mail.yuming.com):" yuming
+					read -e -p "이메일 도메인 이름을 설정하세요(예: mail.yuming.com):" yuming
 					mkdir -p /home/docker
 					echo "$yuming" > /home/docker/mail.txt
 					echo "------------------------"
@@ -16576,7 +16577,7 @@ while true; do
 		}
 
 
-		local docker_describe="웹탑은 중국어 버전의 Alpine 컨테이너를 기반으로 합니다. 해당 IP에 접속할 수 없는 경우, 접속할 도메인 이름을 추가해 주세요."
+		local docker_describe="웹탑은 중국어 버전의 Alpine 컨테이너를 기반으로 합니다. 해당 IP에 접근할 수 없는 경우, 접근할 도메인 이름을 추가해주세요."
 		local docker_url="공식 홈페이지 소개: https://docs.linuxserver.io/images/docker-webtop/"
 		local docker_use=""
 		local docker_passwd=""
@@ -17247,7 +17248,7 @@ while true; do
 
 		}
 
-		local docker_describe="OpenWebUI는 새로운 llama3 대규모 언어 모델에 연결된 대규모 언어 모델 웹 페이지 프레임워크입니다."
+		local docker_describe="OpenWebUI는 새로운 llama3 대규모 언어 모델에 연결되는 대규모 언어 모델 웹 페이지 프레임워크입니다."
 		local docker_url="공식 웹사이트 소개:${gh_https_url}github.com/open-webui/open-webui"
 		local docker_use="docker exec ollama ollama run llama3.2:1b"
 		local docker_passwd=""
@@ -18944,7 +18945,7 @@ while true; do
 	  101|moneyprinterturbo)
 		local app_id="101"
 		local app_name="AI 영상 생성 도구"
-		local app_text="MoneyPrinterTurbo는 AI 대형 모델을 사용하여 고화질 단편 동영상을 합성하는 도구입니다."
+		local app_text="MoneyPrinterTurbo는 AI 대형 모델을 사용하여 고화질 짧은 동영상을 합성하는 도구입니다."
 		local app_url="공식 웹사이트:${gh_https_url}github.com/harry0703/MoneyPrinterTurbo"
 		local docker_name="moneyprinterturbo"
 		local docker_port="8101"
@@ -19917,7 +19918,7 @@ log_menu() {
 				echo "⚠️ 일지를 청소하세요(안전한 방법)"
 				echo "1) 최근 7일을 보관"
 				echo "2) 최근 3일을 보관한다"
-				echo "3) 최대 로그 크기를 500M로 제한하십시오."
+				echo "3) 최대 로그 크기를 500M로 제한합니다."
 				read -erp "청소 방법을 선택하세요:" c
 				case $c in
 					1) journalctl --vacuum-time=7d ;;
@@ -20142,7 +20143,7 @@ linux_Settings() {
 	  echo -e "시스템 도구"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}스크립트 시작 단축키 설정${gl_kjlan}2.   ${gl_bai}로그인 비밀번호 변경"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}사용자 비밀번호 로그인 모드${gl_kjlan}4.   ${gl_bai}지정된 버전의 Python 설치"
+	  echo -e "${gl_kjlan}3.   ${gl_bai}사용자 비밀번호 로그인 모드${gl_kjlan}4.   ${gl_bai}지정된 Python 버전을 설치합니다."
 	  echo -e "${gl_kjlan}5.   ${gl_bai}모든 포트 열기${gl_kjlan}6.   ${gl_bai}SSH 연결 포트 수정"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}DNS 주소 최적화${gl_kjlan}8.   ${gl_bai}한 번의 클릭으로 시스템을 다시 설치${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}9.   ${gl_bai}ROOT 계정을 비활성화하고 새 계정을 만듭니다.${gl_kjlan}10.  ${gl_bai}우선 순위 ipv4/ipv6 전환"
@@ -20155,7 +20156,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 확인${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}전류 제한 자동 종료${gl_kjlan}24.  ${gl_bai}사용자 키 로그인 모드"
-	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot 시스템 모니터링 및 조기 경보${gl_kjlan}26.  ${gl_bai}OpenSSH 고위험 취약점 수정"
+	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot 시스템 모니터링 및 조기경보${gl_kjlan}26.  ${gl_bai}OpenSSH 고위험 취약점 수정"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linux 커널 업그레이드${gl_kjlan}28.  ${gl_bai}Linux 시스템 커널 매개변수 최적화${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}바이러스 검사 도구${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}파일 관리자"
 	  echo -e "${gl_kjlan}------------------------"
@@ -20627,7 +20628,7 @@ EOF
 				echo "유럽"
 				echo "11. 영국 런던 시간 12. 프랑스 파리 시간"
 				echo "13. 독일 베를린 시간 14. 러시아 모스크바 시간"
-				echo "15. 네덜란드 유트라흐트 시간 16. 스페인 마드리드 시간"
+				echo "15. 네덜란드 위트라흐트 시간 16. 스페인 마드리드 시간"
 				echo "------------------------"
 				echo "미국"
 				echo "21. 미국 서부 시간 22. 미국 동부 시간"
@@ -20950,7 +20951,7 @@ EOF
 			  root_use
 			  send_stats "전신 경고"
 			  echo "TG-bot 모니터링 및 조기경보 기능"
-			  echo "영상소개: https://youtu.be/vLL-eb3Z_TY"
+			  echo "영상 소개: https://youtu.be/vLL-eb3Z_TY"
 			  echo "------------------------------------------------"
 			  echo "로컬 CPU, 메모리, 하드 디스크, 트래픽 및 SSH 로그인에 대한 실시간 모니터링 및 경고를 달성하려면 경고를 수신하도록 tg 로봇 API 및 사용자 ID를 구성해야 합니다."
 			  echo "임계값에 도달하면 경고 메시지가 사용자에게 전송됩니다."
@@ -21394,7 +21395,7 @@ linux_file() {
 					continue
 				fi
 
-				read -e -p "대상 경로(새 파일 또는 디렉터리 이름 포함)를 입력하세요." dest_path
+				read -e -p "대상 경로(새 파일 또는 디렉터리 이름 포함)를 입력하십시오." dest_path
 				if [ -z "$dest_path" ]; then
 					echo "오류: 대상 경로를 입력하십시오."
 					send_stats "파일 또는 디렉터리 이동 실패: 대상 경로가 지정되지 않았습니다."
@@ -21414,7 +21415,7 @@ linux_file() {
 					continue
 				fi
 
-				read -e -p "대상 경로(새 파일 또는 디렉터리 이름 포함)를 입력하세요." dest_path
+				read -e -p "대상 경로(새 파일 또는 디렉터리 이름 포함)를 입력하십시오." dest_path
 				if [ -z "$dest_path" ]; then
 					echo "오류: 대상 경로를 입력하십시오."
 					send_stats "파일 또는 디렉터리 복사 실패: 대상 경로가 지정되지 않았습니다."
@@ -21500,7 +21501,7 @@ run_commands_on_servers() {
 	# 추출된 정보를 배열로 변환
 	IFS=$'\n' read -r -d '' -a SERVER_ARRAY <<< "$SERVERS"
 
-	# 서버를 탐색하고 명령을 실행합니다.
+	# 서버를 순회하고 명령을 실행합니다.
 	for ((i=0; i<${#SERVER_ARRAY[@]}; i+=5)); do
 		local name=${SERVER_ARRAY[i]}
 		local hostname=${SERVER_ARRAY[i+1]}
@@ -21508,7 +21509,7 @@ run_commands_on_servers() {
 		local username=${SERVER_ARRAY[i+3]}
 		local password=${SERVER_ARRAY[i+4]}
 		echo
-		echo -e "${gl_huang}연결하다$name ($hostname)...${gl_bai}"
+		echo -e "${gl_huang}연결 대상$name ($hostname)...${gl_bai}"
 		# sshpass -p "$password" ssh -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 		sshpass -p "$password" ssh -t -o StrictHostKeyChecking=no "$username@$hostname" -p "$port" "$1"
 	done
@@ -21542,7 +21543,7 @@ while true; do
 	  echo -e "${gl_kjlan}일괄적으로 작업 실행${gl_bai}"
 	  echo -e "${gl_kjlan}11. ${gl_bai}기술 사자 스크립트 설치${gl_kjlan}12. ${gl_bai}시스템 업데이트${gl_kjlan}13. ${gl_bai}시스템 청소"
 	  echo -e "${gl_kjlan}14. ${gl_bai}도커 설치${gl_kjlan}15. ${gl_bai}BBR3 설치${gl_kjlan}16. ${gl_bai}1G 가상 메모리 설정"
-	  echo -e "${gl_kjlan}17. ${gl_bai}시간대를 상하이로 설정${gl_kjlan}18. ${gl_bai}모든 포트 열기${gl_kjlan}51. ${gl_bai}사용자 정의 지시어"
+	  echo -e "${gl_kjlan}17. ${gl_bai}시간대를 상하이로 설정${gl_kjlan}18. ${gl_bai}모든 포트 열기${gl_kjlan}51. ${gl_bai}맞춤 지침"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}0.  ${gl_bai}메인 메뉴로 돌아가기"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -21583,7 +21584,7 @@ while true; do
 		  5)
 			  clear
 			  send_stats "클러스터 복원"
-			  echo "server.py를 업로드하고 아무 키나 눌러 업로드를 시작하세요!"
+			  echo "귀하의 server.py를 업로드하고 업로드를 시작하려면 아무 키나 누르십시오!"
 			  echo -e "업로드해주세요${gl_huang}servers.py${gl_bai}파일을 제출하다${gl_huang}/root/cluster/${gl_bai}복원 완료!"
 			  break_end
 			  ;;
@@ -21656,7 +21657,7 @@ echo "------------------------"
 echo -e "${gl_lan}DMIT 분기당 $28 US CN2GIA 1 코어 2G 메모리 20G 하드 드라이브 월별 800G 트래픽${gl_bai}"
 echo -e "${gl_bai}URL: https://www.dmit.io/aff.php?aff=4966&pid=100${gl_bai}"
 echo "------------------------"
-echo -e "${gl_zi}V.PS 월 6.9달러 도쿄 소프트뱅크 2코어 1G 메모리 20G 하드 드라이브 월 1T 트래픽${gl_bai}"
+echo -e "${gl_zi}V.PS 월 6.9달러 도쿄 소프트뱅크 2코어 1G 메모리 20G 하드드라이브 월 1T 트래픽${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
 echo -e "${gl_kjlan}더 인기 있는 VPS 혜택${gl_bai}"
@@ -21690,7 +21691,7 @@ games_server_tools() {
 	  echo -e "게임 서버 오프닝 스크립트 모음"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1. ${gl_bai}Eudemons Parlu 서버 오픈 스크립트"
-	  echo -e "${gl_kjlan}2. ${gl_bai}Minecraft 서버 열기 스크립트"
+	  echo -e "${gl_kjlan}2. ${gl_bai}Minecraft 서버 오프닝 스크립트"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0. ${gl_bai}메인 메뉴로 돌아가기"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -21702,7 +21703,7 @@ games_server_tools() {
 			 curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh
 			 exit
 			 ;;
-		  2) send_stats "Minecraft 서버 열기 스크립트" ; cd ~
+		  2) send_stats "Minecraft 서버 오프닝 스크립트" ; cd ~
 			 curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/mc.sh ; chmod +x mc.sh ; ./mc.sh
 			 exit
 			 ;;
@@ -21945,7 +21946,7 @@ echo "-------------------"
 echo "영상 소개: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "다음은 k 명령의 참조 사용 사례입니다."
 echo "시작 스크립트 k"
-echo "패키지 설치 k install nano wget | k 나노 wget 추가 | k는 nano wget을 설치합니다."
+echo "패키지 설치 k install nano wget | k 나노 wget 추가 | k는 나노 wget을 설치합니다."
 echo "패키지 제거 k 제거 nano wget | k 델 나노 wget | k 나노 wget 제거 | k 나노 wget 제거"
 echo "시스템 k 업데이트 업데이트 | k 업데이트"
 echo "클린 시스템 정크 k 클린 | 케이 깨끗하다"
@@ -21974,12 +21975,12 @@ echo "도커 컨테이너 관리 k 도커 ps |k 도커 컨테이너"
 echo "도커 이미지 관리 k docker img |k 도커 이미지"
 echo "LDNMP 사이트 관리 k web"
 echo "LDNMP 캐시 정리 k 웹 캐시"
-echo "WordPress k wp 설치 | k 워드프레스 | kwp xxx.com"
+echo "WordPress k wp 설치 | k 워드프레스 | k wp xxx.com"
 echo "역방향 프록시 설치 k fd |k rp |k 역방향 프록시 |k fd xxx.com"
 echo "로드 밸런싱 설치 k loadbalance |k 로드 밸런싱"
 echo "L4 로드 밸런싱 설치 k 스트림 |k L4 로드 밸런싱"
 echo "방화벽 패널 k fhq |k 방화벽"
-echo "포트 k 열기 DKdk 8080 |k 포트 8080 열기"
+echo "포트 k 열기 ddk 8080 |k 포트 8080 열기"
 echo "k 포트 닫기 gbdk 7800 |k 포트 7800 닫기"
 echo "릴리스 IP k fxip 127.0.0.0/8 |k 릴리스 IP 127.0.0.0/8"
 echo "IP 차단 k zzip 177.5.25.36 |k IP 177.5.25.36 차단"
