@@ -5355,22 +5355,22 @@ dd_xitong() {
 
 			  2)
 				send_stats "重装debian 12"
-				dd_xitong_1
-				bash InstallNET.sh -debian 12
+				dd_xitong_3
+				bash reinstall.sh debian 12
 				reboot
 				exit
 				;;
 			  3)
 				send_stats "重装debian 11"
-				dd_xitong_1
-				bash InstallNET.sh -debian 11
+				dd_xitong_3
+				bash reinstall.sh debian 11
 				reboot
 				exit
 				;;
 			  4)
 				send_stats "重装debian 10"
-				dd_xitong_1
-				bash InstallNET.sh -debian 10
+				dd_xitong_3
+				bash reinstall.sh debian 10
 				reboot
 				exit
 				;;
@@ -5383,22 +5383,22 @@ dd_xitong() {
 				;;
 			  12)
 				send_stats "重装ubuntu 24.04"
-				dd_xitong_1
-				bash InstallNET.sh -ubuntu 24.04
+				dd_xitong_3
+				bash reinstall.sh ubuntu 24.04
 				reboot
 				exit
 				;;
 			  13)
 				send_stats "重装ubuntu 22.04"
-				dd_xitong_1
-				bash InstallNET.sh -ubuntu 22.04
+				dd_xitong_3
+				bash reinstall.sh ubuntu 22.04
 				reboot
 				exit
 				;;
 			  14)
 				send_stats "重装ubuntu 20.04"
-				dd_xitong_1
-				bash InstallNET.sh -ubuntu 20.04
+				dd_xitong_3
+				bash reinstall.sh ubuntu 20.04
 				reboot
 				exit
 				;;
