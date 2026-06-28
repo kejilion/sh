@@ -65,7 +65,7 @@ CheckFirstRun_true() {
 
 # 이 기능은 함수에 묻혀있는 정보를 수집하고 사용자가 사용하는 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 시스템 국가 및 기능 이름을 기록합니다. 민감한 정보는 포함되어 있지 않으니 걱정하지 마세요! 저를 믿어주세요!
 # 이 기능은 왜 설계되었나요? 그 목적은 사용자가 사용하고 싶어하는 기능을 더 잘 이해하고, 기능을 더욱 최적화하고 사용자 요구에 맞는 더 많은 기능을 출시하는 것입니다.
-# send_stats 함수 호출 위치에 대한 전문을 검색할 수 있습니다. 투명하고 오픈 소스입니다. 우려되는 사항이 있는 경우 이용을 거부하실 수 있습니다.
+# send_stats 함수 호출 위치에 대한 전문을 검색할 수 있습니다. 투명하고 오픈 소스입니다. 불편하신 점이 있으시면 이용을 거부하실 수 있습니다.
 
 
 
@@ -1268,7 +1268,7 @@ check_swap() {
 
 local swap_total=$(free -m | awk 'NR==3{print $2}')
 
-# 가상 메모리를 만들어야 하는지 확인
+# 가상 메모리를 생성해야 하는지 결정
 [ "$swap_total" -gt 0 ] || add_swap 1024
 
 
@@ -1852,7 +1852,7 @@ check_waf_status() {
 	if grep -q "^\s*#\s*modsecurity on;" /home/web/nginx.conf; then
 		waf_status=""
 	elif grep -q "modsecurity on;" /home/web/nginx.conf; then
-		waf_status="WAF가 켜져 있습니다"
+		waf_status="WAF가 켜져 있습니다."
 	else
 		waf_status=""
 	fi
@@ -2238,7 +2238,7 @@ web_security() {
 
 				  22)
 					  send_stats "고부하로 5초 쉴드 가능"
-					  echo -e "${gl_huang}웹사이트는 5분마다 자동으로 감지합니다. 높은 부하를 감지하면 자동으로 쉴드가 열리고, 낮은 부하가 감지되면 자동으로 5초 동안 쉴드가 닫힙니다.${gl_bai}"
+					  echo -e "${gl_huang}웹사이트는 5분마다 자동으로 감지합니다. 고부하를 감지하면 자동으로 실드를 열고, 저부하를 감지하면 자동으로 5초 동안 실드를 닫습니다.${gl_bai}"
 					  echo "--------------"
 					  echo "CF 매개변수 가져오기:"
 					  echo -e "cf 백엔드 오른쪽 상단에 있는 내 프로필로 이동하여 왼쪽에 있는 API 토큰을 선택하고${gl_huang}Global API Key${gl_bai}"
@@ -2789,7 +2789,7 @@ clear_host_port_rules() {
 	install iptables
 
 
-	# 다른 모든 IP의 접근을 차단하는 규칙을 해제하세요.
+	# 다른 모든 IP의 접근을 차단하는 규칙을 삭제하세요.
 	if iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
 		iptables -D INPUT -p tcp --dport "$port" -j DROP
 	fi
@@ -2893,7 +2893,7 @@ while true; do
 			setup_docker_dir
 			check_disk_space $app_size /home/docker
 			while true; do
-				read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
+				read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter 키를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
 				local app_port=${app_port:-${docker_port}}
 
 				if ss -tuln | grep -q ":$app_port "; then
@@ -3017,7 +3017,7 @@ docker_app_plus() {
 				check_disk_space $app_size /home/docker
 
 				while true; do
-					read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
+					read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter 키를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
 					local app_port=${app_port:-${docker_port}}
 
 					if ss -tuln | grep -q ":$app_port "; then
@@ -3224,7 +3224,7 @@ f2b_sshd() {
 
 # 기본 매개변수 구성: 금지 기간(bantime), 기간(findtime), 재시도 횟수(maxretry)
 # 설명하다:
-# - /etc/fail2ban/jail.d/sshd.local에 대한 쓰기 우선 순위를 지정합니다(기본 감옥 구성을 무시하고 업그레이드 시 손실되기 쉽지 않습니다).
+# - /etc/fail2ban/jail.d/sshd.local에 대한 쓰기 우선 순위를 지정합니다(기본 감옥 구성을 재정의하며 업그레이드 시 손실되기 쉽지 않습니다).
 # - Alpine이고 감옥 이름이 다른 경우에도 sshd.local을 작성하세요. Fail2Ban은 감옥 이름에 따라 일치합니다.
 f2b_basic_config() {
 	root_use
@@ -3426,7 +3426,7 @@ ldnmp_web_on() {
 	  echo "당신의$webname건설되었습니다!"
 	  echo "https://$yuming"
 	  echo "------------------------"
-	  echo "$webname설치 정보는 다음과 같습니다."
+	  echo "$webname설치정보는 다음과 같습니다."
 
 }
 
@@ -3512,7 +3512,7 @@ ldnmp_Proxy() {
 	check_ip_and_get_access_port "$yuming"
 
 	if [ -z "$reverseproxy" ]; then
-		read -e -p "안티 세대 IP를 입력하십시오(기본값은 로컬 IP 127.0.0.1로 설정하려면 Enter를 누르십시오)." reverseproxy
+		read -e -p "세대 방지 IP를 입력하십시오(기본값은 로컬 IP 127.0.0.1로 설정하려면 Enter를 누르십시오)." reverseproxy
 		reverseproxy=${reverseproxy:-127.0.0.1}
 	fi
 
@@ -4986,7 +4986,7 @@ import_sshkey() {
 	fi
 
 	if [[ ! "$public_key" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
-		echo -e "${gl_hong}오류: 합법적인 SSH 공개 키처럼 보이지 않습니다.${gl_bai}"
+		echo -e "${gl_hong}오류: 합법적인 SSH 공개 키가 아닌 것 같습니다.${gl_bai}"
 		return 1
 	fi
 
@@ -5355,22 +5355,22 @@ dd_xitong() {
 
 			  2)
 				send_stats "데비안 12 다시 설치"
-				dd_xitong_1
-				bash InstallNET.sh -debian 12
+				dd_xitong_3
+				bash reinstall.sh debian 12
 				reboot
 				exit
 				;;
 			  3)
 				send_stats "데비안 11 다시 설치"
-				dd_xitong_1
-				bash InstallNET.sh -debian 11
+				dd_xitong_3
+				bash reinstall.sh debian 11
 				reboot
 				exit
 				;;
 			  4)
 				send_stats "데비안 10 다시 설치"
-				dd_xitong_1
-				bash InstallNET.sh -debian 10
+				dd_xitong_3
+				bash reinstall.sh debian 10
 				reboot
 				exit
 				;;
@@ -5383,22 +5383,22 @@ dd_xitong() {
 				;;
 			  12)
 				send_stats "우분투 24.04 다시 설치"
-				dd_xitong_1
-				bash InstallNET.sh -ubuntu 24.04
+				dd_xitong_3
+				bash reinstall.sh ubuntu 24.04
 				reboot
 				exit
 				;;
 			  13)
 				send_stats "우분투 22.04 다시 설치"
-				dd_xitong_1
-				bash InstallNET.sh -ubuntu 22.04
+				dd_xitong_3
+				bash reinstall.sh ubuntu 22.04
 				reboot
 				exit
 				;;
 			  14)
 				send_stats "우분투 20.04 다시 설치"
-				dd_xitong_1
-				bash InstallNET.sh -ubuntu 20.04
+				dd_xitong_3
+				bash reinstall.sh ubuntu 20.04
 				reboot
 				exit
 				;;
@@ -5725,7 +5725,7 @@ bbrv3() {
 					echo "BBR3 매개변수 쓰기에 실패했습니다. 시스템 구성을 확인하십시오."
 					return 1
 				}
-				echo "XanMod BBRv3 커널 처리가 완료되었습니다. 재시작 후 적용"
+				echo "XanMod BBRv3 커널 처리가 완료되었습니다. 다시 시작한 후 적용"
 				server_reboot
 		  }
 
@@ -5735,7 +5735,7 @@ bbrv3() {
 				update-grub 2>/dev/null || true
 				rm -f /etc/apt/sources.list.d/xanmod-release.list
 				rm -f /usr/share/keyrings/xanmod-archive-keyring.gpg
-				echo "XanMod 커널이 제거되었습니다. 재시작 후 적용"
+				echo "XanMod 커널이 제거되었습니다. 다시 시작한 후 적용"
 				server_reboot
 		  }
 
@@ -5885,7 +5885,7 @@ elrepo() {
 					  2)
 						dnf remove -y elrepo-release
 						rpm -qa | grep elrepo | grep kernel | xargs rpm -e --nodeps
-						echo "elrepo 커널이 제거되었습니다. 재시작 후 적용"
+						echo "elrepo 커널이 제거되었습니다. 다시 시작한 후 적용"
 						send_stats "Red Hat 커널 제거"
 						server_reboot
 
@@ -5903,7 +5903,7 @@ elrepo() {
 		  echo "영상 소개: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"
 		  echo "------------------------------------------------"
 		  echo "Red Hat 시리즈 배포판 CentOS/RedHat/Alma/Rocky/oracle만 지원"
-		  echo "Linux 커널을 업그레이드하면 시스템 성능과 보안이 향상될 수 있습니다. 가능하다면 시도해 보시고, 프로덕션 환경도 주의해서 업그레이드하시는 것을 추천드립니다!"
+		  echo "Linux 커널을 업그레이드하면 시스템 성능과 보안이 향상될 수 있습니다. 가능하다면 시도해 보시고, 프로덕션 환경을 주의해서 업그레이드하시는 것을 추천드립니다!"
 		  echo "------------------------------------------------"
 		  read -e -p "계속하시겠습니까? (예/아니요):" choice
 
@@ -5939,7 +5939,7 @@ clamav_freshclam() {
 
 clamav_scan() {
 	if [ $# -eq 0 ]; then
-		echo "스캔할 디렉터리를 지정하세요."
+		echo "스캔할 디렉터리를 지정하십시오."
 		return
 	fi
 
@@ -6423,7 +6423,7 @@ Kernel_optimize() {
 			  cd ~
 			  clear
 			  optimize_web_server
-			  send_stats "웹사이트 최적화 모델"
+			  send_stats "웹사이트 최적화 모드"
 			  ;;
 		  4)
 			  cd ~
@@ -6639,7 +6639,7 @@ linux_trash() {
 
 	clear
 	echo -e "현재 휴지통${trash_status}"
-	echo -e "활성화한 후에는 중요한 파일이 실수로 삭제되는 것을 방지하기 위해 rm으로 삭제된 파일이 먼저 휴지통에 저장됩니다!"
+	echo -e "활성화한 후에는 중요한 파일이 실수로 삭제되는 것을 방지하기 위해 rm으로 삭제된 파일이 먼저 휴지통에 들어갑니다!"
 	echo "------------------------------------------------"
 	ls -l --color=auto "$TRASH_DIR" 2>/dev/null || echo "휴지통이 비어 있습니다."
 	echo "------------------------"
@@ -8237,7 +8237,7 @@ docker_ssh_migration() {
 
 				mkdir -p "$original_path"
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
-				echo -e "${gl_lv}프로젝트 작성 [$project_name]는 다음 위치로 추출되었습니다.$original_path${gl_bai}"
+				echo -e "${gl_lv}프로젝트 작성 [$project_name]가 다음 위치로 추출되었습니다.$original_path${gl_bai}"
 
 				cd "$original_path" || return
 				docker compose down || true
@@ -8372,7 +8372,7 @@ docker_ssh_migration() {
 			echo -e "1. 도커 프로젝트 백업"
 			echo -e "2. 도커 프로젝트 마이그레이션"
 			echo -e "3. 도커 프로젝트 복원"
-			echo -e "4. Docker 프로젝트의 백업 파일을 삭제합니다."
+			echo -e "4. docker 프로젝트 백업 파일 삭제"
 			echo "------------------------"
 			echo -e "0. 이전 메뉴로 돌아가기"
 			echo "------------------------"
@@ -8526,7 +8526,7 @@ linux_docker() {
 					  3)
 						  send_stats "네트워크에 가입하세요"
 						  read -e -p "종료 네트워크 이름:" dockernetwork
-						  read -e -p "해당 컨테이너는 네트워크를 종료합니다(여러 컨테이너 이름을 공백으로 구분하세요)." dockernames
+						  read -e -p "이러한 컨테이너는 네트워크를 종료합니다(여러 컨테이너 이름을 공백으로 구분하세요)." dockernames
 
 						  for dockername in $dockernames; do
 							  docker network disconnect $dockernetwork $dockername
@@ -12363,7 +12363,7 @@ PYTHON_EOF
 			local token
 
 			if [ "$skill_action" = "2" ]; then
-				read -e -p "보조 확인: 삭제는 사용자 디렉터리 ~/.openclaw/workspace/skills에만 영향을 미칩니다. Are you sure to continue? (예/아니요):" confirm_del
+				read -e -p "보조 확인: 삭제는 사용자 디렉터리 ~/.openclaw/workspace/skills에만 영향을 미칩니다. 계속하시겠습니까? (예/아니요):" confirm_del
 				if [[ ! "$confirm_del" =~ ^[Yy]$ ]]; then
 					echo "삭제가 취소되었습니다."
 					break_end
@@ -12920,7 +12920,7 @@ if os.path.isdir(agents_root):
                 if os.path.isfile(src): shutil.copy2(src, dest)
                 else: shutil.copytree(src, dest, dirs_exist_ok=True)
             print(f"✅ 에이전트 메모리 복원됨: {aid}")' "$workspaces_json" "$pkg_dir/payload"
-		rm -rf "$tmp_unpack"; echo "✅ 전체 메모리 복원 완료"; break_end
+		rm -rf "$tmp_unpack"; echo "✅ 메모리 전체 복구 완료"; break_end
 	}
 
 
@@ -13689,7 +13689,7 @@ PY
 		elif command -v wget >/dev/null 2>&1; then
 			wget -qO- https://bun.sh/install | bash
 		else
-			echo "❌ 컬이나 wget이 감지되지 않아 롤빵을 설치할 수 없습니다."
+			echo "❌ 컬 또는 wget이 감지되지 않아 롤빵을 설치할 수 없습니다."
 			return 1
 		fi
 		if [ -d "$HOME/.bun/bin" ]; then
@@ -13783,7 +13783,7 @@ PY
 		else
 			echo "가능한 트래픽/디스크 사용량: 실제 상황에 따라 다름"
 		fi
-		echo "확인 후 자동으로 설치/다운로드, 구성 작성, 색인 작성 및 게이트웨이를 다시 시작합니다."
+		echo "확인 후 자동으로 설치/다운로드하고, 구성을 작성하고, 인덱스를 작성하고, 게이트웨이를 다시 시작합니다."
 		echo "고급 옵션: 구성만 작성하려면 구성을 입력하세요(설치 없음, 다운로드 없음, 인덱싱 없음, 다시 시작 없음)."
 		read -e -p "계속하려면 yes를 입력하세요(기본값 N)." confirm_step
 		case "$confirm_step" in
@@ -14663,7 +14663,7 @@ except Exception:
 		send_stats "OpenClaw 권한 - 표준 보안 모드"
 		openclaw_permission_require_openclaw || return 1
 
-		echo "애플리케이션 계층 정책 구성 중..."
+		echo "애플리케이션 레이어 정책 구성 중..."
 		openclaw config set tools.profile coding >/dev/null 2>&1
 		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
 		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
@@ -14682,7 +14682,7 @@ except Exception:
 		send_stats "OpenClaw 권한 - 개발 강화 모드"
 		openclaw_permission_require_openclaw || return 1
 
-		echo "애플리케이션 계층 정책 구성 중..."
+		echo "애플리케이션 레이어 정책 구성 중..."
 		openclaw config set tools.profile coding >/dev/null 2>&1
 		openclaw config set tools.exec.security allowlist >/dev/null 2>&1
 		openclaw config set tools.exec.ask on-miss >/dev/null 2>&1
@@ -14700,7 +14700,7 @@ except Exception:
 		send_stats "OpenClaw 권한 - 완전 개방 모드"
 		openclaw_permission_require_openclaw || return 1
 
-		echo "애플리케이션 계층 정책 구성 중..."
+		echo "애플리케이션 레이어 정책 구성 중..."
 		openclaw config set tools.profile full >/dev/null 2>&1
 		openclaw config set tools.exec.security full >/dev/null 2>&1
 		openclaw config set tools.exec.ask off >/dev/null 2>&1
@@ -14802,7 +14802,7 @@ except Exception as e:
 					break_end
 					;;
 				2)
-					read -e -p "제거할 명령 경로를 입력하세요." pattern
+					read -e -p "제거할 명령 경로를 입력하십시오:" pattern
 					[ -z "$pattern" ] && { echo "비워둘 수 없습니다."; break_end; continue; }
 					openclaw approvals allowlist remove "$pattern"
 					break_end
@@ -15646,7 +15646,7 @@ while true; do
 	  echo -e "${gl_kjlan}67.  ${color67}ddns-go 동적 DNS 관리 도구${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${color68}AllinSSL 인증서 관리 플랫폼"
 	  echo -e "${gl_kjlan}69.  ${color69}SFTPGo 파일 전송 도구${gl_kjlan}70.  ${color70}AstrBot 챗봇 프레임워크"
 	  echo -e "${gl_kjlan}-------------------------"
-	  echo -e "${gl_kjlan}71.  ${color71}Navidrome 개인 음악 서버${gl_kjlan}72.  ${color72}비트워든 비밀번호 관리자${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}71.  ${color71}Navidrome 개인 음악 서버${gl_kjlan}72.  ${color72}비트워드 비밀번호 관리자${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}73.  ${color73}LibreTV 개인 영화${gl_kjlan}74.  ${color74}MoonTV 개인 영화"
 	  echo -e "${gl_kjlan}75.  ${color75}멜로디 음악 마법사${gl_kjlan}76.  ${color76}온라인 DOS 오래된 게임"
 	  echo -e "${gl_kjlan}77.  ${color77}Thunder 오프라인 다운로드 도구${gl_kjlan}78.  ${color78}PandaWiki 지능형 문서 관리 시스템"
@@ -15666,7 +15666,7 @@ while true; do
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}101. ${color101}AI 영상 생성 도구${gl_kjlan}102. ${color102}VoceChat 다자간 온라인 채팅 시스템"
 	  echo -e "${gl_kjlan}103. ${color103}Umami 웹사이트 통계 도구${gl_kjlan}104. ${color104}스트림 4계층 프록시 전달 도구"
-	  echo -e "${gl_kjlan}105. ${color105}쓰위안 노트${gl_kjlan}106. ${color106}Drawnix 오픈 소스 화이트보드 도구"
+	  echo -e "${gl_kjlan}105. ${color105}쓰위안 노트${gl_kjlan}106. ${color106}Drawix 오픈 소스 화이트보드 도구"
 	  echo -e "${gl_kjlan}107. ${color107}PanSou 네트워크 디스크 검색${gl_kjlan}108. ${color108}LangBot 챗봇"
 	  echo -e "${gl_kjlan}109. ${color109}ZFile 온라인 네트워크 디스크${gl_kjlan}110. ${color110}Karakeep 북마크 관리"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -15675,7 +15675,7 @@ while true; do
 	  echo -e "${gl_kjlan}115. ${color115}헤르메스 로봇 관리 도구${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}타사 애플리케이션 목록"
-  	  echo -e "${gl_kjlan}귀하의 앱이 여기에 표시되기를 원하십니까? 개발자 가이드를 확인하세요.${gl_huang}https://dev.kejilion.sh/${gl_bai}"
+  	  echo -e "${gl_kjlan}귀하의 앱이 여기에 표시되기를 원하십니까? 개발자 가이드를 확인하세요:${gl_huang}https://dev.kejilion.sh/${gl_bai}"
 
 	  for f in "$HOME"/apps/*.conf; do
 		  [ -e "$f" ] || continue
@@ -15888,7 +15888,7 @@ while true; do
 		  ;;
 	  7|nezha)
 		clear
-		send_stats "네자 빌드"
+		send_stats "나타 빌드"
 
 		local app_id="7"
 		local docker_name="nezha-dashboard"
@@ -15897,7 +15897,7 @@ while true; do
 			check_docker_app
 			check_docker_image_update $docker_name
 			clear
-			echo -e "네자 모니터링$check_docker $update_status"
+			echo -e "나타 모니터링$check_docker $update_status"
 			echo "오픈 소스, 가볍고 사용하기 쉬운 서버 모니터링 및 운영 및 유지 관리 도구"
 			echo "공식 웹사이트 구축 문서: https://nezha.wiki/guide/dashboard.html"
 			if docker ps -a --format '{{.Names}}' 2>/dev/null | grep -q "$docker_name"; then
@@ -15977,7 +15977,7 @@ while true; do
 			check_docker_image_update $docker_name
 
 			clear
-			echo -e "우정$check_docker $update_status"
+			echo -e "우편 서비스$check_docker $update_status"
 			echo "poste.io는 오픈 소스 메일 서버 솔루션입니다."
 			echo "영상 소개: https://www.bilibili.com/video/BV1wv421C71t?t=0.1"
 
@@ -16716,7 +16716,7 @@ while true; do
 
 
 		local docker_describe="포토프리즘은 매우 강력한 개인 사진 앨범 시스템입니다."
-		local docker_url="공식 홈페이지 소개: https://www.photoprism.app/"
+		local docker_url="공식 홈페이지 소개 : https://www.photoprism.app/"
 		local docker_use="echo \"계정: admin 비밀번호:$rootpasswd\""
 		local docker_passwd=""
 		local app_size="1"
@@ -17410,7 +17410,7 @@ while true; do
 
 		local app_id="60"
 		local app_name="JumpServer 오픈 소스 요새 머신"
-		local app_text="오픈소스 PAM(Privileged Access Management) 도구입니다. 이 프로그램은 포트 80을 사용하며 액세스를 위한 도메인 이름 추가를 지원하지 않습니다."
+		local app_text="오픈소스 권한 있는 액세스 관리(PAM) 도구입니다. 이 프로그램은 포트 80을 사용하며 액세스를 위한 도메인 이름 추가를 지원하지 않습니다."
 		local app_url="공식 소개:${gh_https_url}github.com/jumpserver/jumpserver"
 		local docker_name="jms_web"
 		local docker_port="80"
@@ -18945,7 +18945,7 @@ while true; do
 	  101|moneyprinterturbo)
 		local app_id="101"
 		local app_name="AI 영상 생성 도구"
-		local app_text="MoneyPrinterTurbo는 AI 대형 모델을 사용하여 고화질 짧은 동영상을 합성하는 도구입니다."
+		local app_text="MoneyPrinterTurbo는 AI 대형 모델을 사용하여 고화질 단편 동영상을 합성하는 도구입니다."
 		local app_url="공식 웹사이트:${gh_https_url}github.com/harry0703/MoneyPrinterTurbo"
 		local docker_name="moneyprinterturbo"
 		local docker_port="8101"
@@ -19294,7 +19294,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		local app_id="112"
 		local docker_name="lucky"
 		local docker_img="gdy666/lucky:v2"
-		# Lucky는 호스트 네트워크 모드를 사용하므로 여기서 포트는 기록/설명 참조용으로만 사용되며 실제로는 애플리케이션 자체에 의해 제어됩니다(기본값 16601).
+		# Lucky는 호스트 네트워크 모드를 사용하므로 여기의 포트는 기록/설명 참조용으로만 사용되며 실제로는 애플리케이션 자체에 의해 제어됩니다(기본값 16601).
 		local docker_port=8112
 
 		docker_rum() {
@@ -19918,7 +19918,7 @@ log_menu() {
 				echo "⚠️ 일지를 청소하세요(안전한 방법)"
 				echo "1) 최근 7일을 보관"
 				echo "2) 최근 3일을 보관한다"
-				echo "3) 최대 로그 크기를 500M로 제한합니다."
+				echo "3) 최대 로그 크기를 500M로 제한하십시오."
 				read -erp "청소 방법을 선택하세요:" c
 				case $c in
 					1) journalctl --vacuum-time=7d ;;
@@ -20608,7 +20608,7 @@ EOF
 				# 현재 시스템 시간대 가져오기
 				local timezone=$(current_timezone)
 
-				# 현재 시스템 시간을 가져옵니다
+				# 현재 시스템 시간 가져오기
 				local current_time=$(date +"%Y-%m-%d %H:%M:%S")
 
 				# 시간대 및 시간 표시
@@ -20628,7 +20628,7 @@ EOF
 				echo "유럽"
 				echo "11. 영국 런던 시간 12. 프랑스 파리 시간"
 				echo "13. 독일 베를린 시간 14. 러시아 모스크바 시간"
-				echo "15. 네덜란드 위트라흐트 시간 16. 스페인 마드리드 시간"
+				echo "15. 네덜란드 유트라흐트 시간 16. 스페인 마드리드 시간"
 				echo "------------------------"
 				echo "미국"
 				echo "21. 미국 서부 시간 22. 미국 동부 시간"
@@ -20951,7 +20951,7 @@ EOF
 			  root_use
 			  send_stats "전신 경고"
 			  echo "TG-bot 모니터링 및 조기경보 기능"
-			  echo "영상 소개: https://youtu.be/vLL-eb3Z_TY"
+			  echo "영상소개: https://youtu.be/vLL-eb3Z_TY"
 			  echo "------------------------------------------------"
 			  echo "로컬 CPU, 메모리, 하드 디스크, 트래픽 및 SSH 로그인에 대한 실시간 모니터링 및 경고를 달성하려면 경고를 수신하도록 tg 로봇 API 및 사용자 ID를 구성해야 합니다."
 			  echo "임계값에 도달하면 경고 메시지가 사용자에게 전송됩니다."
@@ -21395,7 +21395,7 @@ linux_file() {
 					continue
 				fi
 
-				read -e -p "대상 경로(새 파일 또는 디렉터리 이름 포함)를 입력하십시오." dest_path
+				read -e -p "대상 경로(새 파일 또는 디렉터리 이름 포함)를 입력하세요." dest_path
 				if [ -z "$dest_path" ]; then
 					echo "오류: 대상 경로를 입력하십시오."
 					send_stats "파일 또는 디렉터리 이동 실패: 대상 경로가 지정되지 않았습니다."
@@ -21415,7 +21415,7 @@ linux_file() {
 					continue
 				fi
 
-				read -e -p "대상 경로(새 파일 또는 디렉터리 이름 포함)를 입력하십시오." dest_path
+				read -e -p "대상 경로(새 파일 또는 디렉터리 이름 포함)를 입력하세요." dest_path
 				if [ -z "$dest_path" ]; then
 					echo "오류: 대상 경로를 입력하십시오."
 					send_stats "파일 또는 디렉터리 복사 실패: 대상 경로가 지정되지 않았습니다."
@@ -21657,7 +21657,7 @@ echo "------------------------"
 echo -e "${gl_lan}DMIT 분기당 $28 US CN2GIA 1 코어 2G 메모리 20G 하드 드라이브 월별 800G 트래픽${gl_bai}"
 echo -e "${gl_bai}URL: https://www.dmit.io/aff.php?aff=4966&pid=100${gl_bai}"
 echo "------------------------"
-echo -e "${gl_zi}V.PS 월 6.9달러 도쿄 소프트뱅크 2코어 1G 메모리 20G 하드드라이브 월 1T 트래픽${gl_bai}"
+echo -e "${gl_zi}V.PS 월 6.9달러 도쿄 소프트뱅크 2코어 1G 메모리 20G 하드 드라이브 월 1T 트래픽${gl_bai}"
 echo -e "${gl_bai}URL: https://vps.hosting/cart/tokyo-cloud-kvm-vps/?id=148&?affid=1355&?affid=1355${gl_bai}"
 echo "------------------------"
 echo -e "${gl_kjlan}더 인기 있는 VPS 혜택${gl_bai}"
@@ -21691,7 +21691,7 @@ games_server_tools() {
 	  echo -e "게임 서버 오프닝 스크립트 모음"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1. ${gl_bai}Eudemons Parlu 서버 오픈 스크립트"
-	  echo -e "${gl_kjlan}2. ${gl_bai}Minecraft 서버 오프닝 스크립트"
+	  echo -e "${gl_kjlan}2. ${gl_bai}Minecraft 서버 열기 스크립트"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0. ${gl_bai}메인 메뉴로 돌아가기"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -21703,7 +21703,7 @@ games_server_tools() {
 			 curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/palworld.sh ; chmod +x palworld.sh ; ./palworld.sh
 			 exit
 			 ;;
-		  2) send_stats "Minecraft 서버 오프닝 스크립트" ; cd ~
+		  2) send_stats "Minecraft 서버 열기 스크립트" ; cd ~
 			 curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/mc.sh ; chmod +x mc.sh ; ./mc.sh
 			 exit
 			 ;;
@@ -21975,7 +21975,7 @@ echo "도커 컨테이너 관리 k 도커 ps |k 도커 컨테이너"
 echo "도커 이미지 관리 k docker img |k 도커 이미지"
 echo "LDNMP 사이트 관리 k web"
 echo "LDNMP 캐시 정리 k 웹 캐시"
-echo "WordPress k wp 설치 | k 워드프레스 | k wp xxx.com"
+echo "WordPress k wp 설치 | k 워드프레스 | kwp xxx.com"
 echo "역방향 프록시 설치 k fd |k rp |k 역방향 프록시 |k fd xxx.com"
 echo "로드 밸런싱 설치 k loadbalance |k 로드 밸런싱"
 echo "L4 로드 밸런싱 설치 k 스트림 |k L4 로드 밸런싱"
@@ -21985,7 +21985,7 @@ echo "k 포트 닫기 gbdk 7800 |k 포트 7800 닫기"
 echo "릴리스 IP k fxip 127.0.0.0/8 |k 릴리스 IP 127.0.0.0/8"
 echo "IP 차단 k zzip 177.5.25.36 |k IP 177.5.25.36 차단"
 echo "명령 즐겨찾기 k 즐겨찾기 | k 명령 즐겨찾기"
-echo "애플리케이션 시장 관리 k app"
+echo "애플리케이션 시장관리 kapp"
 echo "신청번호의 빠른 관리 k app 26 | k 앱 1패널 | k 앱 npm"
 echo "Fail2ban 관리 k Fail2ban | 케이 F2B"
 echo "시스템 정보 표시 k 정보"
