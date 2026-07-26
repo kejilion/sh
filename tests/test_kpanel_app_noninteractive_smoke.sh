@@ -39,6 +39,13 @@ docker_app_plus_body="$(
 		capture && /^}$/ { exit }
 	' "${script_path}"
 )"
+action_body="$(
+	awk '
+		/^kpanel_run_docker_app_action\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${script_path}"
+)"
 
 printf '%s\n' "${helper_body}" | grep -F '[ "${KJ_APP_ACTION:-}" != "install" ]' >/dev/null
 printf '%s\n' "${helper_body}" | grep -F 'kpanel_app_install_port || return 1' >/dev/null
@@ -46,8 +53,10 @@ printf '%s\n' "${helper_body}" | grep -F 'if ! docker_app_install; then' >/dev/n
 printf '%s\n' "${helper_body}" | grep -F 'if ! docker_rum; then' >/dev/null
 printf '%s\n' "${helper_body}" | grep -F 'echo "$docker_port" > "/home/docker/${docker_name}_port.conf"' >/dev/null
 printf '%s\n' "${helper_body}" | grep -F 'kpanel_app_progress 100 "应用安装完成"' >/dev/null
-printf '%s\n' "${docker_app_body}" | grep -F 'kpanel_run_docker_app_install standard' >/dev/null
-printf '%s\n' "${docker_app_plus_body}" | grep -F 'kpanel_run_docker_app_install plus' >/dev/null
+printf '%s\n' "${action_body}" | grep -F 'kpanel_app_verified_service true' >/dev/null
+printf '%s\n' "${action_body}" | grep -F 'KJ_APP_ACCESS_MODE' >/dev/null
+printf '%s\n' "${docker_app_body}" | grep -F 'kpanel_run_docker_app_action standard' >/dev/null
+printf '%s\n' "${docker_app_plus_body}" | grep -F 'kpanel_run_docker_app_action plus' >/dev/null
 grep -F 'if [ "${KJ_APP_NONINTERACTIVE:-}" = "1" ]; then' "${script_path}" >/dev/null
 
 test_app_root="$(mktemp -d)"
@@ -65,6 +74,8 @@ install() { return 0; }
 install_docker() { return 0; }
 ss() { return 0; }
 add_app_id() { printf '%s\n' "${app_id}" >>"${test_app_root}/appno.txt"; }
+kpanel_app_write_access_mode() { printf '%s\n' "$1" >"${test_app_root}/${docker_name}_access.conf"; }
+kpanel_app_apply_access_mode() { kpanel_app_write_access_mode "$1"; }
 docker_app_install() { return 0; }
 docker_rum() { return 0; }
 show_user() { printf '%s\n' "user=admin"; }
@@ -100,5 +111,114 @@ if kpanel_app_install_port >/dev/null 2>&1; then
 	printf '%s\n' "zero port was accepted" >&2
 	exit 1
 fi
+
+management_helpers="$(
+	for helper in \
+		kpanel_app_service_name \
+		kpanel_app_verified_service \
+		kpanel_app_access_path \
+		kpanel_app_read_access_mode \
+		kpanel_app_write_access_mode \
+		kpanel_app_apply_access_mode \
+		kpanel_app_restore_access_mode \
+		kpanel_app_remove_compatibility_state \
+		kpanel_run_docker_app_action
+	do
+		awk -v helper="${helper}" '
+			$0 ~ "^" helper "\\(\\) \\{" { capture=1 }
+			capture { print }
+			capture && /^}$/ { print ""; capture=0; exit }
+		' "${script_path}"
+	done | sed "s|/home/docker|${test_app_root}|g"
+)"
+eval "${management_helpers}"
+
+current_exists=true
+current_id="$(printf 'a%.0s' {1..64})"
+updated_id="$(printf 'b%.0s' {1..64})"
+docker_calls=()
+docker_call_log="${test_app_root}/docker-calls.log"
+docker() {
+	docker_calls+=("$*")
+	printf '%s\n' "$*" >>"${docker_call_log}"
+	case "$1" in
+		inspect)
+			"${current_exists}" || return 1
+			printf '%s\n' "${current_id}"
+			;;
+		ps)
+			"${current_exists}" && printf '%s\n' "${docker_app_service:-$docker_name}"
+			;;
+		rm)
+			current_exists=false
+			;;
+		rmi)
+			return 0
+			;;
+	esac
+}
+docker_rum() {
+	current_exists=true
+	current_id="${updated_id}"
+}
+docker_app_update() {
+	current_exists=true
+	current_id="${updated_id}"
+}
+docker_app_uninstall() { current_exists=false; }
+ip_address() { ipv4_address="192.0.2.10"; }
+clear_container_rules() { return 0; }
+block_container_port() { return 0; }
+iptables() { return 0; }
+
+docker_name="managed-standard"
+docker_app_service=""
+docker_img="example/managed:latest"
+app_id=997
+printf '%s\n' "${app_id}" >>"${test_app_root}/appno.txt"
+test "$(kpanel_app_read_access_mode)" = "domain_only"
+printf '%s\n' "domain_only" >"${test_app_root}/${docker_name}_access.conf"
+export KJ_APP_ACTION=update
+export KJ_APP_EXPECTED_CONTAINER_ID="${current_id}"
+kpanel_run_docker_app_action standard >/dev/null
+test "${current_exists}" = "true"
+test "${current_id}" = "${updated_id}"
+test "$(cat "${test_app_root}/${docker_name}_access.conf")" = "domain_only"
+
+docker_name="managed-plus"
+docker_app_service="managed-plus-web"
+app_id=996
+current_exists=true
+current_id="$(printf 'c%.0s' {1..64})"
+printf '%s\n' "${app_id}" >>"${test_app_root}/appno.txt"
+printf '%s\n' "direct" >"${test_app_root}/${docker_name}_access.conf"
+export KJ_APP_ACTION=update
+export KJ_APP_EXPECTED_CONTAINER_ID="${current_id}"
+kpanel_run_docker_app_action plus >/dev/null
+test "${current_id}" = "${updated_id}"
+
+current_id="$(printf 'd%.0s' {1..64})"
+current_exists=true
+export KJ_APP_ACTION=direct_access
+export KJ_APP_ACCESS_MODE=domain_only
+export KJ_APP_EXPECTED_CONTAINER_ID="${current_id}"
+kpanel_run_docker_app_action plus >/dev/null
+test "$(cat "${test_app_root}/${docker_name}_access.conf")" = "domain_only"
+
+export KJ_APP_EXPECTED_CONTAINER_ID="$(printf 'e%.0s' {1..64})"
+before_calls="$(wc -l <"${docker_call_log}")"
+if kpanel_run_docker_app_action plus >/dev/null 2>&1; then
+	printf '%s\n' "container identity mismatch was accepted" >&2
+	exit 1
+fi
+test "$(wc -l <"${docker_call_log}")" -eq "$((before_calls + 1))"
+
+export KJ_APP_ACTION=uninstall
+export KJ_APP_EXPECTED_CONTAINER_ID="${current_id}"
+kpanel_run_docker_app_action plus >/dev/null
+test "${current_exists}" = "false"
+test ! -e "${test_app_root}/${docker_name}_port.conf"
+test ! -e "${test_app_root}/${docker_name}_access.conf"
+! grep -qxF "${app_id}" "${test_app_root}/appno.txt"
 
 printf '%s\n' "kpanel_app_noninteractive=pass"
