@@ -95,9 +95,9 @@ fi
 test ! -e "${test_app_root}/test-failed_port.conf"
 ! grep -qxF "998" "${test_app_root}/appno.txt"
 
-KJ_APP_PORT=80
+KJ_APP_PORT=0
 if kpanel_app_install_port >/dev/null 2>&1; then
-	printf '%s\n' "privileged port was accepted" >&2
+	printf '%s\n' "zero port was accepted" >&2
 	exit 1
 fi
 

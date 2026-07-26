@@ -2871,8 +2871,8 @@ kpanel_app_install_port() {
 			return 1
 			;;
 	esac
-	if [ "$requested_port" -lt 1024 ] || [ "$requested_port" -gt 65535 ]; then
-		echo "错误: KPanel 应用端口必须在 1024-65535 之间"
+	if [ "$requested_port" -lt 1 ] || [ "$requested_port" -gt 65535 ]; then
+		echo "错误: KPanel 应用端口必须在 1-65535 之间"
 		return 1
 	fi
 	if ss -tuln 2>/dev/null | grep -q ":${requested_port} "; then
