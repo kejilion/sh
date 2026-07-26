@@ -3031,25 +3031,32 @@ docker_app_plus() {
 
 				install jq
 				install_docker
-				docker_app_install
-				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
-
-				add_app_id
-				send_stats "$app_name 安装"
+				if docker_app_install; then
+					echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+					add_app_id
+					send_stats "$app_name 安装"
+				else
+					echo -e "${gl_hong}安装失败: ${gl_bai}未登记应用状态，请根据上方错误修复后重试。"
+				fi
 				;;
 
 			2)
-				docker_app_update
-				add_app_id
-				send_stats "$app_name 更新"
+				if docker_app_update; then
+					add_app_id
+					send_stats "$app_name 更新"
+				else
+					echo -e "${gl_hong}更新失败: ${gl_bai}已保留原应用登记状态。"
+				fi
 				;;
 
 			3)
-				docker_app_uninstall
-				rm -f /home/docker/${docker_name}_port.conf
-
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-				send_stats "$app_name 卸载"
+				if docker_app_uninstall; then
+					rm -f /home/docker/${docker_name}_port.conf
+					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					send_stats "$app_name 卸载"
+				else
+					echo -e "${gl_hong}卸载失败: ${gl_bai}已保留应用登记状态。"
+				fi
 				;;
 
 			5)
