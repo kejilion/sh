@@ -1540,6 +1540,10 @@ certs_status() {
 		send_stats "域名证书申请成功"
 	else
 		send_stats "域名证书申请失败"
+		if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+			echo "KPANEL_PROGRESS 100 域名证书申请失败，请检查 DNS、80/443 端口和签发限额"
+			return 1
+		fi
 		echo -e "${gl_hong}注意: ${gl_bai}证书申请失败，请检查以下可能原因并重试："
 		echo -e "1. 域名拼写错误 ➠ 请检查域名输入是否正确"
 		echo -e "2. DNS解析问题 ➠ 确认域名已正确解析到本服务器IP"
@@ -1618,6 +1622,10 @@ certs_status() {
 repeat_add_yuming() {
 if [ -e /home/web/conf.d/$yuming.conf ]; then
   send_stats "域名重复使用"
+  if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+	echo "KPANEL_PROGRESS 100 域名已存在，拒绝覆盖 kejilion.sh 或 KPanel 的现有产物"
+	return 1
+  fi
   web_del "${yuming}" > /dev/null 2>&1
 fi
 
@@ -1625,6 +1633,15 @@ fi
 
 
 add_yuming() {
+	  if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+		  yuming="${KJ_WEB_DOMAIN:-}"
+		  if [ -z "$yuming" ] || [ ${#yuming} -gt 253 ] ||
+			  ! printf '%s' "$yuming" | grep -Eq '^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$'; then
+			  echo "KPANEL_PROGRESS 100 KJ_WEB_DOMAIN 不是有效的域名"
+			  return 1
+		  fi
+		  return 0
+	  fi
 	  ip_address
 	  echo -e "先将域名解析到本机IP: ${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "请输入你的IP或者解析过的域名: " yuming
@@ -9421,7 +9438,29 @@ linux_ldnmp() {
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}0.   ${gl_bai}返回主菜单"
 	echo -e "${gl_huang}------------------------${gl_bai}"
-	read -e -p "请输入你的选择: " sub_choice
+	if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+		sub_choice="${KJ_WEB_RECIPE:-}"
+		case "$sub_choice" in
+			3|4|5|6|7|8|9|27) ;;
+			*)
+				echo "KPANEL_PROGRESS 100 不支持的 KJ_WEB_RECIPE"
+				return 1
+				;;
+		esac
+		if [ -z "${KJ_WEB_DOMAIN:-}" ] || [ ${#KJ_WEB_DOMAIN} -gt 253 ] ||
+			! printf '%s' "$KJ_WEB_DOMAIN" | grep -Eq '^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$'; then
+			echo "KPANEL_PROGRESS 100 KJ_WEB_DOMAIN 不是有效的域名"
+			return 1
+		fi
+		if [ -e "/home/web/conf.d/${KJ_WEB_DOMAIN}.conf" ] ||
+			[ -e "/home/web/html/${KJ_WEB_DOMAIN}" ]; then
+			echo "KPANEL_PROGRESS 100 域名已存在，拒绝覆盖现有产物"
+			return 1
+		fi
+		echo "KPANEL_PROGRESS 5 正在启动 kejilion.sh 原生一键建站流程"
+	else
+		read -e -p "请输入你的选择: " sub_choice
+	fi
 
 
 	case $sub_choice in
@@ -10396,6 +10435,19 @@ linux_ldnmp() {
 	*)
 		echo "无效的输入!"
 	esac
+	if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+		if [ ! -f "/home/web/conf.d/${KJ_WEB_DOMAIN}.conf" ] ||
+			[ ! -d "/home/web/html/${KJ_WEB_DOMAIN}" ]; then
+			echo "KPANEL_PROGRESS 100 kejilion.sh 建站产物不完整"
+			return 1
+		fi
+		if ! docker exec nginx nginx -t >/dev/null 2>&1; then
+			echo "KPANEL_PROGRESS 100 Nginx 配置校验失败"
+			return 1
+		fi
+		echo "KPANEL_PROGRESS 100 kejilion.sh 原生建站产物已完成"
+		return 0
+	fi
 	break_end
 
   done
