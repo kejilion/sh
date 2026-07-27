@@ -17,6 +17,11 @@ grep -F 'kpanel_run_test_noninteractive() {' "${script_path}" >/dev/null
 grep -F '[ "${KJ_TEST_NONINTERACTIVE:-}" = "1" ] || return 2' "${script_path}" >/dev/null
 grep -F 'KPANEL_TEST_ITEM	yabs	hardware' "${script_path}" >/dev/null
 grep -F 'KPANEL_TEST_ITEM	nodequality	comprehensive' "${script_path}" >/dev/null
+grep -F 'https://raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh' "${script_path}" >/dev/null
+if grep -F 'bash.icu/gb5' "${script_path}" >/dev/null; then
+	echo "retired GB5 short URL is still exposed" >&2
+	exit 1
+fi
 grep -F 'kpanel_run_test_noninteractive "$@"' "${script_path}" >/dev/null
 
 protocol_body="$(

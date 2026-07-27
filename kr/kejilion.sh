@@ -8832,7 +8832,7 @@ linux_test() {
 			  clear
 			  send_stats "icu/gb5 CPU 성능 테스트 스크립트"
 			  check_swap
-			  bash <(curl -sL bash.icu/gb5)
+			  bash <(curl -fsSL ${gh_proxy}raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh)
 			  ;;
 
 		  31)

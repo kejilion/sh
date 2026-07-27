@@ -6584,7 +6584,7 @@ linux_test() {
 			  clear
 			  send_stats "اسکریپت تست عملکرد CPU IICU/GB5"
 			  check_swap
-			  bash <(curl -sL bash.icu/gb5)
+			  bash <(curl -fsSL ${gh_proxy}raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh)
 			  ;;
 
 		  31)
