@@ -1,0 +1,40 @@
+#!/bin/bash
+set -euo pipefail
+
+project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+script_path="${project_root}/kejilion.sh"
+
+bash -n "${script_path}"
+grep -F 'kpanel_set_dns_noninteractive() {' "${script_path}" >/dev/null
+grep -F '[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] || return 2' "${script_path}" >/dev/null
+grep -F 'KPANEL_DNS_MANAGER systemd-resolved' "${script_path}" >/dev/null
+grep -F 'KPANEL_DNS_MANAGER resolv.conf' "${script_path}" >/dev/null
+grep -F 'KPANEL_DNS_RESULT applied' "${script_path}" >/dev/null
+grep -F 'KPANEL_DNS_RESULT unchanged' "${script_path}" >/dev/null
+grep -F 'kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable"' "${script_path}" >/dev/null
+grep -F 'systemctl reload-or-restart systemd-resolved.service' "${script_path}" >/dev/null
+grep -F 'kpanel_set_dns_noninteractive "$@"' "${script_path}" >/dev/null
+
+validator_body="$(
+	awk '
+		/^kpanel_dns_is_ipv4\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { completed++ }
+		capture && completed == 2 { exit }
+	' "${script_path}"
+)"
+eval "${validator_body}"
+
+kpanel_dns_is_ipv4 "1.1.1.1"
+kpanel_dns_is_ipv4 "255.255.255.255"
+if kpanel_dns_is_ipv4 "256.1.1.1" || kpanel_dns_is_ipv4 "1.1.1"; then
+	echo "DNS IPv4 validator accepted an invalid address" >&2
+	exit 1
+fi
+kpanel_dns_is_ipv6 "2606:4700:4700::1111"
+if kpanel_dns_is_ipv6 "not-an-ip"; then
+	echo "DNS IPv6 validator accepted an invalid address" >&2
+	exit 1
+fi
+
+printf '%s\n' "kpanel_dns_noninteractive_smoke=pass"
