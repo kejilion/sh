@@ -23,6 +23,11 @@ if grep -F 'bash.icu/gb5' "${script_path}" >/dev/null; then
 	exit 1
 fi
 grep -F 'kpanel_run_test_noninteractive "$@"' "${script_path}" >/dev/null
+grep -F 'kpanel_run_remote_bash() {' "${script_path}" >/dev/null
+if sed -n '/^kpanel_run_test_noninteractive()/,/^linux_test()/p' "${script_path}" | grep -Eq '\|[[:space:]]*(ba)?sh'; then
+	echo "KPanel diagnostics must download scripts before execution so PTY stdin stays interactive" >&2
+	exit 1
+fi
 
 protocol_body="$(
 	awk '
@@ -50,7 +55,13 @@ if KJ_TEST_NONINTERACTIVE=0 kpanel_run_test_noninteractive list >/dev/null 2>&1;
 	exit 1
 fi
 
-printf '%s\n' '#!/bin/bash' "printf '%s\n' \"printf 'mock-score=123\\\\n'\"" >"$fake_bin/curl"
+printf '%s\n' \
+	'#!/bin/bash' \
+	'while [ "$#" -gt 0 ]; do' \
+	'	if [ "$1" = "-o" ]; then output="$2"; shift 2; else shift; fi' \
+	'done' \
+	'printf '"'"'%s\n'"'"' "printf '"'"'mock-score=123\\n'"'"'" >"$output"' \
+	>"$fake_bin/curl"
 chmod +x "$fake_bin/curl"
 send_stats() { :; }
 result="$(PATH="$fake_bin:$PATH" KJ_TEST_NONINTERACTIVE=1 kpanel_run_test_noninteractive run chatgpt)"

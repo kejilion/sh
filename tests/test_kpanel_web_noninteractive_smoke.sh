@@ -39,3 +39,8 @@ grep -F 'web_del "$@"' "${script_path}" >/dev/null
 grep -F 'KPANEL_DELETE_SITE deleted $yuming' "${script_path}" >/dev/null
 grep -F 'KPANEL_DELETE_DATABASE dropped $yuming' "${script_path}" >/dev/null
 grep -F 'rm -rf -- "/home/web/html/$yuming"' "${script_path}" >/dev/null
+grep -F 'kpanel_run_web_recipe_cli()' "${script_path}" >/dev/null
+grep -F 'kpanel_run_web_recipe_cli 3 "$@"' "${script_path}" >/dev/null
+grep -F 'kpanel_run_web_recipe_cli 27 "$@"' "${script_path}" >/dev/null
+grep -F 'ldnmp_wp "$@"' "${script_path}" >/dev/null
+grep -F 'ldnmp_Proxy "$@"' "${script_path}" >/dev/null

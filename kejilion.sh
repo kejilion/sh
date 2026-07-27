@@ -9421,6 +9421,29 @@ KPANEL_TEST_ITEM	nodequality	comprehensive	NodeQuality 综合测评	运行 NodeQ
 KPANEL_TEST_CATALOG
 }
 
+kpanel_run_remote_bash() {
+	local source_url="${1:-}"
+	shift || true
+	[ -n "$source_url" ] || return 64
+
+	local test_workspace test_script command_status
+	test_workspace="$(mktemp -d)" || return 1
+	test_script="$test_workspace/test.sh"
+	curl -fsSL "$source_url" -o "$test_script"
+	command_status=$?
+	if [ "$command_status" -ne 0 ]; then
+		rm -f "$test_script"
+		rmdir "$test_workspace" 2>/dev/null || true
+		return "$command_status"
+	fi
+	chmod 700 "$test_script"
+	bash "$test_script" "$@"
+	command_status=$?
+	rm -f "$test_script"
+	rmdir "$test_workspace" 2>/dev/null || true
+	return "$command_status"
+}
+
 kpanel_run_test_noninteractive() {
 	[ "${KJ_TEST_NONINTERACTIVE:-}" = "1" ] || return 2
 
@@ -9445,68 +9468,66 @@ kpanel_run_test_noninteractive() {
 				case "$selector" in
 				chatgpt)
 					send_stats "ChatGPT解锁状态检测"
-					curl -fsSL https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh | bash
+					kpanel_run_remote_bash https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh
 					;;
 				region)
 					send_stats "Region流媒体解锁测试"
-					curl -fsSL https://check.unlock.media | bash
+					kpanel_run_remote_bash https://check.unlock.media
 					;;
 				media)
 					send_stats "yeahwu流媒体解锁检测"
-					install wget
-					wget -qO- ${gh_proxy}github.com/yeahwu/check/raw/main/check.sh | bash
+					kpanel_run_remote_bash ${gh_proxy}github.com/yeahwu/check/raw/main/check.sh
 					;;
 				ip-quality)
 					send_stats "xykt_IP质量体检脚本"
-					curl -fsSL https://IP.Check.Place | bash
+					kpanel_run_remote_bash https://IP.Check.Place
 					;;
 				besttrace)
 					send_stats "besttrace三网回程延迟路由测试"
-					install wget
-					wget -qO- https://git.io/besttrace | bash
+					kpanel_run_remote_bash https://git.io/besttrace
 					;;
 				mtr)
 					send_stats "mtr_trace三网回程线路测试"
-					curl -fsSL ${gh_proxy}raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh | bash
+					kpanel_run_remote_bash ${gh_proxy}raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh
 					;;
 				superspeed)
 					send_stats "Superspeed三网测速"
-					curl -fsSL https://git.io/superspeed_uxh | bash
+					kpanel_run_remote_bash https://git.io/superspeed_uxh
 					;;
 				nxtrace-fast)
 					send_stats "nxtrace快速回程测试脚本"
-					curl -fsSL https://nxtrace.org/nt | bash
+					kpanel_run_remote_bash https://nxtrace.org/nt
 					nexttrace --fast-trace --tcp
 					;;
 				backtrace)
 					send_stats "ludashi2020三网线路测试"
-					curl -fsSL ${gh_proxy}raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh | sh
+					kpanel_run_remote_bash ${gh_proxy}raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh
 					;;
 				speedtest)
 					send_stats "i-abc多功能测速脚本"
-					curl -fsSL ${gh_proxy}raw.githubusercontent.com/i-abc/Speedtest/main/speedtest.sh | bash
+					kpanel_run_remote_bash ${gh_proxy}raw.githubusercontent.com/i-abc/Speedtest/main/speedtest.sh
 					;;
 				net-quality)
 					send_stats "网络质量测试脚本"
-					curl -fsSL https://Net.Check.Place | bash
+					kpanel_run_remote_bash https://Net.Check.Place
 					;;
 				tcp-quality)
 					send_stats "TcpQuality TCP重传探测脚本"
-					curl -fsSL https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh | bash
+					kpanel_run_remote_bash https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh
 					;;
 				yabs)
 					send_stats "yabs性能测试"
 					check_swap
-					curl -fsSL https://yabs.sh | bash -s -- -i -5
+					kpanel_run_remote_bash https://yabs.sh -i -5
 					;;
 				cpu)
 					send_stats "icu/gb5 CPU性能测试脚本"
 					check_swap
-					curl -fsSL ${gh_proxy}raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh | bash
+					kpanel_run_remote_bash ${gh_proxy}raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh
 					;;
 				bench)
 					send_stats "bench性能测试"
-					curl -fsSL https://bench.sh | bash
+					kpanel_run_remote_bash https://bench.sh
 					;;
 				ecs)
 					send_stats "spiritysdx融合怪测评"
@@ -9525,7 +9546,7 @@ kpanel_run_test_noninteractive() {
 					;;
 				nodequality)
 					send_stats "nodequality融合怪测评"
-					curl -fsSL https://run.NodeQuality.com | bash
+					kpanel_run_remote_bash https://run.NodeQuality.com
 					;;
 				*)
 					echo "KPANEL_TEST_ERROR unsupported test selector" >&2
@@ -9938,9 +9959,24 @@ fix_phpfpm_conf() {
 
 
 
+kpanel_run_web_recipe_cli() {
+	local selector="${1:-}"
+	local domain="${2:-}"
+	if [ "$#" -ne 2 ]; then
+		echo "用法: k <建站命令> <域名>"
+		return 64
+	fi
+	KJ_WEB_NONINTERACTIVE=1
+	KJ_WEB_RECIPE="$selector"
+	KJ_WEB_DOMAIN="$domain"
+	linux_ldnmp
+}
+
+
 linux_ldnmp() {
   while true; do
 
+	if [ "${KJ_WEB_NONINTERACTIVE:-0}" != "1" ]; then
 	clear
 	# send_stats "LDNMP建站"
 	echo -e "${gl_huang}LDNMP建站"
@@ -9966,6 +10002,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}0.   ${gl_bai}返回主菜单"
 	echo -e "${gl_huang}------------------------${gl_bai}"
+	fi
 	if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
 		sub_choice="${KJ_WEB_RECIPE:-}"
 		case "$sub_choice" in
@@ -22990,6 +23027,38 @@ else
 			shift
 			ldnmp_wp "$@"
 
+			;;
+		discuz)
+			shift
+			kpanel_run_web_recipe_cli 3 "$@"
+			;;
+		kodbox)
+			shift
+			kpanel_run_web_recipe_cli 4 "$@"
+			;;
+		maccms)
+			shift
+			kpanel_run_web_recipe_cli 5 "$@"
+			;;
+		dujiaoka)
+			shift
+			kpanel_run_web_recipe_cli 6 "$@"
+			;;
+		flarum)
+			shift
+			kpanel_run_web_recipe_cli 7 "$@"
+			;;
+		typecho)
+			shift
+			kpanel_run_web_recipe_cli 8 "$@"
+			;;
+		linkstack)
+			shift
+			kpanel_run_web_recipe_cli 9 "$@"
+			;;
+		ai-prompt)
+			shift
+			kpanel_run_web_recipe_cli 27 "$@"
 			;;
 		fd|rp|反代)
 			shift
