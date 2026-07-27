@@ -2879,6 +2879,44 @@ kpanel_app_progress() {
 	printf 'KPANEL_PROGRESS %s %s\n' "$1" "$2"
 }
 
+kpanel_app_interactive_choice() {
+	local target_variable="$1"
+
+	[ "${KJ_APP_INTERACTIVE:-}" = "1" ] || return 2
+	case "${KJ_APP_ACTION:-}" in
+		install)
+			printf -v "$target_variable" '%s' "1"
+			;;
+		update)
+			kpanel_app_verified_service true || return 1
+			printf -v "$target_variable" '%s' "2"
+			;;
+		uninstall)
+			kpanel_app_verified_service true || return 1
+			printf -v "$target_variable" '%s' "3"
+			;;
+		direct_access)
+			kpanel_app_verified_service true || return 1
+			case "${KJ_APP_ACCESS_MODE:-}" in
+				direct)
+					printf -v "$target_variable" '%s' "7"
+					;;
+				domain_only)
+					printf -v "$target_variable" '%s' "8"
+					;;
+				*)
+					echo "错误: KPanel 未提供有效的应用访问模式"
+					return 1
+					;;
+			esac
+			;;
+		*)
+			echo "错误: KPanel 交互终端不支持此应用操作"
+			return 1
+			;;
+	esac
+}
+
 kpanel_web_progress() {
 	[ "${KJ_WEB_NONINTERACTIVE:-}" = "1" ] || return 0
 	printf 'KPANEL_PROGRESS %s %s\n' "$1" "$2"
@@ -3203,7 +3241,12 @@ while true; do
 	echo "------------------------"
 	echo "0. 返回上一级选单"
 	echo "------------------------"
-	read -e -p "请输入你的选择: " choice
+	if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+		kpanel_app_interactive_choice choice || return 1
+	else
+		read -e -p "请输入你的选择: " choice
+	fi
+	local action_status=0
 	 case $choice in
 		1)
 			setup_docker_dir
@@ -3223,7 +3266,12 @@ while true; do
 
 			install jq
 			install_docker
-			docker_rum
+			if ! docker_rum; then
+				echo -e "${gl_hong}安装失败: ${gl_bai}应用容器未能启动。"
+				if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+					return 1
+				fi
+			fi
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 			add_app_id
@@ -3240,7 +3288,12 @@ while true; do
 		2)
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
-			docker_rum
+			if ! docker_rum; then
+				echo -e "${gl_hong}更新失败: ${gl_bai}应用容器未能重新启动。"
+				if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+					return 1
+				fi
+			fi
 
 			add_app_id
 			kpanel_app_restore_access_mode "$(kpanel_app_read_access_mode)"
@@ -3254,7 +3307,12 @@ while true; do
 			send_stats "更新$docker_name"
 			;;
 		3)
-			docker rm -f "$docker_name"
+			if ! docker rm -f "$docker_name"; then
+				echo -e "${gl_hong}卸载失败: ${gl_bai}应用容器未能删除。"
+				if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+					return 1
+				fi
+			fi
 			docker rmi -f "$docker_img"
 			rm -rf "/home/docker/$docker_name"
 			rm -f /home/docker/${docker_name}_port.conf
@@ -3271,30 +3329,33 @@ while true; do
 			add_yuming
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 			block_container_port "$docker_name" "$ipv4_address"
-			kpanel_app_write_access_mode domain_only
+			kpanel_app_write_access_mode domain_only || action_status=1
 			;;
 
 		6)
 			echo "域名格式 example.com 不带https://"
-			web_del
+			web_del || action_status=1
 			;;
 
 		7)
 			send_stats "允许IP访问 ${docker_name}"
 			clear_container_rules "$docker_name" "$ipv4_address"
-			kpanel_app_write_access_mode direct
+			kpanel_app_write_access_mode direct || action_status=1
 			;;
 
 		8)
 			send_stats "阻止IP访问 ${docker_name}"
 			block_container_port "$docker_name" "$ipv4_address"
-			kpanel_app_write_access_mode domain_only
+			kpanel_app_write_access_mode domain_only || action_status=1
 			;;
 
 		*)
 			break
 			;;
 	 esac
+	 if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+		return "$action_status"
+	 fi
 	 break_end
 done
 
@@ -3336,7 +3397,12 @@ docker_app_plus() {
 		echo "------------------------"
 		echo "0. 返回上一级选单"
 		echo "------------------------"
-		read -e -p "输入你的选择: " choice
+		if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+			kpanel_app_interactive_choice choice || return 1
+		else
+			read -e -p "输入你的选择: " choice
+		fi
+		local action_status=0
 		case $choice in
 			1)
 				setup_docker_dir
@@ -3364,6 +3430,7 @@ docker_app_plus() {
 					send_stats "$app_name 安装"
 				else
 					echo -e "${gl_hong}安装失败: ${gl_bai}未登记应用状态，请根据上方错误修复后重试。"
+					action_status=1
 				fi
 				;;
 
@@ -3374,6 +3441,7 @@ docker_app_plus() {
 					send_stats "$app_name 更新"
 				else
 					echo -e "${gl_hong}更新失败: ${gl_bai}已保留原应用登记状态。"
+					action_status=1
 				fi
 				;;
 
@@ -3385,6 +3453,7 @@ docker_app_plus() {
 					send_stats "$app_name 卸载"
 				else
 					echo -e "${gl_hong}卸载失败: ${gl_bai}已保留应用登记状态。"
+					action_status=1
 				fi
 				;;
 
@@ -3395,29 +3464,32 @@ docker_app_plus() {
 				ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 				local docker_check_name="${docker_app_service:-$docker_name}"
 				block_container_port "$docker_check_name" "$ipv4_address"
-				kpanel_app_write_access_mode domain_only
+				kpanel_app_write_access_mode domain_only || action_status=1
 
 				;;
 			6)
 				echo "域名格式 example.com 不带https://"
-				web_del
+				web_del || action_status=1
 				;;
 			7)
 				send_stats "允许IP访问 ${docker_name}"
 				local docker_check_name="${docker_app_service:-$docker_name}"
 				clear_container_rules "$docker_check_name" "$ipv4_address"
-				kpanel_app_write_access_mode direct
+				kpanel_app_write_access_mode direct || action_status=1
 				;;
 			8)
 				send_stats "阻止IP访问 ${docker_name}"
 				local docker_check_name="${docker_app_service:-$docker_name}"
 				block_container_port "$docker_check_name" "$ipv4_address"
-				kpanel_app_write_access_mode domain_only
+				kpanel_app_write_access_mode domain_only || action_status=1
 				;;
 			*)
 				break
 				;;
 		esac
+		if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+			return "$action_status"
+		fi
 		break_end
 	done
 }
@@ -19863,6 +19935,9 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  ;;
 	esac
 	if [ "${KJ_APP_NONINTERACTIVE:-}" = "1" ]; then
+		return
+	fi
+	if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
 		return
 	fi
 	break_end
