@@ -1540,7 +1540,8 @@ certs_status() {
 		send_stats "域名证书申请成功"
 	else
 		send_stats "域名证书申请失败"
-		if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+		if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ] &&
+			! kpanel_web_interactive; then
 			echo "KPANEL_PROGRESS 100 域名证书申请失败，请检查 DNS、80/443 端口和签发限额"
 			return 1
 		fi
@@ -2920,6 +2921,11 @@ kpanel_app_interactive_choice() {
 kpanel_web_progress() {
 	[ "${KJ_WEB_NONINTERACTIVE:-}" = "1" ] || return 0
 	printf 'KPANEL_PROGRESS %s %s\n' "$1" "$2"
+}
+
+kpanel_web_interactive() {
+	[ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ] &&
+		[ "${KJ_WEB_INTERACTIVE:-0}" = "1" ]
 }
 
 kpanel_app_service_name() {

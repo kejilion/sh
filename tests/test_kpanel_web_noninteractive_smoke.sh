@@ -6,6 +6,8 @@ script_path="${project_root}/kejilion.sh"
 
 bash -n "${script_path}"
 grep -F 'if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then' "${script_path}" >/dev/null
+grep -F 'kpanel_web_interactive()' "${script_path}" >/dev/null
+grep -F '! kpanel_web_interactive; then' "${script_path}" >/dev/null
 grep -F 'sub_choice="${KJ_WEB_RECIPE:-}"' "${script_path}" >/dev/null
 grep -F 'yuming="${KJ_WEB_DOMAIN:-}"' "${script_path}" >/dev/null
 grep -F '域名已存在，拒绝覆盖现有产物' "${script_path}" >/dev/null
