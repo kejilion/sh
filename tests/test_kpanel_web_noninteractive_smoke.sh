@@ -20,10 +20,16 @@ recipe_case="$(
 		capture && /不支持的 KJ_WEB_RECIPE/ { exit }
 	' "${script_path}"
 )"
-for selector in 3 4 5 6 7 8 9 27; do
+for selector in 2 3 4 5 6 7 8 9 23 27; do
 	printf '%s\n' "${recipe_case}" | grep -E "(^|[[:space:]|])${selector}([|)])" >/dev/null
 done
-if printf '%s\n' "${recipe_case}" | grep -E '(^|[[:space:]|])(20|22|23|24|29|30|34|38)([|)])' >/dev/null; then
+if printf '%s\n' "${recipe_case}" | grep -E '(^|[[:space:]|])(20|22|24|29|30|34|38)([|)])' >/dev/null; then
 	printf '%s\n' "unsafe or interactive recipe selector was exposed to KPanel" >&2
 	exit 1
 fi
+
+grep -F 'ldnmp_wp "${KJ_WEB_DOMAIN:-}"' "${script_path}" >/dev/null
+grep -F 'ldnmp_Proxy "${KJ_WEB_DOMAIN:-}" "${KJ_WEB_PROXY_HOST:-}" "${KJ_WEB_PROXY_PORT:-}"' "${script_path}" >/dev/null
+grep -F 'KJ_WEB_PROXY_HOST 不是有效的 IP 或主机名' "${script_path}" >/dev/null
+grep -F 'KJ_WEB_PROXY_PORT 不是有效端口' "${script_path}" >/dev/null
+grep -F 'if [ "$sub_choice" != "23" ] && [ ! -d "/home/web/html/${KJ_WEB_DOMAIN}" ]; then' "${script_path}" >/dev/null
