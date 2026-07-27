@@ -35,3 +35,7 @@ grep -F 'ldnmp_Proxy "${KJ_WEB_DOMAIN:-}" "${KJ_WEB_PROXY_HOST:-}" "${KJ_WEB_PRO
 grep -F 'KJ_WEB_PROXY_HOST 不是有效的 IP 或主机名' "${script_path}" >/dev/null
 grep -F 'KJ_WEB_PROXY_PORT 不是有效端口' "${script_path}" >/dev/null
 grep -F 'if [ "$sub_choice" != "23" ] && [ ! -d "/home/web/html/${KJ_WEB_DOMAIN}" ]; then' "${script_path}" >/dev/null
+grep -F 'web_del "$@"' "${script_path}" >/dev/null
+grep -F 'KPANEL_DELETE_SITE deleted $yuming' "${script_path}" >/dev/null
+grep -F 'KPANEL_DELETE_DATABASE dropped $yuming' "${script_path}" >/dev/null
+grep -F 'rm -rf -- "/home/web/html/$yuming"' "${script_path}" >/dev/null
