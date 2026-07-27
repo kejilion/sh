@@ -15947,21 +15947,37 @@ openclaw_backup_restore_menu() {
 
 
 
+refresh_apps_catalog() {
+	local apps_dir="$HOME/apps"
+	local apps_remote="${gh_proxy}github.com/kejilion/apps.git"
+
+	install git || return 1
+	if [ -e "$apps_dir" ] && [ ! -d "$apps_dir/.git" ]; then
+		echo -e "${gl_hong}错误: ${gl_bai}${apps_dir} 已存在但不是应用市场 Git 仓库，拒绝覆盖。"
+		return 1
+	fi
+	if [ ! -d "$apps_dir/.git" ]; then
+		timeout 30s git clone --depth=1 "$apps_remote" "$apps_dir" || {
+			echo -e "${gl_hong}应用列表下载失败，拒绝使用不完整配置。${gl_bai}"
+			return 1
+		}
+		return 0
+	fi
+	if ! timeout 30s git -C "$apps_dir" pull --ff-only "$apps_remote" main; then
+		echo -e "${gl_hong}应用列表更新失败，拒绝继续使用可能过期的配置。${gl_bai}"
+		echo "请检查网络或 ${apps_dir} 中的本地修改后重试。"
+		return 1
+	fi
+}
+
 linux_panel() {
 
 local sub_choice="$1"
 
 clear
 cd ~
-install git
 echo -e "${gl_kjlan}正在更新应用列表请稍等……${gl_bai}"
-if [ ! -d apps/.git ]; then
-	timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
-else
-	cd apps
-	# git pull origin main > /dev/null 2>&1
-	timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
-fi
+refresh_apps_catalog || return 1
 
 while true; do
 
@@ -19805,15 +19821,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  kejilion
 		  ;;
 	  *)
-		cd ~
-		install git
-		if [ ! -d apps/.git ]; then
-			timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
-		else
-			cd apps
-			# git pull origin main > /dev/null 2>&1
-			timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
-		fi
+		refresh_apps_catalog || return 1
 		local custom_app="$HOME/apps/${sub_choice}.conf"
 		if [ -f "$custom_app" ]; then
 			. "$custom_app"
