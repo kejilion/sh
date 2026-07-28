@@ -16,6 +16,14 @@ canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
+kpanel_protocol_active() {
+	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_WEB_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_WEB_INTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_TEST_NONINTERACTIVE:-}" = "1" ]
+}
+
 
 quanju_canshu() {
 if [ "$canshu" = "CN" ]; then
@@ -100,17 +108,18 @@ fi
 
 
 
-canshu_v6
-CheckFirstRun_true
-yinsiyuanquan2
+if ! kpanel_protocol_active; then
+	canshu_v6
+	CheckFirstRun_true
+	yinsiyuanquan2
 
-
-sed -i '/^alias k=/d' ~/.bashrc > /dev/null 2>&1
-sed -i '/^alias k=/d' ~/.profile > /dev/null 2>&1
-sed -i '/^alias k=/d' ~/.bash_profile > /dev/null 2>&1
-cp -f ./kejilion.sh ~/kejilion.sh > /dev/null 2>&1
-cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
-ln -sf /usr/local/bin/k /usr/bin/k > /dev/null 2>&1
+	sed -i '/^alias k=/d' ~/.bashrc > /dev/null 2>&1
+	sed -i '/^alias k=/d' ~/.profile > /dev/null 2>&1
+	sed -i '/^alias k=/d' ~/.bash_profile > /dev/null 2>&1
+	cp -f ./kejilion.sh ~/kejilion.sh > /dev/null 2>&1
+	cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+	ln -sf /usr/local/bin/k /usr/bin/k > /dev/null 2>&1
+fi
 
 
 
@@ -141,7 +150,9 @@ UserLicenseAgreement() {
 	fi
 }
 
-CheckFirstRun_false
+if ! kpanel_protocol_active; then
+	CheckFirstRun_false
+fi
 
 
 

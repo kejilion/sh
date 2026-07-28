@@ -6,6 +6,8 @@ script_path="${project_root}/kejilion.sh"
 
 bash -n "${script_path}"
 grep -F 'kpanel_set_dns_noninteractive() {' "${script_path}" >/dev/null
+grep -F 'kpanel_protocol_active() {' "${script_path}" >/dev/null
+grep -F 'if ! kpanel_protocol_active; then' "${script_path}" >/dev/null
 grep -F '[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] || return 2' "${script_path}" >/dev/null
 grep -F 'KPANEL_DNS_MANAGER systemd-resolved' "${script_path}" >/dev/null
 grep -F 'KPANEL_DNS_MANAGER resolv.conf' "${script_path}" >/dev/null
@@ -34,6 +36,22 @@ fi
 kpanel_dns_is_ipv6 "2606:4700:4700::1111"
 if kpanel_dns_is_ipv6 "not-an-ip"; then
 	echo "DNS IPv6 validator accepted an invalid address" >&2
+	exit 1
+fi
+
+protocol_guard_body="$(
+	awk '
+		/^kpanel_protocol_active\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${script_path}"
+)"
+eval "${protocol_guard_body}"
+KJ_DNS_NONINTERACTIVE=1
+kpanel_protocol_active
+unset KJ_DNS_NONINTERACTIVE
+if kpanel_protocol_active; then
+	echo "KPanel protocol guard activated without a protocol environment variable" >&2
 	exit 1
 fi
 
