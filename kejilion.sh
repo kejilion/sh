@@ -18,6 +18,7 @@ ENABLE_STATS="true"
 
 kpanel_protocol_active() {
 	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_WEB_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_WEB_INTERACTIVE:-}" = "1" ] ||
@@ -3666,6 +3667,107 @@ f2b_install_sshd() {
 		systemctl enable rsyslog
 	fi
 
+}
+
+kpanel_f2b_jail_name() {
+	if grep -qi 'Alpine' /etc/issue 2>/dev/null &&
+		{ [ -f /etc/fail2ban/filter.d/alpine-sshd.conf ] ||
+		  [ -f /etc/fail2ban/jail.d/alpine-ssh.conf ] ||
+		  [ -f /etc/fail2ban/jail.d/alpine-sshd.local ]; }; then
+		printf '%s\n' "alpine-sshd"
+	else
+		printf '%s\n' "sshd"
+	fi
+}
+
+kpanel_f2b_enabled() {
+	local jail_name
+	command -v fail2ban-client >/dev/null 2>&1 || return 1
+	fail2ban-client ping >/dev/null 2>&1 || return 1
+	jail_name=$(kpanel_f2b_jail_name)
+	fail2ban-client status "$jail_name" >/dev/null 2>&1
+}
+
+kpanel_f2b_autostart() {
+	if command -v apk >/dev/null 2>&1; then
+		rc-update show default 2>/dev/null | grep -Eq '(^|[[:space:]])fail2ban([[:space:]]|$)'
+	else
+		/bin/systemctl is-enabled fail2ban.service >/dev/null 2>&1
+	fi
+}
+
+kpanel_f2b_status() {
+	local installed=false running=false enabled=false autostart=false
+	local jail_name banned=0 jail_status=""
+	jail_name=$(kpanel_f2b_jail_name)
+	if command -v fail2ban-client >/dev/null 2>&1; then
+		installed=true
+		if fail2ban-client ping >/dev/null 2>&1; then
+			running=true
+			if jail_status=$(fail2ban-client status "$jail_name" 2>/dev/null); then
+				enabled=true
+				banned=$(printf '%s\n' "$jail_status" |
+					awk -F: '/Currently banned/{gsub(/[[:space:]]/, "", $2); print $2; exit}')
+				case "$banned" in
+					''|*[!0-9]*) banned=0 ;;
+				esac
+			fi
+		fi
+		kpanel_f2b_autostart && autostart=true
+	fi
+	printf 'KPANEL_F2B_STATUS {"installed":%s,"running":%s,"enabled":%s,"autostart":%s,"jail":"%s","banned":%s}\n' \
+		"$installed" "$running" "$enabled" "$autostart" "$jail_name" "$banned"
+}
+
+kpanel_f2b_dispatch() {
+	local command="${1:-status}" changed=false
+	printf '%s\n' "KPANEL_F2B_PROTOCOL 1"
+	case "$command" in
+		status)
+			kpanel_f2b_status
+			;;
+		enable)
+			root_use
+			if kpanel_f2b_enabled && kpanel_f2b_autostart; then
+				printf '%s\n' "KPANEL_F2B_RESULT unchanged"
+				kpanel_f2b_status
+				return 0
+			fi
+			f2b_install_sshd || return 1
+			kpanel_f2b_enabled || {
+				echo "Fail2Ban SSH jail 未能正常启动" >&2
+				return 1
+			}
+			changed=true
+			printf 'KPANEL_F2B_RESULT %s\n' "$changed"
+			kpanel_f2b_status
+			;;
+		disable)
+			root_use
+			if ! command -v fail2ban-client >/dev/null 2>&1; then
+				printf '%s\n' "KPANEL_F2B_RESULT unchanged"
+				kpanel_f2b_status
+				return 0
+			fi
+			if command -v apk >/dev/null 2>&1; then
+				service fail2ban stop >/dev/null 2>&1 || true
+				rc-update del fail2ban default >/dev/null 2>&1 || true
+			else
+				/bin/systemctl disable --now fail2ban.service >/dev/null 2>&1 || return 1
+			fi
+			if fail2ban-client ping >/dev/null 2>&1; then
+				echo "Fail2Ban 服务仍在运行" >&2
+				return 1
+			fi
+			changed=true
+			printf 'KPANEL_F2B_RESULT %s\n' "$changed"
+			kpanel_f2b_status
+			;;
+		*)
+			echo "用法: k f2b [status|enable|disable]" >&2
+			return 2
+			;;
+	esac
 }
 
 f2b_sshd() {
@@ -23502,7 +23604,7 @@ echo "阻止IP              k zzip 177.5.25.36 |k 阻止IP 177.5.25.36"
 echo "命令收藏夹          k fav | k 命令收藏夹"
 echo "应用市场管理        k app"
 echo "应用编号快捷管理    k app 26 | k app 1panel | k app npm"
-echo "fail2ban管理        k fail2ban | k f2b"
+echo "fail2ban管理        k fail2ban | k f2b [status|enable|disable]"
 echo "显示系统信息        k info"
 echo "ROOT密钥管理        k sshkey"
 echo "SSH公钥导入(URL)    k sshkey <url>"
@@ -23796,7 +23898,12 @@ else
 			;;
 
 		fail2ban|f2b)
-			fail2ban_panel
+			shift
+			if [ "$#" -eq 0 ]; then
+				fail2ban_panel
+			else
+				kpanel_f2b_dispatch "$@"
+			fi
 			;;
 
 
