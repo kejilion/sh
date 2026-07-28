@@ -20,6 +20,7 @@ kpanel_protocol_active() {
 	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_APP_INTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_WEB_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_WEB_INTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_LDNMP_NONINTERACTIVE:-}" = "1" ] ||
@@ -2923,7 +2924,9 @@ kpanel_app_interactive_manage_choice() {
 	local target_variable="$1"
 	local selected_choice=""
 
-	kpanel_app_verified_service true || return 1
+	if [ "${KJ_APP_MARKER_RECOVERY:-0}" != "1" ]; then
+		kpanel_app_verified_service true || return 1
+	fi
 	read -r -e -p "请输入你的选择: " selected_choice || return 1
 	if [[ ! "$selected_choice" =~ ^[0-9]+$ ]]; then
 		echo "错误: KPanel 应用管理终端只接受菜单编号"
@@ -3204,10 +3207,14 @@ kpanel_run_docker_app_action() {
 
 	kpanel_app_progress 5 "正在核对 kejilion.sh 安装标记与主容器"
 	service_name="$(kpanel_app_verified_service true)" || return 1
-	grep -qxF "${app_id}" /home/docker/appno.txt 2>/dev/null || {
-		echo "错误: 未发现 kejilion.sh 应用安装标记"
-		return 1
-	}
+	if ! grep -qxF "${app_id}" /home/docker/appno.txt 2>/dev/null; then
+		if [ "${KJ_APP_RECONCILE_MARKER:-0}" != "1" ]; then
+			echo "错误: 未发现 kejilion.sh 应用安装标记"
+			return 1
+		fi
+		kpanel_app_progress 10 "正在修复 kejilion.sh 应用安装标记"
+		add_app_id || return 1
+	fi
 
 	case "$action" in
 		update)

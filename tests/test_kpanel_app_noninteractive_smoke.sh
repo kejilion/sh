@@ -4,6 +4,13 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 script_path="${project_root}/kejilion.sh"
 
+protocol_body="$(
+	awk '
+		/^kpanel_protocol_active\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${script_path}"
+)"
 helper_body="$(
 	awk '
 		/^kpanel_run_docker_app_install\(\) \{/ { capture=1 }
@@ -69,11 +76,15 @@ printf '%s\n' "${helper_body}" | grep -F 'echo "$docker_port" > "/home/docker/${
 printf '%s\n' "${helper_body}" | grep -F 'kpanel_app_progress 100 "应用安装完成"' >/dev/null
 printf '%s\n' "${action_body}" | grep -F 'kpanel_app_verified_service true' >/dev/null
 printf '%s\n' "${action_body}" | grep -F 'KJ_APP_ACCESS_MODE' >/dev/null
+printf '%s\n' "${action_body}" | grep -F 'KJ_APP_RECONCILE_MARKER' >/dev/null
+printf '%s\n' "${action_body}" | grep -F 'add_app_id || return 1' >/dev/null
 printf '%s\n' "${docker_app_body}" | grep -F 'kpanel_run_docker_app_action standard' >/dev/null
 printf '%s\n' "${docker_app_plus_body}" | grep -F 'kpanel_run_docker_app_action plus' >/dev/null
+printf '%s\n' "${protocol_body}" | grep -F '[ "${KJ_APP_INTERACTIVE:-}" = "1" ]' >/dev/null
 grep -F 'if [ "${KJ_APP_NONINTERACTIVE:-}" = "1" ]; then' "${script_path}" >/dev/null
 grep -F 'if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then' "${script_path}" >/dev/null
 printf '%s\n' "${interactive_manage_body}" | grep -F 'KPanel 应用管理终端只接受菜单编号' >/dev/null
+printf '%s\n' "${interactive_manage_body}" | grep -F 'KJ_APP_MARKER_RECOVERY' >/dev/null
 
 eval "${interactive_manage_body}"
 eval "${interactive_body}"
@@ -97,6 +108,21 @@ export KJ_APP_ACTION=manage
 choice=""
 kpanel_app_interactive_choice choice <<<'6'
 test "${choice}" = "6"
+recovery_verifications=0
+kpanel_app_verified_service() {
+	recovery_verifications=$((recovery_verifications + 1))
+	return 1
+}
+export KJ_APP_MARKER_RECOVERY=1
+kpanel_app_interactive_choice choice <<<'1'
+test "${choice}" = "1"
+test "${recovery_verifications}" = "0"
+unset KJ_APP_MARKER_RECOVERY
+if kpanel_app_interactive_choice choice <<<'1' >/dev/null 2>&1; then
+	printf '%s\n' "interactive management bypassed container verification without recovery mode" >&2
+	exit 1
+fi
+kpanel_app_verified_service() { return 0; }
 if kpanel_app_interactive_choice choice <<<'invalid' >/dev/null 2>&1; then
 	printf '%s\n' "interactive management accepted a non-menu input" >&2
 	exit 1
@@ -112,7 +138,7 @@ if kpanel_app_interactive_choice choice >/dev/null 2>&1; then
 	printf '%s\n' "interactive helper accepted an unsupported action" >&2
 	exit 1
 fi
-unset KJ_APP_INTERACTIVE KJ_APP_ACTION KJ_APP_ACCESS_MODE
+unset KJ_APP_INTERACTIVE KJ_APP_ACTION KJ_APP_ACCESS_MODE KJ_APP_MARKER_RECOVERY
 
 test_app_root="$(mktemp -d)"
 trap 'rm -rf "${test_app_root}"' EXIT
