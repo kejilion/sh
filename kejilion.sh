@@ -2919,6 +2919,19 @@ kpanel_app_progress() {
 	printf 'KPANEL_PROGRESS %s %s\n' "$1" "$2"
 }
 
+kpanel_app_interactive_manage_choice() {
+	local target_variable="$1"
+	local selected_choice=""
+
+	kpanel_app_verified_service true || return 1
+	read -r -e -p "请输入你的选择: " selected_choice || return 1
+	if [[ ! "$selected_choice" =~ ^[0-9]+$ ]]; then
+		echo "错误: KPanel 应用管理终端只接受菜单编号"
+		return 1
+	fi
+	printf -v "$target_variable" '%s' "$selected_choice"
+}
+
 kpanel_app_interactive_choice() {
 	local target_variable="$1"
 
@@ -2934,6 +2947,9 @@ kpanel_app_interactive_choice() {
 		uninstall)
 			kpanel_app_verified_service true || return 1
 			printf -v "$target_variable" '%s' "3"
+			;;
+		manage)
+			kpanel_app_interactive_manage_choice "$target_variable"
 			;;
 		direct_access)
 			kpanel_app_verified_service true || return 1

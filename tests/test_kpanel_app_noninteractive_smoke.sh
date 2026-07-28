@@ -25,6 +25,13 @@ interactive_body="$(
 		capture && /^}$/ { exit }
 	' "${script_path}"
 )"
+interactive_manage_body="$(
+	awk '
+		/^kpanel_app_interactive_manage_choice\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${script_path}"
+)"
 port_body="$(
 	awk '
 		/^kpanel_app_install_port\(\) \{/ { capture=1 }
@@ -66,7 +73,9 @@ printf '%s\n' "${docker_app_body}" | grep -F 'kpanel_run_docker_app_action stand
 printf '%s\n' "${docker_app_plus_body}" | grep -F 'kpanel_run_docker_app_action plus' >/dev/null
 grep -F 'if [ "${KJ_APP_NONINTERACTIVE:-}" = "1" ]; then' "${script_path}" >/dev/null
 grep -F 'if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then' "${script_path}" >/dev/null
+printf '%s\n' "${interactive_manage_body}" | grep -F 'KPanel 应用管理终端只接受菜单编号' >/dev/null
 
+eval "${interactive_manage_body}"
 eval "${interactive_body}"
 unset KJ_APP_INTERACTIVE KJ_APP_ACTION
 choice=""
@@ -84,6 +93,14 @@ test "${choice}" = "2"
 export KJ_APP_ACTION=uninstall
 kpanel_app_interactive_choice choice
 test "${choice}" = "3"
+export KJ_APP_ACTION=manage
+choice=""
+kpanel_app_interactive_choice choice <<<'6'
+test "${choice}" = "6"
+if kpanel_app_interactive_choice choice <<<'invalid' >/dev/null 2>&1; then
+	printf '%s\n' "interactive management accepted a non-menu input" >&2
+	exit 1
+fi
 export KJ_APP_ACTION=direct_access KJ_APP_ACCESS_MODE=direct
 kpanel_app_interactive_choice choice
 test "${choice}" = "7"
