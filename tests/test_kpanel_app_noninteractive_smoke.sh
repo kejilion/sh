@@ -46,6 +46,20 @@ port_body="$(
 		capture && /^}$/ { exit }
 	' "${script_path}"
 )"
+port_in_use_body="$(
+	awk '
+		/^kpanel_app_port_in_use\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${script_path}"
+)"
+choose_port_body="$(
+	awk '
+		/^kpanel_app_choose_install_port\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${script_path}"
+)"
 docker_app_body="$(
 	awk '
 		/^docker_app\(\) \{/ { capture=1 }
@@ -70,6 +84,10 @@ action_body="$(
 
 printf '%s\n' "${helper_body}" | grep -F '[ "${KJ_APP_ACTION:-}" != "install" ]' >/dev/null
 printf '%s\n' "${helper_body}" | grep -F 'kpanel_app_install_port || return 1' >/dev/null
+printf '%s\n' "${docker_app_body}" | grep -F 'kpanel_app_choose_install_port || return 1' >/dev/null
+printf '%s\n' "${docker_app_plus_body}" | grep -F 'kpanel_app_choose_install_port || return 1' >/dev/null
+printf '%s\n' "${choose_port_body}" | grep -F '[ "${KJ_APP_INTERACTIVE:-}" = "1" ]' >/dev/null
+printf '%s\n' "${choose_port_body}" | grep -F 'kpanel_app_install_port' >/dev/null
 printf '%s\n' "${helper_body}" | grep -F 'if ! docker_app_install; then' >/dev/null
 printf '%s\n' "${helper_body}" | grep -F 'if ! docker_rum; then' >/dev/null
 printf '%s\n' "${helper_body}" | grep -F 'echo "$docker_port" > "/home/docker/${docker_name}_port.conf"' >/dev/null
@@ -144,7 +162,9 @@ test_app_root="$(mktemp -d)"
 trap 'rm -rf "${test_app_root}"' EXIT
 mkdir -p "${test_app_root}"
 runtime_helpers="$(
-	printf '%s\n%s\n%s\n' "${progress_body}" "${port_body}" "${helper_body}" |
+	printf '%s\n%s\n%s\n%s\n%s\n' \
+		"${progress_body}" "${port_in_use_body}" "${port_body}" \
+		"${choose_port_body}" "${helper_body}" |
 		sed "s|/home/docker|${test_app_root}|g"
 )"
 eval "${runtime_helpers}"
@@ -176,6 +196,14 @@ printf '%s\n' "${runtime_output}" | grep -F "KPANEL_PROGRESS 5" >/dev/null
 printf '%s\n' "${runtime_output}" | grep -F "KPANEL_PROGRESS 100" >/dev/null
 printf '%s\n' "${runtime_output}" | grep -F "user=admin" >/dev/null
 printf '%s\n' "${runtime_output}" | grep -F "password=protected" >/dev/null
+
+unset KJ_APP_NONINTERACTIVE
+export KJ_APP_INTERACTIVE=1 KJ_APP_PORT=18082
+docker_port=8080
+kpanel_app_choose_install_port
+test "${docker_port}" = "18082"
+unset KJ_APP_INTERACTIVE
+export KJ_APP_NONINTERACTIVE=1
 
 docker_rum() { return 1; }
 docker_name="test-failed"

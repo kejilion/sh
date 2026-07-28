@@ -3156,12 +3156,49 @@ kpanel_app_install_port() {
 		echo "错误: KPanel 应用端口必须在 1-65535 之间"
 		return 1
 	fi
-	if ss -tuln 2>/dev/null | grep -q ":${requested_port} "; then
+	if kpanel_app_port_in_use "$requested_port"; then
 		echo "错误: 端口 ${requested_port} 已被占用"
 		return 1
 	fi
 	docker_port="$requested_port"
 	return 0
+}
+
+kpanel_app_port_in_use() {
+	local requested_port="$1"
+
+	ss -H -lntu 2>/dev/null |
+		awk -v requested_port="$requested_port" '
+			{
+				local_address = $5
+				sub(/^.*:/, "", local_address)
+				if (local_address == requested_port) {
+					found = 1
+				}
+			}
+			END { exit(found ? 0 : 1) }
+		'
+}
+
+kpanel_app_choose_install_port() {
+	local app_port=""
+
+	if [ "${KJ_APP_INTERACTIVE:-}" = "1" ] && [ -n "${KJ_APP_PORT:-}" ]; then
+		kpanel_app_install_port
+		return $?
+	fi
+	while true; do
+		read -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
+		app_port=${app_port:-${docker_port}}
+
+		if kpanel_app_port_in_use "$app_port"; then
+			echo -e "${gl_hong}错误: ${gl_bai}端口 $app_port 已被占用，请更换一个端口"
+			send_stats "应用端口已被占用"
+		else
+			docker_port="$app_port"
+			return 0
+		fi
+	done
 }
 
 kpanel_run_docker_app_install() {
@@ -3344,18 +3381,7 @@ while true; do
 		1)
 			setup_docker_dir
 			check_disk_space $app_size /home/docker
-			while true; do
-				read -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
-				local app_port=${app_port:-${docker_port}}
-
-				if ss -tuln | grep -q ":$app_port "; then
-					echo -e "${gl_hong}错误: ${gl_bai}端口 $app_port 已被占用，请更换一个端口"
-					send_stats "应用端口已被占用"
-				else
-					local docker_port=$app_port
-					break
-				fi
-			done
+			kpanel_app_choose_install_port || return 1
 
 			install jq
 			install_docker
@@ -3501,18 +3527,7 @@ docker_app_plus() {
 				setup_docker_dir
 				check_disk_space $app_size /home/docker
 
-				while true; do
-					read -e -p "输入应用对外服务端口，回车默认使用${docker_port}端口: " app_port
-					local app_port=${app_port:-${docker_port}}
-
-					if ss -tuln | grep -q ":$app_port "; then
-						echo -e "${gl_hong}错误: ${gl_bai}端口 $app_port 已被占用，请更换一个端口"
-						send_stats "应用端口已被占用"
-					else
-						local docker_port=$app_port
-						break
-					fi
-				done
+				kpanel_app_choose_install_port || return 1
 
 				install jq
 				install_docker
