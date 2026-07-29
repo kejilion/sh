@@ -10147,6 +10147,13 @@ kpanel_run_web_recipe_cli() {
 	return "$rc"
 }
 
+kpanel_web_recipe_requires_document_root() {
+	case "${1:-}" in
+		2|3|4|5|6|7|8|9|20|25|26|27|30) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
 kpanel_ldnmp_escape() {
 	local value="${1:-}"
 	value=${value//\\/\\\\}; value=${value//\"/\\\"}
@@ -10715,7 +10722,7 @@ linux_ldnmp() {
 	if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
 		sub_choice="${KJ_WEB_RECIPE:-}"
 		case "$sub_choice" in
-			2|3|4|5|6|7|8|9|23|27) ;;
+			2|3|4|5|6|7|8|9|20|22|23|24|25|26|27|28|30) ;;
 			*)
 				echo "KPANEL_PROGRESS 100 不支持的 KJ_WEB_RECIPE"
 				return 1
@@ -11726,7 +11733,8 @@ linux_ldnmp() {
 			echo "KPANEL_PROGRESS 100 kejilion.sh 建站产物不完整"
 			return 1
 		fi
-		if [ "$sub_choice" != "23" ] && [ ! -d "/home/web/html/${KJ_WEB_DOMAIN}" ]; then
+		if kpanel_web_recipe_requires_document_root "$sub_choice" &&
+			[ ! -d "/home/web/html/${KJ_WEB_DOMAIN}" ]; then
 			echo "KPANEL_PROGRESS 100 kejilion.sh 建站产物不完整"
 			return 1
 		fi
@@ -23768,6 +23776,34 @@ else
 		ai-prompt)
 			shift
 			kpanel_run_web_recipe_cli 27 "$@"
+			;;
+		php-site)
+			shift
+			kpanel_run_web_recipe_cli 20 "$@"
+			;;
+		redirect-site)
+			shift
+			kpanel_run_web_recipe_cli 22 "$@"
+			;;
+		domain-proxy)
+			shift
+			kpanel_run_web_recipe_cli 24 "$@"
+			;;
+		bitwarden-site)
+			shift
+			kpanel_run_web_recipe_cli 25 "$@"
+			;;
+		halo-site)
+			shift
+			kpanel_run_web_recipe_cli 26 "$@"
+			;;
+		loadbalance-site)
+			shift
+			kpanel_run_web_recipe_cli 28 "$@"
+			;;
+		static-site)
+			shift
+			kpanel_run_web_recipe_cli 30 "$@"
 			;;
 		fd|rp|反代)
 			shift
