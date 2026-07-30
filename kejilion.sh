@@ -6561,7 +6561,7 @@ kpanel_bbrv3_status() {
 }
 
 kpanel_bbrv3_dispatch() {
-	local command="${1:-status}" changed=false
+	local command="${1:-status}" changed=false status_line reboot_required=false
 	printf '%s\n' "KPANEL_BBRV3_PROTOCOL 1"
 	case "$command" in
 		status)
@@ -6569,7 +6569,6 @@ kpanel_bbrv3_dispatch() {
 			;;
 		install|update|uninstall)
 			root_use
-			local status_line
 			status_line=$(kpanel_bbrv3_status)
 			if ! printf '%s' "$status_line" | grep -q '"supported":true' &&
 				{ [ "$command" != "uninstall" ] ||
@@ -6581,8 +6580,11 @@ kpanel_bbrv3_dispatch() {
 			case "$command" in
 				install)
 					if xanmod_installed; then
-						printf '%s\n' 'KPANEL_BBRV3_RESULT {"action":"install","changed":false,"rebootRequired":false}'
-						kpanel_bbrv3_status
+						printf '%s' "$status_line" | grep -q '"rebootRequired":true' &&
+							reboot_required=true
+						printf 'KPANEL_BBRV3_RESULT {"action":"install","changed":false,"rebootRequired":%s}\n' \
+							"$reboot_required"
+						printf '%s\n' "$status_line"
 						return 0
 					fi
 					xanmod_install_or_update install || return 1
@@ -6598,17 +6600,23 @@ kpanel_bbrv3_dispatch() {
 					;;
 				uninstall)
 					if ! xanmod_installed; then
-						printf '%s\n' 'KPANEL_BBRV3_RESULT {"action":"uninstall","changed":false,"rebootRequired":false}'
-						kpanel_bbrv3_status
+						printf '%s' "$status_line" | grep -q '"rebootRequired":true' &&
+							reboot_required=true
+						printf 'KPANEL_BBRV3_RESULT {"action":"uninstall","changed":false,"rebootRequired":%s}\n' \
+							"$reboot_required"
+						printf '%s\n' "$status_line"
 						return 0
 					fi
 					xanmod_uninstall || return 1
 					changed=true
 					;;
 			esac
-			printf 'KPANEL_BBRV3_RESULT {"action":"%s","changed":%s,"rebootRequired":true}\n' \
-				"$command" "$changed"
-			kpanel_bbrv3_status
+			status_line=$(kpanel_bbrv3_status)
+			printf '%s' "$status_line" | grep -q '"rebootRequired":true' &&
+				reboot_required=true
+			printf 'KPANEL_BBRV3_RESULT {"action":"%s","changed":%s,"rebootRequired":%s}\n' \
+				"$command" "$changed" "$reboot_required"
+			printf '%s\n' "$status_line"
 			;;
 		*)
 			echo "用法: k bbrv3 [status|install|update|uninstall]" >&2

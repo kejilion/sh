@@ -17,6 +17,7 @@ grep -F '[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||' "${script_path}" >/dev/nul
 grep -F 'KPANEL_BBRV3_PROTOCOL 1' "${script_path}" >/dev/null
 grep -F 'KPANEL_BBRV3_STATUS {' "${script_path}" >/dev/null
 grep -F 'KPANEL_BBRV3_RESULT {' "${script_path}" >/dev/null
+grep -F 'printf '\''%s'\'' "$status_line" | grep -q '\''"rebootRequired":true'\''' "${script_path}" >/dev/null
 grep -F 'kpanel_bbrv3_dispatch "$@"' "${script_path}" >/dev/null
 grep -F '[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] || server_reboot' "${script_path}" >/dev/null
 
