@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.3"
+sh_v="4.5.4"
 
 
 gl_hui='\e[37m'
@@ -19,6 +19,7 @@ ENABLE_STATS="true"
 kpanel_protocol_active() {
 	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_INTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_WEB_NONINTERACTIVE:-}" = "1" ] ||
@@ -6504,9 +6505,114 @@ dd_xitong() {
 }
 
 
+kpanel_bbrv3_status() {
+	local architecture os_id codename running_kernel installed=false active=false supported=false
+	local congestion qdisc reboot_required=false reason=""
+	architecture=$(uname -m 2>/dev/null | tr -cd 'A-Za-z0-9._-')
+	running_kernel=$(uname -r 2>/dev/null | tr -cd 'A-Za-z0-9+._-')
+	os_id=""
+	codename=""
+	if [ -r /etc/os-release ]; then
+		os_id=$(. /etc/os-release && printf '%s' "${ID:-}" | tr -cd 'A-Za-z0-9._-')
+		codename=$(. /etc/os-release && printf '%s' "${VERSION_CODENAME:-}" | tr -cd 'A-Za-z0-9._-')
+	fi
+	congestion=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null | tr -cd 'A-Za-z0-9._-')
+	qdisc=$(cat /proc/sys/net/core/default_qdisc 2>/dev/null | tr -cd 'A-Za-z0-9._-')
+	xanmod_installed && installed=true
+	if printf '%s' "$running_kernel" | grep -qi 'xanmod' &&
+		[ "$congestion" = "bbr" ] && [ "$qdisc" = "fq" ]; then
+		active=true
+	fi
+	if { [ "$architecture" = "x86_64" ] || [ "$architecture" = "amd64" ]; } &&
+		{ [ "$os_id" = "debian" ] || [ "$os_id" = "ubuntu" ]; } &&
+		command -v apt >/dev/null 2>&1 && command -v dpkg-query >/dev/null 2>&1; then
+		case "$codename" in
+			bookworm|trixie|forky|sid|noble|plucky|questing|resolute)
+				supported=true
+				;;
+			*)
+				reason="unsupported_release"
+				;;
+		esac
+	elif [ "$architecture" = "aarch64" ] || [ "$architecture" = "arm64" ]; then
+		reason="arm64_external_installer_untrusted"
+	elif [ "$os_id" != "debian" ] && [ "$os_id" != "ubuntu" ]; then
+		reason="unsupported_distribution"
+	else
+		reason="missing_dependencies"
+	fi
+	if { [ "$installed" = "true" ] && ! printf '%s' "$running_kernel" | grep -qi 'xanmod'; } ||
+		{ [ "$installed" = "false" ] && printf '%s' "$running_kernel" | grep -qi 'xanmod'; } ||
+		[ -f /var/run/reboot-required ]; then
+		reboot_required=true
+	fi
+	printf 'KPANEL_BBRV3_STATUS {"supported":%s,"installed":%s,"active":%s,"architecture":"%s","os":"%s","codename":"%s","runningKernel":"%s","congestionControl":"%s","defaultQDisc":"%s","rebootRequired":%s,"reason":"%s"}\n' \
+		"$supported" "$installed" "$active" "$architecture" "$os_id" "$codename" \
+		"$running_kernel" "$congestion" "$qdisc" "$reboot_required" "$reason"
+}
+
+kpanel_bbrv3_dispatch() {
+	local command="${1:-status}" changed=false
+	printf '%s\n' "KPANEL_BBRV3_PROTOCOL 1"
+	case "$command" in
+		status)
+			kpanel_bbrv3_status
+			;;
+		install|update|uninstall)
+			root_use
+			local status_line
+			status_line=$(kpanel_bbrv3_status)
+			if ! printf '%s' "$status_line" | grep -q '"supported":true' &&
+				{ [ "$command" != "uninstall" ] ||
+				  ! printf '%s' "$status_line" | grep -q '"installed":true'; }; then
+				printf '%s\n' "$status_line"
+				echo "当前主机不支持 KPanel BBRv3 受控执行" >&2
+				return 1
+			fi
+			case "$command" in
+				install)
+					if xanmod_installed; then
+						printf '%s\n' 'KPANEL_BBRV3_RESULT {"action":"install","changed":false,"rebootRequired":false}'
+						kpanel_bbrv3_status
+						return 0
+					fi
+					xanmod_install_or_update install || return 1
+					changed=true
+					;;
+				update)
+					xanmod_installed || {
+						echo "尚未安装 XanMod BBRv3 内核，不能执行更新" >&2
+						return 1
+					}
+					xanmod_install_or_update update || return 1
+					changed=true
+					;;
+				uninstall)
+					if ! xanmod_installed; then
+						printf '%s\n' 'KPANEL_BBRV3_RESULT {"action":"uninstall","changed":false,"rebootRequired":false}'
+						kpanel_bbrv3_status
+						return 0
+					fi
+					xanmod_uninstall || return 1
+					changed=true
+					;;
+			esac
+			printf 'KPANEL_BBRV3_RESULT {"action":"%s","changed":%s,"rebootRequired":true}\n' \
+				"$command" "$changed"
+			kpanel_bbrv3_status
+			;;
+		*)
+			echo "用法: k bbrv3 [status|install|update|uninstall]" >&2
+			return 2
+			;;
+	esac
+}
+
 bbrv3() {
-		  root_use
-		  send_stats "bbrv3管理"
+		  if [ "${KJ_BBRV3_NONINTERACTIVE:-}" != "1" ]; then
+			  root_use
+			  send_stats "bbrv3管理"
+		  fi
 
 		  xanmod_add_repo() {
 				local keyring="/usr/share/keyrings/xanmod-archive-keyring.gpg"
@@ -6635,7 +6741,7 @@ bbrv3() {
 					return 1
 				}
 				echo "XanMod BBRv3内核处理完成。重启后生效"
-				server_reboot
+				[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] || server_reboot
 		  }
 
 		  xanmod_uninstall() {
@@ -6645,8 +6751,13 @@ bbrv3() {
 				rm -f /etc/apt/sources.list.d/xanmod-release.list
 				rm -f /usr/share/keyrings/xanmod-archive-keyring.gpg
 				echo "XanMod内核已卸载。重启后生效"
-				server_reboot
+				[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] || server_reboot
 		  }
+
+		  if [ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ]; then
+			  kpanel_bbrv3_dispatch "$@"
+			  return
+		  fi
 
 		  local cpu_arch=$(uname -m)
 		  if [ "$cpu_arch" = "aarch64" ]; then
@@ -23755,7 +23866,12 @@ else
 			dd_xitong
 			;;
 		bbr3|bbrv3)
-			bbrv3
+			if [ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ]; then
+				shift
+				bbrv3 "$@"
+			else
+				bbrv3
+			fi
 			;;
 		nhyh|内核优化)
 			Kernel_optimize
