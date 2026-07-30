@@ -68,6 +68,7 @@ for script_path in "${scripts[@]}"; do
 		printf '%s\n' "#!/bin/sh" > "${ldnmp_web_root_base}/wp.example.test/wordpress/task.sh"
 		command chmod 0755 "${ldnmp_web_root_base}/wp.example.test/wordpress/task.sh"
 
+		[ "$(stat -c '%a' "${ldnmp_web_root_base}")" = "755" ]
 		[ "$(stat -c '%a' "${ldnmp_web_root_base}/wp.example.test")" = "755" ]
 		[ "$(stat -c '%a' "${ldnmp_web_root_base}/wp.example.test/wordpress")" = "700" ]
 		[ "$(stat -c '%a' "${ldnmp_web_root_base}/wp.example.test/wordpress/wp-includes/style.css")" = "600" ]

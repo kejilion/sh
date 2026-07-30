@@ -1724,7 +1724,7 @@ prepare_ldnmp_site_root() {
 	  local site_domain="${1:-}"
 	  ldnmp_site_domain_is_safe "$site_domain" || return 1
 	  command mkdir -p -- "${ldnmp_web_root_base}/${site_domain}" &&
-	  command chmod 0755 -- "${ldnmp_web_root_base}/${site_domain}"
+	  command chmod 0755 -- "$ldnmp_web_root_base" "${ldnmp_web_root_base}/${site_domain}"
 }
 
 normalize_ldnmp_site_permissions() {
