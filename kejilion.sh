@@ -1708,40 +1708,6 @@ add_db() {
 }
 
 
-ldnmp_web_root_base="/home/web/html"
-
-ldnmp_site_domain_is_safe() {
-	  local site_domain="${1:-}"
-	  case "$site_domain" in
-		  ""|"."|".."|*/*)
-			  echo "无效的站点目录名称: $site_domain" >&2
-			  return 1
-			  ;;
-	  esac
-}
-
-prepare_ldnmp_site_root() {
-	  local site_domain="${1:-}"
-	  ldnmp_site_domain_is_safe "$site_domain" || return 1
-	  command mkdir -p -- "${ldnmp_web_root_base}/${site_domain}" &&
-	  command chmod 0755 -- "$ldnmp_web_root_base" "${ldnmp_web_root_base}/${site_domain}"
-}
-
-normalize_ldnmp_site_permissions() {
-	  local site_domain="${1:-}"
-	  local site_root
-	  ldnmp_site_domain_is_safe "$site_domain" || return 1
-	  site_root="${ldnmp_web_root_base}/${site_domain}"
-	  [ -d "$site_root" ] || {
-		  echo "站点目录不存在: $site_root" >&2
-		  return 1
-	  }
-
-	  find "$site_root" -type d -exec chmod u+rwx,go+rx,go-w {} + &&
-	  find "$site_root" -type f -exec chmod u+rw,go+r,go-w {} +
-}
-
-
 restart_ldnmp() {
 	  docker exec nginx chown -R nginx:nginx /var/www/html > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1
@@ -4136,7 +4102,7 @@ ldnmp_wp() {
 
   kpanel_web_progress 75 "正在获取并配置 kejilion.sh WordPress 源码"
   cd /home/web/html
-  prepare_ldnmp_site_root "$yuming" || return 1
+  mkdir $yuming
   cd $yuming
   wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
   unzip latest.zip
@@ -4151,8 +4117,6 @@ ldnmp_wp() {
 
 
   kpanel_web_progress 90 "正在重启 LDNMP 并核验 WordPress 站点"
-  normalize_ldnmp_site_permissions "$yuming" || return 1
-  chmod 0640 "/home/web/html/$yuming/wordpress/wp-config.php" || return 1
   restart_ldnmp
   nginx_web_on
 
@@ -10824,7 +10788,7 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 	  LATEST_URL=$(curl -s https://api.gitee.com/api/v5/repos/Discuz/DiscuzX/releases/latest | grep -o 'https://[^"]*Discuz_X[^"]*SC_UTF8[^"]*\.zip' | head -n 1)
 	  wget -O latest.zip ${LATEST_URL}
@@ -10833,7 +10797,6 @@ linux_ldnmp() {
 	  rm -rf upload readme readme.html utility.html LICENSE qqqun.png
 	  rm latest.zip
 
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -10868,14 +10831,13 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 	  LATEST_VERSION=$(curl -s https://api.github.com/repos/kalcaddle/kodbox/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 	  wget -O latest.zip ${gh_proxy}github.com/kalcaddle/kodbox/archive/refs/tags/${LATEST_VERSION}.zip
 	  unzip -o latest.zip
 	  rm latest.zip
 	  mv /home/web/html/$yuming/kodbox* /home/web/html/$yuming/kodbox
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 	  ldnmp_web_on
@@ -10910,7 +10872,7 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 	  # wget ${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && rm maccms10.zip
 	  wget ${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && mv maccms10-*/* . && rm -r maccms10-* && rm maccms10.zip
@@ -10919,7 +10881,6 @@ linux_ldnmp() {
 	  cp /home/web/html/$yuming/template/DYXS2/asset/admin/dycms.html /home/web/html/$yuming/application/admin/view/system
 	  mv /home/web/html/$yuming/admin.php /home/web/html/$yuming/vip.php && wget -O /home/web/html/$yuming/application/extra/maccms.php ${gh_proxy}raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php
 
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -10960,11 +10921,10 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 	  wget ${gh_proxy}github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -11017,7 +10977,7 @@ linux_ldnmp() {
 	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 
 	  docker exec php sh -c "php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\""
@@ -11039,7 +10999,6 @@ linux_ldnmp() {
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require clarkwinkelmann/flarum-ext-emojionearea"
 
 
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -11077,13 +11036,12 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 	  wget -O latest.zip ${gh_proxy}github.com/typecho/typecho/releases/latest/download/typecho.zip
 	  unzip latest.zip
 	  rm latest.zip
 
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -11121,13 +11079,12 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 	  wget -O latest.zip ${gh_proxy}github.com/linkstackorg/linkstack/releases/latest/download/linkstack.zip
 	  unzip latest.zip
 	  rm latest.zip
 
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -11160,7 +11117,7 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 
 	  clear
@@ -11259,7 +11216,6 @@ linux_ldnmp() {
 
 	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
 
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 	  ldnmp_web_on
 	  prefix="web$(shuf -i 10-99 -n 1)_"
@@ -11400,14 +11356,14 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 
 	  wget ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/ai_prompt_generator.zip
 	  unzip $(ls -t *.zip | head -n 1)
 	  rm -f $(ls -t *.zip | head -n 1)
 
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
+	  docker exec nginx chmod -R nginx:nginx /var/www/html
 	  docker exec nginx nginx -s reload
 
 	  nginx_web_on
@@ -11442,7 +11398,7 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  prepare_ldnmp_site_root "$yuming" || return 1
+	  mkdir $yuming
 	  cd $yuming
 
 
@@ -11470,7 +11426,7 @@ linux_ldnmp() {
 	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
 	  sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
-	  normalize_ldnmp_site_permissions "$yuming" || return 1
+	  docker exec nginx chmod -R nginx:nginx /var/www/html
 	  docker exec nginx nginx -s reload
 
 	  nginx_web_on
