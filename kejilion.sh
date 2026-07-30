@@ -6506,7 +6506,7 @@ dd_xitong() {
 
 
 kpanel_bbrv3_status() {
-	local architecture os_id codename running_kernel installed=false active=false supported=false
+	local architecture os_id codename running_kernel installed_kernel installed=false active=false supported=false
 	local congestion qdisc reboot_required=false reason=""
 	architecture=$(uname -m 2>/dev/null | tr -cd 'A-Za-z0-9._-')
 	running_kernel=$(uname -r 2>/dev/null | tr -cd 'A-Za-z0-9+._-')
@@ -6516,6 +6516,14 @@ kpanel_bbrv3_status() {
 		os_id=$(. /etc/os-release && printf '%s' "${ID:-}" | tr -cd 'A-Za-z0-9._-')
 		codename=$(. /etc/os-release && printf '%s' "${VERSION_CODENAME:-}" | tr -cd 'A-Za-z0-9._-')
 	fi
+	if command -v lsb_release >/dev/null 2>&1; then
+		codename=$(lsb_release -sc 2>/dev/null | tr -cd 'A-Za-z0-9._-')
+	fi
+	installed_kernel=$(
+		for module_dir in /lib/modules/*xanmod*; do
+			[ -d "$module_dir" ] && basename "$module_dir"
+		done 2>/dev/null | sort -V | tail -n 1 | tr -cd 'A-Za-z0-9+._-'
+	)
 	congestion=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null | tr -cd 'A-Za-z0-9._-')
 	qdisc=$(cat /proc/sys/net/core/default_qdisc 2>/dev/null | tr -cd 'A-Za-z0-9._-')
 	xanmod_installed && installed=true
@@ -6541,14 +6549,15 @@ kpanel_bbrv3_status() {
 	else
 		reason="missing_dependencies"
 	fi
-	if { [ "$installed" = "true" ] && ! printf '%s' "$running_kernel" | grep -qi 'xanmod'; } ||
+	if { [ "$installed" = "true" ] && [ -n "$installed_kernel" ] &&
+			[ "$running_kernel" != "$installed_kernel" ]; } ||
 		{ [ "$installed" = "false" ] && printf '%s' "$running_kernel" | grep -qi 'xanmod'; } ||
 		[ -f /var/run/reboot-required ]; then
 		reboot_required=true
 	fi
-	printf 'KPANEL_BBRV3_STATUS {"supported":%s,"installed":%s,"active":%s,"architecture":"%s","os":"%s","codename":"%s","runningKernel":"%s","congestionControl":"%s","defaultQDisc":"%s","rebootRequired":%s,"reason":"%s"}\n' \
+	printf 'KPANEL_BBRV3_STATUS {"supported":%s,"installed":%s,"active":%s,"architecture":"%s","os":"%s","codename":"%s","runningKernel":"%s","installedKernel":"%s","congestionControl":"%s","defaultQDisc":"%s","rebootRequired":%s,"reason":"%s"}\n' \
 		"$supported" "$installed" "$active" "$architecture" "$os_id" "$codename" \
-		"$running_kernel" "$congestion" "$qdisc" "$reboot_required" "$reason"
+		"$running_kernel" "$installed_kernel" "$congestion" "$qdisc" "$reboot_required" "$reason"
 }
 
 kpanel_bbrv3_dispatch() {

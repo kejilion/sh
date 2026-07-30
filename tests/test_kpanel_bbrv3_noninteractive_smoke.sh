@@ -36,6 +36,7 @@ grep -Fx 'KPANEL_BBRV3_PROTOCOL 1' <<<"${status_output}" >/dev/null
 grep -F 'KPANEL_BBRV3_STATUS {"supported":' <<<"${status_output}" >/dev/null
 grep -F '"installed":' <<<"${status_output}" >/dev/null
 grep -F '"runningKernel":"' <<<"${status_output}" >/dev/null
+grep -F '"installedKernel":"' <<<"${status_output}" >/dev/null
 grep -F '"rebootRequired":' <<<"${status_output}" >/dev/null
 
 if KJ_BBRV3_NONINTERACTIVE=1 bash "${script_path}" bbrv3 arbitrary >/dev/null 2>&1; then
