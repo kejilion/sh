@@ -49,12 +49,24 @@ for script_path in "${scripts[@]}"; do
 		eval "$(extract_function normalize_ldnmp_site_permissions "${script_path}")"
 
 		ldnmp_web_root_base="${test_root}/html"
+		install() {
+			printf '%s\n' "shadowed install() must not be called" >&2
+			return 97
+		}
+		mkdir() {
+			printf '%s\n' "shadowed mkdir() must not be called" >&2
+			return 98
+		}
+		chmod() {
+			printf '%s\n' "shadowed chmod() must not be called" >&2
+			return 99
+		}
 		umask 0077
 		prepare_ldnmp_site_root "wp.example.test"
-		mkdir -p "${ldnmp_web_root_base}/wp.example.test/wordpress/wp-includes"
+		command mkdir -p "${ldnmp_web_root_base}/wp.example.test/wordpress/wp-includes"
 		printf '%s\n' "body {}" > "${ldnmp_web_root_base}/wp.example.test/wordpress/wp-includes/style.css"
 		printf '%s\n' "#!/bin/sh" > "${ldnmp_web_root_base}/wp.example.test/wordpress/task.sh"
-		chmod 0755 "${ldnmp_web_root_base}/wp.example.test/wordpress/task.sh"
+		command chmod 0755 "${ldnmp_web_root_base}/wp.example.test/wordpress/task.sh"
 
 		[ "$(stat -c '%a' "${ldnmp_web_root_base}/wp.example.test")" = "755" ]
 		[ "$(stat -c '%a' "${ldnmp_web_root_base}/wp.example.test/wordpress")" = "700" ]
