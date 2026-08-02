@@ -18176,8 +18176,6 @@ while true; do
 			  --name komari \
 			  -p ${docker_port}:25774 \
 			  -v /home/docker/komari:/app/data \
-			  -e ADMIN_USERNAME=admin \
-			  -e ADMIN_PASSWORD=1212156 \
 			  -e TZ=Asia/Shanghai \
 			  --restart=always \
 			  ghcr.io/komari-monitor/komari:latest
@@ -18186,7 +18184,7 @@ while true; do
 
 		local docker_describe="輕量級的自架伺服器監控工具"
 		local docker_url="官網介紹:${gh_https_url}github.com/komari-monitor/komari/tree/main"
-		local docker_use="echo \"預設帳號: admin 預設密碼: 1212156\""
+		local docker_use=""
 		local docker_passwd=""
 		local app_size="1"
 		docker_app
