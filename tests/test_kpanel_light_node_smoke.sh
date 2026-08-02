@@ -45,6 +45,13 @@ join_body="$(
 		capture && /^}$/ { exit }
 	' "${normalized_script}"
 )"
+activate_body="$(
+	awk '
+		/^kpanel_node_activate\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${normalized_script}"
+)"
 account_body="$(
 	awk '
 		/^kpanel_node_ensure_account\(\) \{/ { capture=1 }
@@ -65,6 +72,9 @@ printf '%s\n' "${dispatch_body}" | grep -F 'uninstall|remove) kpanel_node_uninst
 
 printf '%s\n' "${join_body}" | grep -F 'kpl1.*)' >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'kpanel_node_ensure_account || return 1' >/dev/null
+printf '%s\n' "${join_body}" | grep -F "LC_ALL=C tr -cd '[:alnum:]_. -'" >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'resume_enrollment=true' >/dev/null
+printf '%s\n' "${join_body}" | grep -F '授权已保存' >/dev/null
 printf '%s\n' "${join_body}" | grep -F '"$KPANEL_NODE_INSTALL_BIN" -d -o root -g kejilion-node' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'useradd --system --no-create-home' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'systemd-sysusers "$sysusers_config"' >/dev/null
@@ -75,6 +85,7 @@ printf '%s\n' "${join_body}" | grep -F 'chown root:kejilion-node "$KPANEL_NODE_C
 printf '%s\n' "${join_body}" | grep -F 'chmod 0640 "$KPANEL_NODE_CONFIG"' >/dev/null
 grep -F '[ -d /run/systemd/system ]' "${normalized_script}" >/dev/null
 grep -F 'KPANEL_NODE_INSTALL_BIN="$(type -P install 2>/dev/null || true)"' "${normalized_script}" >/dev/null
+grep -F 'KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"' "${normalized_script}" >/dev/null
 grep -F '"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root' "${normalized_script}" >/dev/null
 if grep -F $'\tinstall -d -o root' "${normalized_script}" >/dev/null; then
 	echo "lightweight node installer is shadowed by the package install helper" >&2
@@ -82,6 +93,10 @@ if grep -F $'\tinstall -d -o root' "${normalized_script}" >/dev/null; then
 fi
 if printf '%s\n' "${join_body}" | grep -Eq 'docker|podman'; then
 	echo "lightweight node installer unexpectedly depends on a container runtime" >&2
+	exit 1
+fi
+if printf '%s\n' "${activate_body}" | grep -Eq 'enable --now|is-active --quiet'; then
+	echo "lightweight node activation uses wrapper-incompatible systemctl arguments" >&2
 	exit 1
 fi
 
@@ -150,5 +165,104 @@ chmod +x "${fallback_bin}"/*
 	kpanel_node_ensure_account
 )
 test -f "${fallback_marker}"
+
+# Exercise the native systemctl path one unit at a time. kejilion.sh defines a
+# compatibility wrapper named systemctl, so node lifecycle calls must bypass it.
+systemctl_bin="${temporary_dir}/systemctl"
+systemctl_log="${temporary_dir}/systemctl.log"
+cat >"${systemctl_bin}" <<'MOCK_SYSTEMCTL'
+#!/bin/bash
+printf '%s\n' "$*" >>"${KPANEL_TEST_SYSTEMCTL_LOG}"
+MOCK_SYSTEMCTL
+chmod +x "${systemctl_bin}"
+(
+	export KPANEL_TEST_SYSTEMCTL_LOG="${systemctl_log}"
+	KPANEL_NODE_SYSTEMCTL="${systemctl_bin}"
+	eval "${activate_body}"
+	kpanel_node_activate
+)
+cat >"${temporary_dir}/expected-systemctl.log" <<'EXPECTED_SYSTEMCTL'
+daemon-reload
+enable kejilion-node.service
+enable kejilion-node-update.timer
+start kejilion-node.service
+start kejilion-node-update.timer
+is-active kejilion-node.service
+EXPECTED_SYSTEMCTL
+cmp "${temporary_dir}/expected-systemctl.log" "${systemctl_log}"
+
+sanitized_name="$(printf '%s' 'edge_node-01 bad@name' | LC_ALL=C tr -cd '[:alnum:]_. -')"
+test "${sanitized_name}" = 'edge_node-01 badname'
+
+# Exercise the real join control flow across a post-enrollment service failure.
+# The one-time token must not be consumed twice and the saved identity must
+# survive so the same command can safely finish activation on the next run.
+join_runtime="${temporary_dir}/join-runtime"
+mkdir -p "${join_runtime}/bin"
+cat >"${join_runtime}/install" <<'MOCK_INSTALL'
+#!/bin/bash
+target="${@: -1}"
+mkdir -p "$target"
+MOCK_INSTALL
+cat >"${join_runtime}/systemctl" <<'MOCK_JOIN_SYSTEMCTL'
+#!/bin/bash
+printf '%s\n' "$*" >>"${KPANEL_TEST_JOIN_SYSTEMCTL_LOG}"
+if [ "$*" = "start kejilion-node.service" ] && [ ! -f "${KPANEL_TEST_JOIN_FAIL_ONCE}" ]; then
+	touch "${KPANEL_TEST_JOIN_FAIL_ONCE}"
+	exit 1
+fi
+MOCK_JOIN_SYSTEMCTL
+chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
+(
+	export KPANEL_TEST_JOIN_ROOT="${join_runtime}"
+	export KPANEL_TEST_JOIN_SYSTEMCTL_LOG="${join_runtime}/systemctl.log"
+	export KPANEL_TEST_JOIN_FAIL_ONCE="${join_runtime}/failed-once"
+	eval "${activate_body}"
+	eval "${join_body}"
+	kpanel_node_paths() {
+		KPANEL_NODE_HOME="${KPANEL_TEST_JOIN_ROOT}/home"
+		KPANEL_NODE_BINARY="${KPANEL_NODE_HOME}/kejilion-node"
+		KPANEL_NODE_UPDATER="${KPANEL_NODE_HOME}/update.sh"
+		KPANEL_NODE_CONFIG_DIR="${KPANEL_TEST_JOIN_ROOT}/config"
+		KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
+		KPANEL_NODE_SYSTEMCTL="${KPANEL_TEST_JOIN_ROOT}/systemctl"
+	}
+	kpanel_node_preflight() {
+		KPANEL_NODE_INSTALL_BIN="${KPANEL_TEST_JOIN_ROOT}/install"
+	}
+	kpanel_node_ensure_account() { :; }
+	kpanel_node_write_updater() {
+		mkdir -p "${KPANEL_NODE_HOME}"
+		cat >"${KPANEL_NODE_UPDATER}" <<'MOCK_UPDATER'
+#!/bin/bash
+exit 0
+MOCK_UPDATER
+		cat >"${KPANEL_NODE_BINARY}" <<'MOCK_NODE'
+#!/bin/bash
+if [ "${1:-}" = "enroll" ]; then
+	printf '%s\n' enrolled >>"${KPANEL_TEST_JOIN_ROOT}/enroll.log"
+	while [ "$#" -gt 0 ]; do
+		if [ "$1" = "--config" ]; then
+			shift
+			printf '%s\n' '{"schemaVersion":1}' >"$1"
+			break
+		fi
+		shift
+	done
+fi
+MOCK_NODE
+		chmod +x "${KPANEL_NODE_UPDATER}" "${KPANEL_NODE_BINARY}"
+	}
+	kpanel_node_write_units() { :; }
+	kpanel_node_cleanup_failed_join() { rm -rf -- "${KPANEL_NODE_HOME}" "${KPANEL_NODE_CONFIG_DIR}"; }
+	chown() { :; }
+	if kpanel_node_join 'kpl1.test-token'; then
+		echo "first join unexpectedly succeeded despite injected activation failure" >&2
+		exit 1
+	fi
+	test -f "${KPANEL_NODE_CONFIG}"
+	kpanel_node_join 'kpl1.test-token'
+	test "$(wc -l <"${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
+)
 
 echo "KPanel lightweight-node installer smoke checks passed."
