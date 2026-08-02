@@ -16,7 +16,12 @@ canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 
+if [ "${1:-}" = "kpanel" ] && [ "${2:-}" = "node" ]; then
+	KJ_LIGHT_NODE_PROTOCOL=1
+fi
+
 kpanel_protocol_active() {
+	[ "${KJ_LIGHT_NODE_PROTOCOL:-}" = "1" ] ||
 	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||
@@ -9721,6 +9726,310 @@ linux_docker() {
 }
 
 
+
+kpanel_node_paths() {
+	KPANEL_NODE_HOME="/usr/local/lib/kejilion-node"
+	KPANEL_NODE_BINARY="${KPANEL_NODE_HOME}/kejilion-node"
+	KPANEL_NODE_UPDATER="${KPANEL_NODE_HOME}/update.sh"
+	KPANEL_NODE_CONFIG_DIR="/etc/kejilion-node"
+	KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
+}
+
+kpanel_node_preflight() {
+	[ "$(id -u)" = "0" ] || {
+		echo "KPanel 轻量节点安装需要 root 权限。" >&2
+		return 1
+	}
+	for command_name in curl sha256sum systemctl install mktemp; do
+		command -v "$command_name" >/dev/null 2>&1 || {
+			echo "缺少必要命令: ${command_name}" >&2
+			return 1
+		}
+	done
+	command -v useradd >/dev/null 2>&1 || {
+		echo "缺少必要命令: useradd" >&2
+		return 1
+	}
+	[ -d /run/systemd/system ] || {
+		echo "当前系统未运行 systemd，无法安装 KPanel 轻量节点。" >&2
+		return 1
+	}
+	case "$(uname -m)" in
+		x86_64|amd64) KPANEL_NODE_ARCH="amd64" ;;
+		aarch64|arm64) KPANEL_NODE_ARCH="arm64" ;;
+		*)
+			echo "当前 CPU 架构暂不支持 KPanel 轻量节点。" >&2
+			return 1
+			;;
+	esac
+}
+
+kpanel_node_write_updater() {
+	install -d -o root -g root -m 0755 "$KPANEL_NODE_HOME" || return 1
+	cat >"$KPANEL_NODE_UPDATER" <<'KPANEL_NODE_UPDATE'
+#!/bin/bash
+set -euo pipefail
+
+mode="${1:-update}"
+case "$mode" in
+	install|update) ;;
+	*) echo "unsupported update mode" >&2; exit 2 ;;
+esac
+
+case "$(uname -m)" in
+	x86_64|amd64) arch="amd64" ;;
+	aarch64|arm64) arch="arm64" ;;
+	*) echo "unsupported CPU architecture" >&2; exit 1 ;;
+esac
+
+home_dir="/usr/local/lib/kejilion-node"
+binary_name="kejilion-node-linux-${arch}"
+binary_path="${home_dir}/kejilion-node"
+base_url="https://github.com/kejilion/KPanel/releases/latest/download"
+lock_dir="/run/lock/kejilion-node-update.lock"
+
+if ! mkdir "$lock_dir" 2>/dev/null; then
+	echo "another KPanel lightweight node update is running" >&2
+	exit 1
+fi
+temporary_dir="$(mktemp -d /tmp/kejilion-node-update.XXXXXX)"
+cleanup() {
+	rm -rf -- "$temporary_dir"
+	rmdir "$lock_dir" 2>/dev/null || true
+}
+trap cleanup EXIT HUP INT TERM
+
+curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+	--connect-timeout 15 --max-time 180 \
+	-o "${temporary_dir}/${binary_name}" "${base_url}/${binary_name}"
+curl --proto '=https' --tlsv1.2 --fail --location --silent --show-error \
+	--connect-timeout 15 --max-time 60 \
+	-o "${temporary_dir}/SHA256SUMS" "${base_url}/SHA256SUMS"
+
+expected="$(awk -v name="$binary_name" '$2 == name { print $1 }' "${temporary_dir}/SHA256SUMS")"
+printf '%s' "$expected" | grep -Eq '^[0-9a-f]{64}$' || {
+	echo "release checksum is unavailable" >&2
+	exit 1
+}
+actual="$(sha256sum "${temporary_dir}/${binary_name}" | awk '{print $1}')"
+[ "$actual" = "$expected" ] || {
+	echo "release checksum verification failed" >&2
+	exit 1
+}
+chmod 0755 "${temporary_dir}/${binary_name}"
+version_output="$("${temporary_dir}/${binary_name}" version)"
+printf '%s\n' "$version_output" | grep -Eq '^[^[:space:]]+ light-v1$' || {
+	echo "release binary protocol is invalid" >&2
+	exit 1
+}
+
+if [ -f "$binary_path" ] && [ "$(sha256sum "$binary_path" | awk '{print $1}')" = "$actual" ]; then
+	echo "KPanel lightweight node is already up to date."
+	exit 0
+fi
+
+install -o root -g root -m 0755 "${temporary_dir}/${binary_name}" "${binary_path}.new"
+had_previous=false
+if [ -f "$binary_path" ]; then
+	cp -p -- "$binary_path" "${binary_path}.previous"
+	had_previous=true
+fi
+mv -f -- "${binary_path}.new" "$binary_path"
+
+if [ "$mode" = "update" ] && systemctl cat kejilion-node.service >/dev/null 2>&1; then
+	if ! systemctl restart kejilion-node.service || ! systemctl is-active --quiet kejilion-node.service; then
+		if [ "$had_previous" = "true" ] && [ -f "${binary_path}.previous" ]; then
+			mv -f -- "${binary_path}.previous" "$binary_path"
+			systemctl restart kejilion-node.service || true
+		fi
+		echo "KPanel lightweight node update failed and was rolled back." >&2
+		exit 1
+	fi
+fi
+rm -f -- "${binary_path}.previous"
+echo "KPanel lightweight node update completed."
+KPANEL_NODE_UPDATE
+	chmod 0755 "$KPANEL_NODE_UPDATER"
+}
+
+kpanel_node_write_units() {
+	cat >/etc/systemd/system/kejilion-node.service <<'KPANEL_NODE_SERVICE'
+[Unit]
+Description=KPanel Lightweight Monitoring Node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kejilion-node
+Group=kejilion-node
+ExecStart=/usr/local/lib/kejilion-node/kejilion-node run --config /etc/kejilion-node/node.json
+Restart=on-failure
+RestartSec=15s
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
+KPANEL_NODE_SERVICE
+
+	cat >/etc/systemd/system/kejilion-node-update.service <<'KPANEL_NODE_UPDATE_SERVICE'
+[Unit]
+Description=Update KPanel Lightweight Monitoring Node
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/kejilion-node/update.sh update
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+UMask=0077
+KPANEL_NODE_UPDATE_SERVICE
+
+	cat >/etc/systemd/system/kejilion-node-update.timer <<'KPANEL_NODE_UPDATE_TIMER'
+[Unit]
+Description=Check KPanel Lightweight Monitoring Node Updates
+
+[Timer]
+OnBootSec=15min
+OnUnitActiveSec=24h
+RandomizedDelaySec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+KPANEL_NODE_UPDATE_TIMER
+	chmod 0644 /etc/systemd/system/kejilion-node.service \
+		/etc/systemd/system/kejilion-node-update.service \
+		/etc/systemd/system/kejilion-node-update.timer
+}
+
+kpanel_node_cleanup_failed_join() {
+	systemctl disable --now kejilion-node.service kejilion-node-update.timer >/dev/null 2>&1 || true
+	rm -f -- /etc/systemd/system/kejilion-node.service \
+		/etc/systemd/system/kejilion-node-update.service \
+		/etc/systemd/system/kejilion-node-update.timer
+	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
+	systemctl daemon-reload >/dev/null 2>&1 || true
+}
+
+kpanel_node_join() {
+	local token="${1:-}" node_name
+	kpanel_node_paths
+	kpanel_node_preflight || return 1
+	case "$token" in
+		kpl1.*) ;;
+		*) echo "轻量节点接入授权无效。" >&2; return 2 ;;
+	esac
+	[ "${#token}" -le 2048 ] || {
+		echo "轻量节点接入授权无效。" >&2
+		return 2
+	}
+	[ ! -e "$KPANEL_NODE_CONFIG" ] || {
+		echo "本机已接入一个 KPanel 中心；请先执行 k kpanel node uninstall。" >&2
+		return 1
+	}
+	if ! id kejilion-node >/dev/null 2>&1; then
+		useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin kejilion-node || return 1
+	fi
+	install -d -o root -g kejilion-node -m 0750 "$KPANEL_NODE_CONFIG_DIR" || return 1
+	if ! kpanel_node_write_updater || ! "$KPANEL_NODE_UPDATER" install; then
+		kpanel_node_cleanup_failed_join
+		return 1
+	fi
+	node_name="$(hostname 2>/dev/null | tr -cd '[:alnum:]._- ' | cut -c1-80)"
+	if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_CONFIG"; then
+		kpanel_node_cleanup_failed_join
+		return 1
+	fi
+	chown root:kejilion-node "$KPANEL_NODE_CONFIG" || {
+		kpanel_node_cleanup_failed_join
+		return 1
+	}
+	chmod 0640 "$KPANEL_NODE_CONFIG"
+	if ! kpanel_node_write_units; then
+		kpanel_node_cleanup_failed_join
+		return 1
+	fi
+	systemctl daemon-reload
+	if ! systemctl enable --now kejilion-node.service kejilion-node-update.timer ||
+		! systemctl is-active --quiet kejilion-node.service; then
+		kpanel_node_cleanup_failed_join
+		echo "KPanel 轻量节点启动失败。" >&2
+		return 1
+	fi
+	echo "KPanel 轻量节点已接入，后续将自动更新。"
+}
+
+kpanel_node_status() {
+	kpanel_node_paths
+	[ -x "$KPANEL_NODE_BINARY" ] || {
+		echo "KPanel 轻量节点未安装。" >&2
+		return 1
+	}
+	"$KPANEL_NODE_BINARY" version
+	systemctl --no-pager --full status kejilion-node.service
+}
+
+kpanel_node_update() {
+	kpanel_node_paths
+	kpanel_node_preflight || return 1
+	[ -x "$KPANEL_NODE_UPDATER" ] || {
+		echo "KPanel 轻量节点未安装。" >&2
+		return 1
+	}
+	"$KPANEL_NODE_UPDATER" update
+}
+
+kpanel_node_uninstall() {
+	kpanel_node_paths
+	[ "$(id -u)" = "0" ] || {
+		echo "卸载 KPanel 轻量节点需要 root 权限。" >&2
+		return 1
+	}
+	systemctl disable --now kejilion-node.service kejilion-node-update.timer >/dev/null 2>&1 || true
+	rm -f -- /etc/systemd/system/kejilion-node.service \
+		/etc/systemd/system/kejilion-node-update.service \
+		/etc/systemd/system/kejilion-node-update.timer
+	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
+	systemctl daemon-reload >/dev/null 2>&1 || true
+	echo "KPanel 轻量节点已从本机卸载；中心端的离线记录需在集群页面删除。"
+}
+
+kpanel_node_dispatch() {
+	local action="${1:-}"
+	shift || true
+	case "$action" in
+		join) kpanel_node_join "$@" ;;
+		status) kpanel_node_status ;;
+		update) kpanel_node_update ;;
+		uninstall|remove) kpanel_node_uninstall ;;
+		*)
+			echo "用法: k kpanel node join <授权> | status | update | uninstall" >&2
+			return 2
+			;;
+	esac
+}
 
 kpanel_test_catalog() {
 	cat <<'KPANEL_TEST_CATALOG'
@@ -24153,6 +24462,17 @@ else
 				ldnmp_web_status
 			else
 				k_info
+			fi
+			;;
+
+		kpanel)
+			shift
+			if [ "${1:-}" = "node" ]; then
+				shift
+				kpanel_node_dispatch "$@"
+			else
+				echo "用法: k kpanel node join <授权> | status | update | uninstall" >&2
+				return 2 2>/dev/null || exit 2
 			fi
 			;;
 
