@@ -9740,16 +9740,23 @@ kpanel_node_preflight() {
 		echo "KPanel 轻量节点安装需要 root 权限。" >&2
 		return 1
 	}
-	for command_name in curl sha256sum systemctl install mktemp; do
+	for command_name in curl sha256sum systemctl mktemp; do
 		command -v "$command_name" >/dev/null 2>&1 || {
 			echo "缺少必要命令: ${command_name}" >&2
 			return 1
 		}
 	done
-	command -v useradd >/dev/null 2>&1 || {
-		echo "缺少必要命令: useradd" >&2
+	KPANEL_NODE_INSTALL_BIN="$(type -P install 2>/dev/null || true)"
+	[ -n "$KPANEL_NODE_INSTALL_BIN" ] && [ -x "$KPANEL_NODE_INSTALL_BIN" ] || {
+		echo "缺少必要命令: install (coreutils)" >&2
 		return 1
 	}
+	if ! command -v useradd >/dev/null 2>&1 &&
+		! command -v systemd-sysusers >/dev/null 2>&1 &&
+		! command -v adduser >/dev/null 2>&1; then
+		echo "缺少系统账户创建工具: useradd、systemd-sysusers 或 adduser" >&2
+		return 1
+	fi
 	[ -d /run/systemd/system ] || {
 		echo "当前系统未运行 systemd，无法安装 KPanel 轻量节点。" >&2
 		return 1
@@ -9764,8 +9771,47 @@ kpanel_node_preflight() {
 	esac
 }
 
+kpanel_node_ensure_account() {
+	local nologin_shell="/usr/sbin/nologin" sysusers_config=""
+	if id kejilion-node >/dev/null 2>&1; then
+		[ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] || {
+			echo "现有 kejilion-node 账户的主组不安全，拒绝继续。" >&2
+			return 1
+		}
+		return 0
+	fi
+	[ -x "$nologin_shell" ] || nologin_shell="/sbin/nologin"
+	[ -x "$nologin_shell" ] || nologin_shell="/bin/false"
+
+	if command -v useradd >/dev/null 2>&1; then
+		useradd --system --no-create-home --home-dir /nonexistent --shell "$nologin_shell" kejilion-node || return 1
+	elif command -v systemd-sysusers >/dev/null 2>&1; then
+		sysusers_config="$(mktemp /tmp/kejilion-node-sysusers.XXXXXX)" || return 1
+		printf 'u kejilion-node - "KPanel Lightweight Monitoring Node" /nonexistent %s\n' "$nologin_shell" >"$sysusers_config"
+		if ! systemd-sysusers "$sysusers_config"; then
+			rm -f -- "$sysusers_config"
+			return 1
+		fi
+		rm -f -- "$sysusers_config"
+	elif adduser --help 2>&1 | grep -q -- '--system'; then
+		adduser --system --group --no-create-home --home /nonexistent --shell "$nologin_shell" kejilion-node || return 1
+	else
+		command -v addgroup >/dev/null 2>&1 || {
+			echo "缺少系统组创建工具: addgroup" >&2
+			return 1
+		}
+		addgroup -S kejilion-node >/dev/null 2>&1 || true
+		adduser -S -D -H -h /nonexistent -s "$nologin_shell" -G kejilion-node kejilion-node || return 1
+	fi
+
+	id kejilion-node >/dev/null 2>&1 && [ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] || {
+		echo "KPanel 轻量节点低权限账户创建失败。" >&2
+		return 1
+	}
+}
+
 kpanel_node_write_updater() {
-	install -d -o root -g root -m 0755 "$KPANEL_NODE_HOME" || return 1
+	"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root -m 0755 "$KPANEL_NODE_HOME" || return 1
 	cat >"$KPANEL_NODE_UPDATER" <<'KPANEL_NODE_UPDATE'
 #!/bin/bash
 set -euo pipefail
@@ -9949,10 +9995,8 @@ kpanel_node_join() {
 		echo "本机已接入一个 KPanel 中心；请先执行 k kpanel node uninstall。" >&2
 		return 1
 	}
-	if ! id kejilion-node >/dev/null 2>&1; then
-		useradd --system --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin kejilion-node || return 1
-	fi
-	install -d -o root -g kejilion-node -m 0750 "$KPANEL_NODE_CONFIG_DIR" || return 1
+	kpanel_node_ensure_account || return 1
+	"$KPANEL_NODE_INSTALL_BIN" -d -o root -g kejilion-node -m 0750 "$KPANEL_NODE_CONFIG_DIR" || return 1
 	if ! kpanel_node_write_updater || ! "$KPANEL_NODE_UPDATER" install; then
 		kpanel_node_cleanup_failed_join
 		return 1
