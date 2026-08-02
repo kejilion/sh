@@ -2,7 +2,7 @@
 set -euo pipefail
 
 project_root="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
-script_path="${project_root}/kejilion.sh"
+script_path="${SCRIPT_PATH:-${project_root}/kejilion.sh}"
 temporary_dir="$(mktemp -d)"
 trap 'rm -rf -- "${temporary_dir}"' EXIT
 
