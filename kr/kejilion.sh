@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.2"
+sh_v="4.5.4"
 
 
 gl_hui='\e[37m'
@@ -15,6 +15,18 @@ gl_kjlan='\033[96m'
 canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
+
+kpanel_protocol_active() {
+	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_APP_INTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_WEB_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_WEB_INTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_LDNMP_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_TEST_NONINTERACTIVE:-}" = "1" ]
+}
 
 
 quanju_canshu() {
@@ -63,7 +75,7 @@ CheckFirstRun_true() {
 
 
 
-# 함수에 묻혀있는 정보를 수집하고 사용자가 사용하는 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 시스템 국가 및 기능 이름을 기록하는 기능입니다. 민감한 정보는 포함되어 있지 않으니 걱정하지 마세요! 저를 믿어주세요!
+# 함수에 묻혀있는 정보를 수집하고 사용자가 사용하는 현재 스크립트 버전 번호, 사용 시간, 시스템 버전, CPU 아키텍처, 기기 국가 및 기능 이름을 기록하는 기능입니다. 민감한 정보는 포함되어 있지 않으니 걱정하지 마세요! 저를 믿어주세요!
 # 이 기능은 왜 설계되었나요? 그 목적은 사용자가 사용하고 싶어하는 기능을 더 잘 이해하고, 기능을 더욱 최적화하고 사용자 요구에 맞는 더 많은 기능을 출시하는 것입니다.
 # send_stats 함수 호출 위치에 대한 전문을 검색할 수 있습니다. 투명하고 오픈 소스입니다. 우려되는 사항이 있는 경우 이용을 거부하실 수 있습니다.
 
@@ -100,17 +112,18 @@ fi
 
 
 
-canshu_v6
-CheckFirstRun_true
-yinsiyuanquan2
+if ! kpanel_protocol_active; then
+	canshu_v6
+	CheckFirstRun_true
+	yinsiyuanquan2
 
-
-sed -i '/^alias k=/d' ~/.bashrc > /dev/null 2>&1
-sed -i '/^alias k=/d' ~/.profile > /dev/null 2>&1
-sed -i '/^alias k=/d' ~/.bash_profile > /dev/null 2>&1
-cp -f ./kejilion.sh ~/kejilion.sh > /dev/null 2>&1
-cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
-ln -sf /usr/local/bin/k /usr/bin/k > /dev/null 2>&1
+	sed -i '/^alias k=/d' ~/.bashrc > /dev/null 2>&1
+	sed -i '/^alias k=/d' ~/.profile > /dev/null 2>&1
+	sed -i '/^alias k=/d' ~/.bash_profile > /dev/null 2>&1
+	cp -f ./kejilion.sh ~/kejilion.sh > /dev/null 2>&1
+	cp -f ~/kejilion.sh /usr/local/bin/k > /dev/null 2>&1
+	ln -sf /usr/local/bin/k /usr/bin/k > /dev/null 2>&1
+fi
 
 
 
@@ -141,7 +154,9 @@ UserLicenseAgreement() {
 	fi
 }
 
-CheckFirstRun_false
+if ! kpanel_protocol_active; then
+	CheckFirstRun_false
+fi
 
 
 
@@ -508,22 +523,22 @@ while true; do
 			;;
 		2)
 			send_stats "지정된 컨테이너 시작"
-			read -e -p "컨테이너 이름을 입력하세요(여러 컨테이너 이름을 공백으로 구분하세요)." dockername
+			read -e -p "컨테이너 이름을 입력하세요(여러 컨테이너 이름을 공백으로 구분하세요):" dockername
 			docker start $dockername
 			;;
 		3)
 			send_stats "지정된 컨테이너 중지"
-			read -e -p "컨테이너 이름을 입력하세요(여러 컨테이너 이름을 공백으로 구분하세요)." dockername
+			read -e -p "컨테이너 이름을 입력하세요(여러 컨테이너 이름을 공백으로 구분하세요):" dockername
 			docker stop $dockername
 			;;
 		4)
 			send_stats "지정된 컨테이너 삭제"
-			read -e -p "컨테이너 이름을 입력하세요(여러 컨테이너 이름을 공백으로 구분하세요)." dockername
+			read -e -p "컨테이너 이름을 입력하세요(여러 컨테이너 이름을 공백으로 구분하세요):" dockername
 			docker rm -f $dockername
 			;;
 		5)
 			send_stats "지정된 컨테이너를 다시 시작합니다."
-			read -e -p "컨테이너 이름을 입력하세요(여러 컨테이너 이름을 공백으로 구분하세요)." dockername
+			read -e -p "컨테이너 이름을 입력하세요(여러 컨테이너 이름을 공백으로 구분하세요):" dockername
 			docker restart $dockername
 			;;
 		6)
@@ -1268,7 +1283,7 @@ check_swap() {
 
 local swap_total=$(free -m | awk 'NR==3{print $2}')
 
-# 가상 메모리를 생성해야 하는지 결정
+# 가상 메모리를 만들어야 하는지 확인
 [ "$swap_total" -gt 0 ] || add_swap 1024
 
 
@@ -1322,7 +1337,7 @@ install_ldnmp_conf() {
   wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
   dbrootpasswd=$(openssl rand -base64 16) ; dbuse=$(openssl rand -hex 4) ; dbusepasswd=$(openssl rand -base64 8)
 
-  # docker-compose.yml 파일에서 바꾸기
+  # docker-compose.yml 파일에서 교체
   sed -i "s#webroot#$dbrootpasswd#g" /home/web/docker-compose.yml
   sed -i "s#kejilionYYDS#$dbusepasswd#g" /home/web/docker-compose.yml
   sed -i "s#kejilion#$dbuse#g" /home/web/docker-compose.yml
@@ -1361,7 +1376,7 @@ auto_optimize_dns() {
 	# 국가 코드(예: CN, US 등)를 가져옵니다.
 	local country=$(curl -s ipinfo.io/country)
 
-	# 국가별 DNS 설정
+	# 국가에 따라 DNS 설정
 	if [ "$country" = "CN" ]; then
 		local dns1_ipv4="223.5.5.5"
 		local dns2_ipv4="183.60.83.19"
@@ -1540,11 +1555,16 @@ certs_status() {
 		send_stats "도메인 이름 인증서 신청이 성공했습니다."
 	else
 		send_stats "도메인 이름 인증서 신청 실패"
+		if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ] &&
+			! kpanel_web_interactive; then
+			echo "KPANEL_PROGRESS 100 도메인 이름 인증서 신청에 실패했습니다. DNS, 80/443 포트 및 발급 할당량을 확인하십시오."
+			return 1
+		fi
 		echo -e "${gl_hong}알아채다:${gl_bai}인증서 신청이 실패했습니다. 다음 가능한 이유를 확인하고 다시 시도하십시오."
 		echo -e "1. 도메인 이름이 잘못 입력되었습니다. ➠ 도메인 이름이 올바르게 입력되었는지 확인하세요."
 		echo -e "2. DNS 확인 문제 ➠ 도메인 이름이 서버 IP로 올바르게 확인되었는지 확인"
 		echo -e "3. 네트워크 구성 문제 ➠ Cloudflare Warp 등 가상 네트워크를 사용하는 경우 일시적으로 종료하세요."
-		echo -e "4. 방화벽 제한사항 ➠ 포트 80/443이 열려 있는지 확인하고 접근이 가능한지 확인하세요."
+		echo -e "4. 방화벽 제한 사항 ➠ 포트 80/443이 열려 있는지 확인하고 접근이 가능한지 확인하세요."
 		echo -e "5. 신청 횟수가 한도를 초과했습니다. ➠ Let's Encrypt에는 주간 한도(5회/도메인 이름/주)가 있습니다."
 		echo -e "6. 국내 등록 제한 ➠ 중국 ​​본토 환경의 경우 도메인 이름 등록 여부를 확인하시기 바랍니다."
 		echo "------------------------"
@@ -1618,6 +1638,10 @@ certs_status() {
 repeat_add_yuming() {
 if [ -e /home/web/conf.d/$yuming.conf ]; then
   send_stats "도메인 이름 재사용"
+  if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+	echo "KPANEL_PROGRESS 100 도메인 이름이 이미 존재하므로 kejilion.sh 또는 KPanel의 기존 제품 덮어쓰기를 거부합니다."
+	return 1
+  fi
   web_del "${yuming}" > /dev/null 2>&1
 fi
 
@@ -1625,6 +1649,15 @@ fi
 
 
 add_yuming() {
+	  if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+		  yuming="${KJ_WEB_DOMAIN:-}"
+		  if [ -z "$yuming" ] || [ ${#yuming} -gt 253 ] ||
+			  ! printf '%s' "$yuming" | grep -Eq '^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$'; then
+			  echo "KPANEL_PROGRESS 100 KJ_WEB_DOMAIN은 유효한 도메인 이름이 아닙니다."
+			  return 1
+		  fi
+		  return 0
+	  fi
 	  ip_address
 	  echo -e "먼저 도메인 이름을 로컬 IP로 확인합니다.${gl_huang}$ipv4_address  $ipv6_address${gl_bai}"
 	  read -e -p "귀하의 IP 또는 확인된 도메인 이름을 입력하십시오:" yuming
@@ -1673,6 +1706,40 @@ add_db() {
 	  dbuse=$(grep -oP 'MYSQL_USER:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 	  dbusepasswd=$(grep -oP 'MYSQL_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 	  docker exec mysql mysql -u root -p"$dbrootpasswd" -e "CREATE DATABASE $dbname; GRANT ALL PRIVILEGES ON $dbname.* TO \"$dbuse\"@\"%\";"
+}
+
+
+ldnmp_web_root_base="/home/web/html"
+
+ldnmp_site_domain_is_safe() {
+	  local site_domain="${1:-}"
+	  case "$site_domain" in
+		  ""|"."|".."|*/*)
+			  echo "잘못된 사이트 디렉터리 이름:$site_domain" >&2
+			  return 1
+			  ;;
+	  esac
+}
+
+prepare_ldnmp_site_root() {
+	  local site_domain="${1:-}"
+	  ldnmp_site_domain_is_safe "$site_domain" || return 1
+	  command mkdir -p -- "${ldnmp_web_root_base}/${site_domain}" &&
+	  command chmod 0755 -- "$ldnmp_web_root_base" "${ldnmp_web_root_base}/${site_domain}"
+}
+
+normalize_ldnmp_site_permissions() {
+	  local site_domain="${1:-}"
+	  local site_root
+	  ldnmp_site_domain_is_safe "$site_domain" || return 1
+	  site_root="${ldnmp_web_root_base}/${site_domain}"
+	  [ -d "$site_root" ] || {
+		  echo "사이트 디렉토리가 존재하지 않습니다:$site_root" >&2
+		  return 1
+	  }
+
+	  find "$site_root" -type d -exec chmod u+rwx,go+rx,go-w {} + &&
+	  find "$site_root" -type f -exec chmod u+rw,go+r,go-w {} +
 }
 
 
@@ -1786,32 +1853,72 @@ web_cache() {
 web_del() {
 
 	send_stats "사이트 데이터 삭제"
-	yuming_list="${1:-}"
-	if [ -z "$yuming_list" ]; then
-		read -e -p "사이트 데이터를 삭제하려면 도메인 이름을 입력하세요(여러 도메인 이름은 공백으로 구분)." yuming_list
-		if [[ -z "$yuming_list" ]]; then
+	local -a yuming_list=()
+	if [ "$#" -gt 0 ]; then
+		yuming_list=("$@")
+	else
+		local yuming_input=""
+		read -e -p "사이트 데이터를 삭제하려면 도메인 이름을 입력하세요(여러 도메인 이름은 공백으로 구분)." yuming_input
+		if [[ -z "$yuming_input" ]]; then
 			return
 		fi
+		read -r -a yuming_list <<< "$yuming_input"
 	fi
 
-	for yuming in $yuming_list; do
+	local action_status=0
+	for yuming in "${yuming_list[@]}"; do
+		if [ -z "$yuming" ] || [ "${#yuming}" -gt 253 ] ||
+			! printf '%s' "$yuming" | grep -Eq '^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$'; then
+			echo "잘못된 도메인 이름, 삭제가 거부됨:$yuming"
+			action_status=1
+			continue
+		fi
+
 		echo "도메인 이름을 삭제하는 중입니다:$yuming"
-		rm -r /home/web/html/$yuming > /dev/null 2>&1
-		rm /home/web/conf.d/$yuming.conf > /dev/null 2>&1
-		rm /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
-		rm /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
+		rm -rf -- "/home/web/html/$yuming" > /dev/null 2>&1
+		rm -f -- "/home/web/conf.d/$yuming.conf" > /dev/null 2>&1
+		rm -f -- "/home/web/certs/${yuming}_key.pem" > /dev/null 2>&1
+		rm -f -- "/home/web/certs/${yuming}_cert.pem" > /dev/null 2>&1
 
 		# 도메인 이름을 데이터베이스 이름으로 변환
 		dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
-		dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+		if [ -f /home/web/docker-compose.yml ] &&
+			docker inspect mysql > /dev/null 2>&1; then
+			dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
+			echo "데이터베이스 삭제 중:$dbname"
+			if docker exec mysql mysql -u root -p"$dbrootpasswd" \
+				-e "DROP DATABASE IF EXISTS \`${dbname}\`;" > /dev/null 2>&1; then
+				echo "KPANEL_DELETE_DATABASE dropped $yuming"
+			else
+				echo "KPANEL_DELETE_DATABASE failed $yuming"
+				action_status=1
+			fi
+		else
+			echo "KPANEL_DELETE_DATABASE skipped $yuming"
+		fi
 
-		# 오류를 방지하려면 데이터베이스를 삭제하기 전에 데이터베이스가 존재하는지 확인하세요.
-		echo "데이터베이스 삭제 중:$dbname"
-		docker exec mysql mysql -u root -p"$dbrootpasswd" -e "DROP DATABASE ${dbname};" > /dev/null 2>&1
+		if [ -e "/home/web/html/$yuming" ] ||
+			[ -e "/home/web/conf.d/$yuming.conf" ] ||
+			[ -e "/home/web/certs/${yuming}_key.pem" ] ||
+			[ -e "/home/web/certs/${yuming}_cert.pem" ]; then
+			echo "사이트 제품 삭제가 완료되지 않았습니다.$yuming"
+			action_status=1
+		else
+			echo "KPANEL_DELETE_SITE deleted $yuming"
+		fi
 	done
 
-	docker exec nginx nginx -s reload
+	if docker inspect nginx > /dev/null 2>&1; then
+		if ! docker exec nginx nginx -t > /dev/null 2>&1 ||
+			! docker exec nginx nginx -s reload; then
+			echo "Nginx 구성 확인 또는 다시 로드에 실패했습니다."
+			action_status=1
+		fi
+	else
+		echo "KPANEL_DELETE_WARNING nginx_unavailable"
+	fi
 
+	return "$action_status"
 }
 
 
@@ -2238,7 +2345,7 @@ web_security() {
 
 				  22)
 					  send_stats "고부하로 5초 쉴드 가능"
-					  echo -e "${gl_huang}웹사이트는 5분마다 자동으로 감지합니다. 고부하를 감지하면 자동으로 실드를 열고, 저부하를 감지하면 자동으로 5초 동안 실드를 닫습니다.${gl_bai}"
+					  echo -e "${gl_huang}웹사이트는 5분마다 자동으로 감지합니다. 높은 부하를 감지하면 자동으로 쉴드가 열리고, 낮은 부하가 감지되면 자동으로 5초 동안 쉴드가 닫힙니다.${gl_bai}"
 					  echo "--------------"
 					  echo "CF 매개변수 가져오기:"
 					  echo -e "cf 백엔드 오른쪽 상단에 있는 내 프로필로 이동하여 왼쪽에 있는 API 토큰을 선택하고${gl_huang}Global API Key${gl_bai}"
@@ -2344,8 +2451,66 @@ check_nginx_compression() {
 	fi
 }
 
+ldnmp_optimization_mode() {
+	local mode="${1:-}"
+	local cpu_cores connections connections_per_core php_fpm_source mysql_source
+	case "$mode" in
+		standard)
+			connections_per_core=1024
+			php_fpm_source="www-1.conf"
+			mysql_source="custom_mysql_config-1.cnf"
+			;;
+		high)
+			connections_per_core=2048
+			php_fpm_source="www.conf"
+			mysql_source="custom_mysql_config.cnf"
+			;;
+		*)
+			echo "지원되지 않는 LDNMP 최적화 모드" >&2
+			return 2
+			;;
+	esac
 
+	cpu_cores=$(nproc)
+	connections=$((connections_per_core * cpu_cores))
+	sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
+	sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
 
+	wget -O /home/optimized_php.ini "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini" &&
+		docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
+	docker inspect php74 >/dev/null 2>&1 &&
+		docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
+	rm -f /home/optimized_php.ini
+
+	wget -O /home/www.conf "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/${php_fpm_source}" &&
+		docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
+	docker inspect php74 >/dev/null 2>&1 &&
+		docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
+	rm -f /home/www.conf
+
+	if [ "$mode" = high ]; then
+		patch_wp_memory_limit 512M 512M
+	else
+		patch_wp_memory_limit
+	fi
+	patch_wp_debug
+	fix_phpfpm_conf php
+	docker inspect php74 >/dev/null 2>&1 && fix_phpfpm_conf php74
+
+	wget -O /home/custom_mysql_config.cnf \
+		"${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/${mysql_source}" &&
+		docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
+	rm -f /home/custom_mysql_config.cnf
+
+	cd /home/web && docker compose restart || return 1
+	if [ "$mode" = high ]; then
+		optimize_web_server
+		echo "LDNMP 환경이 고성능 모드로 설정되었습니다."
+	else
+		optimize_balanced
+		echo "LDNMP 환경이 표준 모드로 설정되었습니다."
+	fi
+}
 
 web_optimization() {
 		  while true; do
@@ -2367,83 +2532,11 @@ web_optimization() {
 			  case $sub_choice in
 				  1)
 				  send_stats "사이트 표준 모드"
-
-				  local cpu_cores=$(nproc)
-				  local connections=$((1024 * ${cpu_cores}))
-				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
-				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
-
-
-				  # PHP 튜닝
-				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
-				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
-				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
-				  rm -rf /home/optimized_php.ini
-
-				  # PHP 튜닝
-				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www-1.conf
-				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
-				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
-				  rm -rf /home/www.conf
-
-				  patch_wp_memory_limit
-				  patch_wp_debug
-
-				  fix_phpfpm_conf php
-				  fix_phpfpm_conf php74
-
-				  # MySQL 튜닝
-				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
-				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
-				  rm -rf /home/custom_mysql_config.cnf
-
-
-				  cd /home/web && docker compose restart
-
-				  optimize_balanced
-
-
-				  echo "LDNMP 환경이 표준 모드로 설정되었습니다."
-
+				  ldnmp_optimization_mode standard
 					  ;;
 				  2)
 				  send_stats "사이트 고성능 모드"
-
-				  # nginx 튜닝
-				  local cpu_cores=$(nproc)
-				  local connections=$((2048 * ${cpu_cores}))
-				  sed -i "s/worker_processes.*/worker_processes ${cpu_cores};/" /home/web/nginx.conf
-				  sed -i "s/worker_connections.*/worker_connections ${connections};/" /home/web/nginx.conf
-
-				  # PHP 튜닝
-				  wget -O /home/optimized_php.ini ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/optimized_php.ini
-				  docker cp /home/optimized_php.ini php:/usr/local/etc/php/conf.d/optimized_php.ini
-				  docker cp /home/optimized_php.ini php74:/usr/local/etc/php/conf.d/optimized_php.ini
-				  rm -rf /home/optimized_php.ini
-
-				  # PHP 튜닝
-				  wget -O /home/www.conf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/www.conf
-				  docker cp /home/www.conf php:/usr/local/etc/php-fpm.d/www.conf
-				  docker cp /home/www.conf php74:/usr/local/etc/php-fpm.d/www.conf
-				  rm -rf /home/www.conf
-
-				  patch_wp_memory_limit 512M 512M
-				  patch_wp_debug
-
-				  fix_phpfpm_conf php
-				  fix_phpfpm_conf php74
-
-				  # MySQL 튜닝
-				  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config.cnf
-				  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
-				  rm -rf /home/custom_mysql_config.cnf
-
-				  cd /home/web && docker compose restart
-
-				  optimize_web_server
-
-				  echo "LDNMP 환경이 고성능 모드로 설정되었습니다."
-
+				  ldnmp_optimization_mode high
 					  ;;
 				  3)
 				  send_stats "nginx_gzip on"
@@ -2544,19 +2637,18 @@ check_docker_image_update() {
 	local container_name=$1
 	update_status=""
 
-	# 1. 지역점검
-	local country=$(curl -s --max-time 2 ipinfo.io/country)
-	[[ "$country" == "CN" ]] && return
-
-	# 2. 로컬 미러 정보 얻기
-	local container_info=$(docker inspect --format='{{.Created}},{{.Config.Image}}' "$container_name" 2>/dev/null)
+	# 1. 컨테이너 및 로컬 이미지 정보를 획득합니다. 업데이트 감지는 더 이상 지역별로 건너뛰지 않습니다.
+	local container_info
+	container_info=$(docker inspect --format='{{.Created}},{{.Config.Image}},{{.Image}}' "$container_name" 2>/dev/null)
 	[[ -z "$container_info" ]] && return
 
-	local container_created=$(echo "$container_info" | cut -d',' -f1)
-	local full_image_name=$(echo "$container_info" | cut -d',' -f2)
-	local container_created_ts=$(date -d "$container_created" +%s 2>/dev/null)
+	local container_created full_image_name container_image_id container_created_ts
+	container_created=$(echo "$container_info" | cut -d',' -f1)
+	full_image_name=$(echo "$container_info" | cut -d',' -f2)
+	container_image_id=$(echo "$container_info" | cut -d',' -f3)
+	container_created_ts=$(date -d "$container_created" +%s 2>/dev/null)
 
-	# 3. 지능형 라우팅 판단
+	# 2. 지능형 라우팅 판단
 	if [[ "$full_image_name" == ghcr.io* ]]; then
 		# --- 시나리오 A: GitHub(ghcr.io)의 미러링 ---
 		# 웨어하우스 경로를 추출합니다(예: ghcr.io/onexru/oneimg -> onexru/oneimg).
@@ -2572,19 +2664,45 @@ check_docker_image_update() {
 
 	else
 		# --- 시나리오 C: 표준 Docker 허브 ---
-		local image_repo=${full_image_name%%:*}
-		local image_tag=${full_image_name##*:}
-		[[ "$image_repo" == "$image_tag" ]] && image_tag="latest"
+		local docker_ref image_repo image_tag api_payload remote_digest local_digest
+		docker_ref=${full_image_name#docker.io/}
+		docker_ref=${docker_ref#index.docker.io/}
+		docker_ref=${docker_ref#registry-1.docker.io/}
+		if [[ "$docker_ref" == *@* ]]; then
+			image_repo=${docker_ref%@*}
+			image_tag="latest"
+		elif [[ "${docker_ref##*/}" == *:* ]]; then
+			image_repo=${docker_ref%:*}
+			image_tag=${docker_ref##*:}
+		else
+			image_repo=$docker_ref
+			image_tag="latest"
+		fi
 		[[ "$image_repo" != */* ]] && image_repo="library/$image_repo"
 
 		local api_url="https://hub.docker.com/v2/repositories/$image_repo/tags/$image_tag"
-		local remote_date=$(curl -s "$api_url" | jq -r '.last_updated' 2>/dev/null)
+		api_payload=$(curl -fsSL --max-time 8 "$api_url" 2>/dev/null)
+		remote_digest=$(printf '%s' "$api_payload" | jq -r '.digest // empty' 2>/dev/null)
+		local remote_date
+		remote_date=$(printf '%s' "$api_payload" | jq -r '.last_updated // empty' 2>/dev/null)
+		local_digest=$(
+			docker image inspect --format='{{range .RepoDigests}}{{println .}}{{end}}' "$container_image_id" 2>/dev/null |
+				sed -n 's/^.*@\(sha256:[a-f0-9]\{64\}\)$/\1/p' |
+				head -n 1
+		)
+		if [[ "$remote_digest" =~ ^sha256:[a-f0-9]{64}$ && "$local_digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+			if [[ "$remote_digest" != "$local_digest" ]]; then
+				update_status="${gl_huang}새 버전이 발견되었습니다!${gl_bai}"
+			fi
+			return
+		fi
 	fi
 
-	# 4. 타임스탬프 비교
+	# 3. 레지스트리가 비교 가능한 요약을 제공하지 않는 경우 이는 릴리스 시간 판단과 일치합니다.
 	if [[ -n "$remote_date" && "$remote_date" != "null" ]]; then
 		local remote_ts=$(date -d "$remote_date" +%s 2>/dev/null)
-		if [[ $container_created_ts -lt $remote_ts ]]; then
+		if [[ "$container_created_ts" =~ ^[0-9]+$ && "$remote_ts" =~ ^[0-9]+$ ]] &&
+			[[ $container_created_ts -lt $remote_ts ]]; then
 			update_status="${gl_huang}새 버전이 발견되었습니다!${gl_bai}"
 		fi
 	fi
@@ -2789,7 +2907,7 @@ clear_host_port_rules() {
 	install iptables
 
 
-	# 다른 모든 IP의 접근을 차단하는 규칙을 삭제하세요.
+	# 다른 모든 IP의 접근을 차단하는 규칙을 해제하세요.
 	if iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
 		iptables -D INPUT -p tcp --dport "$port" -j DROP
 	fi
@@ -2805,7 +2923,7 @@ clear_host_port_rules() {
 	fi
 
 
-	# 다른 모든 IP의 접근을 차단하는 규칙을 삭제하세요.
+	# 다른 모든 IP의 접근을 차단하는 규칙을 해제하세요.
 	if iptables -C INPUT -p udp --dport "$port" -j DROP &>/dev/null; then
 		iptables -D INPUT -p udp --dport "$port" -j DROP
 	fi
@@ -2857,10 +2975,411 @@ grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker
 
 }
 
+kpanel_app_progress() {
+	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] || return 0
+	printf 'KPANEL_PROGRESS %s %s\n' "$1" "$2"
+}
+
+kpanel_app_interactive_manage_choice() {
+	local target_variable="$1"
+	local selected_choice=""
+
+	if [ "${KJ_APP_MARKER_RECOVERY:-0}" != "1" ]; then
+		kpanel_app_verified_service true || return 1
+	fi
+	read -r -e -p "선택사항을 입력하세요:" selected_choice || return 1
+	if [[ ! "$selected_choice" =~ ^[0-9]+$ ]]; then
+		echo "오류: KPanel 애플리케이션 관리 터미널은 메뉴 번호만 허용합니다."
+		return 1
+	fi
+	printf -v "$target_variable" '%s' "$selected_choice"
+}
+
+kpanel_app_interactive_choice() {
+	local target_variable="$1"
+
+	[ "${KJ_APP_INTERACTIVE:-}" = "1" ] || return 2
+	case "${KJ_APP_ACTION:-}" in
+		install)
+			printf -v "$target_variable" '%s' "1"
+			;;
+		update)
+			kpanel_app_verified_service true || return 1
+			printf -v "$target_variable" '%s' "2"
+			;;
+		uninstall)
+			kpanel_app_verified_service true || return 1
+			printf -v "$target_variable" '%s' "3"
+			;;
+		manage)
+			kpanel_app_interactive_manage_choice "$target_variable"
+			;;
+		direct_access)
+			kpanel_app_verified_service true || return 1
+			case "${KJ_APP_ACCESS_MODE:-}" in
+				direct)
+					printf -v "$target_variable" '%s' "7"
+					;;
+				domain_only)
+					printf -v "$target_variable" '%s' "8"
+					;;
+				*)
+					echo "오류: KPanel이 유효한 애플리케이션 액세스 모드를 제공하지 않습니다."
+					return 1
+					;;
+			esac
+			;;
+		*)
+			echo "오류: KPanel 대화형 터미널은 이 애플리케이션 작업을 지원하지 않습니다."
+			return 1
+			;;
+	esac
+}
+
+kpanel_web_progress() {
+	[ "${KJ_WEB_NONINTERACTIVE:-}" = "1" ] || return 0
+	printf 'KPANEL_PROGRESS %s %s\n' "$1" "$2"
+}
+
+kpanel_web_interactive() {
+	[ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ] &&
+		[ "${KJ_WEB_INTERACTIVE:-0}" = "1" ]
+}
+
+kpanel_app_service_name() {
+	local service_name="${docker_app_service:-${docker_name:-}}"
+
+	if [[ ! "$service_name" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]; then
+		echo "오류: 잘못된 애플리케이션 기본 컨테이너 이름" >&2
+		return 1
+	fi
+	printf '%s\n' "$service_name"
+}
+
+kpanel_app_verified_service() {
+	local verify_expected="${1:-true}"
+	local service_name=""
+	local container_id=""
+	local expected_id="${KJ_APP_EXPECTED_CONTAINER_ID:-}"
+
+	service_name="$(kpanel_app_service_name)" || return 1
+	container_id="$(docker inspect --format '{{.Id}}' "$service_name" 2>/dev/null)" || {
+		echo "오류: 애플리케이션 기본 컨테이너를 찾을 수 없습니다.${service_name}" >&2
+		return 1
+	}
+	[ -n "$container_id" ] || {
+		echo "오류: 애플리케이션 마스터 컨테이너를 식별할 수 없습니다.${service_name}" >&2
+		return 1
+	}
+	if [ "$verify_expected" = "true" ] && [ -n "$expected_id" ] &&
+		[ "$container_id" != "$expected_id" ]; then
+		echo "오류: 기본 애플리케이션 컨테이너가 변경되었습니다. 패널을 새로 고치고 다시 시도하십시오." >&2
+		return 1
+	fi
+	printf '%s\n' "$service_name"
+}
+
+kpanel_app_access_path() {
+	if [[ ! "${docker_name:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$ ]]; then
+		echo "오류: 잘못된 애플리케이션 상태 파일 이름" >&2
+		return 1
+	fi
+	printf '/home/docker/%s_access.conf\n' "$docker_name"
+}
+
+kpanel_app_read_access_mode() {
+	local access_path=""
+	local access_mode=""
+	local service_name=""
+	local container_ip=""
+
+	access_path="$(kpanel_app_access_path)" || return 1
+	if [ -f "$access_path" ] && [ ! -L "$access_path" ]; then
+		access_mode="$(tr -d '\r\n' < "$access_path" 2>/dev/null)"
+	fi
+	case "$access_mode" in
+		direct|domain_only)
+			printf '%s\n' "$access_mode"
+			return 0
+			;;
+	esac
+	service_name="$(kpanel_app_service_name)" || return 1
+	container_ip="$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$service_name" 2>/dev/null)"
+	if [ -n "$container_ip" ] && command -v iptables >/dev/null 2>&1 &&
+		iptables -C DOCKER-USER -p tcp -d "$container_ip" -j DROP >/dev/null 2>&1; then
+		printf '%s\n' "domain_only"
+	else
+		printf '%s\n' "direct"
+	fi
+}
+
+kpanel_app_write_access_mode() {
+	local access_mode="$1"
+	local access_path=""
+	local temporary=""
+
+	case "$access_mode" in
+		direct|domain_only) ;;
+		*)
+			echo "오류: 지원되지 않는 애플리케이션 액세스 모드" >&2
+			return 1
+			;;
+	esac
+	setup_docker_dir || return 1
+	access_path="$(kpanel_app_access_path)" || return 1
+	temporary="$(mktemp "/home/docker/.${docker_name}_access.XXXXXX")" || return 1
+	if ! printf '%s\n' "$access_mode" > "$temporary" ||
+		! chmod 0644 "$temporary" ||
+		! mv -f "$temporary" "$access_path"; then
+		rm -f "$temporary"
+		return 1
+	fi
+}
+
+kpanel_app_apply_access_mode() {
+	local access_mode="$1"
+	local verify_expected="${2:-true}"
+	local service_name=""
+
+	service_name="$(kpanel_app_verified_service "$verify_expected")" || return 1
+	ip_address
+	case "$access_mode" in
+		direct)
+			clear_container_rules "$service_name" "$ipv4_address" || return 1
+			;;
+		domain_only)
+			block_container_port "$service_name" "$ipv4_address" || return 1
+			;;
+		*)
+			echo "오류: 지원되지 않는 애플리케이션 액세스 모드" >&2
+			return 1
+			;;
+	esac
+	kpanel_app_write_access_mode "$access_mode"
+}
+
+kpanel_app_restore_access_mode() {
+	local access_mode="$1"
+
+	if [ "$access_mode" = "domain_only" ]; then
+		kpanel_app_apply_access_mode domain_only false
+	else
+		kpanel_app_write_access_mode direct
+	fi
+}
+
+kpanel_app_remove_compatibility_state() {
+	local access_path=""
+
+	access_path="$(kpanel_app_access_path)" || return 1
+	rm -f "/home/docker/${docker_name}_port.conf" "$access_path" || return 1
+	if [ -f /home/docker/appno.txt ]; then
+		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt || return 1
+	fi
+}
+
+kpanel_app_install_port() {
+	local requested_port="${KJ_APP_PORT:-${docker_port:-}}"
+
+	case "$requested_port" in
+		''|*[!0-9]*)
+			echo "오류: KPanel이 유효한 애플리케이션 포트를 제공하지 않았습니다."
+			return 1
+			;;
+	esac
+	if [ "$requested_port" -lt 1 ] || [ "$requested_port" -gt 65535 ]; then
+		echo "오류: KPanel 애플리케이션 포트는 1-65535 사이여야 합니다."
+		return 1
+	fi
+	if kpanel_app_port_in_use "$requested_port"; then
+		echo "오류: 포트${requested_port}이미 점유되어 있습니다"
+		return 1
+	fi
+	docker_port="$requested_port"
+	return 0
+}
+
+kpanel_app_port_in_use() {
+	local requested_port="$1"
+
+	ss -H -lntu 2>/dev/null |
+		awk -v requested_port="$requested_port" '
+			{
+				local_address = $5
+				sub(/^.*:/, "", local_address)
+				if (local_address == requested_port) {
+					found = 1
+				}
+			}
+			END { exit(found ? 0 : 1) }
+		'
+}
+
+kpanel_app_choose_install_port() {
+	local app_port=""
+
+	if [ "${KJ_APP_INTERACTIVE:-}" = "1" ] && [ -n "${KJ_APP_PORT:-}" ]; then
+		kpanel_app_install_port
+		return $?
+	fi
+	while true; do
+		read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter 키를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
+		app_port=${app_port:-${docker_port}}
+
+		if kpanel_app_port_in_use "$app_port"; then
+			echo -e "${gl_hong}실수:${gl_bai}포트$app_port이미 사용 중입니다. 포트를 변경하세요."
+			send_stats "애플리케이션 포트가 점유되어 있습니다."
+		else
+			docker_port="$app_port"
+			return 0
+		fi
+	done
+}
+
+kpanel_run_docker_app_install() {
+	local adapter="$1"
+
+	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] || return 2
+	if [ "${KJ_APP_ACTION:-}" != "install" ]; then
+		echo "오류: KPanel은 현재 비대화형 설치만 허용합니다."
+		return 1
+	fi
+
+	kpanel_app_progress 5 "포트 및 호스트 환경 확인"
+	kpanel_app_install_port || return 1
+	setup_docker_dir || return 1
+	check_disk_space "${app_size:-1}" /home/docker || return 1
+	kpanel_app_progress 15 "Docker 런타임 환경 준비"
+	install jq || return 1
+	install_docker || return 1
+	kpanel_app_progress 30 "kejilion.sh 애플리케이션 설치 기능 실행"
+
+	if [ "$adapter" = "plus" ]; then
+		if ! docker_app_install; then
+			echo "설치 실패: 애플리케이션 상태가 등록되지 않았습니다."
+			return 1
+		fi
+	else
+		if ! docker_rum; then
+			echo "설치 실패: 애플리케이션 상태가 등록되지 않았습니다."
+			return 1
+		fi
+	fi
+
+	kpanel_app_progress 90 "kejilion.sh 호환성 상태 작성 중"
+	echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+	add_app_id
+	if [ "${KJ_APP_ACCESS_MODE:-direct}" = "domain_only" ]; then
+		kpanel_app_apply_access_mode domain_only false || return 1
+	else
+		kpanel_app_write_access_mode direct || return 1
+	fi
+	if [ "$adapter" = "standard" ]; then
+		[ -n "${docker_use:-}" ] && $docker_use
+		[ -n "${docker_passwd:-}" ] && $docker_passwd
+	fi
+	kpanel_app_progress 100 "애플리케이션 설치 완료"
+	echo "$docker_name설치 완료"
+	return 0
+}
+
+kpanel_run_docker_app_action() {
+	local adapter="$1"
+	local action="${KJ_APP_ACTION:-}"
+	local service_name=""
+	local access_mode=""
+
+	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] || return 2
+	case "$action" in
+		install)
+			kpanel_run_docker_app_install "$adapter"
+			return $?
+			;;
+		update|uninstall|direct_access) ;;
+		*)
+			echo "오류: KPanel은 이 애플리케이션 작업을 지원하지 않습니다."
+			return 1
+			;;
+	esac
+
+	kpanel_app_progress 5 "메인 컨테이너에 대해 kejilion.sh 설치 플래그 확인"
+	service_name="$(kpanel_app_verified_service true)" || return 1
+	if ! grep -qxF "${app_id}" /home/docker/appno.txt 2>/dev/null; then
+		if [ "${KJ_APP_RECONCILE_MARKER:-0}" != "1" ]; then
+			echo "오류: kejilion.sh 애플리케이션 설치 태그를 찾을 수 없습니다."
+			return 1
+		fi
+		kpanel_app_progress 10 "kejilion.sh 앱 설치 플래그 수정"
+		add_app_id || return 1
+	fi
+
+	case "$action" in
+		update)
+			access_mode="$(kpanel_app_read_access_mode)" || return 1
+			kpanel_app_verified_service true >/dev/null || return 1
+			kpanel_app_progress 25 "kejilion.sh 네이티브 업데이트 기능 실행"
+			if [ "$adapter" = "plus" ]; then
+				docker_app_update || return 1
+			else
+				docker rm -f "$docker_name" || return 1
+				docker rmi -f "$docker_img" >/dev/null 2>&1 || true
+				docker_rum || return 1
+			fi
+			kpanel_app_verified_service false >/dev/null || return 1
+			add_app_id
+			kpanel_app_progress 80 "앱 액세스 정책 복원 중"
+			kpanel_app_restore_access_mode "$access_mode" || return 1
+			if [ "$adapter" = "standard" ]; then
+				[ -n "${docker_use:-}" ] && $docker_use
+				[ -n "${docker_passwd:-}" ] && $docker_passwd
+			fi
+			kpanel_app_progress 100 "애플리케이션 업데이트 완료"
+			echo "$service_name이미 업데이트되었습니다."
+			;;
+		uninstall)
+			kpanel_app_verified_service true >/dev/null || return 1
+			kpanel_app_progress 25 "kejilion.sh 기본 제거 기능 실행"
+			if [ "$adapter" = "plus" ]; then
+				docker_app_uninstall || return 1
+			else
+				docker rm -f "$docker_name" || return 1
+				docker rmi -f "$docker_img" >/dev/null 2>&1 || true
+				rm -rf "/home/docker/$docker_name" || return 1
+			fi
+			if docker inspect "$service_name" >/dev/null 2>&1; then
+				echo "오류: 제거 기능이 완료된 후에도 기본 컨테이너가 여전히 존재합니다."
+				return 1
+			fi
+			kpanel_app_remove_compatibility_state || return 1
+			kpanel_app_progress 100 "애플리케이션 제거가 완료되었습니다."
+			echo "$service_name제거가 완료되었습니다."
+			;;
+		direct_access)
+			access_mode="${KJ_APP_ACCESS_MODE:-}"
+			case "$access_mode" in
+				direct|domain_only) ;;
+				*)
+					echo "오류: KPanel이 유효한 애플리케이션 액세스 모드를 제공하지 않습니다."
+					return 1
+					;;
+			esac
+			kpanel_app_progress 40 "kejilion.sh IP+포트 접근 정책 실행"
+			kpanel_app_apply_access_mode "$access_mode" true || return 1
+			kpanel_app_progress 100 "애플리케이션 액세스 정책 업데이트가 완료되었습니다."
+			;;
+	esac
+	return 0
+}
+
 
 
 docker_app() {
 send_stats "${docker_name}관리하다"
+
+if [ "${KJ_APP_NONINTERACTIVE:-}" = "1" ]; then
+	kpanel_run_docker_app_action standard
+	return $?
+fi
 
 while true; do
 	clear
@@ -2887,30 +3406,30 @@ while true; do
 	echo "------------------------"
 	echo "0. 이전 메뉴로 돌아가기"
 	echo "------------------------"
-	read -e -p "선택사항을 입력하세요:" choice
+	if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+		kpanel_app_interactive_choice choice || return 1
+	else
+		read -e -p "선택사항을 입력하세요:" choice
+	fi
+	local action_status=0
 	 case $choice in
 		1)
 			setup_docker_dir
 			check_disk_space $app_size /home/docker
-			while true; do
-				read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
-				local app_port=${app_port:-${docker_port}}
-
-				if ss -tuln | grep -q ":$app_port "; then
-					echo -e "${gl_hong}실수:${gl_bai}포트$app_port이미 사용 중입니다. 포트를 변경하세요."
-					send_stats "애플리케이션 포트가 점유되어 있습니다."
-				else
-					local docker_port=$app_port
-					break
-				fi
-			done
+			kpanel_app_choose_install_port || return 1
 
 			install jq
 			install_docker
-			docker_rum
+			if ! docker_rum; then
+				echo -e "${gl_hong}설치 실패:${gl_bai}애플리케이션 컨테이너를 시작하지 못했습니다."
+				if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+					return 1
+				fi
+			fi
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
 			add_app_id
+			kpanel_app_write_access_mode direct
 
 			clear
 			echo "$docker_name설치 완료"
@@ -2923,9 +3442,15 @@ while true; do
 		2)
 			docker rm -f "$docker_name"
 			docker rmi -f "$docker_img"
-			docker_rum
+			if ! docker_rum; then
+				echo -e "${gl_hong}업데이트 실패:${gl_bai}애플리케이션 컨테이너를 다시 시작하지 못했습니다."
+				if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+					return 1
+				fi
+			fi
 
 			add_app_id
+			kpanel_app_restore_access_mode "$(kpanel_app_read_access_mode)"
 
 			clear
 			echo "$docker_name설치 완료"
@@ -2936,10 +3461,16 @@ while true; do
 			send_stats "고쳐 쓰다$docker_name"
 			;;
 		3)
-			docker rm -f "$docker_name"
+			if ! docker rm -f "$docker_name"; then
+				echo -e "${gl_hong}제거 실패:${gl_bai}애플리케이션 컨테이너를 삭제할 수 없습니다."
+				if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+					return 1
+				fi
+			fi
 			docker rmi -f "$docker_img"
 			rm -rf "/home/docker/$docker_name"
 			rm -f /home/docker/${docker_name}_port.conf
+			rm -f /home/docker/${docker_name}_access.conf
 
 			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
 			echo "앱이 제거되었습니다."
@@ -2952,27 +3483,33 @@ while true; do
 			add_yuming
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 			block_container_port "$docker_name" "$ipv4_address"
+			kpanel_app_write_access_mode domain_only || action_status=1
 			;;
 
 		6)
 			echo "https://가 없는 도메인 이름 형식 example.com"
-			web_del
+			web_del || action_status=1
 			;;
 
 		7)
 			send_stats "IP 액세스 허용${docker_name}"
 			clear_container_rules "$docker_name" "$ipv4_address"
+			kpanel_app_write_access_mode direct || action_status=1
 			;;
 
 		8)
 			send_stats "IP 접근 차단${docker_name}"
 			block_container_port "$docker_name" "$ipv4_address"
+			kpanel_app_write_access_mode domain_only || action_status=1
 			;;
 
 		*)
 			break
 			;;
 	 esac
+	 if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+		return "$action_status"
+	 fi
 	 break_end
 done
 
@@ -2984,6 +3521,10 @@ done
 
 docker_app_plus() {
 	send_stats "$app_name"
+	if [ "${KJ_APP_NONINTERACTIVE:-}" = "1" ]; then
+		kpanel_run_docker_app_action plus
+		return $?
+	fi
 	while true; do
 		clear
 		check_docker_app
@@ -3010,46 +3551,53 @@ docker_app_plus() {
 		echo "------------------------"
 		echo "0. 이전 메뉴로 돌아가기"
 		echo "------------------------"
-		read -e -p "선택 항목을 입력하세요." choice
+		if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+			kpanel_app_interactive_choice choice || return 1
+		else
+			read -e -p "선택 항목을 입력하세요." choice
+		fi
+		local action_status=0
 		case $choice in
 			1)
 				setup_docker_dir
 				check_disk_space $app_size /home/docker
 
-				while true; do
-					read -e -p "애플리케이션 외부 서비스 포트를 입력하고 Enter를 누르면 기본적으로 사용됩니다.${docker_port}포트:" app_port
-					local app_port=${app_port:-${docker_port}}
-
-					if ss -tuln | grep -q ":$app_port "; then
-						echo -e "${gl_hong}실수:${gl_bai}포트$app_port이미 사용 중입니다. 포트를 변경하세요."
-						send_stats "애플리케이션 포트가 점유되어 있습니다."
-					else
-						local docker_port=$app_port
-						break
-					fi
-				done
+				kpanel_app_choose_install_port || return 1
 
 				install jq
 				install_docker
-				docker_app_install
-				echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
-
-				add_app_id
-				send_stats "$app_name설치하다"
+				if docker_app_install; then
+					echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
+					add_app_id
+					kpanel_app_write_access_mode direct
+					send_stats "$app_name설치하다"
+				else
+					echo -e "${gl_hong}설치 실패:${gl_bai}신청상황이 등록되지 않았습니다. 위의 오류를 수정한 후 다시 시도해 주세요."
+					action_status=1
+				fi
 				;;
 
 			2)
-				docker_app_update
-				add_app_id
-				send_stats "$app_name고쳐 쓰다"
+				if docker_app_update; then
+					add_app_id
+					kpanel_app_restore_access_mode "$(kpanel_app_read_access_mode)"
+					send_stats "$app_name고쳐 쓰다"
+				else
+					echo -e "${gl_hong}업데이트 실패:${gl_bai}원래 애플리케이션 등록 상태가 유지되었습니다."
+					action_status=1
+				fi
 				;;
 
 			3)
-				docker_app_uninstall
-				rm -f /home/docker/${docker_name}_port.conf
-
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-				send_stats "$app_name제거"
+				if docker_app_uninstall; then
+					rm -f /home/docker/${docker_name}_port.conf
+					rm -f /home/docker/${docker_name}_access.conf
+					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					send_stats "$app_name제거"
+				else
+					echo -e "${gl_hong}제거 실패:${gl_bai}애플리케이션 등록 상태가 유지되었습니다."
+					action_status=1
+				fi
 				;;
 
 			5)
@@ -3059,25 +3607,32 @@ docker_app_plus() {
 				ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 				local docker_check_name="${docker_app_service:-$docker_name}"
 				block_container_port "$docker_check_name" "$ipv4_address"
+				kpanel_app_write_access_mode domain_only || action_status=1
 
 				;;
 			6)
 				echo "https://가 없는 도메인 이름 형식 example.com"
-				web_del
+				web_del || action_status=1
 				;;
 			7)
 				send_stats "IP 액세스 허용${docker_name}"
-				clear_container_rules "$docker_name" "$ipv4_address"
+				local docker_check_name="${docker_app_service:-$docker_name}"
+				clear_container_rules "$docker_check_name" "$ipv4_address"
+				kpanel_app_write_access_mode direct || action_status=1
 				;;
 			8)
 				send_stats "IP 접근 차단${docker_name}"
 				local docker_check_name="${docker_app_service:-$docker_name}"
 				block_container_port "$docker_check_name" "$ipv4_address"
+				kpanel_app_write_access_mode domain_only || action_status=1
 				;;
 			*)
 				break
 				;;
 		esac
+		if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+			return "$action_status"
+		fi
 		break_end
 	done
 }
@@ -3212,6 +3767,107 @@ f2b_install_sshd() {
 
 }
 
+kpanel_f2b_jail_name() {
+	if grep -qi 'Alpine' /etc/issue 2>/dev/null &&
+		{ [ -f /etc/fail2ban/filter.d/alpine-sshd.conf ] ||
+		  [ -f /etc/fail2ban/jail.d/alpine-ssh.conf ] ||
+		  [ -f /etc/fail2ban/jail.d/alpine-sshd.local ]; }; then
+		printf '%s\n' "alpine-sshd"
+	else
+		printf '%s\n' "sshd"
+	fi
+}
+
+kpanel_f2b_enabled() {
+	local jail_name
+	command -v fail2ban-client >/dev/null 2>&1 || return 1
+	fail2ban-client ping >/dev/null 2>&1 || return 1
+	jail_name=$(kpanel_f2b_jail_name)
+	fail2ban-client status "$jail_name" >/dev/null 2>&1
+}
+
+kpanel_f2b_autostart() {
+	if command -v apk >/dev/null 2>&1; then
+		rc-update show default 2>/dev/null | grep -Eq '(^|[[:space:]])fail2ban([[:space:]]|$)'
+	else
+		/bin/systemctl is-enabled fail2ban.service >/dev/null 2>&1
+	fi
+}
+
+kpanel_f2b_status() {
+	local installed=false running=false enabled=false autostart=false
+	local jail_name banned=0 jail_status=""
+	jail_name=$(kpanel_f2b_jail_name)
+	if command -v fail2ban-client >/dev/null 2>&1; then
+		installed=true
+		if fail2ban-client ping >/dev/null 2>&1; then
+			running=true
+			if jail_status=$(fail2ban-client status "$jail_name" 2>/dev/null); then
+				enabled=true
+				banned=$(printf '%s\n' "$jail_status" |
+					awk -F: '/Currently banned/{gsub(/[[:space:]]/, "", $2); print $2; exit}')
+				case "$banned" in
+					''|*[!0-9]*) banned=0 ;;
+				esac
+			fi
+		fi
+		kpanel_f2b_autostart && autostart=true
+	fi
+	printf 'KPANEL_F2B_STATUS {"installed":%s,"running":%s,"enabled":%s,"autostart":%s,"jail":"%s","banned":%s}\n' \
+		"$installed" "$running" "$enabled" "$autostart" "$jail_name" "$banned"
+}
+
+kpanel_f2b_dispatch() {
+	local command="${1:-status}" changed=false
+	printf '%s\n' "KPANEL_F2B_PROTOCOL 1"
+	case "$command" in
+		status)
+			kpanel_f2b_status
+			;;
+		enable)
+			root_use
+			if kpanel_f2b_enabled && kpanel_f2b_autostart; then
+				printf '%s\n' "KPANEL_F2B_RESULT unchanged"
+				kpanel_f2b_status
+				return 0
+			fi
+			f2b_install_sshd || return 1
+			kpanel_f2b_enabled || {
+				echo "Fail2Ban SSH 감옥이 제대로 시작되지 않았습니다." >&2
+				return 1
+			}
+			changed=true
+			printf 'KPANEL_F2B_RESULT %s\n' "$changed"
+			kpanel_f2b_status
+			;;
+		disable)
+			root_use
+			if ! command -v fail2ban-client >/dev/null 2>&1; then
+				printf '%s\n' "KPANEL_F2B_RESULT unchanged"
+				kpanel_f2b_status
+				return 0
+			fi
+			if command -v apk >/dev/null 2>&1; then
+				service fail2ban stop >/dev/null 2>&1 || true
+				rc-update del fail2ban default >/dev/null 2>&1 || true
+			else
+				/bin/systemctl disable --now fail2ban.service >/dev/null 2>&1 || return 1
+			fi
+			if fail2ban-client ping >/dev/null 2>&1; then
+				echo "Fail2Ban 서비스가 아직 실행 중입니다." >&2
+				return 1
+			fi
+			changed=true
+			printf 'KPANEL_F2B_RESULT %s\n' "$changed"
+			kpanel_f2b_status
+			;;
+		*)
+			echo "사용법: k f2b [상태|활성화|비활성화]" >&2
+			return 2
+			;;
+	esac
+}
+
 f2b_sshd() {
 	if grep -q 'Alpine' /etc/issue; then
 		xxx=alpine-sshd
@@ -3231,7 +3887,7 @@ f2b_basic_config() {
 	install nano
 
 	if ! command -v fail2ban-client >/dev/null 2>&1; then
-		echo -e "${gl_hui}FAIL2BAN-클라이언트가 감지되지 않습니다. 먼저 Fail2ban을 설치하십시오.${gl_bai}"
+		echo -e "${gl_hui}failure2ban-client가 감지되지 않습니다. 먼저 fall2ban을 설치하십시오.${gl_bai}"
 		return
 	fi
 
@@ -3426,7 +4082,7 @@ ldnmp_web_on() {
 	  echo "당신의$webname건설되었습니다!"
 	  echo "https://$yuming"
 	  echo "------------------------"
-	  echo "$webname설치 정보는 다음과 같습니다."
+	  echo "$webname설치정보는 다음과 같습니다."
 
 }
 
@@ -3455,27 +4111,33 @@ ldnmp_wp() {
   # wordpress
   webname="WordPress"
   yuming="${1:-}"
+  kpanel_web_progress 10 "기존 사이트로 WordPress 도메인 이름 확인"
   send_stats "설치하다$webname"
   echo "배포 시작$webname"
   if [ -z "$yuming" ]; then
 	add_yuming
   fi
   repeat_add_yuming
+  kpanel_web_progress 20 "kejilion.sh LDNMP 환경 준비"
   ldnmp_install_status
 
 
+  kpanel_web_progress 35 "사이트 인증서 발급 및 구성"
   install_ssltls
   certs_status
+  kpanel_web_progress 50 "WordPress 데이터베이스 및 계정 생성"
   add_db
 
+  kpanel_web_progress 60 "kejilion.sh WordPress Nginx 구성 가져오기"
   wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
   wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
   sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
   nginx_http_on
 
 
+  kpanel_web_progress 75 "kejilion.sh WordPress 소스 코드 얻기 및 구성"
   cd /home/web/html
-  mkdir $yuming
+  prepare_ldnmp_site_root "$yuming" || return 1
   cd $yuming
   wget -O latest.zip ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/wp-latest.zip
   unzip latest.zip
@@ -3489,6 +4151,9 @@ ldnmp_wp() {
   cp /home/web/html/$yuming/wordpress/wp-config-sample.php /home/web/html/$yuming/wordpress/wp-config.php
 
 
+  kpanel_web_progress 90 "LDNMP 다시 시작 및 WordPress 사이트 확인"
+  normalize_ldnmp_site_permissions "$yuming" || return 1
+  chmod 0640 "/home/web/html/$yuming/wordpress/wp-config.php" || return 1
   restart_ldnmp
   nginx_web_on
 
@@ -3503,6 +4168,7 @@ ldnmp_Proxy() {
 	reverseproxy="${2:-}"
 	port="${3:-}"
 
+	kpanel_web_progress 10 "역방향 프록시 도메인 이름 및 업스트림 주소 확인"
 	send_stats "설치하다$webname"
 	echo "배포 시작$webname"
 	if [ -z "$yuming" ]; then
@@ -3519,12 +4185,15 @@ ldnmp_Proxy() {
 	if [ -z "$port" ]; then
 		read -e -p "안티 세대 포트를 입력하십시오:" port
 	fi
+	kpanel_web_progress 25 "kejilion.sh Nginx 환경 준비"
 	nginx_install_status
 
 
+	kpanel_web_progress 40 "역방향 프록시 인증서 발급 및 구성"
 	install_ssltls
 	certs_status
 
+	kpanel_web_progress 60 "kejilion.sh 역방향 프록시 구성 가져오기"
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
 
@@ -3545,6 +4214,7 @@ ldnmp_Proxy() {
 
 	update_nginx_listen_port "$yuming" "$access_port"
 
+	kpanel_web_progress 85 "역방향 프록시 구성 확인 및 다시 로드"
 	nginx_http_on
 	docker exec nginx nginx -s reload
 	nginx_web_on
@@ -3565,7 +4235,7 @@ ldnmp_Proxy_backend() {
 	check_ip_and_get_access_port "$yuming"
 
 	if [ -z "$reverseproxy_port" ]; then
-		read -e -p "여러 개의 세대 방지 IP+포트를 공백으로 구분하여 입력하세요(예: 127.0.0.1:3000 127.0.0.1:3002)." reverseproxy_port
+		read -e -p "여러 세대 방지 IP+포트를 공백으로 구분하여 입력하세요(예: 127.0.0.1:3000 127.0.0.1:3002)." reverseproxy_port
 	fi
 
 	nginx_install_status
@@ -3728,7 +4398,7 @@ stream_panel() {
 
 ldnmp_Proxy_backend_stream() {
 	clear
-	webname="스트리밍 4계층 프록시-로드 밸런싱"
+	webname="스트림 4계층 프록시-로드 밸런싱"
 
 	send_stats "설치하다$webname"
 	echo "배포 시작$webname"
@@ -4782,7 +5452,7 @@ linux_clean() {
 
 bbr_on() {
 
-# 커널 조정 모듈과의 충돌을 방지하기 위해 sysctl.d에 대한 통합 쓰기
+# 커널 튜닝 모듈과의 충돌을 방지하기 위해 sysctl.d에 대한 통합 쓰기
 local CONF="/etc/sysctl.d/99-kejilion-bbr.conf"
 mkdir -p /etc/sysctl.d
 echo "net.core.default_qdisc=fq" > "$CONF"
@@ -4821,6 +5491,246 @@ fi
 
 chattr +i /etc/resolv.conf
 
+}
+
+kpanel_dns_is_ipv4() {
+	local value="$1"
+	local first second third fourth extra octet
+	IFS=. read -r first second third fourth extra <<< "$value"
+	[ -z "$extra" ] || return 1
+	for octet in "$first" "$second" "$third" "$fourth"; do
+		[[ "$octet" =~ ^[0-9]{1,3}$ ]] || return 1
+		[ "$((10#$octet))" -le 255 ] || return 1
+	done
+}
+
+kpanel_dns_is_ipv6() {
+	local value="$1"
+	[ ${#value} -le 45 ] &&
+	[[ "$value" == *:* ]] &&
+	[[ "$value" =~ ^[0-9A-Fa-f:.]+$ ]]
+}
+
+kpanel_dns_restore_file() {
+	local target="$1"
+	local backup="$2"
+	local existed="$3"
+	local immutable="$4"
+
+	chattr -i "$target" >/dev/null 2>&1 || true
+	if [ "$existed" = "true" ]; then
+		cp -p "$backup" "$target" || return 1
+	else
+		rm -f "$target" || return 1
+	fi
+	if [ "$immutable" = "true" ]; then
+		chattr +i "$target" >/dev/null 2>&1 || return 1
+	fi
+}
+
+kpanel_dns_write_static() {
+	local target="/etc/resolv.conf"
+	local parent desired backup old_mode old_immutable="false" existed="false"
+	local expected="" value
+
+	if [ -L "$target" ]; then
+		target="$(readlink -f "$target")"
+		[ -n "$target" ] || {
+			echo "오류: /etc/resolv.conf는 손상된 심볼릭 링크입니다."
+			return 1
+		}
+	fi
+	parent="$(dirname "$target")"
+	[ -d "$parent" ] || {
+		echo "오류: DNS 구성 디렉터리가 존재하지 않습니다."
+		return 1
+	}
+	command -v chattr >/dev/null 2>&1 || {
+		echo "오류: chattr을 사용할 수 없습니다. kejilion.sh DNS 수명 주기 의미를 유지할 수 없습니다."
+		return 1
+	}
+
+	desired="$(mktemp "${parent}/.resolv.conf.kpanel.XXXXXX")" || return 1
+	backup="$(mktemp "${parent}/.resolv.conf.backup.XXXXXX")" || {
+		rm -f "$desired"
+		return 1
+	}
+	for value in "$@"; do
+		expected="${expected}nameserver ${value}"$'\n'
+	done
+	printf '%s' "$expected" > "$desired" || {
+		rm -f "$desired" "$backup"
+		return 1
+	}
+
+	if [ -f "$target" ]; then
+		existed="true"
+		cp -p "$target" "$backup" || {
+			rm -f "$desired" "$backup"
+			return 1
+		}
+		old_mode="$(stat -c '%a' "$target" 2>/dev/null || printf '644')"
+		chmod "$old_mode" "$desired" || {
+			rm -f "$desired" "$backup"
+			return 1
+		}
+		chown --reference="$target" "$desired" >/dev/null 2>&1 || true
+		if lsattr -d "$target" 2>/dev/null | awk '{print $1}' | grep -q 'i'; then
+			old_immutable="true"
+		fi
+		if [ "$(cat "$target")"$'\n' = "$expected" ]; then
+			chattr +i "$target" >/dev/null 2>&1 || {
+				rm -f "$desired" "$backup"
+				echo "오류: DNS 구성을 잠글 수 없습니다."
+				return 1
+			}
+			rm -f "$desired" "$backup"
+			echo "KPANEL_DNS_MANAGER resolv.conf"
+			echo "KPANEL_DNS_RESULT unchanged"
+			return 0
+		fi
+		chattr -i "$target" >/dev/null 2>&1 || {
+			rm -f "$desired" "$backup"
+			echo "오류: 기존 DNS 구성을 잠금 해제할 수 없습니다."
+			return 1
+		}
+	else
+		chmod 644 "$desired" || {
+			rm -f "$desired" "$backup"
+			return 1
+		}
+	fi
+
+	if ! mv -f "$desired" "$target" ||
+		! chattr +i "$target" >/dev/null 2>&1 ||
+		[ "$(cat "$target")"$'\n' != "$expected" ]; then
+		kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
+			rm -f "$desired" "$backup"
+			echo "오류: DNS 쓰기 실패 및 롤백 실패, 수동 확인 필요"
+			return 1
+		}
+		rm -f "$desired" "$backup"
+		echo "오류: DNS 쓰기 또는 다시 읽기 확인에 실패했습니다. 원래 구성이 복원되었습니다."
+		return 1
+	fi
+	rm -f "$backup"
+	echo "KPANEL_DNS_MANAGER resolv.conf"
+	echo "KPANEL_DNS_RESULT applied"
+}
+
+kpanel_dns_write_systemd_resolved() {
+	local config="/etc/systemd/resolved.conf.d/90-kpanel.conf"
+	local parent desired backup existed="false" expected
+
+	command -v systemctl >/dev/null 2>&1 || {
+		echo "오류: systemctl을 사용할 수 없습니다."
+		return 1
+	}
+	parent="$(dirname "$config")"
+	mkdir -p "$parent" || return 1
+	desired="$(mktemp "${parent}/.90-kpanel.conf.kpanel.XXXXXX")" || return 1
+	backup="$(mktemp "${parent}/.90-kpanel.conf.backup.XXXXXX")" || {
+		rm -f "$desired"
+		return 1
+	}
+	expected="[Resolve]"$'\n'"DNS=$*"$'\n'"FallbackDNS="$'\n'
+	printf '%s' "$expected" > "$desired" || {
+		rm -f "$desired" "$backup"
+		return 1
+	}
+	chmod 644 "$desired" || {
+		rm -f "$desired" "$backup"
+		return 1
+	}
+	if [ -f "$config" ]; then
+		existed="true"
+		cp -p "$config" "$backup" || {
+			rm -f "$desired" "$backup"
+			return 1
+		}
+		if [ "$(cat "$config")"$'\n' = "$expected" ]; then
+			rm -f "$desired" "$backup"
+			echo "KPANEL_DNS_MANAGER systemd-resolved"
+			echo "KPANEL_DNS_RESULT unchanged"
+			return 0
+		fi
+	fi
+	if ! mv -f "$desired" "$config" ||
+		! systemctl reload-or-restart systemd-resolved.service >/dev/null 2>&1 ||
+		[ "$(cat "$config")"$'\n' != "$expected" ]; then
+		if [ "$existed" = "true" ]; then
+			cp -p "$backup" "$config" || {
+				rm -f "$desired" "$backup"
+				echo "오류: systemd-resolved DNS 롤백 실패, 수동 검사 필요"
+				return 1
+			}
+		else
+			rm -f "$config"
+		fi
+		systemctl reload-or-restart systemd-resolved.service >/dev/null 2>&1 || {
+			rm -f "$desired" "$backup"
+			echo "오류: systemd-resolved DNS가 파일을 복원했지만 서비스 다시 로드에 실패했습니다. 수동 검사가 필요합니다."
+			return 1
+		}
+		rm -f "$desired" "$backup"
+		echo "오류: systemd-resolved DNS 쓰기 또는 다시 읽기 확인에 실패했습니다. 원래 구성이 복원되었습니다."
+		return 1
+	fi
+	rm -f "$backup"
+	echo "KPANEL_DNS_MANAGER systemd-resolved"
+	echo "KPANEL_DNS_RESULT applied"
+}
+
+kpanel_set_dns_noninteractive() {
+	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] || return 2
+	[ "$EUID" -eq 0 ] || {
+		echo "오류: KPanel DNS 프로토콜은 루트로 실행되어야 합니다."
+		return 1
+	}
+	[ "$#" -ge 1 ] && [ "$#" -le 4 ] || {
+		echo "오류: DNS 주소 수는 1~4개여야 합니다."
+		return 1
+	}
+
+	local ipv4_count=0 ipv6_count=0 value previous
+	local normalized=()
+	for value in "$@"; do
+		[ -n "$value" ] && [ ${#value} -le 45 ] || {
+			echo "오류: DNS 주소가 비어 있거나 너무 깁니다."
+			return 1
+		}
+		if kpanel_dns_is_ipv4 "$value"; then
+			ipv4_count=$((ipv4_count + 1))
+			[ "$ipv4_count" -le 2 ] || {
+				echo "오류: 최대 2개의 IPv4 DNS 주소"
+				return 1
+			}
+		elif kpanel_dns_is_ipv6 "$value"; then
+			ipv6_count=$((ipv6_count + 1))
+			[ "$ipv6_count" -le 2 ] || {
+				echo "오류: 최대 2개의 IPv6 DNS 주소"
+				return 1
+			}
+		else
+			echo "오류: 잘못된 DNS 주소"
+			return 1
+		fi
+		for previous in "${normalized[@]}"; do
+			[ "$previous" = "$value" ] && {
+				echo "오류: DNS 주소는 반복될 수 없습니다."
+				return 1
+			}
+		done
+		normalized+=("$value")
+	done
+
+	local resolver_target
+	resolver_target="$(readlink /etc/resolv.conf 2>/dev/null || true)"
+	if [[ "${resolver_target,,}" == *systemd/resolve* ]]; then
+		kpanel_dns_write_systemd_resolved "${normalized[@]}"
+	else
+		kpanel_dns_write_static "${normalized[@]}"
+	fi
 }
 
 
@@ -4938,7 +5848,7 @@ sshkey_on() {
 		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 	restart_ssh
-	echo -e "${gl_lv}사용자 키 로그인 모드가 켜져 있고 비밀번호 로그인 모드가 꺼졌습니다. 다시 연결이 적용됩니다.${gl_bai}"
+	echo -e "${gl_lv}사용자 키 로그인 모드는 켜지고 비밀번호 로그인 모드는 꺼집니다. 다시 연결이 적용됩니다.${gl_bai}"
 
 }
 
@@ -5061,7 +5971,7 @@ fetch_remote_ssh_keys() {
 	# 원본 인증_키 백업
 	if [[ -f "${authorized_keys}" ]]; then
 		cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
-		echo "원본 Authorized_keys 파일이 백업되었습니다."
+		echo "원래 Authorized_keys 파일이 백업되었습니다."
 	fi
 
 	# 공개 키 추가(중복 방지)
@@ -5138,7 +6048,7 @@ sshkey_panel() {
   	  echo -e "사용자 키 로그인 모드${IS_KEY_ENABLED}"
   	  echo "고급 게임플레이: https://blog.kejilion.pro/ssh-key"
   	  echo "------------------------------------------------"
-  	  echo "SSH를 통해 보다 안전하게 로그인할 수 있도록 키 쌍이 생성됩니다."
+  	  echo "SSH를 통해 더욱 안전하게 로그인할 수 있는 키 쌍이 생성됩니다."
 	  echo "------------------------"
 	  echo "1. 새 키 쌍 생성 2. 기존 공개 키를 수동으로 입력"
 	  echo "3. GitHub에서 기존 공개 키를 가져옵니다. 4. URL에서 기존 공개 키를 가져옵니다."
@@ -5595,9 +6505,131 @@ dd_xitong() {
 }
 
 
+kpanel_bbrv3_status() {
+	local architecture os_id codename running_kernel installed_kernel installed=false active=false supported=false
+	local congestion qdisc reboot_required=false reason=""
+	architecture=$(uname -m 2>/dev/null | tr -cd 'A-Za-z0-9._-')
+	running_kernel=$(uname -r 2>/dev/null | tr -cd 'A-Za-z0-9+._-')
+	os_id=""
+	codename=""
+	if [ -r /etc/os-release ]; then
+		os_id=$(. /etc/os-release && printf '%s' "${ID:-}" | tr -cd 'A-Za-z0-9._-')
+		codename=$(. /etc/os-release && printf '%s' "${VERSION_CODENAME:-}" | tr -cd 'A-Za-z0-9._-')
+	fi
+	if command -v lsb_release >/dev/null 2>&1; then
+		codename=$(lsb_release -sc 2>/dev/null | tr -cd 'A-Za-z0-9._-')
+	fi
+	installed_kernel=$(
+		for module_dir in /lib/modules/*xanmod*; do
+			[ -d "$module_dir" ] && basename "$module_dir"
+		done 2>/dev/null | sort -V | tail -n 1 | tr -cd 'A-Za-z0-9+._-'
+	)
+	congestion=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null | tr -cd 'A-Za-z0-9._-')
+	qdisc=$(cat /proc/sys/net/core/default_qdisc 2>/dev/null | tr -cd 'A-Za-z0-9._-')
+	xanmod_installed && installed=true
+	if printf '%s' "$running_kernel" | grep -qi 'xanmod' &&
+		[ "$congestion" = "bbr" ] && [ "$qdisc" = "fq" ]; then
+		active=true
+	fi
+	if { [ "$architecture" = "x86_64" ] || [ "$architecture" = "amd64" ]; } &&
+		{ [ "$os_id" = "debian" ] || [ "$os_id" = "ubuntu" ]; } &&
+		command -v apt >/dev/null 2>&1 && command -v dpkg-query >/dev/null 2>&1; then
+		case "$codename" in
+			bookworm|trixie|forky|sid|noble|plucky|questing|resolute)
+				supported=true
+				;;
+			*)
+				reason="unsupported_release"
+				;;
+		esac
+	elif [ "$architecture" = "aarch64" ] || [ "$architecture" = "arm64" ]; then
+		reason="arm64_external_installer_untrusted"
+	elif [ "$os_id" != "debian" ] && [ "$os_id" != "ubuntu" ]; then
+		reason="unsupported_distribution"
+	else
+		reason="missing_dependencies"
+	fi
+	if { [ "$installed" = "true" ] && [ -n "$installed_kernel" ] &&
+			[ "$running_kernel" != "$installed_kernel" ]; } ||
+		{ [ "$installed" = "false" ] && printf '%s' "$running_kernel" | grep -qi 'xanmod'; } ||
+		[ -f /var/run/reboot-required ]; then
+		reboot_required=true
+	fi
+	printf 'KPANEL_BBRV3_STATUS {"supported":%s,"installed":%s,"active":%s,"architecture":"%s","os":"%s","codename":"%s","runningKernel":"%s","installedKernel":"%s","congestionControl":"%s","defaultQDisc":"%s","rebootRequired":%s,"reason":"%s"}\n' \
+		"$supported" "$installed" "$active" "$architecture" "$os_id" "$codename" \
+		"$running_kernel" "$installed_kernel" "$congestion" "$qdisc" "$reboot_required" "$reason"
+}
+
+kpanel_bbrv3_dispatch() {
+	local command="${1:-status}" changed=false status_line reboot_required=false
+	printf '%s\n' "KPANEL_BBRV3_PROTOCOL 1"
+	case "$command" in
+		status)
+			kpanel_bbrv3_status
+			;;
+		install|update|uninstall)
+			root_use
+			status_line=$(kpanel_bbrv3_status)
+			if ! printf '%s' "$status_line" | grep -q '"supported":true' &&
+				{ [ "$command" != "uninstall" ] ||
+				  ! printf '%s' "$status_line" | grep -q '"installed":true'; }; then
+				printf '%s\n' "$status_line"
+				echo "현재 호스트는 KPanel BBRv3 제어 실행을 지원하지 않습니다." >&2
+				return 1
+			fi
+			case "$command" in
+				install)
+					if xanmod_installed; then
+						printf '%s' "$status_line" | grep -q '"rebootRequired":true' &&
+							reboot_required=true
+						printf 'KPANEL_BBRV3_RESULT {"action":"install","changed":false,"rebootRequired":%s}\n' \
+							"$reboot_required"
+						printf '%s\n' "$status_line"
+						return 0
+					fi
+					xanmod_install_or_update install || return 1
+					changed=true
+					;;
+				update)
+					xanmod_installed || {
+						echo "XanMod BBRv3 커널이 설치되지 않았으며 업데이트를 수행할 수 없습니다." >&2
+						return 1
+					}
+					xanmod_install_or_update update || return 1
+					changed=true
+					;;
+				uninstall)
+					if ! xanmod_installed; then
+						printf '%s' "$status_line" | grep -q '"rebootRequired":true' &&
+							reboot_required=true
+						printf 'KPANEL_BBRV3_RESULT {"action":"uninstall","changed":false,"rebootRequired":%s}\n' \
+							"$reboot_required"
+						printf '%s\n' "$status_line"
+						return 0
+					fi
+					xanmod_uninstall || return 1
+					changed=true
+					;;
+			esac
+			status_line=$(kpanel_bbrv3_status)
+			printf '%s' "$status_line" | grep -q '"rebootRequired":true' &&
+				reboot_required=true
+			printf 'KPANEL_BBRV3_RESULT {"action":"%s","changed":%s,"rebootRequired":%s}\n' \
+				"$command" "$changed" "$reboot_required"
+			printf '%s\n' "$status_line"
+			;;
+		*)
+			echo "사용법: k bbrv3 [상태|설치|업데이트|제거]" >&2
+			return 2
+			;;
+	esac
+}
+
 bbrv3() {
-		  root_use
-		  send_stats "bbrv3 관리"
+		  if [ "${KJ_BBRV3_NONINTERACTIVE:-}" != "1" ]; then
+			  root_use
+			  send_stats "bbrv3 관리"
+		  fi
 
 		  xanmod_add_repo() {
 				local keyring="/usr/share/keyrings/xanmod-archive-keyring.gpg"
@@ -5726,7 +6758,7 @@ bbrv3() {
 					return 1
 				}
 				echo "XanMod BBRv3 커널 처리가 완료되었습니다. 다시 시작한 후 적용"
-				server_reboot
+				[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] || server_reboot
 		  }
 
 		  xanmod_uninstall() {
@@ -5736,8 +6768,13 @@ bbrv3() {
 				rm -f /etc/apt/sources.list.d/xanmod-release.list
 				rm -f /usr/share/keyrings/xanmod-archive-keyring.gpg
 				echo "XanMod 커널이 제거되었습니다. 다시 시작한 후 적용"
-				server_reboot
+				[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] || server_reboot
 		  }
+
+		  if [ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ]; then
+			  kpanel_bbrv3_dispatch "$@"
+			  return
+		  fi
 
 		  local cpu_arch=$(uname -m)
 		  if [ "$cpu_arch" = "aarch64" ]; then
@@ -5939,7 +6976,7 @@ clamav_freshclam() {
 
 clamav_scan() {
 	if [ $# -eq 0 ]; then
-		echo "스캔할 디렉터리를 지정하세요."
+		echo "스캔할 디렉터리를 지정하십시오."
 		return
 	fi
 
@@ -6158,7 +7195,7 @@ _kernel_optimize_core() {
 		BACKLOG=1000
 	fi
 
-	# ── 생방송 시나리오를 위한 추가 사항: UDP 버퍼 확대 ──
+	# ── 추가 라이브 방송 시나리오: UDP 버퍼 확대 ──
 	local STREAM_EXTRA=""
 	if [ "$scene" = "stream" ]; then
 		STREAM_EXTRA="
@@ -6423,7 +7460,7 @@ Kernel_optimize() {
 			  cd ~
 			  clear
 			  optimize_web_server
-			  send_stats "웹사이트 최적화 모드"
+			  send_stats "웹사이트 최적화 모델"
 			  ;;
 		  4)
 			  cd ~
@@ -7151,7 +8188,7 @@ list_partitions() {
 # 지속적으로 마운트된 파티션
 mount_partition() {
 	send_stats "마운트 파티션"
-	read -e -p "마운트할 파티션의 이름을 입력하십시오(예: sda1):" PARTITION
+	read -e -p "마운트할 파티션 이름을 입력하십시오(예: sda1):" PARTITION
 
 	DEVICE="/dev/$PARTITION"
 	MOUNT_POINT="/mnt/$PARTITION"
@@ -8237,7 +9274,7 @@ docker_ssh_migration() {
 
 				mkdir -p "$original_path"
 				tar -xzf "$BACKUP_DIR/compose_project_${project_name}.tar.gz" -C "$original_path"
-				echo -e "${gl_lv}프로젝트 작성 [$project_name]는 다음 위치로 추출되었습니다.$original_path${gl_bai}"
+				echo -e "${gl_lv}프로젝트 작성 [$project_name]가 다음 위치로 추출되었습니다.$original_path${gl_bai}"
 
 				cd "$original_path" || return
 				docker compose down || true
@@ -8339,7 +9376,7 @@ docker_ssh_migration() {
 
 		echo -e "${gl_huang}백업 전송 중...${gl_bai}"
 		if [[ -z "$TARGET_PASS" ]]; then
-			# 키로 로그인
+			# 키를 사용하여 로그인
 			scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no -r "$LATEST_TAR" "$TARGET_USER@$TARGET_IP:/tmp/"
 		fi
 
@@ -8526,7 +9563,7 @@ linux_docker() {
 					  3)
 						  send_stats "네트워크에 가입하세요"
 						  read -e -p "종료 네트워크 이름:" dockernetwork
-						  read -e -p "이러한 컨테이너는 네트워크를 종료합니다(여러 컨테이너 이름을 공백으로 구분하세요)." dockernames
+						  read -e -p "해당 컨테이너는 네트워크를 종료합니다(여러 컨테이너 이름을 공백으로 구분하세요)." dockernames
 
 						  for dockername in $dockernames; do
 							  docker network disconnect $dockernetwork $dockername
@@ -8572,7 +9609,7 @@ linux_docker() {
 
 						  ;;
 					  2)
-						  read -e -p "삭제 볼륨 이름을 입력하세요(여러 볼륨 이름을 공백으로 구분하세요):" dockerjuans
+						  read -e -p "삭제 볼륨 이름을 입력하십시오(여러 볼륨 이름을 공백으로 구분하십시오):" dockerjuans
 
 						  for dockerjuan in $dockerjuans; do
 							  docker volume rm $dockerjuan
@@ -8683,6 +9720,180 @@ linux_docker() {
 
 }
 
+
+
+kpanel_test_catalog() {
+	cat <<'KPANEL_TEST_CATALOG'
+KPANEL_TEST_CATEGORY	access	IP 与解锁
+KPANEL_TEST_CATEGORY	network	网络线路
+KPANEL_TEST_CATEGORY	hardware	硬件性能
+KPANEL_TEST_CATEGORY	comprehensive	综合评测
+KPANEL_TEST_ITEM	chatgpt	access	ChatGPT 解锁检测	检测当前出口 IP 的 ChatGPT 可用性	https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh	2	light
+KPANEL_TEST_ITEM	region	access	Region 流媒体解锁	检测常见流媒体服务的地区解锁状态	https://check.unlock.media	5	network
+KPANEL_TEST_ITEM	media	access	yeahwu 流媒体检测	检测常见流媒体与 AI 服务的可用区域	https://github.com/yeahwu/check/raw/main/check.sh	5	network
+KPANEL_TEST_ITEM	ip-quality	access	IP 质量体检	检测 IP 风险、信誉、邮件与流媒体质量	https://IP.Check.Place	8	network
+KPANEL_TEST_ITEM	besttrace	network	BestTrace 三网回程	检测三网回程延迟和路由	https://git.io/besttrace	8	network
+KPANEL_TEST_ITEM	mtr	network	MTR 三网回程	使用 MTR 检测三网回程线路	https://github.com/zhucaidan/mtr_trace/raw/main/mtr_trace.sh	8	network
+KPANEL_TEST_ITEM	superspeed	network	SuperSpeed 三网测速	执行国内三网节点带宽测试	https://git.io/superspeed_uxh	15	intensive
+KPANEL_TEST_ITEM	nxtrace-fast	network	NextTrace 快速回程	执行 TCP 快速回程路由测试	https://nxtrace.org/nt	8	network
+KPANEL_TEST_ITEM	backtrace	network	三网线路测试	检测电信、联通和移动回程线路	https://github.com/ludashi2020/backtrace/raw/main/install.sh	8	network
+KPANEL_TEST_ITEM	speedtest	network	多功能测速	运行 i-abc 多节点网络测速	https://github.com/i-abc/Speedtest/raw/main/speedtest.sh	15	intensive
+KPANEL_TEST_ITEM	net-quality	network	网络质量体检	检测延迟、抖动、丢包和网络质量	https://Net.Check.Place	10	network
+KPANEL_TEST_ITEM	tcp-quality	network	TCP 重传探测	检测 TCP 重传和连接质量	https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh	10	network
+KPANEL_TEST_ITEM	yabs	hardware	YABS 性能测试	测试 CPU、磁盘与网络；无 Swap 时按脚本创建 1 GiB /swapfile	https://yabs.sh	30	intensive
+KPANEL_TEST_ITEM	cpu	hardware	CPU 性能测试	运行 Geekbench 5；无 Swap 时按脚本创建 1 GiB /swapfile	https://raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh	30	intensive
+KPANEL_TEST_ITEM	bench	comprehensive	Bench 综合测试	输出系统信息、磁盘与网络综合结果	https://bench.sh	15	intensive
+KPANEL_TEST_ITEM	ecs	comprehensive	融合怪综合测评	运行 spiritLHLS ECS 综合性能与质量测评	https://github.com/spiritLHLS/ecs/raw/main/ecs.sh	45	intensive
+KPANEL_TEST_ITEM	nodequality	comprehensive	NodeQuality 综合测评	运行 NodeQuality 节点质量综合测试	https://run.NodeQuality.com	30	intensive
+KPANEL_TEST_CATALOG
+}
+
+kpanel_run_remote_bash() {
+	local source_url="${1:-}"
+	shift || true
+	[ -n "$source_url" ] || return 64
+
+	local test_workspace test_script command_status
+	test_workspace="$(mktemp -d)" || return 1
+	test_script="$test_workspace/test.sh"
+	curl -fsSL "$source_url" -o "$test_script"
+	command_status=$?
+	if [ "$command_status" -ne 0 ]; then
+		rm -f "$test_script"
+		rmdir "$test_workspace" 2>/dev/null || true
+		return "$command_status"
+	fi
+	chmod 700 "$test_script"
+	bash "$test_script" "$@"
+	command_status=$?
+	rm -f "$test_script"
+	rmdir "$test_workspace" 2>/dev/null || true
+	return "$command_status"
+}
+
+kpanel_run_test_noninteractive() {
+	[ "${KJ_TEST_NONINTERACTIVE:-}" = "1" ] || return 2
+
+	local action="${1:-list}"
+	local selector="${2:-}"
+	case "$action" in
+		list)
+			[ "$#" -eq 1 ] || {
+				echo "KPANEL_TEST_ERROR list does not accept arguments" >&2
+				return 64
+			}
+			kpanel_test_catalog
+			;;
+		run)
+			[ "$#" -eq 2 ] || {
+				echo "KPANEL_TEST_ERROR run requires one fixed test selector" >&2
+				return 64
+			}
+			echo "KPANEL_TEST_START ${selector}"
+			(
+				set -o pipefail
+				case "$selector" in
+				chatgpt)
+					send_stats "ChatGPT 잠금 해제 상태 감지"
+					kpanel_run_remote_bash https://cdn.jsdelivr.net/gh/missuo/OpenAI-Checker/openai.sh
+					;;
+				region)
+					send_stats "지역 스트리밍 미디어 잠금 해제 테스트"
+					kpanel_run_remote_bash https://check.unlock.media
+					;;
+				media)
+					send_stats "예우 스트리밍 미디어 잠금 해제 감지"
+					kpanel_run_remote_bash ${gh_proxy}github.com/yeahwu/check/raw/main/check.sh
+					;;
+				ip-quality)
+					send_stats "xykt_IP 품질 확인 스크립트"
+					kpanel_run_remote_bash https://IP.Check.Place
+					;;
+				besttrace)
+					send_stats "besttrace 삼중 네트워크 백홀 지연 라우팅 테스트"
+					kpanel_run_remote_bash https://git.io/besttrace
+					;;
+				mtr)
+					send_stats "mtr_trace 삼중 네트워크 백홀 회선 테스트"
+					kpanel_run_remote_bash ${gh_proxy}raw.githubusercontent.com/zhucaidan/mtr_trace/main/mtr_trace.sh
+					;;
+				superspeed)
+					send_stats "초고속 트리플 네트워크 속도 테스트"
+					kpanel_run_remote_bash https://git.io/superspeed_uxh
+					;;
+				nxtrace-fast)
+					send_stats "nxtrace 빠른 백홀 테스트 스크립트"
+					kpanel_run_remote_bash https://nxtrace.org/nt
+					nexttrace --fast-trace --tcp
+					;;
+				backtrace)
+					send_stats "ludashi2020 세 개의 네트워크 라인 테스트"
+					kpanel_run_remote_bash ${gh_proxy}raw.githubusercontent.com/ludashi2020/backtrace/main/install.sh
+					;;
+				speedtest)
+					send_stats "i-abc 다기능 속도 테스트 스크립트"
+					kpanel_run_remote_bash ${gh_proxy}raw.githubusercontent.com/i-abc/Speedtest/main/speedtest.sh
+					;;
+				net-quality)
+					send_stats "네트워크 품질 테스트 스크립트"
+					kpanel_run_remote_bash https://Net.Check.Place
+					;;
+				tcp-quality)
+					send_stats "TcpQuality TCP 재전송 감지 스크립트"
+					kpanel_run_remote_bash https://raw.githubusercontent.com/ibsgss/TcpQuality/main/runTcpQuality.sh
+					;;
+				yabs)
+					send_stats "Yabs 성능 테스트"
+					check_swap
+					kpanel_run_remote_bash https://yabs.sh -i -5
+					;;
+				cpu)
+					send_stats "icu/gb5 CPU 성능 테스트 스크립트"
+					check_swap
+					kpanel_run_remote_bash ${gh_proxy}raw.githubusercontent.com/i-abc/GB5/main/gb5-test.sh
+					;;
+				bench)
+					send_stats "벤치 성능 테스트"
+					kpanel_run_remote_bash https://bench.sh
+					;;
+				ecs)
+					send_stats "spiritysdx 퓨전 몬스터 리뷰"
+					local test_workspace
+					test_workspace="$(mktemp -d)"
+					(
+						cd "$test_workspace" &&
+						curl -fsSL ${gh_proxy}github.com/spiritLHLS/ecs/raw/main/ecs.sh -o ecs.sh &&
+						chmod +x ecs.sh &&
+						bash ecs.sh
+					)
+					local ecs_status=$?
+					rm -f "$test_workspace/ecs.sh"
+					rmdir "$test_workspace" 2>/dev/null || true
+					[ "$ecs_status" -eq 0 ] || return "$ecs_status"
+					;;
+				nodequality)
+					send_stats "Nodequality 융합 몬스터 평가"
+					kpanel_run_remote_bash https://run.NodeQuality.com
+					;;
+				*)
+					echo "KPANEL_TEST_ERROR unsupported test selector" >&2
+					exit 64
+					;;
+				esac
+			)
+			local command_status=$?
+			if [ "$command_status" -ne 0 ]; then
+				echo "KPANEL_TEST_RESULT failed ${selector}" >&2
+				return "$command_status"
+			fi
+			echo "KPANEL_TEST_RESULT succeeded ${selector}"
+			;;
+		*)
+			echo "KPANEL_TEST_ERROR unsupported action" >&2
+			return 64
+			;;
+	esac
+}
 
 
 linux_test() {
@@ -8894,7 +10105,7 @@ linux_Oracle() {
 		  1)
 			  clear
 			  echo "활성 스크립트: CPU 사용량 10-20% 메모리 사용량 20%"
-			  read -e -p "정말로 설치하시겠습니까? (예/아니요):" choice
+			  read -e -p "설치하시겠습니까? (예/아니요):" choice
 			  case "$choice" in
 				[Yy])
 
@@ -8906,7 +10117,7 @@ linux_Oracle() {
 				  local DEFAULT_MEM_UTIL=20
 				  local DEFAULT_SPEEDTEST_INTERVAL=120
 
-				  # 사용자에게 CPU 코어 수와 점유율을 입력하라는 메시지를 표시합니다. 사용자가 Enter를 누르면 기본값이 사용됩니다.
+				  # 사용자에게 CPU 코어 수와 점유율을 입력하라는 메시지를 표시합니다. 사용자가 Enter 키를 누르면 기본값이 사용됩니다.
 				  read -e -p "CPU 코어 수를 입력하십시오.[기본값:$DEFAULT_CPU_CORE]: " cpu_core
 				  local cpu_core=${cpu_core:-$DEFAULT_CPU_CORE}
 
@@ -9075,9 +10286,577 @@ fix_phpfpm_conf() {
 
 
 
+kpanel_run_web_recipe_cli() {
+	local selector="${1:-}"
+	local domain="${2:-}"
+	if [ "$#" -ne 2 ]; then
+		echo "사용법: k <웹사이트 구축 명령> <도메인 이름>"
+		return 64
+	fi
+	KJ_WEB_NONINTERACTIVE=1
+	KJ_WEB_RECIPE="$selector"
+	KJ_WEB_DOMAIN="$domain"
+	mkdir -p /run/lock
+	local lock_fd rc
+	exec {lock_fd}>/run/lock/kejilion-web-environment.lock
+	if ! flock -n "$lock_fd"; then
+		echo "기존 웹 사이트 또는 LDNMP 환경 작업이 실행 중입니다." >&2
+		exec {lock_fd}>&-
+		return 75
+	fi
+	linux_ldnmp
+	rc=$?
+	flock -u "$lock_fd"
+	exec {lock_fd}>&-
+	return "$rc"
+}
+
+kpanel_web_recipe_requires_document_root() {
+	case "${1:-}" in
+		2|3|4|5|6|7|8|9|20|25|26|27|30) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+kpanel_ldnmp_escape() {
+	local value="${1:-}"
+	value=${value//\\/\\\\}; value=${value//\"/\\\"}
+	value=${value//$'\n'/\\n}; value=${value//$'\r'/}
+	printf '%s' "$value"
+}
+
+kpanel_ldnmp_event() {
+	printf 'KPANEL_LDNMP_EVENT {"stage":"%s","progress":%s,"message":"%s"}\n' \
+		"$(kpanel_ldnmp_escape "$1")" "$2" "$(kpanel_ldnmp_escape "$3")"
+}
+
+kpanel_ldnmp_result() {
+	local payload
+	payload=$(printf '{"status":"%s","action":"%s","message":"%s","finishedAt":"%s"}' \
+		"$1" "$2" "$(kpanel_ldnmp_escape "$3")" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')")
+	printf 'KPANEL_LDNMP_RESULT %s\n' "$payload"
+	case "${KJ_LDNMP_RECEIPT:-}" in
+		/var/lib/kejilion-panel/environment-jobs/*.receipt)
+			umask 077
+			printf '%s\n' "$payload" > "${KJ_LDNMP_RECEIPT}.tmp.$$" &&
+				mv -f "${KJ_LDNMP_RECEIPT}.tmp.$$" "$KJ_LDNMP_RECEIPT"
+			;;
+	esac
+}
+
+kpanel_ldnmp_component() {
+	local name="$1" required="$2" exists=false running=false state=absent image="" version="" digest=""
+	if docker inspect "$name" >/dev/null 2>&1; then
+		exists=true
+		state=$(docker inspect -f '{{.State.Status}}' "$name" 2>/dev/null)
+		image=$(docker inspect -f '{{.Config.Image}}' "$name" 2>/dev/null)
+		digest=$(docker image inspect -f '{{index .RepoDigests 0}}' "$image" 2>/dev/null)
+		[ "$state" = running ] && running=true
+		case "$name" in
+			nginx) version=$(docker exec nginx nginx -v 2>&1 | sed -n 's#.*nginx/##p' | head -1) ;;
+			php|php74) version=$(docker exec "$name" php -r 'echo PHP_VERSION;' 2>/dev/null) ;;
+			redis) version=$(docker exec redis redis-server -v 2>/dev/null | sed -n 's/.*v=\([^ ]*\).*/\1/p') ;;
+			mysql)
+				local password
+				password=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml 2>/dev/null | tr -d '[:space:]')
+				[ -n "$password" ] && version=$(docker exec mysql mysql -u root -p"$password" -Nse 'SELECT VERSION();' 2>/dev/null)
+				;;
+		esac
+	fi
+	printf '{"name":"%s","required":%s,"exists":%s,"running":%s,"state":"%s","image":"%s","version":"%s","repoDigest":"%s","updateStatus":"unknown","updateReason":"레지스트리 상태는 업데이트 작업 중에 실시간으로만 확인됩니다."}' \
+		"$name" "$required" "$exists" "$running" "$(kpanel_ldnmp_escape "$state")" \
+		"$(kpanel_ldnmp_escape "$image")" "$(kpanel_ldnmp_escape "$version")" "$(kpanel_ldnmp_escape "$digest")"
+}
+
+ldnmp_environment_status() {
+	local count=0 running=0 state=absent profile=none health=unknown
+	for name in nginx mysql php redis; do
+		docker inspect "$name" >/dev/null 2>&1 && count=$((count + 1))
+		[ "$(docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null)" = true ] && running=$((running + 1))
+	done
+	if [ "$count" -eq 4 ]; then state=installed; profile=full
+	elif [ "$count" -eq 1 ] && docker inspect nginx >/dev/null 2>&1; then state=installed; profile=nginx
+	elif [ "$count" -gt 0 ] || [ -d /home/web ]; then state=partial; profile=custom
+	fi
+	if { [ "$profile" = full ] && [ "$running" -eq 4 ]; } ||
+		{ [ "$profile" = nginx ] && [ "$running" -eq 1 ]; }; then health=healthy
+	elif [ "$state" != absent ]; then health=degraded
+	fi
+
+	local compose=false nginx_ok=false sites=0 databases=0 certificates=0 bytes=0
+	[ -f /home/web/docker-compose.yml ] &&
+		docker compose -f /home/web/docker-compose.yml config -q >/dev/null 2>&1 && compose=true
+	docker exec nginx nginx -t >/dev/null 2>&1 && nginx_ok=true
+	[ -d /home/web/conf.d ] && sites=$(find /home/web/conf.d -maxdepth 1 -type f -name '*.conf' ! -name default.conf ! -name map.conf 2>/dev/null | wc -l)
+	[ -d /home/web/certs ] && certificates=$(find /home/web/certs -maxdepth 1 -type f -name '*_cert.pem' 2>/dev/null | wc -l)
+	if docker inspect mysql >/dev/null 2>&1; then
+		local password
+		password=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml 2>/dev/null | tr -d '[:space:]')
+		[ -n "$password" ] && databases=$(docker exec mysql mysql -u root -p"$password" -Nse 'SHOW DATABASES;' 2>/dev/null |
+			grep -Ev '^(information_schema|mysql|performance_schema|sys)$' | wc -l)
+	fi
+	[ -d /home/web ] && bytes=$(du -sb /home/web 2>/dev/null | awk '{print $1}')
+	local resource=""
+	command -v sha256sum >/dev/null 2>&1 && resource=$(
+		{ [ -f /home/web/docker-compose.yml ] && sha256sum /home/web/docker-compose.yml
+		  [ -f /home/web/nginx.conf ] && sha256sum /home/web/nginx.conf
+		  docker inspect -f '{{.Id}} {{.Image}} {{.State.Status}}' nginx mysql php php74 redis 2>/dev/null; } |
+			sha256sum | awk '{print $1}'
+	)
+	local fail2ban=false waf=false cloudflare=false ddos=false mode=custom gzip=false brotli=false zstd=false
+	command -v fail2ban-client >/dev/null 2>&1 && fail2ban=true
+	grep -qE '^[[:space:]]*modsecurity on;' /home/web/nginx.conf 2>/dev/null && waf=true
+	[ -f /etc/fail2ban/action.d/cloudflare-docker.conf ] && cloudflare=true
+	iptables -C INPUT -p tcp --syn -j DROP >/dev/null 2>&1 && ddos=true
+	docker exec mysql grep -q 4096M /etc/mysql/conf.d/custom_mysql_config.cnf 2>/dev/null && mode=high
+	[ "$mode" = custom ] && docker exec mysql test -f /etc/mysql/conf.d/custom_mysql_config.cnf >/dev/null 2>&1 && mode=standard
+	grep -qE '^[[:space:]]*gzip[[:space:]]+on;' /home/web/nginx.conf 2>/dev/null && gzip=true
+	grep -qE '^[[:space:]]*brotli[[:space:]]+on;' /home/web/nginx.conf 2>/dev/null && brotli=true
+	grep -qE '^[[:space:]]*zstd[[:space:]]+on;' /home/web/nginx.conf 2>/dev/null && zstd=true
+	local latest=""
+	latest=$(find /home -maxdepth 1 -type f -name 'web_*.tar.gz' -printf '%f\n' 2>/dev/null | sort -r | head -1)
+	local port_conflicts="" separator="" port listener
+	for port in 80 443; do
+		listener=$(ss -ltnp 2>/dev/null | awk -v suffix=":${port}" '$4 ~ suffix"$" {print; exit}')
+		if [ -n "$listener" ]; then
+			port_conflicts="${port_conflicts}${separator}\"$(kpanel_ldnmp_escape "$listener")\""
+			separator=","
+		fi
+	done
+	printf '{"protocolVersion":"1","state":"%s","profile":"%s","health":"%s","webRoot":"/home/web","diskBytes":%s,"siteCount":%s,"databaseCount":%s,"certificateCount":%s,"composeValid":%s,"nginxValid":%s,"resourceVersion":"%s","scriptVersion":"%s","latestBackup":"%s","portConflicts":[%s],"components":[' \
+		"$state" "$profile" "$health" "${bytes:-0}" "${sites:-0}" "${databases:-0}" "${certificates:-0}" \
+		"$compose" "$nginx_ok" "$resource" "$sh_v" "$(kpanel_ldnmp_escape "$latest")" "$port_conflicts"
+	kpanel_ldnmp_component nginx true; printf ','; kpanel_ldnmp_component mysql true; printf ','
+	kpanel_ldnmp_component php true; printf ','; kpanel_ldnmp_component php74 false; printf ','
+	kpanel_ldnmp_component redis true
+	printf '],"protection":{"fail2ban":%s,"waf":%s,"cloudflare":%s,"ddos":%s},"optimization":{"mode":"%s","gzip":%s,"brotli":%s,"zstd":%s},"observedAt":"%s"}\n' \
+		"$fail2ban" "$waf" "$cloudflare" "$ddos" "$mode" "$gzip" "$brotli" "$zstd" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+}
+
+ldnmp_environment_catalog() {
+	printf '%s\n' '{"protocolVersion":"1","installProfiles":[{"id":"full","label":"Full LDNMP"},{"id":"nginx","label":"전용 Nginx"}],"protectionActions":["fail2ban-install","fail2ban-uninstall","unban-all","waf-on","waf-off","ddos-on","ddos-off","cloudfl are-fail2ban","cloudflare-shield"],"optimizationActions":["standard","high","gzip-on","gzip-off","brotli-on","brotli-off","zstd-on ","zstd-off"],"updateComponents":[{"id":"nginx","versions":["latest"]},{"id":"mysql","versions":["latest","8.0","8.3","8.4","9.0"] },{"id":"php","versions":["7.4","8.0","8.1","8.2","8.3"]},{"id":"redis","versions":["latest"]},{"id":"all","versions":["latest"]}]}'
+}
+
+ldnmp_environment_install() {
+	local profile="${1:-full}" states
+	kpanel_ldnmp_event preflight 5 "설치 조건 확인"
+	case "$profile" in
+		full) kpanel_ldnmp_event install 15 "전체 LDNMP 설치"; ldnmp_install_all ;;
+		nginx) kpanel_ldnmp_event install 15 "nginx 설치"; nginx_install_all ;;
+		*) echo "지원되지 않는 설치 형식" >&2; return 2 ;;
+	esac
+	kpanel_ldnmp_event verify 90 "환경 확인 중"
+	docker exec nginx nginx -t >/dev/null 2>&1 || return 1
+	docker compose -f /home/web/docker-compose.yml config -q || return 1
+	if [ "$profile" = full ]; then
+		states=$(docker inspect -f '{{.State.Running}}' nginx mysql php redis 2>/dev/null)
+		[ "$(printf '%s\n' "$states" | sed '/^$/d' | wc -l)" -eq 4 ] || return 1
+		printf '%s\n' "$states" | grep -qv true && return 1
+	fi
+}
+
+ldnmp_protection_action_apply() {
+	local cfuser="" cftoken="" cfzone="" secret_content=""
+	case "$1" in
+		fail2ban-install)
+			f2b_install_sshd
+			mkdir -p /etc/fail2ban/filter.d /etc/fail2ban/jail.d
+			curl -sS -o /etc/fail2ban/filter.d/fail2ban-nginx-cc.conf "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/fail2ban-nginx-cc.conf"
+			curl -sS -o /etc/fail2ban/jail.d/nginx-docker-cc.conf "${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf"
+			sed -i '/cloudflare/d' /etc/fail2ban/jail.d/nginx-docker-cc.conf
+			fail2ban-client reload ;;
+		fail2ban-uninstall) remove fail2ban; rm -rf /etc/fail2ban ;;
+		unban-all) fail2ban-client unban --all ;;
+		waf-on) nginx_waf on ;; waf-off) nginx_waf off ;;
+		ddos-on) enable_ddos_defense ;; ddos-off) disable_ddos_defense ;;
+		cloudflare-fail2ban|cloudflare-shield)
+			case "${KJ_LDNMP_SECRET_FILE:-}" in
+				/var/lib/kejilion-panel/environment-jobs/*.secret) ;;
+				*) echo "Cloudflare 자격 증명 채널이 잘못되었습니다." >&2; return 2 ;;
+			esac
+			[ -f "$KJ_LDNMP_SECRET_FILE" ] && [ ! -L "$KJ_LDNMP_SECRET_FILE" ] || return 2
+			IFS= read -r cfuser < "$KJ_LDNMP_SECRET_FILE"
+			cftoken=$(sed -n '2p' "$KJ_LDNMP_SECRET_FILE")
+			cfzone=$(sed -n '3p' "$KJ_LDNMP_SECRET_FILE")
+			rm -f -- "$KJ_LDNMP_SECRET_FILE"
+			[ -n "$cfuser" ] && [ -n "$cftoken" ] || return 2
+			if [ "$1" = cloudflare-fail2ban ]; then
+				wget -O /home/web/conf.d/default.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default11.conf"
+				docker exec nginx nginx -s reload
+				mkdir -p /etc/fail2ban/jail.d /etc/fail2ban/action.d
+				curl -sS -o /etc/fail2ban/jail.d/nginx-docker-cc.conf \
+					"${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/nginx-docker-cc.conf"
+				curl -sS -o /etc/fail2ban/action.d/cloudflare-docker.conf \
+					"${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/cloudflare-docker.conf"
+				secret_content=$(< /etc/fail2ban/action.d/cloudflare-docker.conf)
+				secret_content=${secret_content//kejilion@outlook.com/$cfuser}
+				secret_content=${secret_content//APIKEY00000/$cftoken}
+				printf '%s\n' "$secret_content" > /etc/fail2ban/action.d/cloudflare-docker.conf
+				chmod 600 /etc/fail2ban/action.d/cloudflare-docker.conf
+				f2b_status
+			else
+				[ -n "$cfzone" ] || return 2
+				cd /root || return 1
+				install jq bc
+				check_crontab_installed
+				curl -sS -o CF-Under-Attack.sh "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh"
+				chmod 700 CF-Under-Attack.sh
+				secret_content=$(< CF-Under-Attack.sh)
+				secret_content=${secret_content//AAAA/$cfuser}
+				secret_content=${secret_content//BBBB/$cftoken}
+				secret_content=${secret_content//CCCC/$cfzone}
+				printf '%s\n' "$secret_content" > CF-Under-Attack.sh
+				local cron_job="*/5 * * * * /root/CF-Under-Attack.sh"
+				(crontab -l 2>/dev/null | grep -Fv "/root/CF-Under-Attack.sh"; echo "$cron_job") | crontab -
+			fi
+			;;
+		*) echo "지원되지 않는 보호 조치" >&2; return 2 ;;
+	esac
+}
+
+ldnmp_protection_action() {
+	local action="$1" snapshot rc=0 fail2ban_existed=false
+	snapshot=$(mktemp -d /home/.kpanel-ldnmp-protection.XXXXXX) || return 1
+	if [ -d /etc/fail2ban ]; then
+		cp -a /etc/fail2ban "$snapshot/fail2ban"
+		fail2ban_existed=true
+	fi
+	cp -a /home/web/nginx.conf "$snapshot/nginx.conf" 2>/dev/null || true
+	cp -a /home/web/conf.d/default.conf "$snapshot/default.conf" 2>/dev/null || true
+	crontab -l > "$snapshot/crontab" 2>/dev/null || true
+	iptables-save > "$snapshot/iptables.rules" 2>/dev/null || true
+
+	ldnmp_protection_action_apply "$@"
+	rc=$?
+	case "$action" in
+		fail2ban-install|cloudflare-fail2ban)
+			fail2ban-client ping >/dev/null 2>&1 || rc=1
+			;;
+		waf-on|waf-off)
+			docker exec nginx nginx -t >/dev/null 2>&1 || rc=1
+			;;
+		cloudflare-shield)
+			crontab -l 2>/dev/null | grep -Fq "/root/CF-Under-Attack.sh" || rc=1
+			;;
+	esac
+	if [ "$rc" -eq 0 ]; then
+		rm -rf "$snapshot"
+		return 0
+	fi
+
+	kpanel_ldnmp_event rollback 85 "보호 구성 확인에 실패했으며 원래 구성을 복원하는 중입니다."
+	rm -rf /etc/fail2ban
+	[ "$fail2ban_existed" = true ] && cp -a "$snapshot/fail2ban" /etc/fail2ban
+	[ -f "$snapshot/nginx.conf" ] && cp -a "$snapshot/nginx.conf" /home/web/nginx.conf
+	[ -f "$snapshot/default.conf" ] && cp -a "$snapshot/default.conf" /home/web/conf.d/default.conf
+	if [ -s "$snapshot/crontab" ]; then crontab "$snapshot/crontab"; else crontab -r 2>/dev/null; fi
+	[ -s "$snapshot/iptables.rules" ] && iptables-restore < "$snapshot/iptables.rules"
+	docker exec nginx nginx -t >/dev/null 2>&1 && docker exec nginx nginx -s reload >/dev/null 2>&1
+	systemctl restart fail2ban >/dev/null 2>&1 || true
+	rm -rf "$snapshot"
+	return "$rc"
+}
+
+ldnmp_optimization_action() {
+	local action="$1" snapshot rc=0 sysctl_existed=false
+	snapshot=$(mktemp -d /home/.kpanel-ldnmp-optimize.XXXXXX) || return 1
+	cp -a /home/web/nginx.conf "$snapshot/nginx.conf" 2>/dev/null || true
+	docker cp php:/usr/local/etc/php/conf.d/optimized_php.ini "$snapshot/php.ini" 2>/dev/null || true
+	docker cp php:/usr/local/etc/php-fpm.d/www.conf "$snapshot/php-www.conf" 2>/dev/null || true
+	docker cp php74:/usr/local/etc/php/conf.d/optimized_php.ini "$snapshot/php74.ini" 2>/dev/null || true
+	docker cp php74:/usr/local/etc/php-fpm.d/www.conf "$snapshot/php74-www.conf" 2>/dev/null || true
+	docker cp mysql:/etc/mysql/conf.d/custom_mysql_config.cnf "$snapshot/mysql.cnf" 2>/dev/null || true
+	if [ -f /etc/sysctl.d/99-kejilion-optimize.conf ]; then
+		cp -a /etc/sysctl.d/99-kejilion-optimize.conf "$snapshot/sysctl.conf"
+		sysctl_existed=true
+	fi
+	case "$1" in
+		standard) ldnmp_optimization_mode standard ;;
+		high) ldnmp_optimization_mode high ;;
+		gzip-on) nginx_gzip on ;; gzip-off) nginx_gzip off ;;
+		brotli-on) nginx_br on ;; brotli-off) nginx_br off ;;
+		zstd-on) nginx_zstd on ;; zstd-off) nginx_zstd off ;;
+		*) rm -rf "$snapshot"; echo "현재 프로토콜은 이 최적화 작업을 지원하지 않습니다." >&2; return 2 ;;
+	esac
+	rc=$?
+	docker exec nginx nginx -t >/dev/null 2>&1 || rc=1
+	if [ "$action" = standard ] || [ "$action" = high ]; then
+		local component_states
+		component_states=$(docker inspect -f '{{.State.Running}}' nginx php mysql redis 2>/dev/null)
+		[ "$(printf '%s\n' "$component_states" | sed '/^$/d' | wc -l)" -eq 4 ] || rc=1
+		printf '%s\n' "$component_states" | grep -qv true && rc=1
+	fi
+	if [ "$rc" -eq 0 ]; then
+		rm -rf "$snapshot"
+		return 0
+	fi
+	kpanel_ldnmp_event rollback 85 "최적화 확인에 실패했으며 원래 구성을 복원하는 중입니다."
+	[ -f "$snapshot/nginx.conf" ] && cp -a "$snapshot/nginx.conf" /home/web/nginx.conf
+	[ -f "$snapshot/php.ini" ] && docker cp "$snapshot/php.ini" php:/usr/local/etc/php/conf.d/optimized_php.ini
+	[ -f "$snapshot/php-www.conf" ] && docker cp "$snapshot/php-www.conf" php:/usr/local/etc/php-fpm.d/www.conf
+	[ -f "$snapshot/php74.ini" ] && docker cp "$snapshot/php74.ini" php74:/usr/local/etc/php/conf.d/optimized_php.ini
+	[ -f "$snapshot/php74-www.conf" ] && docker cp "$snapshot/php74-www.conf" php74:/usr/local/etc/php-fpm.d/www.conf
+	[ -f "$snapshot/mysql.cnf" ] && docker cp "$snapshot/mysql.cnf" mysql:/etc/mysql/conf.d/custom_mysql_config.cnf
+	if [ "$sysctl_existed" = true ]; then
+		cp -a "$snapshot/sysctl.conf" /etc/sysctl.d/99-kejilion-optimize.conf
+	else
+		rm -f /etc/sysctl.d/99-kejilion-optimize.conf
+	fi
+	sysctl --system >/dev/null 2>&1
+	cd /home/web && docker compose restart >/dev/null 2>&1
+	rm -rf "$snapshot"
+	return "$rc"
+}
+
+ldnmp_update_action() {
+	local component="$1" version="${2:-latest}" backup_before="${3:-false}" rc
+	if [ "$backup_before" = true ]; then
+		kpanel_ldnmp_event update_backup 5 "업데이트 전 콜드 대기 생성"
+		ldnmp_backup_action || return 1
+	fi
+	case "$component" in
+		nginx) nginx_upgrade ;;
+		redis) cd /home/web && docker compose pull redis && docker compose up -d --force-recreate redis ;;
+		mysql)
+			printf '%s' "$version" | grep -Eq '^(latest|8\.0|8\.3|8\.4|9\.0)$' || return 2
+			cd /home/web || return 1; cp docker-compose.yml docker-compose.yml.kpanel-update
+			sed -E -i "s#image:[[:space:]]*mysql([^[:space:]]*)#image: mysql:${version}#" docker-compose.yml
+			if docker compose pull mysql && docker compose up -d --force-recreate mysql; then
+				rm -f docker-compose.yml.kpanel-update
+				return 0
+			else
+				rc=$?
+			fi
+			mv -f docker-compose.yml.kpanel-update docker-compose.yml
+			docker compose up -d --force-recreate mysql >/dev/null 2>&1 || return 86
+			return "$rc" ;;
+		php)
+			printf '%s' "$version" | grep -Eq '^(7\.4|8\.0|8\.1|8\.2|8\.3)$' || return 2
+			cd /home/web || return 1; cp docker-compose.yml docker-compose.yml.kpanel-update
+			sed -E -i "s#image:[[:space:]]*(kjlion/)?php:fpm-alpine#image: php:${version}-fpm-alpine#" docker-compose.yml
+			if docker compose pull php && docker compose up -d --force-recreate php; then
+				rm -f docker-compose.yml.kpanel-update
+				fix_phpfpm_conf php
+				return 0
+			else
+				rc=$?
+			fi
+			mv -f docker-compose.yml.kpanel-update docker-compose.yml
+			docker compose up -d --force-recreate php >/dev/null 2>&1 || return 86
+			return "$rc" ;;
+		all)
+			cd /home/web || return 1
+			docker compose pull && docker compose up -d --force-recreate || return 86
+			;;
+		*) echo "지원되지 않는 업데이트 구성 요소" >&2; return 2 ;;
+	esac
+}
+
+ldnmp_backup_action() {
+	[ -d /home/web ] || return 1
+	local stamp archive tmp checksum source_bytes free_bytes running_services
+	stamp=$(date '+%Y%m%d%H%M%S'); archive="/home/web_${stamp}.tar.gz"; tmp="${archive}.tmp.$$"
+	source_bytes=$(du -sb /home/web 2>/dev/null | awk '{print $1}')
+	free_bytes=$(df -PB1 /home | awk 'NR==2 {print $4}')
+	[ "${source_bytes:-0}" -le $((free_bytes * 8 / 10)) ] || return 1
+	kpanel_ldnmp_event backup_stop 15 "LDNMP를 잠시 중지"
+	cd /home/web || return 1
+	running_services=$(docker compose ps --services --filter status=running 2>/dev/null | tr '\n' ' ')
+	docker compose stop || return 1
+	kpanel_ldnmp_event backup_archive 45 "/home/web 보관"
+	if ! tar -C /home -czf "$tmp" web; then
+		[ -n "$running_services" ] && docker compose start $running_services >/dev/null 2>&1
+		rm -f "$tmp"
+		return 1
+	fi
+	chmod 600 "$tmp"; checksum=$(sha256sum "$tmp" | awk '{print $1}'); mv -f "$tmp" "$archive"
+	umask 077
+	printf '{"format":"kejilion-ldnmp-v1","file":"%s","sha256":"%s","createdAt":"%s","scriptVersion":"%s"}\n' \
+		"$(basename "$archive")" "$checksum" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$sh_v" > "${archive}.kpanel.json"
+	kpanel_ldnmp_event backup_start 80 "LDNMP 복원 중"
+	[ -z "$running_services" ] || docker compose start $running_services
+	printf 'KPANEL_LDNMP_BACKUP %s\n' "$(basename "$archive")"
+}
+
+ldnmp_backup_delete_action() {
+	local name archive
+	name=$(basename "${1:-}")
+	printf '%s' "$name" | grep -Eq '^web_[0-9]{14}\.tar\.gz$' || return 2
+	archive="/home/$name"
+	[ -f "$archive" ] && [ ! -L "$archive" ] || return 1
+	rm -f -- "$archive" "${archive}.kpanel.json"
+}
+
+ldnmp_restore_action() {
+	local name archive stage rollback expected actual entry_count unpacked_bytes free_bytes old_running_services
+	name=$(basename "${1:-}"); printf '%s' "$name" | grep -Eq '^web_[0-9]{14}\.tar\.gz$' || return 2
+	archive="/home/$name"; [ -f "$archive" ] || return 1
+	gzip -t "$archive" || return 1
+	if [ -f "${archive}.kpanel.json" ]; then
+		expected=$(sed -n 's/.*"sha256":"\([a-f0-9]\{64\}\)".*/\1/p' "${archive}.kpanel.json")
+		actual=$(sha256sum "$archive" | awk '{print $1}')
+		[ -n "$expected" ] && [ "$expected" = "$actual" ] || return 1
+	fi
+	kpanel_ldnmp_event restore_scan 15 "백업 아카이브 검사"
+	entry_count=$(tar -tzf "$archive" | wc -l)
+	[ "$entry_count" -le 200000 ] || return 1
+	unpacked_bytes=$(tar -tvzf "$archive" | awk '{total += $3} END {printf "%.0f", total}')
+	free_bytes=$(df -PB1 /home | awk 'NR==2 {print $4}')
+	[ "${unpacked_bytes:-0}" -le $((free_bytes * 8 / 10)) ] || return 1
+	tar -tzf "$archive" | grep -Ev '^web(/|$)' | grep -q . && return 1
+	tar -tzf "$archive" | grep -Eq '(^/|(^|/)\.\.(/|$))' && return 1
+	tar -tvzf "$archive" | awk '$1 ~ /^[lhbcp]/ { exit 0 } END { exit 1 }' && return 1
+	stage=$(mktemp -d /home/.kpanel-ldnmp-restore.XXXXXX) || return 1
+	rollback="/home/.kpanel-ldnmp-rollback.$(date '+%Y%m%d%H%M%S')"
+	kpanel_ldnmp_event restore_extract 35 "안전한 준비 디렉터리로 추출 중"
+	tar -xzf "$archive" -C "$stage" || { rm -rf "$stage"; return 1; }
+	docker compose -f "$stage/web/docker-compose.yml" config -q || { rm -rf "$stage"; return 1; }
+	kpanel_ldnmp_event restore_switch 60 "/home/web으로 원자적으로 전환"
+	if [ -d /home/web ]; then
+		cd /home/web || return 1
+		old_running_services=$(docker compose ps --services --filter status=running 2>/dev/null | tr '\n' ' ')
+		docker compose down
+		mv /home/web "$rollback"
+	fi
+	if ! mv "$stage/web" /home/web; then
+		[ -d "$rollback" ] && mv "$rollback" /home/web
+		if [ -d /home/web ] && [ -n "$old_running_services" ]; then
+			cd /home/web && docker compose up -d $old_running_services >/dev/null 2>&1
+		fi
+		return 1
+	fi
+	rm -rf "$stage"; cd /home/web || return 1
+	if docker compose up -d && docker exec nginx nginx -t >/dev/null 2>&1; then rm -rf "$rollback"; return 0; fi
+	docker compose down >/dev/null 2>&1; rm -rf /home/web
+	[ -d "$rollback" ] && mv "$rollback" /home/web
+	cd /home/web || return 1
+	if [ -n "$old_running_services" ]; then
+		docker compose up -d $old_running_services >/dev/null 2>&1 || return 86
+	fi
+	return 1
+}
+
+ldnmp_uninstall_action() {
+	[ "${1:-false}" = true ] && ldnmp_backup_action
+	if [ -d /home/web ]; then
+		cd /home/web || return 1
+		docker compose down --rmi all
+		[ -f docker-compose.phpmyadmin.yml ] && docker compose -f docker-compose.phpmyadmin.yml down --rmi all >/dev/null 2>&1
+		rm -rf /home/web
+	fi
+}
+
+kpanel_ldnmp_run() {
+	local action="$1" function_name="$2"; shift 2
+	mkdir -p /run/lock
+	local lock_fd rc
+	exec {lock_fd}>/run/lock/kejilion-web-environment.lock
+	if ! flock -n "$lock_fd"; then
+		kpanel_ldnmp_result failed "$action" "기존 웹 사이트 또는 LDNMP 환경 작업이 실행 중입니다."
+		exec {lock_fd}>&-
+		return 75
+	fi
+	kpanel_ldnmp_event start 1 "LDNMP 환경 작업이 시작되었습니다."
+	if "$function_name" "$@"; then
+		kpanel_ldnmp_event complete 100 "LDNMP 환경 작업 완료"
+		kpanel_ldnmp_result succeeded "$action" "작업 실행 성공"
+		rc=0
+	else
+		rc=$?
+		kpanel_ldnmp_event failed 100 "LDNMP 환경 작업 실행 실패"
+		if [ "$rc" -eq 86 ]; then
+			kpanel_ldnmp_result needs_attention "$action" "작업이 실패했으며 안전한 롤백을 확인할 수 없어 수동 처리가 필요합니다."
+		else
+			kpanel_ldnmp_result failed "$action" "작업 실행 실패"
+		fi
+	fi
+	flock -u "$lock_fd"
+	exec {lock_fd}>&-
+	return "$rc"
+}
+
+ldnmp_environment_menu() {
+	while true; do
+		clear
+		echo "LDNMP 환경 관리"
+		echo "------------------------"
+		echo "1. 환경상태를 확인한다"
+		echo "2. 전체 LDNMP 설치"
+		echo "3. Nginx만 설치"
+		echo "4. 보호관리"
+		echo "5. 관리 최적화"
+		echo "6. 환경 업데이트"
+		echo "7. 콜드 대기 만들기"
+		echo "8. 백업 복원"
+		echo "9. 환경 제거"
+		echo "0. 반품"
+		echo "------------------------"
+		read -e -p "선택사항을 입력하세요:" choice
+		case "$choice" in
+			1)
+				ldnmp_tato
+				docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}' 2>/dev/null
+				;;
+			2) ldnmp_environment_install full ;;
+			3) ldnmp_environment_install nginx ;;
+			4) web_security ;;
+			5) web_optimization ;;
+			6)
+				read -e -p "구성 요소 업데이트(nginx/mysql/php/redis/all):" component
+				read -e -p "대상 버전(기본 최신 버전):" version
+				ldnmp_update_action "$component" "${version:-latest}" false
+				;;
+			7) ldnmp_backup_action ;;
+			8)
+				find /home -maxdepth 1 -type f -name 'web_*.tar.gz' -printf '%f\n' 2>/dev/null | sort -r
+				read -e -p "복원할 백업 파일 이름을 입력하세요:" backup_name
+				ldnmp_restore_action "$backup_name"
+				;;
+			9)
+				read -e -p "DELETE를 입력하여 LDNMP 환경 제거를 확인합니다." confirmation
+				[ "$confirmation" = DELETE ] && ldnmp_uninstall_action true
+				;;
+			0) return 0 ;;
+			*) echo "잘못된 입력" ;;
+		esac
+		break_end
+	done
+}
+
+kpanel_ldnmp_dispatch() {
+	local command="${1:-}"; shift || true
+	if [ -z "$command" ] && [ "${KJ_LDNMP_NONINTERACTIVE:-0}" != "1" ] &&
+		[ "${KJ_LDNMP_PROTOCOL:-0}" != "1" ]; then
+		ldnmp_environment_menu
+		return
+	fi
+	printf 'KPANEL_LDNMP_PROTOCOL 1\n'
+	case "$command" in
+		status) ldnmp_environment_status ;;
+		catalog) ldnmp_environment_catalog ;;
+		install) kpanel_ldnmp_run install ldnmp_environment_install "$@" ;;
+		protect) kpanel_ldnmp_run protect ldnmp_protection_action "$@" ;;
+		optimize) kpanel_ldnmp_run optimize ldnmp_optimization_action "$@" ;;
+		update) kpanel_ldnmp_run update ldnmp_update_action "$@" ;;
+		backup)
+			if [ "${1:-create}" = delete ]; then
+				shift
+				kpanel_ldnmp_run backup.delete ldnmp_backup_delete_action "$@"
+			else
+				kpanel_ldnmp_run backup.create ldnmp_backup_action "$@"
+			fi
+			;;
+		restore) kpanel_ldnmp_run restore ldnmp_restore_action "$@" ;;
+		uninstall) kpanel_ldnmp_run uninstall ldnmp_uninstall_action "$@" ;;
+		*) echo "지원되지 않는 LDNMP 환경 명령" >&2; return 2 ;;
+	esac
+}
+
+
 linux_ldnmp() {
   while true; do
 
+	if [ "${KJ_WEB_NONINTERACTIVE:-0}" != "1" ]; then
 	clear
 	# send_stats "LDNMP 웹사이트 구축"
 	echo -e "${gl_huang}LDNMP 웹사이트 구축"
@@ -9103,7 +10882,42 @@ linux_ldnmp() {
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}0.   ${gl_bai}메인 메뉴로 돌아가기"
 	echo -e "${gl_huang}------------------------${gl_bai}"
-	read -e -p "선택사항을 입력하세요:" sub_choice
+	fi
+	if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+		sub_choice="${KJ_WEB_RECIPE:-}"
+		case "$sub_choice" in
+			2|3|4|5|6|7|8|9|20|22|23|24|25|26|27|28|30) ;;
+			*)
+				echo "KPANEL_PROGRESS 100 지원되지 않음 KJ_WEB_RECIPE"
+				return 1
+				;;
+		esac
+		if [ -z "${KJ_WEB_DOMAIN:-}" ] || [ ${#KJ_WEB_DOMAIN} -gt 253 ] ||
+			! printf '%s' "$KJ_WEB_DOMAIN" | grep -Eq '^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$'; then
+			echo "KPANEL_PROGRESS 100 KJ_WEB_DOMAIN은 유효한 도메인 이름이 아닙니다."
+			return 1
+		fi
+		if [ -e "/home/web/conf.d/${KJ_WEB_DOMAIN}.conf" ] ||
+			[ -e "/home/web/html/${KJ_WEB_DOMAIN}" ]; then
+			echo "KPANEL_PROGRESS 100 도메인 이름이 이미 존재하므로 기존 제품 덮어쓰기를 거부합니다."
+			return 1
+		fi
+		if [ "$sub_choice" = "23" ]; then
+			if [ -z "${KJ_WEB_PROXY_HOST:-}" ] ||
+				! printf '%s' "$KJ_WEB_PROXY_HOST" | grep -Eq '^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$'; then
+				echo "KPANEL_PROGRESS 100 KJ_WEB_PROXY_HOST는 유효한 IP 또는 호스트 이름이 아닙니다."
+				return 1
+			fi
+			if ! printf '%s' "${KJ_WEB_PROXY_PORT:-}" | grep -Eq '^[0-9]{1,5}$' ||
+				[ "$KJ_WEB_PROXY_PORT" -lt 1 ] || [ "$KJ_WEB_PROXY_PORT" -gt 65535 ]; then
+				echo "KPANEL_PROGRESS 100 KJ_WEB_PROXY_PORT는 유효한 포트가 아닙니다."
+				return 1
+			fi
+		fi
+		echo "KPANEL_PROGRESS 5는 kejilion.sh 기본 원클릭 웹사이트 구축 프로세스를 시작합니다."
+	else
+		read -e -p "선택사항을 입력하세요:" sub_choice
+	fi
 
 
 	case $sub_choice in
@@ -9112,7 +10926,7 @@ linux_ldnmp() {
 	  ldnmp_install_all
 		;;
 	  2)
-	  ldnmp_wp
+	  ldnmp_wp "${KJ_WEB_DOMAIN:-}"
 		;;
 
 	  3)
@@ -9138,7 +10952,7 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 	  LATEST_URL=$(curl -s https://api.gitee.com/api/v5/repos/Discuz/DiscuzX/releases/latest | grep -o 'https://[^"]*Discuz_X[^"]*SC_UTF8[^"]*\.zip' | head -n 1)
 	  wget -O latest.zip ${LATEST_URL}
@@ -9147,6 +10961,7 @@ linux_ldnmp() {
 	  rm -rf upload readme readme.html utility.html LICENSE qqqun.png
 	  rm latest.zip
 
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -9181,13 +10996,14 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 	  LATEST_VERSION=$(curl -s https://api.github.com/repos/kalcaddle/kodbox/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
 	  wget -O latest.zip ${gh_proxy}github.com/kalcaddle/kodbox/archive/refs/tags/${LATEST_VERSION}.zip
 	  unzip -o latest.zip
 	  rm latest.zip
 	  mv /home/web/html/$yuming/kodbox* /home/web/html/$yuming/kodbox
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 	  ldnmp_web_on
@@ -9222,7 +11038,7 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 	  # wget ${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && rm maccms10.zip
 	  wget ${gh_proxy}github.com/magicblack/maccms_down/raw/master/maccms10.zip && unzip maccms10.zip && mv maccms10-*/* . && rm -r maccms10-* && rm maccms10.zip
@@ -9231,6 +11047,7 @@ linux_ldnmp() {
 	  cp /home/web/html/$yuming/template/DYXS2/asset/admin/dycms.html /home/web/html/$yuming/application/admin/view/system
 	  mv /home/web/html/$yuming/admin.php /home/web/html/$yuming/vip.php && wget -O /home/web/html/$yuming/application/extra/maccms.php ${gh_proxy}raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php
 
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -9271,10 +11088,11 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 	  wget ${gh_proxy}github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -9327,7 +11145,7 @@ linux_ldnmp() {
 	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 
 	  docker exec php sh -c "php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\""
@@ -9349,6 +11167,7 @@ linux_ldnmp() {
 	  docker exec php sh -c "cd /var/www/html/$yuming && composer require clarkwinkelmann/flarum-ext-emojionearea"
 
 
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -9386,12 +11205,13 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 	  wget -O latest.zip ${gh_proxy}github.com/typecho/typecho/releases/latest/download/typecho.zip
 	  unzip latest.zip
 	  rm latest.zip
 
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -9429,12 +11249,13 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 	  wget -O latest.zip ${gh_proxy}github.com/linkstackorg/linkstack/releases/latest/download/linkstack.zip
 	  unzip latest.zip
 	  rm latest.zip
 
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 
 
@@ -9467,7 +11288,7 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 
 	  clear
@@ -9566,6 +11387,7 @@ linux_ldnmp() {
 
 	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
 
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  restart_ldnmp
 	  ldnmp_web_on
 	  prefix="web$(shuf -i 10-99 -n 1)_"
@@ -9613,7 +11435,7 @@ linux_ldnmp() {
 		;;
 
 	  23)
-	  ldnmp_Proxy
+	  ldnmp_Proxy "${KJ_WEB_DOMAIN:-}" "${KJ_WEB_PROXY_HOST:-}" "${KJ_WEB_PROXY_PORT:-}"
 	  find_container_by_host_port "$port"
 	  if [ -z "$docker_name" ]; then
 		close_port "$port"
@@ -9706,14 +11528,14 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 
 	  wget ${gh_proxy}github.com/kejilion/Website_source_code/raw/refs/heads/main/ai_prompt_generator.zip
 	  unzip $(ls -t *.zip | head -n 1)
 	  rm -f $(ls -t *.zip | head -n 1)
 
-	  docker exec nginx chmod -R nginx:nginx /var/www/html
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  docker exec nginx nginx -s reload
 
 	  nginx_web_on
@@ -9748,7 +11570,7 @@ linux_ldnmp() {
 	  nginx_http_on
 
 	  cd /home/web/html
-	  mkdir $yuming
+	  prepare_ldnmp_site_root "$yuming" || return 1
 	  cd $yuming
 
 
@@ -9776,7 +11598,7 @@ linux_ldnmp() {
 	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
 	  sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
 
-	  docker exec nginx chmod -R nginx:nginx /var/www/html
+	  normalize_ldnmp_site_permissions "$yuming" || return 1
 	  docker exec nginx nginx -s reload
 
 	  nginx_web_on
@@ -10078,6 +11900,23 @@ linux_ldnmp() {
 	*)
 		echo "입력이 잘못되었습니다!"
 	esac
+	if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+		if [ ! -f "/home/web/conf.d/${KJ_WEB_DOMAIN}.conf" ]; then
+			echo "KPANEL_PROGRESS 100 kejilion.sh 웹사이트 구축 제품이 불완전합니다"
+			return 1
+		fi
+		if kpanel_web_recipe_requires_document_root "$sub_choice" &&
+			[ ! -d "/home/web/html/${KJ_WEB_DOMAIN}" ]; then
+			echo "KPANEL_PROGRESS 100 kejilion.sh 웹사이트 구축 제품이 불완전합니다"
+			return 1
+		fi
+		if ! docker exec nginx nginx -t >/dev/null 2>&1; then
+			echo "KPANEL_PROGRESS 100 Nginx 구성 확인에 실패했습니다."
+			return 1
+		fi
+		echo "KPANEL_PROGRESS 100 kejilion.sh 네이티브 웹사이트 구축 제품이 완성되었습니다."
+		return 0
+	fi
 	break_end
 
   done
@@ -10520,7 +12359,7 @@ for name, provider in list(providers.items()):
         provider['models'] = new_models
         changed = True
 
-    summary.append(f'✅ {name}: {len(add_ids)} 추가, 삭제됨 {len(removed_ids)}, 현재 {len(new_models)}')
+    summary.append(f'✅ {name}: {len(add_ids)} 추가됨, 삭제됨 {len(removed_ids)}, 현재 {len(new_models)}')
 
     if added_ids:
         summary.append(f'➕ 새 모델 추가({len(add_ids)}):')
@@ -10557,8 +12396,8 @@ PY
 
 
 	install_moltbot() {
-		echo "OpenClaw 설치를 시작하세요..."
-		send_stats "OpenClaw 설치를 시작하세요..."
+		echo "OpenClaw 설치를 시작합니다..."
+		send_stats "OpenClaw 설치를 시작합니다..."
 		install git jq
 
 		install_node_and_tools
@@ -11125,7 +12964,7 @@ if not base_url or not api_key or not isinstance(model_list, list) or not model_
     raise SystemExit(3)
 
 if api not in SUPPORTED_APIS:
-    print(f'ℹ️ 공급자 {target}은 현재 api={api}이지만 스크립트는 더 이상 프로토콜을 감지/수정하지 않습니다. openai-completions 또는 openai-responses로 수동으로 설정하세요.')
+    print(f'ℹ️ 공급자 {target} 현재 api={api}이지만 스크립트는 더 이상 프로토콜을 감지/수정하지 않습니다. openai-completions 또는 openai-responses로 수동으로 설정하세요.')
 
 protocol_msg = None
 
@@ -11485,7 +13324,7 @@ PY
 				;;
 			3)
 				send_stats "OpenClaw API 삭제 취소"
-				echo "❌ 삭제 실패: 대체 모델이 없으며 원래 구성이 유지되었습니다."
+				echo "❌ 삭제 실패: 사용 가능한 대체 모델이 없으며 원래 구성이 유지되었습니다."
 				;;
 			*)
 				echo "❌ 삭제 실패: 구성 파일 구조 또는 로그 출력을 확인하세요."
@@ -11937,7 +13776,7 @@ PYTHON_EOF
 			echo "요약:$OPENCLAW_PROBE_REPLY"
 			echo ""
 
-			printf "이 모델로 전환하시겠습니까? [y/N, Esc가 목록으로 돌아갑니다]:"
+			printf "이 모델로 전환하시겠습니까? [y/N, Esc를 누르면 목록으로 돌아갑니다.]:"
 			IFS= read -rsn1 confirm_switch
 			echo ""
 			if [ "$confirm_switch" = $'' ]; then
@@ -12118,7 +13957,7 @@ PYTHON_EOF
 				fi
 			fi
 
-			echo "⚠️ 플러그인이 설치되었지만,plugins.allow의 동기화에 실패했습니다. 수동으로 확인하세요.$config_file"
+			echo "⚠️ 플러그인이 설치되었지만,plugins.allow의 동기화에 실패했습니다. 수동으로 확인하십시오:$config_file"
 			return 1
 		}
 
@@ -12225,7 +14064,7 @@ PYTHON_EOF
 
 			echo "1) 플러그인 설치/활성화"
 			echo "2) 플러그인 삭제/비활성화"
-			echo "0) 복귀"
+			echo "0) 반품"
 			read -e -p "작업을 선택하십시오:" plugin_action
 
 			[ "$plugin_action" = "0" ] && break
@@ -12266,7 +14105,7 @@ PYTHON_EOF
 					fi
 
 					if [ -d "/usr/lib/node_modules/openclaw/extensions/$plugin_id" ]; then
-						echo "💡 시스템 내장 디렉토리에 플러그인이 존재하는 것을 발견했습니다. 직접 활성화해 보세요..."
+						echo "💡 플러그인이 시스템 내장 디렉토리에 존재하는 것을 발견했습니다. 직접 활성화해 보십시오..."
 						if openclaw plugins enable "$plugin_id"; then
 							sync_openclaw_plugin_allowlist "$plugin_id"
 							success_list="$success_list $plugin_id"
@@ -12353,7 +14192,7 @@ PYTHON_EOF
 
 			echo "1) 설치 기술"
 			echo "2) 스킬 삭제"
-			echo "0) 복귀"
+			echo "0) 반품"
 			read -e -p "작업을 선택하십시오:" skill_action
 
 			[ "$skill_action" = "0" ] && break
@@ -13155,7 +14994,7 @@ if os.path.isdir(agents_root):
 	}
 
 	openclaw_backup_delete_file() {
-		send_stats "OpenClaw 삭제 백업 파일"
+		send_stats "OpenClaw 백업 파일 삭제"
 		local backup_root backup_root_real user_input target_file target_path target_type
 		backup_root=$(openclaw_backup_root)
 
@@ -13183,7 +15022,7 @@ if os.path.isdir(agents_root):
 			case "$target_path" in
 				"$backup_root_real"/*) ;;
 				*)
-					echo "❌ 경로 초과: 백업 루트 디렉터리에 있는 파일만 삭제가 허용됩니다."
+					echo "❌ 경로 밖: 백업 루트 디렉터리에 있는 파일만 삭제가 허용됩니다."
 					break_end
 					return 1
 					;;
@@ -13589,7 +15428,7 @@ PY
 		elif [ "$mirror_ok" = "ok" ]; then
 			OPENCLAW_MEMORY_RECOMMEND_REASON+=("hf-mirror.com에 접속할 수 있습니다")
 		else
-			OPENCLAW_MEMORY_RECOMMEND_REASON+=("Huggingface.co / hf-mirror.com에 연결할 수 없을 수 있습니다(국내/제한된 네트워크로 의심됨).")
+			OPENCLAW_MEMORY_RECOMMEND_REASON+=("Huggingface.co / hf-mirror.com에 접속할 수 없습니다(국내/제한된 네트워크로 의심됨).")
 		fi
 
 		if [ "$qmd_ok" = "true" ]; then
@@ -13696,7 +15535,7 @@ PY
 		elif command -v wget >/dev/null 2>&1; then
 			wget -qO- https://bun.sh/install | bash
 		else
-			echo "❌ 컬 또는 wget이 감지되지 않아 롤빵을 설치할 수 없습니다."
+			echo "❌ 컬이나 wget이 감지되지 않아 롤빵을 설치할 수 없습니다."
 			return 1
 		fi
 		if [ -d "$HOME/.bun/bin" ]; then
@@ -13790,7 +15629,7 @@ PY
 		else
 			echo "가능한 트래픽/디스크 사용량: 실제 상황에 따라 다름"
 		fi
-		echo "확인 후 자동으로 설치/다운로드하고, 구성을 작성하고, 인덱스를 작성하고, 게이트웨이를 다시 시작합니다."
+		echo "확인 후 자동으로 설치/다운로드, 구성 작성, 색인 작성 및 게이트웨이를 다시 시작합니다."
 		echo "고급 옵션: 구성만 작성하려면 구성을 입력하세요(설치 없음, 다운로드 없음, 인덱싱 없음, 다시 시작 없음)."
 		read -e -p "계속하려면 yes를 입력하세요(기본값 N)." confirm_step
 		case "$confirm_step" in
@@ -13841,7 +15680,7 @@ PY
 			openclaw_memory_config_set "memory.qmd.command" "$OPENCLAW_MEMORY_QMD_PATH"
 			echo "✅ memory.qmd.command에 작성:$OPENCLAW_MEMORY_QMD_PATH"
 		else
-			echo "✅ memory.qmd.command가 정확합니다"
+			echo "✅ memory.qmd.command가 정확합니다."
 		fi
 		if [ "$OPENCLAW_MEMORY_PREHEAT" = "true" ]; then
 			echo "🔥 따뜻한 지수(모델 다운로드 가능)"
@@ -14317,7 +16156,7 @@ EOF
 				read -e -p "2차 확인: 전체 금액을 사용하려면 강제를 입력하세요(증분하려면 비워 두세요)." confirm_step2
 				if [ "$confirm_step2" = "force" ]; then
 					echo "⚠️ 전체 재구성은 더 철저하지만 시간이 더 오래 걸립니다."
-					echo "권장 사항: 안전한 재구축을 위해 재구축을 입력하세요(인덱스 데이터베이스를 먼저 백업하세요)."
+					echo "권장 사항: 안전한 재구성을 위해 다시 빌드를 입력합니다(인덱스 데이터베이스를 먼저 백업)."
 					read -e -p "세 번째 확인: 재구축을 입력하여 안전한 재구축을 수행합니다. 수직력을 계속하려면 Enter를 누르십시오." confirm_step3
 					if [ "$confirm_step3" = "rebuild" ]; then
 						openclaw_memory_rebuild_index_all
@@ -14331,7 +16170,7 @@ EOF
 $fl_agent_lines
 EOF
 						openclaw gateway restart
-						echo "✅ 모든 에이전트에 대해 강제 재구성이 수행되었으며 게이트웨이가 자동으로 다시 시작되었습니다."
+						echo "✅ 모든 에이전트에서 강제 재구성이 수행되었으며 게이트웨이가 자동으로 다시 시작되었습니다."
 					fi
 				else
 					openclaw memory index
@@ -14700,7 +16539,7 @@ except Exception:
 		openclaw_permission_update_exec_approvals "allowlist" "on-miss" "deny"
 
 		openclaw_permission_restart_gateway
-		echo -e "${gl_lv}✅ 개발 강화 모드로 전환(권한 상승은 허용되지만 일반적인 위험한 명령에는 여전히 승인이 필요함)${gl_bai}"
+		echo -e "${gl_lv}✅ 개발 강화 모드로 전환(권한 상승은 허용되지만, 일반적으로 위험한 명령은 여전히 ​​승인이 필요함)${gl_bai}"
 	}
 
 	openclaw_permission_apply_full() {
@@ -14809,7 +16648,7 @@ except Exception as e:
 					break_end
 					;;
 				2)
-					read -e -p "제거할 명령 경로를 입력하세요." pattern
+					read -e -p "제거할 명령 경로를 입력하십시오:" pattern
 					[ -z "$pattern" ] && { echo "비워둘 수 없습니다."; break_end; continue; }
 					openclaw approvals allowlist remove "$pattern"
 					break_end
@@ -15577,21 +17416,37 @@ openclaw_backup_restore_menu() {
 
 
 
+refresh_apps_catalog() {
+	local apps_dir="$HOME/apps"
+	local apps_remote="${gh_proxy}github.com/kejilion/apps.git"
+
+	install git || return 1
+	if [ -e "$apps_dir" ] && [ ! -d "$apps_dir/.git" ]; then
+		echo -e "${gl_hong}실수:${gl_bai}${apps_dir}이미 존재하지만 App Market Git 저장소가 아니므로 덮어쓰기가 거부됩니다."
+		return 1
+	fi
+	if [ ! -d "$apps_dir/.git" ]; then
+		timeout 30s git clone --depth=1 "$apps_remote" "$apps_dir" || {
+			echo -e "${gl_hong}애플리케이션 목록 다운로드에 실패했으며 불완전한 구성이 거부되었습니다.${gl_bai}"
+			return 1
+		}
+		return 0
+	fi
+	if ! timeout 30s git -C "$apps_dir" pull --ff-only "$apps_remote" main; then
+		echo -e "${gl_hong}애플리케이션 목록 업데이트에 실패했습니다. 잠재적으로 만료된 구성을 계속 사용하는 것을 거부했습니다.${gl_bai}"
+		echo "네트워크를 확인하시거나${apps_dir}로컬 수정 후 다시 시도해 보세요."
+		return 1
+	fi
+}
+
 linux_panel() {
 
 local sub_choice="$1"
 
 clear
 cd ~
-install git
 echo -e "${gl_kjlan}신청 목록이 업데이트 중입니다. 기다리세요...${gl_bai}"
-if [ ! -d apps/.git ]; then
-	timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
-else
-	cd apps
-	# git pull origin main > /dev/null 2>&1
-	timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
-fi
+refresh_apps_catalog || return 1
 
 while true; do
 
@@ -15613,7 +17468,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}1.   ${color1}파고다 패널 공식 버전${gl_kjlan}2.   ${color2}aaPanel Pagoda 국제 버전"
 	  echo -e "${gl_kjlan}3.   ${color3}1패널 차세대 관리 패널${gl_kjlan}4.   ${color4}NginxProxyManager 시각화 패널"
-	  echo -e "${gl_kjlan}5.   ${color5}OpenList 다중 저장소 파일 목록 프로그램${gl_kjlan}6.   ${color6}Ubuntu 원격 데스크톱 웹 버전"
+	  echo -e "${gl_kjlan}5.   ${color5}OpenList 다중 저장소 파일 목록 프로그램${gl_kjlan}6.   ${color6}Ubuntu 원격 데스크톱 웹 에디션"
 	  echo -e "${gl_kjlan}7.   ${color7}나타 프로브 VPS 모니터링 패널${gl_kjlan}8.   ${color8}QB 오프라인 BT 자기 다운로드 패널"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io 메일 서버 프로그램${gl_kjlan}10.  ${color10}RocketChat 다자간 온라인 채팅 시스템"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -15625,7 +17480,7 @@ while true; do
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}21.  ${color21}VScode 웹 버전${gl_kjlan}22.  ${color22}UptimeKuma 모니터링 도구"
 	  echo -e "${gl_kjlan}23.  ${color23}메모 웹 메모${gl_kjlan}24.  ${color24}Webtop 원격 데스크톱 웹 버전${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}25.  ${color25}Nextcloud 네트워크 디스크${gl_kjlan}26.  ${color26}QD-오늘 예약된 작업 관리 프레임워크"
+	  echo -e "${gl_kjlan}25.  ${color25}Nextcloud 네트워크 디스크${gl_kjlan}26.  ${color26}QD-Today 예약된 작업 관리 프레임워크"
 	  echo -e "${gl_kjlan}27.  ${color27}Dockge 컨테이너 스택 관리 패널${gl_kjlan}28.  ${color28}LibreSpeed ​​​​속도 테스트 도구"
 	  echo -e "${gl_kjlan}29.  ${color29}searxng 집계 검색 스테이션${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${color30}PhotoPrism 개인 앨범 시스템"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -15673,7 +17528,7 @@ while true; do
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}101. ${color101}AI 영상 생성 도구${gl_kjlan}102. ${color102}VoceChat 다자간 온라인 채팅 시스템"
 	  echo -e "${gl_kjlan}103. ${color103}Umami 웹사이트 통계 도구${gl_kjlan}104. ${color104}스트림 4계층 프록시 전달 도구"
-	  echo -e "${gl_kjlan}105. ${color105}쓰위안 노트${gl_kjlan}106. ${color106}Drawix 오픈 소스 화이트보드 도구"
+	  echo -e "${gl_kjlan}105. ${color105}쓰위안 노트${gl_kjlan}106. ${color106}Drawnix 오픈 소스 화이트보드 도구"
 	  echo -e "${gl_kjlan}107. ${color107}PanSou 네트워크 디스크 검색${gl_kjlan}108. ${color108}LangBot 챗봇"
 	  echo -e "${gl_kjlan}109. ${color109}ZFile 온라인 네트워크 디스크${gl_kjlan}110. ${color110}Karakeep 북마크 관리"
 	  echo -e "${gl_kjlan}-------------------------"
@@ -15682,7 +17537,7 @@ while true; do
 	  echo -e "${gl_kjlan}115. ${color115}헤르메스 로봇 관리 도구${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}타사 애플리케이션 목록"
-  	  echo -e "${gl_kjlan}귀하의 앱이 여기에 표시되기를 원하십니까? 개발자 가이드를 확인하세요:${gl_huang}https://dev.kejilion.sh/${gl_bai}"
+  	  echo -e "${gl_kjlan}귀하의 앱이 여기에 표시되기를 원하십니까? 개발자 가이드를 확인하세요.${gl_huang}https://dev.kejilion.sh/${gl_bai}"
 
 	  for f in "$HOME"/apps/*.conf; do
 		  [ -e "$f" ] || continue
@@ -15884,7 +17739,7 @@ while true; do
 		}
 
 
-		local docker_describe="webtop은 Ubuntu 기반 컨테이너입니다. 해당 IP에 접근할 수 없는 경우, 접근할 도메인 이름을 추가해주세요."
+		local docker_describe="webtop은 Ubuntu 기반 컨테이너입니다. 해당 IP에 접속할 수 없는 경우, 접속할 도메인 이름을 추가해주세요."
 		local docker_url="공식 홈페이지 소개: https://docs.linuxserver.io/images/docker-webtop/"
 		local docker_use=""
 		local docker_passwd=""
@@ -16584,7 +18439,7 @@ while true; do
 		}
 
 
-		local docker_describe="웹탑은 중국어 버전의 Alpine 컨테이너를 기반으로 합니다. 해당 IP에 접근할 수 없는 경우, 접근할 도메인 이름을 추가해주세요."
+		local docker_describe="웹탑은 중국어 버전의 Alpine 컨테이너를 기반으로 합니다. 해당 IP에 접속할 수 없는 경우, 접속할 도메인 이름을 추가해주세요."
 		local docker_url="공식 홈페이지 소개: https://docs.linuxserver.io/images/docker-webtop/"
 		local docker_use=""
 		local docker_passwd=""
@@ -17255,7 +19110,7 @@ while true; do
 
 		}
 
-		local docker_describe="OpenWebUI는 새로운 llama3 대규모 언어 모델에 연결되는 대규모 언어 모델 웹 페이지 프레임워크입니다."
+		local docker_describe="OpenWebUI는 새로운 llama3 대규모 언어 모델에 연결된 대규모 언어 모델 웹 페이지 프레임워크입니다."
 		local docker_url="공식 웹사이트 소개:${gh_https_url}github.com/open-webui/open-webui"
 		local docker_use="docker exec ollama ollama run llama3.2:1b"
 		local docker_passwd=""
@@ -17694,7 +19549,7 @@ while true; do
 
 		}
 
-		local docker_describe="AI 대형 모델에 대한 WeChat, QQ 및 TG 액세스를 지원하는 오픈 소스 AI 챗봇 프레임워크"
+		local docker_describe="대규모 AI 모델에 대한 WeChat, QQ 및 TG 액세스를 지원하는 오픈 소스 AI 챗봇 프레임워크"
 		local docker_url="공식 홈페이지 소개: https://astrbot.app/"
 		local docker_use="echo \"사용자 이름: astrbot 비밀번호: astrbot\""
 		local docker_passwd=""
@@ -17985,7 +19840,7 @@ while true; do
 		}
 
 		local docker_describe="Beszel은 가볍고 사용하기 쉬운 서버 모니터링입니다."
-		local docker_url="공식 홈페이지 소개 : https://beszel.dev/zh/"
+		local docker_url="공식 홈페이지 소개: https://beszel.dev/zh/"
 		local docker_use=""
 		local docker_passwd=""
 		local app_size="1"
@@ -18319,7 +20174,7 @@ while true; do
 
 		}
 
-		local docker_describe="영화와 생방송을 원격으로 함께 시청할 수 있는 프로그램입니다. 동시 시청, 라이브 방송, 채팅 및 기타 기능을 제공합니다."
+		local docker_describe="원격으로 영화와 생방송을 함께 시청할 수 있는 프로그램입니다. 동시 시청, 라이브 방송, 채팅 및 기타 기능을 제공합니다."
 		local docker_url="공식 웹사이트 소개:${gh_https_url}github.com/synctv-org/synctv"
 		local docker_use="echo \"초기 계정 및 비밀번호: root. 로그인 후 시간에 맞춰 로그인 비밀번호를 변경하세요\""
 		local docker_passwd=""
@@ -18571,7 +20426,7 @@ while true; do
 
 		}
 
-		local docker_describe="여러 프로토콜을 지원하는 분산 고속 다운로드 도구"
+		local docker_describe="다중 프로토콜을 지원하는 분산 고속 다운로드 도구"
 		local docker_url="공식 웹사이트 소개:${gh_https_url}github.com/GopeedLab/gopeed"
 		local docker_use=""
 		local docker_passwd=""
@@ -18635,7 +20490,7 @@ while true; do
 		local app_id="96"
 
 		local app_name="2FAuth 자체 호스팅 2단계 인증자"
-		local app_text="자체 호스팅 2단계 인증(2FA) 계정 관리 및 확인 코드 생성 도구입니다."
+		local app_text="자체 호스팅 2FA(2단계 인증) 계정 관리 및 확인 코드 생성 도구입니다."
 		local app_url="공식 웹사이트:${gh_https_url}github.com/Bubka/2FAuth"
 		local docker_name="2fauth"
 		local docker_port="8096"
@@ -19433,15 +21288,7 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  kejilion
 		  ;;
 	  *)
-		cd ~
-		install git
-		if [ ! -d apps/.git ]; then
-			timeout 10s git clone ${gh_proxy}github.com/kejilion/apps.git
-		else
-			cd apps
-			# git pull origin main > /dev/null 2>&1
-			timeout 10s git pull ${gh_proxy}github.com/kejilion/apps.git main > /dev/null 2>&1
-		fi
+		refresh_apps_catalog || return 1
 		local custom_app="$HOME/apps/${sub_choice}.conf"
 		if [ -f "$custom_app" ]; then
 			. "$custom_app"
@@ -19450,6 +21297,12 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		fi
 		  ;;
 	esac
+	if [ "${KJ_APP_NONINTERACTIVE:-}" = "1" ]; then
+		return
+	fi
+	if [ "${KJ_APP_INTERACTIVE:-}" = "1" ]; then
+		return
+	fi
 	break_end
 	sub_choice=""
 
@@ -19923,7 +21776,7 @@ log_menu() {
 				echo "⚠️ 일지를 청소하세요(안전한 방법)"
 				echo "1) 최근 7일을 보관"
 				echo "2) 최근 3일을 보관한다"
-				echo "3) 최대 로그 크기를 500M로 제한하십시오."
+				echo "3) 최대 로그 크기를 500M로 제한합니다."
 				read -erp "청소 방법을 선택하세요:" c
 				case $c in
 					1) journalctl --vacuum-time=7d ;;
@@ -20017,7 +21870,7 @@ env_menu() {
 
 	source_files() {
 		echo "환경 변수를 다시 로드하는 중..."
-		send_stats "환경 변수 다시 로드"
+		send_stats "환경 변수 다시 로드 중"
 		source "$BASHRC"
 		source "$PROFILE"
 		echo "✔ 환경 변수가 다시 로드되었습니다."
@@ -20029,7 +21882,7 @@ env_menu() {
 		echo "=========== 시스템 환경 변수 관리 =========="
 		echo "현재 사용자:$USER"
 		echo "--------------------------------------"
-		echo "1. 현재 일반적으로 사용되는 환경변수를 확인한다"
+		echo "1. 현재 일반적으로 사용되는 환경변수를 확인하세요."
 		echo "2. ~/.bashrc 보기"
 		echo "3. ~/.profile 보기"
 		echo "4. ~/.bashrc 편집"
@@ -20148,10 +22001,10 @@ linux_Settings() {
 	  echo -e "시스템 도구"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}1.   ${gl_bai}스크립트 시작 단축키 설정${gl_kjlan}2.   ${gl_bai}로그인 비밀번호 변경"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}사용자 비밀번호 로그인 모드${gl_kjlan}4.   ${gl_bai}지정된 버전의 Python 설치"
+	  echo -e "${gl_kjlan}3.   ${gl_bai}사용자 비밀번호 로그인 모드${gl_kjlan}4.   ${gl_bai}지정된 Python 버전을 설치합니다."
 	  echo -e "${gl_kjlan}5.   ${gl_bai}모든 포트 열기${gl_kjlan}6.   ${gl_bai}SSH 연결 포트 수정"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}DNS 주소 최적화${gl_kjlan}8.   ${gl_bai}한 번의 클릭으로 시스템을 다시 설치${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}ROOT 계정을 비활성화하고 새 계정을 만듭니다.${gl_kjlan}10.  ${gl_bai}우선 순위 ipv4/ipv6 전환"
+	  echo -e "${gl_kjlan}9.   ${gl_bai}ROOT 계정을 비활성화하고 새 계정을 만듭니다.${gl_kjlan}10.  ${gl_bai}우선순위 ipv4/ipv6 전환"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}11.  ${gl_bai}항만점유현황 확인${gl_kjlan}12.  ${gl_bai}가상 메모리 크기 수정"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}사용자 관리${gl_kjlan}14.  ${gl_bai}사용자/비밀번호 생성기"
@@ -20161,7 +22014,7 @@ linux_Settings() {
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}기본 호스트 확인${gl_kjlan}22.  ${gl_bai}SSH 방어 프로그램"
 	  echo -e "${gl_kjlan}23.  ${gl_bai}전류 제한 자동 종료${gl_kjlan}24.  ${gl_bai}사용자 키 로그인 모드"
-	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot 시스템 모니터링 및 조기경보${gl_kjlan}26.  ${gl_bai}OpenSSH 고위험 취약점 수정"
+	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot 시스템 모니터링 및 조기 경보${gl_kjlan}26.  ${gl_bai}OpenSSH 고위험 취약점 수정"
 	  echo -e "${gl_kjlan}27.  ${gl_bai}Red Hat Linux 커널 업그레이드${gl_kjlan}28.  ${gl_bai}Linux 시스템 커널 매개변수 최적화${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}29.  ${gl_bai}바이러스 검사 도구${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}파일 관리자"
 	  echo -e "${gl_kjlan}------------------------"
@@ -20219,7 +22072,7 @@ linux_Settings() {
 			echo "파이썬 버전 관리"
 			echo "영상 소개: https://www.bilibili.com/video/BV1Pm42157cK?t=0.1"
 			echo "---------------------------------------"
-			echo "이 기능은 Python에서 공식적으로 지원하는 모든 버전을 원활하게 설치할 수 있습니다!"
+			echo "이 기능은 Python이 공식적으로 지원하는 모든 버전을 원활하게 설치할 수 있습니다!"
 			local VERSION=$(python3 -V 2>&1 | awk '{print $2}')
 			echo -e "현재 Python 버전 번호:${gl_huang}$VERSION${gl_bai}"
 			echo "------------"
@@ -20633,7 +22486,7 @@ EOF
 				echo "유럽"
 				echo "11. 영국 런던 시간 12. 프랑스 파리 시간"
 				echo "13. 독일 베를린 시간 14. 러시아 모스크바 시간"
-				echo "15. 네덜란드 유트라흐트 시간 16. 스페인 마드리드 시간"
+				echo "15. 네덜란드 위트레흐트 시간 16. 스페인 마드리드 시간"
 				echo "------------------------"
 				echo "미국"
 				echo "21. 미국 서부 시간 22. 미국 동부 시간"
@@ -20701,7 +22554,7 @@ EOF
 					  echo "$new_hostname" > /etc/hostname
 					  hostname "$new_hostname"
 				  else
-					  # Debian, Ubuntu, CentOS 등과 같은 다른 시스템
+					  # Debian, Ubuntu, CentOS 등과 같은 기타 시스템
 					  hostnamectl set-hostname "$new_hostname"
 					  sed -i "s/$current_hostname/$new_hostname/g" /etc/hostname
 					  systemctl restart systemd-hostnamed
@@ -20734,7 +22587,7 @@ EOF
 		  send_stats "시스템 업데이트 소스 변경"
 		  clear
 		  echo "업데이트 소스 지역 선택"
-		  echo "LinuxMirrors에 액세스하여 시스템 업데이트 소스 전환"
+		  echo "LinuxMirror에 액세스하여 시스템 업데이트 소스 전환"
 		  echo "------------------------"
 		  echo "1. 중국 본토 [기본값] 2. 중국 본토 [교육 네트워크] 3. 해외 지역 4. 업데이트 소스의 지능형 전환"
 		  echo "------------------------"
@@ -20796,7 +22649,7 @@ EOF
 
 						  case $dingshi in
 							  1)
-								  read -e -p "작업을 실행하기로 선택한 날은 언제입니까? (1-30):" day
+								  read -e -p "작업을 실행하기로 선택한 날짜는 언제입니까? (1-30):" day
 								  (crontab -l ; echo "0 0 $day * * $newquest") | crontab - > /dev/null 2>&1
 								  ;;
 							  2)
@@ -20956,7 +22809,7 @@ EOF
 			  root_use
 			  send_stats "전신 경고"
 			  echo "TG-bot 모니터링 및 조기경보 기능"
-			  echo "영상소개: https://youtu.be/vLL-eb3Z_TY"
+			  echo "영상 소개: https://youtu.be/vLL-eb3Z_TY"
 			  echo "------------------------------------------------"
 			  echo "로컬 CPU, 메모리, 하드 디스크, 트래픽 및 SSH 로그인에 대한 실시간 모니터링 및 경고를 달성하려면 경고를 수신하도록 tg 로봇 API 및 사용자 ID를 구성해야 합니다."
 			  echo "임계값에 도달하면 경고 메시지가 사용자에게 전송됩니다."
@@ -21231,7 +23084,7 @@ EOF
 					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
 					  echo "컬렉션이 닫혔습니다."
-					  send_stats "개인 정보 보호 및 보안 수집이 꺼졌습니다"
+					  send_stats "개인정보 보호 및 보안 수집이 사용 중지되었습니다."
 					  ;;
 				  *)
 					  break
@@ -21589,7 +23442,7 @@ while true; do
 		  5)
 			  clear
 			  send_stats "클러스터 복원"
-			  echo "server.py를 업로드하고 아무 키나 눌러 업로드를 시작하세요!"
+			  echo "귀하의 server.py를 업로드하고 업로드를 시작하려면 아무 키나 누르십시오!"
 			  echo -e "업로드해주세요${gl_huang}servers.py${gl_bai}파일을 제출하다${gl_huang}/root/cluster/${gl_bai}복원 완료!"
 			  break_end
 			  ;;
@@ -21951,7 +23804,7 @@ echo "-------------------"
 echo "영상 소개: https://www.bilibili.com/video/BV1ib421E7it?t=0.1"
 echo "다음은 k 명령의 참조 사용 사례입니다."
 echo "시작 스크립트 k"
-echo "패키지 설치 k install nano wget | k 나노 wget 추가 | k는 나노 wget을 설치합니다."
+echo "패키지 설치 k install nano wget | k 나노 wget 추가 | k는 nano wget을 설치합니다."
 echo "패키지 제거 k 제거 nano wget | k 델 나노 wget | k 나노 wget 제거 | k 나노 wget 제거"
 echo "시스템 k 업데이트 업데이트 | k 업데이트"
 echo "클린 시스템 정크 k 클린 | 케이 깨끗하다"
@@ -21985,14 +23838,14 @@ echo "역방향 프록시 설치 k fd |k rp |k 역방향 프록시 |k fd xxx.com
 echo "로드 밸런싱 설치 k loadbalance |k 로드 밸런싱"
 echo "L4 로드 밸런싱 설치 k 스트림 |k L4 로드 밸런싱"
 echo "방화벽 패널 k fhq |k 방화벽"
-echo "포트 k 열기 ddk 8080 |k 포트 8080 열기"
+echo "포트 k 열기 DKdk 8080 |k 포트 8080 열기"
 echo "k 포트 닫기 gbdk 7800 |k 포트 7800 닫기"
 echo "릴리스 IP k fxip 127.0.0.0/8 |k 릴리스 IP 127.0.0.0/8"
 echo "IP 차단 k zzip 177.5.25.36 |k IP 177.5.25.36 차단"
 echo "명령 즐겨찾기 k 즐겨찾기 | k 명령 즐겨찾기"
-echo "애플리케이션 시장관리 kapp"
+echo "애플리케이션 시장 관리 k app"
 echo "신청번호의 빠른 관리 k app 26 | k 앱 1패널 | k 앱 npm"
-echo "Fail2ban 관리 k Fail2ban | 케이 F2B"
+echo "Fail2ban 관리 k Fail2ban | k f2b [상태|활성화|비활성화]"
 echo "시스템 정보 표시 k 정보"
 echo "ROOT 키 관리 k sshkey"
 echo "SSH 공개 키 가져오기(URL) k sshkey <url>"
@@ -22028,7 +23881,12 @@ else
 			dd_xitong
 			;;
 		bbr3|bbrv3)
-			bbrv3
+			if [ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ]; then
+				shift
+				bbrv3 "$@"
+			else
+				bbrv3
+			fi
 			;;
 		nhyh|内核优化)
 			Kernel_optimize
@@ -22061,6 +23919,66 @@ else
 			shift
 			ldnmp_wp "$@"
 
+			;;
+		discuz)
+			shift
+			kpanel_run_web_recipe_cli 3 "$@"
+			;;
+		kodbox)
+			shift
+			kpanel_run_web_recipe_cli 4 "$@"
+			;;
+		maccms)
+			shift
+			kpanel_run_web_recipe_cli 5 "$@"
+			;;
+		dujiaoka)
+			shift
+			kpanel_run_web_recipe_cli 6 "$@"
+			;;
+		flarum)
+			shift
+			kpanel_run_web_recipe_cli 7 "$@"
+			;;
+		typecho)
+			shift
+			kpanel_run_web_recipe_cli 8 "$@"
+			;;
+		linkstack)
+			shift
+			kpanel_run_web_recipe_cli 9 "$@"
+			;;
+		ai-prompt)
+			shift
+			kpanel_run_web_recipe_cli 27 "$@"
+			;;
+		php-site)
+			shift
+			kpanel_run_web_recipe_cli 20 "$@"
+			;;
+		redirect-site)
+			shift
+			kpanel_run_web_recipe_cli 22 "$@"
+			;;
+		domain-proxy)
+			shift
+			kpanel_run_web_recipe_cli 24 "$@"
+			;;
+		bitwarden-site)
+			shift
+			kpanel_run_web_recipe_cli 25 "$@"
+			;;
+		halo-site)
+			shift
+			kpanel_run_web_recipe_cli 26 "$@"
+			;;
+		loadbalance-site)
+			shift
+			kpanel_run_web_recipe_cli 28 "$@"
+			;;
+		static-site)
+			shift
+			kpanel_run_web_recipe_cli 30 "$@"
 			;;
 		fd|rp|反代)
 			shift
@@ -22095,6 +24013,20 @@ else
 			shift
 			send_stats "시간대를 빠르게 설정"
 			set_timedate "$@"
+			;;
+
+		dns)
+			shift
+			kpanel_set_dns_noninteractive "$@"
+			;;
+
+		test|check|体检|测试)
+			shift
+			if [ "${KJ_TEST_NONINTERACTIVE:-}" = "1" ]; then
+				kpanel_run_test_noninteractive "$@"
+			else
+				linux_test
+			fi
 			;;
 
 
@@ -22205,8 +24137,14 @@ else
 
 		web)
 		   shift
-			if [ "$1" = "cache" ]; then
+			if [ "$1" = "env" ] || [ "$1" = "environment" ] || [ "$1" = "환경" ]; then
+				shift
+				kpanel_ldnmp_dispatch "$@"
+			elif [ "$1" = "cache" ]; then
 				web_cache
+			elif [ "$1" = "del" ] || [ "$1" = "delete" ] || [ "$1" = "삭제" ]; then
+				shift
+				web_del "$@"
 			elif [ "$1" = "sec" ]; then
 				web_security
 			elif [ "$1" = "opt" ]; then
@@ -22234,7 +24172,12 @@ else
 			;;
 
 		fail2ban|f2b)
-			fail2ban_panel
+			shift
+			if [ "$#" -eq 0 ]; then
+				fail2ban_panel
+			else
+				kpanel_f2b_dispatch "$@"
+			fi
 			;;
 
 
