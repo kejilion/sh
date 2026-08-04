@@ -223,6 +223,7 @@ fi
 
 management_helpers="$(
 	for helper in \
+		get_container_ipv4_addresses \
 		kpanel_app_service_name \
 		kpanel_app_verified_service \
 		kpanel_app_access_path \
@@ -253,7 +254,11 @@ docker() {
 	case "$1" in
 		inspect)
 			"${current_exists}" || return 1
-			printf '%s\n' "${current_id}"
+			if [[ "$*" == *'.NetworkSettings.Networks'* ]]; then
+				printf '%s\n' "172.22.0.2" "172.21.0.2"
+			else
+				printf '%s\n' "${current_id}"
+			fi
 			;;
 		ps)
 			"${current_exists}" && printf '%s\n' "${docker_app_service:-$docker_name}"
@@ -286,6 +291,9 @@ docker_img="example/managed:latest"
 app_id=997
 printf '%s\n' "${app_id}" >>"${test_app_root}/appno.txt"
 test "$(kpanel_app_read_access_mode)" = "domain_only"
+iptables() { [[ "$*" != *'-d 172.21.0.2'* ]]; }
+test "$(kpanel_app_read_access_mode)" = "direct"
+iptables() { return 0; }
 printf '%s\n' "domain_only" >"${test_app_root}/${docker_name}_access.conf"
 export KJ_APP_ACTION=update
 export KJ_APP_EXPECTED_CONTAINER_ID="${current_id}"
