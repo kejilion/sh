@@ -5841,6 +5841,14 @@ kpanel_ssh_port_noninteractive() {
 		echo "错误: 未找到可管理的 OpenSSH 配置"
 		return 1
 	}
+	command -v sshd >/dev/null 2>&1 && command -v ss >/dev/null 2>&1 || {
+		echo "错误: SSH 配置校验或监听检查工具不可用"
+		return 1
+	}
+	sshd -t || {
+		echo "错误: 当前 SSH 配置语法验证失败"
+		return 1
+	}
 
 	local configured_ports
 	configured_ports="$({
@@ -5859,10 +5867,30 @@ kpanel_ssh_port_noninteractive() {
 		echo "错误: SSH 端口修改后回读验证失败"
 		return 1
 	fi
-	if command -v sshd >/dev/null 2>&1 && ! sshd -t; then
+	if ! sshd -t; then
 		echo "错误: SSH 配置语法验证失败"
 		return 1
 	fi
+	local listening="false"
+	local attempt
+	for attempt in {1..10}; do
+		if ss -H -ltn 2>/dev/null | awk -v port="${new_port}" '
+			{
+				address=$4
+				sub(/^.*:/, "", address)
+				if (address == port) found=1
+			}
+			END { exit(found ? 0 : 1) }
+		'; then
+			listening="true"
+			break
+		fi
+		sleep 0.2
+	done
+	[ "${listening}" = "true" ] || {
+		echo "错误: SSH 新端口未进入监听状态"
+		return 1
+	}
 
 	echo "KPANEL_SSH_PORT $new_port"
 	echo "KPANEL_SSH_RESULT applied"

@@ -11,6 +11,8 @@ for script_path in "${script_paths[@]}"; do
 	grep -F 'kpanel_ssh_port_noninteractive() {' "${script_path}" >/dev/null
 	grep -F '[ "${KJ_SSH_PORT_NONINTERACTIVE:-}" = "1" ] || return 2' "${script_path}" >/dev/null
 	grep -F 'new_ssh_port "$new_port" || return 1' "${script_path}" >/dev/null
+	grep -F 'ss -H -ltn' "${script_path}" >/dev/null
+	grep -F '错误: SSH 新端口未进入监听状态' "${script_path}" >/dev/null
 	grep -F 'KPANEL_SSH_RESULT applied' "${script_path}" >/dev/null
 	grep -F 'KPANEL_SSH_RESULT unchanged' "${script_path}" >/dev/null
 	grep -F 'KPANEL_SSH_PORT $new_port' "${script_path}" >/dev/null
