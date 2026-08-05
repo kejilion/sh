@@ -22,6 +22,7 @@ fi
 
 kpanel_protocol_active() {
 	[ "${KJ_LIGHT_NODE_PROTOCOL:-}" = "1" ] ||
+	[ "${KJ_SSH_PORT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||
@@ -5841,6 +5842,54 @@ new_ssh_port() {
 
   sleep 1
 
+}
+
+
+kpanel_ssh_port_noninteractive() {
+	[ "${KJ_SSH_PORT_NONINTERACTIVE:-}" = "1" ] || return 2
+	[ "$EUID" -eq 0 ] || {
+		echo "错误: KPanel SSH 端口协议必须以 root 运行"
+		return 1
+	}
+	[ "$#" -eq 1 ] || {
+		echo "错误: SSH 端口协议需要一个端口号"
+		return 1
+	}
+
+	local new_port="$1"
+	[[ "$new_port" =~ ^[0-9]{1,5}$ ]] && [ "$new_port" -ge 1 ] && [ "$new_port" -le 65535 ] || {
+		echo "错误: SSH 端口必须为 1-65535"
+		return 1
+	}
+	[ -f /etc/ssh/sshd_config ] && [ ! -L /etc/ssh/sshd_config ] || {
+		echo "错误: 未找到可管理的 OpenSSH 配置"
+		return 1
+	}
+
+	local configured_ports
+	configured_ports="$({
+		grep -Eh '^[[:space:]]*Port[[:space:]]+[0-9]+' /etc/ssh/sshd_config 2>/dev/null
+		grep -Eh '^[[:space:]]*Port[[:space:]]+[0-9]+' /etc/ssh/sshd_config.d/*.conf 2>/dev/null
+	} | awk '{print $2}' | sort -nu)"
+	if [ "$configured_ports" = "$new_port" ]; then
+		echo "KPANEL_SSH_PORT $new_port"
+		echo "KPANEL_SSH_RESULT unchanged"
+		return 0
+	fi
+
+	# 复用现有 SSH 修改主业务；适配层只负责非交互校验和机器可读结果。
+	new_ssh_port "$new_port" || return 1
+	if ! grep -Eq "^[[:space:]]*Port[[:space:]]+${new_port}([[:space:]]|$)" /etc/ssh/sshd_config; then
+		echo "错误: SSH 端口修改后回读验证失败"
+		return 1
+	fi
+	if command -v sshd >/dev/null 2>&1 && ! sshd -t; then
+		echo "错误: SSH 配置语法验证失败"
+		return 1
+	fi
+
+	echo "KPANEL_SSH_PORT $new_port"
+	echo "KPANEL_SSH_RESULT applied"
 }
 
 
@@ -24399,6 +24448,11 @@ else
 		dns)
 			shift
 			kpanel_set_dns_noninteractive "$@"
+			;;
+
+		ssh-port)
+			shift
+			kpanel_ssh_port_noninteractive "$@"
 			;;
 
 		test|check|体检|测试)
