@@ -22130,6 +22130,8 @@ net_menu() {
 
 
 # KPanel system resource protocol start
+KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="1"
+
 kpanel_system_resource_zero_version() {
 	printf '%064d' 0
 }

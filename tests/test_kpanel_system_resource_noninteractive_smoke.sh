@@ -30,6 +30,10 @@ adapter_body="$(
 		sed 's/\r$//'
 )"
 [ -n "${adapter_body}" ] || fail "system-resource adapter block was not found"
+grep -Fqx 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="1"' <<< "${adapter_body}" ||
+	fail "system-resource protocol v1 marker is missing"
+[ "$(grep -Fxc 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="1"' <<< "${adapter_body}")" -eq 1 ] ||
+	fail "system-resource protocol v1 marker must be unique"
 printf '%s\n' "${adapter_body}" | grep -F '[ "$command_source" = "--command-stdin" ]' >/dev/null ||
 	fail "cron command stdin marker is missing"
 if printf '%s\n' "${adapter_body}" | grep -E 'grep .*\$new_line' >/dev/null; then
