@@ -4,7 +4,11 @@ set -euo pipefail
 project_root="${PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 script_path="${project_root}/kejilion.sh"
 test_root="$(mktemp -d)"
-trap 'rm -rf -- "${test_root}"' EXIT
+case "$(uname -s)" in
+	Linux) test_recovery_state="/var/tmp/kejilion-panel-system-resource-test.$$" ;;
+	*) test_recovery_state="${project_root}/.test-kpanel-system-resource-recovery.$$" ;;
+esac
+trap 'rm -rf -- "${test_root}" "${test_recovery_state}"' EXIT
 
 fail() {
 	printf 'FAIL: %s\n' "$1" >&2
@@ -24,16 +28,21 @@ grep -F 'iptables -w 5 "$@"' "${script_path}" >/dev/null
 grep -F 'iptables-restore -w 5' "${script_path}" >/dev/null
 grep -F 'allow-ip|block-ip|remove-ip)' "${script_path}" >/dev/null
 grep -F 'open-all|close-all|enable-ping|disable-ping|enable-ddos|disable-ddos)' "${script_path}" >/dev/null
+grep -F 'printf '\''%s\n'\'' "/var/lib/kejilion-panel"' "${script_path}" >/dev/null
+grep -F 'chown -R -- 0:0 "$destination"' "${script_path}" >/dev/null
+grep -F 'find "$destination" -type d -exec chmod 700' "${script_path}" >/dev/null
+grep -F 'find "$destination" -type f -exec chmod 600' "${script_path}" >/dev/null
+grep -F 'flock -w 5 -x 9' "${script_path}" >/dev/null
 
 adapter_body="$(
 	sed -n '/^# KPanel system resource protocol start/,/^# KPanel system resource protocol end/p' "${script_path}" |
 		sed 's/\r$//'
 )"
 [ -n "${adapter_body}" ] || fail "system-resource adapter block was not found"
-grep -Fqx 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="1"' <<< "${adapter_body}" ||
-	fail "system-resource protocol v1 marker is missing"
-[ "$(grep -Fxc 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="1"' <<< "${adapter_body}")" -eq 1 ] ||
-	fail "system-resource protocol v1 marker must be unique"
+grep -Fqx 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="2"' <<< "${adapter_body}" ||
+	fail "system-resource protocol v2 marker is missing"
+[ "$(grep -Fxc 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="2"' <<< "${adapter_body}")" -eq 1 ] ||
+	fail "system-resource protocol v2 marker must be unique"
 printf '%s\n' "${adapter_body}" | grep -F '[ "$command_source" = "--command-stdin" ]' >/dev/null ||
 	fail "cron command stdin marker is missing"
 if printf '%s\n' "${adapter_body}" | grep -E 'grep .*\$new_line' >/dev/null; then
@@ -54,14 +63,25 @@ kpanel_system_resource_hosts_file() { printf '%s\n' "${test_hosts}"; }
 kpanel_system_resource_lock_file() { printf '%s\n' "${test_lock}"; }
 kpanel_system_resource_interfaces_dir() { printf '%s\n' "${test_interfaces}"; }
 kpanel_system_resource_iptables_rules_file() { printf '%s\n' "${test_rules}"; }
+kpanel_system_resource_state_root() {
+	printf '%s\n' "${KPANEL_FAKE_RECOVERY_STATE_ROOT:-${test_recovery_state}}"
+}
+kpanel_system_resource_tempdir() {
+	local resource="$1"
+	local directory
+	directory="$(mktemp -d "${test_root}/kejilion-system-resource-${resource}.XXXXXX")" || return 1
+	chmod 700 "${directory}" || return 1
+	printf '%s\n' "${directory}"
+}
 
-case "$(uname -s)" in
-	MINGW*|MSYS*|CYGWIN*)
-		flock() {
-			[ "$#" -eq 4 ] && [ "$1" = -w ] && [ "$2" = 30 ] && [ "$3" = -x ] && [ "$4" = 9 ]
-		}
-		;;
-esac
+flock() {
+	[ "$#" -eq 4 ] && [ "$1" = -w ] && [ "$2" = 5 ] && [ "$3" = -x ] && [ "$4" = 9 ] || return 1
+	[ "${KPANEL_FAKE_FLOCK_TIMEOUT:-0}" != 1 ] || return 1
+	case "$(uname -s)" in
+		MINGW*|MSYS*|CYGWIN*) return 0 ;;
+		*) command flock "$@" ;;
+	esac
+}
 
 crontab() {
 	case "${1:-}" in
@@ -205,7 +225,11 @@ iptables-save() {
 
 iptables-restore() {
 	[ "${1:-}" = -w ] && [ "${2:-}" = 5 ] || return 1
-	command cat > "${test_iptables}"
+	command cat > "${test_root}/iptables-restore.last" || return 1
+	command cp -- "${test_root}/iptables-restore.last" "${test_iptables}" || return 1
+	if [ -f "${test_root}/iptables-restore-output" ]; then
+		command cp -- "${test_root}/iptables-restore-output" "${test_iptables}" || return 1
+	fi
 }
 
 mv() {
@@ -215,6 +239,24 @@ mv() {
 		return 1
 	fi
 	command mv "$@"
+}
+
+cp() {
+	local destination="${!#}"
+	if [ "${KPANEL_FAKE_HOSTS_RESTORE_FAIL:-0}" = 1 ] && [ "${destination}" = "${test_hosts}" ]; then
+		return 1
+	fi
+	command cp "$@"
+}
+
+chown() {
+	local argument
+	if [ "$(id -u)" -ne 0 ]; then
+		for argument in "$@"; do
+			[ "${argument}" != 0:0 ] || return 0
+		done
+	fi
+	command chown "$@"
 }
 
 assert_receipt() {
@@ -288,6 +330,11 @@ kpanel_system_resource_require_platform() {
 	fi
 }
 
+KPANEL_FAKE_FLOCK_TIMEOUT=1
+run_dispatch conflict hosts add "${zero_version}" 127.0.0.1 locked.local ""
+unset KPANEL_FAKE_FLOCK_TIMEOUT
+[ "${RUN_RC}" -eq 2 ] || fail "system-resource lock timeout did not return conflict"
+
 printf '%s\n' \
 	'127.0.0.1 localhost' \
 	'10.0.0.1 duplicate.local' \
@@ -316,6 +363,52 @@ run_dispatch failed hosts add "${hosts_v2}" 192.0.2.12 rollback.local ""
 unset KPANEL_FAKE_HOSTS_MV_FAIL
 [ "${RUN_RC}" -eq 1 ] || fail "hosts rollback path did not return 1"
 cmp -s -- "${hosts_before}" "${test_hosts}" || fail "hosts rollback did not restore original bytes"
+
+printf '%s\n' '127.0.0.1 localhost' '192.0.2.30 recovery.local' > "${test_hosts}"
+hosts_recovery_before="${test_root}/hosts.before-needs-attention"
+command cp -- "${test_hosts}" "${hosts_recovery_before}"
+hosts_recovery_v="$(kpanel_system_resource_hosts_version)"
+KPANEL_FAKE_HOSTS_MV_FAIL=1
+KPANEL_FAKE_HOSTS_RESTORE_FAIL=1
+run_dispatch rollback-failed hosts add "${hosts_recovery_v}" 192.0.2.31 broken-rollback.local ""
+unset KPANEL_FAKE_HOSTS_MV_FAIL KPANEL_FAKE_HOSTS_RESTORE_FAIL
+[ "${RUN_RC}" -eq 1 ] || fail "hosts rollback-failed path did not return 1"
+recovery_path="$(printf '%s\n' "${RUN_OUTPUT}" | sed -n 's/^KPANEL_SYSTEM_RESOURCE_BACKUP=//p')"
+[ -n "${recovery_path}" ] || fail "rollback-failed receipt did not include a persistent backup"
+[[ "${recovery_path}" = "${test_recovery_state}/system/recovery/system-resource/"* ]] ||
+	fail "rollback-failed backup was outside the recovery state directory: ${recovery_path}"
+[[ "${recovery_path}" != /tmp/* ]] || fail "rollback-failed backup remained in PrivateTmp"
+[ -d "${recovery_path}" ] && [ ! -L "${recovery_path}" ] || fail "persistent recovery backup is not a real directory"
+cmp -s -- "${hosts_recovery_before}" "${recovery_path}/hosts.backup" ||
+	fail "persistent recovery backup did not preserve the original hosts bytes"
+if [ "$(uname -s)" = Linux ]; then
+	[ "$(stat -c '%a' "${recovery_path}")" = 700 ] || fail "persistent recovery directory mode is not 0700"
+	[ "$(stat -c '%a' "${recovery_path}/hosts.backup")" = 600 ] || fail "persistent recovery file mode is not 0600"
+	if [ "$(id -u)" -eq 0 ]; then
+		[ "$(stat -c '%u:%g' "${recovery_path}")" = 0:0 ] || fail "persistent recovery directory is not root-owned"
+		[ "$(stat -c '%u:%g' "${recovery_path}/hosts.backup")" = 0:0 ] || fail "persistent recovery file is not root-owned"
+	fi
+fi
+
+printf '%s\n' '127.0.0.1 localhost' '192.0.2.40 recovery-fail.local' > "${test_hosts}"
+hosts_recovery_fail_before="${test_root}/hosts.before-recovery-persist-fail"
+command cp -- "${test_hosts}" "${hosts_recovery_fail_before}"
+hosts_recovery_fail_v="$(kpanel_system_resource_hosts_version)"
+KPANEL_FAKE_HOSTS_MV_FAIL=1
+KPANEL_FAKE_HOSTS_RESTORE_FAIL=1
+KPANEL_FAKE_RECOVERY_STATE_ROOT="${test_root}/missing-parent/state"
+run_dispatch rollback-failed hosts add "${hosts_recovery_fail_v}" 192.0.2.41 no-backup.local ""
+unset KPANEL_FAKE_HOSTS_MV_FAIL KPANEL_FAKE_HOSTS_RESTORE_FAIL KPANEL_FAKE_RECOVERY_STATE_ROOT
+[ "${RUN_RC}" -eq 1 ] || fail "recovery persistence failure did not return rollback-failed"
+if printf '%s\n' "${RUN_OUTPUT}" | grep -q '^KPANEL_SYSTEM_RESOURCE_BACKUP='; then
+	fail "recovery persistence failure emitted a false backup path"
+fi
+grep -F '失败快照持久化失败' "${test_stderr}" >/dev/null ||
+	fail "recovery persistence failure was not reported on stderr"
+private_recovery_path="$(find "${test_root}" -maxdepth 1 -type d -name 'kejilion-system-resource-hosts.*' -print -quit)"
+[ -n "${private_recovery_path}" ] || fail "failed recovery persistence discarded the PrivateTmp fallback snapshot"
+cmp -s -- "${hosts_recovery_fail_before}" "${private_recovery_path}/hosts.backup" ||
+	fail "PrivateTmp fallback snapshot did not preserve the original hosts bytes"
 
 cron_line='0 * * * * echo duplicate'
 printf '%s\n%s\n' "${cron_line}" "${cron_line}" > "${test_crontab}"
@@ -391,6 +484,111 @@ touch "${test_root}/ip-partial-error"
 run_dispatch failed network-interface state "${interface_v1}" eth-test down
 [ "${RUN_RC}" -eq 1 ] || fail "partial network interface failure did not return 1"
 [ "$(kpanel_system_resource_interface_admin_state eth-test)" = up ] || fail "network interface rollback did not restore admin state"
+
+firewall_dynamic_a="${test_root}/iptables.dynamic-a"
+firewall_dynamic_b="${test_root}/iptables.dynamic-b"
+firewall_rule_changed="${test_root}/iptables.rule-changed"
+firewall_policy_changed="${test_root}/iptables.policy-changed"
+printf '%s\r\n' \
+	'# Generated by iptables-save v1.8.9 (nf_tables) on Mon Aug 10 00:00:00 2026' \
+	'*filter' \
+	':INPUT ACCEPT [123:456]' \
+	':FORWARD DROP [7:8]' \
+	'-A INPUT -p tcp --dport 22 -j ACCEPT' \
+	'# Static audit [12:34]' \
+	'COMMIT' \
+	'# Completed on Mon Aug 10 00:00:01 2026' > "${firewall_dynamic_a}"
+printf '%s\n' \
+	'# Generated by iptables-save v9.9.9 on Tue Aug 11 11:11:11 2026' \
+	'*filter' \
+	':INPUT ACCEPT [999:888]' \
+	':FORWARD DROP [0:999]' \
+	'-A INPUT -p tcp --dport 22 -j ACCEPT' \
+	'# Static audit [12:34]' \
+	'COMMIT' \
+	'# Completed on Tue Aug 11 11:11:12 2026' > "${firewall_dynamic_b}"
+printf '%s\n' \
+	'# Generated by iptables-save v9.9.9 on Tue Aug 11 11:11:11 2026' \
+	'*filter' \
+	':INPUT ACCEPT [999:888]' \
+	':FORWARD DROP [0:999]' \
+	'-A INPUT -p tcp --dport 23 -j ACCEPT' \
+	'# Static audit [12:34]' \
+	'COMMIT' \
+	'# Completed on Tue Aug 11 11:11:12 2026' > "${firewall_rule_changed}"
+printf '%s\n' \
+	'# Generated by iptables-save v9.9.9 on Tue Aug 11 11:11:11 2026' \
+	'*filter' \
+	':INPUT DROP [999:888]' \
+	':FORWARD DROP [0:999]' \
+	'-A INPUT -p tcp --dport 22 -j ACCEPT' \
+	'# Static audit [12:34]' \
+	'COMMIT' \
+	'# Completed on Tue Aug 11 11:11:12 2026' > "${firewall_policy_changed}"
+
+firewall_canonical_actual="${test_root}/iptables.canonical-actual"
+firewall_canonical_expected="${test_root}/iptables.canonical-expected"
+printf '%s\n' \
+	'*filter' \
+	':INPUT ACCEPT [0:0]' \
+	':FORWARD DROP [0:0]' \
+	'-A INPUT -p tcp --dport 22 -j ACCEPT' \
+	'# Static audit [12:34]' \
+	'COMMIT' > "${firewall_canonical_expected}"
+kpanel_system_resource_firewall_canonicalize "${firewall_dynamic_a}" "${firewall_canonical_actual}" ||
+	fail "firewall canonicalization failed"
+cmp -s -- "${firewall_canonical_expected}" "${firewall_canonical_actual}" ||
+	fail "firewall canonical bytes do not match the protocol definition"
+
+command cp -- "${firewall_dynamic_a}" "${test_iptables}"
+firewall_dynamic_v1="$(kpanel_system_resource_firewall_version)"
+command cp -- "${firewall_dynamic_b}" "${test_iptables}"
+firewall_dynamic_v2="$(kpanel_system_resource_firewall_version)"
+[ "${firewall_dynamic_v1}" = "${firewall_dynamic_v2}" ] ||
+	fail "firewall version changed for timestamp, counter, or CRLF-only differences"
+command cp -- "${firewall_rule_changed}" "${test_iptables}"
+firewall_rule_v="$(kpanel_system_resource_firewall_version)"
+[ "${firewall_dynamic_v1}" != "${firewall_rule_v}" ] || fail "firewall version ignored a rule change"
+command cp -- "${firewall_policy_changed}" "${test_iptables}"
+firewall_policy_v="$(kpanel_system_resource_firewall_version)"
+[ "${firewall_dynamic_v1}" != "${firewall_policy_v}" ] || fail "firewall version ignored a policy change"
+
+canonical_cron_before="${test_root}/cron.before-canonical-firewall"
+canonical_rules_before="${test_root}/rules.before-canonical-firewall"
+canonical_snapshot_dir="${test_root}/firewall-canonical-snapshot"
+canonical_persist_dir="${test_root}/firewall-canonical-persist"
+command cp -- "${test_crontab}" "${canonical_cron_before}"
+command cp -- "${firewall_dynamic_a}" "${test_rules}"
+command cp -- "${test_rules}" "${canonical_rules_before}"
+command cp -- "${firewall_dynamic_b}" "${test_iptables}"
+mkdir -p -- "${canonical_persist_dir}"
+kpanel_system_resource_firewall_persist "${canonical_persist_dir}" ||
+	fail "firewall persist rejected a semantically identical dynamic capture"
+cmp -s -- "${canonical_rules_before}" "${test_rules}" ||
+	fail "firewall persist rewrote the raw rules snapshot for dynamic-only differences"
+
+mkdir -p -- "${canonical_snapshot_dir}"
+kpanel_system_resource_firewall_snapshot "${canonical_snapshot_dir}" "${test_rules}" ||
+	fail "firewall raw snapshot failed"
+cmp -s -- "${firewall_dynamic_b}" "${canonical_snapshot_dir}/iptables.rules" ||
+	fail "firewall runtime snapshot was canonicalized instead of kept raw"
+cmp -s -- "${canonical_rules_before}" "${canonical_snapshot_dir}/rules.v4" ||
+	fail "firewall persisted snapshot was canonicalized instead of kept raw"
+canonical_cron_existed="${KPANEL_SYSTEM_RESOURCE_FIREWALL_CRON_EXISTED}"
+command cp -- "${firewall_rule_changed}" "${test_iptables}"
+command cp -- "${firewall_rule_changed}" "${test_rules}"
+command cp -- "${firewall_dynamic_a}" "${test_root}/iptables-restore-output"
+kpanel_system_resource_firewall_restore \
+	"${canonical_snapshot_dir}" "${test_rules}" true "${canonical_cron_existed}" ||
+	fail "firewall restore rejected a semantically identical dynamic capture"
+cmp -s -- "${firewall_dynamic_b}" "${test_root}/iptables-restore.last" ||
+	fail "firewall restore input was canonicalized instead of kept raw"
+cmp -s -- "${firewall_dynamic_a}" "${test_iptables}" ||
+	fail "firewall restore fixture did not expose dynamic-only output"
+cmp -s -- "${canonical_rules_before}" "${test_rules}" ||
+	fail "firewall restore did not preserve the raw persisted rules snapshot"
+command rm -f -- "${test_root}/iptables-restore-output" "${test_rules}"
+command cp -- "${canonical_cron_before}" "${test_crontab}"
 
 printf '%s\n' \
 	'-P INPUT ACCEPT' \
