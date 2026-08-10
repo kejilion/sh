@@ -33,16 +33,21 @@ grep -F 'chown -R -- 0:0 "$destination"' "${script_path}" >/dev/null
 grep -F 'find "$destination" -type d -exec chmod 700' "${script_path}" >/dev/null
 grep -F 'find "$destination" -type f -exec chmod 600' "${script_path}" >/dev/null
 grep -F 'flock -w 5 -x 9' "${script_path}" >/dev/null
+grep -F 'printf '\''%s\n'\'' "/run/kejilion-system-resource"' "${script_path}" >/dev/null
+grep -F 'exec 9<>"$lock_file"' "${script_path}" >/dev/null
+if grep -F '/run/lock/kejilion-system-resource.lock' "${script_path}" >/dev/null; then
+	fail "system-resource still uses the world-writable /run/lock parent"
+fi
 
 adapter_body="$(
 	sed -n '/^# KPanel system resource protocol start/,/^# KPanel system resource protocol end/p' "${script_path}" |
 		sed 's/\r$//'
 )"
 [ -n "${adapter_body}" ] || fail "system-resource adapter block was not found"
-grep -Fqx 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="2"' <<< "${adapter_body}" ||
-	fail "system-resource protocol v2 marker is missing"
-[ "$(grep -Fxc 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="2"' <<< "${adapter_body}")" -eq 1 ] ||
-	fail "system-resource protocol v2 marker must be unique"
+grep -Fqx 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="3"' <<< "${adapter_body}" ||
+	fail "system-resource protocol v3 marker is missing"
+[ "$(grep -Fxc 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="3"' <<< "${adapter_body}")" -eq 1 ] ||
+	fail "system-resource protocol v3 marker must be unique"
 printf '%s\n' "${adapter_body}" | grep -F '[ "$command_source" = "--command-stdin" ]' >/dev/null ||
 	fail "cron command stdin marker is missing"
 if printf '%s\n' "${adapter_body}" | grep -E 'grep .*\$new_line' >/dev/null; then
@@ -52,15 +57,28 @@ eval "${adapter_body}"
 
 test_hosts="${test_root}/hosts"
 test_crontab="${test_root}/crontab"
-test_lock="${test_root}/system-resource.lock"
+test_lock_parent="${test_root}/run"
+test_lock_dir="${test_lock_parent}/kejilion-system-resource"
+test_lock="${test_lock_dir}/system-resource.lock"
 test_interfaces="${test_root}/interfaces"
 test_rules="${test_root}/rules.v4"
 test_iptables="${test_root}/iptables.state"
 test_stderr="${test_root}/stderr"
-mkdir -p -- "${test_interfaces}"
+mkdir -p -- "${test_interfaces}" "${test_lock_parent}"
+chmod 700 "${test_lock_parent}"
 
 kpanel_system_resource_hosts_file() { printf '%s\n' "${test_hosts}"; }
-kpanel_system_resource_lock_file() { printf '%s\n' "${test_lock}"; }
+kpanel_system_resource_lock_dir() { printf '%s\n' "${test_lock_dir}"; }
+kpanel_system_resource_lock_owner_uid() { id -u; }
+kpanel_system_resource_lock_stat_mode() {
+	case "$(uname -s)" in
+		MINGW*|MSYS*|CYGWIN*)
+			[ "$1" != "${test_lock_dir}" ] || { printf '700\n'; return 0; }
+			[ "$1" != "${test_lock}" ] || { printf '600\n'; return 0; }
+			;;
+	esac
+	command stat -c '%a' "$1" 2>/dev/null
+}
 kpanel_system_resource_interfaces_dir() { printf '%s\n' "${test_interfaces}"; }
 kpanel_system_resource_iptables_rules_file() { printf '%s\n' "${test_rules}"; }
 kpanel_system_resource_state_root() {
@@ -259,6 +277,16 @@ chown() {
 	command chown "$@"
 }
 
+reset_test_lock_dir() {
+	if [ -L "${test_lock_dir}" ]; then
+		command rm -f -- "${test_lock_dir}"
+	else
+		command rm -rf -- "${test_lock_dir}"
+	fi
+	mkdir -- "${test_lock_dir}"
+	chmod 700 "${test_lock_dir}"
+}
+
 assert_receipt() {
 	local expected_status="$1"
 	local line_count
@@ -334,6 +362,62 @@ KPANEL_FAKE_FLOCK_TIMEOUT=1
 run_dispatch conflict hosts add "${zero_version}" 127.0.0.1 locked.local ""
 unset KPANEL_FAKE_FLOCK_TIMEOUT
 [ "${RUN_RC}" -eq 2 ] || fail "system-resource lock timeout did not return conflict"
+printf 'safe-lock-content\n' > "${test_lock}"
+chmod 600 "${test_lock}"
+KPANEL_FAKE_FLOCK_TIMEOUT=1
+run_dispatch conflict hosts add "${zero_version}" 127.0.0.1 locked-again.local ""
+unset KPANEL_FAKE_FLOCK_TIMEOUT
+[ "${RUN_RC}" -eq 2 ] || fail "existing secure lock file could not be reused"
+grep -Fqx 'safe-lock-content' "${test_lock}" || fail "opening the secure lock file truncated its content"
+
+if [ "$(uname -s)" = Linux ] && [ "$(id -u)" -eq 0 ]; then
+	[ "$(stat -c '%a' "${test_lock_dir}")" = 700 ] || fail "secure lock directory mode is not 0700"
+	[ "$(stat -c '%u' "${test_lock_dir}")" = 0 ] || fail "secure lock directory is not root-owned"
+	[ "$(stat -c '%a' "${test_lock}")" = 600 ] || fail "secure lock file mode is not 0600"
+	[ "$(stat -c '%u' "${test_lock}")" = 0 ] || fail "secure lock file is not root-owned"
+
+	lock_sentinel_dir="${test_root}/lock-sentinel-directory"
+	lock_sentinel="${test_root}/lock-sentinel"
+	mkdir -- "${lock_sentinel_dir}"
+	printf 'directory-symlink-sentinel\n' > "${lock_sentinel_dir}/system-resource.lock"
+	command rm -rf -- "${test_lock_dir}"
+	ln -s -- "${lock_sentinel_dir}" "${test_lock_dir}"
+	run_dispatch failed hosts add "${zero_version}" 127.0.0.1 unsafe-lock-dir.local ""
+	[ "${RUN_RC}" -eq 1 ] || fail "lock directory symlink was not rejected"
+	grep -Fqx 'directory-symlink-sentinel' "${lock_sentinel_dir}/system-resource.lock" ||
+		fail "lock directory symlink target was modified"
+
+	reset_test_lock_dir
+	printf 'file-symlink-sentinel\n' > "${lock_sentinel}"
+	ln -s -- "${lock_sentinel}" "${test_lock}"
+	run_dispatch failed hosts add "${zero_version}" 127.0.0.1 unsafe-lock-file.local ""
+	[ "${RUN_RC}" -eq 1 ] || fail "lock file symlink was not rejected"
+	grep -Fqx 'file-symlink-sentinel' "${lock_sentinel}" || fail "lock file symlink target was modified"
+
+	reset_test_lock_dir
+	command chown 1:1 "${test_lock_dir}"
+	run_dispatch failed hosts add "${zero_version}" 127.0.0.1 wrong-lock-dir-owner.local ""
+	[ "${RUN_RC}" -eq 1 ] || fail "non-root lock directory owner was not rejected"
+
+	reset_test_lock_dir
+	: > "${test_lock}"
+	chmod 600 "${test_lock}"
+	command chown 1:1 "${test_lock}"
+	run_dispatch failed hosts add "${zero_version}" 127.0.0.1 wrong-lock-file-owner.local ""
+	[ "${RUN_RC}" -eq 1 ] || fail "non-root lock file owner was not rejected"
+
+	reset_test_lock_dir
+	chmod 770 "${test_lock_dir}"
+	run_dispatch failed hosts add "${zero_version}" 127.0.0.1 writable-lock-dir.local ""
+	[ "${RUN_RC}" -eq 1 ] || fail "group-writable lock directory was not rejected"
+
+	reset_test_lock_dir
+	: > "${test_lock}"
+	chmod 660 "${test_lock}"
+	run_dispatch failed hosts add "${zero_version}" 127.0.0.1 writable-lock-file.local ""
+	[ "${RUN_RC}" -eq 1 ] || fail "group-writable lock file was not rejected"
+	reset_test_lock_dir
+fi
 
 printf '%s\n' \
 	'127.0.0.1 localhost' \

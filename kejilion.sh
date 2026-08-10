@@ -22130,7 +22130,7 @@ net_menu() {
 
 
 # KPanel system resource protocol start
-KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="2"
+KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="3"
 
 kpanel_system_resource_zero_version() {
 	printf '%064d' 0
@@ -22189,8 +22189,24 @@ kpanel_system_resource_hosts_file() {
 	printf '%s\n' "/etc/hosts"
 }
 
+kpanel_system_resource_lock_dir() {
+	printf '%s\n' "/run/kejilion-system-resource"
+}
+
+kpanel_system_resource_lock_owner_uid() {
+	printf '0\n'
+}
+
+kpanel_system_resource_lock_stat_uid() {
+	stat -c '%u' "$1" 2>/dev/null
+}
+
+kpanel_system_resource_lock_stat_mode() {
+	stat -c '%a' "$1" 2>/dev/null
+}
+
 kpanel_system_resource_lock_file() {
-	printf '%s\n' "/run/lock/kejilion-system-resource.lock"
+	printf '%s/system-resource.lock\n' "$(kpanel_system_resource_lock_dir)"
 }
 
 kpanel_system_resource_interfaces_dir() {
@@ -22229,6 +22245,60 @@ kpanel_system_resource_path_has_no_symlink() {
 		current="$current/$component"
 		[ ! -L "$current" ] || return 1
 	done
+}
+
+kpanel_system_resource_lock_path_secure() {
+	local path="$1"
+	local kind="$2"
+	local required_mode="${3:-}"
+	local uid expected_uid mode
+
+	[ ! -L "$path" ] || return 1
+	case "$kind" in
+		directory) [ -d "$path" ] ;;
+		file) [ -f "$path" ] ;;
+		*) return 1 ;;
+	esac || return 1
+	uid="$(kpanel_system_resource_lock_stat_uid "$path")" || return 1
+	expected_uid="$(kpanel_system_resource_lock_owner_uid)" || return 1
+	[[ "$uid" =~ ^[0-9]+$ ]] && [[ "$expected_uid" =~ ^[0-9]+$ ]] &&
+		[ "$uid" = "$expected_uid" ] || return 1
+	mode="$(kpanel_system_resource_lock_stat_mode "$path")" || return 1
+	[[ "$mode" =~ ^[0-7]{3,4}$ ]] || return 1
+	[ "$((8#$mode & 0022))" -eq 0 ] || return 1
+	[ -z "$required_mode" ] || [ "$((8#$mode & 0777))" -eq "$((8#$required_mode))" ]
+}
+
+kpanel_system_resource_prepare_lock_file() {
+	local lock_dir lock_parent lock_file
+
+	lock_dir="$(kpanel_system_resource_lock_dir)" || return 1
+	lock_file="$(kpanel_system_resource_lock_file)" || return 1
+	kpanel_system_resource_single_line "$lock_dir" 1024 || return 1
+	kpanel_system_resource_single_line "$lock_file" 1024 || return 1
+	[[ "$lock_dir" = /* ]] && [ "$lock_file" = "$lock_dir/system-resource.lock" ] || return 1
+	kpanel_system_resource_path_has_no_symlink "$lock_dir" || return 1
+	lock_parent="$(dirname -- "$lock_dir")" || return 1
+	kpanel_system_resource_lock_path_secure "$lock_parent" directory || return 1
+	if [ -e "$lock_dir" ]; then
+		kpanel_system_resource_lock_path_secure "$lock_dir" directory || return 1
+	else
+		(umask 077; mkdir -- "$lock_dir") >/dev/null 2>&1 || return 1
+	fi
+	chown 0:0 "$lock_dir" >/dev/null 2>&1 && chmod 700 "$lock_dir" >/dev/null 2>&1 || return 1
+	kpanel_system_resource_lock_path_secure "$lock_dir" directory 700 || return 1
+	[ ! -L "$lock_file" ] || return 1
+	if [ -e "$lock_file" ]; then
+		kpanel_system_resource_lock_path_secure "$lock_file" file || return 1
+	else
+		(umask 077; set -o noclobber; : > "$lock_file") >/dev/null 2>&1 || {
+			[ -e "$lock_file" ] && [ ! -L "$lock_file" ] || return 1
+		}
+	fi
+	kpanel_system_resource_lock_path_secure "$lock_file" file || return 1
+	chown 0:0 "$lock_file" >/dev/null 2>&1 && chmod 600 "$lock_file" >/dev/null 2>&1 || return 1
+	kpanel_system_resource_lock_path_secure "$lock_file" file 600 || return 1
+	printf '%s\n' "$lock_file"
 }
 
 kpanel_system_resource_secure_directory() {
@@ -23794,23 +23864,27 @@ kpanel_system_resource_firewall_action() {
 kpanel_system_resource_run_locked() (
 	local resource="$1"
 	local action="$2"
-	local lock_file lock_parent name=""
+	local lock_file name=""
 	shift 2
 
-	lock_file="$(kpanel_system_resource_lock_file)"
-	lock_parent="$(dirname -- "$lock_file")"
-	mkdir -p -- "$lock_parent" >/dev/null 2>&1 || {
-		kpanel_system_resource_error "无法创建 system-resource 锁目录"
-		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version "$resource")"
+	[ "$resource" = "network-interface" ] && name="${2:-}"
+	lock_file="$(kpanel_system_resource_prepare_lock_file)" || {
+		kpanel_system_resource_error "system-resource 锁路径不安全或无法创建"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version "$resource" "$name")"
 		return 1
 	}
-	exec 9>"$lock_file" || {
+	exec 9<>"$lock_file" || {
 		kpanel_system_resource_error "无法打开 system-resource 锁"
-		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version "$resource")"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version "$resource" "$name")"
+		return 1
+	}
+	kpanel_system_resource_lock_path_secure "$lock_file" file 600 || {
+		exec 9>&-
+		kpanel_system_resource_error "system-resource 锁文件打开后验证失败"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version "$resource" "$name")"
 		return 1
 	}
 	if ! flock -w 5 -x 9 >/dev/null 2>&1; then
-		[ "$resource" = "network-interface" ] && name="${2:-}"
 		kpanel_system_resource_error "system-resource 写锁等待超时"
 		kpanel_system_resource_emit conflict "$(kpanel_system_resource_best_version "$resource" "$name")"
 		return 2
