@@ -8,6 +8,10 @@ trap 'rm -rf -- "${test_root}"' EXIT
 
 fail() {
 	printf 'FAIL: %s\n' "$1" >&2
+	if [ -n "${test_stderr:-}" ] && [ -s "${test_stderr}" ]; then
+		printf '%s\n' '--- adapter stderr ---' >&2
+		command cat -- "${test_stderr}" >&2
+	fi
 	exit 1
 }
 
@@ -26,6 +30,11 @@ adapter_body="$(
 		sed 's/\r$//'
 )"
 [ -n "${adapter_body}" ] || fail "system-resource adapter block was not found"
+printf '%s\n' "${adapter_body}" | grep -F '[ "$command_source" = "--command-stdin" ]' >/dev/null ||
+	fail "cron command stdin marker is missing"
+if printf '%s\n' "${adapter_body}" | grep -E 'grep .*\$new_line' >/dev/null; then
+	fail "cron command is passed to an external grep argv"
+fi
 eval "${adapter_body}"
 
 test_hosts="${test_root}/hosts"
@@ -41,6 +50,14 @@ kpanel_system_resource_hosts_file() { printf '%s\n' "${test_hosts}"; }
 kpanel_system_resource_lock_file() { printf '%s\n' "${test_lock}"; }
 kpanel_system_resource_interfaces_dir() { printf '%s\n' "${test_interfaces}"; }
 kpanel_system_resource_iptables_rules_file() { printf '%s\n' "${test_rules}"; }
+
+case "$(uname -s)" in
+	MINGW*|MSYS*|CYGWIN*)
+		flock() {
+			[ "$#" -eq 4 ] && [ "$1" = -w ] && [ "$2" = 30 ] && [ "$3" = -x ] && [ "$4" = 9 ]
+		}
+		;;
+esac
 
 crontab() {
 	case "${1:-}" in
@@ -222,6 +239,38 @@ run_dispatch() {
 	assert_receipt "${expected_status}"
 }
 
+run_dispatch_stdin() {
+	local stdin_value="$1"
+	local expected_status="$2"
+	shift 2
+	RUN_ARGS=("$@")
+	set +e
+	RUN_OUTPUT="$(printf '%s\n' "${stdin_value}" | kpanel_system_resource_dispatch "$@" 2> "${test_stderr}")"
+	RUN_RC=$?
+	set -e
+	assert_receipt "${expected_status}"
+}
+
+run_dispatch_file() {
+	local stdin_path="$1"
+	local expected_status="$2"
+	shift 2
+	RUN_ARGS=("$@")
+	set +e
+	RUN_OUTPUT="$(kpanel_system_resource_dispatch "$@" < "${stdin_path}" 2> "${test_stderr}")"
+	RUN_RC=$?
+	set -e
+	assert_receipt "${expected_status}"
+}
+
+assert_argv_omits() {
+	local secret="$1"
+	local argument
+	for argument in "${RUN_ARGS[@]}"; do
+		[[ "${argument}" != *"${secret}"* ]] || fail "cron secret appeared in adapter argv"
+	done
+}
+
 zero_version="$(kpanel_system_resource_zero_version)"
 unset KJ_SYSTEM_RESOURCE_NONINTERACTIVE
 run_dispatch failed hosts add "${zero_version}" 127.0.0.1 guarded.local ""
@@ -267,10 +316,15 @@ cmp -s -- "${hosts_before}" "${test_hosts}" || fail "hosts rollback did not rest
 cron_line='0 * * * * echo duplicate'
 printf '%s\n%s\n' "${cron_line}" "${cron_line}" > "${test_crontab}"
 cron_v0="$(kpanel_system_resource_cron_version)"
-run_dispatch applied cron add "${cron_v0}" '15 2 * JAN MON' 'printf cron-data'
+cron_secret='  printf cron-secret-value  '
+run_dispatch_stdin "${cron_secret}" applied cron add "${cron_v0}" '15 2 * JAN MON' --command-stdin
 [ "${RUN_RC}" -eq 0 ] || fail "cron add with English names failed"
+assert_argv_omits 'cron-secret-value'
+printf '%s\n' "${RUN_OUTPUT}" | grep -F 'cron-secret-value' >/dev/null && fail "cron secret leaked to stdout"
+grep -F 'cron-secret-value' "${test_stderr}" >/dev/null && fail "cron secret leaked to stderr"
+grep -Fqx "15 2 * JAN MON ${cron_secret}" "${test_crontab}" || fail "cron command whitespace was not preserved"
 cron_v1="$(kpanel_system_resource_cron_version)"
-run_dispatch applied cron update "${cron_v1}" 2 '*/5 * * * *' 'echo updated'
+run_dispatch_stdin 'echo updated' applied cron update "${cron_v1}" 2 '*/5 * * * *' --command-stdin
 [ "${RUN_RC}" -eq 0 ] || fail "cron line-number update failed"
 [ "$(sed -n '2p' "${test_crontab}")" = '*/5 * * * * echo updated' ] || fail "cron update targeted the wrong row"
 cron_v2="$(kpanel_system_resource_cron_version)"
@@ -280,9 +334,31 @@ run_dispatch applied cron delete "${cron_v2}" 1
 cron_before_invalid="${test_root}/cron.before-invalid"
 command cp -- "${test_crontab}" "${cron_before_invalid}"
 cron_v2="$(kpanel_system_resource_cron_version)"
-run_dispatch failed cron add "${cron_v2}" '0 0 L * *' 'echo quartz'
+run_dispatch_stdin 'echo quartz' failed cron add "${cron_v2}" '0 0 L * *' --command-stdin
 [ "${RUN_RC}" -eq 2 ] || fail "Quartz cron token was not rejected"
 cmp -s -- "${cron_before_invalid}" "${test_crontab}" || fail "invalid cron input changed the crontab"
+legacy_secret='legacy-argv-secret'
+run_dispatch failed cron add "${cron_v2}" '0 4 * * *' "${legacy_secret}"
+[ "${RUN_RC}" -eq 2 ] || fail "legacy cron command argv was not rejected"
+printf '%s\n' "${RUN_OUTPUT}" | grep -F "${legacy_secret}" >/dev/null && fail "rejected cron argv leaked to stdout"
+grep -F "${legacy_secret}" "${test_stderr}" >/dev/null && fail "rejected cron argv leaked to stderr"
+run_dispatch_stdin $'echo first\necho second' failed cron add "${cron_v2}" '0 4 * * *' --command-stdin
+[ "${RUN_RC}" -eq 2 ] || fail "multiline cron stdin frame was not rejected"
+printf -v overlong_command '%*s' 2049 ''
+overlong_command="${overlong_command// /x}"
+run_dispatch_stdin "${overlong_command}" failed cron add "${cron_v2}" '0 4 * * *' --command-stdin
+[ "${RUN_RC}" -eq 2 ] || fail "overlong cron stdin frame was not rejected"
+cron_bad_frame="${test_root}/cron-command.bad-frame"
+printf 'echo safe\000echo hidden\n' > "${cron_bad_frame}"
+run_dispatch_file "${cron_bad_frame}" failed cron add "${cron_v2}" '0 4 * * *' --command-stdin
+[ "${RUN_RC}" -eq 2 ] || fail "NUL cron stdin frame was not rejected"
+printf 'echo safe\recho hidden\n' > "${cron_bad_frame}"
+run_dispatch_file "${cron_bad_frame}" failed cron add "${cron_v2}" '0 4 * * *' --command-stdin
+[ "${RUN_RC}" -eq 2 ] || fail "CR cron stdin frame was not rejected"
+printf 'echo unterminated' > "${cron_bad_frame}"
+run_dispatch_file "${cron_bad_frame}" failed cron add "${cron_v2}" '0 4 * * *' --command-stdin
+[ "${RUN_RC}" -eq 2 ] || fail "unterminated cron stdin frame was not rejected"
+cmp -s -- "${cron_before_invalid}" "${test_crontab}" || fail "rejected cron stdin frame changed the crontab"
 command cp -- "${test_crontab}" "${cron_before_invalid}"
 touch "${test_root}/crontab-read-error"
 run_dispatch failed cron delete "${cron_v2}" 1
@@ -291,7 +367,7 @@ command rm -f -- "${test_root}/crontab-read-error"
 cmp -s -- "${cron_before_invalid}" "${test_crontab}" || fail "crontab read error changed the crontab"
 cron_v3="$(kpanel_system_resource_cron_version)"
 touch "${test_root}/crontab-install-error"
-run_dispatch failed cron add "${cron_v3}" '0 3 * * *' 'echo rollback'
+run_dispatch_stdin 'echo rollback' failed cron add "${cron_v3}" '0 3 * * *' --command-stdin
 [ "${RUN_RC}" -eq 1 ] || fail "cron install rollback path did not return 1"
 cmp -s -- "${cron_before_invalid}" "${test_crontab}" || fail "cron rollback did not restore original bytes"
 

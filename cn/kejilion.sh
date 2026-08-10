@@ -22769,6 +22769,58 @@ kpanel_system_resource_cron_expression() {
 	KPANEL_SYSTEM_RESOURCE_CRON_EXPRESSION="${fields[*]}"
 }
 
+kpanel_system_resource_cron_read_command() {
+	local frame bytes line_feeds command_value
+	KPANEL_SYSTEM_RESOURCE_CRON_COMMAND=""
+	KPANEL_SYSTEM_RESOURCE_CRON_COMMAND_ERROR=operation
+	frame="$(mktemp /tmp/kejilion-system-resource-cron-command.XXXXXX)" || return 1
+	chmod 600 "$frame" >/dev/null 2>&1 || {
+		rm -f -- "$frame"
+		return 1
+	}
+	if ! head -c 2050 > "$frame" 2>/dev/null; then
+		rm -f -- "$frame"
+		return 1
+	fi
+	bytes="$(wc -c < "$frame" 2>/dev/null)" || {
+		rm -f -- "$frame"
+		return 1
+	}
+	KPANEL_SYSTEM_RESOURCE_CRON_COMMAND_ERROR=invalid
+	if [ "$bytes" -lt 1 ] || [ "$bytes" -gt 2049 ] ||
+		! LC_ALL=C tr -d '\000' < "$frame" | cmp -s - "$frame" ||
+		LC_ALL=C grep -q $'\r' "$frame"; then
+		rm -f -- "$frame"
+		return 1
+	fi
+	line_feeds="$(LC_ALL=C tr -cd '\n' < "$frame" | wc -c)" || {
+		rm -f -- "$frame"
+		KPANEL_SYSTEM_RESOURCE_CRON_COMMAND_ERROR=operation
+		return 1
+	}
+	if [ "$line_feeds" -ne 1 ] || [ "$(tail -c 1 "$frame" | wc -l)" -ne 1 ]; then
+		rm -f -- "$frame"
+		return 1
+	fi
+	IFS= read -r command_value < "$frame" || {
+		rm -f -- "$frame"
+		return 1
+	}
+	rm -f -- "$frame"
+	KPANEL_SYSTEM_RESOURCE_CRON_COMMAND="$command_value"
+	KPANEL_SYSTEM_RESOURCE_CRON_COMMAND_ERROR=""
+}
+
+kpanel_system_resource_cron_contains_line() {
+	local path="$1"
+	local expected_line="$2"
+	local current_line
+	while IFS= read -r current_line || [ -n "$current_line" ]; do
+		[ "$current_line" = "$expected_line" ] && return 0
+	done < "$path"
+	return 1
+}
+
 kpanel_system_resource_cron_restore() {
 	local backup="$1"
 	local existed="$2"
@@ -22807,8 +22859,9 @@ kpanel_system_resource_cron_failure() {
 kpanel_system_resource_cron_action() {
 	local action="$1"
 	shift
-	local expected line_number expression command_value trimmed_command new_line snapshot_dir backup desired verify
+	local expected line_number expression command_source command_value trimmed_command new_line snapshot_dir backup desired verify
 	local cron_existed current_line index=0 total_lines
+	local command_read_rc
 
 	command -v crontab >/dev/null 2>&1 || {
 		kpanel_system_resource_error "缺少 crontab 命令"
@@ -22818,24 +22871,24 @@ kpanel_system_resource_cron_action() {
 	case "$action" in
 		add)
 			[ "$#" -eq 3 ] || {
-				kpanel_system_resource_error "cron add 需要 expected,expression,command"
+				kpanel_system_resource_error "cron add 需要 expected,expression,--command-stdin"
 				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
 				return 2
 			}
 			expected="$1"
 			expression="$2"
-			command_value="$3"
+			command_source="$3"
 			;;
 		update)
 			[ "$#" -eq 4 ] || {
-				kpanel_system_resource_error "cron update 需要 expected,line,expression,command"
+				kpanel_system_resource_error "cron update 需要 expected,line,expression,--command-stdin"
 				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
 				return 2
 			}
 			expected="$1"
 			line_number="$2"
 			expression="$3"
-			command_value="$4"
+			command_source="$4"
 			[[ "$line_number" =~ ^[0-9]{1,3}$ ]] &&
 				[ "$((10#$line_number))" -ge 1 ] &&
 				[ "$((10#$line_number))" -le 512 ] || {
@@ -22870,19 +22923,38 @@ kpanel_system_resource_cron_action() {
 	esac
 
 	if [ "$action" != "delete" ]; then
+		[ "$command_source" = "--command-stdin" ] &&
+			kpanel_system_resource_cron_expression "$expression" || {
+			kpanel_system_resource_error "cron 表达式或命令输入方式无效"
+			kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
+			return 2
+		}
+	fi
+	kpanel_system_resource_check_expected cron "$expected" || return $?
+	if [ "$action" != "delete" ]; then
+		kpanel_system_resource_cron_read_command
+		command_read_rc=$?
+		if [ "$command_read_rc" -ne 0 ]; then
+			if [ "$KPANEL_SYSTEM_RESOURCE_CRON_COMMAND_ERROR" = invalid ]; then
+				kpanel_system_resource_error "cron 命令 stdin 帧无效"
+				kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+				return 2
+			fi
+			kpanel_system_resource_error "无法安全读取 cron 命令 stdin 帧"
+			kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+			return 1
+		fi
+		command_value="$KPANEL_SYSTEM_RESOURCE_CRON_COMMAND"
 		trimmed_command="$command_value"
 		trimmed_command="${trimmed_command#"${trimmed_command%%[![:space:]]*}"}"
 		trimmed_command="${trimmed_command%"${trimmed_command##*[![:space:]]}"}"
-		kpanel_system_resource_cron_expression "$expression" &&
-			kpanel_system_resource_single_line "$command_value" 2048 &&
-			[ -n "$trimmed_command" ] || {
-			kpanel_system_resource_error "cron 表达式或命令无效"
-			kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
+		[ -n "$trimmed_command" ] || {
+			kpanel_system_resource_error "cron 命令 stdin 帧无效"
+			kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
 			return 2
 		}
 		new_line="$KPANEL_SYSTEM_RESOURCE_CRON_EXPRESSION $command_value"
 	fi
-	kpanel_system_resource_check_expected cron "$expected" || return $?
 
 	snapshot_dir="$(kpanel_system_resource_tempdir cron)" || {
 		kpanel_system_resource_error "无法创建 cron 事务目录"
@@ -22898,7 +22970,7 @@ kpanel_system_resource_cron_action() {
 	}
 	cron_existed="$KPANEL_SYSTEM_RESOURCE_CRON_EXISTED"
 
-	if [ "$action" = "add" ] && grep -Fqx -- "$new_line" "$backup"; then
+	if [ "$action" = "add" ] && kpanel_system_resource_cron_contains_line "$backup" "$new_line"; then
 		rm -rf -- "$snapshot_dir"
 		kpanel_system_resource_emit unchanged "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
 		return 0
@@ -22929,7 +23001,7 @@ kpanel_system_resource_cron_action() {
 				return 1
 			}
 		fi
-		printf '%s\n' "$new_line" >> "$desired" || {
+		builtin printf '%s\n' "$new_line" >> "$desired" || {
 			kpanel_system_resource_cron_failure "$snapshot_dir" "$backup" "$cron_existed" "无法生成 crontab"
 			return $?
 		}
@@ -22943,7 +23015,7 @@ kpanel_system_resource_cron_action() {
 		while IFS= read -r current_line || [ -n "$current_line" ]; do
 			index=$((index + 1))
 			if [ "$index" -eq "$line_number" ]; then
-				if [ "$action" != "delete" ] && ! printf '%s\n' "$new_line" >> "$desired"; then
+				if [ "$action" != "delete" ] && ! builtin printf '%s\n' "$new_line" >> "$desired"; then
 					rm -rf -- "$snapshot_dir"
 					kpanel_system_resource_error "无法生成 crontab"
 					kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
