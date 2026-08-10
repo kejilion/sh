@@ -24679,7 +24679,7 @@ kpanel_account_version() {
 		auth="$(mktemp /tmp/kejilion-account-auth.XXXXXX)" || { rm -f -- "$canonical"; return 1; }
 		if kpanel_account_capture_keys "$username" "$auth"; then
 			printf 'keys=%s ' "$username" >> "$canonical"
-			sha256sum -- "$auth" >> "$canonical" || { rm -f -- "$canonical" "$auth"; return 1; }
+			sha256sum -- "$auth" | awk '{print $1}' >> "$canonical" || { rm -f -- "$canonical" "$auth"; return 1; }
 		else
 			printf 'keys=%s unreadable\n' "$username" >> "$canonical"
 		fi

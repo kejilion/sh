@@ -47,6 +47,29 @@ valid_key="$(cat "${temporary}/id_ed25519.pub")"
 kpanel_account_key_valid "${valid_key}" || fail "valid ed25519 key was rejected"
 if kpanel_account_key_valid 'command="reboot" ssh-ed25519 AAAA'; then fail "authorized_keys options were accepted as a raw key"; fi
 
+# Resource versions must hash key content, not the random mktemp filename used
+# while capturing it. Two reads of unchanged account state must be identical.
+version_fixture="${temporary}/version-fixture"
+mkdir -p "${version_fixture}"
+for name in passwd group shadow gshadow sudoers sshd_config; do
+	printf '%s\n' "${name}-fixture" > "${version_fixture}/${name}"
+done
+printf 'root:x:0:0:root:/root:/bin/bash\noperator:x:1000:1000::/home/operator:/bin/bash\n' > "${version_fixture}/passwd"
+kpanel_account_passwd_file() { printf '%s\n' "${version_fixture}/passwd"; }
+kpanel_account_group_file() { printf '%s\n' "${version_fixture}/group"; }
+kpanel_account_shadow_file() { printf '%s\n' "${version_fixture}/shadow"; }
+kpanel_account_gshadow_file() { printf '%s\n' "${version_fixture}/gshadow"; }
+kpanel_account_sudoers_file() { printf '%s\n' "${version_fixture}/sudoers"; }
+kpanel_account_sshd_config() { printf '%s\n' "${version_fixture}/sshd_config"; }
+kpanel_account_sshd_fragment() { printf '%s\n' "${version_fixture}/sshd_fragment"; }
+kpanel_account_file_safe() { return 0; }
+kpanel_account_sshd_effective() { printf '%s\n' 'yes yes enabled'; }
+kpanel_account_capture_keys() { printf '%s\n' "${valid_key}" > "$2"; }
+kpanel_account_sudo_file() { printf '%s/90-kejilion-%s\n' "${version_fixture}" "$1"; }
+stable_version_a="$(kpanel_account_version)"
+stable_version_b="$(kpanel_account_version)"
+[ "${stable_version_a}" = "${stable_version_b}" ] || fail "unchanged account state produced unstable resource versions"
+
 # A standard account does not need sudo/wheel to exist. Minimal servers may
 # legitimately have neither group until an administrator role is requested.
 kpanel_account_sudo_file() { printf '%s\n' "${temporary}/90-kejilion-operator"; }
