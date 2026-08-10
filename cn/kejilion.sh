@@ -24717,7 +24717,10 @@ kpanel_account_status() {
 	version="$(kpanel_account_version)" || { kpanel_account_error "无法计算账户资源版本"; kpanel_account_emit failed; return 1; }
 	effective="$(kpanel_account_sshd_effective)" || { kpanel_account_emit failed "$version"; return 1; }
 	read -r password_auth pubkey_auth root_login <<< "$effective"
-	total="$(wc -l < "$passwd_file")"
+	while IFS=: read -r username _; do
+		kpanel_account_valid_username "$username" || continue
+		total=$((total + 1))
+	done < "$passwd_file"
 	[ "$total" -le 256 ] || truncated=true
 	kpanel_account_emit ok "$version"
 	printf 'KPANEL_ACCOUNT_MANAGEMENT_PASSWORD_AUTH=%s\n' "$password_auth"

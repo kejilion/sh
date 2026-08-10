@@ -70,6 +70,21 @@ stable_version_a="$(kpanel_account_version)"
 stable_version_b="$(kpanel_account_version)"
 [ "${stable_version_a}" = "${stable_version_b}" ] || fail "unchanged account state produced unstable resource versions"
 
+# Hosts may contain historical service accounts that cannot be represented by
+# the bounded protocol username grammar. Totals must count only emitted
+# accounts, otherwise the Agent correctly rejects the snapshot as inconsistent.
+printf 'root:x:0:0:root:/root:/bin/bash\nDebian-exim:x:101:101::/var/spool/exim4:/usr/sbin/nologin\noperator:x:1000:1000::/home/operator:/bin/bash\n' > "${version_fixture}/passwd"
+kpanel_account_require() { return 0; }
+kpanel_account_version() { printf 'a%.0s' {1..64}; printf '\n'; }
+kpanel_account_login_defs_file() { printf '%s\n' "${version_fixture}/login.defs"; }
+kpanel_account_password_status() { printf '%s\n' unset; }
+kpanel_account_role() { if [ "$1" = root ]; then printf '%s\n' root; else printf '%s\n' standard; fi; }
+kpanel_account_capture_keys() { : > "$2"; }
+status_receipt="$(kpanel_account_status)" || fail "status rejected an unrepresentable historical username"
+grep -Fqx 'KPANEL_ACCOUNT_MANAGEMENT_TOTAL=2' <<< "${status_receipt}" || fail "status total included an unrepresentable username"
+grep -Fqx 'KPANEL_ACCOUNT_MANAGEMENT_TRUNCATED=false' <<< "${status_receipt}" || fail "status incorrectly marked the filtered snapshot as truncated"
+[ "$(grep -Fc 'KPANEL_ACCOUNT_MANAGEMENT_ACCOUNT_HEX=' <<< "${status_receipt}")" -eq 2 ] || fail "status total does not match emitted records"
+
 # A standard account does not need sudo/wheel to exist. Minimal servers may
 # legitimately have neither group until an administrator role is requested.
 kpanel_account_sudo_file() { printf '%s\n' "${temporary}/90-kejilion-operator"; }
