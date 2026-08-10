@@ -25,6 +25,8 @@ kpanel_protocol_active() {
 	[ "${KJ_SSH_PORT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_SYSTEM_RESOURCE_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_NETWORK_OPERATIONS_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_ACCOUNT_MANAGEMENT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
@@ -22341,7 +22343,7 @@ kpanel_system_resource_persist_recovery_snapshot() {
 	local resource="$2"
 	local recovery_root destination timestamp invalid
 
-	[[ "$resource" =~ ^(hosts|cron|firewall)$ ]] || return 1
+	[[ "$resource" =~ ^(hosts|cron|firewall|traffic-shutdown|account-management)$ ]] || return 1
 	[ -d "$snapshot_dir" ] && [ ! -L "$snapshot_dir" ] || return 1
 	invalid="$(find "$snapshot_dir" -mindepth 1 \( -type l -o ! -type f \) -print -quit 2>/dev/null)" || return 1
 	[ -z "$invalid" ] || return 1
@@ -23930,6 +23932,1165 @@ kpanel_system_resource_dispatch() {
 # KPanel system resource protocol end
 
 
+# KPanel network operations protocol start
+KPANEL_NETWORK_OPERATIONS_PROTOCOL_VERSION="1"
+
+kpanel_network_operations_script_file() {
+	printf '%s\n' "/root/Limiting_Shut_down.sh"
+}
+
+kpanel_network_operations_net_dev_file() {
+	printf '%s\n' "/proc/net/dev"
+}
+
+kpanel_network_operations_emit() {
+	local status="$1"
+	local version="${2:-}"
+	local backup="${3:-}"
+	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || version="$(kpanel_system_resource_zero_version)"
+	printf 'KPANEL_NETWORK_OPERATIONS_STATUS=%s\n' "$status"
+	printf 'KPANEL_NETWORK_OPERATIONS_VERSION=%s\n' "$version"
+	[ -z "$backup" ] || printf 'KPANEL_NETWORK_OPERATIONS_BACKUP=%s\n' "$backup"
+}
+
+kpanel_network_operations_error() {
+	printf '错误: %s\n' "$1" >&2
+}
+
+kpanel_network_operations_require() {
+	local needs_root="$1"
+	shift
+	[ "${KJ_NETWORK_OPERATIONS_NONINTERACTIVE:-}" = "1" ] || {
+		kpanel_network_operations_error "KPanel network-operations 协议环境未启用"
+		kpanel_network_operations_emit failed
+		return 2
+	}
+	[ "$(uname -s 2>/dev/null)" = "Linux" ] || {
+		kpanel_network_operations_error "KPanel network-operations 协议仅支持 Linux"
+		kpanel_network_operations_emit failed
+		return 2
+	}
+	if [ "$needs_root" = true ] && [ "$(id -u)" -ne 0 ]; then
+		kpanel_network_operations_error "限流关机管理必须以 root 运行"
+		kpanel_network_operations_emit failed
+		return 2
+	fi
+	for command_name in "$@"; do
+		command -v "$command_name" >/dev/null 2>&1 || {
+			kpanel_network_operations_error "缺少必要命令: $command_name"
+			kpanel_network_operations_emit failed
+			return 2
+		}
+	done
+}
+
+kpanel_network_operations_port_usage() {
+	local temporary total truncated=false version line hex count=0
+	kpanel_network_operations_require false ss awk wc sha256sum od tr mktemp || return $?
+	[ "$#" -eq 0 ] || {
+		kpanel_network_operations_error "port-usage list 不接受额外参数"
+		kpanel_network_operations_emit failed
+		return 2
+	}
+	temporary="$(mktemp /tmp/kejilion-network-ports.XXXXXX)" || {
+		kpanel_network_operations_error "无法创建端口占用快照"
+		kpanel_network_operations_emit failed
+		return 1
+	}
+	if ! LC_ALL=C ss -H -lntup > "$temporary" 2>/dev/null; then
+		rm -f -- "$temporary"
+		kpanel_network_operations_error "无法读取监听端口"
+		kpanel_network_operations_emit failed
+		return 1
+	fi
+	if ! kpanel_system_resource_file_within_bounds "$temporary" 4194304 4096 ||
+		! awk 'length($0) > 4096 { exit 1 }' "$temporary"; then
+		rm -f -- "$temporary"
+		kpanel_network_operations_error "端口占用结果超过协议上限"
+		kpanel_network_operations_emit failed
+		return 1
+	fi
+	total="$(awk 'END { print NR + 0 }' "$temporary")" || total=0
+	[ "$total" -le 512 ] || truncated=true
+	version="$(sha256sum -- "$temporary" 2>/dev/null | awk '{print $1}')"
+	kpanel_network_operations_emit ok "$version"
+	printf 'KPANEL_NETWORK_OPERATIONS_TOTAL=%s\n' "$total"
+	printf 'KPANEL_NETWORK_OPERATIONS_TRUNCATED=%s\n' "$truncated"
+	while IFS= read -r line && [ "$count" -lt 512 ]; do
+		hex="$(printf '%s' "$line" | od -An -v -tx1 | tr -d ' \n')" || {
+			rm -f -- "$temporary"
+			return 1
+		}
+		printf 'KPANEL_NETWORK_OPERATIONS_PORT_HEX=%s\n' "$hex"
+		count=$((count + 1))
+	done < "$temporary"
+	rm -f -- "$temporary"
+}
+
+kpanel_network_operations_traffic_bytes() {
+	local path
+	path="$(kpanel_network_operations_net_dev_file)"
+	[ -f "$path" ] && [ ! -L "$path" ] || return 1
+	awk '
+		BEGIN { rx = 0; tx = 0 }
+		$1 ~ /^(eth|ens|enp|eno)[0-9]+:/ { rx += $2; tx += $10 }
+		END { printf "%.0f %.0f\n", rx, tx }
+	' "$path"
+}
+
+kpanel_network_operations_script_safe() {
+	local path="$1" uid expected_uid mode
+	[ -f "$path" ] && [ ! -L "$path" ] || return 1
+	kpanel_system_resource_file_within_bounds "$path" 65536 256 || return 1
+	uid="$(stat -c '%u' "$path" 2>/dev/null)" || return 1
+	expected_uid="$(kpanel_system_resource_lock_owner_uid)" || return 1
+	[ "$uid" = "$expected_uid" ] || return 1
+	mode="$(stat -c '%a' "$path" 2>/dev/null)" || return 1
+	[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [ "$((8#$mode & 0022))" -eq 0 ]
+}
+
+kpanel_network_operations_cron_relevant() {
+	local source="$1"
+	awk '
+		$0 == "# kejilion traffic shutdown start" { managed = 1; print; next }
+		managed { print; if ($0 == "# kejilion traffic shutdown end") managed = 0; next }
+		$0 == "* * * * * ~/Limiting_Shut_down.sh" ||
+		$0 == "* * * * * /root/Limiting_Shut_down.sh" { print }
+	' "$source"
+}
+
+kpanel_network_operations_traffic_version() {
+	local script_path cron_path canonical version
+	script_path="$(kpanel_network_operations_script_file)"
+	[ ! -L "$script_path" ] || return 1
+	cron_path="$(mktemp /tmp/kejilion-network-traffic-cron.XXXXXX)" || return 1
+	canonical="$(mktemp /tmp/kejilion-network-traffic-version.XXXXXX)" || {
+		rm -f -- "$cron_path"
+		return 1
+	}
+	if ! kpanel_system_resource_cron_capture "$cron_path"; then
+		rm -f -- "$cron_path" "$canonical"
+		return 1
+	fi
+	if [ -e "$script_path" ]; then
+		kpanel_network_operations_script_safe "$script_path" || {
+			rm -f -- "$cron_path" "$canonical"
+			return 1
+		}
+		printf 'script=present\n' > "$canonical"
+		sha256sum -- "$script_path" >> "$canonical" || {
+			rm -f -- "$cron_path" "$canonical"
+			return 1
+		}
+	else
+		printf 'script=absent\n' > "$canonical"
+	fi
+	printf 'cron:\n' >> "$canonical"
+	kpanel_network_operations_cron_relevant "$cron_path" >> "$canonical" || {
+		rm -f -- "$cron_path" "$canonical"
+		return 1
+	}
+	version="$(sha256sum -- "$canonical" 2>/dev/null | awk '{print $1}')"
+	rm -f -- "$cron_path" "$canonical"
+	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || return 1
+	printf '%s\n' "$version"
+}
+
+kpanel_network_operations_parse_script() {
+	local path="$1" rx tx
+	grep -Fqx '# KEJILION_TRAFFIC_SHUTDOWN_MANAGED_V1' "$path" || return 1
+	rx="$(sed -n 's/^rx_threshold_gb=\([0-9][0-9]*\)$/\1/p' "$path")"
+	tx="$(sed -n 's/^tx_threshold_gb=\([0-9][0-9]*\)$/\1/p' "$path")"
+	[[ "$rx" =~ ^[0-9]+$ ]] && [[ "$tx" =~ ^[0-9]+$ ]] || return 1
+	[ "$(printf '%s\n' "$rx" | wc -l)" -eq 1 ] && [ "$(printf '%s\n' "$tx" | wc -l)" -eq 1 ] || return 1
+	KPANEL_NETWORK_TRAFFIC_RX="$rx"
+	KPANEL_NETWORK_TRAFFIC_TX="$tx"
+}
+
+kpanel_network_operations_traffic_status() {
+	local script_path cron_path version bytes rx_bytes tx_bytes enabled=false health=disabled
+	local rx_threshold=0 tx_threshold=0 reset_day=0 invocation_count reset_line_count start_count end_count expected_script
+	kpanel_network_operations_require false awk crontab grep sed sha256sum stat wc mktemp cmp || return $?
+	[ "$#" -eq 0 ] || {
+		kpanel_network_operations_error "traffic-shutdown status 不接受额外参数"
+		kpanel_network_operations_emit failed
+		return 2
+	}
+	script_path="$(kpanel_network_operations_script_file)"
+	cron_path="$(mktemp /tmp/kejilion-network-traffic-status.XXXXXX)" || {
+		kpanel_network_operations_emit failed
+		return 1
+	}
+	if ! kpanel_system_resource_cron_capture "$cron_path"; then
+		rm -f -- "$cron_path"
+		kpanel_network_operations_error "无法读取 root crontab"
+		kpanel_network_operations_emit failed
+		return 1
+	fi
+	version="$(kpanel_network_operations_traffic_version)" || {
+		rm -f -- "$cron_path"
+		kpanel_network_operations_error "限流关机配置不安全或无法计算版本"
+		kpanel_network_operations_emit failed
+		return 1
+	}
+	bytes="$(kpanel_network_operations_traffic_bytes)" || {
+		rm -f -- "$cron_path"
+		kpanel_network_operations_error "无法读取累计网络流量"
+		kpanel_network_operations_emit failed "$version"
+		return 1
+	}
+	read -r rx_bytes tx_bytes <<< "$bytes"
+	if [ -e "$script_path" ]; then
+		enabled=true
+		if kpanel_network_operations_script_safe "$script_path" &&
+			kpanel_network_operations_parse_script "$script_path"; then
+			rx_threshold="$KPANEL_NETWORK_TRAFFIC_RX"
+			tx_threshold="$KPANEL_NETWORK_TRAFFIC_TX"
+			expected_script="$(mktemp /tmp/kejilion-network-traffic-expected.XXXXXX)" || {
+				rm -f -- "$cron_path"
+				kpanel_network_operations_emit failed "$version"
+				return 1
+			}
+			if ! kpanel_network_operations_build_script "$expected_script" "$rx_threshold" "$tx_threshold" ||
+				! cmp -s -- "$expected_script" "$script_path"; then
+				rx_threshold=0
+				tx_threshold=0
+			fi
+			rm -f -- "$expected_script"
+		fi
+	fi
+	start_count="$(grep -Fxc '# kejilion traffic shutdown start' "$cron_path")"
+	end_count="$(grep -Fxc '# kejilion traffic shutdown end' "$cron_path")"
+	invocation_count="$(grep -Fxc "* * * * * $script_path" "$cron_path")"
+	reset_line_count="$(sed -n '/^# kejilion traffic shutdown start$/,/^# kejilion traffic shutdown end$/p' "$cron_path" | grep -Ec '^0 1 ([1-9]|[12][0-9]|3[01]) \* \* reboot$')"
+	if [ "$enabled" = true ] && [ "$rx_threshold" -gt 0 ] && [ "$tx_threshold" -gt 0 ] &&
+		[ "$start_count" -eq 1 ] && [ "$end_count" -eq 1 ] && [ "$invocation_count" -eq 1 ] && [ "$reset_line_count" -eq 1 ]; then
+		reset_day="$(sed -n '/^# kejilion traffic shutdown start$/,/^# kejilion traffic shutdown end$/s/^0 1 \([0-9][0-9]*\) \* \* reboot$/\1/p' "$cron_path")"
+		if [[ "$reset_day" =~ ^([1-9]|[12][0-9]|3[01])$ ]]; then
+			health=ready
+		else
+			health=inconsistent
+		fi
+	elif [ "$enabled" = false ] && [ "$start_count" -eq 0 ] && [ "$end_count" -eq 0 ] && [ "$invocation_count" -eq 0 ]; then
+		health=disabled
+	else
+		health=inconsistent
+	fi
+	rm -f -- "$cron_path"
+	kpanel_network_operations_emit ok "$version"
+	printf 'KPANEL_NETWORK_OPERATIONS_ENABLED=%s\n' "$enabled"
+	printf 'KPANEL_NETWORK_OPERATIONS_HEALTH=%s\n' "$health"
+	printf 'KPANEL_NETWORK_OPERATIONS_RX_BYTES=%s\n' "$rx_bytes"
+	printf 'KPANEL_NETWORK_OPERATIONS_TX_BYTES=%s\n' "$tx_bytes"
+	printf 'KPANEL_NETWORK_OPERATIONS_RX_THRESHOLD_GIB=%s\n' "$rx_threshold"
+	printf 'KPANEL_NETWORK_OPERATIONS_TX_THRESHOLD_GIB=%s\n' "$tx_threshold"
+	printf 'KPANEL_NETWORK_OPERATIONS_RESET_DAY=%s\n' "$reset_day"
+}
+
+kpanel_network_operations_valid_threshold() {
+	[[ "$1" =~ ^[0-9]+$ ]] && [ "$1" != 0 ] && [ "$((10#$1))" -le 8388607 ]
+}
+
+kpanel_network_operations_build_script() {
+	local target="$1" rx="$2" tx="$3"
+	cat > "$target" <<EOF
+#!/bin/bash
+# KEJILION_TRAFFIC_SHUTDOWN_MANAGED_V1
+set -u
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+rx_threshold_gb=$rx
+tx_threshold_gb=$tx
+read -r rx_bytes tx_bytes <<TRAFFIC
+\$(awk 'BEGIN { rx = 0; tx = 0 } \$1 ~ /^(eth|ens|enp|eno)[0-9]+:/ { rx += \$2; tx += \$10 } END { printf "%.0f %.0f\\n", rx, tx }' /proc/net/dev)
+TRAFFIC
+rx_threshold_bytes=\$((rx_threshold_gb * 1024 * 1024 * 1024))
+tx_threshold_bytes=\$((tx_threshold_gb * 1024 * 1024 * 1024))
+if [ "\$rx_bytes" -ge "\$rx_threshold_bytes" ] || [ "\$tx_bytes" -ge "\$tx_threshold_bytes" ]; then
+	shutdown -h now
+fi
+EOF
+}
+
+kpanel_network_operations_build_cron() {
+	local source="$1" target="$2" action="$3" script_path="$4" reset_day="$5"
+	awk '
+		$0 == "# kejilion traffic shutdown start" { managed = 1; next }
+		managed && $0 == "# kejilion traffic shutdown end" { managed = 0; next }
+		managed { next }
+		$0 == "* * * * * ~/Limiting_Shut_down.sh" { next }
+		$0 == "* * * * * /root/Limiting_Shut_down.sh" { next }
+		{ print }
+	' "$source" > "$target" || return 1
+	if [ "$action" = enable ]; then
+		{
+			printf '%s\n' '# kejilion traffic shutdown start'
+			printf '* * * * * %s\n' "$script_path"
+			printf '0 1 %s * * reboot\n' "$reset_day"
+			printf '%s\n' '# kejilion traffic shutdown end'
+		} >> "$target" || return 1
+	fi
+	kpanel_system_resource_file_within_bounds "$target" 262144 512
+}
+
+kpanel_network_operations_restore_traffic() {
+	local snapshot="$1" script_path="$2" script_existed="$3" cron_existed="$4" verify version="$5"
+	if [ "$script_existed" = true ]; then
+		cp -p -- "$snapshot/script" "$script_path" >/dev/null 2>&1 || return 1
+	else
+		rm -f -- "$script_path" >/dev/null 2>&1 || return 1
+	fi
+	verify="$snapshot/cron.verify"
+	kpanel_system_resource_cron_restore "$snapshot/crontab" "$cron_existed" "$verify" || return 1
+	[ "$(kpanel_network_operations_traffic_version 2>/dev/null)" = "$version" ]
+}
+
+kpanel_network_operations_traffic_failure() {
+	local snapshot="$1" script_path="$2" script_existed="$3" cron_existed="$4" original_version="$5" message="$6"
+	local version recovery_path
+	kpanel_network_operations_error "$message"
+	if kpanel_network_operations_restore_traffic "$snapshot" "$script_path" "$script_existed" "$cron_existed" "$original_version"; then
+		version="$(kpanel_network_operations_traffic_version 2>/dev/null || true)"
+		rm -rf -- "$snapshot"
+		kpanel_network_operations_emit failed "$version"
+		return 1
+	else
+		version="$(kpanel_network_operations_traffic_version 2>/dev/null || true)"
+		if recovery_path="$(kpanel_system_resource_persist_recovery_snapshot "$snapshot" traffic-shutdown)"; then
+			kpanel_network_operations_emit rollback-failed "$version" "$recovery_path"
+		else
+			kpanel_network_operations_emit rollback-failed "$version"
+		fi
+		return 1
+	fi
+}
+
+kpanel_network_operations_traffic_action() {
+	local action="$1" expected="${2:-}" rx="${3:-}" tx="${4:-}" reset_day="${5:-}"
+	local script_path current_version snapshot cron_existed script_existed=false
+	local desired_script desired_cron install_temp final_version
+	case "$action" in
+		enable)
+			[ "$#" -eq 5 ] && kpanel_system_resource_valid_version "$expected" &&
+				kpanel_network_operations_valid_threshold "$rx" &&
+				kpanel_network_operations_valid_threshold "$tx" &&
+				[[ "$reset_day" =~ ^([1-9]|[12][0-9]|3[01])$ ]] || {
+				kpanel_network_operations_error "enable 需要 expectedVersion、正整数 GiB 阈值和 1-31 重置日"
+				kpanel_network_operations_emit failed "$(kpanel_network_operations_traffic_version 2>/dev/null || true)"
+				return 2
+			}
+			;;
+		disable)
+			[ "$#" -eq 2 ] && kpanel_system_resource_valid_version "$expected" || {
+				kpanel_network_operations_error "disable 只需要 expectedVersion"
+				kpanel_network_operations_emit failed "$(kpanel_network_operations_traffic_version 2>/dev/null || true)"
+				return 2
+			}
+			;;
+		*)
+			kpanel_network_operations_error "不支持的 traffic-shutdown 动作"
+			kpanel_network_operations_emit failed
+			return 2
+			;;
+	esac
+	script_path="$(kpanel_network_operations_script_file)"
+	[ ! -L "$script_path" ] || {
+		kpanel_network_operations_error "限流关机脚本不能是符号链接"
+		kpanel_network_operations_emit failed
+		return 1
+	}
+	current_version="$(kpanel_network_operations_traffic_version)" || {
+		kpanel_network_operations_error "无法读取当前限流关机配置"
+		kpanel_network_operations_emit failed
+		return 1
+	}
+	if [ "$current_version" != "$expected" ]; then
+		kpanel_network_operations_error "资源版本已变化，请刷新后重试"
+		kpanel_network_operations_emit conflict "$current_version"
+		return 2
+	fi
+	snapshot="$(kpanel_system_resource_tempdir traffic-shutdown)" || {
+		kpanel_network_operations_emit failed "$current_version"
+		return 1
+	}
+	if [ -e "$script_path" ]; then
+		kpanel_network_operations_script_safe "$script_path" || {
+			rm -rf -- "$snapshot"
+			kpanel_network_operations_emit failed "$current_version"
+			return 1
+		}
+		cp -p -- "$script_path" "$snapshot/script" || {
+			rm -rf -- "$snapshot"
+			kpanel_network_operations_emit failed "$current_version"
+			return 1
+		}
+		script_existed=true
+	fi
+	kpanel_system_resource_cron_capture "$snapshot/crontab" || {
+		rm -rf -- "$snapshot"
+		kpanel_network_operations_emit failed "$current_version"
+		return 1
+	}
+	cron_existed="$KPANEL_SYSTEM_RESOURCE_CRON_EXISTED"
+	printf '%s\n' "$script_existed" > "$snapshot/script.existed"
+	printf '%s\n' "$cron_existed" > "$snapshot/cron.existed"
+	desired_script="$snapshot/script.desired"
+	desired_cron="$snapshot/cron.desired"
+	if [ "$action" = enable ]; then
+		kpanel_network_operations_build_script "$desired_script" "$rx" "$tx" || {
+			kpanel_network_operations_traffic_failure "$snapshot" "$script_path" "$script_existed" "$cron_existed" "$current_version" "无法生成限流关机脚本"
+			return $?
+		}
+	fi
+	kpanel_network_operations_build_cron "$snapshot/crontab" "$desired_cron" "$action" "$script_path" "$reset_day" || {
+		kpanel_network_operations_traffic_failure "$snapshot" "$script_path" "$script_existed" "$cron_existed" "$current_version" "无法生成限流关机 crontab"
+		return $?
+	}
+	if { [ "$action" = enable ] && [ "$script_existed" = true ] &&
+		cmp -s -- "$desired_script" "$script_path" && cmp -s -- "$desired_cron" "$snapshot/crontab"; } ||
+		{ [ "$action" = disable ] && [ "$script_existed" = false ] && cmp -s -- "$desired_cron" "$snapshot/crontab"; }; then
+		rm -rf -- "$snapshot"
+		kpanel_network_operations_emit unchanged "$current_version"
+		return 0
+	fi
+	if [ "$action" = enable ]; then
+		install_temp="$(mktemp "$(dirname -- "$script_path")/.Limiting_Shut_down.sh.XXXXXX")" || {
+			kpanel_network_operations_traffic_failure "$snapshot" "$script_path" "$script_existed" "$cron_existed" "$current_version" "无法创建限流关机临时文件"
+			return $?
+		}
+		if ! cp -- "$desired_script" "$install_temp" || ! chown 0:0 "$install_temp" 2>/dev/null ||
+			! chmod 700 "$install_temp" || ! mv -f -- "$install_temp" "$script_path"; then
+			rm -f -- "$install_temp"
+			kpanel_network_operations_traffic_failure "$snapshot" "$script_path" "$script_existed" "$cron_existed" "$current_version" "无法原子安装限流关机脚本"
+			return $?
+		fi
+	else
+		rm -f -- "$script_path" || {
+			kpanel_network_operations_traffic_failure "$snapshot" "$script_path" "$script_existed" "$cron_existed" "$current_version" "无法删除限流关机脚本"
+			return $?
+		}
+	fi
+	if ! crontab "$desired_cron"; then
+		kpanel_network_operations_traffic_failure "$snapshot" "$script_path" "$script_existed" "$cron_existed" "$current_version" "无法安装限流关机 crontab"
+		return $?
+	fi
+	final_version="$(kpanel_network_operations_traffic_version)" || {
+		kpanel_network_operations_traffic_failure "$snapshot" "$script_path" "$script_existed" "$cron_existed" "$current_version" "限流关机配置回读失败"
+		return $?
+	}
+	if [ "$final_version" = "$current_version" ]; then
+		rm -rf -- "$snapshot"
+		kpanel_network_operations_emit unchanged "$final_version"
+	else
+		rm -rf -- "$snapshot"
+		kpanel_network_operations_emit applied "$final_version"
+	fi
+}
+
+kpanel_network_operations_traffic_run_locked() (
+	local action="$1" lock_file
+	shift
+	lock_file="$(kpanel_system_resource_prepare_lock_file)" || {
+		kpanel_network_operations_error "network-operations 锁路径不安全或无法创建"
+		kpanel_network_operations_emit failed "$(kpanel_network_operations_traffic_version 2>/dev/null || true)"
+		return 1
+	}
+	exec 9<>"$lock_file" || return 1
+	kpanel_system_resource_lock_path_secure "$lock_file" file 600 || return 1
+	if ! flock -w 5 -x 9 >/dev/null 2>&1; then
+		kpanel_network_operations_error "network-operations 写锁等待超时"
+		kpanel_network_operations_emit conflict "$(kpanel_network_operations_traffic_version 2>/dev/null || true)"
+		return 2
+	fi
+	kpanel_network_operations_traffic_action "$action" "$@"
+)
+
+kpanel_network_operations_dispatch() {
+	local resource="${1:-}" action="${2:-}"
+	[ "$#" -ge 2 ] || {
+		kpanel_network_operations_error "用法: kpanel network-operations <port-usage|traffic-shutdown> <action> ..."
+		kpanel_network_operations_emit failed
+		return 2
+	}
+	shift 2
+	case "$resource:$action" in
+		port-usage:list) kpanel_network_operations_port_usage "$@" ;;
+		traffic-shutdown:status)
+			kpanel_network_operations_traffic_status "$@"
+			;;
+		traffic-shutdown:enable|traffic-shutdown:disable)
+			kpanel_network_operations_require true awk crontab grep sed sha256sum stat wc mktemp flock cmp cp mv chmod chown || return $?
+			kpanel_network_operations_traffic_run_locked "$action" "$@"
+			;;
+		*)
+			kpanel_network_operations_error "不支持的 network-operations 资源或动作"
+			kpanel_network_operations_emit failed
+			return 2
+			;;
+	esac
+}
+
+# KPanel network operations protocol end
+
+
+# KPanel account management protocol start
+KPANEL_ACCOUNT_MANAGEMENT_PROTOCOL_VERSION="1"
+
+kpanel_account_error() {
+	printf '%s\n' "$*" >&2
+}
+
+kpanel_account_emit() {
+	local status="$1" version="${2:-}" backup="${3:-}"
+	printf 'KPANEL_ACCOUNT_MANAGEMENT_STATUS=%s\n' "$status"
+	[ -z "$version" ] || printf 'KPANEL_ACCOUNT_MANAGEMENT_VERSION=%s\n' "$version"
+	[ -z "$backup" ] || printf 'KPANEL_ACCOUNT_MANAGEMENT_BACKUP=%s\n' "$backup"
+}
+
+kpanel_account_root_path() {
+	local path="$1"
+	printf '%s%s\n' "${KPANEL_ACCOUNT_TEST_ROOT:-}" "$path"
+}
+
+kpanel_account_passwd_file() { kpanel_account_root_path /etc/passwd; }
+kpanel_account_group_file() { kpanel_account_root_path /etc/group; }
+kpanel_account_shadow_file() { kpanel_account_root_path /etc/shadow; }
+kpanel_account_gshadow_file() { kpanel_account_root_path /etc/gshadow; }
+kpanel_account_login_defs_file() { kpanel_account_root_path /etc/login.defs; }
+kpanel_account_sudoers_file() { kpanel_account_root_path /etc/sudoers; }
+kpanel_account_sudoers_dir() { kpanel_account_root_path /etc/sudoers.d; }
+kpanel_account_sshd_config() { kpanel_account_root_path /etc/ssh/sshd_config; }
+kpanel_account_sshd_fragment() { kpanel_account_root_path /etc/ssh/sshd_config.d/00-kejilion-account-management.conf; }
+
+kpanel_account_host_path() {
+	local path="$1"
+	if [ -n "${KPANEL_ACCOUNT_TEST_ROOT:-}" ]; then
+		printf '%s%s\n' "$KPANEL_ACCOUNT_TEST_ROOT" "$path"
+	else
+		printf '%s\n' "$path"
+	fi
+}
+
+kpanel_account_valid_username() {
+	[[ "$1" =~ ^[a-z_][a-z0-9_-]{0,31}$ ]] && [[ "$1" != *'$' ]]
+}
+
+kpanel_account_require() {
+	local write="$1" command
+	shift
+	[ "${KJ_ACCOUNT_MANAGEMENT_NONINTERACTIVE:-}" = "1" ] || {
+		kpanel_account_error "KPanel account-management 协议环境未启用"
+		return 2
+	}
+	[ "$EUID" -eq 0 ] || {
+		kpanel_account_error "KPanel account-management 协议必须以 root 运行"
+		return 1
+	}
+	[ "$(uname -s 2>/dev/null)" = Linux ] || {
+		kpanel_account_error "KPanel account-management 协议仅支持 Linux"
+		return 2
+	}
+	for command in "$@"; do
+		command -v "$command" >/dev/null 2>&1 || {
+			kpanel_account_error "缺少 account-management 依赖: $command"
+			return 2
+		}
+	done
+	if [ "$write" = true ]; then
+		for command in flock cp mv chmod chown mktemp; do
+			command -v "$command" >/dev/null 2>&1 || {
+				kpanel_account_error "缺少 account-management 写入依赖: $command"
+				return 2
+			}
+		done
+	fi
+}
+
+kpanel_account_file_safe() {
+	local path="$1" max_bytes="$2" max_lines="$3"
+	[ -f "$path" ] && [ ! -L "$path" ] || return 1
+	kpanel_system_resource_file_within_bounds "$path" "$max_bytes" "$max_lines"
+}
+
+kpanel_account_find_record() {
+	local username="$1" passwd_file
+	passwd_file="$(kpanel_account_passwd_file)"
+	awk -F: -v username="$username" '$1 == username { print; found=1; exit } END { exit(found ? 0 : 1) }' "$passwd_file"
+}
+
+kpanel_account_exists() {
+	kpanel_account_find_record "$1" >/dev/null 2>&1
+}
+
+kpanel_account_home() {
+	local record
+	record="$(kpanel_account_find_record "$1")" || return 1
+	printf '%s\n' "$record" | awk -F: '{print $6}'
+}
+
+kpanel_account_authorized_keys() {
+	local username="$1" home
+	home="$(kpanel_account_home "$username")" || return 1
+	[[ "$home" = /* ]] && [ "$home" != / ] || return 1
+	printf '%s/.ssh/authorized_keys\n' "$(kpanel_account_host_path "$home")"
+}
+
+kpanel_account_capture_keys() {
+	local username="$1" target="$2" path
+	path="$(kpanel_account_authorized_keys "$username")" || return 1
+	: > "$target" || return 1
+	[ ! -e "$path" ] && return 0
+	[ -f "$path" ] && [ ! -L "$path" ] || return 1
+	if [ -n "${KPANEL_ACCOUNT_TEST_ROOT:-}" ]; then
+		cat -- "$path" > "$target" || return 1
+	else
+		runuser -u "$username" -- cat -- "$path" > "$target" 2>/dev/null || return 1
+	fi
+	kpanel_system_resource_file_within_bounds "$target" 131072 128
+}
+
+kpanel_account_key_valid() {
+	local key="$1" temporary LC_ALL=C
+	[ -n "$key" ] && [ "${#key}" -le 4096 ] && [[ "$key" != *$'\n'* ]] && [[ "$key" != *$'\r'* ]] || return 1
+	case "$key" in
+		ssh-rsa\ *|ssh-ed25519\ *|ecdsa-sha2-*\ *|sk-ssh-ed25519@openssh.com\ *|sk-ecdsa-sha2-nistp256@openssh.com\ *) ;;
+		*) return 1 ;;
+	esac
+	temporary="$(mktemp /tmp/kejilion-account-key.XXXXXX)" || return 1
+	chmod 600 "$temporary" || { rm -f -- "$temporary"; return 1; }
+	printf '%s\n' "$key" > "$temporary" || { rm -f -- "$temporary"; return 1; }
+	ssh-keygen -lf "$temporary" >/dev/null 2>&1
+	local result=$?
+	rm -f -- "$temporary"
+	return "$result"
+}
+
+kpanel_account_key_id() {
+	printf '%s' "$1" | sha256sum | awk '{print $1}'
+}
+
+kpanel_account_install_keys() {
+	local username="$1" desired="$2" path ssh_dir temp uid gid
+	path="$(kpanel_account_authorized_keys "$username")" || return 1
+	ssh_dir="$(dirname -- "$path")" || return 1
+	[ ! -L "$ssh_dir" ] && [ ! -L "$path" ] || return 1
+	uid="$(kpanel_account_find_record "$username" | awk -F: '{print $3}')" || return 1
+	gid="$(kpanel_account_find_record "$username" | awk -F: '{print $4}')" || return 1
+	if [ -n "${KPANEL_ACCOUNT_TEST_ROOT:-}" ]; then
+		mkdir -p -- "$ssh_dir" || return 1
+		chmod 700 "$ssh_dir" || return 1
+		temp="$(mktemp "$ssh_dir/.authorized_keys.XXXXXX")" || return 1
+		cp -- "$desired" "$temp" && chmod 600 "$temp" && mv -f -- "$temp" "$path" || { rm -f -- "$temp"; return 1; }
+		return 0
+	fi
+	runuser -u "$username" -- mkdir -p -- "$ssh_dir" >/dev/null 2>&1 || return 1
+	runuser -u "$username" -- chmod 700 "$ssh_dir" >/dev/null 2>&1 || return 1
+	temp="$ssh_dir/.authorized_keys.kpanel.$$.$RANDOM"
+	runuser -u "$username" -- tee "$temp" < "$desired" >/dev/null 2>&1 || return 1
+	if ! runuser -u "$username" -- chmod 600 "$temp" >/dev/null 2>&1 ||
+		! runuser -u "$username" -- mv -f -- "$temp" "$path" >/dev/null 2>&1; then
+		runuser -u "$username" -- rm -f -- "$temp" >/dev/null 2>&1 || true
+		return 1
+	fi
+	chown "$uid:$gid" "$ssh_dir" "$path" >/dev/null 2>&1 || return 1
+}
+
+kpanel_account_password_status() {
+	local username="$1" status
+	status="$(passwd -S "$username" 2>/dev/null | awk '{print $2}')" || return 1
+	case "$status" in
+		P) printf '%s\n' enabled ;;
+		L|LK) printf '%s\n' locked ;;
+		NP) printf '%s\n' unset ;;
+		*) printf '%s\n' unknown ;;
+	esac
+}
+
+kpanel_account_admin_group() {
+	if getent group sudo >/dev/null 2>&1; then
+		printf '%s\n' sudo
+	elif getent group wheel >/dev/null 2>&1; then
+		printf '%s\n' wheel
+	else
+		return 1
+	fi
+}
+
+kpanel_account_sudo_file() {
+	printf '%s/90-kejilion-%s\n' "$(kpanel_account_sudoers_dir)" "$1"
+}
+
+kpanel_account_role() {
+	local username="$1" groups sudo_file
+	[ "$username" = root ] && { printf '%s\n' root; return 0; }
+	sudo_file="$(kpanel_account_sudo_file "$username")"
+	if [ -f "$sudo_file" ] && [ ! -L "$sudo_file" ] &&
+		grep -Fqx "$username ALL=(ALL:ALL) NOPASSWD:ALL" "$sudo_file"; then
+		printf '%s\n' passwordless-admin
+		return 0
+	fi
+	groups="$(id -nG "$username" 2>/dev/null)" || return 1
+	case " $groups " in
+		*' sudo '*|*' wheel '*) printf '%s\n' administrator ;;
+		*) printf '%s\n' standard ;;
+	esac
+}
+
+kpanel_account_sshd_effective() {
+	local config password pubkey root
+	config="$(kpanel_account_sshd_config)"
+	[ -f "$config" ] && [ ! -L "$config" ] || return 1
+	while read -r key value _; do
+		case "$key" in
+			passwordauthentication) password="$value" ;;
+			pubkeyauthentication) pubkey="$value" ;;
+			permitrootlogin) root="$value" ;;
+		esac
+	done < <(sshd -T -f "$config" 2>/dev/null)
+	[ "$password" = yes ] || password=no
+	[ "$pubkey" = yes ] || pubkey=no
+	case "$root" in
+		yes) root=enabled ;;
+		prohibit-password|without-password) root=key-only ;;
+		no) root=disabled ;;
+		*) root=custom ;;
+	esac
+	printf '%s %s %s\n' "$password" "$pubkey" "$root"
+}
+
+kpanel_account_version() {
+	local canonical file username auth sudo_file effective version
+	canonical="$(mktemp /tmp/kejilion-account-version.XXXXXX)" || return 1
+	chmod 600 "$canonical" || { rm -f -- "$canonical"; return 1; }
+	for file in "$(kpanel_account_passwd_file)" "$(kpanel_account_group_file)" \
+		"$(kpanel_account_shadow_file)" "$(kpanel_account_gshadow_file)" \
+		"$(kpanel_account_sudoers_file)" "$(kpanel_account_sshd_config)" "$(kpanel_account_sshd_fragment)"; do
+		if [ -e "$file" ]; then
+			kpanel_account_file_safe "$file" 1048576 8192 || { rm -f -- "$canonical"; return 1; }
+			printf 'file=%s ' "$file" >> "$canonical"
+			sha256sum -- "$file" >> "$canonical" || { rm -f -- "$canonical"; return 1; }
+		else
+			printf 'file=%s absent\n' "$file" >> "$canonical"
+		fi
+	done
+	effective="$(kpanel_account_sshd_effective)" || { rm -f -- "$canonical"; return 1; }
+	printf 'sshd=%s\n' "$effective" >> "$canonical"
+	while IFS=: read -r username _; do
+		kpanel_account_valid_username "$username" || continue
+		auth="$(mktemp /tmp/kejilion-account-auth.XXXXXX)" || { rm -f -- "$canonical"; return 1; }
+		if kpanel_account_capture_keys "$username" "$auth"; then
+			printf 'keys=%s ' "$username" >> "$canonical"
+			sha256sum -- "$auth" >> "$canonical" || { rm -f -- "$canonical" "$auth"; return 1; }
+		else
+			printf 'keys=%s unreadable\n' "$username" >> "$canonical"
+		fi
+		rm -f -- "$auth"
+		sudo_file="$(kpanel_account_sudo_file "$username")"
+		if [ -e "$sudo_file" ]; then
+			kpanel_account_file_safe "$sudo_file" 4096 16 || { rm -f -- "$canonical"; return 1; }
+			printf 'sudo=%s ' "$username" >> "$canonical"
+			sha256sum -- "$sudo_file" >> "$canonical" || { rm -f -- "$canonical"; return 1; }
+		fi
+	done < "$(kpanel_account_passwd_file)"
+	version="$(sha256sum -- "$canonical" | awk '{print $1}')"
+	rm -f -- "$canonical"
+	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || return 1
+	printf '%s\n' "$version"
+}
+
+kpanel_account_hex() {
+	printf '%s' "$1" | od -An -v -tx1 | tr -d ' \n'
+}
+
+kpanel_account_status() {
+	local version effective password_auth pubkey_auth root_login passwd_file login_defs uid_min=1000
+	local username _ uid gid gecos home shell groups password role kind account_record auth key key_id key_type fingerprint comment
+	local total=0 emitted=0 truncated=false key_count key_temp
+	kpanel_account_require false awk cat getent grep id mktemp od passwd runuser sha256sum ssh-keygen sshd stat tr wc || return $?
+	[ "$#" -eq 0 ] || { kpanel_account_error "status 不接受额外参数"; kpanel_account_emit failed; return 2; }
+	passwd_file="$(kpanel_account_passwd_file)"
+	kpanel_account_file_safe "$passwd_file" 1048576 8192 || { kpanel_account_emit failed; return 1; }
+	login_defs="$(kpanel_account_login_defs_file)"
+	if [ -f "$login_defs" ] && [ ! -L "$login_defs" ]; then
+		uid_min="$(awk '$1 == "UID_MIN" && $2 ~ /^[0-9]+$/ {print $2; exit}' "$login_defs")"
+		[[ "$uid_min" =~ ^[0-9]+$ ]] || uid_min=1000
+	fi
+	version="$(kpanel_account_version)" || { kpanel_account_error "无法计算账户资源版本"; kpanel_account_emit failed; return 1; }
+	effective="$(kpanel_account_sshd_effective)" || { kpanel_account_emit failed "$version"; return 1; }
+	read -r password_auth pubkey_auth root_login <<< "$effective"
+	total="$(wc -l < "$passwd_file")"
+	[ "$total" -le 256 ] || truncated=true
+	kpanel_account_emit ok "$version"
+	printf 'KPANEL_ACCOUNT_MANAGEMENT_PASSWORD_AUTH=%s\n' "$password_auth"
+	printf 'KPANEL_ACCOUNT_MANAGEMENT_PUBKEY_AUTH=%s\n' "$pubkey_auth"
+	printf 'KPANEL_ACCOUNT_MANAGEMENT_ROOT_LOGIN=%s\n' "$root_login"
+	printf 'KPANEL_ACCOUNT_MANAGEMENT_TOTAL=%s\n' "$total"
+	printf 'KPANEL_ACCOUNT_MANAGEMENT_TRUNCATED=%s\n' "$truncated"
+	while IFS=: read -r username _ uid gid gecos home shell; do
+		[ "$emitted" -lt 256 ] || break
+		kpanel_account_valid_username "$username" || continue
+		groups="$(id -nG "$username" 2>/dev/null | tr ' ' ',')" || groups=""
+		password="$(kpanel_account_password_status "$username")" || password=unknown
+		role="$(kpanel_account_role "$username")" || role=standard
+		if [ "$username" = root ]; then kind=root; elif [ "$uid" -ge "$uid_min" ] 2>/dev/null; then kind=human; else kind=system; fi
+		key_temp="$(mktemp /tmp/kejilion-account-status-keys.XXXXXX)" || { kpanel_account_emit failed "$version"; return 1; }
+		key_count=0
+		if kpanel_account_capture_keys "$username" "$key_temp"; then
+			while IFS= read -r key || [ -n "$key" ]; do
+				[ -n "$key" ] || continue
+				kpanel_account_key_valid "$key" || continue
+				[ "$key_count" -lt 32 ] || break
+				key_id="$(kpanel_account_key_id "$key")"
+				key_type="${key%% *}"
+				fingerprint="$(printf '%s\n' "$key" | ssh-keygen -lf /dev/stdin 2>/dev/null | awk '{print $2}')"
+				comment="$(printf '%s\n' "$key" | awk '{ $1=""; $2=""; sub(/^  */, ""); print }' | tr '\t\r\n' '   ' | cut -c1-128)"
+				printf 'KPANEL_ACCOUNT_MANAGEMENT_KEY_HEX=%s\n' "$(kpanel_account_hex "$username	$key_id	$key_type	$fingerprint	$comment")"
+				key_count=$((key_count + 1))
+			done < "$key_temp"
+		fi
+		rm -f -- "$key_temp"
+		account_record="$username	$uid	$gid	$home	$shell	$kind	$password	$role	$groups	$key_count"
+		printf 'KPANEL_ACCOUNT_MANAGEMENT_ACCOUNT_HEX=%s\n' "$(kpanel_account_hex "$account_record")"
+		emitted=$((emitted + 1))
+	done < "$passwd_file"
+}
+
+kpanel_account_read_secret() {
+	local maximum="$1" frame bytes line_feeds
+	KPANEL_ACCOUNT_SECRET=""
+	frame="$(mktemp /tmp/kejilion-account-secret.XXXXXX)" || return 1
+	chmod 600 "$frame" || { rm -f -- "$frame"; return 1; }
+	head -c "$((maximum + 2))" > "$frame" 2>/dev/null || { rm -f -- "$frame"; return 1; }
+	bytes="$(wc -c < "$frame")" || { rm -f -- "$frame"; return 1; }
+	if [ "$bytes" -lt 2 ] || [ "$bytes" -gt "$((maximum + 1))" ] ||
+		! LC_ALL=C tr -d '\000' < "$frame" | cmp -s - "$frame" || LC_ALL=C grep -q $'\r' "$frame"; then
+		rm -f -- "$frame"; return 1
+	fi
+	line_feeds="$(LC_ALL=C tr -cd '\n' < "$frame" | wc -c)" || { rm -f -- "$frame"; return 1; }
+	[ "$line_feeds" -eq 1 ] && [ "$(tail -c 1 "$frame" | wc -l)" -eq 1 ] || { rm -f -- "$frame"; return 1; }
+	IFS= read -r KPANEL_ACCOUNT_SECRET < "$frame" || { rm -f -- "$frame"; return 1; }
+	rm -f -- "$frame"
+}
+
+kpanel_account_snapshot_core() {
+	local snapshot="$1" file name
+	for name in passwd group shadow gshadow; do
+		case "$name" in
+			passwd) file="$(kpanel_account_passwd_file)" ;;
+			group) file="$(kpanel_account_group_file)" ;;
+			shadow) file="$(kpanel_account_shadow_file)" ;;
+			gshadow) file="$(kpanel_account_gshadow_file)" ;;
+		esac
+		[ ! -e "$file" ] || cp -p -- "$file" "$snapshot/$name" || return 1
+	done
+}
+
+kpanel_account_restore_core() {
+	local snapshot="$1" file name
+	for name in passwd group shadow gshadow; do
+		[ -f "$snapshot/$name" ] || continue
+		case "$name" in
+			passwd) file="$(kpanel_account_passwd_file)" ;;
+			group) file="$(kpanel_account_group_file)" ;;
+			shadow) file="$(kpanel_account_shadow_file)" ;;
+			gshadow) file="$(kpanel_account_gshadow_file)" ;;
+		esac
+		cp -p -- "$snapshot/$name" "$file" || return 1
+	done
+}
+
+kpanel_account_snapshot_ssh() {
+	local snapshot="$1" main fragment
+	main="$(kpanel_account_sshd_config)"; fragment="$(kpanel_account_sshd_fragment)"
+	[ ! -e "$main" ] || cp -p -- "$main" "$snapshot/sshd_config" || return 1
+	if [ -e "$fragment" ]; then cp -p -- "$fragment" "$snapshot/sshd_fragment" || return 1; else : > "$snapshot/sshd_fragment.absent"; fi
+}
+
+kpanel_account_reload_ssh() {
+	if command -v systemctl >/dev/null 2>&1; then
+		systemctl reload sshd >/dev/null 2>&1 || systemctl reload ssh >/dev/null 2>&1
+	elif command -v service >/dev/null 2>&1; then
+		service sshd reload >/dev/null 2>&1 || service ssh reload >/dev/null 2>&1
+	else
+		return 1
+	fi
+}
+
+kpanel_account_restore_ssh() {
+	local snapshot="$1" main fragment
+	main="$(kpanel_account_sshd_config)"; fragment="$(kpanel_account_sshd_fragment)"
+	[ ! -f "$snapshot/sshd_config" ] || cp -p -- "$snapshot/sshd_config" "$main" || return 1
+	if [ -f "$snapshot/sshd_fragment.absent" ]; then rm -f -- "$fragment" || return 1; else cp -p -- "$snapshot/sshd_fragment" "$fragment" || return 1; fi
+	sshd -t -f "$main" >/dev/null 2>&1 && kpanel_account_reload_ssh
+}
+
+kpanel_account_apply_ssh_policy() {
+	local password_auth="$1" root_login="$2" main fragment main_temp fragment_temp
+	main="$(kpanel_account_sshd_config)"; fragment="$(kpanel_account_sshd_fragment)"
+	[ -f "$main" ] && [ ! -L "$main" ] && [ ! -L "$fragment" ] || return 1
+	mkdir -p -- "$(dirname -- "$fragment")" || return 1
+	fragment_temp="$(mktemp "$(dirname -- "$fragment")/.00-kejilion-account-management.conf.XXXXXX")" || return 1
+	{
+		printf '%s\n' '# Managed by kejilion.sh account-management protocol v1'
+		printf 'PubkeyAuthentication yes\n'
+		[ "$password_auth" = enabled ] && printf 'PasswordAuthentication yes\n' || printf 'PasswordAuthentication no\n'
+		printf 'KbdInteractiveAuthentication no\nChallengeResponseAuthentication no\nUsePAM yes\n'
+		case "$root_login" in enabled) printf 'PermitRootLogin yes\n' ;; key-only) printf 'PermitRootLogin prohibit-password\n' ;; disabled) printf 'PermitRootLogin no\n' ;; *) rm -f -- "$fragment_temp"; return 1 ;; esac
+	} > "$fragment_temp" || { rm -f -- "$fragment_temp"; return 1; }
+	chmod 600 "$fragment_temp" && chown 0:0 "$fragment_temp" || { rm -f -- "$fragment_temp"; return 1; }
+	main_temp="$(mktemp "$(dirname -- "$main")/.sshd_config.XXXXXX")" || { rm -f -- "$fragment_temp"; return 1; }
+	awk '
+		BEGIN { inserted=0 }
+		/^[[:space:]]*Include[[:space:]]+\/etc\/ssh\/sshd_config\.d\/\*\.conf([[:space:]]|$)/ { if (!inserted) { print "Include /etc/ssh/sshd_config.d/*.conf"; inserted=1 }; next }
+		{ if (!inserted && $0 !~ /^[[:space:]]*(#|$)/) { print "Include /etc/ssh/sshd_config.d/*.conf"; inserted=1 }; print }
+		END { if (!inserted) print "Include /etc/ssh/sshd_config.d/*.conf" }
+	' "$main" > "$main_temp" || { rm -f -- "$fragment_temp" "$main_temp"; return 1; }
+	chmod --reference="$main" "$main_temp" 2>/dev/null || chmod 600 "$main_temp"
+	chown --reference="$main" "$main_temp" 2>/dev/null || chown 0:0 "$main_temp"
+	mv -f -- "$fragment_temp" "$fragment" && mv -f -- "$main_temp" "$main" || { rm -f -- "$fragment_temp" "$main_temp"; return 1; }
+	sshd -t -f "$main" >/dev/null 2>&1 && kpanel_account_reload_ssh
+}
+
+kpanel_account_set_role() {
+	local username="$1" role="$2" admin_group sudo_file sudo_dir groups
+	[ "$username" != root ] || return 1
+	sudo_file="$(kpanel_account_sudo_file "$username")"; sudo_dir="$(dirname -- "$sudo_file")"
+	[ ! -L "$sudo_dir" ] && [ ! -L "$sudo_file" ] || return 1
+	mkdir -p -- "$sudo_dir" || return 1
+	case "$role" in
+		standard)
+			gpasswd -d "$username" sudo >/dev/null 2>&1 || true
+			gpasswd -d "$username" wheel >/dev/null 2>&1 || true
+			rm -f -- "$sudo_file" || return 1
+			;;
+		administrator)
+			admin_group="$(kpanel_account_admin_group)" || return 1
+			[ "$(kpanel_account_password_status "$username")" = enabled ] || return 2
+			usermod -a -G "$admin_group" "$username" || return 1
+			rm -f -- "$sudo_file" || return 1
+			;;
+		passwordless-admin)
+			admin_group="$(kpanel_account_admin_group)" || return 1
+			usermod -a -G "$admin_group" "$username" || return 1
+			printf '%s ALL=(ALL:ALL) NOPASSWD:ALL\n' "$username" > "$sudo_file" || return 1
+			chmod 440 "$sudo_file" && chown 0:0 "$sudo_file" || return 1
+			visudo -cf "$sudo_file" >/dev/null 2>&1 || return 1
+			;;
+		*) return 2 ;;
+	esac
+	[ "$(kpanel_account_role "$username")" = "$role" ]
+}
+
+kpanel_account_create() {
+	local username="$1" role="$2" credential="$3" secret="$4"
+	local desired sudo_file LC_ALL=C
+	kpanel_account_valid_username "$username" && [ "$username" != root ] && ! kpanel_account_exists "$username" || return 2
+	case "$role" in standard|administrator|passwordless-admin) ;; *) return 2 ;; esac
+	case "$credential" in
+		password) [ "${#secret}" -ge 8 ] && [ "${#secret}" -le 256 ] || return 2 ;;
+		key) kpanel_account_key_valid "$secret" || return 2; [ "$role" != administrator ] || return 2 ;;
+		*) return 2 ;;
+	esac
+	useradd -m -s /bin/bash "$username" || return 1
+	if [ "$credential" = password ]; then
+		if ! printf '%s:%s\n' "$username" "$secret" | chpasswd; then
+			userdel -r "$username" >/dev/null 2>&1 || true
+			return 1
+		fi
+	else
+		desired="$(mktemp /tmp/kejilion-account-create-key.XXXXXX)" || {
+			userdel -r "$username" >/dev/null 2>&1 || true
+			return 1
+		}
+		printf '%s\n' "$secret" > "$desired"
+		if ! kpanel_account_install_keys "$username" "$desired"; then
+			rm -f -- "$desired"
+			userdel -r "$username" >/dev/null 2>&1 || true
+			return 1
+		fi
+		rm -f -- "$desired"
+		if ! passwd -l "$username" >/dev/null 2>&1; then
+			userdel -r "$username" >/dev/null 2>&1 || true
+			return 1
+		fi
+	fi
+	if ! kpanel_account_set_role "$username" "$role"; then
+		sudo_file="$(kpanel_account_sudo_file "$username")"
+		rm -f -- "$sudo_file" >/dev/null 2>&1 || true
+		userdel -r "$username" >/dev/null 2>&1 || true
+		return 1
+	fi
+}
+
+kpanel_account_write_failure() {
+	local snapshot="$1" original_version="$2" message="$3" restore_core="${4:-false}" restore_ssh="${5:-false}"
+	local version recovery restore_ok=true
+	kpanel_account_error "$message"
+	[ "$restore_core" != true ] || kpanel_account_restore_core "$snapshot" || restore_ok=false
+	[ "$restore_ssh" != true ] || kpanel_account_restore_ssh "$snapshot" || restore_ok=false
+	version="$(kpanel_account_version 2>/dev/null || true)"
+	if [ "$restore_ok" = true ] && [ "$version" = "$original_version" ]; then
+		rm -rf -- "$snapshot"
+		kpanel_account_emit failed "$version"
+		return 1
+	fi
+	if recovery="$(kpanel_system_resource_persist_recovery_snapshot "$snapshot" account-management)"; then
+		kpanel_account_emit rollback-failed "$version" "$recovery"
+	else
+		kpanel_account_emit rollback-failed "$version"
+	fi
+	return 1
+}
+
+kpanel_account_action() {
+	local action="$1" expected="$2" current snapshot final recovery username role credential marker secret="" changed=true
+	local LC_ALL=C
+	shift 2
+	kpanel_system_resource_valid_version "$expected" || { kpanel_account_emit failed; return 2; }
+	current="$(kpanel_account_version)" || { kpanel_account_emit failed; return 1; }
+	if [ "$current" != "$expected" ]; then kpanel_account_emit conflict "$current"; return 2; fi
+	snapshot="$(kpanel_system_resource_tempdir account-management)" || { kpanel_account_emit failed "$current"; return 1; }
+	case "$action" in
+		create)
+			[ "$#" -eq 4 ] && [ "$4" = --secret-stdin ] || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			username="$1"; role="$2"; credential="$3"
+			[ "$credential" = password ] && marker=256 || marker=4096
+			kpanel_account_read_secret "$marker" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			secret="$KPANEL_ACCOUNT_SECRET"
+			kpanel_account_snapshot_core "$snapshot" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			if ! kpanel_account_create "$username" "$role" "$credential" "$secret"; then kpanel_account_write_failure "$snapshot" "$current" "创建账户失败，已尝试恢复账户数据库" true false; return $?; fi
+			;;
+		set-password)
+			[ "$#" -eq 2 ] && [ "$2" = --secret-stdin ] && kpanel_account_exists "$1" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			username="$1"; kpanel_account_read_secret 256 || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			[ "${#KPANEL_ACCOUNT_SECRET}" -ge 8 ] || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			kpanel_account_snapshot_core "$snapshot" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			if ! printf '%s:%s\n' "$username" "$KPANEL_ACCOUNT_SECRET" | chpasswd; then kpanel_account_write_failure "$snapshot" "$current" "修改密码失败，已尝试恢复" true false; return $?; fi
+			;;
+		add-key)
+			[ "$#" -eq 2 ] && [ "$2" = --secret-stdin ] && kpanel_account_exists "$1" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			username="$1"; kpanel_account_read_secret 4096 || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }; secret="$KPANEL_ACCOUNT_SECRET"
+			kpanel_account_key_valid "$secret" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			local keys desired
+			keys="$snapshot/authorized_keys"; desired="$snapshot/authorized_keys.desired"
+			kpanel_account_capture_keys "$username" "$keys" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			if grep -Fqx "$secret" "$keys"; then rm -rf -- "$snapshot"; kpanel_account_emit unchanged "$current"; return 0; fi
+			cp -- "$keys" "$desired" && printf '%s\n' "$secret" >> "$desired" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			if ! kpanel_account_install_keys "$username" "$desired"; then
+				kpanel_account_install_keys "$username" "$keys" >/dev/null 2>&1 || true
+				kpanel_account_write_failure "$snapshot" "$current" "添加 SSH 公钥失败，已尝试恢复" false false
+				return $?
+			fi
+			;;
+		delete-key)
+			[ "$#" -eq 2 ] && kpanel_account_exists "$1" && [[ "$2" =~ ^[0-9a-f]{64}$ ]] || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			username="$1"; local key_id="$2" keys="$snapshot/authorized_keys" desired="$snapshot/authorized_keys.desired" line found=false
+			kpanel_account_capture_keys "$username" "$keys" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			: > "$desired"
+			while IFS= read -r line || [ -n "$line" ]; do if [ -n "$line" ] && [ "$(kpanel_account_key_id "$line")" = "$key_id" ]; then found=true; else printf '%s\n' "$line" >> "$desired"; fi; done < "$keys"
+			if [ "$found" = false ]; then rm -rf -- "$snapshot"; kpanel_account_emit unchanged "$current"; return 0; fi
+			if ! kpanel_account_install_keys "$username" "$desired"; then
+				kpanel_account_install_keys "$username" "$keys" >/dev/null 2>&1 || true
+				kpanel_account_write_failure "$snapshot" "$current" "删除 SSH 公钥失败，已尝试恢复" false false
+				return $?
+			fi
+			;;
+		set-role)
+			[ "$#" -eq 2 ] && kpanel_account_exists "$1" && [ "$1" != root ] || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			username="$1"; role="$2"; [ "$(kpanel_account_role "$username")" != "$role" ] || { rm -rf -- "$snapshot"; kpanel_account_emit unchanged "$current"; return 0; }
+			kpanel_account_snapshot_core "$snapshot" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			local sudo_file; sudo_file="$(kpanel_account_sudo_file "$username")"; if [ -e "$sudo_file" ]; then cp -p -- "$sudo_file" "$snapshot/sudo" || { rm -rf -- "$snapshot"; return 1; }; else : > "$snapshot/sudo.absent"; fi
+			if ! kpanel_account_set_role "$username" "$role"; then
+				if [ -f "$snapshot/sudo.absent" ]; then rm -f -- "$sudo_file" >/dev/null 2>&1 || true; else cp -p -- "$snapshot/sudo" "$sudo_file" >/dev/null 2>&1 || true; fi
+				kpanel_account_write_failure "$snapshot" "$current" "调整账户角色失败，已尝试恢复" true false
+				return $?
+			fi
+			;;
+		set-ssh-policy)
+			[ "$#" -eq 2 ] && [[ "$1" =~ ^(enabled|disabled)$ ]] && [[ "$2" =~ ^(enabled|key-only|disabled)$ ]] || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			kpanel_account_snapshot_ssh "$snapshot" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			if ! kpanel_account_apply_ssh_policy "$1" "$2"; then kpanel_account_write_failure "$snapshot" "$current" "SSH 登录策略应用失败，已尝试恢复" false true; return $?; fi
+			;;
+		disable-root)
+			[ "$#" -eq 0 ] || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			if [ "$(kpanel_account_password_status root)" = locked ] && [ "$(kpanel_account_sshd_effective | awk '{print $3}')" = disabled ]; then rm -rf -- "$snapshot"; kpanel_account_emit unchanged "$current"; return 0; fi
+			kpanel_account_snapshot_core "$snapshot" && kpanel_account_snapshot_ssh "$snapshot" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			if ! passwd -l root >/dev/null 2>&1 || ! kpanel_account_apply_ssh_policy "$(kpanel_account_sshd_effective | awk '{print $1 == "yes" ? "enabled" : "disabled"}')" disabled; then kpanel_account_write_failure "$snapshot" "$current" "禁用 Root 失败，已尝试恢复" true true; return $?; fi
+			;;
+		create-admin-disable-root)
+			[ "$#" -eq 3 ] && [ "$3" = --secret-stdin ] || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			username="$1"; credential="$2"; [ "$credential" = password ] && marker=256 || marker=4096
+			kpanel_account_read_secret "$marker" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }; secret="$KPANEL_ACCOUNT_SECRET"
+			kpanel_account_snapshot_core "$snapshot" && kpanel_account_snapshot_ssh "$snapshot" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			role=administrator; [ "$credential" = key ] && role=passwordless-admin
+			if ! kpanel_account_create "$username" "$role" "$credential" "$secret"; then
+				kpanel_account_write_failure "$snapshot" "$current" "替代管理员创建失败，已尝试恢复" true true
+				return $?
+			fi
+			if ! passwd -l root >/dev/null 2>&1 ||
+				! kpanel_account_apply_ssh_policy "$([ "$credential" = password ] && printf enabled || printf disabled)" disabled; then
+				rm -f -- "$(kpanel_account_sudo_file "$username")" >/dev/null 2>&1 || true
+				userdel -r "$username" >/dev/null 2>&1 || true
+				kpanel_account_write_failure "$snapshot" "$current" "Root 安全迁移失败，已尝试恢复" true true
+				return $?
+			fi
+			;;
+		delete)
+			[ "$#" -eq 2 ] && kpanel_account_valid_username "$1" && [ "$1" != root ] && [[ "$2" =~ ^(true|false)$ ]] || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2; }
+			username="$1"; if ! kpanel_account_exists "$username"; then rm -rf -- "$snapshot"; kpanel_account_emit unchanged "$current"; return 0; fi
+			local sudo_file; sudo_file="$(kpanel_account_sudo_file "$username")"
+			kpanel_account_snapshot_core "$snapshot" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }
+			if [ -e "$sudo_file" ]; then cp -p -- "$sudo_file" "$snapshot/sudo" || { rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 1; }; else : > "$snapshot/sudo.absent"; fi
+			if ! { if [ "$2" = true ]; then userdel -r "$username"; else userdel "$username"; fi; }; then
+				if [ "$2" = false ]; then
+					kpanel_account_write_failure "$snapshot" "$current" "删除账户失败，已尝试恢复账户数据库" true false
+					return $?
+				fi
+				kpanel_account_restore_core "$snapshot" >/dev/null 2>&1 || true
+				final="$(kpanel_account_version 2>/dev/null || true)"
+				recovery="$(kpanel_system_resource_persist_recovery_snapshot "$snapshot" account-management 2>/dev/null || true)"
+				kpanel_account_error "删除账户及主目录失败，主目录可能已被部分删除，需要人工检查"
+				kpanel_account_emit needs-attention "$final" "$recovery"
+				return 1
+			fi
+			rm -f -- "$sudo_file" || { rm -rf -- "$snapshot"; kpanel_account_emit needs-attention "$(kpanel_account_version 2>/dev/null || true)"; return 1; }
+			;;
+		*) rm -rf -- "$snapshot"; kpanel_account_emit failed "$current"; return 2 ;;
+	esac
+	final="$(kpanel_account_version)" || { rm -rf -- "$snapshot"; kpanel_account_emit needs-attention; return 1; }
+	[ "$final" != "$current" ] || changed=false
+	rm -rf -- "$snapshot"
+	[ "$changed" = true ] && kpanel_account_emit applied "$final" || kpanel_account_emit unchanged "$final"
+}
+
+kpanel_account_run_locked() (
+	local action="$1" expected="$2" lock_file
+	shift 2
+	lock_file="$(kpanel_system_resource_prepare_lock_file)" || { kpanel_account_emit failed; return 1; }
+	exec 9<>"$lock_file" || { kpanel_account_emit failed; return 1; }
+	kpanel_system_resource_lock_path_secure "$lock_file" file 600 || { kpanel_account_emit failed; return 1; }
+	if ! flock -w 5 -x 9 >/dev/null 2>&1; then kpanel_account_emit conflict "$(kpanel_account_version 2>/dev/null || true)"; return 2; fi
+	kpanel_account_action "$action" "$expected" "$@"
+)
+
+kpanel_account_dispatch() {
+	local action="${1:-}"
+	[ "$#" -ge 1 ] || { kpanel_account_emit failed; return 2; }
+	shift
+	case "$action" in
+		status) kpanel_account_status "$@" ;;
+		create|set-password|add-key|delete-key|set-role|set-ssh-policy|disable-root|create-admin-disable-root|delete)
+			[ "$#" -ge 1 ] || { kpanel_account_emit failed; return 2; }
+			local expected="$1"; shift
+			kpanel_account_require true awk cat chpasswd cmp cut getent gpasswd grep head id mkdir mktemp od passwd runuser sed sha256sum ssh-keygen sshd stat tail tr useradd userdel usermod visudo wc || { kpanel_account_emit failed; return $?; }
+			kpanel_account_run_locked "$action" "$expected" "$@"
+			;;
+		*) kpanel_account_error "不支持的 account-management 动作"; kpanel_account_emit failed; return 2 ;;
+	esac
+}
+
+# KPanel account management protocol end
+
+
 log_menu() {
 	send_stats "系统日志管理工具"
 
@@ -25009,25 +26170,25 @@ EOF
 					read -e -p "请输入流量重置日期（默认每月1日重置）: " cz_day
 					cz_day=${cz_day:-1}
 
-					cd ~
-					curl -Ss -o ~/Limiting_Shut_down.sh ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/Limiting_Shut_down1.sh
-					chmod +x ~/Limiting_Shut_down.sh
-					sed -i "s/110/$rx_threshold_gb/g" ~/Limiting_Shut_down.sh
-					sed -i "s/120/$tx_threshold_gb/g" ~/Limiting_Shut_down.sh
 					check_crontab_installed
-					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
-					(crontab -l ; echo "* * * * * ~/Limiting_Shut_down.sh") | crontab - > /dev/null 2>&1
-					crontab -l | grep -v 'reboot' | crontab -
-					(crontab -l ; echo "0 1 $cz_day * * reboot") | crontab - > /dev/null 2>&1
-					echo "限流关机已设置"
-					send_stats "限流关机已设置"
+					local traffic_version
+					traffic_version="$(kpanel_network_operations_traffic_version)"
+					if KJ_NETWORK_OPERATIONS_NONINTERACTIVE=1 kpanel_network_operations_traffic_run_locked enable "$traffic_version" "$rx_threshold_gb" "$tx_threshold_gb" "$cz_day"; then
+						echo "限流关机已设置"
+						send_stats "限流关机已设置"
+					else
+						echo "限流关机设置失败，请根据上方错误检查配置"
+					fi
 					;;
 				  2)
 					check_crontab_installed
-					crontab -l | grep -v '~/Limiting_Shut_down.sh' | crontab -
-					crontab -l | grep -v 'reboot' | crontab -
-					rm ~/Limiting_Shut_down.sh
-					echo "已关闭限流关机功能"
+					local traffic_version
+					traffic_version="$(kpanel_network_operations_traffic_version)"
+					if KJ_NETWORK_OPERATIONS_NONINTERACTIVE=1 kpanel_network_operations_traffic_run_locked disable "$traffic_version"; then
+						echo "已关闭限流关机功能"
+					else
+						echo "关闭限流关机失败，请根据上方错误检查配置"
+					fi
 					;;
 				  *)
 					break
@@ -26405,8 +27566,14 @@ else
 			elif [ "${1:-}" = "system-resource" ]; then
 				shift
 				kpanel_system_resource_dispatch "$@"
+			elif [ "${1:-}" = "network-operations" ]; then
+				shift
+				kpanel_network_operations_dispatch "$@"
+			elif [ "${1:-}" = "account-management" ]; then
+				shift
+				kpanel_account_dispatch "$@"
 			else
-				echo "用法: k kpanel node join <授权> | status | update | uninstall；或 k kpanel system-resource <resource> <action> ..." >&2
+				echo "用法: k kpanel node ... | system-resource ... | network-operations ... | account-management ..." >&2
 				return 2 2>/dev/null || exit 2
 			fi
 			;;
