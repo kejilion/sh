@@ -24,6 +24,7 @@ kpanel_protocol_active() {
 	[ "${KJ_LIGHT_NODE_PROTOCOL:-}" = "1" ] ||
 	[ "${KJ_SSH_PORT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_SYSTEM_RESOURCE_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
@@ -22128,6 +22129,1488 @@ net_menu() {
 
 
 
+# KPanel system resource protocol start
+kpanel_system_resource_zero_version() {
+	printf '%064d' 0
+}
+
+kpanel_system_resource_emit() {
+	local status="$1"
+	local version="$2"
+	local backup="${3:-}"
+	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || version="$(kpanel_system_resource_zero_version)"
+	printf 'KPANEL_SYSTEM_RESOURCE_STATUS=%s\n' "$status"
+	printf 'KPANEL_SYSTEM_RESOURCE_VERSION=%s\n' "$version"
+	[ -z "$backup" ] || printf 'KPANEL_SYSTEM_RESOURCE_BACKUP=%s\n' "$backup"
+}
+
+kpanel_system_resource_error() {
+	printf '错误: %s\n' "$1" >&2
+}
+
+kpanel_system_resource_valid_version() {
+	[[ "$1" =~ ^[0-9a-f]{64}$ ]]
+}
+
+kpanel_system_resource_single_line() {
+	local value="$1"
+	local maximum="$2"
+	local bytes
+	bytes="$(printf '%s' "$value" | wc -c)" || return 1
+	[ "$bytes" -le "$maximum" ] &&
+		[[ "$value" != *$'\n'* ]] &&
+		[[ "$value" != *$'\r'* ]]
+}
+
+kpanel_system_resource_copy_identity() {
+	local source="$1"
+	local target="$2"
+	local mode owner
+	mode="$(stat -c '%a' "$source" 2>/dev/null)" || return 1
+	owner="$(stat -c '%u:%g' "$source" 2>/dev/null)" || return 1
+	[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [[ "$owner" =~ ^[0-9]+:[0-9]+$ ]] || return 1
+	chown "$owner" "$target" >/dev/null 2>&1 &&
+		chmod "$mode" "$target" >/dev/null 2>&1
+}
+
+kpanel_system_resource_file_within_bounds() {
+	local path="$1"
+	local maximum_bytes="$2"
+	local maximum_lines="$3"
+	local bytes lines
+	bytes="$(wc -c < "$path" 2>/dev/null)" || return 1
+	lines="$(awk 'END {print NR + 0}' "$path" 2>/dev/null)" || return 1
+	[ "$bytes" -le "$maximum_bytes" ] && [ "$lines" -le "$maximum_lines" ]
+}
+
+kpanel_system_resource_hosts_file() {
+	printf '%s\n' "/etc/hosts"
+}
+
+kpanel_system_resource_lock_file() {
+	printf '%s\n' "/run/lock/kejilion-system-resource.lock"
+}
+
+kpanel_system_resource_interfaces_dir() {
+	printf '%s\n' "/sys/class/net"
+}
+
+kpanel_system_resource_iptables_rules_file() {
+	printf '%s\n' "/etc/iptables/rules.v4"
+}
+
+kpanel_system_resource_tempdir() {
+	local resource="$1"
+	local directory
+	directory="$(mktemp -d "/tmp/kejilion-system-resource-${resource}.XXXXXX")" || return 1
+	chmod 700 "$directory" || {
+		rm -rf -- "$directory"
+		return 1
+	}
+	printf '%s\n' "$directory"
+}
+
+kpanel_system_resource_is_ipv4() {
+	local value="$1"
+	local first second third fourth extra octet
+	IFS=. read -r first second third fourth extra <<< "$value"
+	[ -z "$extra" ] || return 1
+	for octet in "$first" "$second" "$third" "$fourth"; do
+		[[ "$octet" =~ ^[0-9]{1,3}$ ]] || return 1
+		[ "$octet" = "0" ] || [[ "$octet" != 0* ]] || return 1
+		[ "$((10#$octet))" -le 255 ] || return 1
+	done
+}
+
+kpanel_system_resource_ipv6_side_count() {
+	local side="$1"
+	local part index count=0
+	local parts=()
+	[ -n "$side" ] || {
+		printf '0\n'
+		return 0
+	}
+	[[ "$side" != :* && "$side" != *: ]] || return 1
+	IFS=: read -r -a parts <<< "$side"
+	for index in "${!parts[@]}"; do
+		part="${parts[$index]}"
+		[ -n "$part" ] || return 1
+		if [[ "$part" == *.* ]]; then
+			[ "$index" -eq "$((${#parts[@]} - 1))" ] || return 1
+			kpanel_system_resource_is_ipv4 "$part" || return 1
+			count=$((count + 2))
+		else
+			[[ "$part" =~ ^[0-9A-Fa-f]{1,4}$ ]] || return 1
+			count=$((count + 1))
+		fi
+	done
+	printf '%s\n' "$count"
+}
+
+kpanel_system_resource_is_ipv6() {
+	local value="$1"
+	local left right left_count right_count total
+	[ -n "$value" ] && [ "${#value}" -le 45 ] &&
+		[[ "$value" == *:* ]] &&
+		[[ "$value" =~ ^[0-9A-Fa-f:.]+$ ]] || return 1
+	if [[ "$value" == *::* ]]; then
+		[[ "${value/::/}" != *::* ]] || return 1
+		left="${value%%::*}"
+		right="${value#*::}"
+		left_count="$(kpanel_system_resource_ipv6_side_count "$left")" || return 1
+		right_count="$(kpanel_system_resource_ipv6_side_count "$right")" || return 1
+		total=$((left_count + right_count))
+		[ "$total" -lt 8 ]
+	else
+		[[ "$value" != :* && "$value" != *: ]] || return 1
+		total="$(kpanel_system_resource_ipv6_side_count "$value")" || return 1
+		[ "$total" -eq 8 ]
+	fi
+}
+
+kpanel_system_resource_is_hostname() {
+	local value="$1"
+	local label
+	local labels=()
+	[ -n "$value" ] && [ "${#value}" -le 253 ] || return 1
+	value="${value%.}"
+	[ -n "$value" ] || return 1
+	IFS=. read -r -a labels <<< "$value"
+	for label in "${labels[@]}"; do
+		[ -n "$label" ] && [ "${#label}" -le 63 ] || return 1
+		[[ "$label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]] || return 1
+	done
+}
+
+kpanel_system_resource_is_ipv4_cidr() {
+	local value="$1"
+	local address prefix
+	if [[ "$value" == */* ]]; then
+		[ "${value//[^\/]/}" = "/" ] || return 1
+		address="${value%/*}"
+		prefix="${value##*/}"
+		[[ "$prefix" =~ ^[0-9]{1,2}$ ]] &&
+			{ [ "$prefix" = "0" ] || [[ "$prefix" != 0* ]]; } &&
+			[ "$((10#$prefix))" -le 32 ] || return 1
+	else
+		address="$value"
+	fi
+	kpanel_system_resource_is_ipv4 "$address"
+}
+
+kpanel_system_resource_hosts_version() {
+	local path
+	path="$(kpanel_system_resource_hosts_file)"
+	[ -f "$path" ] && [ ! -L "$path" ] || return 1
+	sha256sum -- "$path" 2>/dev/null | awk '{print $1}'
+}
+
+kpanel_system_resource_cron_capture() {
+	local target="$1"
+	local error_file="$target.error"
+	local rc=0
+	KPANEL_SYSTEM_RESOURCE_CRON_EXISTED=false
+	LC_ALL=C crontab -l > "$target" 2>"$error_file" || rc=$?
+	if [ "$rc" -eq 0 ]; then
+		KPANEL_SYSTEM_RESOURCE_CRON_EXISTED=true
+	elif grep -Fqi 'no crontab for' "$error_file"; then
+		: > "$target" || {
+			rm -f -- "$error_file"
+			return 1
+		}
+	else
+		rm -f -- "$error_file"
+		return 1
+	fi
+	rm -f -- "$error_file"
+	kpanel_system_resource_file_within_bounds "$target" 262144 512
+}
+
+kpanel_system_resource_cron_version() {
+	local temporary version
+	temporary="$(mktemp /tmp/kejilion-system-resource-cron-version.XXXXXX)" || return 1
+	if ! kpanel_system_resource_cron_capture "$temporary"; then
+		rm -f -- "$temporary"
+		return 1
+	fi
+	version="$(sha256sum -- "$temporary" 2>/dev/null | awk '{print $1}')"
+	rm -f -- "$temporary"
+	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || return 1
+	printf '%s\n' "$version"
+}
+
+kpanel_system_resource_interface_exists() {
+	local name="$1"
+	local root candidate
+	root="$(kpanel_system_resource_interfaces_dir)"
+	[ -d "$root" ] || return 1
+	for candidate in "$root"/*; do
+		[ -e "$candidate" ] || continue
+		[ "$(basename -- "$candidate")" = "$name" ] && return 0
+	done
+	return 1
+}
+
+kpanel_system_resource_interface_version() {
+	local name="$1"
+	local root state mac
+	kpanel_system_resource_interface_exists "$name" || return 1
+	root="$(kpanel_system_resource_interfaces_dir)"
+	state="$(kpanel_system_resource_interface_admin_state "$name")" || return 1
+	mac="$(cat "$root/$name/address" 2>/dev/null)" || return 1
+	printf '%s|%s|%s' "$name" "$state" "$mac" | sha256sum | awk '{print $1}'
+}
+
+kpanel_system_resource_firewall_version() {
+	local temporary version
+	temporary="$(mktemp /tmp/kejilion-system-resource-firewall-version.XXXXXX)" || return 1
+	if ! kpanel_system_resource_firewall_capture "$temporary"; then
+		rm -f -- "$temporary"
+		return 1
+	fi
+	version="$(sha256sum -- "$temporary" 2>/dev/null | awk '{print $1}')"
+	rm -f -- "$temporary"
+	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || return 1
+	printf '%s\n' "$version"
+}
+
+kpanel_system_resource_firewall_capture() {
+	local target="$1"
+	local bytes
+	iptables-save > "$target" 2>/dev/null || return 1
+	bytes="$(wc -c < "$target" 2>/dev/null)" || return 1
+	[ "$bytes" -le 524288 ]
+}
+
+kpanel_system_resource_best_version() {
+	local resource="$1"
+	local name="${2:-}"
+	local version=""
+	case "$resource" in
+		hosts) version="$(kpanel_system_resource_hosts_version 2>/dev/null || true)" ;;
+		cron) version="$(kpanel_system_resource_cron_version 2>/dev/null || true)" ;;
+		network-interface)
+			[ -z "$name" ] || version="$(kpanel_system_resource_interface_version "$name" 2>/dev/null || true)"
+			;;
+		firewall) version="$(kpanel_system_resource_firewall_version 2>/dev/null || true)" ;;
+	esac
+	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || version="$(kpanel_system_resource_zero_version)"
+	printf '%s\n' "$version"
+}
+
+kpanel_system_resource_check_expected() {
+	local resource="$1"
+	local expected="$2"
+	local name="${3:-}"
+	local current
+	kpanel_system_resource_valid_version "$expected" || {
+		kpanel_system_resource_error "expectedResourceVersion 必须为 64 位小写十六进制"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version "$resource" "$name")"
+		return 2
+	}
+	case "$resource" in
+		hosts) current="$(kpanel_system_resource_hosts_version 2>/dev/null)" ;;
+		cron) current="$(kpanel_system_resource_cron_version 2>/dev/null)" ;;
+		network-interface) current="$(kpanel_system_resource_interface_version "$name" 2>/dev/null)" ;;
+		firewall) current="$(kpanel_system_resource_firewall_version 2>/dev/null)" ;;
+		*) return 2 ;;
+	esac || {
+		kpanel_system_resource_error "无法读取当前资源版本"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 1
+	}
+	if [ "$current" != "$expected" ]; then
+		kpanel_system_resource_error "资源版本已变化，请刷新后重试"
+		kpanel_system_resource_emit conflict "$current"
+		return 2
+	fi
+	KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION="$current"
+}
+
+kpanel_system_resource_require_platform() {
+	local command_name
+	if [ "${KJ_SYSTEM_RESOURCE_NONINTERACTIVE:-}" != "1" ]; then
+		kpanel_system_resource_error "KPanel system-resource 协议环境未启用"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 2
+	fi
+	if [ "$EUID" -ne 0 ]; then
+		kpanel_system_resource_error "KPanel system-resource 协议必须以 root 运行"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 2
+	fi
+	if [ "$(uname -s 2>/dev/null)" != "Linux" ]; then
+		kpanel_system_resource_error "KPanel system-resource 协议仅支持 Linux"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 2
+	fi
+	for command_name in sha256sum mktemp flock; do
+		command -v "$command_name" >/dev/null 2>&1 || {
+			kpanel_system_resource_error "缺少必要命令: $command_name"
+			kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+			return 2
+		}
+	done
+}
+
+kpanel_system_resource_hosts_build_line() {
+	local address="$1"
+	local hostnames_csv="$2"
+	local comment="$3"
+	local hostname joined
+	local hostnames=()
+
+	kpanel_system_resource_is_ipv4 "$address" ||
+		kpanel_system_resource_is_ipv6 "$address" || return 1
+	kpanel_system_resource_single_line "$hostnames_csv" 1024 &&
+		[ -n "$hostnames_csv" ] || return 1
+	[[ "$hostnames_csv" != ,* && "$hostnames_csv" != *, && "$hostnames_csv" != *,,* ]] || return 1
+	IFS=, read -r -a hostnames <<< "$hostnames_csv"
+	[ "${#hostnames[@]}" -ge 1 ] && [ "${#hostnames[@]}" -le 16 ] || return 1
+	for hostname in "${hostnames[@]}"; do
+		kpanel_system_resource_is_hostname "$hostname" || return 1
+	done
+	kpanel_system_resource_single_line "$comment" 256 || return 1
+	joined="$(IFS=' '; printf '%s' "${hostnames[*]}")"
+	KPANEL_SYSTEM_RESOURCE_HOSTS_LINE="$address"$'\t'"$joined"
+	[ -z "$comment" ] ||
+		KPANEL_SYSTEM_RESOURCE_HOSTS_LINE="$KPANEL_SYSTEM_RESOURCE_HOSTS_LINE # $comment"
+}
+
+kpanel_system_resource_restore_hosts() {
+	local path="$1"
+	local backup="$2"
+	local expected_version="$3"
+	local current
+	current="$(kpanel_system_resource_hosts_version 2>/dev/null || true)"
+	[ "$current" = "$expected_version" ] && return 0
+	cp -p -- "$backup" "$path" >/dev/null 2>&1 || return 1
+	current="$(kpanel_system_resource_hosts_version 2>/dev/null || true)"
+	[ "$current" = "$expected_version" ]
+}
+
+kpanel_system_resource_hosts_failure() {
+	local path="$1"
+	local backup="$2"
+	local snapshot_dir="$3"
+	local original_version="$4"
+	local message="$5"
+	local version
+
+	kpanel_system_resource_error "$message"
+	if kpanel_system_resource_restore_hosts "$path" "$backup" "$original_version"; then
+		version="$(kpanel_system_resource_best_version hosts)"
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_emit failed "$version"
+	else
+		version="$(kpanel_system_resource_best_version hosts)"
+		kpanel_system_resource_error "hosts 回滚失败，需要人工恢复"
+		kpanel_system_resource_emit rollback-failed "$version" "$snapshot_dir"
+	fi
+	return 1
+}
+
+kpanel_system_resource_hosts_action() {
+	local action="$1"
+	shift
+	local expected path line line_number snapshot_dir backup desired desired_version current_line
+	local index=0 total_lines
+	local address hostnames_csv comment
+	local hosts_trailing_newline=true
+
+	path="$(kpanel_system_resource_hosts_file)"
+	[ -f "$path" ] && [ ! -L "$path" ] || {
+		kpanel_system_resource_error "未找到可安全管理的 hosts 文件"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 2
+	}
+	kpanel_system_resource_file_within_bounds "$path" 262144 1024 || {
+		kpanel_system_resource_error "hosts 超过 256KiB 或 1024 行协议上限"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version hosts)"
+		return 2
+	}
+	case "$action" in
+		add)
+			[ "$#" -eq 4 ] || {
+				kpanel_system_resource_error "hosts add 需要 expected,address,hostnamesCSV,comment"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version hosts)"
+				return 2
+			}
+			expected="$1"
+			address="$2"
+			hostnames_csv="$3"
+			comment="$4"
+			kpanel_system_resource_hosts_build_line "$address" "$hostnames_csv" "$comment" || {
+				kpanel_system_resource_error "hosts 地址、主机名或注释无效"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version hosts)"
+				return 2
+			}
+			line="$KPANEL_SYSTEM_RESOURCE_HOSTS_LINE"
+			;;
+		delete)
+			[ "$#" -eq 2 ] || {
+				kpanel_system_resource_error "hosts delete 需要 expected,line"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version hosts)"
+				return 2
+			}
+			expected="$1"
+			line_number="$2"
+			[[ "$line_number" =~ ^[0-9]{1,4}$ ]] &&
+				[ "$((10#$line_number))" -ge 1 ] &&
+				[ "$((10#$line_number))" -le 1024 ] || {
+				kpanel_system_resource_error "hosts 行号必须为 1-1024"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version hosts)"
+				return 2
+			}
+			line_number=$((10#$line_number))
+			;;
+		*)
+			kpanel_system_resource_error "不支持的 hosts 动作"
+			kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version hosts)"
+			return 2
+			;;
+	esac
+
+	kpanel_system_resource_check_expected hosts "$expected" || return $?
+	if [ "$action" = "add" ] && grep -Fqx -- "$line" "$path"; then
+		kpanel_system_resource_emit unchanged "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 0
+	fi
+	if [ "$action" = "delete" ]; then
+		total_lines="$(awk 'END {print NR + 0}' "$path")"
+		if [ "$line_number" -gt "$total_lines" ]; then
+			kpanel_system_resource_error "hosts 行号超出当前文件范围"
+			kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+			return 2
+		fi
+		if [ -s "$path" ] && [ "$(tail -c 1 "$path" | wc -l)" -eq 0 ]; then
+			hosts_trailing_newline=false
+		fi
+	fi
+
+	snapshot_dir="$(kpanel_system_resource_tempdir hosts)" || {
+		kpanel_system_resource_error "无法创建 hosts 事务目录"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 1
+	}
+	backup="$snapshot_dir/hosts.backup"
+	cp -p -- "$path" "$backup" >/dev/null 2>&1 || {
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_error "无法备份 hosts"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 1
+	}
+	desired="$(mktemp "$(dirname -- "$path")/.hosts.kpanel.XXXXXX")" || {
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_error "无法创建 hosts 临时文件"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 1
+	}
+
+	if [ "$action" = "add" ]; then
+		cp -- "$path" "$desired" >/dev/null 2>&1 || {
+			rm -f -- "$desired"
+			kpanel_system_resource_hosts_failure "$path" "$backup" "$snapshot_dir" "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION" "无法复制 hosts"
+			return $?
+		}
+		if [ -s "$desired" ] && [ "$(tail -c 1 "$desired" | wc -l)" -eq 0 ]; then
+			printf '\n' >> "$desired" || {
+				rm -f -- "$desired"
+				kpanel_system_resource_hosts_failure "$path" "$backup" "$snapshot_dir" "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION" "无法生成 hosts"
+				return $?
+			}
+		fi
+		printf '%s\n' "$line" >> "$desired" || {
+			rm -f -- "$desired"
+			kpanel_system_resource_hosts_failure "$path" "$backup" "$snapshot_dir" "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION" "无法写入 hosts"
+			return $?
+		}
+	else
+		: > "$desired" || {
+			rm -f -- "$desired"
+			kpanel_system_resource_hosts_failure "$path" "$backup" "$snapshot_dir" "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION" "无法生成 hosts"
+			return $?
+		}
+		while IFS= read -r current_line || [ -n "$current_line" ]; do
+			index=$((index + 1))
+			if [ "$index" -eq "$line_number" ]; then
+				continue
+			fi
+			if [ "$index" -eq "$total_lines" ] && [ "$hosts_trailing_newline" = false ]; then
+				printf '%s' "$current_line" >> "$desired"
+			else
+				printf '%s\n' "$current_line" >> "$desired"
+			fi || {
+				rm -f -- "$desired"
+				kpanel_system_resource_hosts_failure "$path" "$backup" "$snapshot_dir" "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION" "无法重写 hosts"
+				return $?
+			}
+		done < "$path"
+	fi
+	kpanel_system_resource_file_within_bounds "$desired" 262144 1024 || {
+		rm -f -- "$desired"
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_error "修改后的 hosts 超过 256KiB 或 1024 行协议上限"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 2
+	}
+
+	kpanel_system_resource_copy_identity "$path" "$desired" || {
+		rm -f -- "$desired"
+		kpanel_system_resource_hosts_failure "$path" "$backup" "$snapshot_dir" "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION" "无法保留 hosts 权限或属主"
+		return $?
+	}
+	desired_version="$(sha256sum -- "$desired" 2>/dev/null | awk '{print $1}')"
+	if ! kpanel_system_resource_valid_version "$desired_version"; then
+		rm -f -- "$desired"
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_error "无法计算修改后的 hosts 版本"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 1
+	fi
+	if ! mv -f -- "$desired" "$path" >/dev/null 2>&1 ||
+		[ "$(kpanel_system_resource_hosts_version 2>/dev/null)" != "$desired_version" ]; then
+		rm -f -- "$desired"
+		kpanel_system_resource_hosts_failure "$path" "$backup" "$snapshot_dir" "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION" "hosts 原子写入或回读验证失败"
+		return $?
+	fi
+	rm -rf -- "$snapshot_dir"
+	kpanel_system_resource_emit applied "$desired_version"
+}
+
+kpanel_system_resource_cron_number_in_range() {
+	local value="$1"
+	local minimum="$2"
+	local maximum="$3"
+	[[ "$value" =~ ^[0-9]{1,3}$ ]] &&
+		[ "$((10#$value))" -ge "$minimum" ] &&
+		[ "$((10#$value))" -le "$maximum" ]
+}
+
+kpanel_system_resource_cron_value_in_range() {
+	local value="$1"
+	local minimum="$2"
+	local maximum="$3"
+	local kind="$4"
+	local numeric=""
+
+	if [[ "$value" =~ ^[0-9]{1,3}$ ]]; then
+		numeric=$((10#$value))
+	else
+		case "$kind:${value^^}" in
+			month:JAN) numeric=1 ;; month:FEB) numeric=2 ;; month:MAR) numeric=3 ;;
+			month:APR) numeric=4 ;; month:MAY) numeric=5 ;; month:JUN) numeric=6 ;;
+			month:JUL) numeric=7 ;; month:AUG) numeric=8 ;; month:SEP) numeric=9 ;;
+			month:OCT) numeric=10 ;; month:NOV) numeric=11 ;; month:DEC) numeric=12 ;;
+			weekday:SUN) numeric=0 ;; weekday:MON) numeric=1 ;; weekday:TUE) numeric=2 ;;
+			weekday:WED) numeric=3 ;; weekday:THU) numeric=4 ;; weekday:FRI) numeric=5 ;;
+			weekday:SAT) numeric=6 ;;
+			*) return 1 ;;
+		esac
+	fi
+	[ "$numeric" -ge "$minimum" ] && [ "$numeric" -le "$maximum" ] || return 1
+	KPANEL_SYSTEM_RESOURCE_CRON_NUMERIC_VALUE="$numeric"
+}
+
+kpanel_system_resource_cron_field() {
+	local field="$1"
+	local minimum="$2"
+	local maximum="$3"
+	local kind="$4"
+	local item base step start end start_numeric end_numeric
+	local items=()
+
+	IFS=, read -r -a items <<< "$field"
+	[ "${#items[@]}" -ge 1 ] || return 1
+	for item in "${items[@]}"; do
+		[ -n "$item" ] || return 1
+		base="$item"
+		if [[ "$item" == */* ]]; then
+			base="${item%%/*}"
+			step="${item#*/}"
+			[[ "$step" != */* ]] &&
+				kpanel_system_resource_cron_number_in_range "$step" 1 "$maximum" || return 1
+		fi
+		if [ "$base" = "*" ]; then
+			continue
+		elif [[ "$base" == *-* ]]; then
+			start="${base%%-*}"
+			end="${base#*-}"
+			[[ "$end" != *-* ]] &&
+				kpanel_system_resource_cron_value_in_range "$start" "$minimum" "$maximum" "$kind" || return 1
+			start_numeric="$KPANEL_SYSTEM_RESOURCE_CRON_NUMERIC_VALUE"
+			kpanel_system_resource_cron_value_in_range "$end" "$minimum" "$maximum" "$kind" || return 1
+			end_numeric="$KPANEL_SYSTEM_RESOURCE_CRON_NUMERIC_VALUE"
+			[ "$start_numeric" -le "$end_numeric" ] || return 1
+		else
+			kpanel_system_resource_cron_value_in_range "$base" "$minimum" "$maximum" "$kind" || return 1
+		fi
+	done
+}
+
+kpanel_system_resource_cron_expression() {
+	local expression="$1"
+	local fields=()
+
+	kpanel_system_resource_single_line "$expression" 128 && [ -n "$expression" ] || return 1
+	case "$expression" in
+		@reboot|@yearly|@annually|@monthly|@weekly|@daily|@midnight|@hourly)
+			KPANEL_SYSTEM_RESOURCE_CRON_EXPRESSION="$expression"
+			return 0
+			;;
+	esac
+	read -r -a fields <<< "$expression"
+	[ "${#fields[@]}" -eq 5 ] || return 1
+	kpanel_system_resource_cron_field "${fields[0]}" 0 59 numeric &&
+		kpanel_system_resource_cron_field "${fields[1]}" 0 23 numeric &&
+		kpanel_system_resource_cron_field "${fields[2]}" 1 31 numeric &&
+		kpanel_system_resource_cron_field "${fields[3]}" 1 12 month &&
+		kpanel_system_resource_cron_field "${fields[4]}" 0 7 weekday || return 1
+	KPANEL_SYSTEM_RESOURCE_CRON_EXPRESSION="${fields[*]}"
+}
+
+kpanel_system_resource_cron_restore() {
+	local backup="$1"
+	local existed="$2"
+	local verify="$3"
+
+	if [ "$existed" = true ]; then
+		crontab "$backup" >/dev/null 2>&1 || return 1
+	else
+		crontab -r >/dev/null 2>&1 || true
+	fi
+	kpanel_system_resource_cron_capture "$verify" || return 1
+	cmp -s -- "$backup" "$verify"
+}
+
+kpanel_system_resource_cron_failure() {
+	local snapshot_dir="$1"
+	local backup="$2"
+	local existed="$3"
+	local message="$4"
+	local verify="$snapshot_dir/rollback.verify"
+	local version
+
+	kpanel_system_resource_error "$message"
+	if kpanel_system_resource_cron_restore "$backup" "$existed" "$verify"; then
+		version="$(kpanel_system_resource_best_version cron)"
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_emit failed "$version"
+	else
+		version="$(kpanel_system_resource_best_version cron)"
+		kpanel_system_resource_error "crontab 回滚失败，需要人工恢复"
+		kpanel_system_resource_emit rollback-failed "$version" "$snapshot_dir"
+	fi
+	return 1
+}
+
+kpanel_system_resource_cron_action() {
+	local action="$1"
+	shift
+	local expected line_number expression command_value trimmed_command new_line snapshot_dir backup desired verify
+	local cron_existed current_line index=0 total_lines
+
+	command -v crontab >/dev/null 2>&1 || {
+		kpanel_system_resource_error "缺少 crontab 命令"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 2
+	}
+	case "$action" in
+		add)
+			[ "$#" -eq 3 ] || {
+				kpanel_system_resource_error "cron add 需要 expected,expression,command"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
+				return 2
+			}
+			expected="$1"
+			expression="$2"
+			command_value="$3"
+			;;
+		update)
+			[ "$#" -eq 4 ] || {
+				kpanel_system_resource_error "cron update 需要 expected,line,expression,command"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
+				return 2
+			}
+			expected="$1"
+			line_number="$2"
+			expression="$3"
+			command_value="$4"
+			[[ "$line_number" =~ ^[0-9]{1,3}$ ]] &&
+				[ "$((10#$line_number))" -ge 1 ] &&
+				[ "$((10#$line_number))" -le 512 ] || {
+				kpanel_system_resource_error "cron 行号必须为 1-512"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
+				return 2
+			}
+			line_number=$((10#$line_number))
+			;;
+		delete)
+			[ "$#" -eq 2 ] || {
+				kpanel_system_resource_error "cron delete 需要 expected,line"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
+				return 2
+			}
+			expected="$1"
+			line_number="$2"
+			[[ "$line_number" =~ ^[0-9]{1,3}$ ]] &&
+				[ "$((10#$line_number))" -ge 1 ] &&
+				[ "$((10#$line_number))" -le 512 ] || {
+				kpanel_system_resource_error "cron 行号必须为 1-512"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
+				return 2
+			}
+			line_number=$((10#$line_number))
+			;;
+		*)
+			kpanel_system_resource_error "不支持的 cron 动作"
+			kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
+			return 2
+			;;
+	esac
+
+	if [ "$action" != "delete" ]; then
+		trimmed_command="$command_value"
+		trimmed_command="${trimmed_command#"${trimmed_command%%[![:space:]]*}"}"
+		trimmed_command="${trimmed_command%"${trimmed_command##*[![:space:]]}"}"
+		kpanel_system_resource_cron_expression "$expression" &&
+			kpanel_system_resource_single_line "$command_value" 2048 &&
+			[ -n "$trimmed_command" ] || {
+			kpanel_system_resource_error "cron 表达式或命令无效"
+			kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version cron)"
+			return 2
+		}
+		new_line="$KPANEL_SYSTEM_RESOURCE_CRON_EXPRESSION $command_value"
+	fi
+	kpanel_system_resource_check_expected cron "$expected" || return $?
+
+	snapshot_dir="$(kpanel_system_resource_tempdir cron)" || {
+		kpanel_system_resource_error "无法创建 cron 事务目录"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 1
+	}
+	backup="$snapshot_dir/crontab.backup"
+	kpanel_system_resource_cron_capture "$backup" || {
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_error "无法读取当前 crontab"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 1
+	}
+	cron_existed="$KPANEL_SYSTEM_RESOURCE_CRON_EXISTED"
+
+	if [ "$action" = "add" ] && grep -Fqx -- "$new_line" "$backup"; then
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_emit unchanged "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 0
+	fi
+	if [ "$action" != "add" ]; then
+		total_lines="$(awk 'END {print NR + 0}' "$backup")"
+		if [ "$line_number" -gt "$total_lines" ]; then
+			rm -rf -- "$snapshot_dir"
+			kpanel_system_resource_error "cron 行号超出当前 crontab 范围"
+			kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+			return 2
+		fi
+	fi
+
+	desired="$snapshot_dir/crontab.desired"
+	if [ "$action" = "add" ]; then
+		cp -- "$backup" "$desired" >/dev/null 2>&1 || {
+			rm -rf -- "$snapshot_dir"
+			kpanel_system_resource_error "无法复制当前 crontab"
+			kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+			return 1
+		}
+		if [ -s "$desired" ] && [ "$(tail -c 1 "$desired" | wc -l)" -eq 0 ]; then
+			printf '\n' >> "$desired" || {
+				rm -rf -- "$snapshot_dir"
+				kpanel_system_resource_error "无法生成 crontab"
+				kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+				return 1
+			}
+		fi
+		printf '%s\n' "$new_line" >> "$desired" || {
+			kpanel_system_resource_cron_failure "$snapshot_dir" "$backup" "$cron_existed" "无法生成 crontab"
+			return $?
+		}
+	else
+		: > "$desired" || {
+			rm -rf -- "$snapshot_dir"
+			kpanel_system_resource_error "无法创建 crontab 目标文件"
+			kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+			return 1
+		}
+		while IFS= read -r current_line || [ -n "$current_line" ]; do
+			index=$((index + 1))
+			if [ "$index" -eq "$line_number" ]; then
+				if [ "$action" != "delete" ] && ! printf '%s\n' "$new_line" >> "$desired"; then
+					rm -rf -- "$snapshot_dir"
+					kpanel_system_resource_error "无法生成 crontab"
+					kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+					return 1
+				fi
+				continue
+			fi
+			printf '%s\n' "$current_line" >> "$desired" || {
+				kpanel_system_resource_cron_failure "$snapshot_dir" "$backup" "$cron_existed" "无法生成 crontab"
+				return $?
+			}
+		done < "$backup"
+	fi
+	if ! kpanel_system_resource_file_within_bounds "$desired" 262144 512; then
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_error "修改后的 crontab 超过 256KiB 或 512 行协议上限"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 2
+	fi
+	if cmp -s -- "$backup" "$desired"; then
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_emit unchanged "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 0
+	fi
+
+	if ! crontab "$desired" >/dev/null 2>&1; then
+		kpanel_system_resource_cron_failure "$snapshot_dir" "$backup" "$cron_existed" "crontab 安装失败"
+		return $?
+	fi
+	verify="$snapshot_dir/crontab.verify"
+	if ! kpanel_system_resource_cron_capture "$verify"; then
+		kpanel_system_resource_cron_failure "$snapshot_dir" "$backup" "$cron_existed" "crontab 回读失败"
+		return $?
+	fi
+	if ! cmp -s -- "$desired" "$verify"; then
+		kpanel_system_resource_cron_failure "$snapshot_dir" "$backup" "$cron_existed" "crontab 回读验证失败"
+		return $?
+	fi
+	local applied_version
+	applied_version="$(sha256sum -- "$verify" 2>/dev/null | awk '{print $1}')"
+	if ! kpanel_system_resource_valid_version "$applied_version"; then
+		kpanel_system_resource_cron_failure "$snapshot_dir" "$backup" "$cron_existed" "无法计算 crontab 版本"
+		return $?
+	fi
+	rm -rf -- "$snapshot_dir"
+	kpanel_system_resource_emit applied "$applied_version"
+}
+
+kpanel_system_resource_interface_admin_state() {
+	local name="$1"
+	local root flags numeric
+	root="$(kpanel_system_resource_interfaces_dir)"
+	flags="$(cat "$root/$name/flags" 2>/dev/null)" || return 1
+	[[ "$flags" =~ ^0x[0-9A-Fa-f]+$ ]] || return 1
+	numeric=$((flags))
+	if [ "$((numeric & 1))" -eq 1 ]; then
+		printf 'up\n'
+	else
+		printf 'down\n'
+	fi
+}
+
+kpanel_system_resource_interface_failure() {
+	local name="$1"
+	local old_state="$2"
+	local message="$3"
+	local current_state="" version attempt
+
+	kpanel_system_resource_error "$message"
+	current_state="$(kpanel_system_resource_interface_admin_state "$name" 2>/dev/null || true)"
+	if [ "$current_state" != "$old_state" ]; then
+		ip link set dev "$name" "$old_state" >/dev/null 2>&1 || true
+		for attempt in 1 2 3 4 5; do
+			current_state="$(kpanel_system_resource_interface_admin_state "$name" 2>/dev/null || true)"
+			[ "$current_state" = "$old_state" ] && break
+			sleep 0.1
+		done
+	fi
+	version="$(kpanel_system_resource_best_version network-interface "$name")"
+	if [ "$current_state" = "$old_state" ]; then
+		kpanel_system_resource_emit failed "$version"
+	else
+		kpanel_system_resource_error "网卡状态回滚失败，需要人工恢复"
+		kpanel_system_resource_emit rollback-failed "$version"
+	fi
+	return 1
+}
+
+kpanel_system_resource_interface_action() {
+	local action="$1"
+	shift
+	local expected name desired old_state current_state version attempt
+
+	[ "$action" = "state" ] || {
+		kpanel_system_resource_error "不支持的 network-interface 动作"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 2
+	}
+	[ "$#" -eq 3 ] || {
+		kpanel_system_resource_error "network-interface state 需要 expected,name,up|down"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 2
+	}
+	expected="$1"
+	name="$2"
+	desired="$3"
+	[ "${#name}" -ge 1 ] && [ "${#name}" -le 15 ] &&
+		kpanel_system_resource_single_line "$name" 15 &&
+		kpanel_system_resource_interface_exists "$name" || {
+		kpanel_system_resource_error "网卡名称不在系统枚举中"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 2
+	}
+	case "$desired" in up|down) ;; *)
+		kpanel_system_resource_error "网卡状态必须为 up 或 down"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version network-interface "$name")"
+		return 2
+		;;
+	esac
+	command -v ip >/dev/null 2>&1 || {
+		kpanel_system_resource_error "缺少 ip 命令"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version network-interface "$name")"
+		return 2
+	}
+	kpanel_system_resource_check_expected network-interface "$expected" "$name" || return $?
+	old_state="$(kpanel_system_resource_interface_admin_state "$name")" || {
+		kpanel_system_resource_error "无法读取网卡管理状态"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 1
+	}
+	if [ "$old_state" = "$desired" ]; then
+		kpanel_system_resource_emit unchanged "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 0
+	fi
+	if ! ip link set dev "$name" "$desired" >/dev/null 2>&1; then
+		kpanel_system_resource_interface_failure "$name" "$old_state" "网卡状态修改失败，正在恢复"
+		return 1
+	fi
+	current_state=""
+	for attempt in 1 2 3 4 5; do
+		current_state="$(kpanel_system_resource_interface_admin_state "$name" 2>/dev/null || true)"
+		[ "$current_state" = "$desired" ] && break
+		sleep 0.1
+	done
+	if [ "$current_state" != "$desired" ]; then
+		kpanel_system_resource_interface_failure "$name" "$old_state" "网卡状态回读验证失败，正在恢复"
+		return 1
+	fi
+	version="$(kpanel_system_resource_interface_version "$name" 2>/dev/null)" || {
+		kpanel_system_resource_interface_failure "$name" "$old_state" "无法计算网卡资源版本，正在恢复"
+		return 1
+	}
+	kpanel_system_resource_emit applied "$version"
+}
+
+kpanel_system_resource_iptables() {
+	iptables -w 5 "$@" >/dev/null 2>&1
+}
+
+kpanel_system_resource_firewall_rule_exists() {
+	local chain="$1"
+	shift
+	kpanel_system_resource_iptables -C "$chain" "$@"
+}
+
+kpanel_system_resource_firewall_delete_rule() {
+	local chain="$1"
+	shift
+	while kpanel_system_resource_firewall_rule_exists "$chain" "$@"; do
+		kpanel_system_resource_iptables -D "$chain" "$@" || return 1
+		KPANEL_SYSTEM_RESOURCE_FIREWALL_CHANGED=true
+	done
+}
+
+kpanel_system_resource_firewall_ensure_rule() {
+	local placement="$1"
+	local chain="$2"
+	shift 2
+	kpanel_system_resource_firewall_rule_exists "$chain" "$@" && return 0
+	case "$placement" in
+		insert) kpanel_system_resource_iptables -I "$chain" 1 "$@" ;;
+		append) kpanel_system_resource_iptables -A "$chain" "$@" ;;
+		*) return 1 ;;
+	esac || return 1
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_CHANGED=true
+}
+
+kpanel_system_resource_firewall_chain_exists() {
+	kpanel_system_resource_iptables -S "$1"
+}
+
+kpanel_system_resource_firewall_port() {
+	local value="$1"
+	[[ "$value" =~ ^[0-9]{1,5}$ ]] &&
+		[ "$((10#$value))" -ge 1 ] &&
+		[ "$((10#$value))" -le 65535 ]
+}
+
+kpanel_system_resource_ssh_ports() {
+	local ports="" config
+	if command -v sshd >/dev/null 2>&1; then
+		ports="$(sshd -T 2>/dev/null | awk 'tolower($1) == "port" && $2 ~ /^[0-9]+$/ {print $2}')"
+	fi
+	if [ -z "$ports" ]; then
+		ports="$({
+			for config in /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf; do
+				[ -f "$config" ] || continue
+				awk 'tolower($1) == "port" && $2 ~ /^[0-9]+$/ {print $2}' "$config"
+			done
+		} 2>/dev/null)"
+	fi
+	[ -n "$ports" ] || ports=22
+	printf '%s\n' "$ports" | awk '/^[0-9]+$/ && $1 >= 1 && $1 <= 65535' | sort -nu
+}
+
+kpanel_system_resource_firewall_open_port_rules() {
+	local port="$1" protocol
+	for protocol in tcp udp; do
+		kpanel_system_resource_firewall_delete_rule INPUT -p "$protocol" --dport "$port" -j DROP || return 1
+		kpanel_system_resource_firewall_ensure_rule insert INPUT -p "$protocol" --dport "$port" -j ACCEPT || return 1
+	done
+	for protocol in tcp udp; do
+		kpanel_system_resource_firewall_rule_exists INPUT -p "$protocol" --dport "$port" -j ACCEPT || return 1
+		! kpanel_system_resource_firewall_rule_exists INPUT -p "$protocol" --dport "$port" -j DROP || return 1
+	done
+}
+
+kpanel_system_resource_firewall_close_port_rules() {
+	local port="$1" protocol
+	for protocol in tcp udp; do
+		kpanel_system_resource_firewall_delete_rule INPUT -p "$protocol" --dport "$port" -j ACCEPT || return 1
+		kpanel_system_resource_firewall_ensure_rule insert INPUT -p "$protocol" --dport "$port" -j DROP || return 1
+	done
+	kpanel_system_resource_firewall_ensure_rule insert INPUT -i lo -j ACCEPT || return 1
+	kpanel_system_resource_firewall_ensure_rule insert FORWARD -i lo -j ACCEPT || return 1
+	for protocol in tcp udp; do
+		kpanel_system_resource_firewall_rule_exists INPUT -p "$protocol" --dport "$port" -j DROP || return 1
+		! kpanel_system_resource_firewall_rule_exists INPUT -p "$protocol" --dport "$port" -j ACCEPT || return 1
+	done
+}
+
+kpanel_system_resource_firewall_allow_ip_rules() {
+	local address="$1"
+	kpanel_system_resource_firewall_delete_rule INPUT -s "$address" -j DROP || return 1
+	kpanel_system_resource_firewall_ensure_rule insert INPUT -s "$address" -j ACCEPT || return 1
+	kpanel_system_resource_firewall_rule_exists INPUT -s "$address" -j ACCEPT &&
+		! kpanel_system_resource_firewall_rule_exists INPUT -s "$address" -j DROP
+}
+
+kpanel_system_resource_firewall_block_ip_rules() {
+	local address="$1"
+	kpanel_system_resource_firewall_delete_rule INPUT -s "$address" -j ACCEPT || return 1
+	kpanel_system_resource_firewall_ensure_rule insert INPUT -s "$address" -j DROP || return 1
+	kpanel_system_resource_firewall_rule_exists INPUT -s "$address" -j DROP &&
+		! kpanel_system_resource_firewall_rule_exists INPUT -s "$address" -j ACCEPT
+}
+
+kpanel_system_resource_firewall_remove_ip_rules() {
+	local address="$1"
+	kpanel_system_resource_firewall_delete_rule INPUT -s "$address" -j ACCEPT &&
+		kpanel_system_resource_firewall_delete_rule INPUT -s "$address" -j DROP || return 1
+	! kpanel_system_resource_firewall_rule_exists INPUT -s "$address" -j ACCEPT &&
+		! kpanel_system_resource_firewall_rule_exists INPUT -s "$address" -j DROP
+}
+
+kpanel_system_resource_firewall_enable_ping_rules() {
+	kpanel_system_resource_firewall_delete_rule INPUT -p icmp --icmp-type echo-request -j DROP &&
+		kpanel_system_resource_firewall_delete_rule OUTPUT -p icmp --icmp-type echo-reply -j DROP &&
+		kpanel_system_resource_firewall_delete_rule INPUT -p icmp --icmp-type echo-request -j ACCEPT &&
+		kpanel_system_resource_firewall_delete_rule OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT || return 1
+	kpanel_system_resource_iptables -I INPUT 1 -p icmp --icmp-type echo-request -j ACCEPT &&
+		kpanel_system_resource_iptables -I OUTPUT 1 -p icmp --icmp-type echo-reply -j ACCEPT || return 1
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_CHANGED=true
+	kpanel_system_resource_firewall_rule_exists INPUT -p icmp --icmp-type echo-request -j ACCEPT &&
+		kpanel_system_resource_firewall_rule_exists OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT
+}
+
+kpanel_system_resource_firewall_disable_ping_rules() {
+	kpanel_system_resource_firewall_delete_rule INPUT -p icmp --icmp-type echo-request -j ACCEPT &&
+		kpanel_system_resource_firewall_delete_rule OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT &&
+		kpanel_system_resource_firewall_delete_rule INPUT -p icmp --icmp-type echo-request -j DROP &&
+		kpanel_system_resource_firewall_delete_rule OUTPUT -p icmp --icmp-type echo-reply -j DROP || return 1
+	kpanel_system_resource_iptables -I INPUT 1 -p icmp --icmp-type echo-request -j DROP &&
+		kpanel_system_resource_iptables -I OUTPUT 1 -p icmp --icmp-type echo-reply -j DROP || return 1
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_CHANGED=true
+	kpanel_system_resource_firewall_rule_exists INPUT -p icmp --icmp-type echo-request -j DROP &&
+		kpanel_system_resource_firewall_rule_exists OUTPUT -p icmp --icmp-type echo-reply -j DROP
+}
+
+kpanel_system_resource_firewall_enable_ddos_chain() {
+	local chain="$1"
+	kpanel_system_resource_firewall_disable_ddos_chain "$chain" || return 1
+	kpanel_system_resource_iptables -I "$chain" 1 -p udp -j DROP || return 1
+	kpanel_system_resource_iptables -I "$chain" 1 -p udp -m limit --limit 3000/s -j ACCEPT || return 1
+	kpanel_system_resource_iptables -I "$chain" 1 -p tcp --syn -j DROP || return 1
+	kpanel_system_resource_iptables -I "$chain" 1 -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT || return 1
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_CHANGED=true
+	kpanel_system_resource_firewall_rule_exists "$chain" -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT &&
+		kpanel_system_resource_firewall_rule_exists "$chain" -p tcp --syn -j DROP &&
+		kpanel_system_resource_firewall_rule_exists "$chain" -p udp -m limit --limit 3000/s -j ACCEPT &&
+		kpanel_system_resource_firewall_rule_exists "$chain" -p udp -j DROP
+}
+
+kpanel_system_resource_firewall_disable_ddos_chain() {
+	local chain="$1"
+	kpanel_system_resource_firewall_delete_rule "$chain" -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT &&
+		kpanel_system_resource_firewall_delete_rule "$chain" -p tcp --syn -j DROP &&
+		kpanel_system_resource_firewall_delete_rule "$chain" -p udp -m limit --limit 3000/s -j ACCEPT &&
+		kpanel_system_resource_firewall_delete_rule "$chain" -p udp -j DROP
+}
+
+kpanel_system_resource_firewall_enable_ddos_rules() {
+	kpanel_system_resource_firewall_enable_ddos_chain INPUT || return 1
+	if kpanel_system_resource_firewall_chain_exists DOCKER-USER; then
+		kpanel_system_resource_firewall_enable_ddos_chain DOCKER-USER || return 1
+	fi
+}
+
+kpanel_system_resource_firewall_disable_ddos_rules() {
+	kpanel_system_resource_firewall_disable_ddos_chain INPUT || return 1
+	if kpanel_system_resource_firewall_chain_exists DOCKER-USER; then
+		kpanel_system_resource_firewall_disable_ddos_chain DOCKER-USER || return 1
+	fi
+}
+
+kpanel_system_resource_firewall_base_rules() {
+	local ssh_port
+	kpanel_system_resource_firewall_ensure_rule append INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT &&
+		kpanel_system_resource_firewall_ensure_rule append OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT &&
+		kpanel_system_resource_firewall_ensure_rule append INPUT -i lo -j ACCEPT &&
+		kpanel_system_resource_firewall_ensure_rule append FORWARD -i lo -j ACCEPT || return 1
+	while IFS= read -r ssh_port; do
+		[ -n "$ssh_port" ] || continue
+		kpanel_system_resource_firewall_ensure_rule append INPUT -p tcp --dport "$ssh_port" -j ACCEPT || return 1
+	done < <(kpanel_system_resource_ssh_ports)
+}
+
+kpanel_system_resource_firewall_all_rules() {
+	local input_policy="$1"
+	kpanel_system_resource_iptables -F &&
+		kpanel_system_resource_iptables -X || return 1
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_CHANGED=true
+	kpanel_system_resource_iptables -P OUTPUT ACCEPT || return 1
+	if [ "$input_policy" = ACCEPT ]; then
+		kpanel_system_resource_iptables -P INPUT ACCEPT &&
+			kpanel_system_resource_iptables -P FORWARD ACCEPT || return 1
+		kpanel_system_resource_firewall_base_rules || return 1
+	else
+		kpanel_system_resource_firewall_base_rules || return 1
+		kpanel_system_resource_iptables -P INPUT DROP &&
+			kpanel_system_resource_iptables -P FORWARD DROP || return 1
+	fi
+	iptables -w 5 -S INPUT 2>/dev/null | grep -Fqx -- "-P INPUT $input_policy" &&
+		iptables -w 5 -S FORWARD 2>/dev/null | grep -Fqx -- "-P FORWARD $input_policy" &&
+		iptables -w 5 -S OUTPUT 2>/dev/null | grep -Fqx -- "-P OUTPUT ACCEPT"
+}
+
+kpanel_system_resource_firewall_apply() {
+	local action="$1"
+	local value="${2:-}"
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_CHANGED=false
+	case "$action" in
+		open-port) kpanel_system_resource_firewall_open_port_rules "$value" ;;
+		close-port) kpanel_system_resource_firewall_close_port_rules "$value" ;;
+		allow-ip) kpanel_system_resource_firewall_allow_ip_rules "$value" ;;
+		block-ip) kpanel_system_resource_firewall_block_ip_rules "$value" ;;
+		remove-ip) kpanel_system_resource_firewall_remove_ip_rules "$value" ;;
+		open-all) kpanel_system_resource_firewall_all_rules ACCEPT ;;
+		close-all) kpanel_system_resource_firewall_all_rules DROP ;;
+		enable-ping) kpanel_system_resource_firewall_enable_ping_rules ;;
+		disable-ping) kpanel_system_resource_firewall_disable_ping_rules ;;
+		enable-ddos) kpanel_system_resource_firewall_enable_ddos_rules ;;
+		disable-ddos) kpanel_system_resource_firewall_disable_ddos_rules ;;
+		*) return 2 ;;
+	esac
+}
+
+kpanel_system_resource_firewall_snapshot() {
+	local snapshot_dir="$1"
+	local rules_path="$2"
+
+	kpanel_system_resource_firewall_capture "$snapshot_dir/iptables.rules" || return 1
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_RULES_EXISTED=false
+	if [ -e "$rules_path" ]; then
+		[ -f "$rules_path" ] && [ ! -L "$rules_path" ] || return 1
+		cp -p -- "$rules_path" "$snapshot_dir/rules.v4" >/dev/null 2>&1 || return 1
+		KPANEL_SYSTEM_RESOURCE_FIREWALL_RULES_EXISTED=true
+	fi
+	kpanel_system_resource_cron_capture "$snapshot_dir/crontab" || return 1
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_CRON_EXISTED="$KPANEL_SYSTEM_RESOURCE_CRON_EXISTED"
+}
+
+kpanel_system_resource_firewall_persist() {
+	local snapshot_dir="$1"
+	local rules_path parent desired_rules verify_rules
+	local cron_current cron_desired cron_verify restore_line count current_line
+
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_PERSIST_CHANGED=false
+	rules_path="$(kpanel_system_resource_iptables_rules_file)"
+	parent="$(dirname -- "$rules_path")"
+	mkdir -p -- "$parent" >/dev/null 2>&1 || return 1
+	[ ! -L "$rules_path" ] || return 1
+	desired_rules="$(mktemp "$parent/.rules.v4.kpanel.XXXXXX")" || return 1
+	if ! kpanel_system_resource_firewall_capture "$desired_rules"; then
+		rm -f -- "$desired_rules"
+		return 1
+	fi
+	if [ -f "$rules_path" ] && cmp -s -- "$desired_rules" "$rules_path"; then
+		rm -f -- "$desired_rules"
+	else
+		if [ -f "$rules_path" ]; then
+			kpanel_system_resource_copy_identity "$rules_path" "$desired_rules" || {
+				rm -f -- "$desired_rules"
+				return 1
+			}
+		else
+			chmod 600 "$desired_rules" >/dev/null 2>&1 || {
+				rm -f -- "$desired_rules"
+				return 1
+			}
+		fi
+		mv -f -- "$desired_rules" "$rules_path" >/dev/null 2>&1 || {
+			rm -f -- "$desired_rules"
+			return 1
+		}
+		KPANEL_SYSTEM_RESOURCE_FIREWALL_PERSIST_CHANGED=true
+	fi
+	verify_rules="$snapshot_dir/iptables.persist.verify"
+	kpanel_system_resource_firewall_capture "$verify_rules" &&
+		cmp -s -- "$verify_rules" "$rules_path" || return 1
+
+	restore_line='@reboot iptables-restore < /etc/iptables/rules.v4'
+	cron_current="$snapshot_dir/crontab.persist.current"
+	kpanel_system_resource_cron_capture "$cron_current" || return 1
+	count="$(grep -Fxc -- "$restore_line" "$cron_current" 2>/dev/null || true)"
+	if [ "$count" -ne 1 ]; then
+		cron_desired="$snapshot_dir/crontab.persist.desired"
+		: > "$cron_desired" || return 1
+		while IFS= read -r current_line || [ -n "$current_line" ]; do
+			[ "$current_line" = "$restore_line" ] && continue
+			printf '%s\n' "$current_line" >> "$cron_desired" || return 1
+		done < "$cron_current"
+		if [ -s "$cron_desired" ] && [ "$(tail -c 1 "$cron_desired" | wc -l)" -eq 0 ]; then
+			printf '\n' >> "$cron_desired" || return 1
+		fi
+		printf '%s\n' "$restore_line" >> "$cron_desired" || return 1
+		kpanel_system_resource_file_within_bounds "$cron_desired" 262144 512 || return 1
+		crontab "$cron_desired" >/dev/null 2>&1 || return 1
+		cron_verify="$snapshot_dir/crontab.persist.verify"
+		kpanel_system_resource_cron_capture "$cron_verify" || return 1
+		cmp -s -- "$cron_desired" "$cron_verify" || return 1
+		KPANEL_SYSTEM_RESOURCE_FIREWALL_PERSIST_CHANGED=true
+	fi
+}
+
+kpanel_system_resource_firewall_restore() {
+	local snapshot_dir="$1"
+	local rules_path="$2"
+	local rules_existed="$3"
+	local cron_existed="$4"
+	local verify="$snapshot_dir/rollback.iptables"
+	local cron_verify="$snapshot_dir/rollback.crontab"
+	local failed=false
+
+	iptables-restore -w 5 < "$snapshot_dir/iptables.rules" >/dev/null 2>&1 || failed=true
+	if [ "$rules_existed" = true ]; then
+		cp -p -- "$snapshot_dir/rules.v4" "$rules_path" >/dev/null 2>&1 || failed=true
+	else
+		rm -f -- "$rules_path" >/dev/null 2>&1 || failed=true
+	fi
+	kpanel_system_resource_cron_restore "$snapshot_dir/crontab" "$cron_existed" "$cron_verify" || failed=true
+	kpanel_system_resource_firewall_capture "$verify" || failed=true
+	cmp -s -- "$snapshot_dir/iptables.rules" "$verify" || failed=true
+	if [ "$rules_existed" = true ]; then
+		cmp -s -- "$snapshot_dir/rules.v4" "$rules_path" || failed=true
+	else
+		[ ! -e "$rules_path" ] || failed=true
+	fi
+	[ "$failed" = false ]
+}
+
+kpanel_system_resource_firewall_failure() {
+	local snapshot_dir="$1"
+	local rules_path="$2"
+	local rules_existed="$3"
+	local cron_existed="$4"
+	local message="$5"
+	local version
+
+	kpanel_system_resource_error "$message"
+	if kpanel_system_resource_firewall_restore "$snapshot_dir" "$rules_path" "$rules_existed" "$cron_existed"; then
+		version="$(kpanel_system_resource_best_version firewall)"
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_emit failed "$version"
+	else
+		version="$(kpanel_system_resource_best_version firewall)"
+		kpanel_system_resource_error "iptables 回滚失败，需要人工恢复"
+		kpanel_system_resource_emit rollback-failed "$version" "$snapshot_dir"
+	fi
+	return 1
+}
+
+kpanel_system_resource_firewall_action() {
+	local action="$1"
+	shift
+	local expected value="" snapshot_dir rules_path rules_existed cron_existed final_version
+	local command_name
+
+	for command_name in iptables iptables-save iptables-restore crontab; do
+		command -v "$command_name" >/dev/null 2>&1 || {
+			kpanel_system_resource_error "缺少必要命令: $command_name"
+			kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+			return 2
+		}
+	done
+	rules_path="$(kpanel_system_resource_iptables_rules_file)"
+	[ ! -L "$rules_path" ] || {
+		kpanel_system_resource_error "iptables 持久化文件不能是符号链接"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version firewall)"
+		return 2
+	}
+	case "$action" in
+		open-port|close-port)
+			[ "$#" -eq 2 ] || {
+				kpanel_system_resource_error "$action 需要 expected,value"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version firewall)"
+				return 2
+			}
+			expected="$1"
+			value="$2"
+			kpanel_system_resource_firewall_port "$value" || {
+				kpanel_system_resource_error "防火墙端口必须为 1-65535"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version firewall)"
+				return 2
+			}
+			value=$((10#$value))
+			;;
+		allow-ip|block-ip|remove-ip)
+			[ "$#" -eq 2 ] || {
+				kpanel_system_resource_error "$action 需要 expected,value"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version firewall)"
+				return 2
+			}
+			expected="$1"
+			value="$2"
+			kpanel_system_resource_is_ipv4_cidr "$value" || {
+				kpanel_system_resource_error "防火墙地址必须为 IPv4 或 IPv4 CIDR"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version firewall)"
+				return 2
+			}
+			;;
+		open-all|close-all|enable-ping|disable-ping|enable-ddos|disable-ddos)
+			[ "$#" -eq 1 ] || {
+				kpanel_system_resource_error "$action 只需要 expected"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version firewall)"
+				return 2
+			}
+			expected="$1"
+			;;
+		*)
+			kpanel_system_resource_error "不支持的 firewall 动作"
+			kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version firewall)"
+			return 2
+			;;
+	esac
+
+	kpanel_system_resource_check_expected firewall "$expected" || return $?
+	snapshot_dir="$(kpanel_system_resource_tempdir firewall)" || {
+		kpanel_system_resource_error "无法创建 firewall 事务目录"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 1
+	}
+	if ! kpanel_system_resource_firewall_snapshot "$snapshot_dir" "$rules_path"; then
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_error "无法创建 iptables/crontab 快照"
+		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
+		return 1
+	fi
+	rules_existed="$KPANEL_SYSTEM_RESOURCE_FIREWALL_RULES_EXISTED"
+	cron_existed="$KPANEL_SYSTEM_RESOURCE_FIREWALL_CRON_EXISTED"
+	if ! kpanel_system_resource_firewall_apply "$action" "$value"; then
+		kpanel_system_resource_firewall_failure "$snapshot_dir" "$rules_path" "$rules_existed" "$cron_existed" "iptables 动作执行或回读验证失败"
+		return $?
+	fi
+	if ! kpanel_system_resource_firewall_persist "$snapshot_dir"; then
+		kpanel_system_resource_firewall_failure "$snapshot_dir" "$rules_path" "$rules_existed" "$cron_existed" "iptables 持久化失败"
+		return $?
+	fi
+	final_version="$(kpanel_system_resource_firewall_version 2>/dev/null)" || {
+		kpanel_system_resource_firewall_failure "$snapshot_dir" "$rules_path" "$rules_existed" "$cron_existed" "无法计算修改后的 iptables 版本"
+		return $?
+	}
+	if [ "$final_version" = "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION" ] &&
+		[ "$KPANEL_SYSTEM_RESOURCE_FIREWALL_PERSIST_CHANGED" = false ]; then
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_emit unchanged "$final_version"
+	else
+		rm -rf -- "$snapshot_dir"
+		kpanel_system_resource_emit applied "$final_version"
+	fi
+}
+
+kpanel_system_resource_run_locked() (
+	local resource="$1"
+	local action="$2"
+	local lock_file lock_parent name=""
+	shift 2
+
+	lock_file="$(kpanel_system_resource_lock_file)"
+	lock_parent="$(dirname -- "$lock_file")"
+	mkdir -p -- "$lock_parent" >/dev/null 2>&1 || {
+		kpanel_system_resource_error "无法创建 system-resource 锁目录"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version "$resource")"
+		return 1
+	}
+	exec 9>"$lock_file" || {
+		kpanel_system_resource_error "无法打开 system-resource 锁"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version "$resource")"
+		return 1
+	}
+	if ! flock -w 30 -x 9 >/dev/null 2>&1; then
+		[ "$resource" = "network-interface" ] && name="${2:-}"
+		kpanel_system_resource_error "system-resource 写锁等待超时"
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version "$resource" "$name")"
+		return 1
+	fi
+	case "$resource" in
+		hosts) kpanel_system_resource_hosts_action "$action" "$@" ;;
+		cron) kpanel_system_resource_cron_action "$action" "$@" ;;
+		network-interface) kpanel_system_resource_interface_action "$action" "$@" ;;
+		firewall) kpanel_system_resource_firewall_action "$action" "$@" ;;
+		*)
+			kpanel_system_resource_error "不支持的 system-resource 资源"
+			kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+			return 2
+			;;
+	esac
+)
+
+kpanel_system_resource_dispatch() {
+	local resource="${1:-}"
+	local action="${2:-}"
+	local rc
+
+	kpanel_system_resource_require_platform
+	rc=$?
+	[ "$rc" -eq 0 ] || return "$rc"
+	[ "$#" -ge 2 ] || {
+		kpanel_system_resource_error "用法: kpanel system-resource <resource> <action> ..."
+		kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+		return 2
+	}
+	case "$resource" in
+		hosts|cron|network-interface|firewall) ;;
+		*)
+			kpanel_system_resource_error "不支持的 system-resource 资源"
+			kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+			return 2
+			;;
+	esac
+	shift 2
+	kpanel_system_resource_run_locked "$resource" "$action" "$@"
+}
+
+# KPanel system resource protocol end
+
+
 log_menu() {
 	send_stats "系统日志管理工具"
 
@@ -24600,8 +26083,11 @@ else
 			if [ "${1:-}" = "node" ]; then
 				shift
 				kpanel_node_dispatch "$@"
+			elif [ "${1:-}" = "system-resource" ]; then
+				shift
+				kpanel_system_resource_dispatch "$@"
 			else
-				echo "用法: k kpanel node join <授权> | status | update | uninstall" >&2
+				echo "用法: k kpanel node join <授权> | status | update | uninstall；或 k kpanel system-resource <resource> <action> ..." >&2
 				return 2 2>/dev/null || exit 2
 			fi
 			;;
