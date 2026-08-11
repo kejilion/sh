@@ -28,6 +28,7 @@ kpanel_protocol_active() {
 	[ "${KJ_NETWORK_OPERATIONS_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_ACCOUNT_MANAGEMENT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_SYSTEM_TUNING_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_INTERACTIVE:-}" = "1" ] ||
@@ -4308,6 +4309,156 @@ kpanel_f2b_manager_dispatch() {
 		unban-all) kpanel_f2b_manager_run_locked "$action" "$expected" ;;
 		*) kpanel_f2b_manager_run_locked "$action" ;;
 	esac
+}
+
+KPANEL_SYSTEM_TUNING_PROTOCOL_VERSION="1"
+KPANEL_SYSTEM_TUNING_MIRROR_COMMIT="649e948763042e485e411be540d21c32cface1c1"
+KPANEL_SYSTEM_TUNING_MIRROR_SHA256="2e3b78a460f10ef291f30e3cbf3d3b28a9521d6615364f11b36e4a70ec97d18d"
+KPANEL_SYSTEM_TUNING_NETWORK_COMMIT="e9c3078eb516b05f9df6d2a9294cf3b226ca02bd"
+KPANEL_SYSTEM_TUNING_NETWORK_SHA256="94f86598805b7a8155f444f35a446df4657985ef81b25f96f7799aa465033bbb"
+
+kpanel_system_tuning_error() { printf '错误: %s\n' "$1" >&2; }
+
+kpanel_system_tuning_valid_item() {
+	case "$1" in
+		system-update|system-cleanup|swap-1g|ssh-port-5522|ssh-defense|firewall-open-all|bbr|timezone-shanghai|dns-auto|ipv4-preferred|basic-tools|kernel-auto) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+kpanel_system_tuning_download_verified() {
+	local url="$1" expected="$2" output="$3" actual size
+	curl --fail --silent --show-error --location --max-time 120 --output "$output" "$url" || return 1
+	[ -f "$output" ] && [ ! -L "$output" ] || return 1
+	size="$(wc -c < "$output" | tr -d '[:space:]')"
+	[[ "$size" =~ ^[0-9]+$ ]] && [ "$size" -gt 0 ] && [ "$size" -le 1048576 ] || return 1
+	actual="$(sha256sum -- "$output" | awk '{print $1}')"
+	[ "$actual" = "$expected" ]
+}
+
+kpanel_system_tuning_switch_mirror() {
+	local script country url
+	script="$(mktemp /tmp/kejilion-system-tuning-mirror.XXXXXX)" || return 1
+	url="${gh_proxy}raw.githubusercontent.com/SuperManito/LinuxMirrors/${KPANEL_SYSTEM_TUNING_MIRROR_COMMIT}/ChangeMirrors.sh"
+	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_MIRROR_SHA256" "$script" || { rm -f -- "$script"; return 1; }
+	country="$(curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
+	if [ "$country" = CN ]; then
+		bash "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+	elif grep -qi oracle /etc/os-release 2>/dev/null; then
+		bash "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+	else
+		bash "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+	fi
+	local result=$?
+	rm -f -- "$script"
+	return "$result"
+}
+
+kpanel_system_tuning_kernel_auto() {
+	local script url
+	script="$(mktemp /tmp/kejilion-system-tuning-network.XXXXXX)" || return 1
+	url="${gh_proxy}raw.githubusercontent.com/kejilion/sh/${KPANEL_SYSTEM_TUNING_NETWORK_COMMIT}/network-optimize.sh"
+	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_NETWORK_SHA256" "$script" || { rm -f -- "$script"; return 1; }
+	bash "$script"
+	local result=$?
+	rm -f -- "$script"
+	return "$result"
+}
+
+kpanel_system_tuning_firewall_open_all() {
+	local version
+	version="$(kpanel_system_resource_firewall_version)" || return 1
+	kpanel_system_resource_firewall_action open-all "$version" >&2
+}
+
+kpanel_system_tuning_item_ready() {
+	local item="$1" command_name
+	case "$item" in
+		swap-1g) [ "$(free -m 2>/dev/null | awk '/^Swap:/{print $2; exit}')" = 1024 ] ;;
+		ssh-port-5522) sshd -T 2>/dev/null | grep -Eq '^port 5522$' ;;
+		ssh-defense) kpanel_f2b_enabled >/dev/null 2>&1 ;;
+		firewall-open-all) iptables-save 2>/dev/null | awk '$0=="*filter"{f=1;next} f&&$0=="COMMIT"{exit} f&&/^:INPUT /{i=$2} f&&/^:FORWARD /{w=$2} END{exit !(i=="ACCEPT"&&w=="ACCEPT")}' ;;
+		bbr) [ "$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null)" = bbr ] && [ "$(sysctl -n net.core.default_qdisc 2>/dev/null)" = fq ] ;;
+		timezone-shanghai) [ "$(timedatectl show -p Timezone --value 2>/dev/null)" = Asia/Shanghai ] ;;
+		ipv4-preferred) grep -Eq '^precedence[[:space:]]+::ffff:0:0/96[[:space:]]+100([[:space:]]|$)' /etc/gai.conf 2>/dev/null ;;
+		basic-tools) for command_name in docker wget sudo tar unzip socat btop nano vim; do command -v "$command_name" >/dev/null 2>&1 || return 1; done ;;
+		kernel-auto) [ -s /etc/sysctl.d/99-network-optimize.conf ] || { [ -s /etc/sysctl.conf ] && grep -q 'net.core.default_qdisc' /etc/sysctl.conf 2>/dev/null; } ;;
+		*) return 1 ;;
+	esac
+}
+
+kpanel_system_tuning_collect() {
+	local canonical item state
+	TUNING_ITEMS=()
+	for item in system-update system-cleanup swap-1g ssh-port-5522 ssh-defense firewall-open-all bbr timezone-shanghai dns-auto ipv4-preferred basic-tools kernel-auto; do
+		state=pending
+		kpanel_system_tuning_item_ready "$item" && state=ready
+		TUNING_ITEMS+=("$item:$state")
+	done
+	canonical="$(mktemp /tmp/kejilion-system-tuning-version.XXXXXX)" || return 1
+	printf '%s\n' "${TUNING_ITEMS[@]}" > "$canonical"
+	TUNING_VERSION="$(sha256sum -- "$canonical" 2>/dev/null | awk '{print $1}')"
+	rm -f -- "$canonical"
+	[[ "$TUNING_VERSION" =~ ^[0-9a-f]{64}$ ]]
+}
+
+kpanel_system_tuning_emit() {
+	local status="$1" selected="${2:-}" item
+	kpanel_system_tuning_collect || { TUNING_VERSION="$(kpanel_system_resource_zero_version)"; TUNING_ITEMS=(); }
+	printf 'KPANEL_SYSTEM_TUNING_STATUS=%s\n' "$status"
+	printf 'KPANEL_SYSTEM_TUNING_VERSION=%s\n' "$TUNING_VERSION"
+	[ -z "$selected" ] || printf 'KPANEL_SYSTEM_TUNING_SELECTED=%s\n' "$selected"
+	for item in "${TUNING_ITEMS[@]}"; do printf 'KPANEL_SYSTEM_TUNING_ITEM=%s\n' "$item"; done
+}
+
+kpanel_system_tuning_run_item() {
+	case "$1" in
+		system-update) kpanel_system_tuning_switch_mirror && linux_update ;;
+		system-cleanup) linux_clean ;;
+		swap-1g) add_swap 1024 ;;
+		ssh-port-5522) KJ_SSH_PORT_NONINTERACTIVE=1 kpanel_ssh_port_noninteractive 5522 ;;
+		ssh-defense) kpanel_f2b_manager_service_action enable && kpanel_f2b_enabled ;;
+		firewall-open-all) kpanel_system_tuning_firewall_open_all ;;
+		bbr) bbr_on ;;
+		timezone-shanghai) set_timedate Asia/Shanghai ;;
+		dns-auto) auto_optimize_dns ;;
+		ipv4-preferred) prefer_ipv4 ;;
+		basic-tools) install_docker && install wget sudo tar unzip socat btop nano vim ;;
+		kernel-auto) kpanel_system_tuning_kernel_auto ;;
+		*) return 2 ;;
+	esac
+}
+
+kpanel_system_tuning_apply_item() {
+	local item="$1" status=applied
+	if kpanel_system_tuning_item_ready "$item"; then
+		status=unchanged
+	elif ! kpanel_system_tuning_run_item "$item" >&2; then
+		kpanel_system_tuning_emit needs-attention "$item"
+		return 1
+	fi
+	case "$item" in system-update|system-cleanup|dns-auto) ;; *)
+		kpanel_system_tuning_item_ready "$item" || { kpanel_system_tuning_emit needs-attention "$item"; return 1; }
+	;; esac
+	kpanel_system_tuning_emit "$status" "$item"
+}
+
+kpanel_system_tuning_dispatch() {
+	local action="${1:-status}" item lock_file
+	shift || true
+	printf '%s\n' "KPANEL_SYSTEM_TUNING_PROTOCOL 1"
+	[ "${KJ_SYSTEM_TUNING_NONINTERACTIVE:-}" = 1 ] || { kpanel_system_tuning_error "KPanel system-tuning 协议环境未启用"; return 2; }
+	[ "$EUID" -eq 0 ] || { kpanel_system_tuning_error "KPanel system-tuning 协议必须以 root 运行"; return 1; }
+	[ "$(uname -s)" = Linux ] || { kpanel_system_tuning_error "KPanel system-tuning 协议仅支持 Linux"; return 1; }
+	case "$action" in
+		status) [ "$#" -eq 0 ] || return 2; kpanel_system_tuning_emit ok; return $? ;;
+		apply-item) [ "$#" -eq 1 ] && kpanel_system_tuning_valid_item "$1" || return 2; item="$1" ;;
+		*) kpanel_system_tuning_error "用法: k kpanel system-tuning <status|apply-item item>"; return 2 ;;
+	esac
+	lock_file="$(kpanel_system_resource_prepare_lock_file)" || { kpanel_system_tuning_emit failed "$item"; return 1; }
+	exec 9<>"$lock_file" || { kpanel_system_tuning_emit failed "$item"; return 1; }
+	if ! flock -w 5 9; then kpanel_system_tuning_emit conflict "$item"; return 2; fi
+	kpanel_system_tuning_apply_item "$item"
 }
 
 f2b_sshd() {
@@ -26838,52 +26989,51 @@ EOF
 				  clear
 				  send_stats "一条龙调优启动"
 				  echo "------------------------------------------------"
-				  switch_mirror false false
-				  linux_update
+				  kpanel_system_tuning_run_item system-update
 				  echo -e "[${gl_lv}OK${gl_bai}] 1/12. 更新系统到最新"
 
 				  echo "------------------------------------------------"
-				  linux_clean
+				  kpanel_system_tuning_run_item system-cleanup
 				  echo -e "[${gl_lv}OK${gl_bai}] 2/12. 清理系统垃圾文件"
 
 				  echo "------------------------------------------------"
-				  add_swap 1024
+				  kpanel_system_tuning_run_item swap-1g
 				  echo -e "[${gl_lv}OK${gl_bai}] 3/12. 设置虚拟内存${gl_huang}1G${gl_bai}"
 
 				  echo "------------------------------------------------"
-				  new_ssh_port 5522
+				  kpanel_system_tuning_run_item ssh-port-5522
 				  echo -e "[${gl_lv}OK${gl_bai}] 4/12. 设置SSH端口号为${gl_huang}5522${gl_bai}"
 				  echo "------------------------------------------------"
-				  f2b_install_sshd
+				  kpanel_system_tuning_run_item ssh-defense
 				  cd ~
 				  f2b_status
 				  echo -e "[${gl_lv}OK${gl_bai}] 5/12. 启动fail2ban防御SSH暴力破解"
 
 				  echo "------------------------------------------------"
+				  kpanel_system_tuning_run_item firewall-open-all
 				  echo -e "[${gl_lv}OK${gl_bai}] 6/12. 开放所有端口"
 
 				  echo "------------------------------------------------"
-				  bbr_on
+				  kpanel_system_tuning_run_item bbr
 				  echo -e "[${gl_lv}OK${gl_bai}] 7/12. 开启${gl_huang}BBR${gl_bai}加速"
 
 				  echo "------------------------------------------------"
-				  set_timedate Asia/Shanghai
+				  kpanel_system_tuning_run_item timezone-shanghai
 				  echo -e "[${gl_lv}OK${gl_bai}] 8/12. 设置时区到${gl_huang}上海${gl_bai}"
 
 				  echo "------------------------------------------------"
-				  auto_optimize_dns
+				  kpanel_system_tuning_run_item dns-auto
 				  echo -e "[${gl_lv}OK${gl_bai}] 9/12. 自动优化DNS地址${gl_huang}${gl_bai}"
 				  echo "------------------------------------------------"
-				  prefer_ipv4
+				  kpanel_system_tuning_run_item ipv4-preferred
 				  echo -e "[${gl_lv}OK${gl_bai}] 10/12. 设置网络为${gl_huang}ipv4优先${gl_bai}}"
 
 				  echo "------------------------------------------------"
-				  install_docker
-				  install wget sudo tar unzip socat btop nano vim
+				  kpanel_system_tuning_run_item basic-tools
 				  echo -e "[${gl_lv}OK${gl_bai}] 11/12. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
 				  echo "------------------------------------------------"
 
-				  curl -sS ${gh_proxy}raw.githubusercontent.com/kejilion/sh/refs/heads/main/network-optimize.sh | bash
+				  kpanel_system_tuning_run_item kernel-auto
 				  echo -e "[${gl_lv}OK${gl_bai}] 12/12. Linux系统内核参数优化"
 				  echo -e "${gl_lv}一条龙系统调优已完成${gl_bai}"
 
@@ -28032,8 +28182,11 @@ else
 			elif [ "${1:-}" = "account-management" ]; then
 				shift
 				kpanel_account_dispatch "$@"
+			elif [ "${1:-}" = "system-tuning" ]; then
+				shift
+				kpanel_system_tuning_dispatch "$@"
 			else
-				echo "用法: k kpanel node ... | system-resource ... | network-operations ... | account-management ..." >&2
+				echo "用法: k kpanel node ... | system-resource ... | network-operations ... | account-management ... | system-tuning ..." >&2
 				return 2 2>/dev/null || exit 2
 			fi
 			;;
