@@ -3805,6 +3805,11 @@ kpanel_f2b_status() {
 kpanel_f2b_dispatch() {
 	local command="${1:-status}" changed=false
 	printf '%s\n' "KPANEL_F2B_PROTOCOL 1"
+	if [ "$command" = "manager" ]; then
+		shift
+		kpanel_f2b_manager_dispatch "$@"
+		return $?
+	fi
 	case "$command" in
 		status)
 			kpanel_f2b_status
@@ -3850,6 +3855,458 @@ kpanel_f2b_dispatch() {
 			echo "用法: k f2b [status|enable|disable]" >&2
 			return 2
 			;;
+	esac
+}
+
+KPANEL_F2B_MANAGER_PROTOCOL_VERSION="1"
+
+kpanel_f2b_manager_config_file() {
+	printf '%s/etc/fail2ban/jail.d/99-kejilion-sshd.local\n' "${KPANEL_F2B_TEST_ROOT:-}"
+}
+
+kpanel_f2b_manager_log_file() {
+	printf '%s/var/log/fail2ban.log\n' "${KPANEL_F2B_TEST_ROOT:-}"
+}
+
+kpanel_f2b_manager_emit() {
+	local status="$1" version="${2:-}" backup="${3:-}"
+	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || version="$(kpanel_system_resource_zero_version)"
+	printf 'KPANEL_F2B_MANAGER_STATUS=%s\n' "$status"
+	printf 'KPANEL_F2B_MANAGER_VERSION=%s\n' "$version"
+	[ -z "$backup" ] || printf 'KPANEL_F2B_MANAGER_BACKUP=%s\n' "$backup"
+}
+
+kpanel_f2b_manager_error() {
+	printf '错误: %s\n' "$1" >&2
+}
+
+kpanel_f2b_manager_valid_address() {
+	local value="$1"
+	[ -n "$value" ] && [ "${#value}" -le 80 ] &&
+		[[ "$value" != *$'\n'* ]] && [[ "$value" != *$'\r'* ]] &&
+		command -v python3 >/dev/null 2>&1 &&
+		python3 -c 'import ipaddress,sys; value=sys.argv[1]; ipaddress.ip_network(value, strict=False) if "/" in value else ipaddress.ip_address(value)' "$value" >/dev/null 2>&1
+}
+
+kpanel_f2b_manager_valid_ip() {
+	local value="$1"
+	[ -n "$value" ] && [ "${#value}" -le 80 ] && [[ "$value" != */* ]] &&
+		command -v python3 >/dev/null 2>&1 &&
+		python3 -c 'import ipaddress,sys; ipaddress.ip_address(sys.argv[1])' "$value" >/dev/null 2>&1
+}
+
+kpanel_f2b_manager_profile_values() {
+	case "$1" in
+		mild) printf '%s\n' "600 600 8" ;;
+		standard) printf '%s\n' "3600 600 5" ;;
+		strict) printf '%s\n' "43200 600 3" ;;
+		*) return 1 ;;
+	esac
+}
+
+kpanel_f2b_manager_profile() {
+	case "$1:$2:$3" in
+		600:600:8) printf '%s\n' "mild" ;;
+		3600:600:5) printf '%s\n' "standard" ;;
+		43200:600:3) printf '%s\n' "strict" ;;
+		*) printf '%s\n' "custom" ;;
+	esac
+}
+
+kpanel_f2b_manager_read_number() {
+	local jail="$1" key="$2" fallback="$3" value
+	value="$(fail2ban-client get "$jail" "$key" 2>/dev/null | tail -n 1 | tr -d '[:space:]')" || true
+	[[ "$value" =~ ^[0-9]+$ ]] && [ "$value" -le 315360000 ] || value="$fallback"
+	printf '%s\n' "$value"
+}
+
+kpanel_f2b_manager_collect() {
+	local status_file token raw line hex log_file
+	F2B_MANAGER_INSTALLED=false
+	F2B_MANAGER_RUNNING=false
+	F2B_MANAGER_ENABLED=false
+	F2B_MANAGER_AUTOSTART=false
+	F2B_MANAGER_JAIL="$(kpanel_f2b_jail_name)"
+	F2B_MANAGER_CURRENT_FAILED=0
+	F2B_MANAGER_TOTAL_FAILED=0
+	F2B_MANAGER_CURRENT_BANNED=0
+	F2B_MANAGER_TOTAL_BANNED=0
+	F2B_MANAGER_BANTIME=3600
+	F2B_MANAGER_FINDTIME=600
+	F2B_MANAGER_MAXRETRY=5
+	F2B_MANAGER_PROFILE=standard
+	F2B_MANAGER_BANS=()
+	F2B_MANAGER_TRUSTED=()
+	F2B_MANAGER_EVENTS=()
+	F2B_MANAGER_BANS_TRUNCATED=false
+
+	command -v fail2ban-client >/dev/null 2>&1 || return 0
+	F2B_MANAGER_INSTALLED=true
+	fail2ban-client ping >/dev/null 2>&1 || {
+		kpanel_f2b_autostart && F2B_MANAGER_AUTOSTART=true
+		return 0
+	}
+	F2B_MANAGER_RUNNING=true
+	kpanel_f2b_autostart && F2B_MANAGER_AUTOSTART=true
+	status_file="$(mktemp /tmp/kejilion-f2b-status.XXXXXX)" || return 1
+	if ! fail2ban-client status "$F2B_MANAGER_JAIL" > "$status_file" 2>/dev/null; then
+		rm -f -- "$status_file"
+		return 0
+	fi
+	if ! kpanel_system_resource_file_within_bounds "$status_file" 4194304 4096; then
+		rm -f -- "$status_file"
+		return 1
+	fi
+	F2B_MANAGER_ENABLED=true
+	F2B_MANAGER_CURRENT_FAILED="$(awk -F: '/Currently failed/{gsub(/[[:space:]]/, "", $2); print $2; exit}' "$status_file")"
+	F2B_MANAGER_TOTAL_FAILED="$(awk -F: '/Total failed/{gsub(/[[:space:]]/, "", $2); print $2; exit}' "$status_file")"
+	F2B_MANAGER_CURRENT_BANNED="$(awk -F: '/Currently banned/{gsub(/[[:space:]]/, "", $2); print $2; exit}' "$status_file")"
+	F2B_MANAGER_TOTAL_BANNED="$(awk -F: '/Total banned/{gsub(/[[:space:]]/, "", $2); print $2; exit}' "$status_file")"
+	for token in F2B_MANAGER_CURRENT_FAILED F2B_MANAGER_TOTAL_FAILED F2B_MANAGER_CURRENT_BANNED F2B_MANAGER_TOTAL_BANNED; do
+		raw="${!token}"
+		[[ "$raw" =~ ^[0-9]+$ ]] && [ "$raw" -le 1000000000 ] || printf -v "$token" '%s' 0
+	done
+	raw="$(awk -F: '/Banned IP list/{sub(/^[^:]*:[[:space:]]*/, ""); print; exit}' "$status_file")"
+	rm -f -- "$status_file"
+	for token in $raw; do
+		if kpanel_f2b_manager_valid_ip "$token"; then
+			if [ "${#F2B_MANAGER_BANS[@]}" -lt 256 ]; then
+				F2B_MANAGER_BANS+=("$token")
+			else
+				F2B_MANAGER_BANS_TRUNCATED=true
+				break
+			fi
+		fi
+	done
+
+	F2B_MANAGER_BANTIME="$(kpanel_f2b_manager_read_number "$F2B_MANAGER_JAIL" bantime 3600)"
+	F2B_MANAGER_FINDTIME="$(kpanel_f2b_manager_read_number "$F2B_MANAGER_JAIL" findtime 600)"
+	F2B_MANAGER_MAXRETRY="$(kpanel_f2b_manager_read_number "$F2B_MANAGER_JAIL" maxretry 5)"
+	[ "$F2B_MANAGER_MAXRETRY" -ge 1 ] && [ "$F2B_MANAGER_MAXRETRY" -le 1000 ] || F2B_MANAGER_MAXRETRY=5
+	F2B_MANAGER_PROFILE="$(kpanel_f2b_manager_profile "$F2B_MANAGER_BANTIME" "$F2B_MANAGER_FINDTIME" "$F2B_MANAGER_MAXRETRY")"
+
+	raw="$(fail2ban-client get "$F2B_MANAGER_JAIL" ignoreip 2>/dev/null || true)"
+	for token in $raw; do
+		token="${token#[}"
+		token="${token%]}"
+		token="${token%,}"
+		token="${token#\'}"
+		token="${token%\'}"
+		if kpanel_f2b_manager_valid_address "$token"; then
+			[ "${#F2B_MANAGER_TRUSTED[@]}" -ge 64 ] || F2B_MANAGER_TRUSTED+=("$token")
+		fi
+	done
+
+	log_file="$(kpanel_f2b_manager_log_file)"
+	if [ -f "$log_file" ] && [ ! -L "$log_file" ]; then
+		while IFS= read -r line; do
+			[ "${#line}" -le 2048 ] || line="${line:0:2048}"
+			hex="$(printf '%s' "$line" | od -An -v -tx1 | tr -d ' \n')" || continue
+			[ -n "$hex" ] && F2B_MANAGER_EVENTS+=("$hex")
+		done < <(tail -n 200 -- "$log_file" 2>/dev/null | grep -E '\[(sshd|alpine-sshd)\].*(Found|Ban|Unban)[[:space:]]' | tail -n 20)
+	fi
+}
+
+kpanel_f2b_manager_set_version() {
+	local canonical config_file config_hash=absent value version
+	kpanel_f2b_manager_collect || return 1
+	canonical="$(mktemp /tmp/kejilion-f2b-version.XXXXXX)" || return 1
+	config_file="$(kpanel_f2b_manager_config_file)"
+	if [ -f "$config_file" ] && [ ! -L "$config_file" ]; then
+		config_hash="$(sha256sum -- "$config_file" 2>/dev/null | awk '{print $1}')"
+	fi
+	{
+		printf 'installed=%s\nrunning=%s\nenabled=%s\nautostart=%s\njail=%s\n' \
+			"$F2B_MANAGER_INSTALLED" "$F2B_MANAGER_RUNNING" "$F2B_MANAGER_ENABLED" "$F2B_MANAGER_AUTOSTART" "$F2B_MANAGER_JAIL"
+		printf 'bantime=%s\nfindtime=%s\nmaxretry=%s\nconfig=%s\n' \
+			"$F2B_MANAGER_BANTIME" "$F2B_MANAGER_FINDTIME" "$F2B_MANAGER_MAXRETRY" "$config_hash"
+		printf '%s\n' "${F2B_MANAGER_TRUSTED[@]}" | sed '/^$/d' | sort -u | sed 's/^/trusted=/'
+	} > "$canonical"
+	version="$(sha256sum -- "$canonical" 2>/dev/null | awk '{print $1}')"
+	rm -f -- "$canonical"
+	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || return 1
+	F2B_MANAGER_VERSION="$version"
+}
+
+kpanel_f2b_manager_current_version() {
+	kpanel_f2b_manager_set_version || return 1
+	printf '%s\n' "$F2B_MANAGER_VERSION"
+}
+
+kpanel_f2b_manager_snapshot() {
+	local status="${1:-ok}" backup="${2:-}" version value
+	kpanel_f2b_manager_set_version || {
+		kpanel_f2b_manager_emit failed ""
+		return 1
+	}
+	version="$F2B_MANAGER_VERSION"
+	kpanel_f2b_manager_emit "$status" "$version" "$backup"
+	printf 'KPANEL_F2B_MANAGER_INSTALLED=%s\n' "$F2B_MANAGER_INSTALLED"
+	printf 'KPANEL_F2B_MANAGER_RUNNING=%s\n' "$F2B_MANAGER_RUNNING"
+	printf 'KPANEL_F2B_MANAGER_ENABLED=%s\n' "$F2B_MANAGER_ENABLED"
+	printf 'KPANEL_F2B_MANAGER_AUTOSTART=%s\n' "$F2B_MANAGER_AUTOSTART"
+	printf 'KPANEL_F2B_MANAGER_JAIL=%s\n' "$F2B_MANAGER_JAIL"
+	printf 'KPANEL_F2B_MANAGER_CURRENT_FAILED=%s\n' "$F2B_MANAGER_CURRENT_FAILED"
+	printf 'KPANEL_F2B_MANAGER_TOTAL_FAILED=%s\n' "$F2B_MANAGER_TOTAL_FAILED"
+	printf 'KPANEL_F2B_MANAGER_CURRENT_BANNED=%s\n' "$F2B_MANAGER_CURRENT_BANNED"
+	printf 'KPANEL_F2B_MANAGER_TOTAL_BANNED=%s\n' "$F2B_MANAGER_TOTAL_BANNED"
+	printf 'KPANEL_F2B_MANAGER_BANTIME=%s\n' "$F2B_MANAGER_BANTIME"
+	printf 'KPANEL_F2B_MANAGER_FINDTIME=%s\n' "$F2B_MANAGER_FINDTIME"
+	printf 'KPANEL_F2B_MANAGER_MAXRETRY=%s\n' "$F2B_MANAGER_MAXRETRY"
+	printf 'KPANEL_F2B_MANAGER_PROFILE=%s\n' "$F2B_MANAGER_PROFILE"
+	printf 'KPANEL_F2B_MANAGER_BANS_TRUNCATED=%s\n' "$F2B_MANAGER_BANS_TRUNCATED"
+	for value in "${F2B_MANAGER_BANS[@]}"; do printf 'KPANEL_F2B_MANAGER_BAN=%s\n' "$value"; done
+	for value in "${F2B_MANAGER_TRUSTED[@]}"; do printf 'KPANEL_F2B_MANAGER_TRUSTED=%s\n' "$value"; done
+	for value in "${F2B_MANAGER_EVENTS[@]}"; do printf 'KPANEL_F2B_MANAGER_EVENT_HEX=%s\n' "$value"; done
+}
+
+kpanel_f2b_manager_set_file_identity() {
+	local path="$1"
+	if [ -n "${KPANEL_F2B_TEST_ROOT:-}" ]; then
+		chmod 600 -- "$path"
+	else
+		chown 0:0 -- "$path" && chmod 600 -- "$path"
+	fi
+}
+
+kpanel_f2b_manager_write_config() {
+	local jail="$1" bantime="$2" findtime="$3" maxretry="$4" config_file config_dir temporary value
+	shift 4
+	config_file="$(kpanel_f2b_manager_config_file)"
+	config_dir="$(dirname -- "$config_file")"
+	[ -d "$config_dir" ] && [ ! -L "$config_dir" ] && [ ! -L "$config_file" ] || return 1
+	temporary="$(mktemp "$config_dir/.99-kejilion-sshd.local.XXXXXX")" || return 1
+	{
+		printf '[%s]\n' "$jail"
+		printf '%s\n' '# Managed by kejilion.sh for SSH defense'
+		printf 'enabled = true\nbantime = %s\nfindtime = %s\nmaxretry = %s\n' "$bantime" "$findtime" "$maxretry"
+		if [ "$#" -gt 0 ]; then
+			printf 'ignoreip ='
+			for value in "$@"; do printf ' %s' "$value"; done
+			printf '\n'
+		fi
+	} > "$temporary" || { rm -f -- "$temporary"; return 1; }
+	kpanel_f2b_manager_set_file_identity "$temporary" && mv -f -- "$temporary" "$config_file"
+}
+
+kpanel_f2b_manager_restore_config() {
+	local snapshot="$1" config_file
+	config_file="$(kpanel_f2b_manager_config_file)"
+	if [ "$(cat "$snapshot/config.existed" 2>/dev/null)" = true ]; then
+		cp -a -- "$snapshot/config" "$config_file" || return 1
+	else
+		rm -f -- "$config_file" || return 1
+	fi
+	fail2ban-client -t >/dev/null 2>&1 && fail2ban-client reload >/dev/null 2>&1
+}
+
+kpanel_f2b_manager_config_failure() {
+	local snapshot="$1" message="$2" version recovery=""
+	kpanel_f2b_manager_error "$message"
+	if kpanel_f2b_manager_restore_config "$snapshot"; then
+		version="$(kpanel_f2b_manager_current_version 2>/dev/null || true)"
+		rm -rf -- "$snapshot"
+		kpanel_f2b_manager_emit failed "$version"
+	else
+		recovery="$(kpanel_system_resource_persist_recovery_snapshot "$snapshot" ssh-defense 2>/dev/null || true)"
+		version="$(kpanel_f2b_manager_current_version 2>/dev/null || true)"
+		kpanel_f2b_manager_emit rollback-failed "$version" "$recovery"
+	fi
+	return 1
+}
+
+kpanel_f2b_manager_config_action() {
+	local action="$1" expected="$2" value="$3" current_version profile bantime findtime maxretry snapshot config_file
+	local trusted=() item changed=false
+	kpanel_f2b_manager_set_version || { kpanel_f2b_manager_emit failed ""; return 1; }
+	current_version="$F2B_MANAGER_VERSION"
+	if [ "$current_version" != "$expected" ]; then
+		kpanel_f2b_manager_emit conflict "$current_version"
+		return 2
+	fi
+	[ "$F2B_MANAGER_ENABLED" = true ] || { kpanel_f2b_manager_error "SSH jail 未运行"; kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+	bantime="$F2B_MANAGER_BANTIME"; findtime="$F2B_MANAGER_FINDTIME"; maxretry="$F2B_MANAGER_MAXRETRY"
+	trusted=("${F2B_MANAGER_TRUSTED[@]}")
+	case "$action" in
+		set-profile)
+			read -r bantime findtime maxretry <<< "$(kpanel_f2b_manager_profile_values "$value")" || return 2
+			[ "$F2B_MANAGER_PROFILE" = "$value" ] || changed=true
+			;;
+		add-trusted)
+			kpanel_f2b_manager_valid_address "$value" || return 2
+			for item in "${trusted[@]}"; do [ "$item" != "$value" ] || { kpanel_f2b_manager_snapshot unchanged; return 0; }; done
+			[ "${#trusted[@]}" -lt 64 ] || { kpanel_f2b_manager_error "信任地址已达到 64 条上限"; return 1; }
+			trusted+=("$value"); changed=true
+			;;
+		remove-trusted)
+			kpanel_f2b_manager_valid_address "$value" || return 2
+			local filtered=()
+			for item in "${trusted[@]}"; do [ "$item" = "$value" ] || filtered+=("$item"); done
+			[ "${#filtered[@]}" -ne "${#trusted[@]}" ] || { kpanel_f2b_manager_snapshot unchanged; return 0; }
+			trusted=("${filtered[@]}"); changed=true
+			;;
+		*) return 2 ;;
+	esac
+	[ "$changed" = true ] || { kpanel_f2b_manager_snapshot unchanged; return 0; }
+	snapshot="$(kpanel_system_resource_tempdir ssh-defense)" || { kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+	config_file="$(kpanel_f2b_manager_config_file)"
+	if [ -f "$config_file" ] && [ ! -L "$config_file" ]; then
+		printf '%s\n' true > "$snapshot/config.existed"
+		cp -a -- "$config_file" "$snapshot/config" || { rm -rf -- "$snapshot"; return 1; }
+	else
+		printf '%s\n' false > "$snapshot/config.existed"
+	fi
+	kpanel_f2b_manager_write_config "$F2B_MANAGER_JAIL" "$bantime" "$findtime" "$maxretry" "${trusted[@]}" ||
+		kpanel_f2b_manager_config_failure "$snapshot" "无法写入 SSH 防御配置" || return 1
+	fail2ban-client -t >/dev/null 2>&1 || kpanel_f2b_manager_config_failure "$snapshot" "Fail2Ban 配置验证失败" || return 1
+	fail2ban-client reload >/dev/null 2>&1 || kpanel_f2b_manager_config_failure "$snapshot" "Fail2Ban 配置重载失败" || return 1
+	kpanel_f2b_manager_collect || kpanel_f2b_manager_config_failure "$snapshot" "SSH 防御配置回读失败" || return 1
+	[ "$F2B_MANAGER_BANTIME" = "$bantime" ] && [ "$F2B_MANAGER_FINDTIME" = "$findtime" ] && [ "$F2B_MANAGER_MAXRETRY" = "$maxretry" ] ||
+		kpanel_f2b_manager_config_failure "$snapshot" "SSH 防御策略回读不一致" || return 1
+	case "$action" in
+		add-trusted)
+			for item in "${F2B_MANAGER_TRUSTED[@]}"; do [ "$item" != "$value" ] || changed=verified; done
+			[ "$changed" = verified ] || kpanel_f2b_manager_config_failure "$snapshot" "SSH 防御信任地址回读不一致" || return 1
+			;;
+		remove-trusted)
+			for item in "${F2B_MANAGER_TRUSTED[@]}"; do
+				[ "$item" != "$value" ] || kpanel_f2b_manager_config_failure "$snapshot" "SSH 防御信任地址仍然生效" || return 1
+			done
+			;;
+	esac
+	rm -rf -- "$snapshot"
+	kpanel_f2b_manager_snapshot applied
+}
+
+kpanel_f2b_manager_unban_action() {
+	local expected="$1" address="${2:-}" current_version item target changed=false
+	local targets=()
+	kpanel_f2b_manager_set_version || { kpanel_f2b_manager_emit failed ""; return 1; }
+	current_version="$F2B_MANAGER_VERSION"
+	[ "$current_version" = "$expected" ] || { kpanel_f2b_manager_emit conflict "$current_version"; return 2; }
+	[ "$F2B_MANAGER_ENABLED" = true ] || { kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+	if [ -n "$address" ]; then
+		kpanel_f2b_manager_valid_ip "$address" || return 2
+		for item in "${F2B_MANAGER_BANS[@]}"; do
+			[ "$item" = "$address" ] || continue
+			fail2ban-client set "$F2B_MANAGER_JAIL" unbanip --report-absent "$address" >/dev/null 2>&1 || {
+				kpanel_f2b_manager_emit needs-attention "$current_version"
+				return 1
+			}
+			targets+=("$address")
+			changed=true
+		done
+	else
+		for item in "${F2B_MANAGER_BANS[@]}"; do
+			fail2ban-client set "$F2B_MANAGER_JAIL" unbanip --report-absent "$item" >/dev/null 2>&1 || {
+				kpanel_f2b_manager_emit needs-attention "$current_version"
+				return 1
+			}
+			targets+=("$item")
+			changed=true
+		done
+	fi
+	if [ "$changed" = true ]; then
+		kpanel_f2b_manager_collect || { kpanel_f2b_manager_emit needs-attention "$current_version"; return 1; }
+		for target in "${targets[@]}"; do
+			for item in "${F2B_MANAGER_BANS[@]}"; do
+				[ "$item" != "$target" ] || {
+					kpanel_f2b_manager_error "SSH 封禁解除后回读不一致"
+					kpanel_f2b_manager_emit needs-attention "$current_version"
+					return 1
+				}
+			done
+		done
+	fi
+	kpanel_f2b_manager_snapshot "$([ "$changed" = true ] && printf applied || printf unchanged)"
+}
+
+kpanel_f2b_manager_service_action() {
+	local action="$1" current_version changed=false
+	root_use
+	current_version="$(kpanel_f2b_manager_current_version 2>/dev/null || true)"
+	case "$action" in
+		enable)
+			if kpanel_f2b_enabled && kpanel_f2b_autostart; then kpanel_f2b_manager_snapshot unchanged; return 0; fi
+			f2b_install_sshd >/dev/null || { kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+			kpanel_f2b_enabled || { kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+			changed=true
+			;;
+		disable)
+			if ! command -v fail2ban-client >/dev/null 2>&1; then kpanel_f2b_manager_snapshot unchanged; return 0; fi
+			if command -v apk >/dev/null 2>&1; then
+				service fail2ban stop >/dev/null 2>&1 || true
+				rc-update del fail2ban default >/dev/null 2>&1 || true
+			else
+				/bin/systemctl disable --now fail2ban.service >/dev/null 2>&1 || { kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+			fi
+			fail2ban-client ping >/dev/null 2>&1 && { kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+			changed=true
+			;;
+		uninstall)
+			if ! command -v fail2ban-client >/dev/null 2>&1; then kpanel_f2b_manager_snapshot unchanged; return 0; fi
+			remove fail2ban >/dev/null 2>&1 || { kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+			rm -rf -- "${KPANEL_F2B_TEST_ROOT:-}/etc/fail2ban" || { kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+			changed=true
+			;;
+		*) return 2 ;;
+	esac
+	kpanel_f2b_manager_snapshot "$([ "$changed" = true ] && printf applied || printf unchanged)"
+}
+
+kpanel_f2b_manager_run_locked() (
+	local action="$1"
+	shift
+	case "$action" in
+		set-profile|add-trusted|remove-trusted) kpanel_f2b_manager_config_action "$action" "$@" ;;
+		unban) kpanel_f2b_manager_unban_action "$@" ;;
+		unban-all) kpanel_f2b_manager_unban_action "$1" ;;
+		enable|disable|uninstall) kpanel_f2b_manager_service_action "$action" ;;
+		*) return 2 ;;
+	esac
+)
+
+kpanel_f2b_manager_dispatch() {
+	local action="${1:-status}" expected value lock_file rc
+	shift || true
+	printf '%s\n' "KPANEL_F2B_MANAGER_PROTOCOL 1"
+	case "$action" in
+		status)
+			[ "$#" -eq 0 ] || return 2
+			kpanel_f2b_manager_snapshot ok
+			;;
+		set-profile)
+			[ "$#" -eq 2 ] && kpanel_system_resource_valid_version "$1" && kpanel_f2b_manager_profile_values "$2" >/dev/null || return 2
+			expected="$1"; value="$2"
+			;;
+		add-trusted|remove-trusted)
+			[ "$#" -eq 2 ] && kpanel_system_resource_valid_version "$1" && kpanel_f2b_manager_valid_address "$2" || return 2
+			expected="$1"; value="$2"
+			;;
+		unban)
+			[ "$#" -eq 2 ] && kpanel_system_resource_valid_version "$1" && kpanel_f2b_manager_valid_ip "$2" || return 2
+			expected="$1"; value="$2"
+			;;
+		unban-all)
+			[ "$#" -eq 1 ] && kpanel_system_resource_valid_version "$1" || return 2
+			expected="$1"
+			;;
+		enable|disable|uninstall)
+			[ "$#" -eq 0 ] || return 2
+			;;
+		*)
+			kpanel_f2b_manager_error "用法: k f2b manager <status|enable|disable|set-profile|unban|unban-all|add-trusted|remove-trusted|uninstall>"
+			return 2
+			;;
+	esac
+	[ "$action" = status ] && return 0
+	lock_file="$(kpanel_system_resource_prepare_lock_file)" || { kpanel_f2b_manager_emit failed ""; return 1; }
+	exec 9<>"$lock_file" || { kpanel_f2b_manager_emit failed ""; return 1; }
+	if ! flock -w 5 9; then kpanel_f2b_manager_emit conflict "$(kpanel_f2b_manager_current_version 2>/dev/null || true)"; return 2; fi
+	case "$action" in
+		set-profile|add-trusted|remove-trusted|unban) kpanel_f2b_manager_run_locked "$action" "$expected" "$value" ;;
+		unban-all) kpanel_f2b_manager_run_locked "$action" "$expected" ;;
+		*) kpanel_f2b_manager_run_locked "$action" ;;
 	esac
 }
 
@@ -22343,7 +22800,7 @@ kpanel_system_resource_persist_recovery_snapshot() {
 	local resource="$2"
 	local recovery_root destination timestamp invalid
 
-	[[ "$resource" =~ ^(hosts|cron|firewall|traffic-shutdown|account-management)$ ]] || return 1
+	[[ "$resource" =~ ^(hosts|cron|firewall|traffic-shutdown|account-management|ssh-defense)$ ]] || return 1
 	[ -d "$snapshot_dir" ] && [ ! -L "$snapshot_dir" ] || return 1
 	invalid="$(find "$snapshot_dir" -mindepth 1 \( -type l -o ! -type f \) -print -quit 2>/dev/null)" || return 1
 	[ -z "$invalid" ] || return 1
