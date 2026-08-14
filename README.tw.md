@@ -64,4 +64,4 @@ bash <(curl -sL kejilion.sh) tw
 ***
 
 ## Star History
-[![Star History Chart](https://api.star-history.com/svg?repos=kejilion/sh&type=Date)](https://star-history.com/#kejilion/sh&Date)
+[![Star History Chart](https://star-history.dera.page/svg?repos=kejilion/sh&type=Date)](https://star-history.dera.page/#kejilion/sh&Date)

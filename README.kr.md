@@ -65,4 +65,4 @@ bash <(curl -sL kejilion.sh) kr
 ***
 
 ## 스타 역사
-[![별 역사 차트](https://api.star-history.com/svg?repos=kejilion/sh&type=Date)](https://star-history.com/#kejilion/sh&Date)
+[![별 역사 차트](https://star-history.dera.page/svg?repos=kejilion/sh&type=Date)](https://star-history.dera.page/#kejilion/sh&Date)
