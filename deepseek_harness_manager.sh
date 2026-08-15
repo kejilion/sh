@@ -1,7 +1,7 @@
 #!/bin/bash
 # DeepSeek Harness 管理脚本（基础版）
 # 官方项目：https://github.com/deepseek-ai/deepseek-harness
-# 仅提供：安装、启动、停止、API 管理、切换模型、命令行任务、更新、卸载。
+# 仅提供：安装、启动、停止、API 管理、切换模型、命令行任务、WebUI 设置、更新、卸载。
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -16,6 +16,10 @@ SERVICE_FILE="${DEEPSEEK_HARNESS_SERVICE_FILE:-/etc/systemd/system/deepseek-harn
 PID_FILE="${DEEPSEEK_HARNESS_PID_FILE:-$DSH_HOME/deepseek-harness.pid}"
 LOG_FILE="${DEEPSEEK_HARNESS_LOG_FILE:-$DSH_HOME/deepseek-harness.log}"
 APP_MARKER_FILE="${DEEPSEEK_HARNESS_APP_MARKER_FILE:-/home/docker/appno.txt}"
+WEBUI_DOMAINS_FILE="${DEEPSEEK_HARNESS_WEBUI_DOMAINS_FILE:-$DSH_HOME/kejilion-webui-domains}"
+WEB_CONF_DIR="${DEEPSEEK_HARNESS_WEB_CONF_DIR:-/home/web/conf.d}"
+WEB_CERT_DIR="${DEEPSEEK_HARNESS_WEB_CERT_DIR:-/home/web/certs}"
+K_COMMAND="${DEEPSEEK_HARNESS_K_COMMAND:-k}"
 NPM_PACKAGE="@deepseek-ai/dsh"
 NPM_INSTALL_SCRIPT_ALLOWLIST="@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs"
 DEEPSEEK_BASE_URL="https://api.deepseek.com"
@@ -162,6 +166,208 @@ valid_model_id() {
 	esac
 }
 
+normalize_domain() {
+	printf '%s' "$1" | tr '[:upper:]' '[:lower:]'
+}
+
+valid_domain() {
+	local domain="$1" label
+	local -a labels
+	[ -n "$domain" ] && [ "${#domain}" -le 253 ] || return 1
+	[[ "$domain" =~ ^[0-9]+(\.[0-9]+){3}$ ]] && return 1
+	case "$domain" in
+		*..*|.*|*.) return 1 ;;
+	esac
+	local IFS='.'
+	read -r -a labels <<<"$domain"
+	[ "${#labels[@]}" -ge 2 ] || return 1
+	for label in "${labels[@]}"; do
+		[ -n "$label" ] && [ "${#label}" -le 63 ] || return 1
+		[[ "$label" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?$ ]] || return 1
+	done
+}
+
+list_webui_domains() {
+	[ -r "$WEBUI_DOMAINS_FILE" ] || return 0
+	awk 'NF && !seen[$0]++ { print $0 }' "$WEBUI_DOMAINS_FILE"
+}
+
+webui_domain_managed() {
+	[ -r "$WEBUI_DOMAINS_FILE" ] && grep -qxF "$1" "$WEBUI_DOMAINS_FILE"
+}
+
+add_webui_domain_record() {
+	local domain="$1" temporary_file
+	mkdir -p "$DSH_HOME" || return 1
+	umask 077
+	temporary_file=$(mktemp "${WEBUI_DOMAINS_FILE}.tmp.XXXXXX") || return 1
+	{
+		list_webui_domains
+		printf '%s\n' "$domain"
+	} | awk 'NF && !seen[$0]++' >"$temporary_file"
+	chmod 600 "$temporary_file"
+	mv -f "$temporary_file" "$WEBUI_DOMAINS_FILE"
+}
+
+remove_webui_domain_record() {
+	local domain="$1" temporary_file
+	[ -e "$WEBUI_DOMAINS_FILE" ] || return 0
+	umask 077
+	temporary_file=$(mktemp "${WEBUI_DOMAINS_FILE}.tmp.XXXXXX") || return 1
+	grep -vxF "$domain" "$WEBUI_DOMAINS_FILE" >"$temporary_file" || true
+	chmod 600 "$temporary_file"
+	mv -f "$temporary_file" "$WEBUI_DOMAINS_FILE"
+}
+
+webui_auth_file() {
+	printf '%s/.deepseek-harness-%s.htpasswd' "$WEB_CONF_DIR" "$1"
+}
+
+valid_basic_auth_user() {
+	[ -n "$1" ] && [ "${#1}" -le 64 ] && [[ "$1" =~ ^[A-Za-z0-9._-]+$ ]]
+}
+
+write_webui_auth_file() {
+	local domain="$1" username="$2" password="$3" auth_file password_hash temporary_file
+	valid_basic_auth_user "$username" || return 1
+	[ -n "$password" ] || return 1
+	command -v openssl >/dev/null 2>&1 || return 1
+	auth_file=$(webui_auth_file "$domain")
+	mkdir -p "$WEB_CONF_DIR" || return 1
+	password_hash=$(printf '%s\n' "$password" | openssl passwd -apr1 -stdin 2>/dev/null) || return 1
+	[ -n "$password_hash" ] || return 1
+	umask 077
+	temporary_file=$(mktemp "${auth_file}.tmp.XXXXXX") || return 1
+	printf '%s:%s\n' "$username" "$password_hash" >"$temporary_file"
+	# Nginx worker needs read access; the file stores only an APR1 password hash.
+	chmod 644 "$temporary_file"
+	mv -f "$temporary_file" "$auth_file"
+}
+
+patch_webui_proxy_config() {
+	local domain="$1" conf_file auth_path
+	conf_file="$WEB_CONF_DIR/${domain}.conf"
+	auth_path="/etc/nginx/conf.d/$(basename "$(webui_auth_file "$domain")")"
+	[ -f "$conf_file" ] || return 1
+	grep -q 'kejilion-deepseek-harness-managed' "$conf_file" ||
+		sed -i "/^[[:space:]]*server_name[[:space:]]/a\\
+    # kejilion-deepseek-harness-managed\\
+    auth_basic \"DeepSeek Harness\";\\
+    auth_basic_user_file ${auth_path};" "$conf_file" || return 1
+	sed -i \
+		-e 's/^[[:space:]]*#[[:space:]]*proxy_read_timeout[[:space:]]*1d;/        proxy_read_timeout 1d;/' \
+		-e 's/^[[:space:]]*#[[:space:]]*proxy_send_timeout[[:space:]]*1d;/        proxy_send_timeout 1d;/' \
+		-e '/^[[:space:]]*proxy_cache[[:space:]]/d' \
+		"$conf_file"
+}
+
+reload_managed_nginx() {
+	command -v docker >/dev/null 2>&1 || return 1
+	docker inspect nginx >/dev/null 2>&1 || return 1
+	docker exec nginx nginx -t >/dev/null 2>&1 || return 1
+	docker exec nginx nginx -s reload >/dev/null 2>&1
+}
+
+webui_domain_artifacts_exist() {
+	local domain="$1"
+	[ -e "$WEB_CONF_DIR/${domain}.conf" ] \
+		|| [ -e "$WEB_CERT_DIR/${domain}_cert.pem" ] \
+		|| [ -e "$WEB_CERT_DIR/${domain}_key.pem" ] \
+		|| [ -e "$(webui_auth_file "$domain")" ]
+}
+
+remove_webui_domain_artifacts() {
+	local domain="$1"
+	rm -f -- \
+		"$WEB_CONF_DIR/${domain}.conf" \
+		"$(webui_auth_file "$domain")" \
+		"$WEB_CERT_DIR/${domain}_cert.pem" \
+		"$WEB_CERT_DIR/${domain}_key.pem"
+}
+
+refresh_trusted_hosts() {
+	if harness_running; then
+		restart_if_running
+	elif systemd_available && [ -f "$SERVICE_FILE" ]; then
+		configure_systemd_service
+	fi
+}
+
+rollback_webui_domain_add() {
+	local domain="$1"
+	remove_webui_domain_record "$domain" || true
+	remove_webui_domain_artifacts "$domain"
+	reload_managed_nginx >/dev/null 2>&1 || true
+	refresh_trusted_hosts >/dev/null 2>&1 || true
+}
+
+create_webui_domain() {
+	local domain username password
+	domain=$(normalize_domain "$1")
+	username="$2"
+	password="$3"
+	valid_domain "$domain" || {
+		echo -e "${RED}域名格式无效，请输入 example.com，不带协议和路径。${NC}"
+		return 1
+	}
+	valid_basic_auth_user "$username" || {
+		echo -e "${RED}访问用户名只能包含字母、数字、点、下划线或横线。${NC}"
+		return 1
+	}
+	[ "${#password}" -ge 8 ] || {
+		echo -e "${RED}访问密码至少需要 8 个字符。${NC}"
+		return 1
+	}
+	if webui_domain_managed "$domain"; then
+		echo -e "${YELLOW}该域名已由 DeepSeek Harness 管理。${NC}"
+		return 0
+	fi
+	if webui_domain_artifacts_exist "$domain"; then
+		echo -e "${RED}域名已有站点、证书或认证文件，为避免覆盖已拒绝操作。${NC}"
+		return 1
+	fi
+	command -v "$K_COMMAND" >/dev/null 2>&1 || {
+		echo -e "${RED}找不到 k 命令，无法调用 k fd 创建反向代理。${NC}"
+		return 1
+	}
+	if ! "$K_COMMAND" fd "$domain" "$LISTEN_HOST" "$LISTEN_PORT"; then
+		rollback_webui_domain_add "$domain"
+		echo -e "${RED}k fd 创建反向代理失败，已清理本次产生的文件。${NC}"
+		return 1
+	fi
+	if ! write_webui_auth_file "$domain" "$username" "$password" \
+		|| ! patch_webui_proxy_config "$domain" \
+		|| ! reload_managed_nginx \
+		|| ! add_webui_domain_record "$domain" \
+		|| ! refresh_trusted_hosts; then
+		rollback_webui_domain_add "$domain"
+		echo -e "${RED}域名配置失败，已回滚本次创建的反代文件。${NC}"
+		return 1
+	fi
+	echo -e "${GREEN}域名访问已启用：https://${domain}${NC}"
+	echo "已启用 HTTPS、Basic Auth 和 Harness trusted-host。"
+}
+
+delete_webui_domain() {
+	local domain
+	domain=$(normalize_domain "$1")
+	valid_domain "$domain" || return 1
+	webui_domain_managed "$domain" || {
+		echo -e "${RED}该域名不在 DeepSeek Harness 托管列表中，拒绝删除。${NC}"
+		return 1
+	}
+	remove_webui_domain_artifacts "$domain" || return 1
+	remove_webui_domain_record "$domain" || return 1
+	if command -v docker >/dev/null 2>&1 && docker inspect nginx >/dev/null 2>&1; then
+		reload_managed_nginx || {
+			echo -e "${YELLOW}域名文件已删除，但 Nginx 验证或重载失败，请手动检查。${NC}"
+			return 1
+		}
+	fi
+	refresh_trusted_hosts || return 1
+	echo -e "${GREEN}已删除域名访问：https://${domain}${NC}"
+}
+
 current_model() {
 	local model
 	if [ -r "$MODEL_PATCH_FILE" ]; then
@@ -225,10 +431,15 @@ ensure_node_runtime() {
 }
 
 configure_systemd_service() {
-	local dsh_bin node_bin service_path
+	local dsh_bin node_bin service_path trusted_host_args domain
 	dsh_bin=$(command -v dsh) || return 1
 	node_bin=$(command -v node) || return 1
 	service_path="$(dirname "$dsh_bin"):$(dirname "$node_bin"):/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+	trusted_host_args=""
+	while IFS= read -r domain; do
+		valid_domain "$domain" || continue
+		trusted_host_args+=" --trusted-host $domain"
+	done < <(list_webui_domains)
 	mkdir -p "$DSH_HOME" || return 1
 	cat >"$SERVICE_FILE" <<EOF
 [Unit]
@@ -245,7 +456,7 @@ Environment=DSH_HOME=$DSH_HOME
 Environment=DSH_TELEMETRY_DISABLED=1
 Environment=PATH=$service_path
 EnvironmentFile=-$DSH_ENV_FILE
-ExecStart=$dsh_bin web --patch $MODEL_PATCH_FILE --host $LISTEN_HOST --port $LISTEN_PORT
+ExecStart=$dsh_bin web --patch $MODEL_PATCH_FILE --host $LISTEN_HOST --port $LISTEN_PORT$trusted_host_args
 Restart=on-failure
 RestartSec=3
 
@@ -289,6 +500,8 @@ install_deepseek_harness() {
 }
 
 start_deepseek_harness() {
+	local domain
+	local -a web_args
 	require_root || return 1
 	dsh_installed || {
 		echo -e "${RED}请先安装 DeepSeek Harness。${NC}"
@@ -305,7 +518,12 @@ start_deepseek_harness() {
 		fi
 		mkdir -p "$DSH_HOME"
 		load_managed_environment
-		nohup dsh web --patch "$MODEL_PATCH_FILE" --host "$LISTEN_HOST" --port "$LISTEN_PORT" >"$LOG_FILE" 2>&1 &
+		web_args=(web --patch "$MODEL_PATCH_FILE" --host "$LISTEN_HOST" --port "$LISTEN_PORT")
+		while IFS= read -r domain; do
+			valid_domain "$domain" || continue
+			web_args+=(--trusted-host "$domain")
+		done < <(list_webui_domains)
+		nohup dsh "${web_args[@]}" >"$LOG_FILE" 2>&1 &
 		echo "$!" >"$PID_FILE"
 	fi
 	if wait_for_web_ready; then
@@ -456,6 +674,75 @@ run_headless_task() {
 	dsh --profile headless --patch "$MODEL_PATCH_FILE" "$task"
 }
 
+show_webui_addresses() {
+	local domains domain
+	echo "本机地址：http://${LISTEN_HOST}:${LISTEN_PORT}"
+	domains=$(list_webui_domains)
+	if [ -n "$domains" ]; then
+		echo "域名地址："
+		while IFS= read -r domain; do
+			echo "  https://${domain}（密码保护）"
+		done <<<"$domains"
+	else
+		echo "域名地址：未配置"
+	fi
+}
+
+webui_settings_menu() {
+	local choice domain username password confirm domains
+	dsh_installed || {
+		echo -e "${RED}请先安装 DeepSeek Harness。${NC}"
+		return 1
+	}
+	while true; do
+		clear 2>/dev/null || true
+		echo -e "${CYAN}=======================================${NC}"
+		echo "        DeepSeek Harness WebUI 设置"
+		echo -e "${CYAN}=======================================${NC}"
+		show_webui_addresses
+		echo "1. 添加域名访问"
+		echo "2. 删除域名访问"
+		echo "0. 返回"
+		read -r -p "请输入选项: " choice
+		case "$choice" in
+			1)
+				require_root || { read -r -p "按回车键继续..."; continue; }
+				read -r -p "请输入已解析到本机的域名（不带 https://）: " domain
+				read -r -p "请输入访问用户名 [admin]: " username
+				username=${username:-admin}
+				read -r -s -p "请输入访问密码: " password
+				echo
+				create_webui_domain "$domain" "$username" "$password"
+				password=""
+				read -r -p "按回车键继续..."
+				;;
+			2)
+				require_root || { read -r -p "按回车键继续..."; continue; }
+				domains=$(list_webui_domains)
+				if [ -z "$domains" ]; then
+					echo -e "${YELLOW}当前没有托管的域名。${NC}"
+					read -r -p "按回车键继续..."
+					continue
+				fi
+				echo "$domains"
+				read -r -p "请输入要删除的域名: " domain
+				domain=$(normalize_domain "$domain")
+				if ! webui_domain_managed "$domain"; then
+					echo -e "${RED}该域名不在托管列表中。${NC}"
+				else
+					read -r -p "确定删除 https://${domain} 的反代、证书和认证文件？(y/N): " confirm
+					case "$confirm" in
+						[yY]) delete_webui_domain "$domain" ;;
+						*) echo "已取消。" ;;
+					esac
+				fi
+				read -r -p "按回车键继续..."
+				;;
+			0) return 0 ;;
+		esac
+	done
+}
+
 update_deepseek_harness() {
 	local was_running=false
 	require_root || return 1
@@ -506,7 +793,7 @@ uninstall_deepseek_harness() {
 }
 
 show_menu() {
-	local install_status running_status api_status model version
+	local install_status running_status api_status model version domain_count
 	if dsh_installed; then
 		version=$(dsh --version 2>/dev/null)
 		install_status="${GREEN}已安装 ${version}${NC}"
@@ -524,22 +811,28 @@ show_menu() {
 		api_status="${RED}未配置${NC}"
 	fi
 	model=$(current_model)
+	domain_count=$(list_webui_domains | wc -l | tr -d '[:space:]')
 	clear 2>/dev/null || true
 	echo -e "${CYAN}=================================================${NC}"
 	echo "          DeepSeek Harness 基础管理工具"
 	echo -e "${CYAN}=================================================${NC}"
 	echo -e "安装状态：$install_status    运行状态：$running_status"
 	echo -e "API 状态：$api_status    默认模型：$model"
-	echo "Web UI：http://${LISTEN_HOST}:${LISTEN_PORT}（仅本机）"
+	if [ "$domain_count" -gt 0 ]; then
+		echo "Web UI：http://${LISTEN_HOST}:${LISTEN_PORT}（本机）  已配置域名：${domain_count} 个"
+	else
+		echo "Web UI：http://${LISTEN_HOST}:${LISTEN_PORT}（仅本机）"
+	fi
 	echo -e "${CYAN}-------------------------------------------------${NC}"
 	echo "1. 安装"
 	echo "2. 启动"
 	echo "3. 停止"
 	echo "4. API 管理"
 	echo "5. 换模型"
-	echo "6. 命令行任务"
+	echo "6. 命令行单次任务"
 	echo "7. 更新"
 	echo "8. 卸载"
+	echo "9. WebUI 设置"
 	echo "0. 返回应用市场"
 	echo -e "${CYAN}=================================================${NC}"
 }
@@ -548,7 +841,7 @@ deepseek_harness_main() {
 	local choice
 	while true; do
 		show_menu
-		read -r -p "请输入选项 [0-8]: " choice || return 0
+		read -r -p "请输入选项 [0-9]: " choice || return 0
 		case "$choice" in
 			1) install_deepseek_harness ;;
 			2) start_deepseek_harness ;;
@@ -558,6 +851,7 @@ deepseek_harness_main() {
 			6) run_headless_task ;;
 			7) update_deepseek_harness ;;
 			8) uninstall_deepseek_harness ;;
+			9) webui_settings_menu ;;
 			0) return 0 ;;
 			*) echo -e "${RED}无效选项。${NC}" ;;
 		esac
