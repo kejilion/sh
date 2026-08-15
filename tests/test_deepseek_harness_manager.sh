@@ -15,6 +15,14 @@ export DEEPSEEK_HARNESS_APP_MARKER_FILE="${temporary_dir}/appno.txt"
 export PATH="${temporary_dir}/bin:${PATH}"
 mkdir -p "${temporary_dir}/bin" "$DSH_HOME"
 
+catalog_entry='115. ${color115}Hermes机器人管理工具${gl_huang}★${gl_bai}               ${gl_kjlan}116. ${color116}DeepSeek Harness管理工具${gl_huang}★${gl_bai}'
+for catalog_file in "${project_root}/kejilion.sh" "${project_root}/cn/kejilion.sh"; do
+	if ! grep -Fq "$catalog_entry" "$catalog_file"; then
+		echo "FAIL: DeepSeek Harness catalog description or alignment is incorrect in ${catalog_file}" >&2
+		exit 1
+	fi
+done
+
 cat >"${temporary_dir}/bin/dsh" <<'MOCK'
 #!/bin/bash
 if [ "$*" = "--version" ]; then
