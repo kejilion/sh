@@ -12,6 +12,7 @@ export DEEPSEEK_HARNESS_SERVICE_FILE="${temporary_dir}/deepseek-harness.service"
 export DEEPSEEK_HARNESS_PID_FILE="${temporary_dir}/deepseek-harness.pid"
 export DEEPSEEK_HARNESS_LOG_FILE="${temporary_dir}/deepseek-harness.log"
 export DEEPSEEK_HARNESS_APP_MARKER_FILE="${temporary_dir}/appno.txt"
+export MOCK_NPM_ARGS_LOG="${temporary_dir}/npm-args.log"
 export PATH="${temporary_dir}/bin:${PATH}"
 mkdir -p "${temporary_dir}/bin" "$DSH_HOME"
 
@@ -33,6 +34,14 @@ cat >"${temporary_dir}/bin/node" <<'MOCK'
 #!/bin/bash
 printf '%s\n' '24.18.0'
 MOCK
+cat >"${temporary_dir}/bin/npm" <<'MOCK'
+#!/bin/bash
+if [ "${1:-}" = "--version" ]; then
+	printf '%s\n' "${MOCK_NPM_VERSION:-11.16.0}"
+	exit 0
+fi
+printf '%s\n' "$@" >"$MOCK_NPM_ARGS_LOG"
+MOCK
 cat >"${temporary_dir}/bin/systemctl" <<'MOCK'
 #!/bin/bash
 if [ "$*" = "daemon-reload" ]; then
@@ -44,12 +53,35 @@ cat >"${temporary_dir}/bin/curl" <<'MOCK'
 #!/bin/bash
 exit 1
 MOCK
-chmod +x "${temporary_dir}/bin/dsh" "${temporary_dir}/bin/node" "${temporary_dir}/bin/systemctl" "${temporary_dir}/bin/curl"
+chmod +x "${temporary_dir}/bin/dsh" "${temporary_dir}/bin/node" "${temporary_dir}/bin/npm" "${temporary_dir}/bin/systemctl" "${temporary_dir}/bin/curl"
 
 # shellcheck source=../deepseek_harness_manager.sh
 source "${project_root}/deepseek_harness_manager.sh"
 
 node_version_supported
+npm_allow_scripts_supported '11.16.0'
+npm_allow_scripts_supported '12.0.2'
+if npm_allow_scripts_supported '11.15.9'; then
+	echo 'FAIL: unsupported npm version accepted allow-scripts' >&2
+	exit 1
+fi
+
+export MOCK_NPM_VERSION='11.16.0'
+install_dsh_npm_package
+mapfile -t npm_args <"$MOCK_NPM_ARGS_LOG"
+[ "${#npm_args[@]}" -eq 4 ]
+[ "${npm_args[0]}" = 'install' ]
+[ "${npm_args[1]}" = '-g' ]
+[ "${npm_args[2]}" = '--allow-scripts=@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs' ]
+[ "${npm_args[3]}" = '@deepseek-ai/dsh@latest' ]
+
+export MOCK_NPM_VERSION='11.15.9'
+install_dsh_npm_package
+mapfile -t npm_args <"$MOCK_NPM_ARGS_LOG"
+[ "${#npm_args[@]}" -eq 3 ]
+[ "${npm_args[0]}" = 'install' ]
+[ "${npm_args[1]}" = '-g' ]
+[ "${npm_args[2]}" = '@deepseek-ai/dsh@latest' ]
 write_api_key 'sk-test-secret-1234'
 grep -qxF 'DEEPSEEK_API_KEY=sk-test-secret-1234' "$DSH_ENV_FILE"
 grep -qxF 'DEEPSEEK_BASE_URL=https://api.deepseek.com' "$DSH_ENV_FILE"

@@ -17,6 +17,7 @@ PID_FILE="${DEEPSEEK_HARNESS_PID_FILE:-$DSH_HOME/deepseek-harness.pid}"
 LOG_FILE="${DEEPSEEK_HARNESS_LOG_FILE:-$DSH_HOME/deepseek-harness.log}"
 APP_MARKER_FILE="${DEEPSEEK_HARNESS_APP_MARKER_FILE:-/home/docker/appno.txt}"
 NPM_PACKAGE="@deepseek-ai/dsh"
+NPM_INSTALL_SCRIPT_ALLOWLIST="@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs"
 DEEPSEEK_BASE_URL="https://api.deepseek.com"
 DEFAULT_MODEL="deepseek-v4-flash"
 LISTEN_HOST="127.0.0.1"
@@ -46,6 +47,29 @@ node_version_supported() {
 		22:*) [ "$minor" -ge 19 ] ;;
 		*) [ "$major" -ge 24 ] ;;
 	esac
+}
+
+npm_allow_scripts_supported() {
+	local version major minor
+	version="${1:-$(npm --version 2>/dev/null)}" || return 1
+	version=${version#v}
+	major=${version%%.*}
+	minor=${version#*.}
+	minor=${minor%%.*}
+	case "$major:$minor" in
+		*[!0-9:]*|:*) return 1 ;;
+		11:*) [ "$minor" -ge 16 ] ;;
+		*) [ "$major" -ge 12 ] ;;
+	esac
+}
+
+install_dsh_npm_package() {
+	local -a npm_args=(install -g)
+	if npm_allow_scripts_supported; then
+		npm_args+=("--allow-scripts=${NPM_INSTALL_SCRIPT_ALLOWLIST}")
+	fi
+	npm_args+=("${NPM_PACKAGE}@latest")
+	npm "${npm_args[@]}"
 }
 
 systemd_available() {
@@ -247,7 +271,7 @@ install_deepseek_harness() {
 	fi
 	ensure_node_runtime || return 1
 	echo -e "${YELLOW}正在安装官方 $NPM_PACKAGE，首次安装可能需要数分钟...${NC}"
-	npm install -g "${NPM_PACKAGE}@latest" || return 1
+	install_dsh_npm_package || return 1
 	dsh_installed || {
 		echo -e "${RED}安装完成后仍找不到 dsh 命令。${NC}"
 		return 1
@@ -441,7 +465,7 @@ update_deepseek_harness() {
 	}
 	harness_running && was_running=true
 	echo -e "${YELLOW}正在更新官方 $NPM_PACKAGE...${NC}"
-	npm install -g "${NPM_PACKAGE}@latest" || return 1
+	install_dsh_npm_package || return 1
 	initialize_profiles || return 1
 	[ "$was_running" = "true" ] && restart_if_running
 	mark_app_installed
