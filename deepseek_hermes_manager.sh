@@ -41,7 +41,8 @@ hermes_running() {
 		&& systemctl --user is-active --quiet hermes-gateway.service 2>/dev/null; then
 		return 0
 	fi
-	pgrep -u "$(id -u)" -f '(hermes_cli\.main.*gateway|hermes[[:space:]]+gateway[[:space:]]+(run|start)|hermes-gateway)' >/dev/null 2>&1
+	# The bracketed first character prevents pgrep from matching its own argv.
+	pgrep -u "$(id -u)" -f '[p]ython([^[:space:]]*)?[[:space:]]+-m[[:space:]]+hermes_cli\.main[[:space:]]+gateway[[:space:]]+run([[:space:]]|$)' >/dev/null 2>&1
 }
 
 read_deepseek_api_key() {

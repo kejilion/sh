@@ -42,4 +42,9 @@ grep -qxF 'config set model.provider deepseek' "$MOCK_HERMES_LOG"
 grep -qxF 'config set model.default deepseek-v4-flash' "$MOCK_HERMES_LOG"
 grep -qxF 'config set model.base_url https://api.deepseek.com' "$MOCK_HERMES_LOG"
 
+if hermes_running; then
+	echo 'FAIL: stopped gateway was reported as running by the pgrep fallback' >&2
+	exit 1
+fi
+
 echo 'PASS: DeepSeek Hermes manager smoke tests'
