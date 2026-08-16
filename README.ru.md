@@ -124,4 +124,4 @@ bash <(curl -sL kejilion.sh) ru
 <br><br>
 
 ## ⭐ Звездные тренды
-[![Таблица истории звезд](https://api.star-history.com/svg?repos=kejilion/sh&type=Date)](https://star-history.com/#kejilion/sh&Date)
+[![Таблица истории звезд](https://star-history.dera.page/svg?repos=kejilion/sh&type=Date)](https://star-history.dera.page/#kejilion/sh&Date)

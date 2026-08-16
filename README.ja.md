@@ -62,4 +62,4 @@ bash <(curl -sL kejilion.sh) jp
 ***
 
 ## スターの歴史
-[![星の歴史チャート](https://api.star-history.com/svg?repos=kejilion/sh&type=Date)](https://star-history.com/#kejilion/sh&Date)
+[![星の歴史チャート](https://star-history.dera.page/svg?repos=kejilion/sh&type=Date)](https://star-history.dera.page/#kejilion/sh&Date)
