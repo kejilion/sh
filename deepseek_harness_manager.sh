@@ -320,9 +320,14 @@ remove_webui_domain_artifacts() {
 	local domain="$1"
 	rm -f -- \
 		"$WEB_CONF_DIR/${domain}.conf" \
-		"$(webui_auth_file "$domain")" \
 		"$WEB_CERT_DIR/${domain}_cert.pem" \
 		"$WEB_CERT_DIR/${domain}_key.pem"
+}
+
+remove_webui_auth_credentials() {
+	local domain="$1"
+	# Delete only the Basic Auth file belonging to this managed Harness domain.
+	rm -f -- "$(webui_auth_file "$domain")"
 }
 
 refresh_trusted_hosts() {
@@ -336,6 +341,7 @@ refresh_trusted_hosts() {
 rollback_webui_domain_add() {
 	local domain="$1"
 	remove_webui_domain_record "$domain" || true
+	remove_webui_auth_credentials "$domain" || true
 	remove_webui_domain_artifacts "$domain"
 	reload_managed_nginx >/dev/null 2>&1 || true
 	refresh_trusted_hosts >/dev/null 2>&1 || true
@@ -401,6 +407,7 @@ delete_webui_domain() {
 		echo -e "${RED}该域名不在 DeepSeek Harness 托管列表中，拒绝删除。${NC}"
 		return 1
 	}
+	remove_webui_auth_credentials "$domain" || return 1
 	remove_webui_domain_artifacts "$domain" || return 1
 	remove_webui_domain_record "$domain" || return 1
 	if command -v docker >/dev/null 2>&1 && docker inspect nginx >/dev/null 2>&1; then
