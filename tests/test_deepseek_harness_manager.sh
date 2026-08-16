@@ -19,6 +19,7 @@ export DEEPSEEK_HARNESS_K_COMMAND="k"
 export MOCK_NPM_ARGS_LOG="${temporary_dir}/npm-args.log"
 export MOCK_K_ARGS_LOG="${temporary_dir}/k-args.log"
 export MOCK_DOCKER_ARGS_LOG="${temporary_dir}/docker-args.log"
+export MOCK_SETFACL_ARGS_LOG="${temporary_dir}/setfacl-args.log"
 export PATH="${temporary_dir}/bin:${PATH}"
 mkdir -p "${temporary_dir}/bin" "$DSH_HOME" "$DEEPSEEK_HARNESS_WEB_CONF_DIR" "$DEEPSEEK_HARNESS_WEB_CERT_DIR"
 
@@ -72,7 +73,14 @@ MOCK
 cat >"${temporary_dir}/bin/docker" <<'MOCK'
 #!/bin/bash
 printf '%s\n' "$*" >>"$MOCK_DOCKER_ARGS_LOG"
+if [ "$*" = "exec nginx id -u nginx" ]; then
+	printf '%s\n' '101'
+fi
 exit 0
+MOCK
+cat >"${temporary_dir}/bin/setfacl" <<'MOCK'
+#!/bin/bash
+printf '%s\n' "$*" >>"$MOCK_SETFACL_ARGS_LOG"
 MOCK
 cat >"${temporary_dir}/bin/k" <<'MOCK'
 #!/bin/bash
@@ -113,6 +121,7 @@ chmod +x \
 	"${temporary_dir}/bin/curl" \
 	"${temporary_dir}/bin/openssl" \
 	"${temporary_dir}/bin/docker" \
+	"${temporary_dir}/bin/setfacl" \
 	"${temporary_dir}/bin/k"
 
 # shellcheck source=../deepseek_harness_manager.sh
@@ -201,6 +210,7 @@ if valid_domain '127.0.0.1'; then
 	exit 1
 fi
 
+chmod 750 "$DEEPSEEK_HARNESS_WEB_CONF_DIR"
 create_webui_domain 'Chat.Example.com' 'admin' 'test-password'
 [ "$(cat "$MOCK_K_ARGS_LOG")" = 'fd chat.example.com 127.0.0.1 3080' ]
 grep -qxF 'chat.example.com' "$DEEPSEEK_HARNESS_WEBUI_DOMAINS_FILE"
@@ -217,7 +227,11 @@ if grep -Eq '^[[:space:]]*proxy_cache[[:space:]]' "$webui_conf"; then
 	exit 1
 fi
 grep -qxF 'admin:$apr1$mock$hashed-password' "$webui_auth"
-[ "$(stat -c '%a' "$webui_auth")" = '644' ]
+[ "$(stat -c '%a' "$webui_auth")" = '600' ]
+[ "$(stat -c '%a' "$DEEPSEEK_HARNESS_WEB_CONF_DIR")" = '750' ]
+grep -Fqx -- "-m u:101:--x $DEEPSEEK_HARNESS_WEB_CONF_DIR" "$MOCK_SETFACL_ARGS_LOG"
+grep -Fqx -- "-m u:101:r-- $webui_auth" "$MOCK_SETFACL_ARGS_LOG"
+grep -Fqx -- 'exec -u 101 nginx sh -c : < "$1" sh /etc/nginx/conf.d/.deepseek-harness-chat.example.com.htpasswd' "$MOCK_DOCKER_ARGS_LOG"
 
 configure_systemd_service
 grep -Fq ' --trusted-host chat.example.com' "$DEEPSEEK_HARNESS_SERVICE_FILE"

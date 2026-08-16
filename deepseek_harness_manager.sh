@@ -239,9 +239,49 @@ write_webui_auth_file() {
 	umask 077
 	temporary_file=$(mktemp "${auth_file}.tmp.XXXXXX") || return 1
 	printf '%s:%s\n' "$username" "$password_hash" >"$temporary_file"
-	# Nginx worker needs read access; the file stores only an APR1 password hash.
-	chmod 644 "$temporary_file"
+	chmod 600 "$temporary_file"
 	mv -f "$temporary_file" "$auth_file"
+}
+
+ensure_webui_acl_tool() {
+	command -v setfacl >/dev/null 2>&1 && return 0
+	echo -e "${YELLOW}正在安装 ACL 工具，用于限定 Nginx 仅访问 Harness 认证文件...${NC}"
+	if command -v apt-get >/dev/null 2>&1; then
+		apt-get install -y acl >/dev/null 2>&1
+	elif command -v dnf >/dev/null 2>&1; then
+		dnf install -y acl >/dev/null 2>&1
+	elif command -v yum >/dev/null 2>&1; then
+		yum install -y acl >/dev/null 2>&1
+	elif command -v apk >/dev/null 2>&1; then
+		apk add --no-cache acl >/dev/null 2>&1
+	else
+		return 1
+	fi
+	command -v setfacl >/dev/null 2>&1
+}
+
+nginx_worker_uid() {
+	local uid
+	uid=$(docker exec nginx id -u nginx 2>/dev/null) || return 1
+	uid=$(printf '%s' "$uid" | tr -d '[:space:]')
+	case "$uid" in
+		''|*[!0-9]*) return 1 ;;
+	esac
+	printf '%s' "$uid"
+}
+
+grant_webui_auth_access() {
+	local domain="$1" auth_file auth_path nginx_uid
+	auth_file=$(webui_auth_file "$domain")
+	auth_path="/etc/nginx/conf.d/$(basename "$auth_file")"
+	[ -f "$auth_file" ] || return 1
+	nginx_uid=$(nginx_worker_uid) || return 1
+	# Keep the shared conf.d mode unchanged: allow only directory traversal and
+	# read access to this Harness password file for the Nginx worker UID.
+	setfacl -m "u:${nginx_uid}:--x" "$WEB_CONF_DIR" || return 1
+	setfacl -m "u:${nginx_uid}:r--" "$auth_file" || return 1
+	# Open the file as the worker UID; BusyBox test -r may ignore POSIX ACLs.
+	docker exec -u "$nginx_uid" nginx sh -c ': < "$1"' sh "$auth_path" >/dev/null 2>&1
 }
 
 patch_webui_proxy_config() {
@@ -330,12 +370,17 @@ create_webui_domain() {
 		echo -e "${RED}找不到 k 命令，无法调用 k fd 创建反向代理。${NC}"
 		return 1
 	}
+	ensure_webui_acl_tool || {
+		echo -e "${RED}缺少 ACL 工具，无法安全配置 Nginx 认证文件权限。${NC}"
+		return 1
+	}
 	if ! "$K_COMMAND" fd "$domain" "$LISTEN_HOST" "$LISTEN_PORT"; then
 		rollback_webui_domain_add "$domain"
 		echo -e "${RED}k fd 创建反向代理失败，已清理本次产生的文件。${NC}"
 		return 1
 	fi
 	if ! write_webui_auth_file "$domain" "$username" "$password" \
+		|| ! grant_webui_auth_access "$domain" \
 		|| ! patch_webui_proxy_config "$domain" \
 		|| ! reload_managed_nginx \
 		|| ! add_webui_domain_record "$domain" \
