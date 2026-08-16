@@ -1541,4 +1541,8 @@ KPanel调用BBRv3流程时不会自动重启服务器，任务完成后由用户
 应用市场新增官方DeepSeek Harness管理工具，支持安装、启动、停止、API管理、模型切换、命令行单次任务、更新和卸载。
 优化DeepSeek Harness的npm安装脚本兼容性，确保官方本地子进程等必要依赖能够正确安装。
 DeepSeek Harness新增WebUI域名访问管理，支持HTTPS、Basic Auth和trusted-host安全配置，并可安全删除已托管域名。
+------------------------
+2026-08-16   v4.5.7
+修复DeepSeek Harness WebUI认证文件权限，使用POSIX ACL仅向Nginx工作进程授予目录遍历和认证文件读取权限。
+认证文件继续保持0600，不扩大共享Nginx配置目录或其他文件的读取范围。
 
