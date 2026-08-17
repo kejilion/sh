@@ -716,6 +716,7 @@ check_crontab_installed() {
 
 
 install_crontab() {
+	local package_manager
 
 	if [ -f /etc/os-release ]; then
 		. /etc/os-release
@@ -727,9 +728,18 @@ install_crontab() {
 				systemctl start cron
 				;;
 			centos|rhel|almalinux|rocky|fedora)
-				yum install -y cronie
-				systemctl enable crond
-				systemctl start crond
+				if command -v dnf >/dev/null 2>&1; then
+					package_manager=dnf
+				elif command -v yum >/dev/null 2>&1; then
+					package_manager=yum
+				else
+					echo "错误: 未找到 DNF/YUM，无法安装 cronie"
+					return 1
+				fi
+				"$package_manager" install -y cronie || return 1
+				/bin/systemctl enable --now crond.service || return 1
+				command -v crontab >/dev/null 2>&1 || return 1
+				/bin/systemctl is-active --quiet crond.service || return 1
 				;;
 			alpine)
 				apk add --no-cache cronie
@@ -767,6 +777,7 @@ install_crontab() {
 		return
 	fi
 
+	command -v crontab >/dev/null 2>&1 || return 1
 	echo -e "${gl_lv}crontab 已安装且 cron 服务正在运行。${gl_bai}"
 }
 
@@ -843,11 +854,11 @@ docker_ipv6_off() {
 
 save_iptables_rules() {
 	mkdir -p /etc/iptables
-	touch /etc/iptables/rules.v4
-	iptables-save > /etc/iptables/rules.v4
-	check_crontab_installed
-	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1
-	(crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1
+	touch /etc/iptables/rules.v4 || return 1
+	iptables-save > /etc/iptables/rules.v4 || return 1
+	check_crontab_installed || return 1
+	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1 || return 1
+	(crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1 || return 1
 
 }
 
@@ -855,17 +866,17 @@ save_iptables_rules() {
 
 
 iptables_open() {
-	install iptables
-	save_iptables_rules
-	iptables -P INPUT ACCEPT
-	iptables -P FORWARD ACCEPT
-	iptables -P OUTPUT ACCEPT
-	iptables -F
+	install iptables || return 1
+	save_iptables_rules || return 1
+	iptables -P INPUT ACCEPT || return 1
+	iptables -P FORWARD ACCEPT || return 1
+	iptables -P OUTPUT ACCEPT || return 1
+	iptables -F || return 1
 
-	ip6tables -P INPUT ACCEPT
-	ip6tables -P FORWARD ACCEPT
-	ip6tables -P OUTPUT ACCEPT
-	ip6tables -F
+	ip6tables -P INPUT ACCEPT || return 1
+	ip6tables -P FORWARD ACCEPT || return 1
+	ip6tables -P OUTPUT ACCEPT || return 1
+	ip6tables -F || return 1
 
 }
 
@@ -878,7 +889,7 @@ open_port() {
 		return 1
 	fi
 
-	install iptables
+	install iptables || return 1
 
 	for port in "${ports[@]}"; do
 		# 删除已存在的关闭规则
@@ -896,7 +907,7 @@ open_port() {
 		fi
 	done
 
-	save_iptables_rules
+	save_iptables_rules || return 1
 	send_stats "已打开端口"
 }
 
@@ -3736,20 +3747,35 @@ check_f2b_status() {
 f2b_install_sshd() {
 
 	docker rm -f fail2ban >/dev/null 2>&1
-	install fail2ban
-	start fail2ban
-	enable fail2ban
+	install fail2ban || return 1
 
-	if command -v dnf &>/dev/null; then
+	if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+		install rsyslog || return 1
+		/bin/systemctl enable --now rsyslog.service || return 1
 		cd /etc/fail2ban/jail.d/
-		curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf
+		curl --fail --silent --show-error --location \
+			--output centos-ssh.conf \
+			"${gh_proxy}raw.githubusercontent.com/kejilion/config/main/fail2ban/centos-ssh.conf" || return 1
+		if [ ! -e /var/log/secure ]; then
+			touch /var/log/secure || return 1
+			chmod 0600 /var/log/secure || return 1
+			command -v restorecon >/dev/null 2>&1 && restorecon /var/log/secure || true
+		fi
 	fi
 
 	if command -v apt &>/dev/null; then
-		install rsyslog
-		systemctl start rsyslog
-		systemctl enable rsyslog
+		install rsyslog || return 1
+		/bin/systemctl enable --now rsyslog.service || return 1
 	fi
+
+	if command -v apk >/dev/null 2>&1; then
+		rc-update add fail2ban default || return 1
+		rc-service fail2ban start || return 1
+	else
+		/bin/systemctl enable --now fail2ban.service || return 1
+	fi
+	fail2ban-client -t >/dev/null 2>&1 || return 1
+	fail2ban-client reload >/dev/null 2>&1 || /bin/systemctl restart fail2ban.service
 
 }
 
@@ -4356,6 +4382,10 @@ kpanel_system_tuning_switch_mirror() {
 
 kpanel_system_tuning_kernel_auto() {
 	local script url
+	mkdir -p /etc/sysctl.d /etc/modules-load.d || {
+		kpanel_system_tuning_error "内核参数配置目录无法创建"
+		return 1
+	}
 	script="$(mktemp /tmp/kejilion-system-tuning-network.XXXXXX)" || return 1
 	url="${gh_proxy}raw.githubusercontent.com/kejilion/sh/${KPANEL_SYSTEM_TUNING_NETWORK_COMMIT}/network-optimize.sh"
 	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_NETWORK_SHA256" "$script" || { rm -f -- "$script"; return 1; }
@@ -4367,6 +4397,18 @@ kpanel_system_tuning_kernel_auto() {
 
 kpanel_system_tuning_firewall_open_all() {
 	local version
+	if ! command -v iptables >/dev/null 2>&1 ||
+		! command -v iptables-save >/dev/null 2>&1 ||
+		! command -v iptables-restore >/dev/null 2>&1; then
+		install iptables || {
+			kpanel_system_tuning_error "iptables 兼容工具安装失败"
+			return 1
+		}
+	fi
+	check_crontab_installed || {
+		kpanel_system_tuning_error "iptables 持久化依赖 crontab/crond 不可用"
+		return 1
+	}
 	version="$(kpanel_system_resource_firewall_version)" || return 1
 	kpanel_system_resource_firewall_action open-all "$version" >&2
 }
@@ -4383,6 +4425,12 @@ kpanel_system_tuning_swap_1g_ready() {
 kpanel_system_tuning_dns_auto() {
 	local country dns1_ipv4 dns2_ipv4 dns1_ipv6 dns2_ipv6
 	local dns=()
+	if ! command -v chattr >/dev/null 2>&1; then
+		install e2fsprogs || {
+			kpanel_system_tuning_error "DNS 依赖 e2fsprogs/chattr 安装失败"
+			return 1
+		}
+	fi
 	country="$(curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
 	if [ "$country" = CN ]; then
 		dns1_ipv4="223.5.5.5"
@@ -6235,6 +6283,11 @@ kpanel_dns_is_ipv6() {
 	[[ "$value" =~ ^[0-9A-Fa-f:.]+$ ]]
 }
 
+kpanel_dns_wsl_environment() {
+	grep -qiE '(microsoft|wsl)' /proc/sys/kernel/osrelease 2>/dev/null ||
+		uname -r 2>/dev/null | grep -qiE '(microsoft|wsl)'
+}
+
 kpanel_dns_restore_file() {
 	local target="$1"
 	local backup="$2"
@@ -6254,7 +6307,7 @@ kpanel_dns_restore_file() {
 
 kpanel_dns_write_static() {
 	local target="/etc/resolv.conf"
-	local parent desired backup old_mode old_immutable="false" existed="false"
+	local parent desired backup old_mode old_immutable="false" existed="false" lock_dns="true"
 	local expected="" value
 
 	if [ -L "$target" ]; then
@@ -6269,10 +6322,13 @@ kpanel_dns_write_static() {
 		echo "错误: DNS 配置目录不存在"
 		return 1
 	}
-	command -v chattr >/dev/null 2>&1 || {
-		echo "错误: chattr 不可用，无法保持 kejilion.sh DNS 生命周期语义"
-		return 1
-	}
+	if ! command -v chattr >/dev/null 2>&1; then
+		kpanel_dns_wsl_environment || {
+			echo "错误: chattr 不可用，无法保持 kejilion.sh DNS 生命周期语义"
+			return 1
+		}
+		lock_dns="false"
+	fi
 
 	desired="$(mktemp "${parent}/.resolv.conf.kpanel.XXXXXX")" || return 1
 	backup="$(mktemp "${parent}/.resolv.conf.backup.XXXXXX")" || {
@@ -6299,25 +6355,33 @@ kpanel_dns_write_static() {
 			return 1
 		}
 		chown --reference="$target" "$desired" >/dev/null 2>&1 || true
-		if lsattr -d "$target" 2>/dev/null | awk '{print $1}' | grep -q 'i'; then
+		if [ "$lock_dns" = "true" ] && lsattr -d "$target" 2>/dev/null | awk '{print $1}' | grep -q 'i'; then
 			old_immutable="true"
 		fi
 		if [ "$(cat "$target")"$'\n' = "$expected" ]; then
-			chattr +i "$target" >/dev/null 2>&1 || {
-				rm -f "$desired" "$backup"
-				echo "错误: 无法锁定 DNS 配置"
-				return 1
-			}
+			if [ "$lock_dns" = "true" ] && ! chattr +i "$target" >/dev/null 2>&1; then
+				if kpanel_dns_wsl_environment; then
+					lock_dns="false"
+				else
+					rm -f "$desired" "$backup"
+					echo "错误: 无法锁定 DNS 配置"
+					return 1
+				fi
+			fi
 			rm -f "$desired" "$backup"
 			echo "KPANEL_DNS_MANAGER resolv.conf"
 			echo "KPANEL_DNS_RESULT unchanged"
 			return 0
 		fi
-		chattr -i "$target" >/dev/null 2>&1 || {
-			rm -f "$desired" "$backup"
-			echo "错误: 无法解除现有 DNS 配置锁定"
-			return 1
-		}
+		if [ "$lock_dns" = "true" ] && ! chattr -i "$target" >/dev/null 2>&1; then
+			if kpanel_dns_wsl_environment; then
+				lock_dns="false"
+			else
+				rm -f "$desired" "$backup"
+				echo "错误: 无法解除现有 DNS 配置锁定"
+				return 1
+			fi
+		fi
 	else
 		chmod 644 "$desired" || {
 			rm -f "$desired" "$backup"
@@ -6325,9 +6389,31 @@ kpanel_dns_write_static() {
 		}
 	fi
 
-	if ! mv -f "$desired" "$target" ||
-		! chattr +i "$target" >/dev/null 2>&1 ||
-		[ "$(cat "$target")"$'\n' != "$expected" ]; then
+	if ! mv -f "$desired" "$target"; then
+		kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
+			rm -f "$desired" "$backup"
+			echo "错误: DNS 写入失败且回滚失败，需要人工检查"
+			return 1
+		}
+		rm -f "$desired" "$backup"
+		echo "错误: DNS 写入或回读验证失败，已恢复原配置"
+		return 1
+	fi
+	if [ "$lock_dns" = "true" ] && ! chattr +i "$target" >/dev/null 2>&1; then
+		if kpanel_dns_wsl_environment; then
+			lock_dns="false"
+		else
+			kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
+				rm -f "$desired" "$backup"
+				echo "错误: DNS 写入失败且回滚失败，需要人工检查"
+				return 1
+			}
+			rm -f "$desired" "$backup"
+			echo "错误: DNS 写入或回读验证失败，已恢复原配置"
+			return 1
+		fi
+	fi
+	if [ "$(cat "$target")"$'\n' != "$expected" ]; then
 		kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
 			rm -f "$desired" "$backup"
 			echo "错误: DNS 写入失败且回滚失败，需要人工检查"
@@ -6550,11 +6636,11 @@ new_ssh_port() {
   sed -i '/^\s*#\?\s*Port\s\+/d' /etc/ssh/sshd_config
   sed -i "1i Port $new_port" /etc/ssh/sshd_config
 
-  correct_ssh_config
+	correct_ssh_config
 
-  restart_ssh
-  open_port $new_port
-  remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
+	restart_ssh || return 1
+	open_port "$new_port" || return 1
+	remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 
   echo "SSH 端口已修改为: $new_port"
 
