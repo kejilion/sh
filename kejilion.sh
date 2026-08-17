@@ -6690,11 +6690,11 @@ new_ssh_port() {
   sed -i '/^\s*#\?\s*Port\s\+/d' /etc/ssh/sshd_config
   sed -i "1i Port $new_port" /etc/ssh/sshd_config
 
-	correct_ssh_config
+  correct_ssh_config
 
-	restart_ssh || return 1
-	open_port "$new_port" || return 1
-	remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
+  restart_ssh || return 1
+  open_port "$new_port" || return 1
+  remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 
   echo "SSH 端口已修改为: $new_port"
 
