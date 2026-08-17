@@ -43,6 +43,25 @@ kpanel_set_dns_noninteractive() { printf '%s\n' "$KJ_DNS_NONINTERACTIVE:$*" > "$
 kpanel_system_tuning_dns_auto
 grep -Fqx '1:223.5.5.5 183.60.83.19' "$temporary/dns-action"
 
+KPANEL_SYSTEM_TUNING_SSHD_CONFIG="$temporary/sshd_config"
+KPANEL_SYSTEM_TUNING_SSHD_RUN_DIR="$temporary/run-sshd"
+KPANEL_SYSTEM_TUNING_SYSTEMD_DIR="$temporary/no-systemd"
+apt() { :; }
+sshd() { :; }
+ss() { :; }
+install() { printf '%s\n' "$1" > "$temporary/ssh-package"; : > "$KPANEL_SYSTEM_TUNING_SSHD_CONFIG"; }
+kpanel_system_tuning_ensure_ssh_server
+grep -Fqx 'openssh-server' "$temporary/ssh-package"
+test -d "$KPANEL_SYSTEM_TUNING_SSHD_RUN_DIR"
+rm -f "$KPANEL_SYSTEM_TUNING_SSHD_CONFIG"
+install() { return 1; }
+if kpanel_system_tuning_ensure_ssh_server 2>/dev/null; then
+	echo "failed OpenSSH Server installation was accepted" >&2
+	exit 1
+fi
+unset KPANEL_SYSTEM_TUNING_SSHD_CONFIG KPANEL_SYSTEM_TUNING_SSHD_RUN_DIR KPANEL_SYSTEM_TUNING_SYSTEMD_DIR
+unset -f apt sshd ss install
+
 : > "$temporary/ready-items"
 kpanel_system_tuning_item_ready() { grep -Fxq "$1" "$temporary/ready-items"; }
 kpanel_system_tuning_run_item() { printf '%s\n' "$1" >> "$temporary/run-items"; printf '%s\n' "$1" >> "$temporary/ready-items"; }
