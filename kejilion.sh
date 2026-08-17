@@ -6188,7 +6188,7 @@ kpanel_dns_restore_file() {
 kpanel_dns_write_static() {
 	local target="/etc/resolv.conf"
 	local parent desired backup old_mode old_immutable="false" existed="false"
-	local expected="" value published="false"
+	local expected="" value
 
 	if [ -L "$target" ]; then
 		target="$(readlink -f "$target")"
@@ -6202,6 +6202,11 @@ kpanel_dns_write_static() {
 		echo "错误: DNS 配置目录不存在"
 		return 1
 	}
+	command -v chattr >/dev/null 2>&1 || {
+		echo "错误: chattr 不可用，无法保持 kejilion.sh DNS 生命周期语义"
+		return 1
+	}
+
 	desired="$(mktemp "${parent}/.resolv.conf.kpanel.XXXXXX")" || return 1
 	backup="$(mktemp "${parent}/.resolv.conf.backup.XXXXXX")" || {
 		rm -f "$desired"
@@ -6227,23 +6232,25 @@ kpanel_dns_write_static() {
 			return 1
 		}
 		chown --reference="$target" "$desired" >/dev/null 2>&1 || true
-		if command -v lsattr >/dev/null 2>&1 && lsattr -d "$target" 2>/dev/null | awk '{print $1}' | grep -q 'i'; then
+		if lsattr -d "$target" 2>/dev/null | awk '{print $1}' | grep -q 'i'; then
 			old_immutable="true"
 		fi
 		if [ "$(cat "$target")"$'\n' = "$expected" ]; then
-			command -v chattr >/dev/null 2>&1 && chattr +i "$target" >/dev/null 2>&1 || true
+			chattr +i "$target" >/dev/null 2>&1 || {
+				rm -f "$desired" "$backup"
+				echo "错误: 无法锁定 DNS 配置"
+				return 1
+			}
 			rm -f "$desired" "$backup"
 			echo "KPANEL_DNS_MANAGER resolv.conf"
 			echo "KPANEL_DNS_RESULT unchanged"
 			return 0
 		fi
-		if [ "$old_immutable" = "true" ]; then
-			command -v chattr >/dev/null 2>&1 && chattr -i "$target" >/dev/null 2>&1 || {
-				rm -f "$desired" "$backup"
-				echo "错误: 无法解除现有 DNS 配置锁定"
-				return 1
-			}
-		fi
+		chattr -i "$target" >/dev/null 2>&1 || {
+			rm -f "$desired" "$backup"
+			echo "错误: 无法解除现有 DNS 配置锁定"
+			return 1
+		}
 	else
 		chmod 644 "$desired" || {
 			rm -f "$desired" "$backup"
@@ -6251,13 +6258,9 @@ kpanel_dns_write_static() {
 		}
 	fi
 
-	if mv -f "$desired" "$target" 2>/dev/null; then
-		published="true"
-	elif cat "$desired" > "$target" 2>/dev/null; then
-		rm -f "$desired"
-		published="true"
-	fi
-	if [ "$published" != "true" ] || [ "$(cat "$target" 2>/dev/null)"$'\n' != "$expected" ]; then
+	if ! mv -f "$desired" "$target" ||
+		! chattr +i "$target" >/dev/null 2>&1 ||
+		[ "$(cat "$target")"$'\n' != "$expected" ]; then
 		kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
 			rm -f "$desired" "$backup"
 			echo "错误: DNS 写入失败且回滚失败，需要人工检查"
@@ -6265,16 +6268,6 @@ kpanel_dns_write_static() {
 		}
 		rm -f "$desired" "$backup"
 		echo "错误: DNS 写入或回读验证失败，已恢复原配置"
-		return 1
-	fi
-	if command -v chattr >/dev/null 2>&1 && ! chattr +i "$target" >/dev/null 2>&1 && [ "$old_immutable" = "true" ]; then
-		kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
-			rm -f "$desired" "$backup"
-			echo "错误: DNS 配置锁定恢复失败，需要人工检查"
-			return 1
-		}
-		rm -f "$desired" "$backup"
-		echo "错误: 无法恢复原有 DNS 配置锁定，已恢复原配置"
 		return 1
 	fi
 	rm -f "$backup"
