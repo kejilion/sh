@@ -4371,10 +4371,51 @@ kpanel_system_tuning_firewall_open_all() {
 	kpanel_system_resource_firewall_action open-all "$version" >&2
 }
 
+kpanel_system_tuning_swap_1g_ready() {
+	local swapfile="${1:-/swapfile}" swaps="${2:-/proc/swaps}" fstab="${3:-/etc/fstab}" size
+	[ -f "$swapfile" ] && [ ! -L "$swapfile" ] || return 1
+	size="$(stat -c '%s' -- "$swapfile" 2>/dev/null)"
+	[ "$size" = 1073741824 ] || return 1
+	awk -v path="$swapfile" 'NR > 1 && $1 == path { found=1 } END { exit !found }' "$swaps" 2>/dev/null || return 1
+	awk -v path="$swapfile" '$1 == path && $2 == "swap" { found=1 } END { exit !found }' "$fstab" 2>/dev/null
+}
+
+kpanel_system_tuning_dns_auto() {
+	local country dns1_ipv4 dns2_ipv4 dns1_ipv6 dns2_ipv6
+	local dns=()
+	country="$(curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
+	if [ "$country" = CN ]; then
+		dns1_ipv4="223.5.5.5"
+		dns2_ipv4="183.60.83.19"
+		dns1_ipv6="2400:3200::1"
+		dns2_ipv6="2400:da00::6666"
+	else
+		dns1_ipv4="1.1.1.1"
+		dns2_ipv4="8.8.8.8"
+		dns1_ipv6="2606:4700:4700::1111"
+		dns2_ipv6="2001:4860:4860::8888"
+	fi
+	ip_address
+	[ -n "$ipv4_address" ] && dns+=("$dns1_ipv4" "$dns2_ipv4")
+	[ -n "$ipv6_address" ] && dns+=("$dns1_ipv6" "$dns2_ipv6")
+	[ "${#dns[@]}" -gt 0 ] || dns=("$dns1_ipv4" "$dns2_ipv4")
+	KJ_DNS_NONINTERACTIVE=1 kpanel_set_dns_noninteractive "${dns[@]}"
+}
+
+kpanel_system_tuning_has_package_manager() {
+	local mode="$1" command_name
+	local commands=(dnf yum apt apk pacman zypper opkg)
+	[ "$mode" = cleanup ] && commands+=(pkg)
+	for command_name in "${commands[@]}"; do
+		command -v "$command_name" >/dev/null 2>&1 && return 0
+	done
+	return 1
+}
+
 kpanel_system_tuning_item_ready() {
 	local item="$1" command_name
 	case "$item" in
-		swap-1g) [ "$(free -m 2>/dev/null | awk '/^Swap:/{print $2; exit}')" = 1024 ] ;;
+		swap-1g) kpanel_system_tuning_swap_1g_ready ;;
 		ssh-port-5522) sshd -T 2>/dev/null | grep -Eq '^port 5522$' ;;
 		ssh-defense) kpanel_f2b_enabled >/dev/null 2>&1 ;;
 		firewall-open-all) iptables-save 2>/dev/null | awk '$0=="*filter"{f=1;next} f&&$0=="COMMIT"{exit} f&&/^:INPUT /{i=$2} f&&/^:FORWARD /{w=$2} END{exit !(i=="ACCEPT"&&w=="ACCEPT")}' ;;
@@ -4413,20 +4454,43 @@ kpanel_system_tuning_emit() {
 
 kpanel_system_tuning_run_item() {
 	case "$1" in
-		system-update) kpanel_system_tuning_switch_mirror && linux_update ;;
-		system-cleanup) linux_clean ;;
+		system-update)
+			kpanel_system_tuning_has_package_manager update || { kpanel_system_tuning_error "当前系统没有受支持的软件包管理器"; return 1; }
+			kpanel_system_tuning_switch_mirror || { kpanel_system_tuning_error "系统更新源优化失败"; return 1; }
+			linux_update || { kpanel_system_tuning_error "系统软件包更新失败"; return 1; }
+			;;
+		system-cleanup)
+			kpanel_system_tuning_has_package_manager cleanup || { kpanel_system_tuning_error "当前系统没有受支持的清理适配器"; return 1; }
+			linux_clean || { kpanel_system_tuning_error "系统清理失败"; return 1; }
+			;;
 		swap-1g) add_swap 1024 ;;
 		ssh-port-5522) KJ_SSH_PORT_NONINTERACTIVE=1 kpanel_ssh_port_noninteractive 5522 ;;
 		ssh-defense) kpanel_f2b_manager_service_action enable && kpanel_f2b_enabled ;;
 		firewall-open-all) kpanel_system_tuning_firewall_open_all ;;
 		bbr) bbr_on ;;
 		timezone-shanghai) set_timedate Asia/Shanghai ;;
-		dns-auto) auto_optimize_dns ;;
+		dns-auto) kpanel_system_tuning_dns_auto ;;
 		ipv4-preferred) prefer_ipv4 ;;
 		basic-tools) install_docker && install wget sudo tar unzip socat btop nano vim ;;
 		kernel-auto) kpanel_system_tuning_kernel_auto ;;
 		*) return 2 ;;
 	esac
+}
+
+kpanel_system_tuning_menu_item() {
+	local item="$1" index="$2" label="$3"
+	echo "------------------------------------------------"
+	if ! kpanel_system_tuning_run_item "$item"; then
+		echo -e "[${gl_hong}FAIL${gl_bai}] ${index}/12. ${label}，一条龙调优已停止"
+		return 1
+	fi
+	case "$item" in system-update|system-cleanup|dns-auto) ;; *)
+		if ! kpanel_system_tuning_item_ready "$item"; then
+			echo -e "[${gl_hong}FAIL${gl_bai}] ${index}/12. ${label}，完成态回读失败，一条龙调优已停止"
+			return 1
+		fi
+	;; esac
+	echo -e "[${gl_lv}OK${gl_bai}] ${index}/12. ${label}"
 }
 
 kpanel_system_tuning_apply_item() {
@@ -6124,7 +6188,7 @@ kpanel_dns_restore_file() {
 kpanel_dns_write_static() {
 	local target="/etc/resolv.conf"
 	local parent desired backup old_mode old_immutable="false" existed="false"
-	local expected="" value
+	local expected="" value published="false"
 
 	if [ -L "$target" ]; then
 		target="$(readlink -f "$target")"
@@ -6138,11 +6202,6 @@ kpanel_dns_write_static() {
 		echo "错误: DNS 配置目录不存在"
 		return 1
 	}
-	command -v chattr >/dev/null 2>&1 || {
-		echo "错误: chattr 不可用，无法保持 kejilion.sh DNS 生命周期语义"
-		return 1
-	}
-
 	desired="$(mktemp "${parent}/.resolv.conf.kpanel.XXXXXX")" || return 1
 	backup="$(mktemp "${parent}/.resolv.conf.backup.XXXXXX")" || {
 		rm -f "$desired"
@@ -6168,25 +6227,23 @@ kpanel_dns_write_static() {
 			return 1
 		}
 		chown --reference="$target" "$desired" >/dev/null 2>&1 || true
-		if lsattr -d "$target" 2>/dev/null | awk '{print $1}' | grep -q 'i'; then
+		if command -v lsattr >/dev/null 2>&1 && lsattr -d "$target" 2>/dev/null | awk '{print $1}' | grep -q 'i'; then
 			old_immutable="true"
 		fi
 		if [ "$(cat "$target")"$'\n' = "$expected" ]; then
-			chattr +i "$target" >/dev/null 2>&1 || {
-				rm -f "$desired" "$backup"
-				echo "错误: 无法锁定 DNS 配置"
-				return 1
-			}
+			command -v chattr >/dev/null 2>&1 && chattr +i "$target" >/dev/null 2>&1 || true
 			rm -f "$desired" "$backup"
 			echo "KPANEL_DNS_MANAGER resolv.conf"
 			echo "KPANEL_DNS_RESULT unchanged"
 			return 0
 		fi
-		chattr -i "$target" >/dev/null 2>&1 || {
-			rm -f "$desired" "$backup"
-			echo "错误: 无法解除现有 DNS 配置锁定"
-			return 1
-		}
+		if [ "$old_immutable" = "true" ]; then
+			command -v chattr >/dev/null 2>&1 && chattr -i "$target" >/dev/null 2>&1 || {
+				rm -f "$desired" "$backup"
+				echo "错误: 无法解除现有 DNS 配置锁定"
+				return 1
+			}
+		fi
 	else
 		chmod 644 "$desired" || {
 			rm -f "$desired" "$backup"
@@ -6194,9 +6251,13 @@ kpanel_dns_write_static() {
 		}
 	fi
 
-	if ! mv -f "$desired" "$target" ||
-		! chattr +i "$target" >/dev/null 2>&1 ||
-		[ "$(cat "$target")"$'\n' != "$expected" ]; then
+	if mv -f "$desired" "$target" 2>/dev/null; then
+		published="true"
+	elif cat "$desired" > "$target" 2>/dev/null; then
+		rm -f "$desired"
+		published="true"
+	fi
+	if [ "$published" != "true" ] || [ "$(cat "$target" 2>/dev/null)"$'\n' != "$expected" ]; then
 		kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
 			rm -f "$desired" "$backup"
 			echo "错误: DNS 写入失败且回滚失败，需要人工检查"
@@ -6204,6 +6265,16 @@ kpanel_dns_write_static() {
 		}
 		rm -f "$desired" "$backup"
 		echo "错误: DNS 写入或回读验证失败，已恢复原配置"
+		return 1
+	fi
+	if command -v chattr >/dev/null 2>&1 && ! chattr +i "$target" >/dev/null 2>&1 && [ "$old_immutable" = "true" ]; then
+		kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
+			rm -f "$desired" "$backup"
+			echo "错误: DNS 配置锁定恢复失败，需要人工检查"
+			return 1
+		}
+		rm -f "$desired" "$backup"
+		echo "错误: 无法恢复原有 DNS 配置锁定，已恢复原配置"
 		return 1
 	fi
 	rm -f "$backup"
@@ -26992,53 +27063,20 @@ EOF
 				[Yy])
 				  clear
 				  send_stats "一条龙调优启动"
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item system-update
-				  echo -e "[${gl_lv}OK${gl_bai}] 1/12. 更新系统到最新"
-
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item system-cleanup
-				  echo -e "[${gl_lv}OK${gl_bai}] 2/12. 清理系统垃圾文件"
-
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item swap-1g
-				  echo -e "[${gl_lv}OK${gl_bai}] 3/12. 设置虚拟内存${gl_huang}1G${gl_bai}"
-
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item ssh-port-5522
-				  echo -e "[${gl_lv}OK${gl_bai}] 4/12. 设置SSH端口号为${gl_huang}5522${gl_bai}"
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item ssh-defense
+				  kpanel_system_tuning_menu_item system-update 1 "更新系统到最新" || break
+				  kpanel_system_tuning_menu_item system-cleanup 2 "清理系统垃圾文件" || break
+				  kpanel_system_tuning_menu_item swap-1g 3 "设置虚拟内存${gl_huang}1G${gl_bai}" || break
+				  kpanel_system_tuning_menu_item ssh-port-5522 4 "设置SSH端口号为${gl_huang}5522${gl_bai}" || break
+				  kpanel_system_tuning_menu_item ssh-defense 5 "启动fail2ban防御SSH暴力破解" || break
 				  cd ~
 				  f2b_status
-				  echo -e "[${gl_lv}OK${gl_bai}] 5/12. 启动fail2ban防御SSH暴力破解"
-
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item firewall-open-all
-				  echo -e "[${gl_lv}OK${gl_bai}] 6/12. 开放所有端口"
-
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item bbr
-				  echo -e "[${gl_lv}OK${gl_bai}] 7/12. 开启${gl_huang}BBR${gl_bai}加速"
-
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item timezone-shanghai
-				  echo -e "[${gl_lv}OK${gl_bai}] 8/12. 设置时区到${gl_huang}上海${gl_bai}"
-
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item dns-auto
-				  echo -e "[${gl_lv}OK${gl_bai}] 9/12. 自动优化DNS地址${gl_huang}${gl_bai}"
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item ipv4-preferred
-				  echo -e "[${gl_lv}OK${gl_bai}] 10/12. 设置网络为${gl_huang}ipv4优先${gl_bai}}"
-
-				  echo "------------------------------------------------"
-				  kpanel_system_tuning_run_item basic-tools
-				  echo -e "[${gl_lv}OK${gl_bai}] 11/12. 安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}"
-				  echo "------------------------------------------------"
-
-				  kpanel_system_tuning_run_item kernel-auto
-				  echo -e "[${gl_lv}OK${gl_bai}] 12/12. Linux系统内核参数优化"
+				  kpanel_system_tuning_menu_item firewall-open-all 6 "开放所有端口" || break
+				  kpanel_system_tuning_menu_item bbr 7 "开启${gl_huang}BBR${gl_bai}加速" || break
+				  kpanel_system_tuning_menu_item timezone-shanghai 8 "设置时区到${gl_huang}上海${gl_bai}" || break
+				  kpanel_system_tuning_menu_item dns-auto 9 "自动优化DNS地址" || break
+				  kpanel_system_tuning_menu_item ipv4-preferred 10 "设置网络为${gl_huang}IPv4优先${gl_bai}" || break
+				  kpanel_system_tuning_menu_item basic-tools 11 "安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}" || break
+				  kpanel_system_tuning_menu_item kernel-auto 12 "Linux系统内核参数优化" || break
 				  echo -e "${gl_lv}一条龙系统调优已完成${gl_bai}"
 
 				  ;;

@@ -2,7 +2,11 @@
 set -euo pipefail
 
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-script_path="${project_root}/kejilion.sh"
+source_script="${KEJILION_SCRIPT_PATH:-${project_root}/kejilion.sh}"
+temporary="$(mktemp -d)"
+trap 'rm -rf -- "$temporary"' EXIT
+script_path="$temporary/kejilion.sh"
+sed 's/\r$//' "$source_script" > "$script_path"
 
 bash -n "${script_path}"
 grep -F 'kpanel_set_dns_noninteractive() {' "${script_path}" >/dev/null
@@ -54,5 +58,24 @@ if kpanel_protocol_active; then
 	echo "KPanel protocol guard activated without a protocol environment variable" >&2
 	exit 1
 fi
+
+dns_writer_body="$(
+	awk '
+		/^kpanel_dns_restore_file\(\) \{/ { capture=1 }
+		/^kpanel_dns_write_systemd_resolved\(\) \{/ { exit }
+		capture { print }
+	' "${script_path}" | sed 's#local target="/etc/resolv.conf"#local target="$KPANEL_DNS_TEST_TARGET"#'
+)"
+eval "$dns_writer_body"
+KPANEL_DNS_TEST_TARGET="$temporary/resolv.conf"
+printf 'nameserver 9.9.9.9\n' > "$KPANEL_DNS_TEST_TARGET"
+chattr() { return 1; }
+lsattr() { return 1; }
+mv() { return 1; }
+dns_result="$(kpanel_dns_write_static 1.1.1.1 8.8.8.8)"
+grep -F 'KPANEL_DNS_RESULT applied' <<< "$dns_result" >/dev/null
+[ "$(cat "$KPANEL_DNS_TEST_TARGET")"$'\n' = $'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' ]
+dns_result="$(kpanel_dns_write_static 1.1.1.1 8.8.8.8)"
+grep -F 'KPANEL_DNS_RESULT unchanged' <<< "$dns_result" >/dev/null
 
 printf '%s\n' "kpanel_dns_noninteractive_smoke=pass"
