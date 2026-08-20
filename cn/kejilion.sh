@@ -4352,9 +4352,20 @@ kpanel_system_tuning_valid_item() {
 	esac
 }
 
+kpanel_system_tuning_run_command() {
+	(
+		unset http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY
+		"$@"
+	)
+}
+
+kpanel_system_tuning_curl() {
+	kpanel_system_tuning_run_command curl --proxy '' --noproxy '*' "$@"
+}
+
 kpanel_system_tuning_download_verified() {
 	local url="$1" expected="$2" output="$3" actual size
-	curl --fail --silent --show-error --location --max-time 120 --output "$output" "$url" || return 1
+	kpanel_system_tuning_curl --fail --silent --show-error --location --max-time 120 --output "$output" "$url" || return 1
 	[ -f "$output" ] && [ ! -L "$output" ] || return 1
 	size="$(wc -c < "$output" | tr -d '[:space:]')"
 	[[ "$size" =~ ^[0-9]+$ ]] && [ "$size" -gt 0 ] && [ "$size" -le 1048576 ] || return 1
@@ -4367,13 +4378,13 @@ kpanel_system_tuning_switch_mirror() {
 	script="$(mktemp /tmp/kejilion-system-tuning-mirror.XXXXXX)" || return 1
 	url="${gh_proxy}raw.githubusercontent.com/SuperManito/LinuxMirrors/${KPANEL_SYSTEM_TUNING_MIRROR_COMMIT}/ChangeMirrors.sh"
 	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_MIRROR_SHA256" "$script" || { rm -f -- "$script"; return 1; }
-	country="$(curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
+	country="$(kpanel_system_tuning_curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
 	if [ "$country" = CN ]; then
-		bash "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command bash "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	elif grep -qi oracle /etc/os-release 2>/dev/null; then
-		bash "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command bash "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	else
-		bash "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command bash "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	fi
 	local result=$?
 	rm -f -- "$script"
@@ -4389,7 +4400,7 @@ kpanel_system_tuning_kernel_auto() {
 	script="$(mktemp /tmp/kejilion-system-tuning-network.XXXXXX)" || return 1
 	url="${gh_proxy}raw.githubusercontent.com/kejilion/sh/${KPANEL_SYSTEM_TUNING_NETWORK_COMMIT}/network-optimize.sh"
 	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_NETWORK_SHA256" "$script" || { rm -f -- "$script"; return 1; }
-	bash "$script"
+	kpanel_system_tuning_run_command bash "$script"
 	local result=$?
 	rm -f -- "$script"
 	return "$result"
@@ -4572,7 +4583,7 @@ kpanel_system_tuning_run_item() {
 		system-update)
 			kpanel_system_tuning_has_package_manager update || { kpanel_system_tuning_error "当前系统没有受支持的软件包管理器"; return 1; }
 			kpanel_system_tuning_switch_mirror || { kpanel_system_tuning_error "系统更新源优化失败"; return 1; }
-			linux_update || { kpanel_system_tuning_error "系统软件包更新失败"; return 1; }
+			kpanel_system_tuning_run_command linux_update || { kpanel_system_tuning_error "系统软件包更新失败"; return 1; }
 			;;
 		system-cleanup)
 			kpanel_system_tuning_has_package_manager cleanup || { kpanel_system_tuning_error "当前系统没有受支持的清理适配器"; return 1; }

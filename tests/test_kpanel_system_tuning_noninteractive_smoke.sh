@@ -141,4 +141,24 @@ if kpanel_system_tuning_download_verified https://example.invalid/source "$(kpan
 	exit 1
 fi
 
+export http_proxy="http://127.0.0.1:10808"
+proxy_curl_calls_file="$temporary/proxy-curl-calls"
+proxy_direct_args_file="$temporary/proxy-direct-args"
+curl() {
+	printf '%s\n' curl >> "$proxy_curl_calls_file"
+	printf '%s\n' "$*" > "$proxy_direct_args_file"
+	while [ "$#" -gt 0 ]; do
+		[ "$1" = --output ] && { cp -- "$temporary/source" "$2"; return; }
+		shift
+	done
+	return 1
+}
+kpanel_system_tuning_curl --fail --silent --show-error --location --output "$temporary/proxy-download" https://example.invalid/source
+[ "$(wc -l < "$proxy_curl_calls_file" | tr -d '[:space:]')" -eq 1 ]
+proxy_direct_args="$(cat -- "$proxy_direct_args_file")"
+[[ "$proxy_direct_args" == *"--proxy"* && "$proxy_direct_args" == *"--noproxy"* ]]
+kpanel_system_tuning_run_command env > "$temporary/direct-env"
+! grep -Eiq '^(http|https|all)_proxy=' "$temporary/direct-env"
+unset http_proxy
+
 printf '%s\n' 'kpanel_system_tuning_noninteractive_smoke=pass'
