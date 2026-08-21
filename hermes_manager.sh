@@ -227,7 +227,10 @@ try:
         print(json.dumps(out))
     elif action == "switch":
         n, u, k, m = sys.argv[3:7]
-        data['model'] = {"default": m, "provider": "custom", "base_url": u, "api_key": k}
+        # Preserve the selected named custom provider. A bare "custom" route
+        # is ambiguous when multiple entries share a base URL but use
+        # different API keys or have different model entitlements.
+        data['model'] = {"default": m, "provider": f"custom:{n}", "base_url": u, "api_key": k}
         save(data)
 
 except Exception as e:
