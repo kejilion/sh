@@ -72,6 +72,7 @@ printf '%s\n' "${dispatch_body}" | grep -F 'uninstall|remove) kpanel_node_uninst
 
 printf '%s\n' "${join_body}" | grep -F 'kpl1.*)' >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'kpanel_node_ensure_account || return 1' >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'kpanel_node_write_uninstall_helper || ! kpanel_node_write_units' >/dev/null
 printf '%s\n' "${join_body}" | grep -F "LC_ALL=C tr -cd '[:alnum:]_. -'" >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'resume_enrollment=true' >/dev/null
 printf '%s\n' "${join_body}" | grep -F '授权已保存' >/dev/null
@@ -112,6 +113,9 @@ if grep -Eq 'curl .*(-k|--insecure)' "${updater}"; then
 fi
 
 printf '%s\n' "${service_body}" | grep -Fx 'User=kejilion-node' >/dev/null
+printf '%s\n' "${service_body}" | grep -Fx 'RuntimeDirectory=kejilion-node' >/dev/null
+printf '%s\n' "${service_body}" | grep -Fx 'RuntimeDirectoryMode=0700' >/dev/null
+printf '%s\n' "${service_body}" | grep -Fx 'RuntimeDirectoryPreserve=yes' >/dev/null
 printf '%s\n' "${service_body}" | grep -Fx 'NoNewPrivileges=true' >/dev/null
 printf '%s\n' "${service_body}" | grep -Fx 'ProtectSystem=strict' >/dev/null
 printf '%s\n' "${service_body}" | grep -Fx 'ProtectHome=true' >/dev/null
@@ -120,6 +124,8 @@ printf '%s\n' "${service_body}" | grep -Fx 'RestrictAddressFamilies=AF_UNIX AF_I
 printf '%s\n' "${timer_body}" | grep -Fx 'OnUnitActiveSec=24h' >/dev/null
 printf '%s\n' "${timer_body}" | grep -Fx 'RandomizedDelaySec=6h' >/dev/null
 printf '%s\n' "${timer_body}" | grep -Fx 'Persistent=true' >/dev/null
+grep -F 'kejilion-node-uninstall.service' "${normalized_script}" >/dev/null
+grep -F 'PathExists=/run/kejilion-node/uninstall.request' "${normalized_script}" >/dev/null
 
 # Exercise the systemd-sysusers fallback used by minimal systemd hosts that do
 # not ship useradd. The fake PATH intentionally contains no useradd/adduser.
@@ -185,6 +191,8 @@ cat >"${temporary_dir}/expected-systemctl.log" <<'EXPECTED_SYSTEMCTL'
 daemon-reload
 enable kejilion-node.service
 enable kejilion-node-update.timer
+enable kejilion-node-uninstall.path
+start kejilion-node-uninstall.path
 start kejilion-node.service
 start kejilion-node-update.timer
 is-active kejilion-node.service
@@ -223,6 +231,8 @@ chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
 		KPANEL_NODE_HOME="${KPANEL_TEST_JOIN_ROOT}/home"
 		KPANEL_NODE_BINARY="${KPANEL_NODE_HOME}/kejilion-node"
 		KPANEL_NODE_UPDATER="${KPANEL_NODE_HOME}/update.sh"
+		KPANEL_NODE_UNINSTALL_HELPER="${KPANEL_NODE_HOME}/uninstall.sh"
+		KPANEL_NODE_UNINSTALL_REQUEST="/run/kejilion-node/uninstall.request"
 		KPANEL_NODE_CONFIG_DIR="${KPANEL_TEST_JOIN_ROOT}/config"
 		KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
 		KPANEL_NODE_SYSTEMCTL="${KPANEL_TEST_JOIN_ROOT}/systemctl"
@@ -254,6 +264,7 @@ MOCK_NODE
 		chmod +x "${KPANEL_NODE_UPDATER}" "${KPANEL_NODE_BINARY}"
 	}
 	kpanel_node_write_units() { :; }
+	kpanel_node_write_uninstall_helper() { :; }
 	kpanel_node_cleanup_failed_join() { rm -rf -- "${KPANEL_NODE_HOME}" "${KPANEL_NODE_CONFIG_DIR}"; }
 	chown() { :; }
 	if kpanel_node_join 'kpl1.test-token'; then

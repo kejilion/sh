@@ -10666,6 +10666,8 @@ kpanel_node_paths() {
 	KPANEL_NODE_HOME="/usr/local/lib/kejilion-node"
 	KPANEL_NODE_BINARY="${KPANEL_NODE_HOME}/kejilion-node"
 	KPANEL_NODE_UPDATER="${KPANEL_NODE_HOME}/update.sh"
+	KPANEL_NODE_UNINSTALL_HELPER="${KPANEL_NODE_HOME}/uninstall.sh"
+	KPANEL_NODE_UNINSTALL_REQUEST="/run/kejilion-node/uninstall.request"
 	KPANEL_NODE_CONFIG_DIR="/etc/kejilion-node"
 	KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
 	KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"
@@ -10838,6 +10840,43 @@ KPANEL_NODE_UPDATE
 	chmod 0755 "$KPANEL_NODE_UPDATER"
 }
 
+kpanel_node_write_uninstall_helper() {
+	"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root -m 0755 "$KPANEL_NODE_HOME" || return 1
+	cat >"$KPANEL_NODE_UNINSTALL_HELPER" <<'KPANEL_NODE_UNINSTALL_HELPER'
+#!/bin/bash
+set -euo pipefail
+
+[ "$(id -u)" = "0" ] || {
+	echo "uninstalling KPanel lightweight node requires root privileges" >&2
+	exit 1
+}
+
+systemctl_bin="$(type -P systemctl 2>/dev/null || true)"
+if [ -n "$systemctl_bin" ] && [ -x "$systemctl_bin" ]; then
+	"$systemctl_bin" stop kejilion-node.service >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-update.timer >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-update.service >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-uninstall.path >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node.service >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node-update.timer >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node-uninstall.path >/dev/null 2>&1 || true
+fi
+rm -f -- /etc/systemd/system/kejilion-node.service \
+	/etc/systemd/system/kejilion-node-update.service \
+	/etc/systemd/system/kejilion-node-update.timer \
+	/etc/systemd/system/kejilion-node-uninstall.service \
+	/etc/systemd/system/kejilion-node-uninstall.path \
+	/run/kejilion-node/uninstall.request
+rm -rf -- /usr/local/lib/kejilion-node /etc/kejilion-node
+rmdir -- /run/kejilion-node 2>/dev/null || true
+if [ -n "$systemctl_bin" ] && [ -x "$systemctl_bin" ]; then
+	"$systemctl_bin" daemon-reload >/dev/null 2>&1 || true
+fi
+echo "KPanel lightweight node has been uninstalled from the local machine; the offline records of the center need to be deleted on the cluster page."
+KPANEL_NODE_UNINSTALL_HELPER
+	chmod 0755 "$KPANEL_NODE_UNINSTALL_HELPER"
+}
+
 kpanel_node_write_units() {
 	cat >/etc/systemd/system/kejilion-node.service <<'KPANEL_NODE_SERVICE'
 [Unit]
@@ -10850,6 +10889,9 @@ Type=simple
 User=kejilion-node
 Group=kejilion-node
 ExecStart=/usr/local/lib/kejilion-node/kejilion-node run --config /etc/kejilion-node/node.json
+RuntimeDirectory=kejilion-node
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
 Restart=on-failure
 RestartSec=15s
 NoNewPrivileges=true
@@ -10905,21 +10947,54 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 KPANEL_NODE_UPDATE_TIMER
+
+	cat >/etc/systemd/system/kejilion-node-uninstall.service <<'KPANEL_NODE_UNINSTALL_SERVICE'
+[Unit]
+Description=Uninstall KPanel Lightweight Monitoring Node
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/kejilion-node/uninstall.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+UMask=0077
+KPANEL_NODE_UNINSTALL_SERVICE
+
+	cat >/etc/systemd/system/kejilion-node-uninstall.path <<'KPANEL_NODE_UNINSTALL_PATH'
+[Unit]
+Description=Watch for KPanel Lightweight Monitoring Node Uninstall
+
+[Path]
+PathExists=/run/kejilion-node/uninstall.request
+Unit=kejilion-node-uninstall.service
+
+[Install]
+WantedBy=multi-user.target
+KPANEL_NODE_UNINSTALL_PATH
 	chmod 0644 /etc/systemd/system/kejilion-node.service \
 		/etc/systemd/system/kejilion-node-update.service \
-		/etc/systemd/system/kejilion-node-update.timer
+		/etc/systemd/system/kejilion-node-update.timer \
+		/etc/systemd/system/kejilion-node-uninstall.service \
+		/etc/systemd/system/kejilion-node-uninstall.path
 }
 
 kpanel_node_cleanup_failed_join() {
 	if [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.timer >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-uninstall.path >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-update.timer >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-uninstall.path >/dev/null 2>&1 || true
 	fi
 	rm -f -- /etc/systemd/system/kejilion-node.service \
 		/etc/systemd/system/kejilion-node-update.service \
-		/etc/systemd/system/kejilion-node-update.timer
+		/etc/systemd/system/kejilion-node-update.timer \
+		/etc/systemd/system/kejilion-node-uninstall.service \
+		/etc/systemd/system/kejilion-node-uninstall.path \
+		"$KPANEL_NODE_UNINSTALL_REQUEST"
 	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
 	[ ! -x "$KPANEL_NODE_SYSTEMCTL" ] || "$KPANEL_NODE_SYSTEMCTL" daemon-reload >/dev/null 2>&1 || true
 }
@@ -10928,6 +11003,8 @@ kpanel_node_activate() {
 	"$KPANEL_NODE_SYSTEMCTL" daemon-reload &&
 		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node.service &&
 		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-update.timer &&
+		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-uninstall.path &&
+		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-uninstall.path &&
 		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node.service &&
 		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-update.timer &&
 		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
@@ -10972,7 +11049,7 @@ kpanel_node_join() {
 		return 1
 	}
 	chmod 0640 "$KPANEL_NODE_CONFIG"
-	if ! kpanel_node_write_units; then
+	if ! kpanel_node_write_uninstall_helper || ! kpanel_node_write_units; then
 		echo "节点授权已保存，但 systemd 单元写入失败；再次执行接入命令可继续。" >&2
 		return 1
 	fi
@@ -11000,7 +11077,13 @@ kpanel_node_update() {
 		echo "KPanel 轻量节点未安装。" >&2
 		return 1
 	}
-	"$KPANEL_NODE_UPDATER" update
+	"$KPANEL_NODE_UPDATER" update || return 1
+	if ! kpanel_node_write_uninstall_helper || ! kpanel_node_write_units || ! kpanel_node_activate; then
+		echo "KPanel 轻量节点更新完成，但远程卸载触发器启用失败；修复 systemd 后再次执行更新命令即可。" >&2
+		return 1
+	fi
+	"$KPANEL_NODE_SYSTEMCTL" restart kejilion-node.service &&
+		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
 }
 
 kpanel_node_uninstall() {
@@ -11009,16 +11092,27 @@ kpanel_node_uninstall() {
 		echo "卸载 KPanel 轻量节点需要 root 权限。" >&2
 		return 1
 	}
+	if [ -x "$KPANEL_NODE_UNINSTALL_HELPER" ]; then
+		"$KPANEL_NODE_UNINSTALL_HELPER"
+		return $?
+	fi
 	if [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.timer >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-uninstall.path >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-update.timer >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-uninstall.path >/dev/null 2>&1 || true
 	fi
 	rm -f -- /etc/systemd/system/kejilion-node.service \
 		/etc/systemd/system/kejilion-node-update.service \
-		/etc/systemd/system/kejilion-node-update.timer
+		/etc/systemd/system/kejilion-node-update.timer \
+		/etc/systemd/system/kejilion-node-uninstall.service \
+		/etc/systemd/system/kejilion-node-uninstall.path \
+		"$KPANEL_NODE_UNINSTALL_REQUEST"
 	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
+	rmdir -- /run/kejilion-node 2>/dev/null || true
 	[ ! -x "$KPANEL_NODE_SYSTEMCTL" ] || "$KPANEL_NODE_SYSTEMCTL" daemon-reload >/dev/null 2>&1 || true
 	echo "KPanel 轻量节点已从本机卸载；中心端的离线记录需在集群页面删除。"
 }
