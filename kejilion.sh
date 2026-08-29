@@ -18945,6 +18945,7 @@ while true; do
 	  echo -e "${gl_kjlan}111. ${color111}多格式文件转换工具                  ${gl_kjlan}112. ${color112}Lucky大内网穿透工具"
 	  echo -e "${gl_kjlan}113. ${color113}Firefox浏览器                       ${gl_kjlan}114. ${color114}OpenClaw机器人管理工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}115. ${color115}Hermes机器人管理工具${gl_huang}★${gl_bai}               ${gl_kjlan}116. ${color116}DeepSeek Harness管理工具${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}117. ${color117}99CDN自建CDN管理平台                  ${gl_kjlan}118. ${color118}99DNS智能调度服务"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}第三方应用列表"
   	  echo -e "${gl_kjlan}想要让你的应用出现在这里？查看开发者指南: ${gl_huang}https://dev.kejilion.sh/${gl_bai}"
@@ -22630,6 +22631,62 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 	  116|deepseek-harness|DeepSeek-Harness|dsh)
 		  bash <(curl -fsSL ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/deepseek_harness_manager.sh)
+		  ;;
+
+	  117|99cdn)
+
+		local app_id="117"
+		local lujing="[ -x /opt/srv-biz/srv-biz ]"
+		local panelname="99CDN"
+		local panelurl="https://www.99cdn.com/"
+
+		panel_app_install() {
+			install curl
+			curl -fsSL https://install.99cdn.com | bash
+		}
+
+		panel_app_manage() {
+			systemctl status srv-biz
+		}
+
+		panel_app_uninstall() {
+			systemctl stop srv-biz 2>/dev/null || true
+			systemctl disable srv-biz 2>/dev/null || true
+			rm -rf -- /opt/srv-biz
+			rm -f -- /etc/systemd/system/srv-biz.service /usr/lib/systemd/system/srv-biz.service
+			/bin/systemctl daemon-reload 2>/dev/null || true
+		}
+
+		install_panel
+
+		  ;;
+
+	  118|99dns)
+
+		local app_id="118"
+		local lujing="[ -x /opt/srv-dns/srv-dns ]"
+		local panelname="99DNS"
+		local panelurl="https://www.99cdn.com/"
+
+		panel_app_install() {
+			install curl
+			curl -fsSL https://install.99cdn.com/dns | bash
+		}
+
+		panel_app_manage() {
+			systemctl status srv-dns
+		}
+
+		panel_app_uninstall() {
+			systemctl stop srv-dns 2>/dev/null || true
+			systemctl disable srv-dns 2>/dev/null || true
+			rm -rf -- /opt/srv-dns
+			rm -f -- /etc/systemd/system/srv-dns.service /usr/lib/systemd/system/srv-dns.service
+			/bin/systemctl daemon-reload 2>/dev/null || true
+		}
+
+		install_panel
+
 		  ;;
 
 	  b)
