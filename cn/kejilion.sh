@@ -1042,73 +1042,42 @@ disable_ddos_defense() {
 # 管理国家IP规则的函数
 manage_country_rules() {
 	local action="$1"
-	shift  # 去掉第一个参数，剩下的全是国家代码
+	shift
+	local protocol_action country_code version failed=0
+
+	case "$action" in
+		block) protocol_action=block-country ;;
+		allow) protocol_action=allow-country ;;
+		unblock) protocol_action=remove-country ;;
+		*)
+			echo "用法: manage_country_rules {block|allow|unblock} <country_code...>"
+			return 2
+		;;
+	esac
 
 	install ipset
-
+	install wget
 	for country_code in "$@"; do
-		local ipset_name="${country_code,,}_block"
-		local download_url="http://www.ipdeny.com/ipblocks/data/countries/${country_code,,}.zone"
-
+		country_code="${country_code^^}"
+		if [[ ! "$country_code" =~ ^[A-Z]{2}$ ]]; then
+			echo "错误：国家/地区代码必须是两个英文字母，例如 US"
+			failed=1
+			continue
+		fi
+		version="$(kpanel_system_resource_best_version firewall 2>/dev/null || true)"
+		if ! kpanel_system_resource_valid_version "$version" ||
+			! kpanel_system_resource_run_locked firewall "$protocol_action" "$version" "$country_code" >/dev/null; then
+			echo "错误：国家/地区规则 $country_code 操作失败"
+			failed=1
+			continue
+		fi
 		case "$action" in
-			block)
-				if ! ipset list "$ipset_name" &> /dev/null; then
-					ipset create "$ipset_name" hash:net
-				fi
-
-				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-					echo "错误：下载 $country_code 的 IP 区域文件失败"
-					continue
-				fi
-
-				while IFS= read -r ip; do
-					ipset add "$ipset_name" "$ip" 2>/dev/null
-				done < "${country_code,,}.zone"
-
-				iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
-
-				echo "已成功阻止 $country_code 的 IP 地址"
-				rm "${country_code,,}.zone"
-				;;
-
-			allow)
-				if ! ipset list "$ipset_name" &> /dev/null; then
-					ipset create "$ipset_name" hash:net
-				fi
-
-				if ! wget -q "$download_url" -O "${country_code,,}.zone"; then
-					echo "错误：下载 $country_code 的 IP 区域文件失败"
-					continue
-				fi
-
-				ipset flush "$ipset_name"
-				while IFS= read -r ip; do
-					ipset add "$ipset_name" "$ip" 2>/dev/null
-				done < "${country_code,,}.zone"
-
-
-				iptables -P INPUT DROP
-				iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
-
-				echo "已成功允许 $country_code 的 IP 地址"
-				rm "${country_code,,}.zone"
-				;;
-
-			unblock)
-				iptables -D INPUT -m set --match-set "$ipset_name" src -j DROP 2>/dev/null
-
-				if ipset list "$ipset_name" &> /dev/null; then
-					ipset destroy "$ipset_name"
-				fi
-
-				echo "已成功解除 $country_code 的 IP 地址限制"
-				;;
-
-			*)
-				echo "用法: manage_country_rules {block|allow|unblock} <country_code...>"
-				;;
+			block) echo "已成功阻止 $country_code 的 IP 地址" ;;
+			allow) echo "已成功允许 $country_code 的入站访问" ;;
+			unblock) echo "已成功清除 $country_code 的 IP 地址限制" ;;
 		esac
 	done
+	return "$failed"
 }
 
 
@@ -23272,7 +23241,7 @@ net_menu() {
 
 
 # KPanel system resource protocol start
-KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="3"
+KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="4"
 
 kpanel_system_resource_zero_version() {
 	printf '%064d' 0
@@ -23357,6 +23326,10 @@ kpanel_system_resource_interfaces_dir() {
 
 kpanel_system_resource_iptables_rules_file() {
 	printf '%s\n' "/etc/iptables/rules.v4"
+}
+
+kpanel_system_resource_ipsets_file() {
+	printf '%s\n' "/etc/iptables/ipsets.v4"
 }
 
 kpanel_system_resource_tempdir() {
@@ -23714,19 +23687,40 @@ kpanel_system_resource_firewall_canonical_equal() {
 }
 
 kpanel_system_resource_firewall_version() {
-	local raw canonical version
+	local raw canonical ipsets ipsets_canonical version
 	raw="$(mktemp /tmp/kejilion-system-resource-firewall-version-raw.XXXXXX)" || return 1
 	canonical="$(mktemp /tmp/kejilion-system-resource-firewall-version-canonical.XXXXXX)" || {
 		rm -f -- "$raw"
 		return 1
 	}
-	if ! kpanel_system_resource_firewall_capture "$raw" ||
-		! kpanel_system_resource_firewall_canonicalize "$raw" "$canonical"; then
+	ipsets="$(mktemp /tmp/kejilion-system-resource-firewall-version-ipsets.XXXXXX)" || {
 		rm -f -- "$raw" "$canonical"
 		return 1
+	}
+	ipsets_canonical="$(mktemp /tmp/kejilion-system-resource-firewall-version-ipsets-canonical.XXXXXX)" || {
+		rm -f -- "$raw" "$canonical" "$ipsets"
+		return 1
+	}
+	if ! kpanel_system_resource_firewall_capture "$raw" ||
+		! kpanel_system_resource_firewall_canonicalize "$raw" "$canonical" ||
+		! kpanel_system_resource_ipset_capture "$ipsets" ||
+		! kpanel_system_resource_ipset_canonicalize "$ipsets" "$ipsets_canonical"; then
+		rm -f -- "$raw" "$canonical" "$ipsets" "$ipsets_canonical"
+		return 1
 	fi
-	version="$(sha256sum -- "$canonical" 2>/dev/null | awk '{print $1}')"
-	rm -f -- "$raw" "$canonical"
+	if command -v ipset >/dev/null 2>&1; then
+		version="$(
+			{
+				printf 'iptables\n'
+				cat -- "$canonical"
+				printf 'ipsets\n'
+				cat -- "$ipsets_canonical"
+			} | sha256sum 2>/dev/null | awk '{print $1}'
+		)"
+	else
+		version="$(sha256sum -- "$canonical" 2>/dev/null | awk '{print $1}')"
+	fi
+	rm -f -- "$raw" "$canonical" "$ipsets" "$ipsets_canonical"
 	[[ "$version" =~ ^[0-9a-f]{64}$ ]] || return 1
 	printf '%s\n' "$version"
 }
@@ -23737,6 +23731,149 @@ kpanel_system_resource_firewall_capture() {
 	iptables-save > "$target" 2>/dev/null || return 1
 	bytes="$(wc -c < "$target" 2>/dev/null)" || return 1
 	[ "$bytes" -le 524288 ]
+}
+
+kpanel_system_resource_ipset_capture() {
+	local target="$1"
+	[ ! -L "$target" ] || return 1
+	if ! command -v ipset >/dev/null 2>&1; then
+		: > "$target" || return 1
+		return 0
+	fi
+	ipset save > "$target" 2>/dev/null || return 1
+	kpanel_system_resource_file_within_bounds "$target" 8388608 131072
+}
+
+kpanel_system_resource_ipset_canonicalize() {
+	local source="$1"
+	local target="$2"
+	[ -f "$source" ] && [ ! -L "$source" ] || return 1
+	kpanel_system_resource_file_within_bounds "$source" 8388608 131072 || return 1
+	LC_ALL=C awk '{sub(/\r$/, "", $0); print}' "$source" > "$target"
+}
+
+kpanel_system_resource_ipset_restore() {
+	local source="$1"
+	local names name
+	[ -f "$source" ] && [ ! -L "$source" ] || return 1
+	if ! command -v ipset >/dev/null 2>&1; then
+		[ ! -s "$source" ]
+		return $?
+	fi
+	names="$(ipset list -name 2>/dev/null)" || return 1
+	while IFS= read -r name; do
+		[[ "$name" =~ ^[a-z]{2}_block$ ]] || continue
+		if ! ipset destroy "$name" >/dev/null 2>&1; then
+			ipset flush "$name" >/dev/null 2>&1 || return 1
+		fi
+	done <<< "$names"
+	[ -s "$source" ] || return 0
+	ipset restore -exist < "$source" >/dev/null 2>&1
+}
+
+kpanel_system_resource_firewall_country_code() {
+	local value="${1^^}"
+	[[ "$value" =~ ^[A-Z]{2}$ ]] || return 1
+	printf '%s\n' "${value,,}"
+}
+
+kpanel_system_resource_firewall_country_source() {
+	local code="$1"
+	printf 'https://www.ipdeny.com/ipblocks/data/countries/%s.zone\n' "$code"
+}
+
+kpanel_system_resource_firewall_country_download() {
+	local code="$1"
+	local target="$2"
+	local url
+	code="$(kpanel_system_resource_firewall_country_code "$code")" || return 1
+	url="$(kpanel_system_resource_firewall_country_source "$code")" || return 1
+	wget -q --timeout=10 --tries=1 -O "$target" "$url" >/dev/null 2>&1 || return 1
+	kpanel_system_resource_file_within_bounds "$target" 8388608 65536 || return 1
+	[ -s "$target" ] || return 1
+}
+
+kpanel_system_resource_firewall_country_set_load() {
+	local code="$1"
+	local source="$2"
+	local set_name candidate network
+	code="$(kpanel_system_resource_firewall_country_code "$code")" || return 1
+	[ -f "$source" ] && [ ! -L "$source" ] || return 1
+	set_name="${code}_block"
+	candidate="${set_name}_next"
+	ipset destroy "$candidate" >/dev/null 2>&1 || true
+	ipset create "$candidate" hash:net family inet maxelem 65536 >/dev/null 2>&1 || return 1
+	while IFS= read -r network || [ -n "$network" ]; do
+		network="${network%$'\r'}"
+		[ -n "$network" ] || continue
+		if ! kpanel_system_resource_is_ipv4_cidr "$network" ||
+			! ipset add "$candidate" "$network" -exist >/dev/null 2>&1; then
+			ipset destroy "$candidate" >/dev/null 2>&1 || true
+			return 1
+		fi
+	done < "$source"
+	if ipset list "$set_name" >/dev/null 2>&1; then
+		ipset swap "$candidate" "$set_name" >/dev/null 2>&1 || {
+			ipset destroy "$candidate" >/dev/null 2>&1 || true
+			return 1
+		}
+		ipset destroy "$candidate" >/dev/null 2>&1 || return 1
+	else
+		ipset rename "$candidate" "$set_name" >/dev/null 2>&1 || {
+			ipset destroy "$candidate" >/dev/null 2>&1 || true
+			return 1
+		}
+	fi
+}
+
+kpanel_system_resource_firewall_country_rules() {
+	local action="$1"
+	local code="$2"
+	local set_name
+	local temporary=""
+	code="$(kpanel_system_resource_firewall_country_code "$code")" || return 1
+	set_name="${code}_block"
+	case "$action" in
+		block-country|allow-country)
+			temporary="$(mktemp /tmp/kejilion-system-resource-country.XXXXXX)" || return 1
+			chmod 600 "$temporary" >/dev/null 2>&1 || { rm -f -- "$temporary"; return 1; }
+			if ! kpanel_system_resource_firewall_country_download "$code" "$temporary" ||
+				! kpanel_system_resource_firewall_country_set_load "$code" "$temporary"; then
+				rm -f -- "$temporary"
+				return 1
+			fi
+			rm -f -- "$temporary"
+			;;
+		remove-country) ;;
+		*) return 2 ;;
+	esac
+	case "$action" in
+		block-country)
+			kpanel_system_resource_firewall_delete_rule INPUT -m set --match-set "$set_name" src -j ACCEPT || return 1
+			kpanel_system_resource_firewall_ensure_rule insert INPUT -m set --match-set "$set_name" src -j DROP || return 1
+			kpanel_system_resource_firewall_rule_exists INPUT -m set --match-set "$set_name" src -j DROP || return 1
+			! kpanel_system_resource_firewall_rule_exists INPUT -m set --match-set "$set_name" src -j ACCEPT || return 1
+			;;
+		allow-country)
+			kpanel_system_resource_firewall_delete_rule INPUT -m set --match-set "$set_name" src -j DROP || return 1
+			if ! iptables -w 5 -S INPUT 2>/dev/null | grep -Fqx -- '-P INPUT DROP'; then
+				kpanel_system_resource_iptables -P INPUT DROP || return 1
+			fi
+			kpanel_system_resource_firewall_ensure_rule append INPUT -m set --match-set "$set_name" src -j ACCEPT || return 1
+			kpanel_system_resource_firewall_rule_exists INPUT -m set --match-set "$set_name" src -j ACCEPT || return 1
+			! kpanel_system_resource_firewall_rule_exists INPUT -m set --match-set "$set_name" src -j DROP || return 1
+			;;
+		remove-country)
+			kpanel_system_resource_firewall_delete_rule INPUT -m set --match-set "$set_name" src -j ACCEPT || return 1
+			kpanel_system_resource_firewall_delete_rule INPUT -m set --match-set "$set_name" src -j DROP || return 1
+			if ipset list "$set_name" >/dev/null 2>&1; then
+				ipset destroy "$set_name" >/dev/null 2>&1 || return 1
+			fi
+			! kpanel_system_resource_firewall_rule_exists INPUT -m set --match-set "$set_name" src -j ACCEPT &&
+				! kpanel_system_resource_firewall_rule_exists INPUT -m set --match-set "$set_name" src -j DROP || return 1
+			;;
+	esac
+	return 0
 }
 
 kpanel_system_resource_best_version() {
@@ -24750,6 +24887,7 @@ kpanel_system_resource_firewall_apply() {
 		allow-ip) kpanel_system_resource_firewall_allow_ip_rules "$value" ;;
 		block-ip) kpanel_system_resource_firewall_block_ip_rules "$value" ;;
 		remove-ip) kpanel_system_resource_firewall_remove_ip_rules "$value" ;;
+		block-country|allow-country|remove-country) kpanel_system_resource_firewall_country_rules "$action" "$value" ;;
 		open-all) kpanel_system_resource_firewall_all_rules ACCEPT ;;
 		close-all) kpanel_system_resource_firewall_all_rules DROP ;;
 		enable-ping) kpanel_system_resource_firewall_enable_ping_rules ;;
@@ -24763,13 +24901,22 @@ kpanel_system_resource_firewall_apply() {
 kpanel_system_resource_firewall_snapshot() {
 	local snapshot_dir="$1"
 	local rules_path="$2"
+	local ipsets_path
 
 	kpanel_system_resource_firewall_capture "$snapshot_dir/iptables.rules" || return 1
+	kpanel_system_resource_ipset_capture "$snapshot_dir/ipsets.save" || return 1
 	KPANEL_SYSTEM_RESOURCE_FIREWALL_RULES_EXISTED=false
 	if [ -e "$rules_path" ]; then
 		[ -f "$rules_path" ] && [ ! -L "$rules_path" ] || return 1
 		cp -p -- "$rules_path" "$snapshot_dir/rules.v4" >/dev/null 2>&1 || return 1
 		KPANEL_SYSTEM_RESOURCE_FIREWALL_RULES_EXISTED=true
+	fi
+	ipsets_path="$(kpanel_system_resource_ipsets_file)"
+	KPANEL_SYSTEM_RESOURCE_FIREWALL_IPSETS_EXISTED=false
+	if [ -e "$ipsets_path" ]; then
+		[ -f "$ipsets_path" ] && [ ! -L "$ipsets_path" ] || return 1
+		cp -p -- "$ipsets_path" "$snapshot_dir/ipsets.v4" >/dev/null 2>&1 || return 1
+		KPANEL_SYSTEM_RESOURCE_FIREWALL_IPSETS_EXISTED=true
 	fi
 	kpanel_system_resource_cron_capture "$snapshot_dir/crontab" || return 1
 	KPANEL_SYSTEM_RESOURCE_FIREWALL_CRON_EXISTED="$KPANEL_SYSTEM_RESOURCE_CRON_EXISTED"
@@ -24777,9 +24924,10 @@ kpanel_system_resource_firewall_snapshot() {
 
 kpanel_system_resource_firewall_persist() {
 	local snapshot_dir="$1"
-	local rules_path parent desired_rules verify_rules
-	local cron_current cron_desired cron_verify restore_line count current_line
-	local comparison
+	local rules_path ipsets_path parent desired_rules verify_rules desired_ipsets verify_ipsets
+	local cron_current cron_desired cron_verify restore_line ipset_restore_line count ipset_count current_line
+	local ipset_available=false ipsets_should_exist=false
+	local comparison cron_needs_update=false
 
 	KPANEL_SYSTEM_RESOURCE_FIREWALL_PERSIST_CHANGED=false
 	rules_path="$(kpanel_system_resource_iptables_rules_file)"
@@ -24827,19 +24975,101 @@ kpanel_system_resource_firewall_persist() {
 	kpanel_system_resource_firewall_capture "$verify_rules" || return 1
 	kpanel_system_resource_firewall_canonical_equal "$verify_rules" "$rules_path" || return 1
 
+	ipsets_path="$(kpanel_system_resource_ipsets_file)"
+	parent="$(dirname -- "$ipsets_path")"
+	[ ! -L "$ipsets_path" ] || return 1
+	if command -v ipset >/dev/null 2>&1; then
+		ipset_available=true
+		desired_ipsets="$(mktemp "$parent/.ipsets.v4.kpanel.XXXXXX")" || return 1
+		if ! kpanel_system_resource_ipset_capture "$desired_ipsets"; then
+			rm -f -- "$desired_ipsets"
+			return 1
+		fi
+		[ -s "$desired_ipsets" ] && ipsets_should_exist=true
+		if [ "$ipsets_should_exist" = true ]; then
+			comparison=1
+			if [ -f "$ipsets_path" ]; then
+				if cmp -s -- "$desired_ipsets" "$ipsets_path"; then
+					comparison=0
+				else
+					comparison=$?
+				fi
+			fi
+			if [ "$comparison" -gt 1 ]; then
+				rm -f -- "$desired_ipsets"
+				return 1
+			fi
+			if [ "$comparison" -eq 0 ]; then
+				:
+			else
+				if [ -f "$ipsets_path" ]; then
+					kpanel_system_resource_copy_identity "$ipsets_path" "$desired_ipsets" || {
+						rm -f -- "$desired_ipsets"
+						return 1
+					}
+				else
+					chmod 600 "$desired_ipsets" >/dev/null 2>&1 || {
+						rm -f -- "$desired_ipsets"
+						return 1
+					}
+				fi
+				mv -f -- "$desired_ipsets" "$ipsets_path" >/dev/null 2>&1 || {
+					rm -f -- "$desired_ipsets"
+					return 1
+				}
+				KPANEL_SYSTEM_RESOURCE_FIREWALL_PERSIST_CHANGED=true
+			fi
+		else
+			rm -f -- "$desired_ipsets"
+			if [ -e "$ipsets_path" ]; then
+				rm -f -- "$ipsets_path" >/dev/null 2>&1 || return 1
+				KPANEL_SYSTEM_RESOURCE_FIREWALL_PERSIST_CHANGED=true
+			fi
+		fi
+	else
+		[ ! -e "$ipsets_path" ] || return 1
+	fi
+	if [ "$ipset_available" = true ]; then
+		verify_ipsets="$snapshot_dir/ipsets.persist.verify"
+		kpanel_system_resource_ipset_capture "$verify_ipsets" || return 1
+		if [ "$ipsets_should_exist" = true ]; then
+			cmp -s -- "$ipsets_path" "$verify_ipsets" || return 1
+		else
+			[ ! -s "$verify_ipsets" ] || return 1
+		fi
+		rm -f -- "$desired_ipsets"
+	fi
+
 	restore_line='@reboot iptables-restore < /etc/iptables/rules.v4'
+	ipset_restore_line='@reboot ipset restore < /etc/iptables/ipsets.v4'
 	cron_current="$snapshot_dir/crontab.persist.current"
 	kpanel_system_resource_cron_capture "$cron_current" || return 1
 	count="$(grep -Fxc -- "$restore_line" "$cron_current" 2>/dev/null || true)"
-	if [ "$count" -ne 1 ]; then
+	ipset_count="$(grep -Fxc -- "$ipset_restore_line" "$cron_current" 2>/dev/null || true)"
+	if [ "$ipset_available" = true ] && [ -s "$ipsets_path" ]; then
+		ipsets_should_exist=true
+	else
+		ipsets_should_exist=false
+	fi
+	[ "$count" -eq 1 ] || cron_needs_update=true
+	if [ "$ipsets_should_exist" = true ]; then
+		[ "$ipset_count" -eq 1 ] || cron_needs_update=true
+	else
+		[ "$ipset_count" -eq 0 ] || cron_needs_update=true
+	fi
+	if [ "$cron_needs_update" = true ]; then
 		cron_desired="$snapshot_dir/crontab.persist.desired"
 		: > "$cron_desired" || return 1
 		while IFS= read -r current_line || [ -n "$current_line" ]; do
 			[ "$current_line" = "$restore_line" ] && continue
+			[ "$current_line" = "$ipset_restore_line" ] && continue
 			printf '%s\n' "$current_line" >> "$cron_desired" || return 1
 		done < "$cron_current"
 		if [ -s "$cron_desired" ] && [ "$(tail -c 1 "$cron_desired" | wc -l)" -eq 0 ]; then
 			printf '\n' >> "$cron_desired" || return 1
+		fi
+		if [ "$ipsets_should_exist" = true ]; then
+			printf '%s\n' "$ipset_restore_line" >> "$cron_desired" || return 1
 		fi
 		printf '%s\n' "$restore_line" >> "$cron_desired" || return 1
 		kpanel_system_resource_file_within_bounds "$cron_desired" 262144 512 || return 1
@@ -24855,20 +25085,32 @@ kpanel_system_resource_firewall_restore() {
 	local snapshot_dir="$1"
 	local rules_path="$2"
 	local rules_existed="$3"
-	local cron_existed="$4"
+	local ipsets_path
+	ipsets_path="$(kpanel_system_resource_ipsets_file)"
+	local ipsets_existed="$4"
+	local cron_existed="$5"
 	local verify="$snapshot_dir/rollback.iptables"
+	local ipsets_verify="$snapshot_dir/rollback.ipsets"
 	local cron_verify="$snapshot_dir/rollback.crontab"
 	local failed=false
 
 	iptables-restore -w 5 < "$snapshot_dir/iptables.rules" >/dev/null 2>&1 || failed=true
+	kpanel_system_resource_ipset_restore "$snapshot_dir/ipsets.save" || failed=true
 	if [ "$rules_existed" = true ]; then
 		cp -p -- "$snapshot_dir/rules.v4" "$rules_path" >/dev/null 2>&1 || failed=true
 	else
 		rm -f -- "$rules_path" >/dev/null 2>&1 || failed=true
 	fi
+	if [ "$ipsets_existed" = true ]; then
+		cp -p -- "$snapshot_dir/ipsets.v4" "$ipsets_path" >/dev/null 2>&1 || failed=true
+	else
+		rm -f -- "$ipsets_path" >/dev/null 2>&1 || failed=true
+	fi
 	kpanel_system_resource_cron_restore "$snapshot_dir/crontab" "$cron_existed" "$cron_verify" || failed=true
 	kpanel_system_resource_firewall_capture "$verify" || failed=true
+	kpanel_system_resource_ipset_capture "$ipsets_verify" || failed=true
 	kpanel_system_resource_firewall_canonical_equal "$snapshot_dir/iptables.rules" "$verify" || failed=true
+	cmp -s -- "$snapshot_dir/ipsets.save" "$ipsets_verify" || failed=true
 	if [ "$rules_existed" = true ]; then
 		cmp -s -- "$snapshot_dir/rules.v4" "$rules_path" || failed=true
 	else
@@ -24881,22 +25123,23 @@ kpanel_system_resource_firewall_failure() {
 	local snapshot_dir="$1"
 	local rules_path="$2"
 	local rules_existed="$3"
-	local cron_existed="$4"
-	local message="$5"
+	local ipsets_existed="$4"
+	local cron_existed="$5"
+	local message="$6"
 	local version recovery_path
 
 	kpanel_system_resource_error "$message"
-	if kpanel_system_resource_firewall_restore "$snapshot_dir" "$rules_path" "$rules_existed" "$cron_existed"; then
+	if kpanel_system_resource_firewall_restore "$snapshot_dir" "$rules_path" "$rules_existed" "$ipsets_existed" "$cron_existed"; then
 		version="$(kpanel_system_resource_best_version firewall)"
 		rm -rf -- "$snapshot_dir"
 		kpanel_system_resource_emit failed "$version"
 	else
 		version="$(kpanel_system_resource_best_version firewall)"
-		kpanel_system_resource_error "iptables 回滚失败，需要人工恢复"
+		kpanel_system_resource_error "防火墙回滚失败，需要人工恢复"
 		if recovery_path="$(kpanel_system_resource_persist_recovery_snapshot "$snapshot_dir" firewall)"; then
 			kpanel_system_resource_emit rollback-failed "$version" "$recovery_path"
 		else
-			kpanel_system_resource_error "iptables 失败快照持久化失败，未生成宿主可见备份路径"
+			kpanel_system_resource_error "防火墙失败快照持久化失败，未生成宿主可见备份路径"
 			kpanel_system_resource_emit rollback-failed "$version"
 		fi
 	fi
@@ -24906,7 +25149,7 @@ kpanel_system_resource_firewall_failure() {
 kpanel_system_resource_firewall_action() {
 	local action="$1"
 	shift
-	local expected value="" snapshot_dir rules_path rules_existed cron_existed final_version
+	local expected value="" snapshot_dir rules_path rules_existed ipsets_existed cron_existed final_version
 	local command_name
 
 	for command_name in iptables iptables-save iptables-restore crontab; do
@@ -24916,6 +25159,20 @@ kpanel_system_resource_firewall_action() {
 			return 2
 		}
 	done
+	case "$action" in
+		block-country|allow-country|remove-country)
+			command -v ipset >/dev/null 2>&1 || {
+				kpanel_system_resource_error "缺少必要命令: ipset"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+				return 2
+			}
+			if [ "$action" != remove-country ] && ! command -v wget >/dev/null 2>&1; then
+				kpanel_system_resource_error "缺少必要命令: wget"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_zero_version)"
+				return 2
+			fi
+		;;
+	esac
 	rules_path="$(kpanel_system_resource_iptables_rules_file)"
 	[ ! -L "$rules_path" ] || {
 		kpanel_system_resource_error "iptables 持久化文件不能是符号链接"
@@ -24952,6 +25209,21 @@ kpanel_system_resource_firewall_action() {
 				return 2
 			}
 			;;
+		block-country|allow-country|remove-country)
+			[ "$#" -eq 2 ] || {
+				kpanel_system_resource_error "$action 需要 expected,countryCode"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version firewall)"
+				return 2
+			}
+			expected="$1"
+			value="$2"
+			kpanel_system_resource_firewall_country_code "$value" >/dev/null || {
+				kpanel_system_resource_error "国家/地区代码必须是两个英文字母，例如 US"
+				kpanel_system_resource_emit failed "$(kpanel_system_resource_best_version firewall)"
+				return 2
+			}
+			value="$(kpanel_system_resource_firewall_country_code "$value")"
+			;;
 		open-all|close-all|enable-ping|disable-ping|enable-ddos|disable-ddos)
 			[ "$#" -eq 1 ] || {
 				kpanel_system_resource_error "$action 只需要 expected"
@@ -24975,22 +25247,23 @@ kpanel_system_resource_firewall_action() {
 	}
 	if ! kpanel_system_resource_firewall_snapshot "$snapshot_dir" "$rules_path"; then
 		rm -rf -- "$snapshot_dir"
-		kpanel_system_resource_error "无法创建 iptables/crontab 快照"
+		kpanel_system_resource_error "无法创建防火墙快照"
 		kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
 		return 1
 	fi
 	rules_existed="$KPANEL_SYSTEM_RESOURCE_FIREWALL_RULES_EXISTED"
+	ipsets_existed="$KPANEL_SYSTEM_RESOURCE_FIREWALL_IPSETS_EXISTED"
 	cron_existed="$KPANEL_SYSTEM_RESOURCE_FIREWALL_CRON_EXISTED"
 	if ! kpanel_system_resource_firewall_apply "$action" "$value"; then
-		kpanel_system_resource_firewall_failure "$snapshot_dir" "$rules_path" "$rules_existed" "$cron_existed" "iptables 动作执行或回读验证失败"
+		kpanel_system_resource_firewall_failure "$snapshot_dir" "$rules_path" "$rules_existed" "$ipsets_existed" "$cron_existed" "iptables 或国家/地区动作执行或回读验证失败"
 		return $?
 	fi
 	if ! kpanel_system_resource_firewall_persist "$snapshot_dir"; then
-		kpanel_system_resource_firewall_failure "$snapshot_dir" "$rules_path" "$rules_existed" "$cron_existed" "iptables 持久化失败"
+		kpanel_system_resource_firewall_failure "$snapshot_dir" "$rules_path" "$rules_existed" "$ipsets_existed" "$cron_existed" "iptables 或 ipset 持久化失败"
 		return $?
 	fi
 	final_version="$(kpanel_system_resource_firewall_version 2>/dev/null)" || {
-		kpanel_system_resource_firewall_failure "$snapshot_dir" "$rules_path" "$rules_existed" "$cron_existed" "无法计算修改后的 iptables 版本"
+		kpanel_system_resource_firewall_failure "$snapshot_dir" "$rules_path" "$rules_existed" "$ipsets_existed" "$cron_existed" "无法计算修改后的防火墙版本"
 		return $?
 	}
 	if [ "$final_version" = "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION" ] &&
