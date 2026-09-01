@@ -44,10 +44,10 @@ adapter_body="$(
 		sed 's/\r$//'
 )"
 [ -n "${adapter_body}" ] || fail "system-resource adapter block was not found"
-grep -Fqx 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="3"' <<< "${adapter_body}" ||
-	fail "system-resource protocol v3 marker is missing"
-[ "$(grep -Fxc 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="3"' <<< "${adapter_body}")" -eq 1 ] ||
-	fail "system-resource protocol v3 marker must be unique"
+grep -Fqx 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="4"' <<< "${adapter_body}" ||
+	fail "system-resource protocol v4 marker is missing"
+[ "$(grep -Fxc 'KPANEL_SYSTEM_RESOURCE_PROTOCOL_VERSION="4"' <<< "${adapter_body}")" -eq 1 ] ||
+	fail "system-resource protocol v4 marker must be unique"
 printf '%s\n' "${adapter_body}" | grep -F '[ "$command_source" = "--command-stdin" ]' >/dev/null ||
 	fail "cron command stdin marker is missing"
 if printf '%s\n' "${adapter_body}" | grep -E 'grep .*\$new_line' >/dev/null; then
@@ -63,8 +63,10 @@ test_lock="${test_lock_dir}/system-resource.lock"
 test_interfaces="${test_root}/interfaces"
 test_rules="${test_root}/rules.v4"
 test_iptables="${test_root}/iptables.state"
+test_ipsets="${test_root}/ipsets.v4"
+test_ipset_dir="${test_root}/ipset-sets"
 test_stderr="${test_root}/stderr"
-mkdir -p -- "${test_interfaces}" "${test_lock_parent}"
+mkdir -p -- "${test_interfaces}" "${test_lock_parent}" "${test_ipset_dir}"
 chmod 700 "${test_lock_parent}"
 
 kpanel_system_resource_hosts_file() { printf '%s\n' "${test_hosts}"; }
@@ -81,6 +83,7 @@ kpanel_system_resource_lock_stat_mode() {
 }
 kpanel_system_resource_interfaces_dir() { printf '%s\n' "${test_interfaces}"; }
 kpanel_system_resource_iptables_rules_file() { printf '%s\n' "${test_rules}"; }
+kpanel_system_resource_ipsets_file() { printf '%s\n' "${test_ipsets}"; }
 kpanel_system_resource_state_root() {
 	printf '%s\n' "${KPANEL_FAKE_RECOVERY_STATE_ROOT:-${test_recovery_state}}"
 }
@@ -248,6 +251,100 @@ iptables-restore() {
 	if [ -f "${test_root}/iptables-restore-output" ]; then
 		command cp -- "${test_root}/iptables-restore-output" "${test_iptables}" || return 1
 	fi
+}
+
+ipset() {
+	local operation="${1:-}" name network candidate temporary line
+	case "${operation}" in
+		list)
+			if [ "${2:-}" = -name ]; then
+				find "${test_ipset_dir}" -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort
+				return 0
+			fi
+			name="${2:-}"
+			[ -f "${test_ipset_dir}/${name}" ]
+			;;
+		save)
+			while IFS= read -r name; do
+				printf 'create %s hash:net family inet\n' "${name}"
+				while IFS= read -r network; do
+					printf 'add %s %s\n' "${name}" "${network}"
+				 done < "${test_ipset_dir}/${name}"
+			done < <(find "${test_ipset_dir}" -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort)
+			;;
+		create)
+			name="${2:-}"
+			[ -n "${name}" ] || return 1
+			[ ! -e "${test_ipset_dir}/${name}" ] || return 1
+			: > "${test_ipset_dir}/${name}"
+			;;
+		destroy)
+			name="${2:-}"
+			[ -f "${test_ipset_dir}/${name}" ] || return 1
+			command rm -f -- "${test_ipset_dir}/${name}"
+			;;
+		flush)
+			name="${2:-}"
+			[ -f "${test_ipset_dir}/${name}" ] || return 1
+			: > "${test_ipset_dir}/${name}"
+			;;
+		add)
+			name="${2:-}"
+			network="${3:-}"
+			[ -f "${test_ipset_dir}/${name}" ] && [ -n "${network}" ] || return 1
+			if ! grep -Fqx -- "${network}" "${test_ipset_dir}/${name}"; then
+				printf '%s\n' "${network}" >> "${test_ipset_dir}/${name}"
+			fi
+			;;
+		swap)
+			name="${2:-}"
+			candidate="${3:-}"
+			[ -f "${test_ipset_dir}/${name}" ] && [ -f "${test_ipset_dir}/${candidate}" ] || return 1
+			temporary="${test_ipset_dir}/.swap"
+			command mv -- "${test_ipset_dir}/${name}" "${temporary}" &&
+			command mv -- "${test_ipset_dir}/${candidate}" "${test_ipset_dir}/${name}" &&
+			command mv -- "${temporary}" "${test_ipset_dir}/${candidate}"
+			;;
+		rename)
+			name="${2:-}"
+			candidate="${3:-}"
+			[ -f "${test_ipset_dir}/${name}" ] && [ ! -e "${test_ipset_dir}/${candidate}" ] || return 1
+			command mv -- "${test_ipset_dir}/${name}" "${test_ipset_dir}/${candidate}"
+			;;
+		restore)
+			[ "${2:-}" = -exist ] || return 1
+			while IFS= read -r line || [ -n "${line}" ]; do
+				read -r -a fields <<< "${line}"
+				case "${fields[0]:-}" in
+					create)
+						name="${fields[1]:-}"
+						[ -f "${test_ipset_dir}/${name}" ] || : > "${test_ipset_dir}/${name}"
+						;;
+					add)
+						name="${fields[1]:-}"
+						network="${fields[2]:-}"
+						[ -f "${test_ipset_dir}/${name}" ] || return 1
+						grep -Fqx -- "${network}" "${test_ipset_dir}/${name}" || printf '%s\n' "${network}" >> "${test_ipset_dir}/${name}"
+						;;
+					esac
+			done
+			;;
+		*) return 1 ;;
+	esac
+}
+
+wget() {
+	local target=""
+	while [ "$#" -gt 0 ]; do
+		if [ "${1:-}" = -O ]; then
+			target="${2:-}"
+			shift 2
+			continue
+		fi
+		shift
+	done
+	[ -n "${target}" ] || return 1
+	printf '%s\n' '192.0.2.0/24' '198.51.100.0/24' > "${target}"
 }
 
 mv() {
@@ -663,7 +760,7 @@ command cp -- "${firewall_rule_changed}" "${test_iptables}"
 command cp -- "${firewall_rule_changed}" "${test_rules}"
 command cp -- "${firewall_dynamic_a}" "${test_root}/iptables-restore-output"
 kpanel_system_resource_firewall_restore \
-	"${canonical_snapshot_dir}" "${test_rules}" true "${canonical_cron_existed}" ||
+	"${canonical_snapshot_dir}" "${test_rules}" true false "${canonical_cron_existed}" ||
 	fail "firewall restore rejected a semantically identical dynamic capture"
 cmp -s -- "${firewall_dynamic_b}" "${test_root}/iptables-restore.last" ||
 	fail "firewall restore input was canonicalized instead of kept raw"
@@ -730,5 +827,36 @@ firewall_v5="$(kpanel_system_resource_firewall_version)"
 run_dispatch applied firewall disable-ping "${firewall_v5}"
 [ "${RUN_RC}" -eq 0 ] || fail "firewall disable-ping failed"
 grep -Fqx -- '-A INPUT -p icmp --icmp-type echo-request -j DROP' "${test_iptables}" || fail "ping DROP rule is missing"
+
+firewall_country_v0="$(kpanel_system_resource_firewall_version)"
+run_dispatch applied firewall block-country "${firewall_country_v0}" US
+[ "${RUN_RC}" -eq 0 ] || fail "firewall block-country failed"
+grep -Fqx -- '-A INPUT -m set --match-set us_block src -j DROP' "${test_iptables}" || fail "country DROP rule is missing"
+[ -f "${test_ipsets}" ] || fail "country ipset persistence file is missing"
+grep -Fqx -- 'create us_block hash:net family inet' "${test_ipsets}" || fail "country ipset definition is missing"
+grep -Fqx -- 'add us_block 192.0.2.0/24' "${test_ipsets}" || fail "country ipset network is missing"
+[ "$(grep -Fxc '@reboot ipset restore < /etc/iptables/ipsets.v4' "${test_crontab}")" -eq 1 ] || fail "ipset restore cron entry is not unique"
+firewall_country_v1="$(kpanel_system_resource_firewall_version)"
+run_dispatch unchanged firewall block-country "${firewall_country_v1}" US
+[ "${RUN_RC}" -eq 0 ] || fail "firewall block-country idempotence failed"
+run_dispatch applied firewall allow-country "${firewall_country_v1}" US
+[ "${RUN_RC}" -eq 0 ] || fail "firewall allow-country failed"
+grep -Fqx -- '-P INPUT DROP' "${test_iptables}" || fail "country allow did not set INPUT policy to DROP"
+grep -Fqx -- '-A INPUT -m set --match-set us_block src -j ACCEPT' "${test_iptables}" || fail "country ACCEPT rule is missing"
+if grep -Fqx -- '-A INPUT -m set --match-set us_block src -j DROP' "${test_iptables}"; then
+	fail "country allow left a conflicting DROP rule"
+fi
+firewall_country_v2="$(kpanel_system_resource_firewall_version)"
+run_dispatch applied firewall remove-country "${firewall_country_v2}" US
+[ "${RUN_RC}" -eq 0 ] || fail "firewall remove-country failed"
+if grep -Fq -- 'match-set us_block' "${test_iptables}"; then
+	fail "firewall remove-country left a country rule"
+fi
+[ ! -e "${test_ipset_dir}/us_block" ] || fail "firewall remove-country left the ipset"
+[ ! -e "${test_ipsets}" ] || fail "firewall remove-country left the ipset persistence file"
+[ "$(grep -Fxc '@reboot ipset restore < /etc/iptables/ipsets.v4' "${test_crontab}" || true)" -eq 0 ] || fail "firewall remove-country left the ipset cron entry"
+firewall_country_v3="$(kpanel_system_resource_firewall_version)"
+run_dispatch unchanged firewall remove-country "${firewall_country_v3}" US
+[ "${RUN_RC}" -eq 0 ] || fail "firewall remove-country idempotence failed"
 
 printf '%s\n' "kpanel_system_resource_noninteractive_smoke=pass"
