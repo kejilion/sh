@@ -15,6 +15,7 @@ gl_kjlan='\033[96m'
 canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
+KPANEL_WEB_CERTIFICATE_PROTOCOL_VERSION="1"
 
 if [ "${1:-}" = "kpanel" ] && [ "${2:-}" = "node" ]; then
 	KJ_LIGHT_NODE_PROTOCOL=1
@@ -1471,31 +1472,150 @@ install_certbot() {
 }
 
 
+kpanel_web_certificate_pair_valid() {
+	local cert_file="${1:-}"
+	local key_file="${2:-}"
+	local host="${3:-}"
+	if [ -z "$cert_file" ] || [ -z "$key_file" ] || [ ! -f "$cert_file" ] || [ ! -f "$key_file" ] ||
+		! command -v openssl >/dev/null 2>&1; then
+		return 1
+	fi
+	if ! openssl x509 -in "$cert_file" -noout >/dev/null 2>&1 ||
+		! openssl x509 -in "$cert_file" -noout -checkend 0 >/dev/null 2>&1 ||
+		! openssl pkey -in "$key_file" -noout -passin pass: >/dev/null 2>&1; then
+		return 1
+	fi
+	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
+	local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
+	if [ -n "$host" ] && [[ ! "$host" =~ $ipv4_pattern && ! "$host" =~ $ipv6_pattern ]] &&
+		openssl x509 -help 2>&1 | grep -q -- '-checkhost'; then
+		if ! openssl x509 -in "$cert_file" -noout -checkhost "$host" 2>&1 | grep -qi 'does match'; then
+			return 1
+		fi
+	fi
+	local cert_pub_pem=""
+	local cert_pub_der=""
+	local key_pub_der=""
+	cert_pub_pem=$(mktemp) || return 1
+	cert_pub_der=$(mktemp) || { rm -f "$cert_pub_pem"; return 1; }
+	key_pub_der=$(mktemp) || { rm -f "$cert_pub_pem" "$cert_pub_der"; return 1; }
+	if ! openssl x509 -in "$cert_file" -pubkey -noout >"$cert_pub_pem" 2>/dev/null ||
+		! openssl pkey -pubin -in "$cert_pub_pem" -outform DER >"$cert_pub_der" 2>/dev/null ||
+		! openssl pkey -in "$key_file" -pubout -outform DER >"$key_pub_der" 2>/dev/null; then
+		rm -f "$cert_pub_pem" "$cert_pub_der" "$key_pub_der"
+		return 1
+	fi
+	cmp -s "$cert_pub_der" "$key_pub_der"
+	local matched=$?
+	rm -f "$cert_pub_pem" "$cert_pub_der" "$key_pub_der"
+	return $matched
+}
+
+kpanel_web_certificate_available() {
+	local live_cert="/etc/letsencrypt/live/$yuming/fullchain.pem"
+	local live_key="/etc/letsencrypt/live/$yuming/privkey.pem"
+	if kpanel_web_certificate_pair_valid "$live_cert" "$live_key" "$yuming"; then
+		return 0
+	fi
+	kpanel_web_certificate_pair_valid \
+		"/home/web/certs/${yuming}_cert.pem" \
+		"/home/web/certs/${yuming}_key.pem" \
+		"$yuming"
+}
+
+kpanel_web_prepare_custom_certificate() {
+	local cert_file="${KJ_WEB_CERTIFICATE_FILE:-}"
+	local key_file="${KJ_WEB_PRIVATE_KEY_FILE:-}"
+	if [ -z "$cert_file" ] || [ -z "$key_file" ] || [ -L "$cert_file" ] || [ -L "$key_file" ] ||
+		[[ "$cert_file" != /* || "$key_file" != /* || "$cert_file" == *..* || "$key_file" == *..* ]]; then
+		echo "KPANEL_PROGRESS 100 自定义证书输入路径无效"
+		return 1
+	fi
+	if ! kpanel_web_certificate_pair_valid "$cert_file" "$key_file" "$yuming"; then
+		echo "KPANEL_PROGRESS 100 自定义证书无效或与域名、私钥不匹配"
+		return 1
+	fi
+	local target_dir="/home/web/certs"
+	local cert_target="$target_dir/${yuming}_cert.pem"
+	local key_target="$target_dir/${yuming}_key.pem"
+	if [ -L "$target_dir" ] || { [ -e "$target_dir" ] && [ ! -d "$target_dir" ]; } ||
+		[ -L "$cert_target" ] || [ -L "$key_target" ]; then
+		echo "KPANEL_PROGRESS 100 目标证书路径不安全"
+		return 1
+	fi
+	mkdir -p "$target_dir" || return 1
+	local cert_tmp=""
+	local key_tmp=""
+	cert_tmp=$(mktemp "$target_dir/.kpanel-${yuming}.cert.XXXXXX") || return 1
+	key_tmp=$(mktemp "$target_dir/.kpanel-${yuming}.key.XXXXXX") || { rm -f "$cert_tmp"; return 1; }
+	chmod 600 "$cert_tmp" "$key_tmp" || { rm -f "$cert_tmp" "$key_tmp"; return 1; }
+	if ! cp "$cert_file" "$cert_tmp" || ! cp "$key_file" "$key_tmp" ||
+		! chmod 644 "$cert_tmp" || ! chmod 600 "$key_tmp" ||
+		! mv -f "$cert_tmp" "$cert_target" || ! mv -f "$key_tmp" "$key_target"; then
+		rm -f "$cert_tmp" "$key_tmp"
+		echo "KPANEL_PROGRESS 100 写入自定义证书失败"
+		return 1
+	fi
+	return 0
+}
+
 install_ssltls() {
 	  docker stop nginx > /dev/null 2>&1
 	  cd ~
 
-	  local file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
-	  if [ ! -f "$file_path" ]; then
-		 	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
-			local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
-			if [[ ($yuming =~ $ipv4_pattern || $yuming =~ $ipv6_pattern) ]]; then
-				mkdir -p /etc/letsencrypt/live/$yuming/
-				if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
-					openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout /etc/letsencrypt/live/$yuming/privkey.pem -out /etc/letsencrypt/live/$yuming/fullchain.pem -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
-				else
-					openssl genpkey -algorithm Ed25519 -out /etc/letsencrypt/live/$yuming/privkey.pem
-					openssl req -x509 -key /etc/letsencrypt/live/$yuming/privkey.pem -out /etc/letsencrypt/live/$yuming/fullchain.pem -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
-				fi
-			else
-				docker run --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d "$yuming" --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
-			fi
+	  if [ -n "${KJ_WEB_CERTIFICATE_FILE:-}" ] || [ -n "${KJ_WEB_PRIVATE_KEY_FILE:-}" ]; then
+		  if ! kpanel_web_prepare_custom_certificate; then
+			  docker start nginx > /dev/null 2>&1
+			  if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
+				  exit 1
+			  fi
+			  return 1
+		  fi
+		  docker start nginx > /dev/null 2>&1 || return 1
+		  return 0
 	  fi
-	  mkdir -p /home/web/certs/
-	  cp /etc/letsencrypt/live/$yuming/fullchain.pem /home/web/certs/${yuming}_cert.pem > /dev/null 2>&1
-	  cp /etc/letsencrypt/live/$yuming/privkey.pem /home/web/certs/${yuming}_key.pem > /dev/null 2>&1
 
-	  docker start nginx > /dev/null 2>&1
+	  local live_cert="/etc/letsencrypt/live/$yuming/fullchain.pem"
+	  local live_key="/etc/letsencrypt/live/$yuming/privkey.pem"
+	  local source_cert=""
+	  local source_key=""
+	  if kpanel_web_certificate_pair_valid "$live_cert" "$live_key" "$yuming"; then
+		  source_cert="$live_cert"
+		  source_key="$live_key"
+	  elif kpanel_web_certificate_pair_valid "/home/web/certs/${yuming}_cert.pem" "/home/web/certs/${yuming}_key.pem" "$yuming"; then
+		  docker start nginx > /dev/null 2>&1 || return 1
+		  return 0
+	  else
+		  local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
+		  local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
+		  if [[ ($yuming =~ $ipv4_pattern || $yuming =~ $ipv6_pattern) ]]; then
+			  mkdir -p "/etc/letsencrypt/live/$yuming/" || return 1
+			  if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
+				  openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout "/etc/letsencrypt/live/$yuming/privkey.pem" -out "/etc/letsencrypt/live/$yuming/fullchain.pem" -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
+			  else
+				  openssl genpkey -algorithm Ed25519 -out "/etc/letsencrypt/live/$yuming/privkey.pem"
+				openssl req -x509 -key "/etc/letsencrypt/live/$yuming/privkey.pem" -out "/etc/letsencrypt/live/$yuming/fullchain.pem" -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
+			  fi
+		  else
+			  docker run --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d "$yuming" --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
+		  fi
+		  if kpanel_web_certificate_pair_valid "$live_cert" "$live_key" "$yuming"; then
+			  source_cert="$live_cert"
+			  source_key="$live_key"
+		  fi
+	  fi
+	  if [ -z "$source_cert" ] || [ -z "$source_key" ]; then
+		  docker start nginx > /dev/null 2>&1
+		  return 1
+	  fi
+	  mkdir -p /home/web/certs/ || { docker start nginx > /dev/null 2>&1; return 1; }
+	  if ! cp "$source_cert" "/home/web/certs/${yuming}_cert.pem" > /dev/null 2>&1 ||
+		  ! cp "$source_key" "/home/web/certs/${yuming}_key.pem" > /dev/null 2>&1; then
+		  docker start nginx > /dev/null 2>&1
+		  return 1
+	  fi
+
+	  docker start nginx > /dev/null 2>&1 || return 1
 }
 
 
@@ -1572,9 +1692,8 @@ certs_status() {
 
 	sleep 1
 
-	local file_path="/etc/letsencrypt/live/$yuming/fullchain.pem"
-	if [ -f "$file_path" ]; then
-		send_stats "域名证书申请成功"
+	if kpanel_web_certificate_available; then
+		send_stats "域名证书可用"
 	else
 		send_stats "域名证书申请失败"
 		if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ] &&
