@@ -10967,6 +10967,7 @@ kpanel_node_paths() {
 	KPANEL_NODE_SSH_LOGIN_EVENT="${KPANEL_NODE_SSH_LOGIN_RUNTIME}/ssh-login.json"
 	KPANEL_NODE_CONFIG_DIR="/etc/kejilion-node"
 	KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
+	KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE="${KPANEL_NODE_CONFIG_DIR}/enrollment.fingerprint"
 	KPANEL_NODE_TERMINAL_CONFIG="${KPANEL_NODE_CONFIG_DIR}/terminal.json"
 	KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"
 }
@@ -11371,6 +11372,11 @@ kpanel_node_cleanup_failed_join() {
 }
 
 kpanel_node_activate() {
+	local service_action="${1:-start}"
+	case "$service_action" in
+		start|restart) ;;
+		*) return 2 ;;
+	esac
 	"$KPANEL_NODE_SYSTEMCTL" daemon-reload || return 1
 	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
 		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-terminal.service || return 1
@@ -11382,21 +11388,21 @@ kpanel_node_activate() {
 	"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-ssh-login.service || return 1
 	"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-update.timer || return 1
 	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
-		if ! "$KPANEL_NODE_SYSTEMCTL" start kejilion-node-terminal.service; then
+		if ! "$KPANEL_NODE_SYSTEMCTL" "$service_action" kejilion-node-terminal.service; then
 			echo "KPanel 轻量节点终端 broker 启动失败；文件管理和遥测服务仍将继续。" >&2
 		fi
 	fi
-	if ! "$KPANEL_NODE_SYSTEMCTL" start kejilion-node-ssh-login.service; then
+	if ! "$KPANEL_NODE_SYSTEMCTL" "$service_action" kejilion-node-ssh-login.service; then
 		echo "KPanel SSH 登录采集服务启动失败；普通遥测仍将继续。" >&2
 	fi
-	"$KPANEL_NODE_SYSTEMCTL" start kejilion-node.service || return 1
-	"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-update.timer || return 1
+	"$KPANEL_NODE_SYSTEMCTL" "$service_action" kejilion-node.service || return 1
+	"$KPANEL_NODE_SYSTEMCTL" "$service_action" kejilion-node-update.timer || return 1
 	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ] && ! "$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-terminal.service >/dev/null; then
 		echo "KPanel 轻量节点终端 broker 当前不可用；文件管理和遥测服务仍在运行。" >&2
 	fi
 	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
 		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-file.service || return 1
-		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-file.service || return 1
+		"$KPANEL_NODE_SYSTEMCTL" "$service_action" kejilion-node-file.service || return 1
 		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-file.service >/dev/null || return 1
 	else
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-file.service >/dev/null 2>&1 || true
@@ -11408,8 +11414,40 @@ kpanel_node_activate() {
 	"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
 }
 
+kpanel_node_token_fingerprint() {
+	local token="${1:-}" fingerprint=""
+	fingerprint="$(printf '%s' "$token" | sha256sum | awk '{print $1}')" || return 1
+	printf '%s\n' "$fingerprint" | grep -Eq '^[0-9a-f]{64}$' || return 1
+	printf '%s\n' "$fingerprint"
+}
+
+kpanel_node_read_enrollment_fingerprint() {
+	local fingerprint=""
+	[ -f "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] && [ ! -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] || return 1
+	fingerprint="$(tr -d '[:space:]' <"$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE")" || return 1
+	printf '%s\n' "$fingerprint" | grep -Eq '^[0-9a-f]{64}$' || return 1
+	printf '%s\n' "$fingerprint"
+}
+
+kpanel_node_save_enrollment_fingerprint() {
+	local fingerprint="${1:-}" temporary=""
+	[ -n "$fingerprint" ] || return 1
+	if [ -e "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] || [ -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ]; then
+		[ -f "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] && [ ! -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] || return 1
+	fi
+	temporary="$(mktemp "${KPANEL_NODE_CONFIG_DIR}/.enrollment-fingerprint.XXXXXX")" || return 1
+	if ! printf '%s\n' "$fingerprint" >"$temporary" ||
+		! chown root:kejilion-node "$temporary" ||
+		! chmod 0640 "$temporary" ||
+		! mv -f -- "$temporary" "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE"; then
+		rm -f -- "$temporary"
+		return 1
+	fi
+}
+
 kpanel_node_join() {
-	local token="${1:-}" node_name resume_enrollment=false
+	local token="${1:-}" node_name token_fingerprint="" saved_fingerprint=""
+	local existing_config=false resume_enrollment=false
 	kpanel_node_paths
 	kpanel_node_preflight || return 1
 	case "$token" in
@@ -11422,8 +11460,7 @@ kpanel_node_join() {
 	}
 	if [ -e "$KPANEL_NODE_CONFIG" ]; then
 		if [ -f "$KPANEL_NODE_CONFIG" ] && [ ! -L "$KPANEL_NODE_CONFIG" ] && [ -x "$KPANEL_NODE_BINARY" ]; then
-			resume_enrollment=true
-			echo "检测到已完成的节点授权，继续启用本机服务。"
+			existing_config=true
 		else
 			echo "本机存在不完整的 KPanel 节点配置；请先执行 k kpanel node uninstall。" >&2
 			return 1
@@ -11432,13 +11469,29 @@ kpanel_node_join() {
 	kpanel_node_ensure_account || return 1
 	"$KPANEL_NODE_INSTALL_BIN" -d -o root -g kejilion-node -m 0750 "$KPANEL_NODE_CONFIG_DIR" || return 1
 	if ! kpanel_node_write_updater || ! "$KPANEL_NODE_UPDATER" install; then
-		[ "$resume_enrollment" = "true" ] || kpanel_node_cleanup_failed_join
+		[ "$existing_config" = "true" ] || kpanel_node_cleanup_failed_join
 		return 1
+	fi
+	token_fingerprint="$(kpanel_node_token_fingerprint "$token" 2>/dev/null || true)"
+	if [ "$existing_config" = "true" ] && [ -n "$token_fingerprint" ]; then
+		saved_fingerprint="$(kpanel_node_read_enrollment_fingerprint 2>/dev/null || true)"
+		if [ "$saved_fingerprint" = "$token_fingerprint" ]; then
+			resume_enrollment=true
+			echo "检测到相同的节点授权，继续启用本机服务。"
+		else
+			echo "检测到新的节点授权，重新注册本机节点。"
+		fi
+	elif [ "$existing_config" = "true" ]; then
+		echo "检测到旧版节点配置，使用当前授权重新注册本机节点。"
 	fi
 	if [ "$resume_enrollment" != "true" ]; then
 		node_name="$(hostname 2>/dev/null | LC_ALL=C tr -cd '[:alnum:]_. -' | cut -c1-80)"
 		if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_CONFIG" --terminal-config "$KPANEL_NODE_TERMINAL_CONFIG"; then
-			kpanel_node_cleanup_failed_join
+			[ "$existing_config" = "true" ] || kpanel_node_cleanup_failed_join
+			return 1
+		fi
+		if [ -n "$token_fingerprint" ] && ! kpanel_node_save_enrollment_fingerprint "$token_fingerprint"; then
+			echo "节点授权已保存，但本地续装标记写入失败；请使用新的接入命令重试。" >&2
 			return 1
 		fi
 	fi
@@ -11459,9 +11512,16 @@ kpanel_node_join() {
 		echo "节点授权已保存，但 systemd 单元写入失败；再次执行接入命令可继续。" >&2
 		return 1
 	fi
-	if ! kpanel_node_activate; then
-		echo "KPanel 轻量节点授权已保存，但服务启动失败；修复 systemd 后再次执行接入命令即可续装。" >&2
-		return 1
+	if [ "$existing_config" = "true" ]; then
+		if ! kpanel_node_activate restart; then
+			echo "KPanel 轻量节点授权已保存，但服务重启失败；修复 systemd 后再次执行接入命令即可续装。" >&2
+			return 1
+		fi
+	else
+		if ! kpanel_node_activate; then
+			echo "KPanel 轻量节点授权已保存，但服务启动失败；修复 systemd 后再次执行接入命令即可续装。" >&2
+			return 1
+		fi
 	fi
 	echo "KPanel 轻量节点已接入，后续将自动更新。"
 }
