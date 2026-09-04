@@ -11446,8 +11446,15 @@ kpanel_node_save_enrollment_fingerprint() {
 }
 
 kpanel_node_join() {
-	local token="${1:-}" node_name token_fingerprint="" saved_fingerprint=""
+	local token="${1:-}" requested_name="" node_name token_fingerprint="" saved_fingerprint=""
 	local existing_config=false resume_enrollment=false
+	if [ "$#" -gt 1 ]; then
+		if [ "${2:-}" != "--name" ] || [ "$#" -ne 3 ]; then
+			echo "轻量节点接入命令参数无效。" >&2
+			return 2
+		fi
+		requested_name="${3:-}"
+	fi
 	kpanel_node_paths
 	kpanel_node_preflight || return 1
 	case "$token" in
@@ -11485,7 +11492,11 @@ kpanel_node_join() {
 		echo "检测到旧版节点配置，使用当前授权重新注册本机节点。"
 	fi
 	if [ "$resume_enrollment" != "true" ]; then
-		node_name="$(hostname 2>/dev/null | LC_ALL=C tr -cd '[:alnum:]_. -' | cut -c1-80)"
+		if [ -n "$requested_name" ]; then
+			node_name="$requested_name"
+		else
+			node_name="$(hostname 2>/dev/null | LC_ALL=C tr -cd '[:alnum:]_. -' | cut -c1-80)"
+		fi
 		if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_CONFIG" --terminal-config "$KPANEL_NODE_TERMINAL_CONFIG"; then
 			[ "$existing_config" = "true" ] || kpanel_node_cleanup_failed_join
 			return 1
@@ -11590,7 +11601,7 @@ kpanel_node_dispatch() {
 		update) kpanel_node_update ;;
 		uninstall|remove) kpanel_node_uninstall ;;
 		*)
-			echo "用法: k kpanel node join <授权> | status | update | uninstall" >&2
+			echo "用法: k kpanel node join <授权> [--name <名称>] | status | update | uninstall" >&2
 			return 2
 			;;
 	esac

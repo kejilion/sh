@@ -101,6 +101,8 @@ printf '%s\n' "${join_body}" | grep -F 'kpl1.*)' >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'kpanel_node_ensure_account || return 1' >/dev/null
 printf '%s\n' "${join_body}" | grep -F "LC_ALL=C tr -cd '[:alnum:]_. -'" >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'resume_enrollment=true' >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'requested_name' >/dev/null
+printf '%s\n' "${join_body}" | grep -F '"$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name"' >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'token_fingerprint="$(kpanel_node_token_fingerprint "$token" 2>/dev/null || true)"' >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'kpanel_node_activate restart' >/dev/null
 printf '%s\n' "${join_body}" | grep -Eq '授权已保存|授權已儲存|authorization (has been )?saved' >/dev/null
@@ -364,12 +366,17 @@ MOCK_UPDATER
 #!/bin/bash
 if [ "${1:-}" = "enroll" ]; then
 	enroll_token=""
+	enroll_name=""
 	config_path=""
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
 			--token)
 				shift
 				enroll_token="${1:-}"
+				;;
+			--name)
+				shift
+				enroll_name="${1:-}"
 				;;
 			--config)
 				shift
@@ -381,7 +388,7 @@ if [ "${1:-}" = "enroll" ]; then
 		if [ "$enroll_token" = 'kpl1.test-token-fail' ]; then
 			exit 1
 		fi
-		printf '%s\n' "enrolled:${enroll_token}" >>"${KPANEL_TEST_JOIN_ROOT}/enroll.log"
+		printf '%s\n' "enrolled:${enroll_token}:${enroll_name}" >>"${KPANEL_TEST_JOIN_ROOT}/enroll.log"
 	printf '%s\n' '{"schemaVersion":1}' >"${config_path}"
 fi
 MOCK_NODE
@@ -390,7 +397,7 @@ MOCK_NODE
 	kpanel_node_write_units() { :; }
 	kpanel_node_cleanup_failed_join() { rm -rf -- "${KPANEL_NODE_HOME}" "${KPANEL_NODE_CONFIG_DIR}"; }
 	chown() { :; }
-	if kpanel_node_join 'kpl1.test-token'; then
+	if kpanel_node_join 'kpl1.test-token' --name 'edge-node'; then
 		echo "first join unexpectedly succeeded despite injected activation failure" >&2
 		exit 1
 	fi
@@ -402,10 +409,10 @@ MOCK_NODE
 	test "$(wc -l <"${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
 	# Simulate a node installed before the local enrollment marker existed.
 	rm -f -- "${KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE}"
-	kpanel_node_join 'kpl1.test-token-new'
+	kpanel_node_join 'kpl1.test-token-new' --name 'edge-node-new'
 	test "$(wc -l <"${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 2
-	grep -Fx 'enrolled:kpl1.test-token' "${KPANEL_TEST_JOIN_ROOT}/enroll.log" >/dev/null
-	grep -Fx 'enrolled:kpl1.test-token-new' "${KPANEL_TEST_JOIN_ROOT}/enroll.log" >/dev/null
+	grep -Fx 'enrolled:kpl1.test-token:edge-node' "${KPANEL_TEST_JOIN_ROOT}/enroll.log" >/dev/null
+	grep -Fx 'enrolled:kpl1.test-token-new:edge-node-new' "${KPANEL_TEST_JOIN_ROOT}/enroll.log" >/dev/null
 	test "$(tr -d '[:space:]' <"${KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE}")" = "${second_token_fingerprint}"
 	test "$(grep -c '^restart kejilion-node.service$' "${KPANEL_TEST_JOIN_SYSTEMCTL_LOG}")" -eq 2
 	cp -- "${KPANEL_NODE_CONFIG}" "${join_runtime}/config-before-failed-reenrollment.json"
