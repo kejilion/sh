@@ -24,6 +24,14 @@ extract_heredoc "\tcat >\"\$KPANEL_NODE_UPDATER\" <<'KPANEL_NODE_UPDATE'" "KPANE
 test -s "${updater}"
 bash -n "${updater}"
 
+file_service="${temporary_dir}/kejilion-node-file.service"
+extract_heredoc "\tcat >/etc/systemd/system/kejilion-node-file.service <<'KPANEL_NODE_FILE_SERVICE'" "KPANEL_NODE_FILE_SERVICE" "${file_service}"
+test -s "${file_service}"
+
+ssh_login_service="${temporary_dir}/kejilion-node-ssh-login.service"
+extract_heredoc "\tcat >\"\$KPANEL_NODE_SSH_LOGIN_SERVICE\" <<'KPANEL_NODE_SSH_LOGIN_SERVICE'" "KPANEL_NODE_SSH_LOGIN_SERVICE" "${ssh_login_service}"
+test -s "${ssh_login_service}"
+
 protocol_body="$(
 	awk '
 		/^kpanel_protocol_active\(\) \{/ { capture=1 }
@@ -61,7 +69,6 @@ account_body="$(
 )"
 service_body="$(sed -n "/^\[Unit\]$/,/^KPANEL_NODE_SERVICE$/p" "${normalized_script}" | head -n -1)"
 terminal_service_body="$(sed -n "/^Description=KPanel Lightweight Node Root PTY Broker$/,/^KPANEL_NODE_TERMINAL_SERVICE$/p" "${normalized_script}" | head -n -1)"
-ssh_login_service_body="$(sed -n "/^Description=KPanel SSH Login Event Collector$/,/^KPANEL_NODE_SSH_LOGIN_SERVICE$/p" "${normalized_script}" | head -n -1)"
 timer_body="$(sed -n "/^\[Timer\]$/,/^KPANEL_NODE_UPDATE_TIMER$/p" "${normalized_script}" | head -n -1)"
 
 printf '%s\n' "${protocol_body}" | grep -F '[ "${KJ_LIGHT_NODE_PROTOCOL:-}" = "1" ]' >/dev/null
@@ -74,10 +81,12 @@ printf '%s\n' "${dispatch_body}" | grep -F 'uninstall|remove) kpanel_node_uninst
 
 printf '%s\n' "${join_body}" | grep -F 'kpl1.*)' >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'kpanel_node_ensure_account || return 1' >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'kpanel_node_write_uninstall_helper || ! kpanel_node_write_units' >/dev/null
 printf '%s\n' "${join_body}" | grep -F "LC_ALL=C tr -cd '[:alnum:]_. -'" >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'resume_enrollment=true' >/dev/null
-printf '%s\n' "${join_body}" | grep -Eq '授权已保存|授權已儲存|authorization (has been )?saved' >/dev/null
+printf '%s\n' "${join_body}" | grep -Eq '授权已保存|authorization (has been )?saved|授權已儲存' >/dev/null
 printf '%s\n' "${join_body}" | grep -F '"$KPANEL_NODE_INSTALL_BIN" -d -o root -g kejilion-node' >/dev/null
+printf '%s\n' "${join_body}" | grep -F -- '--terminal-config "$KPANEL_NODE_TERMINAL_CONFIG"' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'useradd --system --no-create-home' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'systemd-sysusers "$sysusers_config"' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'adduser --system --group --no-create-home' >/dev/null
@@ -90,8 +99,6 @@ printf '%s\n' "${join_body}" | grep -F 'chmod 0600 "$KPANEL_NODE_TERMINAL_CONFIG
 grep -F '[ -d /run/systemd/system ]' "${normalized_script}" >/dev/null
 grep -F 'KPANEL_NODE_INSTALL_BIN="$(type -P install 2>/dev/null || true)"' "${normalized_script}" >/dev/null
 grep -F 'KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"' "${normalized_script}" >/dev/null
-grep -F 'KPANEL_NODE_SSH_LOGIN_SERVICE="/etc/systemd/system/kejilion-node-ssh-login.service"' "${normalized_script}" >/dev/null
-grep -F 'KPANEL_NODE_SSH_LOGIN_EVENT="${KPANEL_NODE_SSH_LOGIN_RUNTIME}/ssh-login.json"' "${normalized_script}" >/dev/null
 grep -F '"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root' "${normalized_script}" >/dev/null
 if grep -F $'\tinstall -d -o root' "${normalized_script}" >/dev/null; then
 	echo "lightweight node installer is shadowed by the package install helper" >&2
@@ -111,13 +118,6 @@ grep -F -- "--proto '=https' --tlsv1.2" "${updater}" >/dev/null
 grep -F 'SHA256SUMS' "${updater}" >/dev/null
 grep -F 'sha256sum' "${updater}" >/dev/null
 grep -F "grep -Eq '^[^[:space:]]+ light-v1$'" "${updater}" >/dev/null
-version_check_line="$(grep -n 'version_output=' "${updater}" | cut -d: -f1)"
-up_to_date_line="$(grep -n 'already up to date' "${updater}" | cut -d: -f1)"
-test -n "${version_check_line}" -a -n "${up_to_date_line}" -a "${version_check_line}" -lt "${up_to_date_line}"
-if grep -F 'light-terminal-v1' "${normalized_script}" >/dev/null; then
-	echo "lightweight node installer still names the removed terminal protocol" >&2
-	exit 1
-fi
 grep -F 'was rolled back' "${updater}" >/dev/null
 if grep -Eq 'curl .*(-k|--insecure)' "${updater}"; then
 	echo "lightweight node updater disables TLS verification" >&2
@@ -125,12 +125,15 @@ if grep -Eq 'curl .*(-k|--insecure)' "${updater}"; then
 fi
 
 printf '%s\n' "${service_body}" | grep -Fx 'User=kejilion-node' >/dev/null
-printf '%s\n' "${service_body}" | grep -Fx 'Wants=kejilion-node-terminal.service' >/dev/null
+printf '%s\n' "${service_body}" | grep -Fx 'RuntimeDirectory=kejilion-node' >/dev/null
+printf '%s\n' "${service_body}" | grep -Fx 'RuntimeDirectoryMode=0700' >/dev/null
+printf '%s\n' "${service_body}" | grep -Fx 'RuntimeDirectoryPreserve=yes' >/dev/null
 printf '%s\n' "${service_body}" | grep -Fx 'NoNewPrivileges=true' >/dev/null
 printf '%s\n' "${service_body}" | grep -Fx 'ProtectSystem=strict' >/dev/null
 printf '%s\n' "${service_body}" | grep -Fx 'ProtectHome=true' >/dev/null
 printf '%s\n' "${service_body}" | grep -Fx 'CapabilityBoundingSet=' >/dev/null
 printf '%s\n' "${service_body}" | grep -Fx 'RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6' >/dev/null
+printf '%s\n' "${service_body}" | grep -Fx 'Wants=kejilion-node-terminal.service' >/dev/null
 printf '%s\n' "${terminal_service_body}" | grep -Fx 'User=root' >/dev/null
 printf '%s\n' "${terminal_service_body}" | grep -Fx 'Group=root' >/dev/null
 printf '%s\n' "${terminal_service_body}" | grep -Fx 'ConditionPathExists=/etc/kejilion-node/terminal.json' >/dev/null
@@ -141,27 +144,37 @@ printf '%s\n' "${terminal_service_body}" | grep -Fx 'PrivateDevices=false' >/dev
 printf '%s\n' "${terminal_service_body}" | grep -Fx 'NoNewPrivileges=false' >/dev/null
 printf '%s\n' "${terminal_service_body}" | grep -Fx 'UMask=0077' >/dev/null
 if printf '%s\n' "${terminal_service_body}" | grep -Eq 'Listen(Stream|Datagram)=|ExecStart=.*(sshd|socket)'; then
-	echo "lightweight terminal broker unexpectedly exposes a listener" >&2
+	echo "lightweight node terminal broker unexpectedly exposes a local listener" >&2
 	exit 1
 fi
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'User=root' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'Group=kejilion-node' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'ExecStart=/usr/local/lib/kejilion-node/kejilion-node ssh-login-broker --output /run/kejilion-node-ssh/ssh-login.json' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'RuntimeDirectory=kejilion-node-ssh' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'RuntimeDirectoryMode=0750' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'ProtectSystem=strict' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'ProtectHome=true' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'RestrictAddressFamilies=AF_UNIX' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'CapabilityBoundingSet=CAP_DAC_READ_SEARCH' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'ReadWritePaths=/run/kejilion-node-ssh' >/dev/null
-printf '%s\n' "${ssh_login_service_body}" | grep -Fx 'UMask=0027' >/dev/null
-if printf '%s\n' "${ssh_login_service_body}" | grep -Eq 'Listen(Stream|Datagram)='; then
+grep -Fx 'User=root' "${ssh_login_service}" >/dev/null
+grep -Fx 'Group=kejilion-node' "${ssh_login_service}" >/dev/null
+grep -Fx 'ExecStart=/usr/local/lib/kejilion-node/kejilion-node ssh-login-broker --output /run/kejilion-node-ssh/ssh-login.json' "${ssh_login_service}" >/dev/null
+grep -Fx 'RuntimeDirectory=kejilion-node-ssh' "${ssh_login_service}" >/dev/null
+grep -Fx 'RuntimeDirectoryMode=0750' "${ssh_login_service}" >/dev/null
+grep -Fx 'ProtectSystem=strict' "${ssh_login_service}" >/dev/null
+grep -Fx 'ProtectHome=true' "${ssh_login_service}" >/dev/null
+grep -Fx 'RestrictAddressFamilies=AF_UNIX' "${ssh_login_service}" >/dev/null
+grep -Fx 'CapabilityBoundingSet=CAP_DAC_READ_SEARCH' "${ssh_login_service}" >/dev/null
+grep -Fx 'ReadWritePaths=/run/kejilion-node-ssh' "${ssh_login_service}" >/dev/null
+grep -Fx 'UMask=0027' "${ssh_login_service}" >/dev/null
+if grep -Eq 'Listen(Stream|Datagram)=' "${ssh_login_service}"; then
 	echo "SSH login collector unexpectedly exposes a listener" >&2
+	exit 1
+fi
+grep -Fx 'User=root' "${file_service}" >/dev/null
+grep -Fx 'Group=root' "${file_service}" >/dev/null
+grep -Fx 'ExecStart=/usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json' "${file_service}" >/dev/null
+grep -Fx 'ConditionPathExists=/etc/kejilion-node/terminal.json' "${file_service}" >/dev/null
+if grep -Eq '^(ProtectSystem|ProtectHome|CapabilityBoundingSet)=' "${file_service}"; then
+	echo "lightweight node file broker is isolated from the filesystem it must manage" >&2
 	exit 1
 fi
 printf '%s\n' "${timer_body}" | grep -Fx 'OnUnitActiveSec=24h' >/dev/null
 printf '%s\n' "${timer_body}" | grep -Fx 'RandomizedDelaySec=6h' >/dev/null
 printf '%s\n' "${timer_body}" | grep -Fx 'Persistent=true' >/dev/null
+grep -F 'kejilion-node-uninstall.service' "${normalized_script}" >/dev/null
+grep -F 'PathExists=/run/kejilion-node/uninstall.request' "${normalized_script}" >/dev/null
 
 # Exercise the systemd-sysusers fallback used by minimal systemd hosts that do
 # not ship useradd. The fake PATH intentionally contains no useradd/adduser.
@@ -220,24 +233,59 @@ chmod +x "${systemctl_bin}"
 (
 	export KPANEL_TEST_SYSTEMCTL_LOG="${systemctl_log}"
 	KPANEL_NODE_SYSTEMCTL="${systemctl_bin}"
+	KPANEL_NODE_TERMINAL_CONFIG="${temporary_dir}/missing-terminal.json"
 	eval "${activate_body}"
 	kpanel_node_activate
 )
 cat >"${temporary_dir}/expected-systemctl.log" <<'EXPECTED_SYSTEMCTL'
 daemon-reload
+disable kejilion-node-terminal.service
+stop kejilion-node-terminal.service
+enable kejilion-node.service
+enable kejilion-node-ssh-login.service
+enable kejilion-node-update.timer
+enable kejilion-node-uninstall.path
+start kejilion-node-uninstall.path
+start kejilion-node-ssh-login.service
+start kejilion-node.service
+start kejilion-node-update.timer
+disable kejilion-node-file.service
+stop kejilion-node-file.service
+is-active kejilion-node-ssh-login.service
+is-active kejilion-node.service
+EXPECTED_SYSTEMCTL
+cmp "${temporary_dir}/expected-systemctl.log" "${systemctl_log}"
+
+capable_systemctl_log="${temporary_dir}/capable-systemctl.log"
+capable_terminal_config="${temporary_dir}/terminal.json"
+touch "${capable_terminal_config}"
+(
+	export KPANEL_TEST_SYSTEMCTL_LOG="${capable_systemctl_log}"
+	KPANEL_NODE_SYSTEMCTL="${systemctl_bin}"
+	KPANEL_NODE_TERMINAL_CONFIG="${capable_terminal_config}"
+	eval "${activate_body}"
+	kpanel_node_activate
+)
+cat >"${temporary_dir}/expected-capable-systemctl.log" <<'EXPECTED_CAPABLE_SYSTEMCTL'
+daemon-reload
 enable kejilion-node-terminal.service
 enable kejilion-node.service
 enable kejilion-node-ssh-login.service
 enable kejilion-node-update.timer
+enable kejilion-node-uninstall.path
+start kejilion-node-uninstall.path
 start kejilion-node-terminal.service
 start kejilion-node-ssh-login.service
 start kejilion-node.service
 start kejilion-node-update.timer
 is-active kejilion-node-terminal.service
+enable kejilion-node-file.service
+start kejilion-node-file.service
+is-active kejilion-node-file.service
 is-active kejilion-node-ssh-login.service
 is-active kejilion-node.service
-EXPECTED_SYSTEMCTL
-cmp "${temporary_dir}/expected-systemctl.log" "${systemctl_log}"
+EXPECTED_CAPABLE_SYSTEMCTL
+cmp "${temporary_dir}/expected-capable-systemctl.log" "${capable_systemctl_log}"
 
 sanitized_name="$(printf '%s' 'edge_node-01 bad@name' | LC_ALL=C tr -cd '[:alnum:]_. -')"
 test "${sanitized_name}" = 'edge_node-01 badname'
@@ -271,6 +319,8 @@ chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
 		KPANEL_NODE_HOME="${KPANEL_TEST_JOIN_ROOT}/home"
 		KPANEL_NODE_BINARY="${KPANEL_NODE_HOME}/kejilion-node"
 		KPANEL_NODE_UPDATER="${KPANEL_NODE_HOME}/update.sh"
+		KPANEL_NODE_UNINSTALL_HELPER="${KPANEL_NODE_HOME}/uninstall.sh"
+		KPANEL_NODE_UNINSTALL_REQUEST="/run/kejilion-node/uninstall.request"
 		KPANEL_NODE_CONFIG_DIR="${KPANEL_TEST_JOIN_ROOT}/config"
 		KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
 		KPANEL_NODE_TERMINAL_CONFIG="${KPANEL_NODE_CONFIG_DIR}/terminal.json"
@@ -303,6 +353,7 @@ MOCK_NODE
 		chmod +x "${KPANEL_NODE_UPDATER}" "${KPANEL_NODE_BINARY}"
 	}
 	kpanel_node_write_units() { :; }
+	kpanel_node_write_uninstall_helper() { :; }
 	kpanel_node_cleanup_failed_join() { rm -rf -- "${KPANEL_NODE_HOME}" "${KPANEL_NODE_CONFIG_DIR}"; }
 	chown() { :; }
 	if kpanel_node_join 'kpl1.test-token'; then

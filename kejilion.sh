@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.8"
+sh_v="4.5.7"
 
 
 gl_hui='\e[37m'
@@ -25,7 +25,6 @@ kpanel_protocol_active() {
 	[ "${KJ_SSH_PORT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_SYSTEM_RESOURCE_NONINTERACTIVE:-}" = "1" ] ||
-	[ "${KJ_DISK_MANAGEMENT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_NETWORK_OPERATIONS_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_ACCOUNT_MANAGEMENT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
@@ -4353,20 +4352,9 @@ kpanel_system_tuning_valid_item() {
 	esac
 }
 
-kpanel_system_tuning_run_command() {
-	(
-		unset http_proxy https_proxy all_proxy HTTP_PROXY HTTPS_PROXY ALL_PROXY
-		"$@"
-	)
-}
-
-kpanel_system_tuning_curl() {
-	kpanel_system_tuning_run_command curl --proxy '' --noproxy '*' "$@"
-}
-
 kpanel_system_tuning_download_verified() {
 	local url="$1" expected="$2" output="$3" actual size
-	kpanel_system_tuning_curl --fail --silent --show-error --location --max-time 120 --output "$output" "$url" || return 1
+	curl --fail --silent --show-error --location --max-time 120 --output "$output" "$url" || return 1
 	[ -f "$output" ] && [ ! -L "$output" ] || return 1
 	size="$(wc -c < "$output" | tr -d '[:space:]')"
 	[[ "$size" =~ ^[0-9]+$ ]] && [ "$size" -gt 0 ] && [ "$size" -le 1048576 ] || return 1
@@ -4379,13 +4367,13 @@ kpanel_system_tuning_switch_mirror() {
 	script="$(mktemp /tmp/kejilion-system-tuning-mirror.XXXXXX)" || return 1
 	url="${gh_proxy}raw.githubusercontent.com/SuperManito/LinuxMirrors/${KPANEL_SYSTEM_TUNING_MIRROR_COMMIT}/ChangeMirrors.sh"
 	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_MIRROR_SHA256" "$script" || { rm -f -- "$script"; return 1; }
-	country="$(kpanel_system_tuning_curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
+	country="$(curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
 	if [ "$country" = CN ]; then
-		kpanel_system_tuning_run_command bash "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		bash "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	elif grep -qi oracle /etc/os-release 2>/dev/null; then
-		kpanel_system_tuning_run_command bash "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		bash "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	else
-		kpanel_system_tuning_run_command bash "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		bash "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	fi
 	local result=$?
 	rm -f -- "$script"
@@ -4401,7 +4389,7 @@ kpanel_system_tuning_kernel_auto() {
 	script="$(mktemp /tmp/kejilion-system-tuning-network.XXXXXX)" || return 1
 	url="${gh_proxy}raw.githubusercontent.com/kejilion/sh/${KPANEL_SYSTEM_TUNING_NETWORK_COMMIT}/network-optimize.sh"
 	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_NETWORK_SHA256" "$script" || { rm -f -- "$script"; return 1; }
-	kpanel_system_tuning_run_command bash "$script"
+	bash "$script"
 	local result=$?
 	rm -f -- "$script"
 	return "$result"
@@ -4583,9 +4571,8 @@ kpanel_system_tuning_run_item() {
 	case "$1" in
 		system-update)
 			kpanel_system_tuning_has_package_manager update || { kpanel_system_tuning_error "当前系统没有受支持的软件包管理器"; return 1; }
-			# 更新源优化保持尽力执行，不因其返回码中断一条龙调优。
-			kpanel_system_tuning_switch_mirror || true
-			kpanel_system_tuning_run_command linux_update || { kpanel_system_tuning_error "系统软件包更新失败"; return 1; }
+			kpanel_system_tuning_switch_mirror || { kpanel_system_tuning_error "系统更新源优化失败"; return 1; }
+			linux_update || { kpanel_system_tuning_error "系统软件包更新失败"; return 1; }
 			;;
 		system-cleanup)
 			kpanel_system_tuning_has_package_manager cleanup || { kpanel_system_tuning_error "当前系统没有受支持的清理适配器"; return 1; }
@@ -5583,6 +5570,153 @@ EOF
 
 
 
+configure_frpc() {
+	send_stats "安装frp客户端"
+	read -e -p "请输入外网对接IP: " server_addr
+	read -e -p "请输入外网对接token: " token
+	echo
+
+	mkdir -p /home/frp
+	touch /home/frp/frpc.toml
+	cat <<EOF > /home/frp/frpc.toml
+[common]
+server_addr = ${server_addr}
+server_port = 8055
+token = ${token}
+
+EOF
+
+	donlond_frp frpc
+
+	open_port 8055
+
+}
+
+add_forwarding_service() {
+	send_stats "添加frp内网服务"
+	# 提示用户输入服务名称和转发信息
+	read -e -p "请输入服务名称: " service_name
+	read -e -p "请输入转发类型 (tcp/udp) [回车默认tcp]: " service_type
+	local service_type=${service_type:-tcp}
+	read -e -p "请输入内网IP [回车默认127.0.0.1]: " local_ip
+	local local_ip=${local_ip:-127.0.0.1}
+	read -e -p "请输入内网端口: " local_port
+	read -e -p "请输入外网端口: " remote_port
+
+	# 将用户输入写入配置文件
+	cat <<EOF >> /home/frp/frpc.toml
+[$service_name]
+type = ${service_type}
+local_ip = ${local_ip}
+local_port = ${local_port}
+remote_port = ${remote_port}
+
+EOF
+
+	# 输出生成的信息
+	echo "服务 $service_name 已成功添加到 frpc.toml"
+
+	docker restart frpc
+
+	open_port $local_port
+
+}
+
+
+
+delete_forwarding_service() {
+	send_stats "删除frp内网服务"
+	# 提示用户输入需要删除的服务名称
+	read -e -p "请输入需要删除的服务名称: " service_name
+	# 使用 sed 删除该服务及其相关配置
+	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frpc.toml
+	echo "服务 $service_name 已成功从 frpc.toml 删除"
+
+	docker restart frpc
+
+}
+
+
+list_forwarding_services() {
+	local config_file="$1"
+
+	# 打印表头
+	printf "%-20s %-25s %-30s %-10s\n" "服务名称" "内网地址" "外网地址" "协议"
+
+	awk '
+	BEGIN {
+		server_addr=""
+		server_port=""
+		current_service=""
+	}
+
+	/^server_addr = / {
+		gsub(/"|'"'"'/, "", $3)
+		server_addr=$3
+	}
+
+	/^server_port = / {
+		gsub(/"|'"'"'/, "", $3)
+		server_port=$3
+	}
+
+	/^\[.*\]/ {
+		# 如果已有服务信息，在处理新服务之前打印当前服务
+		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
+			printf "%-16s %-21s %-26s %-10s\n", \
+				current_service, \
+				local_ip ":" local_port, \
+				server_addr ":" remote_port, \
+				type
+		}
+
+		# 更新当前服务名称
+		if ($1 != "[common]") {
+			gsub(/[\[\]]/, "", $1)
+			current_service=$1
+			# 清除之前的值
+			local_ip=""
+			local_port=""
+			remote_port=""
+			type=""
+		}
+	}
+
+	/^local_ip = / {
+		gsub(/"|'"'"'/, "", $3)
+		local_ip=$3
+	}
+
+	/^local_port = / {
+		gsub(/"|'"'"'/, "", $3)
+		local_port=$3
+	}
+
+	/^remote_port = / {
+		gsub(/"|'"'"'/, "", $3)
+		remote_port=$3
+	}
+
+	/^type = / {
+		gsub(/"|'"'"'/, "", $3)
+		type=$3
+	}
+
+	END {
+		# 打印最后一个服务的信息
+		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
+			printf "%-16s %-21s %-26s %-10s\n", \
+				current_service, \
+				local_ip ":" local_port, \
+				server_addr ":" remote_port, \
+				type
+		}
+	}' "$config_file"
+}
+
+
+
+# 获取 FRP 服务端端口
 get_frp_ports() {
 	mapfile -t ports < <(ss -tulnape | grep frps | awk '{print $5}' | awk -F':' '{print $NF}' | sort -u)
 }
@@ -5643,519 +5777,6 @@ frps_main_ports() {
 	ip_address
 	generate_access_urls
 }
-
-
-
-
-#!/bin/bash
-# frpc 增强功能模块 - 从 kejilion.sh 4.4.10-cong86.1 提取
-# 包含: configure_frpc, 辅助校验函数, add_forwarding_service,
-#       delete_forwarding_service, list_forwarding_services,
-#       sort_forwarding_services_by_remote_port, frpc_panel
-
-# ===== 第一部分: configure_frpc + 辅助 + 添加/删除/列表/排序 (行4129-4542) =====
-configure_frpc() {
-	send_stats "安装frp客户端"
-	read -e -p "请输入外网对接IP: " server_addr
-	read -e -p "请输入外网对接token: " token
-	echo
-
-	mkdir -p /home/frp
-	touch /home/frp/frpc.toml
-	cat <<EOF > /home/frp/frpc.toml
-[common]
-server_addr = ${server_addr}
-server_port = 8055
-token = ${token}
-
-EOF
-
-	donlond_frp frpc
-
-	open_port 8055
-
-}
-
-is_valid_port() {
-	local port="$1"
-	[[ "$port" =~ ^[0-9]+$ ]] && [ "$port" -ge 1 ] && [ "$port" -le 65535 ]
-}
-
-is_valid_service_name() {
-	local name="$1"
-	[[ "$name" =~ ^[A-Za-z0-9_-]+$ ]]
-}
-
-is_valid_domain() {
-	local domain="$1"
-	if [ -z "$domain" ]; then
-		return 1
-	fi
-	if [[ "$domain" == http://* ]] || [[ "$domain" == https://* ]] || [[ "$domain" == *:* ]] || [[ "$domain" == */* ]]; then
-		return 1
-	fi
-	[[ "$domain" =~ ^[A-Za-z0-9.-]+$ ]] && [[ "$domain" == *.* ]]
-}
-
-remote_port_exists() {
-	local protocol="$1"
-	local port="$2"
-	[ ! -f /home/frp/frpc.toml ] && return 1
-	awk -v proto="$protocol" -v port="$port" '
-		BEGIN { in_section=0; current_type=""; current_remote="" }
-		/^\[.*\]$/ {
-			if (in_section && current_type == proto && current_remote == port) exit 0
-			in_section=1
-			current_type=""
-			current_remote=""
-			next
-		}
-		/^type = / {
-			gsub(/[" ]/, "", $3)
-			current_type=$3
-		}
-		/^remote_port = / {
-			gsub(/[" ]/, "", $3)
-			current_remote=$3
-		}
-		END {
-			if (in_section && current_type == proto && current_remote == port) exit 0
-			exit 1
-		}
-	' /home/frp/frpc.toml
-}
-
-add_forwarding_service() {
-	send_stats "添加frp内网服务"
-
-	while true; do
-		read -e -p "请输入服务名称: " service_name
-		service_name=$(echo "$service_name" | xargs)
-		if [ -z "$service_name" ]; then
-			echo "添加失败：服务名称不能为空，请重新输入。"
-			continue
-		fi
-		if ! is_valid_service_name "$service_name"; then
-			echo "添加失败：服务名称仅允许字母、数字、下划线和中划线，请重新输入。"
-			continue
-		fi
-		if [ -f /home/frp/frpc.toml ] && grep -qE "^\[$service_name\]$" /home/frp/frpc.toml; then
-			echo "添加失败：服务名称 $service_name 已存在，请重新输入其他名称。"
-			continue
-		fi
-		break
-	done
-
-	while true; do
-		read -e -p "请输入转发类型 (tcp/udp/http/https) [回车默认tcp]: " service_type
-		service_type=${service_type:-tcp}
-		service_type=$(echo "$service_type" | tr '[:upper:]' '[:lower:]' | xargs)
-		case "$service_type" in
-			tcp|udp|http|https) break ;;
-			*) echo "添加失败：转发类型仅支持 tcp/udp/http/https，请重新输入。" ;;
-		esac
-	done
-
-	read -e -p "请输入内网IP [回车默认127.0.0.1]: " local_ip
-	local_ip=${local_ip:-127.0.0.1}
-	local_ip=$(echo "$local_ip" | xargs)
-
-	while true; do
-		read -e -p "请输入内网端口: " local_port
-		local_port=$(echo "$local_port" | xargs)
-		if ! is_valid_port "$local_port"; then
-			echo "添加失败：内网端口必须是 1-65535 的数字，请重新输入。"
-			continue
-		fi
-		break
-	done
-
-	case "$service_type" in
-		tcp|udp)
-			while true; do
-				read -e -p "请输入外网端口: " remote_port
-				remote_port=$(echo "$remote_port" | xargs)
-				if ! is_valid_port "$remote_port"; then
-					echo "添加失败：外网端口必须是 1-65535 的数字，请重新输入。"
-					continue
-				fi
-				if remote_port_exists "$service_type" "$remote_port"; then
-					echo "添加失败：$service_type 端口 $remote_port 已存在，请重新输入其他外网端口。"
-					continue
-				fi
-				break
-			done
-			cp -f /home/frp/frpc.toml /home/frp/frpc.toml.bak 2>/dev/null || true
-			cat <<EOF >> /home/frp/frpc.toml
-[$service_name]
-type = ${service_type}
-local_ip = ${local_ip}
-local_port = ${local_port}
-remote_port = ${remote_port}
-
-EOF
-			;;
-		http|https)
-			while true; do
-				read -e -p "请输入绑定域名(如 www.cong86.cn): " custom_domains
-				custom_domains=$(echo "$custom_domains" | xargs)
-				if [ -z "$custom_domains" ]; then
-					echo "添加失败：域名不能为空，请重新输入。"
-					continue
-				fi
-				if ! is_valid_domain "$custom_domains"; then
-					echo "添加失败：域名格式不正确，请输入纯域名，不要带 http://、https://、端口或路径。"
-					continue
-				fi
-				duplicate_domain=0
-				if [ -f /home/frp/frpc.toml ]; then
-					while IFS= read -r existing_domain; do
-						[ -z "$existing_domain" ] && continue
-						if [ "$existing_domain" = "$custom_domains" ]; then
-							duplicate_domain=1
-							break
-						fi
-					done < <(awk -F= '/^custom_domains = / {gsub(/[" ]/, "", $2); gsub(/,/, "\n", $2); print $2}' /home/frp/frpc.toml)
-				fi
-				if [ "$duplicate_domain" -eq 1 ]; then
-					echo "添加失败：域名 $custom_domains 已存在，请重新输入其他域名。"
-					continue
-				fi
-				break
-			done
-			cp -f /home/frp/frpc.toml /home/frp/frpc.toml.bak 2>/dev/null || true
-			cat <<EOF >> /home/frp/frpc.toml
-[$service_name]
-type = ${service_type}
-local_ip = ${local_ip}
-local_port = ${local_port}
-custom_domains = ${custom_domains}
-
-EOF
-			;;
-	esac
-
-	echo "服务 $service_name 已成功添加到 frpc.toml"
-	if docker restart frpc >/dev/null 2>&1; then
-		echo "frpc 已重启。"
-	else
-		echo "警告：frpc 重启失败，请检查 /home/frp/frpc.toml 配置。"
-		return 1
-	fi
-}
-
-
-delete_forwarding_service() {
-	send_stats "删除frp内网服务"
-	read -e -p "请输入需要删除的服务名称: " service_name
-	service_name=$(echo "$service_name" | xargs)
-	if [ -z "$service_name" ]; then
-		echo "删除失败：服务名称不能为空。"
-		return 1
-	fi
-	if [ ! -f /home/frp/frpc.toml ] || ! grep -qE "^\[$service_name\]$" /home/frp/frpc.toml; then
-		echo "删除失败：服务 $service_name 不存在。"
-		return 1
-	fi
-
-	echo "即将删除服务：$service_name"
-	awk -v svc="$service_name" '
-		BEGIN { in_section=0 }
-		$0 == "[" svc "]" { in_section=1; print; next }
-		/^\[.*\]$/ && in_section { exit }
-		in_section { print }
-	' /home/frp/frpc.toml
-
-	read -e -p "确认删除服务 $service_name 吗？(y/N): " confirm_delete
-	confirm_delete=$(echo "$confirm_delete" | tr '[:upper:]' '[:lower:]' | xargs)
-	if [ "$confirm_delete" != "y" ] && [ "$confirm_delete" != "yes" ]; then
-		echo "已取消删除。"
-		return 0
-	fi
-
-	cp -f /home/frp/frpc.toml /home/frp/frpc.toml.bak 2>/dev/null || true
-	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frpc.toml
-	echo "服务 $service_name 已成功从 frpc.toml 删除"
-	if docker restart frpc >/dev/null 2>&1; then
-		echo "frpc 已重启。"
-	else
-		echo "警告：frpc 重启失败，请检查 /home/frp/frpc.toml 配置。"
-		return 1
-	fi
-}
-
-
-list_forwarding_services() {
-	local config_file="$1"
-
-	# 打印表头
-	printf "%-20s %-25s %-40s %-10s\n" "服务名称" "内网地址" "外网地址/域名" "协议"
-
-	awk '
-	function trim_value(s) {
-		gsub(/"|'"'"'/, "", s)
-		gsub(/^ +| +$/, "", s)
-		return s
-	}
-
-	function print_service() {
-		if (current_service != "" && current_service != "common" && local_ip != "" && local_port != "") {
-			if (type == "http" || type == "https") {
-				if (custom_domains != "") {
-					printf "%-16s %-21s %-36s %-10s\n", current_service, local_ip ":" local_port, custom_domains, type
-				} else {
-					printf "%-16s %-21s %-36s %-10s\n", current_service, local_ip ":" local_port, "(未设置域名)", type
-				}
-			} else {
-				printf "%-16s %-21s %-36s %-10s\n", current_service, local_ip ":" local_port, server_addr ":" remote_port, type
-			}
-		}
-	}
-
-	BEGIN {
-		server_addr=""
-		server_port=""
-		current_service=""
-		local_ip=""
-		local_port=""
-		remote_port=""
-		custom_domains=""
-		type=""
-	}
-
-	/^server_addr = / {
-		server_addr=trim_value($3)
-	}
-
-	/^server_port = / {
-		server_port=trim_value($3)
-	}
-
-	/^\[.*\]/ {
-		print_service()
-		if ($1 != "[common]") {
-			gsub(/[\[\]]/, "", $1)
-			current_service=$1
-			local_ip=""
-			local_port=""
-			remote_port=""
-			custom_domains=""
-			type=""
-		}
-	}
-
-	/^local_ip = / {
-		local_ip=trim_value($3)
-	}
-
-	/^local_port = / {
-		local_port=trim_value($3)
-	}
-
-	/^remote_port = / {
-		remote_port=trim_value($3)
-	}
-
-	/^custom_domains = / {
-		custom_domains=trim_value($3)
-	}
-
-	/^type = / {
-		type=trim_value($3)
-	}
-
-	END {
-		print_service()
-	}' "$config_file"
-}
-
-
-sort_forwarding_services_by_remote_port() {
-	send_stats "按外网端口排序frpc服务"
-	local config_file="/home/frp/frpc.toml"
-
-	if [ ! -f "$config_file" ]; then
-		echo "排序失败：未找到 $config_file"
-		return 1
-	fi
-
-	cp -f "$config_file" "${config_file}.bak" 2>/dev/null || true
-
-	local tmp_dir
-	tmp_dir=$(mktemp -d)
-	if [ -z "$tmp_dir" ] || [ ! -d "$tmp_dir" ]; then
-		echo "排序失败：无法创建临时目录。"
-		return 1
-	fi
-
-	awk -v out_dir="$tmp_dir" '
-	function flush_section(    order,key,file,m) {
-		if (section_name == "") return
-
-		file = sprintf("%s/sec_%06d.toml", out_dir, section_index)
-		printf "%s", section_body > file
-		close(file)
-
-		if (section_name == "common") {
-			order = 0
-			key = 0
-		} else {
-			order = 1
-			key = 999999
-			if (match(section_body, /(^|\n)remote_port = *([0-9]+)/, m)) {
-				key = m[2] + 0
-			}
-		}
-
-		printf "%d\t%09d\t%06d\t%s\n", order, key, section_index, file
-	}
-
-	BEGIN {
-		section_name = ""
-		section_body = ""
-		section_index = 0
-	}
-
-	/^\[.*\]$/ {
-		flush_section()
-		section_index++
-		section_name = $0
-		gsub(/[\[\]]/, "", section_name)
-		section_body = $0 "\n"
-		next
-	}
-
-	{
-		if (section_name != "") {
-			section_body = section_body $0 "\n"
-		}
-	}
-
-	END {
-		flush_section()
-	}
-	' "$config_file" > "$tmp_dir/index.tsv"
-
-	if [ ! -s "$tmp_dir/index.tsv" ]; then
-		echo "排序失败：未解析到有效服务段。"
-		rm -rf "$tmp_dir"
-		return 1
-	fi
-
-	sort -t $'\t' -k1,1n -k2,2n -k3,3n "$tmp_dir/index.tsv" | awk -F'\t' '{print $4}' | while IFS= read -r part_file; do
-		cat "$part_file"
-		echo
-	done > "$tmp_dir/frpc.sorted.toml"
-
-	if [ ! -s "$tmp_dir/frpc.sorted.toml" ]; then
-		echo "排序失败：排序后配置为空，已取消覆盖。"
-		rm -rf "$tmp_dir"
-		return 1
-	fi
-
-	mv "$tmp_dir/frpc.sorted.toml" "$config_file"
-	rm -rf "$tmp_dir"
-
-	echo "已按外网端口升序完成排序（无 remote_port 的服务放在最后）。"
-	if docker restart frpc >/dev/null 2>&1; then
-		echo "frpc 已重启。"
-	else
-		echo "警告：frpc 重启失败，请检查 /home/frp/frpc.toml 配置。"
-		return 1
-	fi
-}
-
-
-
-# 获取 FRP 服务端端口
-
-# ===== 第二部分: frpc_panel 增强版 (行4705-4793) =====
-frpc_panel() {
-	send_stats "FRP客户端"
-	local app_id="56"
-	local docker_name="frpc"
-	local docker_port=8055
-	while true; do
-		clear
-		check_frp_app
-		check_docker_image_update $docker_name
-		echo -e "FRP客户端 $check_frp $update_status"
-		echo "与服务端对接，对接后可创建内网穿透服务到互联网访问"
-		echo "官网介绍: ${gh_https_url}github.com/fatedier/frp/"
-		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=173.9"
-		echo "------------------------"
-		if [ -d "/home/frp/" ]; then
-			[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
-			list_forwarding_services "/home/frp/frpc.toml"
-		fi
-		echo ""
-		echo "------------------------"
-		echo "1. 安装               2. 更新               3. 卸载"
-		echo "------------------------"
-		echo "4. 添加对外服务       5. 删除对外服务       6. 手动配置服务"
-		echo "------------------------"
-		echo "7. 按外网端口升序排序"
-		echo "------------------------"
-		echo "0. 返回上一级选单"
-		echo "------------------------"
-		read -e -p "输入你的选择: " choice
-		case $choice in
-			1)
-				install jq grep ss
-				install_docker
-				configure_frpc
-
-				add_app_id
-				echo "FRP客户端已经安装完成"
-				;;
-			2)
-				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
-				tmux kill-session -t frpc >/dev/null 2>&1
-				docker rm -f frpc && docker rmi kjlion/frp:alpine >/dev/null 2>&1
-				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
-				donlond_frp frpc
-
-				add_app_id
-				echo "FRP客户端已经更新完成"
-				;;
-
-			3)
-				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
-				tmux kill-session -t frpc >/dev/null 2>&1
-				docker rm -f frpc && docker rmi kjlion/frp:alpine
-				rm -rf /home/frp
-				close_port 8055
-
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
-				echo "应用已卸载"
-				;;
-
-			4)
-				add_forwarding_service
-				;;
-
-			5)
-				delete_forwarding_service
-				;;
-
-			6)
-				install nano
-				nano /home/frp/frpc.toml
-				docker restart frpc
-				;;
-
-			7)
-				sort_forwarding_services_by_remote_port
-				;;
-
-			*)
-				break
-				;;
-		esac
-		break_end
-	done
-}
-
 
 
 
@@ -6256,6 +5877,89 @@ frps_panel() {
 		break_end
 	done
 }
+
+
+frpc_panel() {
+	send_stats "FRP客户端"
+	local app_id="56"
+	local docker_name="frpc"
+	local docker_port=8055
+	while true; do
+		clear
+		check_frp_app
+		check_docker_image_update $docker_name
+		echo -e "FRP客户端 $check_frp $update_status"
+		echo "与服务端对接，对接后可创建内网穿透服务到互联网访问"
+		echo "官网介绍: ${gh_https_url}github.com/fatedier/frp/"
+		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=173.9"
+		echo "------------------------"
+		if [ -d "/home/frp/" ]; then
+			[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
+			list_forwarding_services "/home/frp/frpc.toml"
+		fi
+		echo ""
+		echo "------------------------"
+		echo "1. 安装               2. 更新               3. 卸载"
+		echo "------------------------"
+		echo "4. 添加对外服务       5. 删除对外服务       6. 手动配置服务"
+		echo "------------------------"
+		echo "0. 返回上一级选单"
+		echo "------------------------"
+		read -e -p "输入你的选择: " choice
+		case $choice in
+			1)
+				install jq grep ss
+				install_docker
+				configure_frpc
+
+				add_app_id
+				echo "FRP客户端已经安装完成"
+				;;
+			2)
+				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
+				tmux kill-session -t frpc >/dev/null 2>&1
+				docker rm -f frpc && docker rmi kjlion/frp:alpine >/dev/null 2>&1
+				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
+				donlond_frp frpc
+
+				add_app_id
+				echo "FRP客户端已经更新完成"
+				;;
+
+			3)
+				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
+				tmux kill-session -t frpc >/dev/null 2>&1
+				docker rm -f frpc && docker rmi kjlion/frp:alpine
+				rm -rf /home/frp
+				close_port 8055
+
+				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+				echo "应用已卸载"
+				;;
+
+			4)
+				add_forwarding_service
+				;;
+
+			5)
+				delete_forwarding_service
+				;;
+
+			6)
+				install nano
+				nano /home/frp/frpc.toml
+				docker restart frpc
+				;;
+
+			*)
+				break
+				;;
+		esac
+		break_end
+	done
+}
+
+
 
 
 yt_menu_pro() {
@@ -10965,6 +10669,8 @@ kpanel_node_paths() {
 	KPANEL_NODE_SSH_LOGIN_SERVICE="/etc/systemd/system/kejilion-node-ssh-login.service"
 	KPANEL_NODE_SSH_LOGIN_RUNTIME="/run/kejilion-node-ssh"
 	KPANEL_NODE_SSH_LOGIN_EVENT="${KPANEL_NODE_SSH_LOGIN_RUNTIME}/ssh-login.json"
+	KPANEL_NODE_UNINSTALL_HELPER="${KPANEL_NODE_HOME}/uninstall.sh"
+	KPANEL_NODE_UNINSTALL_REQUEST="/run/kejilion-node/uninstall.request"
 	KPANEL_NODE_CONFIG_DIR="/etc/kejilion-node"
 	KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
 	KPANEL_NODE_TERMINAL_CONFIG="${KPANEL_NODE_CONFIG_DIR}/terminal.json"
@@ -11122,20 +10828,36 @@ if [ -f "$binary_path" ]; then
 fi
 mv -f -- "${binary_path}.new" "$binary_path"
 
-if [ "$mode" = "update" ] && systemctl cat kejilion-node.service >/dev/null 2>&1; then
-	has_terminal_broker=false
-	if systemctl cat kejilion-node-terminal.service >/dev/null 2>&1 && [ -f /etc/kejilion-node/terminal.json ]; then
-		has_terminal_broker=true
+restart_services() {
+	if [ -f /etc/kejilion-node/terminal.json ] && systemctl cat kejilion-node-terminal.service >/dev/null 2>&1; then
+		systemctl restart kejilion-node-terminal.service
 	fi
-	if { [ "$has_terminal_broker" != "true" ] || systemctl restart kejilion-node-terminal.service; } &&
-		systemctl restart kejilion-node.service && systemctl is-active --quiet kejilion-node.service &&
-		{ [ "$has_terminal_broker" != "true" ] || systemctl is-active --quiet kejilion-node-terminal.service; }; then
-		:
-	else
+	if systemctl cat kejilion-node-ssh-login.service >/dev/null 2>&1; then
+		systemctl restart kejilion-node-ssh-login.service
+	fi
+	systemctl restart kejilion-node.service
+	if [ -f /etc/kejilion-node/terminal.json ] && systemctl cat kejilion-node-file.service >/dev/null 2>&1; then
+		systemctl restart kejilion-node-file.service
+	fi
+}
+services_active() {
+	if [ -f /etc/kejilion-node/terminal.json ] && systemctl cat kejilion-node-terminal.service >/dev/null 2>&1; then
+		systemctl is-active --quiet kejilion-node-terminal.service || return 1
+	fi
+	systemctl is-active --quiet kejilion-node.service || return 1
+	if [ -f /etc/kejilion-node/terminal.json ] && systemctl cat kejilion-node-file.service >/dev/null 2>&1; then
+		systemctl is-active --quiet kejilion-node-file.service || return 1
+	fi
+	if systemctl cat kejilion-node-ssh-login.service >/dev/null 2>&1; then
+		systemctl is-active --quiet kejilion-node-ssh-login.service || return 1
+	fi
+}
+
+if [ "$mode" = "update" ] && systemctl cat kejilion-node.service >/dev/null 2>&1; then
+	if ! restart_services || ! services_active; then
 		if [ "$had_previous" = "true" ] && [ -f "${binary_path}.previous" ]; then
 			mv -f -- "${binary_path}.previous" "$binary_path"
-			[ "$has_terminal_broker" != "true" ] || systemctl restart kejilion-node-terminal.service || true
-			systemctl restart kejilion-node.service || true
+			restart_services || true
 		fi
 		echo "KPanel lightweight node update failed and was rolled back." >&2
 		exit 1
@@ -11147,12 +10869,57 @@ KPANEL_NODE_UPDATE
 	chmod 0755 "$KPANEL_NODE_UPDATER"
 }
 
+kpanel_node_write_uninstall_helper() {
+	"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root -m 0755 "$KPANEL_NODE_HOME" || return 1
+	cat >"$KPANEL_NODE_UNINSTALL_HELPER" <<'KPANEL_NODE_UNINSTALL_HELPER'
+#!/bin/bash
+set -euo pipefail
+
+[ "$(id -u)" = "0" ] || {
+	echo "uninstalling KPanel lightweight node requires root privileges" >&2
+	exit 1
+}
+
+systemctl_bin="$(type -P systemctl 2>/dev/null || true)"
+if [ -n "$systemctl_bin" ] && [ -x "$systemctl_bin" ]; then
+	"$systemctl_bin" stop kejilion-node.service >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-terminal.service >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-ssh-login.service >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-file.service >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-update.timer >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-update.service >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-uninstall.path >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node.service >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node-terminal.service >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node-ssh-login.service >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node-file.service >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node-update.timer >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node-uninstall.path >/dev/null 2>&1 || true
+fi
+rm -f -- /etc/systemd/system/kejilion-node.service \
+	/etc/systemd/system/kejilion-node-terminal.service \
+	/etc/systemd/system/kejilion-node-file.service \
+	/etc/systemd/system/kejilion-node-update.service \
+	/etc/systemd/system/kejilion-node-update.timer \
+	/etc/systemd/system/kejilion-node-uninstall.service \
+	/etc/systemd/system/kejilion-node-uninstall.path \
+	/run/kejilion-node/uninstall.request
+rm -rf -- /usr/local/lib/kejilion-node /etc/kejilion-node
+rmdir -- /run/kejilion-node 2>/dev/null || true
+if [ -n "$systemctl_bin" ] && [ -x "$systemctl_bin" ]; then
+	"$systemctl_bin" daemon-reload >/dev/null 2>&1 || true
+fi
+echo "KPanel lightweight node has been uninstalled from the local machine; the offline records of the center need to be deleted on the cluster page."
+KPANEL_NODE_UNINSTALL_HELPER
+	chmod 0755 "$KPANEL_NODE_UNINSTALL_HELPER"
+}
+
 kpanel_node_write_units() {
 	cat >/etc/systemd/system/kejilion-node.service <<'KPANEL_NODE_SERVICE'
 [Unit]
 Description=KPanel Lightweight Monitoring Node
-Wants=kejilion-node-terminal.service
 After=kejilion-node-terminal.service network-online.target
+Wants=kejilion-node-terminal.service
 Wants=network-online.target
 
 [Service]
@@ -11160,6 +10927,9 @@ Type=simple
 User=kejilion-node
 Group=kejilion-node
 ExecStart=/usr/local/lib/kejilion-node/kejilion-node run --config /etc/kejilion-node/node.json
+RuntimeDirectory=kejilion-node
+RuntimeDirectoryMode=0700
+RuntimeDirectoryPreserve=yes
 Restart=on-failure
 RestartSec=15s
 NoNewPrivileges=true
@@ -11221,7 +10991,7 @@ NoNewPrivileges=false
 UMask=0077
 
 [Install]
-WantedBy=multi-user.target
+	WantedBy=multi-user.target
 KPANEL_NODE_TERMINAL_SERVICE
 
 	cat >"$KPANEL_NODE_SSH_LOGIN_SERVICE" <<'KPANEL_NODE_SSH_LOGIN_SERVICE'
@@ -11265,6 +11035,41 @@ UMask=0027
 WantedBy=multi-user.target
 KPANEL_NODE_SSH_LOGIN_SERVICE
 
+	cat >/etc/systemd/system/kejilion-node-file.service <<'KPANEL_NODE_FILE_SERVICE'
+[Unit]
+Description=KPanel Lightweight Node File Manager
+After=network-online.target
+Wants=network-online.target
+ConditionPathExists=/etc/kejilion-node/node.json
+ConditionPathExists=/etc/kejilion-node/terminal.json
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/
+ExecStart=/usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json
+Restart=on-failure
+RestartSec=15s
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
+KPANEL_NODE_FILE_SERVICE
+
 	cat >/etc/systemd/system/kejilion-node-update.service <<'KPANEL_NODE_UPDATE_SERVICE'
 [Unit]
 Description=Update KPanel Lightweight Monitoring Node
@@ -11293,11 +11098,39 @@ Persistent=true
 [Install]
 WantedBy=timers.target
 KPANEL_NODE_UPDATE_TIMER
+
+	cat >/etc/systemd/system/kejilion-node-uninstall.service <<'KPANEL_NODE_UNINSTALL_SERVICE'
+[Unit]
+Description=Uninstall KPanel Lightweight Monitoring Node
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/lib/kejilion-node/uninstall.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+UMask=0077
+KPANEL_NODE_UNINSTALL_SERVICE
+
+	cat >/etc/systemd/system/kejilion-node-uninstall.path <<'KPANEL_NODE_UNINSTALL_PATH'
+[Unit]
+Description=Watch for KPanel Lightweight Monitoring Node Uninstall
+
+[Path]
+PathExists=/run/kejilion-node/uninstall.request
+Unit=kejilion-node-uninstall.service
+
+[Install]
+WantedBy=multi-user.target
+KPANEL_NODE_UNINSTALL_PATH
 	chmod 0644 /etc/systemd/system/kejilion-node.service \
 		/etc/systemd/system/kejilion-node-terminal.service \
 		"$KPANEL_NODE_SSH_LOGIN_SERVICE" \
+		/etc/systemd/system/kejilion-node-file.service \
 		/etc/systemd/system/kejilion-node-update.service \
-		/etc/systemd/system/kejilion-node-update.timer
+		/etc/systemd/system/kejilion-node-update.timer \
+		/etc/systemd/system/kejilion-node-uninstall.service \
+		/etc/systemd/system/kejilion-node-uninstall.path
 }
 
 kpanel_node_cleanup_failed_join() {
@@ -11305,35 +11138,68 @@ kpanel_node_cleanup_failed_join() {
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-terminal.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-ssh-login.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-file.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.timer >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-uninstall.path >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-terminal.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-ssh-login.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-file.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-update.timer >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-uninstall.path >/dev/null 2>&1 || true
 	fi
 	rm -f -- /etc/systemd/system/kejilion-node.service \
 		/etc/systemd/system/kejilion-node-terminal.service \
 		"$KPANEL_NODE_SSH_LOGIN_SERVICE" \
+		/etc/systemd/system/kejilion-node-file.service \
 		/etc/systemd/system/kejilion-node-update.service \
-		/etc/systemd/system/kejilion-node-update.timer
+		/etc/systemd/system/kejilion-node-update.timer \
+		/etc/systemd/system/kejilion-node-uninstall.service \
+		/etc/systemd/system/kejilion-node-uninstall.path \
+		"$KPANEL_NODE_UNINSTALL_REQUEST"
 	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
-	rmdir -- "$KPANEL_NODE_SSH_LOGIN_RUNTIME" 2>/dev/null || true
 	[ ! -x "$KPANEL_NODE_SYSTEMCTL" ] || "$KPANEL_NODE_SYSTEMCTL" daemon-reload >/dev/null 2>&1 || true
 }
 
 kpanel_node_activate() {
-	"$KPANEL_NODE_SYSTEMCTL" daemon-reload &&
-		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-terminal.service &&
-		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node.service &&
-		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-ssh-login.service &&
-		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-update.timer &&
-		{ "$KPANEL_NODE_SYSTEMCTL" start kejilion-node-terminal.service || echo "KPanel 轻量节点终端 broker 启动失败；遥测服务仍将继续。" >&2; } &&
-		{ "$KPANEL_NODE_SYSTEMCTL" start kejilion-node-ssh-login.service || echo "KPanel SSH 登录采集服务启动失败；普通遥测仍将继续。" >&2; } &&
-		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node.service &&
-		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-update.timer &&
-		{ "$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-terminal.service >/dev/null || echo "KPanel 轻量节点终端 broker 当前不可用；遥测服务仍在运行。" >&2; } &&
-		{ "$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-ssh-login.service >/dev/null || echo "KPanel SSH 登录采集服务当前不可用；普通遥测仍在运行。" >&2; } &&
-		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
+	"$KPANEL_NODE_SYSTEMCTL" daemon-reload || return 1
+	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
+		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-terminal.service || return 1
+	else
+		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-terminal.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-terminal.service >/dev/null 2>&1 || true
+	fi
+	"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node.service || return 1
+	"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-ssh-login.service || return 1
+	"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-update.timer || return 1
+	"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-uninstall.path || return 1
+	"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-uninstall.path || return 1
+	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
+		if ! "$KPANEL_NODE_SYSTEMCTL" start kejilion-node-terminal.service; then
+			echo "KPanel 轻量节点终端 broker 启动失败；文件管理和遥测服务仍将继续。" >&2
+		fi
+	fi
+	if ! "$KPANEL_NODE_SYSTEMCTL" start kejilion-node-ssh-login.service; then
+		echo "KPanel SSH 登录采集服务启动失败；普通遥测仍将继续。" >&2
+	fi
+	"$KPANEL_NODE_SYSTEMCTL" start kejilion-node.service || return 1
+	"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-update.timer || return 1
+	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ] && ! "$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-terminal.service >/dev/null; then
+		echo "KPanel 轻量节点终端 broker 当前不可用；文件管理和遥测服务仍在运行。" >&2
+	fi
+	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
+		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-file.service || return 1
+		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-file.service || return 1
+		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-file.service >/dev/null || return 1
+	else
+		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-file.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-file.service >/dev/null 2>&1 || true
+	fi
+	if ! "$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-ssh-login.service >/dev/null; then
+		echo "KPanel SSH 登录采集服务当前不可用；普通遥测仍在运行。" >&2
+	fi
+	"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
 }
 
 kpanel_node_join() {
@@ -11365,7 +11231,7 @@ kpanel_node_join() {
 	fi
 	if [ "$resume_enrollment" != "true" ]; then
 		node_name="$(hostname 2>/dev/null | LC_ALL=C tr -cd '[:alnum:]_. -' | cut -c1-80)"
-		if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_CONFIG"; then
+		if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_CONFIG" --terminal-config "$KPANEL_NODE_TERMINAL_CONFIG"; then
 			kpanel_node_cleanup_failed_join
 			return 1
 		fi
@@ -11383,7 +11249,7 @@ kpanel_node_join() {
 		chown root:root "$KPANEL_NODE_TERMINAL_CONFIG" || return 1
 		chmod 0600 "$KPANEL_NODE_TERMINAL_CONFIG" || return 1
 	fi
-	if ! kpanel_node_write_units; then
+	if ! kpanel_node_write_uninstall_helper || ! kpanel_node_write_units; then
 		echo "节点授权已保存，但 systemd 单元写入失败；再次执行接入命令可继续。" >&2
 		return 1
 	fi
@@ -11415,8 +11281,19 @@ kpanel_node_update() {
 		return 1
 	}
 	"$KPANEL_NODE_UPDATER" update || return 1
-	kpanel_node_write_units || return 1
-	kpanel_node_activate
+	if ! kpanel_node_write_uninstall_helper || ! kpanel_node_write_units || ! kpanel_node_activate; then
+		echo "KPanel 轻量节点更新完成，但节点文件代理或远程卸载触发器启用失败；修复 systemd 后再次执行更新命令即可。" >&2
+		return 1
+	fi
+	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
+		"$KPANEL_NODE_SYSTEMCTL" restart kejilion-node-terminal.service >/dev/null 2>&1 || true
+	fi
+	"$KPANEL_NODE_SYSTEMCTL" restart kejilion-node.service &&
+		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null || return 1
+	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
+		"$KPANEL_NODE_SYSTEMCTL" restart kejilion-node-file.service &&
+			"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-file.service >/dev/null
+	fi
 }
 
 kpanel_node_uninstall() {
@@ -11425,23 +11302,37 @@ kpanel_node_uninstall() {
 		echo "卸载 KPanel 轻量节点需要 root 权限。" >&2
 		return 1
 	}
+	if [ -x "$KPANEL_NODE_UNINSTALL_HELPER" ]; then
+		"$KPANEL_NODE_UNINSTALL_HELPER"
+		return $?
+	fi
 	if [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-terminal.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-ssh-login.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-file.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.timer >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-uninstall.path >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-terminal.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-ssh-login.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-file.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-update.timer >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-uninstall.path >/dev/null 2>&1 || true
 	fi
 	rm -f -- /etc/systemd/system/kejilion-node.service \
 		/etc/systemd/system/kejilion-node-terminal.service \
 		"$KPANEL_NODE_SSH_LOGIN_SERVICE" \
+		/etc/systemd/system/kejilion-node-file.service \
 		/etc/systemd/system/kejilion-node-update.service \
-		/etc/systemd/system/kejilion-node-update.timer
+		/etc/systemd/system/kejilion-node-update.timer \
+		/etc/systemd/system/kejilion-node-uninstall.service \
+		/etc/systemd/system/kejilion-node-uninstall.path \
+		"$KPANEL_NODE_UNINSTALL_REQUEST"
 	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
 	rmdir -- "$KPANEL_NODE_SSH_LOGIN_RUNTIME" 2>/dev/null || true
+	rmdir -- /run/kejilion-node 2>/dev/null || true
 	[ ! -x "$KPANEL_NODE_SYSTEMCTL" ] || "$KPANEL_NODE_SYSTEMCTL" daemon-reload >/dev/null 2>&1 || true
 	echo "KPanel 轻量节点已从本机卸载；中心端的离线记录需在集群页面删除。"
 }
@@ -19274,7 +19165,7 @@ while true; do
 	  echo -e "${gl_kjlan}111. ${color111}多格式文件转换工具                  ${gl_kjlan}112. ${color112}Lucky大内网穿透工具"
 	  echo -e "${gl_kjlan}113. ${color113}Firefox浏览器                       ${gl_kjlan}114. ${color114}OpenClaw机器人管理工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}115. ${color115}Hermes机器人管理工具${gl_huang}★${gl_bai}               ${gl_kjlan}116. ${color116}DeepSeek Harness管理工具${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}117. ${color117}99CDN自建CDN管理平台                ${gl_kjlan}118. ${color118}99DNS智能调度服务"
+	  echo -e "${gl_kjlan}117. ${color117}99CDN自建CDN管理平台                  ${gl_kjlan}118. ${color118}99DNS智能调度服务"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}第三方应用列表"
   	  echo -e "${gl_kjlan}想要让你的应用出现在这里？查看开发者指南: ${gl_huang}https://dev.kejilion.sh/${gl_bai}"
@@ -25295,1364 +25186,6 @@ kpanel_system_resource_dispatch() {
 # KPanel system resource protocol end
 
 
-# KPanel disk management protocol start
-KPANEL_DISK_MANAGEMENT_PROTOCOL_VERSION="1"
-
-kpanel_disk_management_hex_encode() {
-	local value="${1-}" encoded="" byte decimal index
-	local LC_ALL=C
-	for ((index = 0; index < ${#value}; index++)); do
-		byte="${value:index:1}"
-		printf -v decimal '%d' "'$byte"
-		printf -v byte '%02x' "$decimal"
-		encoded+="$byte"
-	done
-	printf '%s' "$encoded"
-}
-
-kpanel_disk_management_emit() {
-	local status="$1" device="${2:-}" message="${3:-}" backup="${4:-}"
-	case "$status" in
-		applied|unchanged|failed|conflict|needs-attention|rollback-failed) ;;
-		*) status=failed ;;
-	esac
-	[[ "$device" =~ ^[0-9]+:[0-9]+$ ]] || device=""
-	printf 'KPANEL_DISK_MANAGEMENT_STATUS=%s\n' "$status"
-	printf 'KPANEL_DISK_MANAGEMENT_DEVICE=%s\n' "$device"
-	printf 'KPANEL_DISK_MANAGEMENT_MESSAGE_HEX=%s\n' "$(kpanel_disk_management_hex_encode "$message")"
-	printf 'KPANEL_DISK_MANAGEMENT_BACKUP_HEX=%s\n' "$(kpanel_disk_management_hex_encode "$backup")"
-}
-
-kpanel_disk_management_error() {
-	printf '错误: %s\n' "$1" >&2
-}
-
-kpanel_disk_management_reply() {
-	local status="$1" device="$2" message="$3" backup="$4" result="$5"
-	case "$status" in applied|unchanged) ;; *) kpanel_disk_management_error "$message" ;; esac
-	kpanel_disk_management_emit "$status" "$device" "$message" "$backup"
-	return "$result"
-}
-
-kpanel_disk_management_lock_file() {
-	printf '%s\n' "/run/lock/kejilion-kpanel-disk.lock"
-}
-
-kpanel_disk_management_lock_owner_uid() {
-	printf '0\n'
-}
-
-kpanel_disk_management_lock_stat_uid() {
-	stat -c '%u' "$1" 2>/dev/null
-}
-
-kpanel_disk_management_lock_stat_mode() {
-	stat -c '%a' "$1" 2>/dev/null
-}
-
-kpanel_disk_management_lock_stat_gid() {
-	stat -c '%g' "$1" 2>/dev/null
-}
-
-kpanel_disk_management_lock_stat_links() {
-	stat -c '%h' "$1" 2>/dev/null
-}
-
-kpanel_disk_management_lock_parent_secure() {
-	local parent="$1" uid expected_uid gid mode numeric_mode
-	[ ! -L "$parent" ] && [ -d "$parent" ] || return 1
-	uid="$(kpanel_disk_management_lock_stat_uid "$parent")" || return 1
-	expected_uid="$(kpanel_disk_management_lock_owner_uid)" || return 1
-	[[ "$uid" =~ ^[0-9]+$ ]] && [ "$uid" = "$expected_uid" ] || return 1
-	mode="$(kpanel_disk_management_lock_stat_mode "$parent")" || return 1
-	[[ "$mode" =~ ^[0-7]{3,4}$ ]] || return 1
-	numeric_mode=$((8#$mode))
-	# A newly created private parent is 0700. Existing system-managed /run/lock
-	# may be 0755/0775 or 1777; require root:root and sticky when world-writable.
-	[ "$((numeric_mode & 0777))" -eq 448 ] && return 0
-	gid="$(kpanel_disk_management_lock_stat_gid "$parent")" || return 1
-	[[ "$gid" =~ ^[0-9]+$ ]] && [ "$gid" = 0 ] || return 1
-	[ "$((numeric_mode & 0002))" -eq 0 ] || [ "$((numeric_mode & 01000))" -ne 0 ]
-}
-
-kpanel_disk_management_lock_file_secure() {
-	local path="$1" uid expected_uid mode links
-	[ ! -L "$path" ] && [ -f "$path" ] || return 1
-	uid="$(kpanel_disk_management_lock_stat_uid "$path")" || return 1
-	expected_uid="$(kpanel_disk_management_lock_owner_uid)" || return 1
-	[[ "$uid" =~ ^[0-9]+$ ]] && [ "$uid" = "$expected_uid" ] || return 1
-	mode="$(kpanel_disk_management_lock_stat_mode "$path")" || return 1
-	[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [ "$((8#$mode & 0777))" -eq 384 ] || return 1
-	links="$(kpanel_disk_management_lock_stat_links "$path")" || return 1
-	[[ "$links" =~ ^[0-9]+$ ]] && [ "$links" -eq 1 ]
-}
-
-kpanel_disk_management_prepare_lock_file() {
-	local lock_file parent parent_parent created=false
-	lock_file="$(kpanel_disk_management_lock_file)" || return 1
-	[[ "$lock_file" = /* ]] && [[ "$lock_file" != *$'\n'* ]] && [[ "$lock_file" != *$'\r'* ]] || return 1
-	parent="$(dirname -- "$lock_file")" || return 1
-	[ ! -L "$parent" ] || return 1
-	if [ ! -e "$parent" ]; then
-		parent_parent="$(dirname -- "$parent")" || return 1
-		[ -d "$parent_parent" ] && [ ! -L "$parent_parent" ] || return 1
-		(umask 077; mkdir -- "$parent") >/dev/null 2>&1 || return 1
-		chown 0:0 "$parent" >/dev/null 2>&1 && chmod 700 "$parent" >/dev/null 2>&1 || return 1
-	fi
-	kpanel_disk_management_lock_parent_secure "$parent" || return 1
-	[ ! -L "$lock_file" ] || return 1
-	if [ ! -e "$lock_file" ]; then
-		(umask 077; set -o noclobber; : > "$lock_file") >/dev/null 2>&1 || return 1
-		created=true
-	fi
-	[ -f "$lock_file" ] && [ ! -L "$lock_file" ] || return 1
-	if [ "$created" = true ]; then
-		chown 0:0 "$lock_file" >/dev/null 2>&1 && chmod 600 "$lock_file" >/dev/null 2>&1 || return 1
-	fi
-	kpanel_disk_management_lock_file_secure "$lock_file" || return 1
-	printf '%s\n' "$lock_file"
-}
-
-kpanel_disk_management_require_commands() {
-	local command_name
-	for command_name in "$@"; do
-		command -v "$command_name" >/dev/null 2>&1 || {
-			KPANEL_DISK_MANAGEMENT_REQUIRE_MESSAGE="缺少必要命令: $command_name"
-			return 1
-		}
-	done
-}
-
-kpanel_disk_management_command_available() {
-	command -v "$1" >/dev/null 2>&1
-}
-
-kpanel_disk_management_require_platform() {
-	KPANEL_DISK_MANAGEMENT_REQUIRE_MESSAGE=""
-	if [ "${KJ_DISK_MANAGEMENT_NONINTERACTIVE:-}" != "1" ]; then
-		KPANEL_DISK_MANAGEMENT_REQUIRE_MESSAGE="KPanel disk-management 协议环境未启用"
-		return 2
-	fi
-	if [ "$EUID" -ne 0 ]; then
-		KPANEL_DISK_MANAGEMENT_REQUIRE_MESSAGE="KPanel disk-management 协议必须以 root 运行"
-		return 2
-	fi
-	if ! command -v uname >/dev/null 2>&1; then
-		KPANEL_DISK_MANAGEMENT_REQUIRE_MESSAGE="缺少必要命令: uname"
-		return 1
-	fi
-	if [ "$(uname -s 2>/dev/null)" != Linux ]; then
-		KPANEL_DISK_MANAGEMENT_REQUIRE_MESSAGE="KPanel disk-management 协议仅支持 Linux"
-		return 2
-	fi
-	kpanel_disk_management_require_commands \
-		awk basename blkid chmod chown cp date dirname find findmnt flock grep lsblk mkdir mktemp \
-		mount mv readlink rm rmdir sha256sum stat sync umount uname wc
-}
-
-kpanel_disk_management_path_owner_uid() {
-	printf '0\n'
-}
-
-kpanel_disk_management_path_stat_uid() {
-	stat -c '%u' "$1" 2>/dev/null
-}
-
-kpanel_disk_management_path_stat_mode() {
-	stat -c '%a' "$1" 2>/dev/null
-}
-
-kpanel_disk_management_path_chain_secure() {
-	local path="$1" expected_uid remainder current component uid mode
-	local components=()
-	[[ "$path" = /* ]] && [ -d "$path" ] && [ ! -L "$path" ] || return 1
-	[ "$path" = / ] || kpanel_system_resource_path_has_no_symlink "$path" || return 1
-	expected_uid="$(kpanel_disk_management_path_owner_uid)" || return 1
-	[[ "$expected_uid" =~ ^[0-9]+$ ]] || return 1
-	current=/
-	remainder="${path#/}"
-	IFS=/ read -r -a components <<< "$remainder"
-	components=("/" "${components[@]}")
-	for component in "${components[@]}"; do
-		if [ "$component" != / ]; then
-			[ -n "$component" ] && [ "$component" != . ] && [ "$component" != .. ] || return 1
-			current="${current%/}/$component"
-		fi
-		[ -d "$current" ] && [ ! -L "$current" ] || return 1
-		uid="$(kpanel_disk_management_path_stat_uid "$current")" || return 1
-		mode="$(kpanel_disk_management_path_stat_mode "$current")" || return 1
-		[[ "$uid" =~ ^[0-9]+$ ]] && [ "$uid" = "$expected_uid" ] || return 1
-		[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [ "$((8#$mode & 0022))" -eq 0 ] || return 1
-	done
-}
-
-kpanel_disk_management_mountpoint_path_secure() {
-	local mountpoint="$1" allow_missing="$2" parent
-	kpanel_system_resource_path_has_no_symlink "$mountpoint" || return 1
-	if [ -e "$mountpoint" ] || [ -L "$mountpoint" ]; then
-		[ -d "$mountpoint" ] && [ ! -L "$mountpoint" ] || return 1
-		kpanel_disk_management_path_chain_secure "$mountpoint"
-		return $?
-	fi
-	[ "$allow_missing" = true ] || return 1
-	parent="$(dirname -- "$mountpoint")" || return 1
-	kpanel_disk_management_path_chain_secure "$parent"
-}
-
-kpanel_disk_management_mountpoint_parent_secure() {
-	local mountpoint="$1" allow_missing="$2" parent
-	kpanel_system_resource_path_has_no_symlink "$mountpoint" || return 1
-	if [ -e "$mountpoint" ] || [ -L "$mountpoint" ]; then
-		[ -d "$mountpoint" ] && [ ! -L "$mountpoint" ] || return 1
-	else
-		[ "$allow_missing" = true ] || return 1
-	fi
-	parent="$(dirname -- "$mountpoint")" || return 1
-	kpanel_disk_management_path_chain_secure "$parent"
-}
-
-kpanel_disk_management_decode_mountpoint() {
-	local encoded="$1" decoded="" canonical pair byte decimal index protected parent leaf canonical_parent
-	local LC_ALL=C
-	[ -n "$encoded" ] && [ "${#encoded}" -le 8192 ] && [ "$(( ${#encoded} % 2 ))" -eq 0 ] || return 1
-	[[ "$encoded" =~ ^[0-9a-fA-F]+$ ]] || return 1
-	for ((index = 0; index < ${#encoded}; index += 2)); do
-		pair="${encoded:index:2}"
-		decimal=$((16#$pair))
-		[ "$decimal" -ge 32 ] && [ "$decimal" -ne 127 ] || return 1
-		printf -v byte '%b' "\\x$pair"
-		decoded+="$byte"
-	done
-	[ -n "$decoded" ] && [[ "$decoded" = /* ]] || return 1
-	[[ "$decoded" != *$'\n'* ]] && [[ "$decoded" != *$'\r'* ]] || return 1
-	if [ -e "$decoded" ] || [ -L "$decoded" ]; then
-		canonical="$(readlink -f -- "$decoded" 2>/dev/null)" || return 1
-	else
-		parent="$(dirname -- "$decoded")" || return 1
-		leaf="$(basename -- "$decoded")" || return 1
-		[ -n "$leaf" ] && [ "$leaf" != . ] && [ "$leaf" != .. ] || return 1
-		canonical_parent="$(readlink -f -- "$parent" 2>/dev/null)" || return 1
-		[ -d "$canonical_parent" ] && [ ! -L "$canonical_parent" ] || return 1
-		canonical="${canonical_parent%/}/$leaf"
-	fi
-	[ "$canonical" = "$decoded" ] || return 1
-	[ "$decoded" != / ] || return 1
-	for protected in /boot /boot/efi /home /var/lib/kejilion-panel /home/docker; do
-		case "$decoded" in "$protected"|"$protected"/*) return 1 ;; esac
-		case "$protected" in "$decoded"/*) return 1 ;; esac
-	done
-	KPANEL_DISK_MANAGEMENT_MOUNTPOINT="$decoded"
-	KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX="$(kpanel_disk_management_hex_encode "$decoded")"
-}
-
-kpanel_disk_management_is_block_device() {
-	[ -b "$1" ]
-}
-
-kpanel_disk_management_resolve_device() {
-	local requested="$1" output line device_id device_path extra resolved verify matches=0 invalid=false
-	[[ "$requested" =~ ^[0-9]+:[0-9]+$ ]] || return 2
-	output="$(lsblk --noheadings --raw --paths --output MAJ:MIN,PATH 2>/dev/null)" || return 1
-	while IFS= read -r line; do
-		[ -n "$line" ] || continue
-		device_id=""; device_path=""; extra=""
-		read -r device_id device_path extra <<< "$line"
-		if [ -n "$extra" ] || [[ ! "$device_id" =~ ^[0-9]+:[0-9]+$ ]] || [[ "$device_path" != /dev/* ]]; then
-			invalid=true
-			continue
-		fi
-		if [ "$device_id" = "$requested" ]; then
-			matches=$((matches + 1))
-			KPANEL_DISK_MANAGEMENT_LISTED_PATH="$device_path"
-		fi
-	done <<< "$output"
-	[ "$invalid" = false ] && [ "$matches" -eq 1 ] || return 1
-	resolved="$(readlink -f -- "$KPANEL_DISK_MANAGEMENT_LISTED_PATH" 2>/dev/null)" || return 1
-	[[ "$resolved" = /dev/* ]] && kpanel_disk_management_is_block_device "$resolved" || return 1
-	verify="$(lsblk --nodeps --noheadings --raw --output MAJ:MIN -- "$resolved" 2>/dev/null)" || return 1
-	[ "$verify" = "$requested" ] || return 1
-	KPANEL_DISK_MANAGEMENT_DEVICE_PATH="$resolved"
-	KPANEL_DISK_MANAGEMENT_DEVICE_ID="$requested"
-}
-
-kpanel_disk_management_lsblk_value() {
-	local path="$1" column="$2" value
-	case "$column" in TYPE|RO|FSTYPE) ;; *) return 1 ;; esac
-	value="$(lsblk --nodeps --noheadings --raw --output "$column" -- "$path" 2>/dev/null)" || return 1
-	[[ "$value" != *$'\n'* ]] && [[ "$value" != *$'\r'* ]] || return 1
-	printf '%s' "$value"
-}
-
-kpanel_disk_management_swaps_file() {
-	printf '%s\n' "/proc/swaps"
-}
-
-kpanel_disk_management_device_is_active_swap() {
-	local device="$1" swaps source rest resolved
-	swaps="$(kpanel_disk_management_swaps_file)" || return 2
-	[ -r "$swaps" ] || return 2
-	while read -r source rest; do
-		[ -n "$source" ] || continue
-		[ "$source" != Filename ] || continue
-		case "$source" in
-			/dev/*)
-				resolved="$(readlink -f -- "$source" 2>/dev/null)" || return 2
-				[ "$resolved" != "$device" ] || return 0
-				;;
-		esac
-	done < "$swaps"
-	return 1
-}
-
-kpanel_disk_management_validate_device_common() {
-	local type ro fstype probed probe_rc swap_rc
-	type="$(kpanel_disk_management_lsblk_value "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" TYPE)" || return 1
-	ro="$(kpanel_disk_management_lsblk_value "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" RO)" || return 1
-	fstype="$(kpanel_disk_management_lsblk_value "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" FSTYPE)" || return 1
-	[[ "$type" =~ ^[A-Za-z0-9._+-]+$ ]] || return 1
-	[[ "$ro" =~ ^[01]$ ]] || return 1
-	[ -z "$fstype" ] || [[ "$fstype" =~ ^[A-Za-z0-9._+-]+$ ]] || return 1
-	probed="$(blkid -p -c /dev/null -s TYPE -o value "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" 2>/dev/null)"
-	probe_rc=$?
-	case "$probe_rc" in
-		0)
-			[[ "$probed" =~ ^[A-Za-z0-9._+-]+$ ]] || return 1
-			fstype="$probed"
-			;;
-		2) [ -z "$fstype" ] || return 1 ;;
-		*) return 1 ;;
-	esac
-	[ "$ro" = 0 ] || return 3
-	[ "$fstype" != swap ] || return 3
-	kpanel_disk_management_device_is_active_swap "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH"
-	swap_rc=$?
-	[ "$swap_rc" -ne 0 ] || return 3
-	[ "$swap_rc" -eq 1 ] || return 1
-	KPANEL_DISK_MANAGEMENT_DEVICE_TYPE="$type"
-	KPANEL_DISK_MANAGEMENT_FSTYPE="$fstype"
-}
-
-kpanel_disk_management_device_is_leaf() {
-	local path="$1" expected="$2" output line count=0
-	output="$(lsblk --noheadings --raw --output MAJ:MIN -- "$path" 2>/dev/null)" || return 2
-	while IFS= read -r line; do
-		[ -n "$line" ] || continue
-		[[ "$line" =~ ^[0-9]+:[0-9]+$ ]] || return 2
-		[ "$count" -ne 0 ] || [ "$line" = "$expected" ] || return 2
-		count=$((count + 1))
-	done <<< "$output"
-	[ "$count" -eq 1 ]
-}
-
-kpanel_disk_management_holders_dir() {
-	printf '/sys/dev/block/%s/holders\n' "$1"
-}
-
-kpanel_disk_management_device_has_holders() {
-	local device_id="$1" directory first
-	directory="$(kpanel_disk_management_holders_dir "$device_id")" || return 2
-	[ -d "$directory" ] || return 2
-	first="$(find "$directory" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" || return 2
-	[ -n "$first" ]
-}
-
-kpanel_disk_management_mount_ids() {
-	local output line
-	output="$(findmnt --kernel --raw --noheadings --output MAJ:MIN 2>/dev/null)" || return 2
-	[ -n "$output" ] || return 2
-	while IFS= read -r line; do
-		[ -n "$line" ] || continue
-		[[ "$line" =~ ^[0-9]+:[0-9]+$ ]] || return 2
-		printf '%s\n' "$line"
-	done <<< "$output"
-}
-
-kpanel_disk_management_device_is_mounted() {
-	local requested="$1" output line
-	output="$(kpanel_disk_management_mount_ids)" || return 2
-	while IFS= read -r line; do
-		[ "$line" != "$requested" ] || return 0
-	done <<< "$output"
-	return 1
-}
-
-kpanel_disk_management_target_device() {
-	local mountpoint="$1" output rc
-	output="$(findmnt --kernel --raw --noheadings --output MAJ:MIN --mountpoint "$mountpoint" 2>/dev/null)"
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		[ "$rc" -eq 1 ] && [ -z "$output" ] && return 1
-		return 2
-	fi
-	[[ "$output" =~ ^[0-9]+:[0-9]+$ ]] || return 2
-	printf '%s' "$output"
-}
-
-kpanel_disk_management_require_leaf_unmounted() {
-	local leaf_rc holders_rc mounted_rc
-	kpanel_disk_management_device_is_leaf "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" "$KPANEL_DISK_MANAGEMENT_DEVICE_ID"
-	leaf_rc=$?
-	[ "$leaf_rc" -eq 0 ] || { [ "$leaf_rc" -eq 1 ] && return 3; return 1; }
-	kpanel_disk_management_device_has_holders "$KPANEL_DISK_MANAGEMENT_DEVICE_ID"
-	holders_rc=$?
-	[ "$holders_rc" -ne 0 ] || return 3
-	[ "$holders_rc" -eq 1 ] || return 1
-	kpanel_disk_management_device_is_mounted "$KPANEL_DISK_MANAGEMENT_DEVICE_ID"
-	mounted_rc=$?
-	[ "$mounted_rc" -ne 0 ] || return 3
-	[ "$mounted_rc" -eq 1 ] || return 1
-}
-
-kpanel_disk_management_fstab_file() {
-	printf '%s\n' "/etc/fstab"
-}
-
-kpanel_disk_management_state_root() {
-	printf '%s/system/disk-management\n' "$(kpanel_system_resource_state_root)"
-}
-
-kpanel_disk_management_prepare_state_subdir() {
-	local name="$1" root path
-	case "$name" in mountpoints|recovery) ;; *) return 1 ;; esac
-	root="$(kpanel_disk_management_state_root)" || return 1
-	[[ "$root" = /* ]] && [ "$root" != / ] || return 1
-	kpanel_system_resource_path_has_no_symlink "$root" || return 1
-	if [ ! -e "$root" ]; then
-		(umask 077; mkdir -p -- "$root") >/dev/null 2>&1 || return 1
-	fi
-	kpanel_system_resource_path_has_no_symlink "$root" &&
-		kpanel_system_resource_secure_directory "$root" || return 1
-	path="$root/$name"
-	kpanel_system_resource_path_has_no_symlink "$path" || return 1
-	if [ ! -e "$path" ]; then
-		(umask 077; mkdir -- "$path") >/dev/null 2>&1 || return 1
-	fi
-	kpanel_system_resource_path_has_no_symlink "$path" &&
-		kpanel_system_resource_secure_directory "$path" || return 1
-	printf '%s\n' "$path"
-}
-
-kpanel_disk_management_fstab_escape() {
-	local value="$1"
-	value="${value//\\/\\134}"
-	value="${value// /\\040}"
-	printf '%s' "$value"
-}
-
-kpanel_disk_management_persistence_source() {
-	local path="$1" value rc
-	value="$(blkid -c /dev/null -s UUID -o value "$path" 2>/dev/null)"
-	rc=$?
-	if [ "$rc" -eq 0 ]; then
-		[[ "$value" =~ ^[A-Za-z0-9._:+-]+$ ]] || return 1
-		KPANEL_DISK_MANAGEMENT_PERSISTENCE_SOURCE="UUID=$value"
-		return 0
-	fi
-	[ "$rc" -eq 2 ] || return 1
-	value="$(blkid -c /dev/null -s PARTUUID -o value "$path" 2>/dev/null)"
-	rc=$?
-	if [ "$rc" -eq 0 ]; then
-		[[ "$value" =~ ^[A-Za-z0-9._:+-]+$ ]] || return 1
-		KPANEL_DISK_MANAGEMENT_PERSISTENCE_SOURCE="PARTUUID=$value"
-		return 0
-	fi
-	[ "$rc" -eq 2 ] || return 1
-	return 2
-}
-
-kpanel_disk_management_probe_fstype() {
-	local path="$1" value
-	value="$(blkid -p -c /dev/null -s TYPE -o value "$path" 2>/dev/null)" || return 1
-	[[ "$value" =~ ^[A-Za-z0-9._+-]+$ ]] || return 1
-	printf '%s' "$value"
-}
-
-kpanel_disk_management_cleanup_incomplete_backup() {
-	local snapshot="$1"
-	[ -d "$snapshot" ] && [ ! -L "$snapshot" ] || return 1
-	rm -f -- "$snapshot/fstab" "$snapshot/mode" "$snapshot/owner" >/dev/null 2>&1 || return 1
-	rmdir -- "$snapshot" >/dev/null 2>&1
-}
-
-kpanel_disk_management_fstab_backup_valid() (
-	local snapshot="$1" recovery="$2" name expected_uid uid mode links entry count=0 file saved_mode saved_owner
-	local entries=()
-	[ "$(dirname -- "$snapshot")" = "$recovery" ] || return 1
-	name="${snapshot##*/}"
-	[[ "$name" =~ ^[0-9]{8}T[0-9]{6}Z-fstab\.[A-Za-z0-9]{6}$ ]] || return 1
-	kpanel_system_resource_path_has_no_symlink "$snapshot" || return 1
-	[ -d "$snapshot" ] && [ ! -L "$snapshot" ] || return 1
-	expected_uid="$(kpanel_disk_management_path_owner_uid)" || return 1
-	uid="$(kpanel_disk_management_path_stat_uid "$snapshot")" || return 1
-	mode="$(kpanel_disk_management_path_stat_mode "$snapshot")" || return 1
-	[[ "$expected_uid" =~ ^[0-9]+$ ]] && [ "$uid" = "$expected_uid" ] || return 1
-	[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [ "$((8#$mode & 0777))" -eq 448 ] || return 1
-	shopt -s nullglob dotglob
-	entries=("$snapshot"/*)
-	for entry in "${entries[@]}"; do
-		case "$entry" in
-			"$snapshot/fstab"|"$snapshot/mode"|"$snapshot/owner") ;;
-			*) return 1 ;;
-		esac
-		count=$((count + 1))
-	done
-	[ "$count" -eq 3 ] || return 1
-	for file in "$snapshot/fstab" "$snapshot/mode" "$snapshot/owner"; do
-		[ -f "$file" ] && [ ! -L "$file" ] || return 1
-		uid="$(kpanel_disk_management_path_stat_uid "$file")" || return 1
-		mode="$(kpanel_disk_management_path_stat_mode "$file")" || return 1
-		links="$(kpanel_disk_management_lock_stat_links "$file")" || return 1
-		[ "$uid" = "$expected_uid" ] && [[ "$mode" =~ ^[0-7]{3,4}$ ]] && [[ "$links" =~ ^[0-9]+$ ]] &&
-			[ "$((8#$mode & 0777))" -eq 384 ] && [ "$links" -eq 1 ] || return 1
-	done
-	kpanel_system_resource_file_within_bounds "$snapshot/fstab" 1048576 16384 || return 1
-	saved_mode="$(<"$snapshot/mode")" || return 1
-	saved_owner="$(<"$snapshot/owner")" || return 1
-	[[ "$saved_mode" =~ ^[0-7]{3,4}$ ]] && [[ "$saved_owner" =~ ^[0-9]+:[0-9]+$ ]]
-)
-
-kpanel_disk_management_remove_fstab_backup() {
-	local snapshot="$1" recovery="$2"
-	kpanel_disk_management_fstab_backup_valid "$snapshot" "$recovery" || return 1
-	rm -f -- "$snapshot/fstab" "$snapshot/mode" "$snapshot/owner" >/dev/null 2>&1 || return 1
-	rmdir -- "$snapshot" >/dev/null 2>&1
-}
-
-kpanel_disk_management_prune_fstab_backups() (
-	local limit="$1" protected="${2:-}" recovery="${3:-}" entry remaining index=0
-	local entries=()
-	local LC_ALL=C
-	[[ "$limit" =~ ^[0-9]+$ ]] || return 1
-	[ -n "$recovery" ] || recovery="$(kpanel_disk_management_prepare_state_subdir recovery)" || return 1
-	[ -d "$recovery" ] && [ ! -L "$recovery" ] || return 1
-	shopt -s nullglob dotglob
-	entries=("$recovery"/*)
-	for entry in "${entries[@]}"; do
-		kpanel_disk_management_fstab_backup_valid "$entry" "$recovery" || return 1
-	done
-	if [ -n "$protected" ]; then
-		kpanel_disk_management_fstab_backup_valid "$protected" "$recovery" || return 1
-	fi
-	remaining="${#entries[@]}"
-	while [ "$remaining" -gt "$limit" ]; do
-		[ "$index" -lt "${#entries[@]}" ] || return 1
-		entry="${entries[$index]}"
-		index=$((index + 1))
-		[ "$entry" != "$protected" ] || continue
-		kpanel_disk_management_remove_fstab_backup "$entry" "$recovery" || return 1
-		remaining=$((remaining - 1))
-	done
-)
-
-kpanel_disk_management_create_fstab_backup() {
-	local fstab="$1" recovery timestamp snapshot mode owner
-	recovery="$(kpanel_disk_management_prepare_state_subdir recovery)" || return 1
-	kpanel_disk_management_prune_fstab_backups 15 "" "$recovery" || return 1
-	timestamp="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)" || return 1
-	[[ "$timestamp" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || return 1
-	snapshot="$(mktemp -d "$recovery/${timestamp}-fstab.XXXXXX")" || return 1
-	chmod 700 "$snapshot" >/dev/null 2>&1 && chown 0:0 "$snapshot" >/dev/null 2>&1 || {
-		kpanel_disk_management_cleanup_incomplete_backup "$snapshot" >/dev/null 2>&1 || true
-		return 1
-	}
-	mode="$(stat -c '%a' "$fstab" 2>/dev/null)" || { kpanel_disk_management_cleanup_incomplete_backup "$snapshot"; return 1; }
-	owner="$(stat -c '%u:%g' "$fstab" 2>/dev/null)" || { kpanel_disk_management_cleanup_incomplete_backup "$snapshot"; return 1; }
-	[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [[ "$owner" =~ ^[0-9]+:[0-9]+$ ]] || {
-		kpanel_disk_management_cleanup_incomplete_backup "$snapshot" >/dev/null 2>&1 || true
-		return 1
-	}
-	cp -- "$fstab" "$snapshot/fstab" >/dev/null 2>&1 &&
-		printf '%s\n' "$mode" > "$snapshot/mode" &&
-		printf '%s\n' "$owner" > "$snapshot/owner" || {
-		kpanel_disk_management_cleanup_incomplete_backup "$snapshot" >/dev/null 2>&1 || true
-		return 1
-	}
-	chown 0:0 "$snapshot/fstab" "$snapshot/mode" "$snapshot/owner" >/dev/null 2>&1 &&
-		chmod 600 "$snapshot/fstab" "$snapshot/mode" "$snapshot/owner" >/dev/null 2>&1 &&
-		sync -f "$snapshot/fstab" >/dev/null 2>&1 && sync -f "$snapshot" >/dev/null 2>&1 || {
-		kpanel_disk_management_cleanup_incomplete_backup "$snapshot" >/dev/null 2>&1 || true
-		return 1
-	}
-	kpanel_disk_management_fstab_backup_valid "$snapshot" "$recovery" || {
-		kpanel_disk_management_cleanup_incomplete_backup "$snapshot" >/dev/null 2>&1 || true
-		return 1
-	}
-	printf '%s\n' "$snapshot"
-}
-
-kpanel_disk_management_restore_fstab() {
-	local fstab="$1" snapshot="$2" directory temporary mode owner recovery
-	recovery="$(kpanel_disk_management_prepare_state_subdir recovery)" || return 1
-	kpanel_disk_management_fstab_backup_valid "$snapshot" "$recovery" || return 1
-	mode="$(<"$snapshot/mode")" || return 1
-	owner="$(<"$snapshot/owner")" || return 1
-	[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [[ "$owner" =~ ^[0-9]+:[0-9]+$ ]] || return 1
-	directory="$(dirname -- "$fstab")" || return 1
-	temporary="$(mktemp "$directory/.fstab.kpanel-restore.XXXXXX")" || return 1
-	cp -- "$snapshot/fstab" "$temporary" >/dev/null 2>&1 &&
-		chown "$owner" "$temporary" >/dev/null 2>&1 && chmod "$mode" "$temporary" >/dev/null 2>&1 &&
-		findmnt --verify --tab-file "$temporary" >&2 && sync -f "$temporary" >/dev/null 2>&1 &&
-		mv -f -- "$temporary" "$fstab" >/dev/null 2>&1 && sync -f "$fstab" >/dev/null 2>&1 &&
-		sync -f "$directory" >/dev/null 2>&1 || {
-		rm -f -- "$temporary" >/dev/null 2>&1
-		return 1
-	}
-	findmnt --verify --tab-file "$fstab" >&2
-}
-
-kpanel_disk_management_fstab_transaction() {
-	local operation="$1" source="$2" mountpoint="$3" fstype="$4"
-	local fstab directory escaped_target desired="" pass_number=0 analysis exact desired_count conflict extra temporary backup uid mode
-	KPANEL_DISK_MANAGEMENT_FSTAB_CHANGED=false
-	KPANEL_DISK_MANAGEMENT_FSTAB_BACKUP=""
-	KPANEL_DISK_MANAGEMENT_FSTAB_ROLLBACK_FAILED=false
-	case "$operation" in ensure|remove) ;; *) return 1 ;; esac
-	[[ "$source" =~ ^(UUID|PARTUUID)=[A-Za-z0-9._:+-]+$ ]] || return 1
-	if [ "$operation" = ensure ]; then
-		[[ "$fstype" =~ ^[A-Za-z0-9._+-]+$ ]] || return 1
-	fi
-	fstab="$(kpanel_disk_management_fstab_file)" || return 1
-	[ -f "$fstab" ] && [ ! -L "$fstab" ] || return 1
-	kpanel_system_resource_path_has_no_symlink "$fstab" || return 1
-	kpanel_system_resource_file_within_bounds "$fstab" 1048576 16384 || return 1
-	uid="$(kpanel_disk_management_path_stat_uid "$fstab")" || return 1
-	mode="$(kpanel_disk_management_path_stat_mode "$fstab")" || return 1
-	[ "$uid" = "$(kpanel_disk_management_path_owner_uid)" ] && [[ "$mode" =~ ^[0-7]{3,4}$ ]] &&
-		[ "$((8#$mode & 0022))" -eq 0 ] || return 1
-	directory="$(dirname -- "$fstab")" || return 1
-	[ -d "$directory" ] && [ ! -L "$directory" ] || return 1
-	escaped_target="$(kpanel_disk_management_fstab_escape "$mountpoint")" || return 1
-	case "$fstype" in ext2|ext3|ext4) pass_number=2 ;; esac
-	desired="$source $escaped_target $fstype defaults,nofail 0 $pass_number"
-	analysis="$(awk -v source="$source" -v target="$escaped_target" -v desired="$desired" -v operation="$operation" '
-		BEGIN { exact=0; desired_count=0; conflict=0 }
-		{
-			active=($0 !~ /^[[:space:]]*#/ && $0 !~ /^[[:space:]]*$/)
-			if (active && NF >= 2) {
-				if ($1 == source && $2 == target) {
-					exact++
-					if ($0 == desired) desired_count++
-				} else if ($2 == target || (operation == "ensure" && $1 == source)) {
-					conflict=1
-				}
-			}
-		}
-		END { printf "%d %d %d\n", exact, desired_count, conflict }
-	' "$fstab" 2>/dev/null)" || return 1
-	read -r exact desired_count conflict extra <<< "$analysis"
-	[ -z "$extra" ] && [[ "$exact" =~ ^[0-9]+$ ]] && [[ "$desired_count" =~ ^[0-9]+$ ]] &&
-		[[ "$conflict" =~ ^[01]$ ]] || return 1
-	[ "$conflict" -eq 0 ] || return 2
-	findmnt --verify --tab-file "$fstab" >&2 || return 1
-	kpanel_disk_management_prune_fstab_backups 16 || return 1
-	if [ "$operation" = ensure ] && [ "$exact" -eq 1 ] && [ "$desired_count" -eq 1 ]; then
-		return 0
-	fi
-	if [ "$operation" = remove ] && [ "$exact" -eq 0 ]; then
-		return 0
-	fi
-	temporary="$(mktemp "$directory/.fstab.kpanel.XXXXXX")" || return 1
-	awk -v source="$source" -v target="$escaped_target" '
-		{
-			active=($0 !~ /^[[:space:]]*#/ && $0 !~ /^[[:space:]]*$/)
-			if (active && NF >= 2 && $1 == source && $2 == target) next
-			print
-		}
-	' "$fstab" > "$temporary" || { rm -f -- "$temporary"; return 1; }
-	if [ "$operation" = ensure ]; then
-		printf '%s\n' "$desired" >> "$temporary" || { rm -f -- "$temporary"; return 1; }
-	fi
-	kpanel_system_resource_copy_identity "$fstab" "$temporary" || { rm -f -- "$temporary"; return 1; }
-	findmnt --verify --tab-file "$temporary" >&2 || { rm -f -- "$temporary"; return 1; }
-	backup="$(kpanel_disk_management_create_fstab_backup "$fstab")" || { rm -f -- "$temporary"; return 1; }
-	KPANEL_DISK_MANAGEMENT_FSTAB_BACKUP="$backup"
-	if ! sync -f "$temporary" >/dev/null 2>&1 ||
-		! mv -f -- "$temporary" "$fstab" >/dev/null 2>&1 ||
-		! sync -f "$fstab" >/dev/null 2>&1 ||
-		! sync -f "$directory" >/dev/null 2>&1 ||
-		! findmnt --verify --tab-file "$fstab" >&2; then
-		rm -f -- "$temporary" >/dev/null 2>&1
-		if ! kpanel_disk_management_restore_fstab "$fstab" "$backup"; then
-			KPANEL_DISK_MANAGEMENT_FSTAB_ROLLBACK_FAILED=true
-		fi
-		return 1
-	fi
-	KPANEL_DISK_MANAGEMENT_FSTAB_CHANGED=true
-}
-
-kpanel_disk_management_mountpoint_marker_path() {
-	local mountpoint="$1" directory digest
-	directory="$(kpanel_disk_management_prepare_state_subdir mountpoints)" || return 1
-	digest="$(printf '%s' "$mountpoint" | sha256sum 2>/dev/null | awk '{print $1}')" || return 1
-	[[ "$digest" =~ ^[0-9a-f]{64}$ ]] || return 1
-	printf '%s/%s.mountpoint\n' "$directory" "$digest"
-}
-
-kpanel_disk_management_marker_valid() {
-	local marker="$1" device_id="$2" mountpoint_hex="$3" uid mode links
-	[ -f "$marker" ] && [ ! -L "$marker" ] || return 1
-	uid="$(kpanel_disk_management_path_stat_uid "$marker")" || return 1
-	mode="$(kpanel_disk_management_path_stat_mode "$marker")" || return 1
-	links="$(kpanel_disk_management_lock_stat_links "$marker")" || return 1
-	[ "$uid" = "$(kpanel_disk_management_path_owner_uid)" ] && [[ "$mode" =~ ^[0-7]{3,4}$ ]] &&
-		[[ "$links" =~ ^[0-9]+$ ]] && [ "$((8#$mode & 0777))" -eq 384 ] && [ "$links" -eq 1 ] || return 1
-	kpanel_system_resource_file_within_bounds "$marker" 8192 8 || return 1
-	grep -Fqx 'protocol=1' "$marker" &&
-		grep -Fqx "device=$device_id" "$marker" &&
-		grep -Fqx "mountpoint_hex=$mountpoint_hex" "$marker"
-}
-
-kpanel_disk_management_record_mountpoint() {
-	local device_id="$1" mountpoint="$2" mountpoint_hex="$3" marker directory temporary
-	marker="$(kpanel_disk_management_mountpoint_marker_path "$mountpoint")" || return 1
-	directory="$(dirname -- "$marker")" || return 1
-	[ ! -L "$marker" ] || return 1
-	if [ -e "$marker" ]; then
-		kpanel_disk_management_marker_valid "$marker" "$device_id" "$mountpoint_hex"
-		return $?
-	fi
-	temporary="$(mktemp "$directory/.mountpoint.XXXXXX")" || return 1
-	printf 'protocol=1\ndevice=%s\nmountpoint_hex=%s\n' "$device_id" "$mountpoint_hex" > "$temporary" || {
-		rm -f -- "$temporary"
-		return 1
-	}
-	chown 0:0 "$temporary" >/dev/null 2>&1 && chmod 600 "$temporary" >/dev/null 2>&1 &&
-		sync -f "$temporary" >/dev/null 2>&1 && mv -f -- "$temporary" "$marker" >/dev/null 2>&1 &&
-		sync -f "$directory" >/dev/null 2>&1 || {
-		rm -f -- "$temporary"
-		return 1
-	}
-	kpanel_disk_management_marker_valid "$marker" "$device_id" "$mountpoint_hex"
-}
-
-kpanel_disk_management_forget_mountpoint() {
-	local device_id="$1" mountpoint="$2" mountpoint_hex="$3" marker directory content
-	marker="$(kpanel_disk_management_mountpoint_marker_path "$mountpoint" 2>/dev/null)" || return 0
-	kpanel_disk_management_marker_valid "$marker" "$device_id" "$mountpoint_hex" || return 0
-	[ -d "$mountpoint" ] && [ ! -L "$mountpoint" ] || return 0
-	content="$(find "$mountpoint" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" || return 0
-	[ -z "$content" ] || return 0
-	rmdir -- "$mountpoint" >/dev/null 2>&1 || return 0
-	directory="$(dirname -- "$marker")" || return 0
-	rm -f -- "$marker" >/dev/null 2>&1 || return 0
-	sync -f "$directory" >/dev/null 2>&1 || true
-}
-
-kpanel_disk_management_cleanup_new_mountpoint() {
-	local device_id="$1" mountpoint="$2" mountpoint_hex="$3" marker
-	marker="$(kpanel_disk_management_mountpoint_marker_path "$mountpoint" 2>/dev/null || true)"
-	if [ -n "$marker" ] && kpanel_disk_management_marker_valid "$marker" "$device_id" "$mountpoint_hex"; then
-		rm -f -- "$marker" >/dev/null 2>&1 || true
-	fi
-	[ -d "$mountpoint" ] && [ ! -L "$mountpoint" ] && rmdir -- "$mountpoint" >/dev/null 2>&1 || true
-}
-
-kpanel_disk_management_prepare_device() {
-	local device_id="$1" rc
-	KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE=""
-	kpanel_disk_management_resolve_device "$device_id"
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE="无法按 MAJ:MIN 唯一解析安全块设备"
-		return 1
-	fi
-	kpanel_disk_management_validate_device_common
-	rc=$?
-	case "$rc" in
-		0) return 0 ;;
-		3)
-			KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE="设备为只读设备或 Swap，拒绝操作"
-			return 3
-			;;
-		*)
-			KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE="无法可靠读取设备属性"
-			return 1
-			;;
-	esac
-}
-
-kpanel_disk_management_require_safe_leaf() {
-	local rc
-	kpanel_disk_management_require_leaf_unmounted
-	rc=$?
-	case "$rc" in
-		0) return 0 ;;
-		3)
-			KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE="设备已挂载、存在子设备或仍被 holder 使用"
-			return 3
-			;;
-		*)
-			KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE="无法可靠确认设备拓扑或挂载状态"
-			return 1
-			;;
-	esac
-}
-
-kpanel_disk_management_rollback_live_mount() {
-	local device_id="$1" mountpoint="$2" created="$3" mountpoint_hex="$4" target rc
-	target="$(kpanel_disk_management_target_device "$mountpoint")"
-	rc=$?
-	if [ "$rc" -eq 0 ]; then
-		[ "$target" = "$device_id" ] || return 1
-		umount -- "$mountpoint" >&2 || return 1
-		target="$(kpanel_disk_management_target_device "$mountpoint")"
-		rc=$?
-		[ "$rc" -eq 1 ] || return 1
-	elif [ "$rc" -ne 1 ]; then
-		return 1
-	fi
-	if [ "$created" = true ]; then
-		kpanel_disk_management_cleanup_new_mountpoint "$device_id" "$mountpoint" "$mountpoint_hex"
-	fi
-}
-
-kpanel_disk_management_restore_live_mount() {
-	local device_id="$1" device_path="$2" mountpoint="$3" target rc
-	mount --source "$device_path" --target "$mountpoint" >&2 || return 1
-	target="$(kpanel_disk_management_target_device "$mountpoint")"
-	rc=$?
-	[ "$rc" -eq 0 ] && [ "$target" = "$device_id" ]
-}
-
-kpanel_disk_management_mount_action() {
-	local device_id="$1" mountpoint_hex="$2" persist="$3"
-	local rc target mounted_rc content parent created=false source_rc fstab_rc backup=""
-	if ! kpanel_disk_management_decode_mountpoint "$mountpoint_hex"; then
-		kpanel_disk_management_reply failed "$device_id" "挂载点编码、规范路径或保护路径校验失败" "" 2
-		return $?
-	fi
-	if ! kpanel_disk_management_mountpoint_parent_secure "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" true; then
-		kpanel_disk_management_reply needs-attention "$device_id" "挂载点路径包含符号链接、非 root 目录或可被非 root 写入" "" 3
-		return $?
-	fi
-	kpanel_disk_management_prepare_device "$device_id"
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		if [ "$rc" -eq 3 ]; then
-			kpanel_disk_management_reply needs-attention "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 3
-		else
-			kpanel_disk_management_reply failed "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 1
-		fi
-		return $?
-	fi
-	[ -n "$KPANEL_DISK_MANAGEMENT_FSTYPE" ] || {
-		kpanel_disk_management_reply needs-attention "$device_id" "设备没有可挂载的已知文件系统" "" 3
-		return $?
-	}
-	case "$KPANEL_DISK_MANAGEMENT_FSTYPE" in
-		swap|LVM2_member|linux_raid_member|crypto_LUKS|zfs_member)
-			kpanel_disk_management_reply needs-attention "$device_id" "设备签名不是可直接挂载的文件系统" "" 3
-			return $?
-			;;
-	esac
-	target="$(kpanel_disk_management_target_device "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT")"
-	rc=$?
-	if [ "$rc" -eq 0 ]; then
-		[ "$target" = "$device_id" ] || {
-			kpanel_disk_management_reply needs-attention "$device_id" "目标已被其他设备占用" "" 3
-			return $?
-		}
-		if [ "$persist" = 1 ]; then
-			kpanel_disk_management_persistence_source "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH"
-			source_rc=$?
-			if [ "$source_rc" -ne 0 ]; then
-				if [ "$source_rc" -eq 2 ]; then
-					kpanel_disk_management_reply needs-attention "$device_id" "设备缺少 UUID/PARTUUID，无法安全持久化" "" 3
-				else
-					kpanel_disk_management_reply failed "$device_id" "无法读取设备持久化标识" "" 1
-				fi
-				return $?
-			fi
-			kpanel_disk_management_fstab_transaction ensure "$KPANEL_DISK_MANAGEMENT_PERSISTENCE_SOURCE" \
-				"$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_FSTYPE"
-			fstab_rc=$?
-			backup="$KPANEL_DISK_MANAGEMENT_FSTAB_BACKUP"
-			if [ "$fstab_rc" -ne 0 ]; then
-				if [ "$KPANEL_DISK_MANAGEMENT_FSTAB_ROLLBACK_FAILED" = true ]; then
-					kpanel_disk_management_reply rollback-failed "$device_id" "fstab 更新失败且配置回滚失败，需要人工恢复" "$backup" 4
-				elif [ "$fstab_rc" -eq 2 ]; then
-					kpanel_disk_management_reply needs-attention "$device_id" "fstab 存在设备或挂载点冲突" "$backup" 3
-				else
-					kpanel_disk_management_reply failed "$device_id" "fstab 持久化失败，原有实时挂载保持不变" "$backup" 1
-				fi
-				return $?
-			fi
-			if [ "$KPANEL_DISK_MANAGEMENT_FSTAB_CHANGED" = true ]; then
-				kpanel_disk_management_reply applied "$device_id" "实时挂载未变化，持久化配置已应用" "$backup" 0
-			else
-				kpanel_disk_management_reply unchanged "$device_id" "设备已经按目标挂载并持久化" "" 0
-			fi
-			return $?
-		fi
-		kpanel_disk_management_reply unchanged "$device_id" "设备已经按目标挂载" "" 0
-		return $?
-	elif [ "$rc" -ne 1 ]; then
-		kpanel_disk_management_reply failed "$device_id" "无法可靠读取目标挂载状态" "" 1
-		return $?
-	fi
-	if ! kpanel_disk_management_mountpoint_path_secure "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" true; then
-		kpanel_disk_management_reply needs-attention "$device_id" "未挂载目标不是 root 独占的安全目录路径" "" 3
-		return $?
-	fi
-	kpanel_disk_management_device_is_mounted "$device_id"
-	mounted_rc=$?
-	if [ "$mounted_rc" -eq 0 ]; then
-		kpanel_disk_management_reply needs-attention "$device_id" "设备已挂载在其他目标，拒绝重复挂载" "" 3
-		return $?
-	elif [ "$mounted_rc" -ne 1 ]; then
-		kpanel_disk_management_reply failed "$device_id" "无法可靠读取设备挂载状态" "" 1
-		return $?
-	fi
-	if [ -e "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" ] || [ -L "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" ]; then
-		[ -d "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" ] && [ ! -L "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" ] || {
-			kpanel_disk_management_reply needs-attention "$device_id" "目标不是安全的真实目录" "" 3
-			return $?
-		}
-	else
-		parent="$(dirname -- "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT")" || {
-			kpanel_disk_management_reply failed "$device_id" "无法解析挂载点父目录" "" 1
-			return $?
-		}
-		[ -d "$parent" ] && [ ! -L "$parent" ] || {
-			kpanel_disk_management_reply needs-attention "$device_id" "挂载点父目录不存在或不安全" "" 3
-			return $?
-		}
-		if ! (umask 077; mkdir -- "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT") >/dev/null 2>&1; then
-			kpanel_disk_management_reply failed "$device_id" "创建挂载点失败" "" 1
-			return $?
-		fi
-		created=true
-		if ! chown 0:0 "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" >/dev/null 2>&1 ||
-			! chmod 700 "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" >/dev/null 2>&1; then
-			kpanel_disk_management_cleanup_new_mountpoint "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"
-			kpanel_disk_management_reply failed "$device_id" "无法设置新挂载点安全属性" "" 1
-			return $?
-		fi
-		if ! kpanel_disk_management_mountpoint_path_secure "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" false; then
-			kpanel_disk_management_cleanup_new_mountpoint "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"
-			kpanel_disk_management_reply failed "$device_id" "新挂载点安全属性复核失败" "" 1
-			return $?
-		fi
-		if ! kpanel_disk_management_record_mountpoint "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"; then
-			kpanel_disk_management_cleanup_new_mountpoint "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"
-			kpanel_disk_management_reply failed "$device_id" "无法记录 KPanel 创建的挂载点" "" 1
-			return $?
-		fi
-	fi
-	content="$(find "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" || {
-		[ "$created" = true ] && kpanel_disk_management_cleanup_new_mountpoint "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"
-		kpanel_disk_management_reply failed "$device_id" "无法安全检查挂载点内容" "" 1
-		return $?
-	}
-	if [ -n "$content" ]; then
-		[ "$created" = true ] && kpanel_disk_management_cleanup_new_mountpoint "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"
-		kpanel_disk_management_reply needs-attention "$device_id" "挂载点非空，拒绝覆盖现有内容" "" 3
-		return $?
-	fi
-	if [ "$persist" = 1 ]; then
-		kpanel_disk_management_persistence_source "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH"
-		source_rc=$?
-		if [ "$source_rc" -ne 0 ]; then
-			[ "$created" = true ] && kpanel_disk_management_cleanup_new_mountpoint "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"
-			if [ "$source_rc" -eq 2 ]; then
-				kpanel_disk_management_reply needs-attention "$device_id" "设备缺少 UUID/PARTUUID，无法安全持久化" "" 3
-			else
-				kpanel_disk_management_reply failed "$device_id" "无法读取设备持久化标识" "" 1
-			fi
-			return $?
-		fi
-	fi
-	if ! kpanel_disk_management_mountpoint_path_secure "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" false; then
-		[ "$created" = true ] && kpanel_disk_management_cleanup_new_mountpoint "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"
-		kpanel_disk_management_reply needs-attention "$device_id" "挂载前安全复核失败" "" 3
-		return $?
-	fi
-	if ! mount --source "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" --target "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" >&2; then
-		if kpanel_disk_management_rollback_live_mount "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$created" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"; then
-			kpanel_disk_management_reply failed "$device_id" "挂载命令失败，未保留部分状态" "" 1
-		else
-			kpanel_disk_management_reply rollback-failed "$device_id" "挂载命令失败且无法确认或清理部分挂载" "" 4
-		fi
-		return $?
-	fi
-	if ! kpanel_disk_management_mountpoint_parent_secure "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" false; then
-		if kpanel_disk_management_rollback_live_mount "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$created" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"; then
-			kpanel_disk_management_reply failed "$device_id" "挂载后安全属性复核失败，已回滚" "" 1
-		else
-			kpanel_disk_management_reply rollback-failed "$device_id" "挂载后安全属性复核失败且回滚失败" "" 4
-		fi
-		return $?
-	fi
-	target="$(kpanel_disk_management_target_device "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT")"
-	rc=$?
-	if [ "$rc" -ne 0 ] || [ "$target" != "$device_id" ]; then
-		if kpanel_disk_management_rollback_live_mount "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$created" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"; then
-			kpanel_disk_management_reply failed "$device_id" "挂载完成态回读失败，已回滚" "" 1
-		else
-			kpanel_disk_management_reply rollback-failed "$device_id" "挂载完成态回读失败且回滚失败" "" 4
-		fi
-		return $?
-	fi
-	if [ "$persist" = 1 ]; then
-		kpanel_disk_management_fstab_transaction ensure "$KPANEL_DISK_MANAGEMENT_PERSISTENCE_SOURCE" \
-			"$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_FSTYPE"
-		fstab_rc=$?
-		backup="$KPANEL_DISK_MANAGEMENT_FSTAB_BACKUP"
-		if [ "$fstab_rc" -ne 0 ]; then
-			if ! kpanel_disk_management_rollback_live_mount "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$created" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX" ||
-				[ "$KPANEL_DISK_MANAGEMENT_FSTAB_ROLLBACK_FAILED" = true ]; then
-				kpanel_disk_management_reply rollback-failed "$device_id" "fstab 持久化失败且回滚未完整完成" "$backup" 4
-			elif [ "$fstab_rc" -eq 2 ]; then
-				kpanel_disk_management_reply needs-attention "$device_id" "fstab 存在冲突，实时挂载已回滚" "$backup" 3
-			else
-				kpanel_disk_management_reply failed "$device_id" "fstab 持久化失败，实时挂载已回滚" "$backup" 1
-			fi
-			return $?
-		fi
-	fi
-	backup="${KPANEL_DISK_MANAGEMENT_FSTAB_BACKUP:-}"
-	kpanel_disk_management_reply applied "$device_id" "设备已挂载并完成状态回读" "$backup" 0
-}
-
-kpanel_disk_management_unmount_action() {
-	local device_id="$1" mountpoint_hex="$2" remove_persistence="$3"
-	local rc target mounted_rc source_rc fstab_rc backup=""
-	if ! kpanel_disk_management_decode_mountpoint "$mountpoint_hex"; then
-		kpanel_disk_management_reply failed "$device_id" "挂载点编码、规范路径或保护路径校验失败" "" 2
-		return $?
-	fi
-	if ! kpanel_disk_management_mountpoint_parent_secure "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" false; then
-		kpanel_disk_management_reply needs-attention "$device_id" "卸载目标路径包含符号链接、非 root 目录或可被非 root 写入" "" 3
-		return $?
-	fi
-	kpanel_disk_management_prepare_device "$device_id"
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		if [ "$rc" -eq 3 ]; then
-			kpanel_disk_management_reply needs-attention "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 3
-		else
-			kpanel_disk_management_reply failed "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 1
-		fi
-		return $?
-	fi
-	target="$(kpanel_disk_management_target_device "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT")"
-	rc=$?
-	if [ "$rc" -eq 1 ]; then
-		kpanel_disk_management_device_is_mounted "$device_id"
-		mounted_rc=$?
-		if [ "$mounted_rc" -eq 0 ]; then
-			kpanel_disk_management_reply needs-attention "$device_id" "设备挂载在其他目标，拒绝卸载" "" 3
-		elif [ "$mounted_rc" -eq 1 ]; then
-			kpanel_disk_management_reply unchanged "$device_id" "设备未挂载在指定目标" "" 0
-		else
-			kpanel_disk_management_reply failed "$device_id" "无法可靠读取设备挂载状态" "" 1
-		fi
-		return $?
-	elif [ "$rc" -ne 0 ]; then
-		kpanel_disk_management_reply failed "$device_id" "无法可靠读取目标挂载状态" "" 1
-		return $?
-	fi
-	[ "$target" = "$device_id" ] || {
-		kpanel_disk_management_reply needs-attention "$device_id" "指定目标由其他设备占用" "" 3
-		return $?
-	}
-	if [ "$remove_persistence" = 1 ]; then
-		kpanel_disk_management_persistence_source "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH"
-		source_rc=$?
-		if [ "$source_rc" -ne 0 ]; then
-			if [ "$source_rc" -eq 2 ]; then
-				kpanel_disk_management_reply needs-attention "$device_id" "设备缺少 UUID/PARTUUID，无法精确移除持久化记录" "" 3
-			else
-				kpanel_disk_management_reply failed "$device_id" "无法读取设备持久化标识" "" 1
-			fi
-			return $?
-		fi
-	fi
-	if ! kpanel_disk_management_mountpoint_parent_secure "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" false; then
-		kpanel_disk_management_reply needs-attention "$device_id" "卸载前安全复核失败" "" 3
-		return $?
-	fi
-	if ! umount -- "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" >&2; then
-		kpanel_disk_management_reply needs-attention "$device_id" "普通卸载失败，设备可能正被使用" "" 3
-		return $?
-	fi
-	target="$(kpanel_disk_management_target_device "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT")"
-	rc=$?
-	if [ "$rc" -ne 1 ]; then
-		kpanel_disk_management_reply failed "$device_id" "卸载完成态回读失败" "" 1
-		return $?
-	fi
-	if ! kpanel_disk_management_mountpoint_path_secure "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" false; then
-		if kpanel_disk_management_restore_live_mount "$device_id" "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT"; then
-			kpanel_disk_management_reply failed "$device_id" "卸载后安全属性复核失败，实时挂载已恢复" "" 1
-		else
-			kpanel_disk_management_reply rollback-failed "$device_id" "卸载后安全属性复核失败且实时挂载恢复失败" "" 4
-		fi
-		return $?
-	fi
-	if [ "$remove_persistence" = 1 ]; then
-		kpanel_disk_management_fstab_transaction remove "$KPANEL_DISK_MANAGEMENT_PERSISTENCE_SOURCE" \
-			"$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_FSTYPE"
-		fstab_rc=$?
-		backup="$KPANEL_DISK_MANAGEMENT_FSTAB_BACKUP"
-		if [ "$fstab_rc" -ne 0 ]; then
-			if ! kpanel_disk_management_restore_live_mount "$device_id" "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" ||
-				[ "$KPANEL_DISK_MANAGEMENT_FSTAB_ROLLBACK_FAILED" = true ]; then
-				kpanel_disk_management_reply rollback-failed "$device_id" "持久化移除失败且实时挂载回滚失败" "$backup" 4
-			elif [ "$fstab_rc" -eq 2 ]; then
-				kpanel_disk_management_reply needs-attention "$device_id" "fstab 存在冲突，实时挂载已恢复" "$backup" 3
-			else
-				kpanel_disk_management_reply failed "$device_id" "持久化移除失败，实时挂载已恢复" "$backup" 1
-			fi
-			return $?
-		fi
-	fi
-	kpanel_disk_management_forget_mountpoint "$device_id" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT" "$KPANEL_DISK_MANAGEMENT_MOUNTPOINT_HEX"
-	backup="${KPANEL_DISK_MANAGEMENT_FSTAB_BACKUP:-}"
-	kpanel_disk_management_reply applied "$device_id" "设备已从指定目标卸载" "$backup" 0
-}
-
-kpanel_disk_management_format_action() {
-	local device_id="$1" requested_fstype="$2" command_name rc actual
-	kpanel_disk_management_prepare_device "$device_id"
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		if [ "$rc" -eq 3 ]; then
-			kpanel_disk_management_reply needs-attention "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 3
-		else
-			kpanel_disk_management_reply failed "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 1
-		fi
-		return $?
-	fi
-	kpanel_disk_management_require_safe_leaf
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		if [ "$rc" -eq 3 ]; then
-			kpanel_disk_management_reply needs-attention "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 3
-		else
-			kpanel_disk_management_reply failed "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 1
-		fi
-		return $?
-	fi
-	case "$requested_fstype" in
-		ext4) command_name=mkfs.ext4 ;;
-		xfs) command_name=mkfs.xfs ;;
-		ntfs)
-			if kpanel_disk_management_command_available mkfs.ntfs; then
-				command_name=mkfs.ntfs
-			elif kpanel_disk_management_command_available mkntfs; then
-				command_name=mkntfs
-			else
-				command_name=""
-			fi
-			;;
-		vfat)
-			if kpanel_disk_management_command_available mkfs.vfat; then
-				command_name=mkfs.vfat
-			elif kpanel_disk_management_command_available mkfs.fat; then
-				command_name=mkfs.fat
-			else
-				command_name=""
-			fi
-			;;
-	esac
-	if [ -z "$command_name" ] || ! kpanel_disk_management_command_available "$command_name"; then
-		kpanel_disk_management_reply needs-attention "$device_id" "缺少所选文件系统的格式化工具" "" 3
-		return $?
-	fi
-	case "$requested_fstype" in
-		ext4) mkfs.ext4 -F "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-		xfs) mkfs.xfs -f "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-		ntfs)
-			case "$command_name" in
-				mkfs.ntfs) mkfs.ntfs -F "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-				mkntfs) mkntfs -F "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-			esac
-			;;
-		vfat)
-			case "$command_name" in
-				mkfs.vfat) mkfs.vfat "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-				mkfs.fat) mkfs.fat "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-			esac
-			;;
-	esac
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		kpanel_disk_management_reply failed "$device_id" "格式化命令失败，未声明可回滚" "" 1
-		return $?
-	fi
-	command -v udevadm >/dev/null 2>&1 && udevadm settle >&2 || true
-	actual="$(kpanel_disk_management_probe_fstype "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH")" || {
-		kpanel_disk_management_reply failed "$device_id" "格式化后无法重读文件系统类型" "" 1
-		return $?
-	}
-	[ "$actual" = "$requested_fstype" ] || {
-		kpanel_disk_management_reply failed "$device_id" "格式化后文件系统类型回读不一致" "" 1
-		return $?
-	}
-	kpanel_disk_management_reply applied "$device_id" "格式化已完成并通过文件系统类型回读" "" 0
-}
-
-kpanel_disk_management_check_action() {
-	local device_id="$1" mode="$2" fstype command_name rc
-	kpanel_disk_management_prepare_device "$device_id"
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		if [ "$rc" -eq 3 ]; then
-			kpanel_disk_management_reply needs-attention "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 3
-		else
-			kpanel_disk_management_reply failed "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 1
-		fi
-		return $?
-	fi
-	kpanel_disk_management_require_safe_leaf
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		if [ "$rc" -eq 3 ]; then
-			kpanel_disk_management_reply needs-attention "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 3
-		else
-			kpanel_disk_management_reply failed "$device_id" "$KPANEL_DISK_MANAGEMENT_PREPARE_MESSAGE" "" 1
-		fi
-		return $?
-	fi
-	fstype="$(kpanel_disk_management_probe_fstype "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH")" || {
-		kpanel_disk_management_reply needs-attention "$device_id" "无法识别可检查的文件系统" "" 3
-		return $?
-	}
-	case "$fstype" in
-		ext4) command_name=e2fsck ;;
-		xfs) command_name=xfs_repair ;;
-		ntfs) command_name=ntfsfix ;;
-		vfat)
-			if kpanel_disk_management_command_available fsck.vfat; then
-				command_name=fsck.vfat
-			elif kpanel_disk_management_command_available fsck.fat; then
-				command_name=fsck.fat
-			else
-				command_name=""
-			fi
-			;;
-		*)
-			kpanel_disk_management_reply needs-attention "$device_id" "当前文件系统不在 v1 检查支持范围" "" 3
-			return $?
-			;;
-	esac
-	if [ -z "$command_name" ] || ! kpanel_disk_management_command_available "$command_name"; then
-		kpanel_disk_management_reply needs-attention "$device_id" "缺少当前文件系统的检查工具" "" 3
-		return $?
-	fi
-	case "$fstype:$mode" in
-		ext4:readonly) e2fsck -fn "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-		ext4:repair) e2fsck -fy "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-		xfs:readonly) xfs_repair -n "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-		xfs:repair) xfs_repair "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-		ntfs:readonly) ntfsfix -n "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-		ntfs:repair) ntfsfix "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-		vfat:readonly)
-			case "$command_name" in
-				fsck.vfat) fsck.vfat -n "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-				fsck.fat) fsck.fat -n "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-			esac
-			;;
-		vfat:repair)
-			case "$command_name" in
-				fsck.vfat) fsck.vfat -a "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-				fsck.fat) fsck.fat -a "$KPANEL_DISK_MANAGEMENT_DEVICE_PATH" >&2 ;;
-			esac
-			;;
-	esac
-	rc=$?
-	if [ "$mode" = readonly ]; then
-		if [ "$rc" -eq 0 ]; then
-			kpanel_disk_management_reply unchanged "$device_id" "只读文件系统检查完成，未执行修复" "" 0
-		else
-			kpanel_disk_management_reply needs-attention "$device_id" "只读检查发现问题或检查工具未能完整执行" "" 3
-		fi
-		return $?
-	fi
-	case "$fstype:$rc" in
-		ext4:0|ext4:1|ext4:2|ext4:3|vfat:0|vfat:1|xfs:0|ntfs:0)
-			kpanel_disk_management_reply applied "$device_id" "文件系统修复命令已成功完成" "" 0
-			;;
-		*)
-			kpanel_disk_management_reply failed "$device_id" "文件系统修复命令失败" "" 1
-			;;
-	esac
-}
-
-kpanel_disk_management_run_locked() (
-	local action="$1"
-	shift
-	case "$action" in
-		mount) kpanel_disk_management_mount_action "$@" ;;
-		unmount) kpanel_disk_management_unmount_action "$@" ;;
-		format) kpanel_disk_management_format_action "$@" ;;
-		check) kpanel_disk_management_check_action "$@" ;;
-		*) kpanel_disk_management_reply failed "" "不支持的 disk-management 动作" "" 2 ;;
-	esac
-)
-
-kpanel_disk_management_dispatch() {
-	local action="${1:-}" device_id="" lock_file rc
-	shift || true
-	[[ "${1:-}" =~ ^[0-9]+:[0-9]+$ ]] && device_id="$1"
-	printf 'KPANEL_DISK_MANAGEMENT_PROTOCOL %s\n' "$KPANEL_DISK_MANAGEMENT_PROTOCOL_VERSION"
-	kpanel_disk_management_require_platform
-	rc=$?
-	if [ "$rc" -ne 0 ]; then
-		kpanel_disk_management_reply failed "" "$KPANEL_DISK_MANAGEMENT_REQUIRE_MESSAGE" "" "$rc"
-		return $?
-	fi
-	case "$action" in
-		mount|unmount)
-			[ "$#" -eq 3 ] && [[ "$1" =~ ^[0-9]+:[0-9]+$ ]] &&
-				[[ "$2" =~ ^[0-9a-fA-F]+$ ]] && [ "$(( ${#2} % 2 ))" -eq 0 ] &&
-				[[ "$3" =~ ^[01]$ ]] || {
-				kpanel_disk_management_reply failed "$device_id" "mount/unmount 参数无效" "" 2
-				return $?
-			}
-			;;
-		format)
-			[ "$#" -eq 2 ] && [[ "$1" =~ ^[0-9]+:[0-9]+$ ]] && [[ "$2" =~ ^(ext4|xfs|ntfs|vfat)$ ]] || {
-				kpanel_disk_management_reply failed "$device_id" "format 参数无效" "" 2
-				return $?
-			}
-			;;
-		check)
-			[ "$#" -eq 2 ] && [[ "$1" =~ ^[0-9]+:[0-9]+$ ]] && [[ "$2" =~ ^(readonly|repair)$ ]] || {
-				kpanel_disk_management_reply failed "$device_id" "check 参数无效" "" 2
-				return $?
-			}
-			;;
-		*)
-			kpanel_disk_management_reply failed "$device_id" "用法: k kpanel disk-management <mount|unmount|format|check> ..." "" 2
-			return $?
-			;;
-	esac
-	lock_file="$(kpanel_disk_management_prepare_lock_file)" || {
-		kpanel_disk_management_reply failed "$device_id" "disk-management 锁路径不安全或无法创建" "" 1
-		return $?
-	}
-	exec 9<>"$lock_file" || {
-		kpanel_disk_management_reply failed "$device_id" "无法打开 disk-management 锁" "" 1
-		return $?
-	}
-	kpanel_disk_management_lock_file_secure "$lock_file" || {
-		exec 9>&-
-		kpanel_disk_management_reply failed "$device_id" "disk-management 锁文件打开后验证失败" "" 1
-		return $?
-	}
-	if ! flock -w 5 -x 9 >/dev/null 2>&1; then
-		exec 9>&-
-		kpanel_disk_management_reply conflict "$device_id" "disk-management 写锁等待超时" "" 2
-		return $?
-	fi
-	kpanel_disk_management_run_locked "$action" "$@"
-}
-
-# KPanel disk management protocol end
-
-
 # KPanel network operations protocol start
 KPANEL_NETWORK_OPERATIONS_PROTOCOL_VERSION="1"
 
@@ -30259,9 +28792,6 @@ else
 			elif [ "${1:-}" = "system-resource" ]; then
 				shift
 				kpanel_system_resource_dispatch "$@"
-			elif [ "${1:-}" = "disk-management" ]; then
-				shift
-				kpanel_disk_management_dispatch "$@"
 			elif [ "${1:-}" = "network-operations" ]; then
 				shift
 				kpanel_network_operations_dispatch "$@"
@@ -30272,7 +28802,7 @@ else
 				shift
 				kpanel_system_tuning_dispatch "$@"
 			else
-				echo "用法: k kpanel node ... | system-resource ... | disk-management ... | network-operations ... | account-management ... | system-tuning ..." >&2
+				echo "用法: k kpanel node ... | system-resource ... | network-operations ... | account-management ... | system-tuning ..." >&2
 				return 2 2>/dev/null || exit 2
 			fi
 			;;
