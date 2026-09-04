@@ -9788,6 +9788,7 @@ kpanel_node_paths() {
 	KPANEL_NODE_UNINSTALL_REQUEST="/run/kejilion-node/uninstall.request"
 	KPANEL_NODE_CONFIG_DIR="/etc/kejilion-node"
 	KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
+	KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
 	KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"
 }
 
@@ -9891,8 +9892,39 @@ esac
 home_dir="/usr/local/lib/kejilion-node"
 binary_name="kejilion-node-linux-${arch}"
 binary_path="${home_dir}/kejilion-node"
+file_service="kejilion-node-file.service"
+file_service_path="/etc/systemd/system/${file_service}"
 base_url="https://github.com/kejilion/KPanel/releases/latest/download"
 lock_dir="/run/lock/kejilion-node-update.lock"
+
+ensure_file_service_unit() {
+	if [ -e "$file_service_path" ]; then
+		[ -f "$file_service_path" ] || return 1
+		return 0
+	fi
+	cat >"$file_service_path" <<'KPANEL_NODE_FILE_SERVICE'
+[Unit]
+Description=KPanel Lightweight Node File Management Broker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json
+Restart=on-failure
+RestartSec=15s
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
+KPANEL_NODE_FILE_SERVICE
+	chmod 0644 "$file_service_path"
+	systemctl daemon-reload
+}
 
 if ! mkdir "$lock_dir" 2>/dev/null; then
 	echo "another KPanel lightweight node update is running" >&2
@@ -9929,6 +9961,15 @@ printf '%s\n' "$version_output" | grep -Eq '^[^[:space:]]+ light-v1$' || {
 	exit 1
 }
 
+if [ "$mode" = "update" ] && [ -f /etc/kejilion-node/node.json ]; then
+	if ! ensure_file_service_unit; then
+		echo "KPanel lightweight node file service unit is invalid" >&2
+		exit 1
+	fi
+	systemctl enable "$file_service" >/dev/null 2>&1 || true
+	systemctl restart "$file_service" >/dev/null 2>&1 || true
+fi
+
 if [ -f "$binary_path" ] && [ "$(sha256sum "$binary_path" | awk '{print $1}')" = "$actual" ]; then
 	echo "KPanel lightweight node is already up to date."
 	exit 0
@@ -9952,6 +9993,9 @@ if [ "$mode" = "update" ] && systemctl cat kejilion-node.service >/dev/null 2>&1
 		exit 1
 	fi
 fi
+if [ "$mode" = "update" ] && systemctl cat "$file_service" >/dev/null 2>&1; then
+	systemctl restart "$file_service" >/dev/null 2>&1 || true
+fi
 rm -f -- "${binary_path}.previous"
 echo "KPanel lightweight node update completed."
 KPANEL_NODE_UPDATE
@@ -9972,14 +10016,17 @@ set -euo pipefail
 systemctl_bin="$(type -P systemctl 2>/dev/null || true)"
 if [ -n "$systemctl_bin" ] && [ -x "$systemctl_bin" ]; then
 	"$systemctl_bin" stop kejilion-node.service >/dev/null 2>&1 || true
+	"$systemctl_bin" stop kejilion-node-file.service >/dev/null 2>&1 || true
 	"$systemctl_bin" stop kejilion-node-update.timer >/dev/null 2>&1 || true
 	"$systemctl_bin" stop kejilion-node-update.service >/dev/null 2>&1 || true
 	"$systemctl_bin" stop kejilion-node-uninstall.path >/dev/null 2>&1 || true
 	"$systemctl_bin" disable kejilion-node.service >/dev/null 2>&1 || true
+	"$systemctl_bin" disable kejilion-node-file.service >/dev/null 2>&1 || true
 	"$systemctl_bin" disable kejilion-node-update.timer >/dev/null 2>&1 || true
 	"$systemctl_bin" disable kejilion-node-uninstall.path >/dev/null 2>&1 || true
 fi
 rm -f -- /etc/systemd/system/kejilion-node.service \
+	/etc/systemd/system/kejilion-node-file.service \
 	/etc/systemd/system/kejilion-node-update.service \
 	/etc/systemd/system/kejilion-node-update.timer \
 	/etc/systemd/system/kejilion-node-uninstall.service \
@@ -10037,6 +10084,27 @@ UMask=0077
 WantedBy=multi-user.target
 KPANEL_NODE_SERVICE
 
+	cat >/etc/systemd/system/kejilion-node-file.service <<'KPANEL_NODE_FILE_SERVICE'
+[Unit]
+Description=KPanel Lightweight Node File Management Broker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+ExecStart=/usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json
+Restart=on-failure
+RestartSec=15s
+NoNewPrivileges=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
+KPANEL_NODE_FILE_SERVICE
+
 	cat >/etc/systemd/system/kejilion-node-update.service <<'KPANEL_NODE_UPDATE_SERVICE'
 [Unit]
 Description=Update KPanel Lightweight Monitoring Node
@@ -10091,6 +10159,7 @@ Unit=kejilion-node-uninstall.service
 WantedBy=multi-user.target
 KPANEL_NODE_UNINSTALL_PATH
 	chmod 0644 /etc/systemd/system/kejilion-node.service \
+		/etc/systemd/system/kejilion-node-file.service \
 		/etc/systemd/system/kejilion-node-update.service \
 		/etc/systemd/system/kejilion-node-update.timer \
 		/etc/systemd/system/kejilion-node-uninstall.service \
@@ -10100,14 +10169,17 @@ KPANEL_NODE_UNINSTALL_PATH
 kpanel_node_cleanup_failed_join() {
 	if [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop "$KPANEL_NODE_FILE_SERVICE" >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.timer >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-uninstall.path >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" disable "$KPANEL_NODE_FILE_SERVICE" >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-update.timer >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-uninstall.path >/dev/null 2>&1 || true
 	fi
 	rm -f -- /etc/systemd/system/kejilion-node.service \
+		/etc/systemd/system/kejilion-node-file.service \
 		/etc/systemd/system/kejilion-node-update.service \
 		/etc/systemd/system/kejilion-node-update.timer \
 		/etc/systemd/system/kejilion-node-uninstall.service \
@@ -10120,10 +10192,12 @@ kpanel_node_cleanup_failed_join() {
 kpanel_node_activate() {
 	"$KPANEL_NODE_SYSTEMCTL" daemon-reload &&
 		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node.service &&
+		"$KPANEL_NODE_SYSTEMCTL" enable "$KPANEL_NODE_FILE_SERVICE" &&
 		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-update.timer &&
 		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-uninstall.path &&
 		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-uninstall.path &&
 		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node.service &&
+		{ "$KPANEL_NODE_SYSTEMCTL" start "$KPANEL_NODE_FILE_SERVICE" >/dev/null 2>&1 || true; } &&
 		"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-update.timer &&
 		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
 }
@@ -10201,7 +10275,8 @@ kpanel_node_update() {
 		return 1
 	fi
 	"$KPANEL_NODE_SYSTEMCTL" restart kejilion-node.service &&
-		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
+		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null &&
+		{ "$KPANEL_NODE_SYSTEMCTL" restart "$KPANEL_NODE_FILE_SERVICE" >/dev/null 2>&1 || true; }
 }
 
 kpanel_node_uninstall() {
@@ -10216,14 +10291,17 @@ kpanel_node_uninstall() {
 	fi
 	if [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" stop "$KPANEL_NODE_FILE_SERVICE" >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.timer >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.service >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-uninstall.path >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node.service >/dev/null 2>&1 || true
+		"$KPANEL_NODE_SYSTEMCTL" disable "$KPANEL_NODE_FILE_SERVICE" >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-update.timer >/dev/null 2>&1 || true
 		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-uninstall.path >/dev/null 2>&1 || true
 	fi
 	rm -f -- /etc/systemd/system/kejilion-node.service \
+		/etc/systemd/system/kejilion-node-file.service \
 		/etc/systemd/system/kejilion-node-update.service \
 		/etc/systemd/system/kejilion-node-update.timer \
 		/etc/systemd/system/kejilion-node-uninstall.service \
