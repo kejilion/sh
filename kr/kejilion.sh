@@ -9786,6 +9786,7 @@ kpanel_node_paths() {
 	KPANEL_NODE_UPDATER="${KPANEL_NODE_HOME}/update.sh"
 	KPANEL_NODE_CONFIG_DIR="/etc/kejilion-node"
 	KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
+	KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE="${KPANEL_NODE_CONFIG_DIR}/enrollment.fingerprint"
 	KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"
 }
 
@@ -10051,8 +10052,40 @@ kpanel_node_activate() {
 		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
 }
 
+kpanel_node_token_fingerprint() {
+	local token="${1:-}" fingerprint=""
+	fingerprint="$(printf '%s' "$token" | sha256sum | awk '{print $1}')" || return 1
+	printf '%s\n' "$fingerprint" | grep -Eq '^[0-9a-f]{64}$' || return 1
+	printf '%s\n' "$fingerprint"
+}
+
+kpanel_node_read_enrollment_fingerprint() {
+	local fingerprint=""
+	[ -f "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] && [ ! -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] || return 1
+	fingerprint="$(tr -d '[:space:]' <"$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE")" || return 1
+	printf '%s\n' "$fingerprint" | grep -Eq '^[0-9a-f]{64}$' || return 1
+	printf '%s\n' "$fingerprint"
+}
+
+kpanel_node_save_enrollment_fingerprint() {
+	local fingerprint="${1:-}" temporary=""
+	[ -n "$fingerprint" ] || return 1
+	if [ -e "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] || [ -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ]; then
+		[ -f "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] && [ ! -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] || return 1
+	fi
+	temporary="$(mktemp "${KPANEL_NODE_CONFIG_DIR}/.enrollment-fingerprint.XXXXXX")" || return 1
+	if ! printf '%s\n' "$fingerprint" >"$temporary" ||
+		! chown root:kejilion-node "$temporary" ||
+		! chmod 0640 "$temporary" ||
+		! mv -f -- "$temporary" "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE"; then
+		rm -f -- "$temporary"
+		return 1
+	fi
+}
+
 kpanel_node_join() {
-	local token="${1:-}" node_name resume_enrollment=false
+	local token="${1:-}" node_name token_fingerprint="" saved_fingerprint=""
+	local existing_config=false resume_enrollment=false
 	kpanel_node_paths
 	kpanel_node_preflight || return 1
 	case "$token" in
@@ -10063,13 +10096,27 @@ kpanel_node_join() {
 		echo "경량 노드 액세스 권한이 유효하지 않습니다." >&2
 		return 2
 	}
+	token_fingerprint="$(kpanel_node_token_fingerprint "$token" 2>/dev/null || true)"
+	[ -n "$token_fingerprint" ] || {
+		echo "경량 노드 액세스 권한이 유효하지 않습니다." >&2
+		return 2
+	}
 	if [ -e "$KPANEL_NODE_CONFIG" ]; then
 		if [ -f "$KPANEL_NODE_CONFIG" ] && [ ! -L "$KPANEL_NODE_CONFIG" ] && [ -x "$KPANEL_NODE_BINARY" ]; then
-			resume_enrollment=true
-			echo "완료된 노드 승인이 감지되었습니다. 기본 서비스를 계속 활성화하세요."
+			existing_config=true
 		else
 			echo "이 시스템에는 불완전한 KPanel 노드 구성이 있습니다. 먼저 k kpanel node uninstall을 실행해 보세요." >&2
 			return 1
+		fi
+	fi
+	if [ "$existing_config" = "true" ]; then
+		saved_fingerprint="$(kpanel_node_read_enrollment_fingerprint 2>/dev/null || true)"
+		if [ -n "$token_fingerprint" ] && [ "$saved_fingerprint" = "$token_fingerprint" ]; then
+			resume_enrollment=true
+			echo "동일한 노드 승인이 감지되었습니다. 기본 서비스를 계속 활성화하세요."
+		else
+			echo "새 노드 승인이 감지되었습니다. 새 노드를 연결하기 전에 k kpanel node uninstall을 실행합니다."
+			kpanel_node_uninstall || return 1
 		fi
 	fi
 	kpanel_node_ensure_account || return 1
@@ -10082,6 +10129,10 @@ kpanel_node_join() {
 		node_name="$(hostname 2>/dev/null | LC_ALL=C tr -cd '[:alnum:]_. -' | cut -c1-80)"
 		if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_CONFIG"; then
 			kpanel_node_cleanup_failed_join
+			return 1
+		fi
+		if [ -n "$token_fingerprint" ] && ! kpanel_node_save_enrollment_fingerprint "$token_fingerprint"; then
+			echo "노드 인증은 저장되었지만 로컬 재개 마커를 쓸 수 없습니다. 새 액세스 명령으로 다시 시도하십시오." >&2
 			return 1
 		fi
 	fi

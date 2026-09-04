@@ -52,6 +52,27 @@ activate_body="$(
 		capture && /^}$/ { exit }
 	' "${normalized_script}"
 )"
+token_fingerprint_body="$(
+	awk '
+		/^kpanel_node_token_fingerprint\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${normalized_script}"
+)"
+read_enrollment_fingerprint_body="$(
+	awk '
+		/^kpanel_node_read_enrollment_fingerprint\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${normalized_script}"
+)"
+save_enrollment_fingerprint_body="$(
+	awk '
+		/^kpanel_node_save_enrollment_fingerprint\(\) \{/ { capture=1 }
+		capture { print }
+		capture && /^}$/ { exit }
+	' "${normalized_script}"
+)"
 account_body="$(
 	awk '
 		/^kpanel_node_ensure_account\(\) \{/ { capture=1 }
@@ -75,8 +96,12 @@ printf '%s\n' "${join_body}" | grep -F 'kpanel_node_ensure_account || return 1' 
 printf '%s\n' "${join_body}" | grep -F 'kpanel_node_write_uninstall_helper || ! kpanel_node_write_units' >/dev/null
 printf '%s\n' "${join_body}" | grep -F "LC_ALL=C tr -cd '[:alnum:]_. -'" >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'resume_enrollment=true' >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'kpanel_node_uninstall || return 1' >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'token_fingerprint="$(kpanel_node_token_fingerprint "$token" 2>/dev/null || true)"' >/dev/null
 printf '%s\n' "${join_body}" | grep -F '授权已保存' >/dev/null
 printf '%s\n' "${join_body}" | grep -F '"$KPANEL_NODE_INSTALL_BIN" -d -o root -g kejilion-node' >/dev/null
+printf '%s\n' "${token_fingerprint_body}" | grep -F 'sha256sum' >/dev/null
+printf '%s\n' "${save_enrollment_fingerprint_body}" | grep -F 'mv -f -- "$temporary" "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE"' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'useradd --system --no-create-home' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'systemd-sysusers "$sysusers_config"' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'adduser --system --group --no-create-home' >/dev/null
@@ -184,16 +209,19 @@ chmod +x "${systemctl_bin}"
 (
 	export KPANEL_TEST_SYSTEMCTL_LOG="${systemctl_log}"
 	KPANEL_NODE_SYSTEMCTL="${systemctl_bin}"
+	KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
 	eval "${activate_body}"
 	kpanel_node_activate
 )
 cat >"${temporary_dir}/expected-systemctl.log" <<'EXPECTED_SYSTEMCTL'
 daemon-reload
 enable kejilion-node.service
+enable kejilion-node-file.service
 enable kejilion-node-update.timer
 enable kejilion-node-uninstall.path
 start kejilion-node-uninstall.path
 start kejilion-node.service
+start kejilion-node-file.service
 start kejilion-node-update.timer
 is-active kejilion-node.service
 EXPECTED_SYSTEMCTL
@@ -205,6 +233,8 @@ test "${sanitized_name}" = 'edge_node-01 badname'
 # Exercise the real join control flow across a post-enrollment service failure.
 # The one-time token must not be consumed twice and the saved identity must
 # survive so the same command can safely finish activation on the next run.
+# A different token must uninstall the existing node before enrolling the new
+# center.
 join_runtime="${temporary_dir}/join-runtime"
 mkdir -p "${join_runtime}/bin"
 cat >"${join_runtime}/install" <<'MOCK_INSTALL'
@@ -225,16 +255,22 @@ chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
 	export KPANEL_TEST_JOIN_ROOT="${join_runtime}"
 	export KPANEL_TEST_JOIN_SYSTEMCTL_LOG="${join_runtime}/systemctl.log"
 	export KPANEL_TEST_JOIN_FAIL_ONCE="${join_runtime}/failed-once"
+	export KPANEL_TEST_JOIN_EVENTS="${join_runtime}/events.log"
 	eval "${activate_body}"
+	eval "${token_fingerprint_body}"
+	eval "${read_enrollment_fingerprint_body}"
+	eval "${save_enrollment_fingerprint_body}"
 	eval "${join_body}"
 	kpanel_node_paths() {
 		KPANEL_NODE_HOME="${KPANEL_TEST_JOIN_ROOT}/home"
 		KPANEL_NODE_BINARY="${KPANEL_NODE_HOME}/kejilion-node"
 		KPANEL_NODE_UPDATER="${KPANEL_NODE_HOME}/update.sh"
 		KPANEL_NODE_UNINSTALL_HELPER="${KPANEL_NODE_HOME}/uninstall.sh"
+		KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
 		KPANEL_NODE_UNINSTALL_REQUEST="/run/kejilion-node/uninstall.request"
 		KPANEL_NODE_CONFIG_DIR="${KPANEL_TEST_JOIN_ROOT}/config"
 		KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
+		KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE="${KPANEL_NODE_CONFIG_DIR}/enrollment.fingerprint"
 		KPANEL_NODE_SYSTEMCTL="${KPANEL_TEST_JOIN_ROOT}/systemctl"
 	}
 	kpanel_node_preflight() {
@@ -250,15 +286,27 @@ MOCK_UPDATER
 		cat >"${KPANEL_NODE_BINARY}" <<'MOCK_NODE'
 #!/bin/bash
 if [ "${1:-}" = "enroll" ]; then
-	printf '%s\n' enrolled >>"${KPANEL_TEST_JOIN_ROOT}/enroll.log"
+	enroll_token=""
+	config_path=""
 	while [ "$#" -gt 0 ]; do
-		if [ "$1" = "--config" ]; then
-			shift
-			printf '%s\n' '{"schemaVersion":1}' >"$1"
-			break
-		fi
+		case "$1" in
+			--token)
+				shift
+				enroll_token="${1:-}"
+				;;
+			--config)
+				shift
+				config_path="${1:-}"
+				;;
+		esac
 		shift
 	done
+	if [ "$enroll_token" = 'kpl1.test-token-fail' ]; then
+		exit 1
+	fi
+	printf '%s\n' "enrolled:${enroll_token}" >>"${KPANEL_TEST_JOIN_ROOT}/enroll.log"
+	printf '%s\n' "enrolled:${enroll_token}" >>"${KPANEL_TEST_JOIN_EVENTS}"
+	printf '%s\n' '{"schemaVersion":1}' >"${config_path}"
 fi
 MOCK_NODE
 		chmod +x "${KPANEL_NODE_UPDATER}" "${KPANEL_NODE_BINARY}"
@@ -266,6 +314,10 @@ MOCK_NODE
 	kpanel_node_write_units() { :; }
 	kpanel_node_write_uninstall_helper() { :; }
 	kpanel_node_cleanup_failed_join() { rm -rf -- "${KPANEL_NODE_HOME}" "${KPANEL_NODE_CONFIG_DIR}"; }
+	kpanel_node_uninstall() {
+		printf '%s\n' uninstall >>"${KPANEL_TEST_JOIN_EVENTS}"
+		rm -rf -- "${KPANEL_NODE_HOME}" "${KPANEL_NODE_CONFIG_DIR}"
+	}
 	chown() { :; }
 	if kpanel_node_join 'kpl1.test-token'; then
 		echo "first join unexpectedly succeeded despite injected activation failure" >&2
@@ -274,6 +326,13 @@ MOCK_NODE
 	test -f "${KPANEL_NODE_CONFIG}"
 	kpanel_node_join 'kpl1.test-token'
 	test "$(wc -l <"${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
+	test "$(tr -d '[:space:]' <"${KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE}")" = "$(printf '%s' 'kpl1.test-token' | sha256sum | awk '{print $1}')"
+	kpanel_node_join 'kpl1.test-token-new'
+	test "$(wc -l <"${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 2
+	test "$(tr -d '[:space:]' <"${KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE}")" = "$(printf '%s' 'kpl1.test-token-new' | sha256sum | awk '{print $1}')"
+	uninstall_line="$(grep -n -m1 '^uninstall$' "${KPANEL_TEST_JOIN_EVENTS}" | cut -d: -f1)"
+	new_enroll_line="$(grep -n -m1 '^enrolled:kpl1.test-token-new$' "${KPANEL_TEST_JOIN_EVENTS}" | cut -d: -f1)"
+	test "${uninstall_line}" -lt "${new_enroll_line}"
 )
 
 echo "KPanel lightweight-node installer smoke checks passed."

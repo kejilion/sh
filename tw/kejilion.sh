@@ -9788,6 +9788,7 @@ kpanel_node_paths() {
 	KPANEL_NODE_UNINSTALL_REQUEST="/run/kejilion-node/uninstall.request"
 	KPANEL_NODE_CONFIG_DIR="/etc/kejilion-node"
 	KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
+	KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE="${KPANEL_NODE_CONFIG_DIR}/enrollment.fingerprint"
 	KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
 	KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"
 }
@@ -10202,8 +10203,40 @@ kpanel_node_activate() {
 		"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
 }
 
+kpanel_node_token_fingerprint() {
+	local token="${1:-}" fingerprint=""
+	fingerprint="$(printf '%s' "$token" | sha256sum | awk '{print $1}')" || return 1
+	printf '%s\n' "$fingerprint" | grep -Eq '^[0-9a-f]{64}$' || return 1
+	printf '%s\n' "$fingerprint"
+}
+
+kpanel_node_read_enrollment_fingerprint() {
+	local fingerprint=""
+	[ -f "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] && [ ! -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] || return 1
+	fingerprint="$(tr -d '[:space:]' <"$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE")" || return 1
+	printf '%s\n' "$fingerprint" | grep -Eq '^[0-9a-f]{64}$' || return 1
+	printf '%s\n' "$fingerprint"
+}
+
+kpanel_node_save_enrollment_fingerprint() {
+	local fingerprint="${1:-}" temporary=""
+	[ -n "$fingerprint" ] || return 1
+	if [ -e "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] || [ -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ]; then
+		[ -f "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] && [ ! -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE" ] || return 1
+	fi
+	temporary="$(mktemp "${KPANEL_NODE_CONFIG_DIR}/.enrollment-fingerprint.XXXXXX")" || return 1
+	if ! printf '%s\n' "$fingerprint" >"$temporary" ||
+		! chown root:kejilion-node "$temporary" ||
+		! chmod 0640 "$temporary" ||
+		! mv -f -- "$temporary" "$KPANEL_NODE_ENROLLMENT_FINGERPRINT_FILE"; then
+		rm -f -- "$temporary"
+		return 1
+	fi
+}
+
 kpanel_node_join() {
-	local token="${1:-}" node_name resume_enrollment=false
+	local token="${1:-}" node_name token_fingerprint="" saved_fingerprint=""
+	local existing_config=false resume_enrollment=false
 	kpanel_node_paths
 	kpanel_node_preflight || return 1
 	case "$token" in
@@ -10214,13 +10247,27 @@ kpanel_node_join() {
 		echo "輕量節點存取授權無效。" >&2
 		return 2
 	}
+	token_fingerprint="$(kpanel_node_token_fingerprint "$token" 2>/dev/null || true)"
+	[ -n "$token_fingerprint" ] || {
+		echo "輕量節點存取授權無效。" >&2
+		return 2
+	}
 	if [ -e "$KPANEL_NODE_CONFIG" ]; then
 		if [ -f "$KPANEL_NODE_CONFIG" ] && [ ! -L "$KPANEL_NODE_CONFIG" ] && [ -x "$KPANEL_NODE_BINARY" ]; then
-			resume_enrollment=true
-			echo "偵測到已完成的節點授權，繼續啟用本機服務。"
+			existing_config=true
 		else
 			echo "本機存在不完整的 KPanel 節點配置；請先執行 k kpanel node uninstall。" >&2
 			return 1
+		fi
+	fi
+	if [ "$existing_config" = "true" ]; then
+		saved_fingerprint="$(kpanel_node_read_enrollment_fingerprint 2>/dev/null || true)"
+		if [ -n "$token_fingerprint" ] && [ "$saved_fingerprint" = "$token_fingerprint" ]; then
+			resume_enrollment=true
+			echo "偵測到相同的節點授權，繼續啟用本機服務。"
+		else
+			echo "偵測到新的節點授權，先執行 k kpanel node uninstall，再接入新節點。"
+			kpanel_node_uninstall || return 1
 		fi
 	fi
 	kpanel_node_ensure_account || return 1
@@ -10233,6 +10280,10 @@ kpanel_node_join() {
 		node_name="$(hostname 2>/dev/null | LC_ALL=C tr -cd '[:alnum:]_. -' | cut -c1-80)"
 		if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_CONFIG"; then
 			kpanel_node_cleanup_failed_join
+			return 1
+		fi
+		if [ -n "$token_fingerprint" ] && ! kpanel_node_save_enrollment_fingerprint "$token_fingerprint"; then
+			echo "節點授權已儲存，但本地續裝標記寫入失敗；請使用新的接入命令重試。" >&2
 			return 1
 		fi
 	fi
