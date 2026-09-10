@@ -88,6 +88,8 @@ printf '%s\n' "${join_body}" | grep -F 'kpanel_node_ensure_account || return 1' 
 printf '%s\n' "${join_body}" | grep -F "LC_ALL=C tr -cd '[:alnum:]_. -'" >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'kpanel_node_finalize_enrollment "$fingerprint"' >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_STAGE_CONFIG"' >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'KPANEL_NODE_QUIET=1 "$KPANEL_NODE_UPDATER" "$update_mode"' >/dev/null
+printf '%s\n' "${join_body}" | grep -F '✓ KPanel 轻量节点接入成功' >/dev/null
 printf '%s\n' "${join_body}" | grep -F '新节点授权未生效，原有连接保持不变' >/dev/null
 printf '%s\n' "${enrollment_body}" | grep -F 'KPANEL_NODE_ENROLLMENT_FINGERPRINT' >/dev/null
 printf '%s\n' "${enrollment_body}" | grep -F 'mv -f -- "$KPANEL_NODE_STAGE_CONFIG" "$KPANEL_NODE_CONFIG"' >/dev/null
@@ -134,6 +136,8 @@ grep -F 'sha256sum' "${updater}" >/dev/null
 grep -F "grep -Eq '^[^[:space:]]+ light-v1$'" "${updater}" >/dev/null
 grep -F 'ensure_file_service_unit' "${updater}" >/dev/null
 grep -F 'systemctl enable "$file_service"' "${updater}" >/dev/null
+grep -F '[ "${KPANEL_NODE_QUIET:-0}" != "1" ] || quiet=true' "${updater}" >/dev/null
+grep -F 'if [ "$quiet" != true ] && [ -t 2 ]; then' "${updater}" >/dev/null
 checksum_line="$(grep -n '^expected=' "${updater}" | cut -d: -f1)"
 up_to_date_line="$(grep -n 'already up to date' "${updater}" | cut -d: -f1)"
 test -n "${checksum_line}" -a -n "${up_to_date_line}" -a "${checksum_line}" -lt "${up_to_date_line}"
@@ -377,7 +381,7 @@ chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
 		cat >"${KPANEL_NODE_UPDATER}" <<'MOCK_UPDATER'
 #!/bin/bash
 if [ -f "${KPANEL_TEST_JOIN_ROOT}/fail-update" ]; then exit 1; fi
-printf '%s\n' "$1" >>"${KPANEL_TEST_JOIN_ROOT}/updater-modes.log"
+printf '%s|%s\n' "$1" "${KPANEL_NODE_QUIET:-0}" >>"${KPANEL_TEST_JOIN_ROOT}/updater-modes.log"
 exit 0
 MOCK_UPDATER
 		cat >"${KPANEL_NODE_BINARY}" <<'MOCK_NODE'
@@ -397,7 +401,9 @@ if [ "${1:-}" = "enroll" ]; then
 	[ "$token" != "kpl1.rejected-token" ] || exit 1
 	printf '{"schemaVersion":1,"token":"%s"}\n' "$token" >"$config"
 	[ "$token" != "kpl1.partial-token" ] || exit 1
+	printf '%s\n' 'KPanel lightweight node enrolled: a088f5e9fb50e6a698ae16f5c370a16b'
 fi
+if [ "${1:-}" = "version" ]; then printf '%s\n' '1.13.0 light-v1'; fi
 MOCK_NODE
 		chmod +x "${KPANEL_NODE_UPDATER}" "${KPANEL_NODE_BINARY}"
 	}
@@ -427,7 +433,17 @@ MOCK_NODE
 	fi
 	grep -F '"token":"kpl1.test-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
 	test "$(cat "${KPANEL_NODE_ENROLLMENT_FINGERPRINT}")" = "$old_fingerprint"
-	kpanel_node_join 'kpl1.replacement-token' --name 'Replacement Node'
+	replacement_output="$(kpanel_node_join 'kpl1.replacement-token' --name 'Replacement Node')"
+	printf '%s\n' "$replacement_output" | grep -Fx '正在接入 KPanel 轻量节点，请稍候...' >/dev/null
+	printf '%s\n' "$replacement_output" | grep -Fx '✓ KPanel 轻量节点接入成功' >/dev/null
+	printf '%s\n' "$replacement_output" | grep -Fx '  节点 ID：a088f5e9fb50e6a698ae16f5c370a16b' >/dev/null
+	printf '%s\n' "$replacement_output" | grep -Fx '  版本：1.13.0' >/dev/null
+	printf '%s\n' "$replacement_output" | grep -Fx '  服务：运行中' >/dev/null
+	printf '%s\n' "$replacement_output" | grep -Fx '  自动更新：已启用' >/dev/null
+	if printf '%s\n' "$replacement_output" | grep -Eq 'Checking KPanel|Downloading KPanel|#{20,}|lightweight node enrolled:'; then
+		echo "join output still contains updater or enrollment noise" >&2
+		exit 1
+	fi
 	grep -F '"token":"kpl1.replacement-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
 	grep -F 'kpl1.replacement-token|Replacement Node|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log" >/dev/null
 	test "$(wc -l <"${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 3
@@ -448,8 +464,8 @@ MOCK_NODE
 	kpanel_node_join 'kpl1.recovery-token' --name 'Recovery Node'
 	grep -F '"token":"kpl1.recovery-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
 	test "$(grep -c '^kpl1.recovery-token|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
-	test "$(sed -n '1p' "${KPANEL_TEST_JOIN_ROOT}/updater-modes.log")" = install
-	test "$(sed -n '2p' "${KPANEL_TEST_JOIN_ROOT}/updater-modes.log")" = update
+	test "$(sed -n '1p' "${KPANEL_TEST_JOIN_ROOT}/updater-modes.log")" = 'install|1'
+	test "$(sed -n '2p' "${KPANEL_TEST_JOIN_ROOT}/updater-modes.log")" = 'update|1'
 )
 
 echo "KPanel lightweight-node installer smoke checks passed."

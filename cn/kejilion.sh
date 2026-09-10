@@ -11594,10 +11594,14 @@ write_update_status running '' 0 || echo "KPanel update status could not be reco
 # namespace prevents their `version` probe from restoring an obsolete updater.
 temporary_dir="$(mktemp -d /tmp/kejilion-node-release.XXXXXX)"
 
+quiet=false
+[ "${KPANEL_NODE_QUIET:-0}" != "1" ] || quiet=true
 curl_progress=(--silent --show-error)
-[ ! -t 2 ] || curl_progress=(--progress-bar --show-error)
+if [ "$quiet" != true ] && [ -t 2 ]; then
+	curl_progress=(--progress-bar --show-error)
+fi
 update_error=release_check
-echo "Checking KPanel lightweight node release..."
+[ "$quiet" = true ] || echo "Checking KPanel lightweight node release..."
 if ! curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
 	--connect-timeout 15 --max-time 60 --retry 3 --retry-delay 5 --retry-max-time 240 \
 	--max-filesize 65536 --dump-header "${temporary_dir}/headers" \
@@ -11758,12 +11762,12 @@ if [ -f "$binary_path" ] && [ "$(sha256sum "$binary_path" | awk '{print $1}')" =
 		restart_optional_services
 	fi
 	update_result=current; update_error=""
-	echo "KPanel lightweight node is already up to date."
+	[ "$quiet" = true ] || echo "KPanel lightweight node is already up to date."
 	exit 0
 fi
 
 update_error=download
-echo "Downloading KPanel lightweight node..."
+[ "$quiet" = true ] || echo "Downloading KPanel lightweight node..."
 if ! curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
 	--connect-timeout 15 --max-time 180 --retry 3 --retry-delay 5 --retry-max-time 600 \
 	--max-filesize 134217728 \
@@ -11811,7 +11815,7 @@ if [ "$restart_required" = "true" ] && ! restart_services; then
 fi
 rm -f -- "${binary_path}.previous"
 update_result=updated; update_error=""
-echo "KPanel lightweight node update completed: ${version_output}"
+[ "$quiet" = true ] || echo "KPanel lightweight node update completed: ${version_output}"
 KPANEL_NODE_UPDATE
 	if ! chmod 0755 "$updater_temporary" || ! mv -f -- "$updater_temporary" "$KPANEL_NODE_UPDATER"; then
 		rm -f -- "$updater_temporary"
@@ -12183,6 +12187,7 @@ kpanel_node_activate() {
 kpanel_node_join() {
 	(
 	local token="${1:-}" node_name="" fingerprint="" saved_fingerprint="" staged_fingerprint="" update_mode=install
+	local enrollment_output="" node_id="" node_version=""
 	shift || true
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
@@ -12221,13 +12226,14 @@ kpanel_node_join() {
 			return 1
 		fi
 	fi
+	echo "正在接入 KPanel 轻量节点，请稍候..."
 	kpanel_node_ensure_account || return 1
 	"$KPANEL_NODE_INSTALL_BIN" -d -o root -g kejilion-node -m 0750 "$KPANEL_NODE_CONFIG_DIR" || return 1
 	kpanel_node_validate_config_dir || {
 		echo "KPanel 节点配置目录不安全，拒绝继续。" >&2
 		return 1
 	}
-	if ! kpanel_node_write_updater || ! "$KPANEL_NODE_UPDATER" "$update_mode"; then
+	if ! kpanel_node_write_updater || ! KPANEL_NODE_QUIET=1 "$KPANEL_NODE_UPDATER" "$update_mode"; then
 		# Preserve updater locks and migration identity; another updater may own
 		# them. The transactional updater already preserves the previous binary.
 		echo "KPanel 轻量节点安装未完成；请根据上面的提示处理后，再次执行接入命令。" >&2
@@ -12236,7 +12242,6 @@ kpanel_node_join() {
 	fingerprint="$(printf '%s' "$token" | sha256sum | awk '{print $1}')"
 	saved_fingerprint="$(kpanel_node_read_fingerprint "$KPANEL_NODE_ENROLLMENT_FINGERPRINT" 2>/dev/null || true)"
 	if [ "$saved_fingerprint" = "$fingerprint" ] && kpanel_node_safe_regular_file "$KPANEL_NODE_CONFIG"; then
-		echo "检测到已完成的节点授权，继续启用本机服务。"
 		kpanel_node_clear_enrollment_stage || return 1
 	else
 		kpanel_node_stage_paths
@@ -12249,7 +12254,7 @@ kpanel_node_join() {
 			"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root -m 0700 "$KPANEL_NODE_ENROLLMENT_STAGE" || return 1
 			printf '%s\n' "$fingerprint" >"$KPANEL_NODE_STAGE_TOKEN" || return 1
 			chmod 0600 "$KPANEL_NODE_STAGE_TOKEN" || return 1
-			if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_STAGE_CONFIG" --terminal-config "$KPANEL_NODE_STAGE_TERMINAL"; then
+			if ! enrollment_output="$("$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_STAGE_CONFIG" --terminal-config "$KPANEL_NODE_STAGE_TERMINAL")"; then
 				if kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_CONFIG" && [ -s "$KPANEL_NODE_STAGE_CONFIG" ]; then
 					echo "新节点授权已取得但本地保存未完成，原有连接保持不变；再次执行同一条命令可继续。" >&2
 					return 1
@@ -12258,6 +12263,12 @@ kpanel_node_join() {
 				echo "新节点授权未生效，原有连接保持不变；请重新生成命令后重试。" >&2
 				return 1
 			fi
+			case "$enrollment_output" in
+				"KPanel lightweight node enrolled: "*)
+					node_id="${enrollment_output##*: }"
+					printf '%s' "$node_id" | grep -Eq '^[0-9a-f]{32}$' || node_id=""
+					;;
+			esac
 			kpanel_node_prepare_stage_manifest || return 1
 		fi
 		if ! kpanel_node_finalize_enrollment "$fingerprint"; then
@@ -12274,7 +12285,13 @@ kpanel_node_join() {
 		echo "KPanel 轻量节点授权已保存，但服务启动失败；修复 systemd 后再次执行接入命令即可续装。" >&2
 		return 1
 	fi
-	echo "KPanel 轻量节点已接入，后续将自动更新。"
+	node_version="$("$KPANEL_NODE_BINARY" version 2>/dev/null | awk 'NR == 1 { print $1; exit }' || true)"
+	echo
+	echo "✓ KPanel 轻量节点接入成功"
+	[ -z "$node_id" ] || echo "  节点 ID：${node_id}"
+	[ -z "$node_version" ] || echo "  版本：${node_version}"
+	echo "  服务：运行中"
+	echo "  自动更新：已启用"
 	)
 }
 

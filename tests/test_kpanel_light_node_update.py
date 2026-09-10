@@ -224,6 +224,20 @@ done
         self.assertEqual(result.returncode == 0, success, result.stdout + result.stderr)
         return result
 
+    def test_quiet_mode_suppresses_progress_but_preserves_errors(self):
+        quiet_env = {**self.env, 'KPANEL_NODE_QUIET': '1'}
+        result = subprocess.run(['/bin/bash', str(self.root / 'update.sh'), 'install'], cwd=self.root,
+                                env=quiet_env, text=True, capture_output=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual((result.stdout, result.stderr), ('', ''))
+
+        (self.root / 'network-down').touch()
+        result = subprocess.run(['/bin/bash', str(self.root / 'update.sh'), 'install'], cwd=self.root,
+                                env=quiet_env, text=True, capture_output=True, timeout=20)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, '')
+        self.assertIn('KPanel release check failed', result.stderr)
+
     def test_upgrade_optional_failure_does_not_rollback_and_delayed_exec_is_accepted(self):
         (self.root / 'optional').touch()
         (self.root / 'optional-fail').touch()
