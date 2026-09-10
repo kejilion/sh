@@ -49,6 +49,13 @@ join_body="$(
 		capture && /^}$/ { exit }
 	' "${normalized_script}"
 )"
+enrollment_body="$(
+	awk '
+		/^kpanel_node_stage_paths\(\) \{/ { capture=1 }
+		/^kpanel_node_activate\(\) \{/ { exit }
+		capture { print }
+	' "${normalized_script}"
+)"
 activate_body="$(
 	awk '
 		/^kpanel_node_activate\(\) \{/ { capture=1 }
@@ -79,7 +86,17 @@ printf '%s\n' "${dispatch_body}" | grep -F 'uninstall|remove) kpanel_node_uninst
 printf '%s\n' "${join_body}" | grep -F 'kpl1.*)' >/dev/null
 printf '%s\n' "${join_body}" | grep -F 'kpanel_node_ensure_account || return 1' >/dev/null
 printf '%s\n' "${join_body}" | grep -F "LC_ALL=C tr -cd '[:alnum:]_. -'" >/dev/null
-printf '%s\n' "${join_body}" | grep -F 'resume_enrollment=true' >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'kpanel_node_finalize_enrollment "$fingerprint"' >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_STAGE_CONFIG"' >/dev/null
+printf '%s\n' "${join_body}" | grep -F '新节点授权未生效，原有连接保持不变' >/dev/null
+printf '%s\n' "${enrollment_body}" | grep -F 'KPANEL_NODE_ENROLLMENT_FINGERPRINT' >/dev/null
+printf '%s\n' "${enrollment_body}" | grep -F 'mv -f -- "$KPANEL_NODE_STAGE_CONFIG" "$KPANEL_NODE_CONFIG"' >/dev/null
+printf '%s\n' "${enrollment_body}" | grep -F 'stat -c '\''%u:%g:%a'\'' "$KPANEL_NODE_CONFIG_DIR"' >/dev/null
+printf '%s\n' "${enrollment_body}" | grep -F 'chown root:root "$pending"' >/dev/null
+if printf '%s\n' "${join_body}" | grep -F 'kpanel_node_cleanup_failed_join' >/dev/null; then
+	echo "failed enrollment still removes the installed lightweight node" >&2
+	exit 1
+fi
 printf '%s\n' "${join_body}" | grep -Eq '授权已保存|授權已儲存|authorization (has been )?saved' >/dev/null
 printf '%s\n' "${join_body}" | grep -F '"$KPANEL_NODE_INSTALL_BIN" -d -o root -g kejilion-node' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'useradd --system --no-create-home' >/dev/null
@@ -87,10 +104,10 @@ printf '%s\n' "${account_body}" | grep -F 'systemd-sysusers "$sysusers_config"' 
 printf '%s\n' "${account_body}" | grep -F 'adduser --system --group --no-create-home' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'adduser -S -D -H' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'id -gn kejilion-node' >/dev/null
-printf '%s\n' "${join_body}" | grep -F 'chown root:kejilion-node "$KPANEL_NODE_CONFIG"' >/dev/null
-printf '%s\n' "${join_body}" | grep -F 'chmod 0640 "$KPANEL_NODE_CONFIG"' >/dev/null
-printf '%s\n' "${join_body}" | grep -F 'chown root:root "$KPANEL_NODE_TERMINAL_CONFIG"' >/dev/null
-printf '%s\n' "${join_body}" | grep -F 'chmod 0600 "$KPANEL_NODE_TERMINAL_CONFIG"' >/dev/null
+printf '%s\n' "${enrollment_body}" | grep -F 'chown root:kejilion-node "$KPANEL_NODE_STAGE_CONFIG"' >/dev/null
+printf '%s\n' "${enrollment_body}" | grep -F 'chmod 0640 "$KPANEL_NODE_STAGE_CONFIG"' >/dev/null
+printf '%s\n' "${enrollment_body}" | grep -F 'chown root:root "$KPANEL_NODE_STAGE_TERMINAL"' >/dev/null
+printf '%s\n' "${enrollment_body}" | grep -F 'chmod 0600 "$KPANEL_NODE_STAGE_TERMINAL"' >/dev/null
 grep -F '[ -d /run/systemd/system ]' "${normalized_script}" >/dev/null
 grep -F 'KPANEL_NODE_INSTALL_BIN="$(type -P install 2>/dev/null || true)"' "${normalized_script}" >/dev/null
 grep -F 'KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"' "${normalized_script}" >/dev/null
@@ -301,8 +318,15 @@ join_runtime="${temporary_dir}/join-runtime"
 mkdir -p "${join_runtime}/bin"
 cat >"${join_runtime}/install" <<'MOCK_INSTALL'
 #!/bin/bash
-target="${@: -1}"
+mode=""
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+		-m) mode="$2"; shift 2 ;;
+		*) target="$1"; shift ;;
+	esac
+done
 mkdir -p "$target"
+[ -z "$mode" ] || chmod "$mode" "$target"
 MOCK_INSTALL
 cat >"${join_runtime}/systemctl" <<'MOCK_JOIN_SYSTEMCTL'
 #!/bin/bash
@@ -318,10 +342,20 @@ chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
 	export KPANEL_TEST_JOIN_SYSTEMCTL_LOG="${join_runtime}/systemctl.log"
 	export KPANEL_TEST_JOIN_FAIL_ONCE="${join_runtime}/failed-once"
 	eval "${activate_body}"
+	eval "${enrollment_body}"
 	eval "${join_body}"
+	eval "$(declare -f kpanel_node_prepare_stage_manifest | sed '1s/kpanel_node_prepare_stage_manifest/kpanel_node_prepare_stage_manifest_real/')"
+	kpanel_node_prepare_stage_manifest() {
+		if [ "${KPANEL_TEST_FAIL_MANIFEST_ONCE:-}" = 1 ] && [ ! -f "${KPANEL_TEST_JOIN_ROOT}/manifest-failed" ]; then
+			touch "${KPANEL_TEST_JOIN_ROOT}/manifest-failed"
+			return 1
+		fi
+		kpanel_node_prepare_stage_manifest_real "$@"
+	}
 	# Lock/concurrency execution is covered by test_kpanel_light_node_update.py;
 	# this fixture tests enrollment retry and service activation only.
 	kpanel_node_lock() { :; }
+	kpanel_node_validate_config_dir() { :; }
 	kpanel_node_paths() {
 		KPANEL_NODE_HOME="${KPANEL_TEST_JOIN_ROOT}/home"
 		KPANEL_NODE_BINARY="${KPANEL_NODE_HOME}/kejilion-node"
@@ -329,6 +363,8 @@ chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
 		KPANEL_NODE_CONFIG_DIR="${KPANEL_TEST_JOIN_ROOT}/config"
 		KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
 		KPANEL_NODE_TERMINAL_CONFIG="${KPANEL_NODE_CONFIG_DIR}/terminal.json"
+		KPANEL_NODE_ENROLLMENT_FINGERPRINT="${KPANEL_NODE_CONFIG_DIR}/enrollment-token.sha256"
+		KPANEL_NODE_ENROLLMENT_STAGE="${KPANEL_NODE_CONFIG_DIR}/.enrollment-stage"
 		KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
 		KPANEL_NODE_SYSTEMCTL="${KPANEL_TEST_JOIN_ROOT}/systemctl"
 	}
@@ -347,21 +383,25 @@ MOCK_UPDATER
 		cat >"${KPANEL_NODE_BINARY}" <<'MOCK_NODE'
 #!/bin/bash
 if [ "${1:-}" = "enroll" ]; then
-	printf '%s\n' enrolled >>"${KPANEL_TEST_JOIN_ROOT}/enroll.log"
+	token="" name="" config=""
 	while [ "$#" -gt 0 ]; do
-		if [ "$1" = "--config" ]; then
-			shift
-			printf '%s\n' '{"schemaVersion":1}' >"$1"
-			break
-		fi
-		shift
+		case "$1" in
+			--token) token="$2"; shift 2 ;;
+			--name) name="$2"; shift 2 ;;
+			--config) config="$2"; shift 2 ;;
+			--terminal-config) shift 2 ;;
+			*) shift ;;
+		esac
 	done
+	printf '%s|%s|%s\n' "$token" "$name" "$config" >>"${KPANEL_TEST_JOIN_ROOT}/enroll.log"
+	[ "$token" != "kpl1.rejected-token" ] || exit 1
+	printf '{"schemaVersion":1,"token":"%s"}\n' "$token" >"$config"
+	[ "$token" != "kpl1.partial-token" ] || exit 1
 fi
 MOCK_NODE
 		chmod +x "${KPANEL_NODE_UPDATER}" "${KPANEL_NODE_BINARY}"
 	}
 	kpanel_node_write_units() { :; }
-	kpanel_node_cleanup_failed_join() { rm -rf -- "${KPANEL_NODE_HOME}" "${KPANEL_NODE_CONFIG_DIR}"; }
 	chown() { :; }
 	kpanel_node_paths
 	touch "${KPANEL_TEST_JOIN_ROOT}/fail-update"
@@ -379,6 +419,35 @@ MOCK_NODE
 	test -f "${KPANEL_NODE_CONFIG}"
 	kpanel_node_join 'kpl1.test-token'
 	test "$(wc -l <"${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
+	grep -F '"token":"kpl1.test-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	old_fingerprint="$(cat "${KPANEL_NODE_ENROLLMENT_FINGERPRINT}")"
+	if kpanel_node_join 'kpl1.rejected-token' --name 'Rejected Node'; then
+		echo "join unexpectedly accepted the rejected replacement token" >&2
+		exit 1
+	fi
+	grep -F '"token":"kpl1.test-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	test "$(cat "${KPANEL_NODE_ENROLLMENT_FINGERPRINT}")" = "$old_fingerprint"
+	kpanel_node_join 'kpl1.replacement-token' --name 'Replacement Node'
+	grep -F '"token":"kpl1.replacement-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	grep -F 'kpl1.replacement-token|Replacement Node|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log" >/dev/null
+	test "$(wc -l <"${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 3
+	if kpanel_node_join 'kpl1.partial-token' --name 'Partial Node'; then
+		echo "join unexpectedly completed despite the injected post-enrollment write failure" >&2
+		exit 1
+	fi
+	grep -F '"token":"kpl1.replacement-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	kpanel_node_join 'kpl1.partial-token' --name 'Partial Node'
+	grep -F '"token":"kpl1.partial-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	test "$(grep -c '^kpl1.partial-token|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
+	export KPANEL_TEST_FAIL_MANIFEST_ONCE=1
+	if kpanel_node_join 'kpl1.recovery-token' --name 'Recovery Node'; then
+		echo "join unexpectedly completed despite the injected post-enrollment interruption" >&2
+		exit 1
+	fi
+	grep -F '"token":"kpl1.partial-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	kpanel_node_join 'kpl1.recovery-token' --name 'Recovery Node'
+	grep -F '"token":"kpl1.recovery-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	test "$(grep -c '^kpl1.recovery-token|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
 	test "$(sed -n '1p' "${KPANEL_TEST_JOIN_ROOT}/updater-modes.log")" = install
 	test "$(sed -n '2p' "${KPANEL_TEST_JOIN_ROOT}/updater-modes.log")" = update
 )

@@ -11341,6 +11341,8 @@ kpanel_node_paths() {
 	KPANEL_NODE_CONFIG_DIR="/etc/kejilion-node"
 	KPANEL_NODE_CONFIG="${KPANEL_NODE_CONFIG_DIR}/node.json"
 	KPANEL_NODE_TERMINAL_CONFIG="${KPANEL_NODE_CONFIG_DIR}/terminal.json"
+	KPANEL_NODE_ENROLLMENT_FINGERPRINT="${KPANEL_NODE_CONFIG_DIR}/enrollment-token.sha256"
+	KPANEL_NODE_ENROLLMENT_STAGE="${KPANEL_NODE_CONFIG_DIR}/.enrollment-stage"
 	KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"
 }
 
@@ -12005,28 +12007,145 @@ KPANEL_NODE_UPDATE_TIMER
 		/etc/systemd/system/kejilion-node-update.timer
 }
 
-kpanel_node_cleanup_failed_join() {
-	if [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-terminal.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-ssh-login.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-file.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.timer >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-terminal.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-ssh-login.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-file.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-update.timer >/dev/null 2>&1 || true
+kpanel_node_stage_paths() {
+	KPANEL_NODE_STAGE_TOKEN="${KPANEL_NODE_ENROLLMENT_STAGE}/token.sha256"
+	KPANEL_NODE_STAGE_CONFIG="${KPANEL_NODE_ENROLLMENT_STAGE}/node.json"
+	KPANEL_NODE_STAGE_CONFIG_SHA="${KPANEL_NODE_ENROLLMENT_STAGE}/node.sha256"
+	KPANEL_NODE_STAGE_TERMINAL="${KPANEL_NODE_ENROLLMENT_STAGE}/terminal.json"
+	KPANEL_NODE_STAGE_TERMINAL_STATE="${KPANEL_NODE_ENROLLMENT_STAGE}/terminal.state"
+}
+
+kpanel_node_safe_regular_file() {
+	local path="$1"
+	[ -f "$path" ] && [ ! -L "$path" ] && [ "$(stat -c '%u:%h' "$path")" = "0:1" ]
+}
+
+kpanel_node_validate_config_dir() {
+	local gid
+	gid="$(id -g kejilion-node)" || return 1
+	[ -d "$KPANEL_NODE_CONFIG_DIR" ] && [ ! -L "$KPANEL_NODE_CONFIG_DIR" ] &&
+		[ "$(stat -c '%u:%g:%a' "$KPANEL_NODE_CONFIG_DIR")" = "0:${gid}:750" ]
+}
+
+kpanel_node_read_fingerprint() {
+	local path="$1" value
+	[ -e "$path" ] || [ -L "$path" ] || return 1
+	kpanel_node_safe_regular_file "$path" || return 1
+	IFS= read -r value <"$path" || return 1
+	[[ "$value" =~ ^[0-9a-f]{64}$ ]] || return 1
+	printf '%s\n' "$value"
+}
+
+kpanel_node_clear_enrollment_stage() {
+	local path
+	kpanel_node_stage_paths
+	[ -e "$KPANEL_NODE_ENROLLMENT_STAGE" ] || [ -L "$KPANEL_NODE_ENROLLMENT_STAGE" ] || return 0
+	[ -d "$KPANEL_NODE_ENROLLMENT_STAGE" ] && [ ! -L "$KPANEL_NODE_ENROLLMENT_STAGE" ] &&
+		[ "$(stat -c '%u:%a' "$KPANEL_NODE_ENROLLMENT_STAGE")" = "0:700" ] || return 1
+	for path in "$KPANEL_NODE_STAGE_TOKEN" "$KPANEL_NODE_STAGE_CONFIG" "$KPANEL_NODE_STAGE_CONFIG_SHA" \
+		"$KPANEL_NODE_STAGE_TERMINAL" "$KPANEL_NODE_STAGE_TERMINAL_STATE"; do
+		[ -e "$path" ] || [ -L "$path" ] || continue
+		kpanel_node_safe_regular_file "$path" || return 1
+		rm -f -- "$path" || return 1
+	done
+	rmdir -- "$KPANEL_NODE_ENROLLMENT_STAGE"
+}
+
+kpanel_node_prepare_stage_manifest() {
+	local config_hash terminal_state=absent
+	kpanel_node_stage_paths
+	kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_CONFIG" && [ -s "$KPANEL_NODE_STAGE_CONFIG" ] || return 1
+	for metadata in "$KPANEL_NODE_STAGE_CONFIG_SHA" "$KPANEL_NODE_STAGE_TERMINAL_STATE"; do
+		[ -e "$metadata" ] || [ -L "$metadata" ] || continue
+		kpanel_node_safe_regular_file "$metadata" || return 1
+	done
+	config_hash="$(sha256sum "$KPANEL_NODE_STAGE_CONFIG" | awk '{print $1}')"
+	[[ "$config_hash" =~ ^[0-9a-f]{64}$ ]] || return 1
+	printf '%s\n' "$config_hash" >"$KPANEL_NODE_STAGE_CONFIG_SHA" || return 1
+	chmod 0600 "$KPANEL_NODE_STAGE_CONFIG_SHA" || return 1
+	if [ -e "$KPANEL_NODE_STAGE_TERMINAL" ] || [ -L "$KPANEL_NODE_STAGE_TERMINAL" ]; then
+		kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_TERMINAL" && [ -s "$KPANEL_NODE_STAGE_TERMINAL" ] || return 1
+		terminal_state=present
 	fi
-	rm -f -- /etc/systemd/system/kejilion-node.service \
-		/etc/systemd/system/kejilion-node-terminal.service \
-		"$KPANEL_NODE_SSH_LOGIN_SERVICE" \
-		/etc/systemd/system/kejilion-node-file.service \
-		/etc/systemd/system/kejilion-node-update.service \
-		/etc/systemd/system/kejilion-node-update.timer
-	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
-	rmdir -- "$KPANEL_NODE_SSH_LOGIN_RUNTIME" 2>/dev/null || true
-	[ ! -x "$KPANEL_NODE_SYSTEMCTL" ] || "$KPANEL_NODE_SYSTEMCTL" daemon-reload >/dev/null 2>&1 || true
+	printf '%s\n' "$terminal_state" >"$KPANEL_NODE_STAGE_TERMINAL_STATE" || return 1
+	chmod 0600 "$KPANEL_NODE_STAGE_TERMINAL_STATE"
+}
+
+kpanel_node_write_fingerprint() {
+	local fingerprint="$1" pending="${KPANEL_NODE_CONFIG_DIR}/.enrollment-token.pending"
+	if [ -e "$KPANEL_NODE_ENROLLMENT_FINGERPRINT" ] || [ -L "$KPANEL_NODE_ENROLLMENT_FINGERPRINT" ]; then
+		kpanel_node_safe_regular_file "$KPANEL_NODE_ENROLLMENT_FINGERPRINT" || return 1
+	fi
+	if [ -e "$pending" ] || [ -L "$pending" ]; then
+		kpanel_node_safe_regular_file "$pending" || return 1
+		rm -f -- "$pending" || return 1
+	fi
+	(umask 077; set -C; printf '%s\n' "$fingerprint" >"$pending") || return 1
+	chown root:root "$pending" || return 1
+	chmod 0600 "$pending" || return 1
+	mv -f -- "$pending" "$KPANEL_NODE_ENROLLMENT_FINGERPRINT"
+}
+
+kpanel_node_finalize_enrollment() {
+	local fingerprint="$1" staged_fingerprint expected_hash actual_hash terminal_state
+	kpanel_node_stage_paths
+	staged_fingerprint="$(kpanel_node_read_fingerprint "$KPANEL_NODE_STAGE_TOKEN")" || return 1
+	[ "$staged_fingerprint" = "$fingerprint" ] || return 1
+	if [ -e "$KPANEL_NODE_STAGE_CONFIG" ] || [ -L "$KPANEL_NODE_STAGE_CONFIG" ]; then
+		kpanel_node_prepare_stage_manifest || return 1
+	elif ! kpanel_node_read_fingerprint "$KPANEL_NODE_STAGE_CONFIG_SHA" >/dev/null 2>&1 ||
+		[ ! -e "$KPANEL_NODE_STAGE_TERMINAL_STATE" ]; then
+		return 1
+	fi
+	expected_hash="$(kpanel_node_read_fingerprint "$KPANEL_NODE_STAGE_CONFIG_SHA")" || return 1
+	if [ -e "$KPANEL_NODE_STAGE_CONFIG" ] || [ -L "$KPANEL_NODE_STAGE_CONFIG" ]; then
+		kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_CONFIG" || return 1
+		actual_hash="$(sha256sum "$KPANEL_NODE_STAGE_CONFIG" | awk '{print $1}')"
+		[ "$actual_hash" = "$expected_hash" ] || return 1
+		if [ -e "$KPANEL_NODE_CONFIG" ] || [ -L "$KPANEL_NODE_CONFIG" ]; then
+			kpanel_node_safe_regular_file "$KPANEL_NODE_CONFIG" || return 1
+		fi
+		chown root:kejilion-node "$KPANEL_NODE_STAGE_CONFIG" || return 1
+		chmod 0640 "$KPANEL_NODE_STAGE_CONFIG" || return 1
+		mv -f -- "$KPANEL_NODE_STAGE_CONFIG" "$KPANEL_NODE_CONFIG" || return 1
+	else
+		kpanel_node_safe_regular_file "$KPANEL_NODE_CONFIG" || return 1
+		actual_hash="$(sha256sum "$KPANEL_NODE_CONFIG" | awk '{print $1}')"
+		[ "$actual_hash" = "$expected_hash" ] || return 1
+	fi
+	kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_TERMINAL_STATE" || return 1
+	IFS= read -r terminal_state <"$KPANEL_NODE_STAGE_TERMINAL_STATE" || return 1
+	case "$terminal_state" in
+		present)
+			if [ -e "$KPANEL_NODE_STAGE_TERMINAL" ] || [ -L "$KPANEL_NODE_STAGE_TERMINAL" ]; then
+				kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_TERMINAL" || return 1
+				if [ -e "$KPANEL_NODE_TERMINAL_CONFIG" ] || [ -L "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
+					kpanel_node_safe_regular_file "$KPANEL_NODE_TERMINAL_CONFIG" || return 1
+				fi
+				chown root:root "$KPANEL_NODE_STAGE_TERMINAL" || return 1
+				chmod 0600 "$KPANEL_NODE_STAGE_TERMINAL" || return 1
+				mv -f -- "$KPANEL_NODE_STAGE_TERMINAL" "$KPANEL_NODE_TERMINAL_CONFIG" || return 1
+			else
+				kpanel_node_safe_regular_file "$KPANEL_NODE_TERMINAL_CONFIG" || return 1
+			fi
+			;;
+		absent)
+			if [ -e "$KPANEL_NODE_TERMINAL_CONFIG" ] || [ -L "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
+				kpanel_node_safe_regular_file "$KPANEL_NODE_TERMINAL_CONFIG" || return 1
+				rm -f -- "$KPANEL_NODE_TERMINAL_CONFIG" || return 1
+			fi
+			;;
+		*) return 1 ;;
+	esac
+	kpanel_node_write_fingerprint "$fingerprint" || return 1
+	kpanel_node_clear_enrollment_stage
+}
+
+kpanel_node_stop_runtime() {
+	local service
+	for service in kejilion-node.service kejilion-node-terminal.service kejilion-node-ssh-login.service "$KPANEL_NODE_FILE_SERVICE"; do
+		"$KPANEL_NODE_SYSTEMCTL" stop "$service" >/dev/null 2>&1 || true
+	done
 }
 
 kpanel_node_activate() {
@@ -12063,7 +12182,18 @@ kpanel_node_activate() {
 
 kpanel_node_join() {
 	(
-	local token="${1:-}" node_name resume_enrollment=false update_mode=install
+	local token="${1:-}" node_name="" fingerprint="" saved_fingerprint="" staged_fingerprint="" update_mode=install
+	shift || true
+	while [ "$#" -gt 0 ]; do
+		case "$1" in
+			--name)
+				[ "$#" -ge 2 ] && [ -n "$2" ] || { echo "轻量节点名称无效。" >&2; return 2; }
+				node_name="$2"
+				shift 2
+				;;
+			*) echo "轻量节点接入参数无效。" >&2; return 2 ;;
+		esac
+	done
 	kpanel_node_paths
 	kpanel_node_preflight || return 1
 	case "$token" in
@@ -12074,12 +12204,18 @@ kpanel_node_join() {
 		echo "轻量节点接入授权无效。" >&2
 		return 2
 	}
+	if [ -n "$node_name" ]; then
+		[ "${#node_name}" -le 80 ] && ! LC_ALL=C printf '%s' "$node_name" | grep -q '[[:cntrl:]]' || {
+			echo "轻量节点名称无效。" >&2
+			return 2
+		}
+	else
+		node_name="$(hostname 2>/dev/null | LC_ALL=C tr -cd '[:alnum:]_. -' | cut -c1-80)"
+	fi
 	kpanel_node_lock || return 1
 	if [ -e "$KPANEL_NODE_CONFIG" ]; then
 		if [ -f "$KPANEL_NODE_CONFIG" ] && [ ! -L "$KPANEL_NODE_CONFIG" ] && [ -x "$KPANEL_NODE_BINARY" ]; then
-			resume_enrollment=true
 			update_mode=update
-			echo "检测到已完成的节点授权，继续启用本机服务。"
 		else
 			echo "本机存在不完整的 KPanel 节点配置；请先执行 k kpanel node uninstall。" >&2
 			return 1
@@ -12087,32 +12223,49 @@ kpanel_node_join() {
 	fi
 	kpanel_node_ensure_account || return 1
 	"$KPANEL_NODE_INSTALL_BIN" -d -o root -g kejilion-node -m 0750 "$KPANEL_NODE_CONFIG_DIR" || return 1
+	kpanel_node_validate_config_dir || {
+		echo "KPanel 节点配置目录不安全，拒绝继续。" >&2
+		return 1
+	}
 	if ! kpanel_node_write_updater || ! "$KPANEL_NODE_UPDATER" "$update_mode"; then
 		# Preserve updater locks and migration identity; another updater may own
 		# them. The transactional updater already preserves the previous binary.
 		echo "KPanel 轻量节点安装未完成；请根据上面的提示处理后，再次执行接入命令。" >&2
 		return 1
 	fi
-	if [ "$resume_enrollment" != "true" ]; then
-		node_name="$(hostname 2>/dev/null | LC_ALL=C tr -cd '[:alnum:]_. -' | cut -c1-80)"
-		if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_CONFIG" --terminal-config "$KPANEL_NODE_TERMINAL_CONFIG"; then
-			kpanel_node_cleanup_failed_join
+	fingerprint="$(printf '%s' "$token" | sha256sum | awk '{print $1}')"
+	saved_fingerprint="$(kpanel_node_read_fingerprint "$KPANEL_NODE_ENROLLMENT_FINGERPRINT" 2>/dev/null || true)"
+	if [ "$saved_fingerprint" = "$fingerprint" ] && kpanel_node_safe_regular_file "$KPANEL_NODE_CONFIG"; then
+		echo "检测到已完成的节点授权，继续启用本机服务。"
+		kpanel_node_clear_enrollment_stage || return 1
+	else
+		kpanel_node_stage_paths
+		staged_fingerprint="$(kpanel_node_read_fingerprint "$KPANEL_NODE_STAGE_TOKEN" 2>/dev/null || true)"
+		if [ "$staged_fingerprint" != "$fingerprint" ]; then
+			kpanel_node_clear_enrollment_stage || {
+				echo "本机存在无法安全恢复的 KPanel 节点授权暂存；请检查 ${KPANEL_NODE_ENROLLMENT_STAGE}。" >&2
+				return 1
+			}
+			"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root -m 0700 "$KPANEL_NODE_ENROLLMENT_STAGE" || return 1
+			printf '%s\n' "$fingerprint" >"$KPANEL_NODE_STAGE_TOKEN" || return 1
+			chmod 0600 "$KPANEL_NODE_STAGE_TOKEN" || return 1
+			if ! "$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_STAGE_CONFIG" --terminal-config "$KPANEL_NODE_STAGE_TERMINAL"; then
+				if kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_CONFIG" && [ -s "$KPANEL_NODE_STAGE_CONFIG" ]; then
+					echo "新节点授权已取得但本地保存未完成，原有连接保持不变；再次执行同一条命令可继续。" >&2
+					return 1
+				fi
+				kpanel_node_clear_enrollment_stage || true
+				echo "新节点授权未生效，原有连接保持不变；请重新生成命令后重试。" >&2
+				return 1
+			fi
+			kpanel_node_prepare_stage_manifest || return 1
+		fi
+		if ! kpanel_node_finalize_enrollment "$fingerprint"; then
+			echo "新节点授权已取得，但安全切换未完成；再次执行同一条命令可继续。" >&2
 			return 1
 		fi
 	fi
-	chown root:kejilion-node "$KPANEL_NODE_CONFIG" || {
-		echo "节点授权已保存，但配置权限修复失败；再次执行接入命令可继续。" >&2
-		return 1
-	}
-	chmod 0640 "$KPANEL_NODE_CONFIG"
-	if [ -e "$KPANEL_NODE_TERMINAL_CONFIG" ] || [ -L "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
-		[ -f "$KPANEL_NODE_TERMINAL_CONFIG" ] && [ ! -L "$KPANEL_NODE_TERMINAL_CONFIG" ] || {
-			echo "终端身份配置不是普通文件，拒绝继续。" >&2
-			return 1
-		}
-		chown root:root "$KPANEL_NODE_TERMINAL_CONFIG" || return 1
-		chmod 0600 "$KPANEL_NODE_TERMINAL_CONFIG" || return 1
-	fi
+	kpanel_node_stop_runtime
 	if ! kpanel_node_write_units; then
 		echo "节点授权已保存，但 systemd 单元写入失败；再次执行接入命令可继续。" >&2
 		return 1

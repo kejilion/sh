@@ -160,6 +160,7 @@ while [ ! -f "$NODE_TEST_ROOT/finish-installer" ]; do sleep 0.02; done
         wrapper.write_text(lifecycle + r'''
 kpanel_node_preflight() { KPANEL_NODE_INSTALL_BIN="$(type -P install)"; }
 kpanel_node_ensure_account() { :; }
+kpanel_node_validate_config_dir() { :; }
 kpanel_node_write_units() { :; }
 kpanel_node_activate() {
     touch "$NODE_TEST_ROOT/activation-waiting"
@@ -174,7 +175,16 @@ chown() { command chown "${1/kejilion-node/65534}" "${@:2}"; }
         install.chmod(0o755)
         config = self.root / 'config/node.json'
         config.unlink()
-        (self.root / 'enroll').write_text('echo enrolled >>"$NODE_TEST_ROOT/enroll.log"\nprintf \'{"schemaVersion":1}\\n\' >"$NODE_TEST_ROOT/config/node.json"\n')
+        (self.root / 'enroll').write_text(r'''echo enrolled >>"$NODE_TEST_ROOT/enroll.log"
+while [ "$#" -gt 0 ]; do
+    if [ "$1" = --config ]; then
+        shift
+        printf '{"schemaVersion":1}\n' >"$1"
+        break
+    fi
+    shift
+done
+''')
         process = subprocess.Popen(['/bin/bash', str(wrapper), 'join'], cwd=self.root, env=self.env,
                                    stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True, start_new_session=True)
         try:
