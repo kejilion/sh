@@ -24,6 +24,6 @@ printf '%s\n' "${install_branch}" |
 printf '%s\n' "${install_branch}" | grep -F 'add_app_id' >/dev/null
 printf '%s\n' "${update_branch}" | grep -F 'add_app_id' >/dev/null
 printf '%s\n' "${uninstall_branch}" | grep -F 'rm -f /home/docker/${docker_name}_port.conf' >/dev/null
-printf '%s\n' "${uninstall_branch}" | grep -F 'appno.txt' >/dev/null
+printf '%s\n' "${uninstall_branch}" | grep -F 'remove_app_id || return 1' >/dev/null
 
 printf '%s\n' "docker_app_plus_lifecycle_status=pass"

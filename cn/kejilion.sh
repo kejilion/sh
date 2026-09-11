@@ -17,6 +17,69 @@ permission_granted="false"
 ENABLE_STATS="true"
 KPANEL_WEB_CERTIFICATE_PROTOCOL_VERSION="1"
 KPANEL_WEB_CERTIFICATE_REPLACE_PROTOCOL_VERSION="1"
+KPANEL_APP_CONCURRENCY_PROTOCOL_VERSION="1"
+unset KJ_APP_LOCKS_HELD
+
+# Locks live outside PrivateTmp and app data. Only the paired KPanel worker
+# enables this protocol; old workers keep their existing exclusive admission.
+kpanel_app_lock_held() {
+	case ":${KJ_APP_LOCKS_HELD:-}:" in *":$1:"*) return 0 ;; esac
+	return 1
+}
+
+kpanel_app_with_lock() {
+	local resource="$1"
+	shift
+	case "$resource" in system|catalog|markers) ;; *) exit 1 ;; esac
+	if kpanel_app_lock_held "$resource"; then "$@"; return $?; fi
+	local lock_dir="/run/lock/kejilion-app"
+	local lock_fd result
+	command -v flock >/dev/null 2>&1 || { echo "错误: 应用并行交互需要 flock" >&2; exit 1; }
+	[ "$(id -u)" = "0" ] || exit 1
+	[ ! -L "$lock_dir" ] || exit 1
+	(umask 077; mkdir -p "$lock_dir") || exit 1
+	[ ! -L "$lock_dir" ] && [ -d "$lock_dir" ] && [ "$(stat -c '%u:%a' "$lock_dir")" = "0:700" ] || exit 1
+	[ ! -L "$lock_dir/$resource.lock" ] || exit 1
+	(umask 077; touch "$lock_dir/$resource.lock") || exit 1
+	[ -f "$lock_dir/$resource.lock" ] || exit 1
+	exec {lock_fd}>>"$lock_dir/$resource.lock" || exit 1
+	if ! flock -w 300 "$lock_fd"; then
+		echo "共享系统资源正忙，等待超过 300 秒，请稍后重试。" >&2
+		exec {lock_fd}>&-
+		exit 1
+	fi
+	local KJ_APP_LOCKS_HELD="${KJ_APP_LOCKS_HELD:-}:$resource"
+	export -n KJ_APP_LOCKS_HELD
+	if "$@"; then result=0; else result=$?; fi
+	flock -u "$lock_fd" || exit 1
+	exec {lock_fd}>&-
+	return "$result"
+}
+
+kpanel_app_update_marker() (
+	local action="$1" marker="/home/docker/appno.txt" temporary status
+	[[ "${app_id:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$ ]] || return 1
+	mkdir -p /home/docker || return 1
+	[ ! -L "$marker" ] || return 1
+	[ ! -e "$marker" ] || [ -f "$marker" ] || return 1
+	temporary=$(mktemp /home/docker/.appno.XXXXXX) || return 1
+	trap 'rm -f -- "$temporary"' EXIT
+	if [ -f "$marker" ]; then
+		if grep -vxF -- "$app_id" "$marker" > "$temporary"; then status=0; else status=$?; fi
+		[ "$status" -le 1 ] || return "$status"
+	fi
+	case "$action" in add) printf '%s\n' "$app_id" >> "$temporary" || return 1 ;; remove) ;; *) return 1 ;; esac
+	chmod 600 "$temporary" || return 1
+	mv -f -- "$temporary" "$marker"
+)
+
+remove_app_id() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ]; then
+		kpanel_app_with_lock markers kpanel_app_update_marker remove
+	else
+		sed -i "/\\b${app_id}\\b/d" /home/docker/appno.txt
+	fi
+}
 
 if [ "${1:-}" = "kpanel" ] && [ "${2:-}" = "node" ]; then
 	KJ_LIGHT_NODE_PROTOCOL=1
@@ -206,6 +269,9 @@ ipv6_address=$(curl -s --max-time 1 https://v6.ipinfo.io/ip && echo)
 
 
 install() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system install "$@"; return $?
+	fi
 	if [ $# -eq 0 ]; then
 		echo "未提供软件包参数!"
 		return 1
@@ -282,6 +348,9 @@ install_dependency() {
 }
 
 remove() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system remove "$@"; return $?
+	fi
 	if [ $# -eq 0 ]; then
 		echo "未提供软件包参数!"
 		return 1
@@ -485,6 +554,9 @@ install_add_docker_cn
 
 
 install_add_docker() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system install_add_docker "$@"; return $?
+	fi
 	echo -e "${gl_kjlan}正在安装docker环境...${gl_bai}"
 	if command -v apt &>/dev/null || command -v yum &>/dev/null || command -v dnf &>/dev/null; then
 		linuxmirrors_install_docker
@@ -498,6 +570,9 @@ install_add_docker() {
 
 
 install_docker() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system install_docker "$@"; return $?
+	fi
 	if ! command -v docker &>/dev/null; then
 		install_add_docker
 	fi
@@ -620,7 +695,7 @@ while true; do
 			send_stats "允许容器端口访问"
 			read -e -p "请输入容器名: " docker_name
 			ip_address
-			clear_container_rules "$docker_name" "$ipv4_address"
+			clear_container_rules "$docker_name" "$ipv4_address" || return 1
 			local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 			check_docker_app_ip
 			break_end
@@ -630,7 +705,7 @@ while true; do
 			send_stats "阻止容器端口访问"
 			read -e -p "请输入容器名: " docker_name
 			ip_address
-			block_container_port "$docker_name" "$ipv4_address"
+			block_container_port "$docker_name" "$ipv4_address" || return 1
 			local docker_port=$(docker port $docker_name | awk -F'[:]' '/->/ {print $NF}' | uniq)
 			check_docker_app_ip
 			break_end
@@ -719,6 +794,9 @@ check_crontab_installed() {
 
 
 install_crontab() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system install_crontab "$@"; return $?
+	fi
 	local package_manager
 
 	if [ -f /etc/os-release ]; then
@@ -856,9 +934,16 @@ docker_ipv6_off() {
 
 
 save_iptables_rules() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system save_iptables_rules "$@"; return $?
+	fi
 	mkdir -p /etc/iptables
-	touch /etc/iptables/rules.v4 || return 1
-	iptables-save > /etc/iptables/rules.v4 || return 1
+	local rules_temp
+	rules_temp=$(mktemp /etc/iptables/.rules.v4.XXXXXX) || return 1
+	if ! iptables-save > "$rules_temp" || ! mv -f -- "$rules_temp" /etc/iptables/rules.v4; then
+		rm -f -- "$rules_temp"
+		return 1
+	fi
 	check_crontab_installed || return 1
 	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1 || return 1
 	(crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1 || return 1
@@ -869,6 +954,9 @@ save_iptables_rules() {
 
 
 iptables_open() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system iptables_open "$@"; return $?
+	fi
 	install iptables || return 1
 	save_iptables_rules || return 1
 	iptables -P INPUT ACCEPT || return 1
@@ -886,6 +974,9 @@ iptables_open() {
 
 
 open_port() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system open_port "$@"; return $?
+	fi
 	local ports=($@)  # 将传入的参数转换为数组
 	if [ ${#ports[@]} -eq 0 ]; then
 		echo "请提供至少一个端口号"
@@ -901,11 +992,11 @@ open_port() {
 
 		# 添加打开规则
 		if ! iptables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
-			iptables -I INPUT 1 -p tcp --dport $port -j ACCEPT
+			iptables -I INPUT 1 -p tcp --dport $port -j ACCEPT || return 1
 		fi
 
 		if ! iptables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
-			iptables -I INPUT 1 -p udp --dport $port -j ACCEPT
+			iptables -I INPUT 1 -p udp --dport $port -j ACCEPT || return 1
 			echo "已打开端口 $port"
 		fi
 	done
@@ -916,13 +1007,16 @@ open_port() {
 
 
 close_port() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system close_port "$@"; return $?
+	fi
 	local ports=($@)  # 将传入的参数转换为数组
 	if [ ${#ports[@]} -eq 0 ]; then
 		echo "请提供至少一个端口号"
 		return 1
 	fi
 
-	install iptables
+	install iptables || return 1
 
 	for port in "${ports[@]}"; do
 		# 删除已存在的打开规则
@@ -931,11 +1025,11 @@ close_port() {
 
 		# 添加关闭规则
 		if ! iptables -C INPUT -p tcp --dport $port -j DROP 2>/dev/null; then
-			iptables -I INPUT 1 -p tcp --dport $port -j DROP
+			iptables -I INPUT 1 -p tcp --dport $port -j DROP || return 1
 		fi
 
 		if ! iptables -C INPUT -p udp --dport $port -j DROP 2>/dev/null; then
-			iptables -I INPUT 1 -p udp --dport $port -j DROP
+			iptables -I INPUT 1 -p udp --dport $port -j DROP || return 1
 			echo "已关闭端口 $port"
 		fi
 	done
@@ -945,10 +1039,10 @@ close_port() {
 	iptables -D FORWARD -i lo -j ACCEPT 2>/dev/null
 
 	# 插入新规则到第一条
-	iptables -I INPUT 1 -i lo -j ACCEPT
-	iptables -I FORWARD 1 -i lo -j ACCEPT
+	iptables -I INPUT 1 -i lo -j ACCEPT || return 1
+	iptables -I FORWARD 1 -i lo -j ACCEPT || return 1
 
-	save_iptables_rules
+	save_iptables_rules || return 1
 	send_stats "已关闭端口"
 }
 
@@ -1807,6 +1901,9 @@ kpanel_web_replace_certificate() (
 )
 
 install_ssltls() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system install_ssltls "$@"; return $?
+	fi
 	  docker stop nginx > /dev/null 2>&1
 	  cd ~
 
@@ -1939,6 +2036,15 @@ openssl rand -out /home/web/certs/ticket13.key 80
 }
 
 
+kpanel_app_write_imported_certificate() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system kpanel_app_write_imported_certificate "$@"; return $?
+	fi
+	printf '%s' "$cert_content" > "$cert_file" &&
+	printf '%s' "$key_content" > "$key_file" &&
+	chmod 644 "$cert_file" && chmod 600 "$key_file"
+}
+
 certs_status() {
 
 	sleep 1
@@ -2000,11 +2106,7 @@ certs_status() {
 			# 3. 智能校验
 			# 只要包含 "BEGIN CERTIFICATE" 和 "PRIVATE KEY" 即可通过
 			if [[ "$cert_content" == *"-----BEGIN CERTIFICATE-----"* && "$key_content" == *"PRIVATE KEY-----"* ]]; then
-				echo -n "$cert_content" > "$cert_file"
-				echo -n "$key_content" > "$key_file"
-
-				chmod 644 "$cert_file"
-				chmod 600 "$key_file"
+				kpanel_app_write_imported_certificate || return $?
 
 				# 识别当前证书类型并显示
 				if [[ "$key_content" == *"EC PRIVATE KEY"* ]]; then
@@ -2257,6 +2359,14 @@ web_del() {
 		read -r -a yuming_list <<< "$yuming_input"
 	fi
 
+	kpanel_app_delete_sites "${yuming_list[@]}"
+}
+
+kpanel_app_delete_sites() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system kpanel_app_delete_sites "$@"; return $?
+	fi
+	local -a yuming_list=("$@")
 	local action_status=0
 	for yuming in "${yuming_list[@]}"; do
 		if [ -z "$yuming" ] || [ "${#yuming}" -gt 253 ] ||
@@ -3129,6 +3239,9 @@ remove_docker_user_rule() {
 }
 
 block_container_port() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system block_container_port "$@"; return $?
+	fi
 	local container_name_or_id=$1
 	local allowed_ip=$2
 	local container_ips
@@ -3141,7 +3254,7 @@ block_container_port() {
 		return 1
 	fi
 
-	install iptables
+	install iptables || return 1
 
 	while IFS= read -r container_ip; do
 		ensure_docker_user_rule -p tcp -d "$container_ip" -j DROP || return 1
@@ -3154,13 +3267,16 @@ block_container_port() {
 	done <<< "$container_ips"
 
 	echo "已阻止IP+端口访问该服务"
-	save_iptables_rules
+	save_iptables_rules || return 1
 }
 
 
 
 
 clear_container_rules() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system clear_container_rules "$@"; return $?
+	fi
 	local container_name_or_id=$1
 	local allowed_ip=$2
 	local container_ips
@@ -3173,7 +3289,7 @@ clear_container_rules() {
 		return 1
 	fi
 
-	install iptables
+	install iptables || return 1
 
 	while IFS= read -r container_ip; do
 		remove_docker_user_rule -p tcp -d "$container_ip" -j DROP || return 1
@@ -3186,7 +3302,7 @@ clear_container_rules() {
 	done <<< "$container_ips"
 
 	echo "已允许IP+端口访问该服务"
-	save_iptables_rules
+	save_iptables_rules || return 1
 }
 
 
@@ -3195,6 +3311,9 @@ clear_container_rules() {
 
 
 block_host_port() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system block_host_port "$@"; return $?
+	fi
 	local port=$1
 	local allowed_ip=$2
 
@@ -3204,22 +3323,22 @@ block_host_port() {
 		return 1
 	fi
 
-	install iptables
+	install iptables || return 1
 
 
 	# 拒绝其他所有 IP 访问
 	if ! iptables -C INPUT -p tcp --dport "$port" -j DROP &>/dev/null; then
-		iptables -I INPUT -p tcp --dport "$port" -j DROP
+		iptables -I INPUT -p tcp --dport "$port" -j DROP || return 1
 	fi
 
 	# 允许指定 IP 访问
 	if ! iptables -C INPUT -p tcp --dport "$port" -s "$allowed_ip" -j ACCEPT &>/dev/null; then
-		iptables -I INPUT -p tcp --dport "$port" -s "$allowed_ip" -j ACCEPT
+		iptables -I INPUT -p tcp --dport "$port" -s "$allowed_ip" -j ACCEPT || return 1
 	fi
 
 	# 允许本机访问
 	if ! iptables -C INPUT -p tcp --dport "$port" -s 127.0.0.0/8 -j ACCEPT &>/dev/null; then
-		iptables -I INPUT -p tcp --dport "$port" -s 127.0.0.0/8 -j ACCEPT
+		iptables -I INPUT -p tcp --dport "$port" -s 127.0.0.0/8 -j ACCEPT || return 1
 	fi
 
 
@@ -3228,32 +3347,35 @@ block_host_port() {
 
 	# 拒绝其他所有 IP 访问
 	if ! iptables -C INPUT -p udp --dport "$port" -j DROP &>/dev/null; then
-		iptables -I INPUT -p udp --dport "$port" -j DROP
+		iptables -I INPUT -p udp --dport "$port" -j DROP || return 1
 	fi
 
 	# 允许指定 IP 访问
 	if ! iptables -C INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT &>/dev/null; then
-		iptables -I INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT
+		iptables -I INPUT -p udp --dport "$port" -s "$allowed_ip" -j ACCEPT || return 1
 	fi
 
 	# 允许本机访问
 	if ! iptables -C INPUT -p udp --dport "$port" -s 127.0.0.0/8 -j ACCEPT &>/dev/null; then
-		iptables -I INPUT -p udp --dport "$port" -s 127.0.0.0/8 -j ACCEPT
+		iptables -I INPUT -p udp --dport "$port" -s 127.0.0.0/8 -j ACCEPT || return 1
 	fi
 
 	# 允许已建立和相关连接的流量
 	if ! iptables -C INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT &>/dev/null; then
-		iptables -I INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+		iptables -I INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT || return 1
 	fi
 
 	echo "已阻止IP+端口访问该服务"
-	save_iptables_rules
+	save_iptables_rules || return 1
 }
 
 
 
 
 clear_host_port_rules() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system clear_host_port_rules "$@"; return $?
+	fi
 	local port=$1
 	local allowed_ip=$2
 
@@ -3263,7 +3385,7 @@ clear_host_port_rules() {
 		return 1
 	fi
 
-	install iptables
+	install iptables || return 1
 
 
 	# 清除封禁所有其他 IP 访问的规则
@@ -3299,13 +3421,16 @@ clear_host_port_rules() {
 
 
 	echo "已允许IP+端口访问该服务"
-	save_iptables_rules
+	save_iptables_rules || return 1
 
 }
 
 
 
 setup_docker_dir() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system setup_docker_dir "$@"; return $?
+	fi
 
 	mkdir -p /home /home/docker 2>/dev/null
 
@@ -3328,6 +3453,9 @@ setup_docker_dir() {
 
 
 add_app_id() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ]; then
+		kpanel_app_with_lock markers kpanel_app_update_marker add; return $?
+	fi
 mkdir -p /home/docker
 touch /home/docker/appno.txt
 grep -qxF "${app_id}" /home/docker/appno.txt || echo "${app_id}" >> /home/docker/appno.txt
@@ -3544,7 +3672,7 @@ kpanel_app_remove_compatibility_state() {
 	access_path="$(kpanel_app_access_path)" || return 1
 	rm -f "/home/docker/${docker_name}_port.conf" "$access_path" || return 1
 	if [ -f /home/docker/appno.txt ]; then
-		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt || return 1
+		remove_app_id || return 1
 	fi
 }
 
@@ -3638,7 +3766,7 @@ kpanel_run_docker_app_install() {
 
 	kpanel_app_progress 90 "正在写入 kejilion.sh 兼容状态"
 	echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
-	add_app_id
+	add_app_id || return 1
 	if [ "${KJ_APP_ACCESS_MODE:-direct}" = "domain_only" ]; then
 		kpanel_app_apply_access_mode domain_only false || return 1
 	else
@@ -3696,7 +3824,7 @@ kpanel_run_docker_app_action() {
 				docker_rum || return 1
 			fi
 			kpanel_app_verified_service false >/dev/null || return 1
-			add_app_id
+			add_app_id || return 1
 			kpanel_app_progress 80 "正在恢复应用访问策略"
 			kpanel_app_restore_access_mode "$access_mode" || return 1
 			if [ "$adapter" = "standard" ]; then
@@ -3798,7 +3926,7 @@ while true; do
 			fi
 			echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
 
-			add_app_id
+			add_app_id || return 1
 			kpanel_app_write_access_mode direct
 
 			clear
@@ -3819,7 +3947,7 @@ while true; do
 				fi
 			fi
 
-			add_app_id
+			add_app_id || return 1
 			kpanel_app_restore_access_mode "$(kpanel_app_read_access_mode)"
 
 			clear
@@ -3842,7 +3970,7 @@ while true; do
 			rm -f /home/docker/${docker_name}_port.conf
 			rm -f /home/docker/${docker_name}_access.conf
 
-			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+			remove_app_id || return 1
 			echo "应用已卸载"
 			send_stats "卸载$docker_name"
 			;;
@@ -3852,7 +3980,7 @@ while true; do
 			send_stats "${docker_name}域名访问设置"
 			add_yuming
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			block_container_port "$docker_name" "$ipv4_address"
+			block_container_port "$docker_name" "$ipv4_address" || return 1
 			kpanel_app_write_access_mode domain_only || action_status=1
 			;;
 
@@ -3863,13 +3991,13 @@ while true; do
 
 		7)
 			send_stats "允许IP访问 ${docker_name}"
-			clear_container_rules "$docker_name" "$ipv4_address"
+			clear_container_rules "$docker_name" "$ipv4_address" || return 1
 			kpanel_app_write_access_mode direct || action_status=1
 			;;
 
 		8)
 			send_stats "阻止IP访问 ${docker_name}"
-			block_container_port "$docker_name" "$ipv4_address"
+			block_container_port "$docker_name" "$ipv4_address" || return 1
 			kpanel_app_write_access_mode domain_only || action_status=1
 			;;
 
@@ -3938,7 +4066,7 @@ docker_app_plus() {
 				install_docker
 				if docker_app_install; then
 					echo "$docker_port" > "/home/docker/${docker_name}_port.conf"
-					add_app_id
+					add_app_id || return 1
 					kpanel_app_write_access_mode direct
 					send_stats "$app_name 安装"
 				else
@@ -3949,7 +4077,7 @@ docker_app_plus() {
 
 			2)
 				if docker_app_update; then
-					add_app_id
+					add_app_id || return 1
 					kpanel_app_restore_access_mode "$(kpanel_app_read_access_mode)"
 					send_stats "$app_name 更新"
 				else
@@ -3962,7 +4090,7 @@ docker_app_plus() {
 				if docker_app_uninstall; then
 					rm -f /home/docker/${docker_name}_port.conf
 					rm -f /home/docker/${docker_name}_access.conf
-					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					remove_app_id || return 1
 					send_stats "$app_name 卸载"
 				else
 					echo -e "${gl_hong}卸载失败: ${gl_bai}已保留应用登记状态。"
@@ -3976,7 +4104,7 @@ docker_app_plus() {
 				add_yuming
 				ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
 				local docker_check_name="${docker_app_service:-$docker_name}"
-				block_container_port "$docker_check_name" "$ipv4_address"
+				block_container_port "$docker_check_name" "$ipv4_address" || return 1
 				kpanel_app_write_access_mode domain_only || action_status=1
 
 				;;
@@ -3987,13 +4115,13 @@ docker_app_plus() {
 			7)
 				send_stats "允许IP访问 ${docker_name}"
 				local docker_check_name="${docker_app_service:-$docker_name}"
-				clear_container_rules "$docker_check_name" "$ipv4_address"
+				clear_container_rules "$docker_check_name" "$ipv4_address" || return 1
 				kpanel_app_write_access_mode direct || action_status=1
 				;;
 			8)
 				send_stats "阻止IP访问 ${docker_name}"
 				local docker_check_name="${docker_app_service:-$docker_name}"
-				block_container_port "$docker_check_name" "$ipv4_address"
+				block_container_port "$docker_check_name" "$ipv4_address" || return 1
 				kpanel_app_write_access_mode domain_only || action_status=1
 				;;
 			*)
@@ -5223,6 +5351,9 @@ ldnmp_install_status() {
 
 
 nginx_install_status() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system nginx_install_status "$@"; return $?
+	fi
 
 	if ! docker inspect "nginx" &>/dev/null; then
 		send_stats "请先安装nginx环境"
@@ -5350,6 +5481,13 @@ ldnmp_Proxy() {
 	install_ssltls
 	certs_status
 
+	kpanel_app_write_proxy
+}
+
+kpanel_app_write_proxy() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
+		kpanel_app_with_lock system kpanel_app_write_proxy "$@"; return $?
+	fi
 	kpanel_web_progress 60 "正在获取 kejilion.sh 反向代理配置"
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
@@ -5501,20 +5639,20 @@ stream_panel() {
 		case $choice in
 			1)
 				nginx_install_status
-				add_app_id
+				add_app_id || return 1
 				send_stats "安装Stream四层代理"
 				;;
 			2)
 				update_docker_compose_with_db_creds
 				nginx_upgrade
-				add_app_id
+				add_app_id || return 1
 				send_stats "更新Stream四层代理"
 				;;
 			3)
 				read -e -p "确定要删除 nginx 容器吗？这可能会影响网站功能！(y/N): " confirm
 				if [[ "$confirm" =~ ^[Yy]$ ]]; then
 					docker rm -f nginx
-					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					remove_app_id || return 1
 					send_stats "更新Stream四层代理"
 					echo "nginx 容器已删除。"
 				else
@@ -5525,7 +5663,7 @@ stream_panel() {
 
 			4)
 				ldnmp_Proxy_backend_stream
-				add_app_id
+				add_app_id || return 1
 				send_stats "添加四层代理"
 				;;
 			5)
@@ -5856,20 +5994,20 @@ while true; do
 			iptables_open
 			panel_app_install
 
-			add_app_id
+			add_app_id || return 1
 			send_stats "${panelname}安装"
 			;;
 		2)
 			panel_app_manage
 
-			add_app_id
+			add_app_id || return 1
 			send_stats "${panelname}控制"
 
 			;;
 		3)
 			panel_app_uninstall
 
-			sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+			remove_app_id || return 1
 			send_stats "${panelname}卸载"
 			;;
 		*)
@@ -6477,7 +6615,7 @@ frpc_panel() {
 				install_docker
 				configure_frpc
 
-				add_app_id
+				add_app_id || return 1
 				echo "FRP客户端已经安装完成"
 				;;
 			2)
@@ -6487,7 +6625,7 @@ frpc_panel() {
 				[ -f /home/frp/frpc.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frpc.toml /home/frp/frpc.toml
 				donlond_frp frpc
 
-				add_app_id
+				add_app_id || return 1
 				echo "FRP客户端已经更新完成"
 				;;
 
@@ -6498,7 +6636,7 @@ frpc_panel() {
 				rm -rf /home/frp
 				close_port 8055
 
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+				remove_app_id || return 1
 				echo "应用已卸载"
 				;;
 
@@ -6566,7 +6704,7 @@ frps_panel() {
 				install_docker
 				generate_frps_config
 
-				add_app_id
+				add_app_id || return 1
 				echo "FRP服务端已经安装完成"
 				;;
 			2)
@@ -6576,7 +6714,7 @@ frps_panel() {
 				[ -f /home/frp/frps.toml ] || cp /home/frp/frp_0.61.0_linux_amd64/frps.toml /home/frp/frps.toml
 				donlond_frp frps
 
-				add_app_id
+				add_app_id || return 1
 				echo "FRP服务端已经更新完成"
 				;;
 			3)
@@ -6587,7 +6725,7 @@ frps_panel() {
 
 				close_port 8055 8056
 
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+				remove_app_id || return 1
 				echo "应用已卸载"
 				;;
 			5)
@@ -6596,7 +6734,7 @@ frps_panel() {
 				add_yuming
 				read -e -p "请输入你的内网穿透服务端口: " frps_port
 				ldnmp_Proxy ${yuming} 127.0.0.1 ${frps_port}
-				block_host_port "$frps_port" "$ipv4_address"
+				block_host_port "$frps_port" "$ipv4_address" || return 1
 				;;
 			6)
 				echo "域名格式 example.com 不带https://"
@@ -6606,14 +6744,14 @@ frps_panel() {
 			7)
 				send_stats "允许IP访问"
 				read -e -p "请输入需要放行的端口: " frps_port
-				clear_host_port_rules "$frps_port" "$ipv4_address"
+				clear_host_port_rules "$frps_port" "$ipv4_address" || return 1
 				;;
 
 			8)
 				send_stats "阻止IP访问"
 				echo "如果你已经反代域名访问了，可用此功能阻止IP+端口访问，这样更安全。"
 				read -e -p "请输入需要阻止的端口: " frps_port
-				block_host_port "$frps_port" "$ipv4_address"
+				block_host_port "$frps_port" "$ipv4_address" || return 1
 				;;
 
 			00)
@@ -6673,7 +6811,7 @@ yt_menu_pro() {
 				curl -L ${gh_https_url}github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 				chmod a+rx /usr/local/bin/yt-dlp
 
-				add_app_id
+				add_app_id || return 1
 				echo "安装完成。按任意键继续..."
 				read ;;
 			2)
@@ -6681,7 +6819,7 @@ yt_menu_pro() {
 				echo "正在更新 yt-dlp..."
 				yt-dlp -U
 
-				add_app_id
+				add_app_id || return 1
 				echo "更新完成。按任意键继续..."
 				read ;;
 			3)
@@ -6689,7 +6827,7 @@ yt_menu_pro() {
 				echo "正在卸载 yt-dlp..."
 				rm -f /usr/local/bin/yt-dlp
 
-				sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+				remove_app_id || return 1
 				echo "卸载完成。按任意键继续..."
 				read ;;
 			5)
@@ -14128,7 +14266,7 @@ linux_ldnmp() {
 	  else
 	  	ip_address
 		close_port "$port"
-		block_container_port "$docker_name" "$ipv4_address"
+		block_container_port "$docker_name" "$ipv4_address" || return 1
 	  fi
 
 		;;
@@ -15098,7 +15236,7 @@ PY
 		npm install -g openclaw@latest
 		openclaw onboard --install-daemon
 		start_gateway
-		add_app_id
+		add_app_id || return 1
 		break_end
 
 	}
@@ -19892,7 +20030,7 @@ openclaw_backup_restore_menu() {
 		crontab -l 2>/dev/null | grep -v "s gateway" | crontab -
 		start_gateway
 		hash -r
-		add_app_id
+		add_app_id || return 1
 		echo "更新完成"
 		break_end
 	}
@@ -19907,7 +20045,7 @@ openclaw_backup_restore_menu() {
 		rm -rf "$HOME/.openclaw"
 		[ "$HOME" != "/root" ] && [ -d /root/.openclaw ] && echo "⚠️ 检测到 root 目录下仍存在 /root/.openclaw，如需清理请手动处理"
 		hash -r
-		sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+		remove_app_id || return 1
 		echo "卸载完成"
 		break_end
 	}
@@ -20101,7 +20239,23 @@ openclaw_backup_restore_menu() {
 
 
 
+kpanel_app_source_config() {
+	local custom_app="$1" snapshot result
+	snapshot=$(mktemp "${TMPDIR:-/tmp}/kpanel-app.XXXXXX") || return 1
+	if ! kpanel_app_with_lock catalog cp -- "$custom_app" "$snapshot"; then
+		rm -f -- "$snapshot"
+		return 1
+	fi
+	# Keep the menu on its PTY; only snapshot creation holds the catalog lock.
+	if . "$snapshot"; then result=0; else result=$?; fi
+	rm -f -- "$snapshot"
+	return "$result"
+}
+
 refresh_apps_catalog() {
+	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held catalog; then
+		kpanel_app_with_lock catalog refresh_apps_catalog "$@"; return $?
+	fi
 	local apps_dir="$HOME/apps"
 	local apps_remote="${gh_proxy}github.com/kejilion/apps.git"
 
@@ -20588,7 +20742,7 @@ while true; do
 						-d analogic/poste.io
 
 
-					add_app_id
+					add_app_id || return 1
 
 					clear
 					echo "poste.io已经安装完成"
@@ -20613,7 +20767,7 @@ while true; do
 						-d analogic/poste.i
 
 
-					add_app_id
+					add_app_id || return 1
 
 					clear
 					echo "poste.io已经安装完成"
@@ -20628,7 +20782,7 @@ while true; do
 					rm /home/docker/mail.txt
 					rm -rf /home/docker/mail
 
-					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					remove_app_id || return 1
 					echo "应用已卸载"
 					;;
 
@@ -20955,7 +21109,7 @@ while true; do
 					check_disk_space 5
 					bash -c "$(curl -fsSLk https://waf-ce.chaitin.cn/release/latest/setup.sh)"
 
-					add_app_id
+					add_app_id || return 1
 					clear
 					echo "雷池WAF面板已经安装完成"
 					check_docker_app_ip
@@ -20968,7 +21122,7 @@ while true; do
 					docker rmi $(docker images | grep "safeline" | grep "none" | awk '{print $3}')
 					echo ""
 
-					add_app_id
+					add_app_id || return 1
 					clear
 					echo "雷池WAF面板已经更新完成"
 					check_docker_app_ip
@@ -20980,7 +21134,7 @@ while true; do
 					cd /data/safeline
 					docker compose down --rmi all
 
-					sed -i "/\b${app_id}\b/d" /home/docker/appno.txt
+					remove_app_id || return 1
 					echo "如果你是默认安装目录那现在项目已经卸载。如果你是自定义安装目录你需要到安装目录下自行执行:"
 					echo "docker compose down && docker compose down --rmi all"
 					;;
@@ -22120,7 +22274,7 @@ while true; do
 			  docker.n8n.io/n8nio/n8n
 
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			block_container_port "$docker_name" "$ipv4_address"
+			block_container_port "$docker_name" "$ipv4_address" || return 1
 
 		}
 
@@ -22971,7 +23125,7 @@ while true; do
 			docker restart matrix
 
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			block_container_port "$docker_name" "$ipv4_address"
+			block_container_port "$docker_name" "$ipv4_address" || return 1
 
 		}
 
@@ -23199,7 +23353,7 @@ while true; do
 			docker compose up -d
 
 			ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
-			block_container_port "$docker_name" "$ipv4_address"
+			block_container_port "$docker_name" "$ipv4_address" || return 1
 
 			clear
 			echo "已经安装完成"
@@ -24037,7 +24191,11 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		refresh_apps_catalog || return 1
 		local custom_app="$HOME/apps/${sub_choice}.conf"
 		if [ -f "$custom_app" ]; then
-			. "$custom_app"
+			if [ "${KJ_APP_CONCURRENCY:-}" = "1" ]; then
+				kpanel_app_source_config "$custom_app"
+			else
+				. "$custom_app"
+			fi
 		else
 			echo -e "${gl_hong}错误: 未找到编号为 ${sub_choice} 的应用配置${gl_bai}"
 		fi
@@ -31027,7 +31185,7 @@ else
 	  		else
 			  ip_address
 			  close_port "$port"
-	  		  block_container_port "$docker_name" "$ipv4_address"
+			block_container_port "$docker_name" "$ipv4_address" || return 1
 	  		fi
 			;;
 

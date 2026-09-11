@@ -175,6 +175,7 @@ install() { return 0; }
 install_docker() { return 0; }
 ss() { return 0; }
 add_app_id() { printf '%s\n' "${app_id}" >>"${test_app_root}/appno.txt"; }
+remove_app_id() { sed -i "/^${app_id}$/d" "${test_app_root}/appno.txt"; }
 kpanel_app_write_access_mode() { printf '%s\n' "$1" >"${test_app_root}/${docker_name}_access.conf"; }
 kpanel_app_apply_access_mode() { kpanel_app_write_access_mode "$1"; }
 docker_app_install() { return 0; }
