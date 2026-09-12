@@ -11156,6 +11156,7 @@ docker_ssh_migration() {
 			echo -e "2. 迁移docker项目"
 			echo -e "3. 还原docker项目"
 			echo -e "4. 删除docker项目的备份文件"
+			echo "5. 通用加密备份与恢复 (.kpb，与 KPanel 互通)"
 			echo "------------------------"
 			echo -e "0. 返回上一级选单"
 			echo "------------------------"
@@ -11165,6 +11166,7 @@ docker_ssh_migration() {
 				2) migrate_docker ;;
 				3) restore_docker ;;
 				4) delete_backup ;;
+				5) kpanel_backup_center_dispatch menu docker ;;
 				0) return ;;
 				*) echo -e "${gl_hong}无效选项${gl_bai}" ;;
 			esac
@@ -13690,6 +13692,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}31.  ${gl_bai}站点数据管理 ${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}备份全站数据"
 	echo -e "${gl_huang}33.  ${gl_bai}定时远程备份                      ${gl_huang}34.  ${gl_bai}还原全站数据"
+	echo "k. 通用加密备份与恢复 (.kpb，与 KPanel 互通)"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}35.  ${gl_bai}防护LDNMP环境                     ${gl_huang}36.  ${gl_bai}优化LDNMP环境"
 	echo -e "${gl_huang}37.  ${gl_bai}更新LDNMP环境                     ${gl_huang}38.  ${gl_bai}卸载LDNMP环境"
@@ -14514,6 +14517,9 @@ linux_ldnmp() {
 
 	  ;;
 
+	k)
+	  kpanel_backup_center_dispatch menu web
+	  ;;
 	34)
 	  root_use
 	  send_stats "LDNMP环境还原"
@@ -20400,6 +20406,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
+	  echo "k. 通用加密备份与恢复 (.kpb，与 KPanel 互通)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -24118,6 +24125,9 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 		  ;;
 
+	  k)
+		kpanel_backup_center_dispatch menu apps
+		;;
 	  b)
 	  	clear
 	  	send_stats "全部应用备份"
@@ -31050,12 +31060,30 @@ echo "SSH公钥导入(GitHub) k sshkey github <user> "
 
 
 
+# Versioned shared backup adapter. No downloaded helper or caller-supplied path.
+kpanel_backup_center_dispatch() {
+    local binary="/usr/local/libexec/kejilion-agent" metadata owner mode protocol
+    [ "$(id -u)" = "0" ] || { echo "备份适配器需要 root" >&2; return 1; }
+    [ -f "$binary" ] && [ -x "$binary" ] && [ ! -L "$binary" ] || { echo "缺少 KPanel 备份适配器，请安装匹配版本的 Agent" >&2; return 1; }
+    metadata=$(stat -c '%u %a' "$binary") || return 1
+    read -r owner mode <<< "$metadata"
+    [[ "$owner" = "0" && "$mode" =~ ^[0-7]{3,4}$ ]] || return 1
+    (( (8#$mode & 0022) == 0 )) || { echo "备份适配器权限无效" >&2; return 1; }
+    protocol=$("$binary" backup-center protocol) || return 1
+    [ "$protocol" = '{"protocol":1,"format":1}' ] || { echo "备份适配器协议不兼容" >&2; return 1; }
+    "$binary" backup-center "$@"
+}
+
 if [ "$#" -eq 0 ]; then
 	# 如果没有参数，运行交互式逻辑
 	kejilion_sh
 else
 	# 如果有参数，执行相应函数
 	case $1 in
+		backup-center)
+			shift
+			kpanel_backup_center_dispatch "$@"
+			;;
 		install|add|安装)
 			shift
 			send_stats "安装软件"
