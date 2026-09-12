@@ -1901,6 +1901,7 @@ kpanel_web_replace_certificate() (
 )
 
 install_ssltls() {
+	if kpanel_web_http_mode; then return 0; fi
 	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
 		kpanel_app_with_lock system install_ssltls "$@"; return $?
 	fi
@@ -2046,6 +2047,7 @@ kpanel_app_write_imported_certificate() {
 }
 
 certs_status() {
+	if kpanel_web_http_mode; then return 0; fi
 
 	sleep 1
 
@@ -2159,6 +2161,7 @@ add_yuming() {
 
 
 check_ip_and_get_access_port() {
+	if kpanel_web_http_mode; then access_port=""; return 0; fi
 	local yuming="$1"
 
 	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
@@ -2480,6 +2483,10 @@ check_cf_mode() {
 
 
 nginx_http_on() {
+	if kpanel_web_http_mode; then
+		kpanel_web_http_config || exit 1
+		return 0
+	fi
 
 local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
 local ipv6_pattern='^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))))$'
@@ -2548,6 +2555,7 @@ patch_wp_url() {
   local HOME_URL="$1"
   local SITE_URL="$2"
   local TARGET_DIR="/home/web/html"
+  if kpanel_web_http_mode; then TARGET_DIR="/home/web/html/$yuming"; fi
 
   find "$TARGET_DIR" -type f -name "wp-config-sample.php" | while read -r FILE; do
 	# 删除旧定义
@@ -5368,13 +5376,17 @@ nginx_install_status() {
 ldnmp_web_on() {
 	  clear
 	  echo "您的 $webname 搭建好了！"
-	  echo "https://$yuming"
+	  if kpanel_web_http_mode; then echo "http://$yuming:$KJ_WEB_HTTP_PORT"; else echo "https://$yuming"; fi
 	  echo "------------------------"
 	  echo "$webname 安装信息如下: "
 
 }
 
 nginx_web_on() {
+	if kpanel_web_http_mode; then
+		echo "http://$yuming:$KJ_WEB_HTTP_PORT"
+		return 0
+	fi
 	clear
 
 	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
@@ -5435,7 +5447,11 @@ ldnmp_wp() {
   sed -i "s|username_here|$dbuse|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|password_here|$dbusepasswd|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
   sed -i "s|localhost|mysql|g" /home/web/html/$yuming/wordpress/wp-config-sample.php
-  patch_wp_url "https://$yuming" "https://$yuming"
+  if kpanel_web_http_mode; then
+    patch_wp_url "http://$yuming:$KJ_WEB_HTTP_PORT" "http://$yuming:$KJ_WEB_HTTP_PORT"
+  else
+    patch_wp_url "https://$yuming" "https://$yuming"
+  fi
   cp /home/web/html/$yuming/wordpress/wp-config-sample.php /home/web/html/$yuming/wordpress/wp-config.php
 
 
@@ -5771,11 +5787,142 @@ find_container_by_host_port() {
 
 
 
+# Site configs determine site identity; certificates are optional artifacts.
+ldnmp_site_config_files() {
+	local conf
+	for conf in /home/web/conf.d/*.conf; do
+		[ -f "$conf" ] || continue
+		case "${conf##*/}" in default.conf|map.conf) continue ;; esac
+		printf '%s\n' "$conf"
+	done
+}
+
+ldnmp_site_count() {
+	ldnmp_site_config_files | awk 'END { print NR+0 }'
+}
+
+# Read server blocks without invoking Nginx or changing files. Quoted text,
+# comments and braced variables cannot introduce structural delimiters.
+ldnmp_site_config_endpoints() {
+	LC_ALL=C awk '
+	function flush() {
+		if (length(word)) { words[++nw]=word; word="" }
+	}
+	function host_valid(host) {
+		return host ~ /^[A-Za-z0-9][A-Za-z0-9.-]*$/ ||
+			(host ~ /^[0-9A-Fa-f:]+$/ && index(host, ":"))
+	}
+	function directive(    i, value) {
+		if (sid && depth==server_depth) {
+			if (words[1]=="server_name" && !names[sid]) {
+				for (i=2; i<=nw; i++) if (host_valid(words[i])) { names[sid]=words[i]; break }
+			} else if (words[1]=="listen") {
+				value=""
+				for (i=2; i<=nw; i++) value=value (i==2 ? "" : " ") words[i]
+				listens[sid,++listen_count[sid]]=value
+			} else if (words[1]=="ssl_certificate" && !cert[sid]) cert[sid]=words[2]
+			else if (words[1]=="ssl") { has_ssl[sid]=1; legacy_ssl[sid]=(words[2]=="on") }
+			else if (words[1]=="include") included[sid]=1
+		} else if (depth==1 && blocks[depth]=="http") {
+			if (words[1]=="ssl_certificate") http_cert=words[2]
+			if (words[1]=="ssl") http_ssl=(words[2]=="on")
+		}
+	}
+	function delimiter(ch) {
+		flush()
+		if (ch=="{") {
+			if (nw==1 && words[1]=="server" && (depth==0 || (depth==1 && blocks[1]=="http"))) {
+				sid=++servers; server_depth=depth+1
+			}
+			blocks[++depth]=words[1]
+		} else if (ch=="}") {
+			if (depth==server_depth) sid=0
+			if (depth>0) depth--
+		} else directive()
+		nw=0
+	}
+	function emit(address, certificate,    key) {
+		key=address SUBSEP certificate
+		if (!seen[key]++) { print address "\t" certificate; emitted++ }
+	}
+	{
+		line=$0 "\n"
+		for (pos=1; pos<=length(line); pos++) {
+			ch=substr(line,pos,1)
+			if (comment) { if (ch=="\n") comment=0; continue }
+			if (escaped) { word=word ch; escaped=0; continue }
+			if (ch=="\\") { escaped=1; continue }
+			if (quote!="") { if (ch==quote) quote=""; else word=word ch; continue }
+			if (variable) { word=word ch; if (ch=="}") variable=0; continue }
+			if (ch=="{" && substr(word,length(word),1)=="$") { word=word ch; variable=1; continue }
+			if (ch=="\"" || ch==sprintf("%c",39)) { quote=ch; continue }
+			if (ch=="#") { flush(); comment=1; continue }
+			if (ch=="{" || ch=="}" || ch==";") { delimiter(ch); continue }
+			if (ch ~ /[[:space:]]/) flush(); else word=word ch
+		}
+	}
+	END {
+		for (s=1; s<=servers; s++) {
+			if (!listen_count[s]) {
+				if (included[s]) { emit("监听待确认（include）", "-"); continue }
+				listens[s,++listen_count[s]]="80"
+			}
+			for (l=1; l<=listen_count[s]; l++) {
+				n=split(listens[s,l],parts,/[[:space:]]+/)
+				address=parts[1]; protocol="http"
+				if (has_ssl[s] ? legacy_ssl[s] : http_ssl) protocol="https"
+				for (p=2; p<=n; p++) if (parts[p]=="ssl" || parts[p]=="quic") protocol="https"
+				certificate=(protocol=="https" ? (cert[s] ? cert[s] : http_cert) : "-")
+				if (!length(certificate)) certificate="?"
+				if (address ~ /^unix:/) { emit("Unix socket（无 TCP 端口）", certificate); continue }
+				if (address ~ /^[0-9]+$/) port=address+0
+				else if (address ~ /:[0-9]+$/) { sub(/^.*:/,"",address); port=address+0 }
+				else if (address ~ /^\[[0-9A-Fa-f:]+\]$/ || host_valid(address)) port=80
+				else continue
+				if (port<1 || port>65535) continue
+				host=names[s]
+				if (!length(host)) { emit(toupper(protocol) " :" port "（server_name 待确认）", certificate); continue }
+				if (index(host,":")) host="[" host "]"
+				emit(protocol "://" host ":" port, certificate)
+			}
+		}
+		if (!emitted) emit("监听待确认", "-")
+	}' "$1"
+}
+
+ldnmp_site_certificate_expiry() {
+	local certificate="$1" expiry
+	case "$certificate" in
+		-) printf '%s\n' '-'; return ;;
+		/etc/nginx/certs/*) certificate="/home/web/certs/${certificate#/etc/nginx/certs/}" ;;
+	esac
+	if [ ! -f "$certificate" ]; then printf '%s\n' '证书未找到/待确认'; return; fi
+	expiry=$(openssl x509 -noout -enddate -in "$certificate" 2>/dev/null) || {
+		printf '%s\n' '证书无法读取'; return
+	}
+	date -d "${expiry#notAfter=}" '+%Y-%m-%d' 2>/dev/null || printf '%s\n' '到期时间待确认'
+}
+
+ldnmp_site_table() {
+	local conf name address certificate expiry
+	printf '配置名（管理操作使用）%9s访问地址%38s证书到期时间\n' '' ''
+	while IFS= read -r conf; do
+		name="${conf##*/}"; name="${name%.conf}"
+		name=$(printf '%s' "$name" | LC_ALL=C tr -d '\000-\037\177')
+		while IFS=$'\t' read -r address certificate; do
+			expiry=$(ldnmp_site_certificate_expiry "$certificate")
+			printf '%-30s %-45s %s\n' "$name" "$address" "$expiry"
+		done < <(ldnmp_site_config_endpoints "$conf")
+	done < <(ldnmp_site_config_files)
+}
+
+
+
 ldnmp_web_status() {
 	root_use
 	while true; do
-		local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
-		local output="${gl_lv}${cert_count}${gl_bai}"
+		local site_count=$(ldnmp_site_count)
+		local output="${gl_lv}${site_count}${gl_bai}"
 
 		local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
 		local db_count=$(docker exec mysql mysql -u root -p"$dbrootpasswd" -e "SHOW DATABASES;" 2> /dev/null | grep -Ev "Database|information_schema|mysql|performance_schema|sys" | wc -l)
@@ -5787,35 +5934,9 @@ ldnmp_web_status() {
 		echo "------------------------"
 		ldnmp_v
 
-		echo -e "站点: ${output}                      证书到期时间"
+		echo -e "站点: ${output}（按配置文件计数）"
 		echo -e "------------------------"
-		for cert_file in /home/web/certs/*_cert.pem; do
-		  local domain=$(basename "$cert_file" | sed 's/_cert.pem//')
-		  if [ -n "$domain" ]; then
-			local expire_date=$(openssl x509 -noout -enddate -in "$cert_file" | awk -F'=' '{print $2}')
-			local formatted_date=$(date -d "$expire_date" '+%Y-%m-%d')
-			printf "%-30s%s\n" "$domain" "$formatted_date"
-		  fi
-		done
-
-		for conf_file in /home/web/conf.d/*_*.conf; do
-		  [ -e "$conf_file" ] || continue
-		  basename "$conf_file" .conf
-		done
-
-		for conf_file in /home/web/conf.d/*.conf; do
-		  [ -e "$conf_file" ] || continue
-
-		  filename=$(basename "$conf_file")
-
-		  if [ "$filename" = "map.conf" ] || [ "$filename" = "default.conf" ]; then
-			continue
-		  fi
-
-		  if ! grep -q "ssl_certificate" "$conf_file"; then
-			basename "$conf_file" .conf
-		  fi
-		done
+		ldnmp_site_table
 
 		echo "------------------------"
 		echo ""
@@ -13039,8 +13160,8 @@ docker_tato() {
 
 
 ldnmp_tato() {
-local cert_count=$(ls /home/web/certs/*_cert.pem 2>/dev/null | wc -l)
-local output="${gl_lv}${cert_count}${gl_bai}"
+local site_count=$(ldnmp_site_count)
+local output="${gl_lv}${site_count}${gl_bai}"
 
 local dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml 2>/dev/null | tr -d '[:space:]')
 if [ -n "$dbrootpasswd" ]; then
@@ -13075,6 +13196,150 @@ fix_phpfpm_conf() {
 
 
 
+
+
+KPANEL_WEB_HTTP_PROTOCOL_VERSION="1"
+
+kpanel_web_http_mode() {
+	[ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ] && [ "${KJ_WEB_HTTP_ACTIVE:-0}" = "1" ]
+}
+
+# Allow sharing a port with this Nginx, but never restart it into a port owned
+# by another service. A bridge mapping is already reserved by Docker.
+kpanel_web_http_port_available() {
+	local port="$1" mode listeners line pids pid owned
+	mode=$(docker inspect --format '{{.HostConfig.NetworkMode}}' nginx 2>/dev/null) || mode=""
+	if [ -n "$mode" ] && [ "$mode" != host ]; then
+		docker port nginx "$port/tcp" 2>/dev/null | grep -Eq ":${port}$" && return 0
+		echo "HTTP 端口 $port 尚未映射到 Nginx 容器。" >&2
+		return 1
+	fi
+	command -v ss >/dev/null 2>&1 || { echo '检查 HTTP 端口需要 ss（iproute2）。' >&2; return 1; }
+	listeners=$(ss -H -ltnp "sport = :$port") || return 1
+	[ -n "$listeners" ] || return 0
+	owned=$(docker top nginx -eo pid 2>/dev/null) || return 1
+	while IFS= read -r line; do
+		pids=$(printf '%s\n' "$line" | grep -oE 'pid=[0-9]+' | cut -d= -f2)
+		[ -n "$pids" ] || return 1
+		for pid in $pids; do
+			printf '%s\n' "$owned" | grep -Eq "^[[:space:]]*${pid}[[:space:]]*$" || {
+				echo "HTTP 端口 $port 已被其他服务占用。" >&2
+				return 1
+			}
+		done
+	done <<< "$listeners"
+}
+
+# Reload only sends a signal. Observe the socket in Nginx's network namespace
+# before reporting success, including bridge deployments.
+kpanel_web_http_wait_listener() {
+	local hex attempt sockets
+	printf -v hex '%04X' "$1"
+	for attempt in {1..30}; do
+		sockets=$(docker exec nginx cat /proc/net/tcp /proc/net/tcp6 2>/dev/null) || sockets=""
+		if printf '%s\n' "$sockets" | awk -v port="$hex" '$4 == "0A" && $2 ~ ":" port "$" {found=1} END {exit !found}'; then
+			return 0
+		fi
+		sleep 0.1
+	done
+	echo "Nginx 未能监听 HTTP 端口 $1。" >&2
+	return 1
+}
+
+# Only this explicit entry enables HTTP. The ordinary CLI and certificate paths
+# retain their defaults. The subshell contains every override and cleanup trap.
+kpanel_run_http_site() (
+	local http_port="${1:-}" command_name="${2:-}" domain="${3:-}" selector
+	[[ "$http_port" =~ ^[0-9]{1,5}$ ]] && ((10#$http_port >= 1 && 10#$http_port <= 65535)) || return 64
+	http_port=$((10#$http_port))
+	[[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] || return 64
+	[ -z "${KJ_WEB_CERTIFICATE_FILE:-}${KJ_WEB_PRIVATE_KEY_FILE:-}" ] || return 64
+	case "$command_name" in
+		wp) selector=2 ;; discuz) selector=3 ;; kodbox) selector=4 ;;
+		maccms) selector=5 ;; dujiaoka) selector=6 ;; flarum) selector=7 ;;
+		typecho) selector=8 ;; linkstack) selector=9 ;; php-site) selector=20 ;;
+		redirect-site) selector=22 ;; fd) selector=23 ;; domain-proxy) selector=24 ;;
+		bitwarden-site) selector=25 ;; halo-site) selector=26 ;; ai-prompt) selector=27 ;;
+		loadbalance-site) selector=28 ;; static-site) selector=30 ;; *) return 64 ;;
+	esac
+	local KJ_WEB_NONINTERACTIVE=1 KJ_WEB_HTTP_ACTIVE=1 KJ_WEB_HTTP_PORT="$http_port"
+	local KJ_WEB_PROXY_HOST="" KJ_WEB_PROXY_PORT=""
+	if [ "$selector" = 23 ]; then
+		[ "$#" = 5 ] || return 64
+		KJ_WEB_PROXY_HOST="$4" KJ_WEB_PROXY_PORT="$5"
+	elif [ "$selector" = 22 ]; then
+		[ "$#" = 3 ] || [ "$#" = 4 ] || return 64
+	else
+		[ "$#" = 3 ] || return 64
+	fi
+	# Acquire the same environment lock before checking or creating any artifacts.
+	mkdir -p /run/lock || return 1
+	local http_lock_fd
+	exec {http_lock_fd}>/run/lock/kejilion-web-environment.lock || return 1
+	flock -n "$http_lock_fd" || return 75
+	[ ! -e "/home/web/conf.d/$domain.conf" ] && [ ! -L "/home/web/conf.d/$domain.conf" ] &&
+		[ ! -e "/home/web/html/$domain" ] && [ ! -L "/home/web/html/$domain" ] || return 1
+	kpanel_web_http_port_available "$http_port" || return 1
+	local http_complete=0 http_nginx_was_running
+	http_nginx_was_running=$(docker inspect --format '{{.State.Running}}' nginx 2>/dev/null) || http_nginx_was_running=false
+	trap 'if [ "$http_complete" != 1 ]; then
+		if [ -f "/home/web/conf.d/$domain.conf" ] && [ ! -L "/home/web/conf.d/$domain.conf" ]; then
+			rm -f -- "/home/web/conf.d/$domain.conf"
+		fi
+		if [ "$http_nginx_was_running" = true ] &&
+			[ "$(docker inspect --format "{{.State.Running}}" nginx 2>/dev/null)" != true ]; then
+			docker start nginx >/dev/null 2>&1 || echo "恢复原 Nginx 容器失败，请检查容器日志。" >&2
+		fi
+		docker exec nginx nginx -t >/dev/null 2>&1 && docker exec nginx nginx -s reload >/dev/null 2>&1 ||
+			echo "本次 HTTP 配置已撤回，原 Nginx 重载失败，请检查容器日志。" >&2
+	fi' EXIT
+	trap 'exit 130' INT
+	trap 'exit 143' TERM
+	local KJ_WEB_RECIPE="$selector" KJ_WEB_DOMAIN="$domain" KJ_WEB_REDIRECT_TARGET=""
+	if [ "$selector" = 22 ] && [ "$#" = 4 ]; then
+		KJ_WEB_REDIRECT_TARGET="${4,,}"
+		kpanel_web_redirect_target_valid "$KJ_WEB_REDIRECT_TARGET" &&
+			[ "$KJ_WEB_REDIRECT_TARGET" != "${domain,,}" ] || return 64
+	fi
+	linux_ldnmp || return $?
+	docker exec nginx nginx -t && docker exec nginx nginx -s reload || return 1
+	kpanel_web_http_wait_listener "$http_port" || return 1
+	kpanel_web_http_port_available "$http_port" || return 1
+	open_port "$http_port" || return 1
+	http_complete=1
+)
+
+# Transform the same official template used by the legacy path. Stage the
+# change and preserve the original on conversion failure; never rewrite imports.
+kpanel_web_http_config() (
+	local conf="/home/web/conf.d/${yuming}.conf" candidate mode
+	[ -f "$conf" ] && [ ! -L "$conf" ] || return 1
+	mode=$(docker inspect --format '{{.HostConfig.NetworkMode}}' nginx) || return 1
+	if [ "$mode" != host ]; then
+		docker port nginx "${KJ_WEB_HTTP_PORT}/tcp" 2>/dev/null | grep -Eq ":${KJ_WEB_HTTP_PORT}$" || {
+			echo "HTTP 端口 ${KJ_WEB_HTTP_PORT} 尚未映射到 Nginx 容器，请先配置相同端口映射。" >&2
+			return 1
+		}
+	fi
+	candidate=$(mktemp "${conf}.http.XXXXXX") || return 1
+	trap 'rm -f -- "$candidate"' EXIT
+	awk -v port="$KJ_WEB_HTTP_PORT" '
+		/^[[:space:]]*server[[:space:]]*\{/ {
+			servers++; print; print "    listen " port ";"; print "    listen [::]:" port ";"; next
+		}
+		/^[[:space:]]*if[[:space:]]*\(\$scheme = http\)[[:space:]]*\{/ { redirect=1; next }
+		redirect { if ($0 ~ /^[[:space:]]*}/) redirect=0; next }
+		/^[[:space:]]*(listen|ssl_[a-z_]+|http2|http3|quic_[a-z_]+)[[:space:]]/ { next }
+		/^[[:space:]]*add_header[[:space:]]+(Alt-Svc|Strict-Transport-Security)[[:space:]]/ { next }
+		{
+			sub(/fastcgi_param[[:space:]]+HTTPS[[:space:]]+on;/, "fastcgi_param HTTPS off;")
+			sub(/proxy_set_header[[:space:]]+Host[[:space:]]+\$host;/, "proxy_set_header Host $http_host;")
+			print
+		}
+		END { if (servers != 1 || redirect) exit 1 }
+	' "$conf" > "$candidate" || return 1
+	chmod "$(stat -c '%a' "$conf")" "$candidate" && mv -f -- "$candidate" "$conf"
+)
 
 
 KPANEL_WEB_REDIRECT_PROTOCOL_VERSION="1"
@@ -13201,7 +13466,7 @@ ldnmp_environment_status() {
 	[ -f /home/web/docker-compose.yml ] &&
 		docker compose -f /home/web/docker-compose.yml config -q >/dev/null 2>&1 && compose=true
 	docker exec nginx nginx -t >/dev/null 2>&1 && nginx_ok=true
-	[ -d /home/web/conf.d ] && sites=$(find /home/web/conf.d -maxdepth 1 -type f -name '*.conf' ! -name default.conf ! -name map.conf 2>/dev/null | wc -l)
+	sites=$(ldnmp_site_count)
 	[ -d /home/web/certs ] && certificates=$(find /home/web/certs -maxdepth 1 -type f -name '*_cert.pem' 2>/dev/null | wc -l)
 	if docker inspect mysql >/dev/null 2>&1; then
 		local password
@@ -14240,7 +14505,7 @@ linux_ldnmp() {
 		if kpanel_web_certificate_available; then return 1; fi
 	  fi
 	  certs_status || return 1
-	  kpanel_web_certificate_available || return 1
+	  if ! kpanel_web_http_mode; then kpanel_web_certificate_available || return 1; fi
 
 
 	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf || return 1
@@ -31110,6 +31375,10 @@ else
 			disk_manager
 			;;
 
+		http-site)
+			shift
+			kpanel_run_http_site "$@"
+			;;
 		wp|wordpress)
 			shift
 			ldnmp_wp "$@"
