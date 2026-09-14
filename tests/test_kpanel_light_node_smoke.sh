@@ -112,6 +112,7 @@ printf '%s\n' "${enrollment_body}" | grep -F 'KPANEL_NODE_ENROLLMENT_FINGERPRINT
 printf '%s\n' "${enrollment_body}" | grep -F 'mv -f -- "$KPANEL_NODE_STAGE_CONFIG" "$KPANEL_NODE_CONFIG"' >/dev/null
 printf '%s\n' "${enrollment_body}" | grep -F 'stat -c '\''%u:%g:%a'\'' "$KPANEL_NODE_CONFIG_DIR"' >/dev/null
 printf '%s\n' "${enrollment_body}" | grep -F 'chown root:root "$pending"' >/dev/null
+printf '%s\n' "${enrollment_body}" | grep -F '"$KPANEL_NODE_ENROLLMENT_STAGE"/.batch-enrollment-attempt.tmp-*' >/dev/null
 if printf '%s\n' "${join_body}" | grep -F 'kpanel_node_cleanup_failed_join' >/dev/null; then
 	echo "failed enrollment still removes the installed lightweight node" >&2
 	exit 1
@@ -168,6 +169,8 @@ if grep -F 'light-terminal-v1' "${normalized_script}" >/dev/null; then
 	exit 1
 fi
 grep -F 'was rolled back' "${updater}" >/dev/null
+printf '%s\n' "${join_body}" | grep -F 'kpb1.*) batch_token=true' >/dev/null
+printf '%s\n' "${join_body}" | grep -F -- '--attempt-file "$KPANEL_NODE_STAGE_BATCH_ATTEMPT"' >/dev/null
 if grep -Eq 'curl .*(-k|--insecure)' "${updater}"; then
 	echo "lightweight node updater disables TLS verification" >&2
 	exit 1
@@ -483,19 +486,27 @@ MOCK_UPDATER
 		cat >"${KPANEL_NODE_BINARY}" <<'MOCK_NODE'
 #!/bin/bash
 if [ "${1:-}" = "enroll" ]; then
-	token="" name="" config=""
+	token="" name="" config="" attempt_file=""
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
 			--token) token="$2"; shift 2 ;;
 			--name) name="$2"; shift 2 ;;
 			--config) config="$2"; shift 2 ;;
 			--terminal-config) shift 2 ;;
+			--attempt-file) attempt_file="$2"; shift 2 ;;
 			*) shift ;;
 		esac
 	done
-	printf '%s|%s|%s\n' "$token" "$name" "$config" >>"${KPANEL_TEST_JOIN_ROOT}/enroll.log"
+	printf '%s|%s|%s|%s\n' "$token" "$name" "$config" "$attempt_file" >>"${KPANEL_TEST_JOIN_ROOT}/enroll.log"
 	[ "$token" != "kpl1.rejected-token" ] || exit 1
+	if [ "$token" = "kpb1.response-lost" ] && [ ! -f "${KPANEL_TEST_JOIN_ROOT}/batch-response-lost" ]; then
+		printf '%s\n' pending >"$attempt_file"
+		chmod 0600 "$attempt_file"
+		touch "${KPANEL_TEST_JOIN_ROOT}/batch-response-lost"
+		exit 1
+	fi
 	printf '{"schemaVersion":1,"token":"%s"}\n' "$token" >"$config"
+	[ -z "$attempt_file" ] || rm -f -- "$attempt_file"
 	[ "$token" != "kpl1.partial-token" ] || exit 1
 	printf '%s\n' 'KPanel lightweight node enrolled: a088f5e9fb50e6a698ae16f5c370a16b'
 fi
@@ -567,6 +578,35 @@ MOCK_NODE
 	kpanel_node_join 'kpl1.recovery-token' --name 'Recovery Node'
 	grep -F '"token":"kpl1.recovery-token"' "${KPANEL_NODE_CONFIG}" >/dev/null
 	test "$(grep -c '^kpl1.recovery-token|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
+	kpanel_node_stage_paths
+	batch_pre_attempt_token='kpb1.pre-attempt-interrupted'
+	batch_pre_attempt_fingerprint="$(printf '%s' "$batch_pre_attempt_token" | sha256sum | awk '{print $1}')"
+	mkdir -p "${KPANEL_NODE_ENROLLMENT_STAGE}"
+	printf '%s\n' "$batch_pre_attempt_fingerprint" >"${KPANEL_NODE_STAGE_TOKEN}"
+	chmod 0600 "${KPANEL_NODE_STAGE_TOKEN}"
+	kpanel_node_join "$batch_pre_attempt_token" --name 'Batch Pre-attempt Node'
+	grep -F '"token":"kpb1.pre-attempt-interrupted"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	test "$(grep -c '^kpb1.pre-attempt-interrupted|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
+	if kpanel_node_join 'kpb1.response-lost' --name 'Batch Node'; then
+		echo "batch join unexpectedly succeeded after the injected response loss" >&2
+		exit 1
+	fi
+	test -f "${KPANEL_NODE_ENROLLMENT_STAGE}/batch-enrollment-attempt.json"
+	kpanel_node_join 'kpb1.response-lost' --name 'Batch Node'
+	grep -F '"token":"kpb1.response-lost"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	test "$(grep -c '^kpb1.response-lost|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 2
+	grep -F 'kpb1.response-lost|Batch Node|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log" | grep -F '/batch-enrollment-attempt.json' >/dev/null
+	test ! -e "${KPANEL_NODE_ENROLLMENT_STAGE}"
+	rm -f "${KPANEL_TEST_JOIN_ROOT}/manifest-failed"
+	if kpanel_node_join 'kpb1.manifest-interrupted' --name 'Batch Recovery Node'; then
+		echo "batch join unexpectedly completed despite the injected post-enrollment interruption" >&2
+		exit 1
+	fi
+	grep -F '"token":"kpb1.response-lost"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	kpanel_node_join 'kpb1.manifest-interrupted' --name 'Batch Recovery Node'
+	grep -F '"token":"kpb1.manifest-interrupted"' "${KPANEL_NODE_CONFIG}" >/dev/null
+	test "$(grep -c '^kpb1.manifest-interrupted|' "${KPANEL_TEST_JOIN_ROOT}/enroll.log")" -eq 1
+	test ! -e "${KPANEL_NODE_ENROLLMENT_STAGE}"
 	test "$(sed -n '1p' "${KPANEL_TEST_JOIN_ROOT}/updater-modes.log")" = 'install|1'
 	test "$(sed -n '2p' "${KPANEL_TEST_JOIN_ROOT}/updater-modes.log")" = 'update|1'
 )
