@@ -74,6 +74,23 @@ service_body="$(sed -n "/^\[Unit\]$/,/^KPANEL_NODE_SERVICE$/p" "${normalized_scr
 terminal_service_body="$(sed -n "/^Description=KPanel Lightweight Node Root PTY Broker$/,/^KPANEL_NODE_TERMINAL_SERVICE$/p" "${normalized_script}" | head -n -1)"
 ssh_login_service_body="$(sed -n "/^Description=KPanel SSH Login Event Collector$/,/^KPANEL_NODE_SSH_LOGIN_SERVICE$/p" "${normalized_script}" | head -n -1)"
 timer_body="$(sed -n "/^\[Timer\]$/,/^KPANEL_NODE_UPDATE_TIMER$/p" "${normalized_script}" | head -n -1)"
+openrc_service="${temporary_dir}/kejilion-node.openrc"
+extract_heredoc "\tcat >\"\${KPANEL_NODE_OPENRC_DIR}/kejilion-node\" <<'KPANEL_NODE_OPENRC_SERVICE'" "KPANEL_NODE_OPENRC_SERVICE" "${openrc_service}"
+openrc_terminal_service="${temporary_dir}/kejilion-node-terminal.openrc"
+extract_heredoc "\tcat >\"\${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal\" <<'KPANEL_NODE_OPENRC_TERMINAL_SERVICE'" "KPANEL_NODE_OPENRC_TERMINAL_SERVICE" "${openrc_terminal_service}"
+openrc_ssh_login_service="${temporary_dir}/kejilion-node-ssh-login.openrc"
+extract_heredoc "\tcat >\"\$KPANEL_NODE_SSH_LOGIN_SERVICE\" <<'KPANEL_NODE_OPENRC_SSH_LOGIN_SERVICE'" "KPANEL_NODE_OPENRC_SSH_LOGIN_SERVICE" "${openrc_ssh_login_service}"
+openrc_file_service="${temporary_dir}/kejilion-node-file.openrc"
+extract_heredoc "\tcat >\"\${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file\" <<'KPANEL_NODE_OPENRC_FILE_SERVICE'" "KPANEL_NODE_OPENRC_FILE_SERVICE" "${openrc_file_service}"
+openrc_update="${temporary_dir}/kejilion-node-update.openrc"
+extract_heredoc "\tcat >\"\$KPANEL_NODE_UPDATE_PERIODIC\" <<'KPANEL_NODE_OPENRC_UPDATE'" "KPANEL_NODE_OPENRC_UPDATE" "${openrc_update}"
+adapter_body="$(
+	awk '
+		/^kpanel_node_service_name\(\) \{/ { capture=1 }
+		/^kpanel_node_preflight\(\) \{/ { exit }
+		capture { print }
+	' "${normalized_script}"
+)"
 
 printf '%s\n' "${protocol_body}" | grep -F '[ "${KJ_LIGHT_NODE_PROTOCOL:-}" = "1" ]' >/dev/null
 grep -F 'KJ_LIGHT_NODE_PROTOCOL=1' "${normalized_script}" >/dev/null
@@ -113,7 +130,9 @@ printf '%s\n' "${enrollment_body}" | grep -F 'chmod 0600 "$KPANEL_NODE_STAGE_TER
 grep -F '[ -d /run/systemd/system ]' "${normalized_script}" >/dev/null
 grep -F 'KPANEL_NODE_INSTALL_BIN="$(type -P install 2>/dev/null || true)"' "${normalized_script}" >/dev/null
 grep -F 'KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"' "${normalized_script}" >/dev/null
-grep -F 'KPANEL_NODE_SSH_LOGIN_SERVICE="/etc/systemd/system/kejilion-node-ssh-login.service"' "${normalized_script}" >/dev/null
+grep -F 'KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_SYSTEMD_DIR}/kejilion-node-ssh-login.service"' "${normalized_script}" >/dev/null
+grep -F 'KPANEL_NODE_OPENRC_DIR="/etc/init.d"' "${normalized_script}" >/dev/null
+grep -F 'KPANEL_NODE_UPDATE_PERIODIC="/etc/periodic/hourly/kejilion-node-update"' "${normalized_script}" >/dev/null
 grep -F 'KPANEL_NODE_SSH_LOGIN_EVENT="${KPANEL_NODE_SSH_LOGIN_RUNTIME}/ssh-login.json"' "${normalized_script}" >/dev/null
 grep -F '"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root' "${normalized_script}" >/dev/null
 if grep -F $'\tinstall -d -o root' "${normalized_script}" >/dev/null; then
@@ -135,7 +154,9 @@ grep -F 'SHA256SUMS' "${updater}" >/dev/null
 grep -F 'sha256sum' "${updater}" >/dev/null
 grep -F "grep -Eq '^[^[:space:]]+ light-v1$'" "${updater}" >/dev/null
 grep -F 'ensure_file_service_unit' "${updater}" >/dev/null
-grep -F 'systemctl enable "$file_service"' "${updater}" >/dev/null
+grep -F 'updater_service_action enable "$file_service"' "${updater}" >/dev/null
+grep -F 'update_init_system=openrc' "${updater}" >/dev/null
+grep -F 'rc-service "$service" restart' "${updater}" >/dev/null
 grep -F '[ "${KPANEL_NODE_QUIET:-0}" != "1" ] || quiet=true' "${updater}" >/dev/null
 grep -F 'if [ "$quiet" != true ] && [ -t 2 ]; then' "${updater}" >/dev/null
 checksum_line="$(grep -n '^expected=' "${updater}" | cut -d: -f1)"
@@ -204,6 +225,30 @@ printf '%s\n' "${timer_body}" | grep -Fx 'OnUnitInactiveSec=1h' >/dev/null
 printf '%s\n' "${timer_body}" | grep -Fx 'RandomizedDelaySec=15min' >/dev/null
 printf '%s\n' "${timer_body}" | grep -Fx 'Persistent=true' >/dev/null
 
+for openrc_definition in "${openrc_service}" "${openrc_terminal_service}" "${openrc_ssh_login_service}" "${openrc_file_service}"; do
+	test -s "${openrc_definition}"
+	grep -Fx '#!/sbin/openrc-run' "${openrc_definition}" >/dev/null
+	grep -Fx 'supervisor="supervise-daemon"' "${openrc_definition}" >/dev/null
+	grep -Fx 'stopgroup=true' "${openrc_definition}" >/dev/null
+	grep -Fx 'respawn_max=0' "${openrc_definition}" >/dev/null
+	grep -E '^output_logger="logger -t kejilion-node' "${openrc_definition}" >/dev/null
+	grep -E '^error_logger="logger -t kejilion-node' "${openrc_definition}" >/dev/null
+	if grep -Eq '^(output_log|error_log)=' "${openrc_definition}"; then
+		echo "OpenRC lightweight-node service uses an unbounded private log file" >&2
+		exit 1
+	fi
+done
+grep -Fx 'command_user="kejilion-node:kejilion-node"' "${openrc_service}" >/dev/null
+grep -Fx 'command_user="root:root"' "${openrc_terminal_service}" >/dev/null
+grep -Fx 'command_user="root:kejilion-node"' "${openrc_ssh_login_service}" >/dev/null
+grep -Fx 'command_user="root:root"' "${openrc_file_service}" >/dev/null
+grep -Fx 'no_new_privs=true' "${openrc_service}" >/dev/null
+grep -Fx 'no_new_privs=true' "${openrc_ssh_login_service}" >/dev/null
+grep -Fx 'no_new_privs=true' "${openrc_file_service}" >/dev/null
+grep -Fx 'exec /usr/local/lib/kejilion-node/update.sh update' "${openrc_update}" >/dev/null
+grep -F 'random_value % 901' "${openrc_update}" >/dev/null
+bash -n "${openrc_update}"
+
 # Exercise the systemd-sysusers fallback used by minimal systemd hosts that do
 # not ship useradd. The fake PATH intentionally contains no useradd/adduser.
 fallback_bin="${temporary_dir}/fallback-bin"
@@ -260,6 +305,8 @@ MOCK_SYSTEMCTL
 chmod +x "${systemctl_bin}"
 (
 	export KPANEL_TEST_SYSTEMCTL_LOG="${systemctl_log}"
+	eval "${adapter_body}"
+	KPANEL_NODE_INIT_SYSTEM=systemd
 	KPANEL_NODE_SYSTEMCTL="${systemctl_bin}"
 	KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
 	KPANEL_NODE_TERMINAL_CONFIG="${temporary_dir}/missing-terminal.json"
@@ -288,6 +335,8 @@ capable_terminal_config="${temporary_dir}/terminal.json"
 touch "${capable_terminal_config}"
 (
 	export KPANEL_TEST_SYSTEMCTL_LOG="${capable_systemctl_log}"
+	eval "${adapter_body}"
+	KPANEL_NODE_INIT_SYSTEM=systemd
 	KPANEL_NODE_SYSTEMCTL="${systemctl_bin}"
 	KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
 	KPANEL_NODE_TERMINAL_CONFIG="${capable_terminal_config}"
@@ -311,6 +360,51 @@ is-active kejilion-node-ssh-login.service
 is-active kejilion-node.service
 EXPECTED_CAPABLE_SYSTEMCTL
 cmp "${temporary_dir}/expected-capable-systemctl.log" "${capable_systemctl_log}"
+
+openrc_bin="${temporary_dir}/openrc-bin"
+openrc_log="${temporary_dir}/openrc.log"
+mkdir -p "${openrc_bin}" "${temporary_dir}/periodic/hourly"
+cat >"${openrc_bin}/rc-service" <<'MOCK_RC_SERVICE'
+#!/bin/bash
+printf 'rc-service %s\n' "$*" >>"${KPANEL_TEST_OPENRC_LOG}"
+MOCK_RC_SERVICE
+cat >"${openrc_bin}/rc-update" <<'MOCK_RC_UPDATE'
+#!/bin/bash
+printf 'rc-update %s\n' "$*" >>"${KPANEL_TEST_OPENRC_LOG}"
+MOCK_RC_UPDATE
+cat >"${temporary_dir}/periodic/hourly/kejilion-node-update" <<'MOCK_OPENRC_UPDATE'
+#!/bin/sh
+exit 0
+MOCK_OPENRC_UPDATE
+chmod +x "${openrc_bin}/rc-service" "${openrc_bin}/rc-update" "${temporary_dir}/periodic/hourly/kejilion-node-update"
+(
+	export KPANEL_TEST_OPENRC_LOG="${openrc_log}"
+	eval "${adapter_body}"
+	KPANEL_NODE_INIT_SYSTEM=openrc
+	KPANEL_NODE_RC_SERVICE="${openrc_bin}/rc-service"
+	KPANEL_NODE_RC_UPDATE="${openrc_bin}/rc-update"
+	KPANEL_NODE_OPENRC_DIR="${temporary_dir}/init.d"
+	KPANEL_NODE_UPDATE_PERIODIC="${temporary_dir}/periodic/hourly/kejilion-node-update"
+	KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
+	KPANEL_NODE_TERMINAL_CONFIG="${temporary_dir}/missing-terminal.json"
+	eval "${activate_body}"
+	kpanel_node_activate
+)
+cat >"${temporary_dir}/expected-openrc.log" <<'EXPECTED_OPENRC'
+rc-update del kejilion-node-terminal default
+rc-service kejilion-node-terminal stop
+rc-update add kejilion-node default
+rc-update add kejilion-node-ssh-login default
+rc-update add crond default
+rc-service kejilion-node-ssh-login start
+rc-service kejilion-node start
+rc-service crond status
+rc-update add kejilion-node-file default
+rc-service kejilion-node-file start
+rc-service kejilion-node-ssh-login status
+rc-service kejilion-node status
+EXPECTED_OPENRC
+cmp "${temporary_dir}/expected-openrc.log" "${openrc_log}"
 
 sanitized_name="$(printf '%s' 'edge_node-01 bad@name' | LC_ALL=C tr -cd '[:alnum:]_. -')"
 test "${sanitized_name}" = 'edge_node-01 badname'
@@ -345,6 +439,7 @@ chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
 	export KPANEL_TEST_JOIN_ROOT="${join_runtime}"
 	export KPANEL_TEST_JOIN_SYSTEMCTL_LOG="${join_runtime}/systemctl.log"
 	export KPANEL_TEST_JOIN_FAIL_ONCE="${join_runtime}/failed-once"
+	eval "${adapter_body}"
 	eval "${activate_body}"
 	eval "${enrollment_body}"
 	eval "${join_body}"
@@ -370,6 +465,7 @@ chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
 		KPANEL_NODE_ENROLLMENT_FINGERPRINT="${KPANEL_NODE_CONFIG_DIR}/enrollment-token.sha256"
 		KPANEL_NODE_ENROLLMENT_STAGE="${KPANEL_NODE_CONFIG_DIR}/.enrollment-stage"
 		KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
+		KPANEL_NODE_INIT_SYSTEM=systemd
 		KPANEL_NODE_SYSTEMCTL="${KPANEL_TEST_JOIN_ROOT}/systemctl"
 	}
 	kpanel_node_preflight() {
@@ -408,6 +504,13 @@ MOCK_NODE
 		chmod +x "${KPANEL_NODE_UPDATER}" "${KPANEL_NODE_BINARY}"
 	}
 	kpanel_node_write_units() { :; }
+	# Git for Windows cannot represent the Linux UID boundary in this isolated
+	# fixture. Linux/root ownership and hard-link checks run in the Python suite.
+	kpanel_node_safe_regular_file() { [ -f "$1" ] && [ ! -L "$1" ]; }
+	kpanel_node_clear_enrollment_stage() {
+		kpanel_node_stage_paths
+		[ ! -e "$KPANEL_NODE_ENROLLMENT_STAGE" ] || rm -rf -- "$KPANEL_NODE_ENROLLMENT_STAGE"
+	}
 	chown() { :; }
 	kpanel_node_paths
 	touch "${KPANEL_TEST_JOIN_ROOT}/fail-update"

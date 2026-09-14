@@ -83,13 +83,42 @@ if args[0]=='restart':
 sys.exit(1)
 '''
 
+RC_SERVICE = r'''#!/usr/bin/python3
+import os,pathlib,signal,subprocess,sys
+root=pathlib.Path(os.environ['NODE_TEST_ROOT']); service=sys.argv[1]; action=sys.argv[2]
+with (root/'calls').open('a') as f: f.write('rc-service '+service+' '+action+'\n')
+pidfile=root/'run'/(service+'.pid')
+pid=int(pidfile.read_text()) if pidfile.exists() else 0
+if action=='status':
+ try: os.kill(pid,0); alive=pid>0 and pathlib.Path('/proc/%d/exe'%pid).exists()
+ except OSError: alive=False
+ sys.exit(0 if alive else 3)
+if action=='restart':
+ if pid:
+  try: os.killpg(pid,signal.SIGKILL)
+  except ProcessLookupError: pass
+  pidfile.unlink(missing_ok=True)
+ binary=root/'home/kejilion-node'
+ check=subprocess.run(['/bin/cat',str(root/'config/node.json')],user=65534,group=65534,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+ if service=='kejilion-node' and check.returncode: sys.exit(1)
+ p=subprocess.Popen([str(binary),'-c','while :; do sleep 30; done'],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True,close_fds=True)
+ pidfile.write_text(str(p.pid)); sys.exit(0)
+sys.exit(1)
+'''
+
+RC_UPDATE = r'''#!/usr/bin/python3
+import os,pathlib,sys
+root=pathlib.Path(os.environ['NODE_TEST_ROOT'])
+with (root/'calls').open('a') as f: f.write('rc-update '+' '.join(sys.argv[1:])+'\n')
+'''
+
 @unittest.skipUnless(sys.platform.startswith('linux') and os.geteuid() == 0, 'requires isolated Linux root')
 class NodeUpdater(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='kpanel-update-test-')
         self.root = Path(self.temp.name)
         self.root.chmod(0o755)
-        for name in ('home', 'config', 'units', 'bin'):
+        for name in ('home', 'config', 'units', 'bin', 'systemd-run', 'init', 'run'):
             (self.root / name).mkdir()
         os.chown(self.root / 'config', 0, 65534)
         (self.root / 'config').chmod(0o750)
@@ -113,7 +142,7 @@ class NodeUpdater(unittest.TestCase):
         self.env = {**os.environ, 'NODE_TEST_ROOT': str(self.root), 'PATH': str(self.root / 'bin') + ':' + os.environ['PATH']}
 
     def isolate_paths(self, script):
-        return script.replace('/usr/local/lib/kejilion-node', str(self.root / 'home')).replace('/etc/kejilion-node', str(self.root / 'config')).replace('/etc/systemd/system', str(self.root / 'units')).replace('/run/lock/kejilion-node-update.lock', str(self.root / 'legacy.lock')).replace('/run/kejilion-node-lifecycle.lock', str(self.root / 'lifecycle.lock'))
+        return script.replace('/usr/local/lib/kejilion-node', str(self.root / 'home')).replace('/etc/kejilion-node', str(self.root / 'config')).replace('/etc/systemd/system', str(self.root / 'units')).replace('/etc/init.d', str(self.root / 'init')).replace('/run/systemd/system', str(self.root / 'systemd-run')).replace('/run/openrc', str(self.root / 'openrc-run')).replace('/run/lock/kejilion-node-update.lock', str(self.root / 'legacy.lock')).replace('/run/kejilion-node-lifecycle.lock', str(self.root / 'lifecycle.lock')).replace('/run/kejilion-node', str(self.root / 'run'))
 
     def test_inherited_installer_lock_spans_child_update_and_home_removal(self):
         # The child must use the same lock, but may not release the parent's
@@ -248,6 +277,38 @@ done
         self.assertFalse((self.root / 'home/kejilion-node.previous').exists())
         status = json.loads((self.root / 'config/update-status.json').read_text())
         self.assertEqual((status['state'], status['errorCode']), ('degraded', 'optional_service'))
+
+    def test_openrc_update_restarts_current_binary_and_repairs_file_service(self):
+        (self.root / 'systemd-run').rmdir()
+        (self.root / 'openrc-run').mkdir()
+        for name, content in [
+            ('rc-service', RC_SERVICE),
+            ('rc-update', RC_UPDATE),
+            ('supervise-daemon', '#!/bin/sh\nexit 0\n'),
+            ('logger', '#!/bin/sh\nexit 0\n'),
+        ]:
+            path = self.root / 'bin' / name
+            path.write_text(content)
+            path.chmod(0o755)
+        main_service = self.root / 'init/kejilion-node'
+        main_service.write_text('#!/sbin/openrc-run\n')
+        main_service.chmod(0o755)
+
+        self.run_update()
+
+        file_service = self.root / 'init/kejilion-node-file'
+        self.assertTrue(file_service.exists())
+        self.assertTrue(file_service.stat().st_mode & 0o111)
+        content = file_service.read_text()
+        self.assertIn('supervisor="supervise-daemon"', content)
+        self.assertIn('output_logger="logger -t kejilion-node-file"', content)
+        self.assertNotIn('output_log=', content)
+        self.assertIn('pidfile="%s/kejilion-node-file.pid"' % (self.root / 'run'), content)
+        calls = (self.root / 'calls').read_text()
+        self.assertIn('rc-update add kejilion-node-file default', calls)
+        self.assertIn('rc-service kejilion-node restart', calls)
+        pid = int((self.root / 'run/kejilion-node.pid').read_text())
+        self.assertTrue(os.path.samefile('/proc/%d/exe' % pid, self.binary))
 
     def test_failed_core_rolls_back_and_restart_failure_cannot_be_masked(self):
         before = self.binary.read_bytes()
