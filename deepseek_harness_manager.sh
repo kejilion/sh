@@ -695,7 +695,7 @@ change_model() {
 			[ -n "$candidate" ] || continue
 			idx=$((idx + 1))
 			if [ "$candidate" = "$(current_model)" ]; then
-				echo "  $idx. $candidate ${GREEN}(当前)${NC}"
+				echo -e "  $idx. $candidate ${GREEN}(当前)${NC}"
 			else
 				echo "  $idx. $candidate"
 			fi
