@@ -680,30 +680,85 @@ api_management_menu() {
 }
 
 change_model() {
-	local choice model
+	local choice model models_list count idx candidate api_key
 	dsh_installed || {
 		echo -e "${RED}请先安装 DeepSeek Harness。${NC}"
 		return 1
 	}
-	echo "当前默认模型：$(current_model)"
-	echo "1. deepseek-v4-flash"
-	echo "2. deepseek-v4-pro"
-	echo "3. 手动输入模型 ID"
-	echo "0. 取消"
-	read -r -p "请选择模型: " choice
-	case "$choice" in
-		1) model="deepseek-v4-flash" ;;
-		2) model="deepseek-v4-pro" ;;
-		3) read -r -p "请输入模型 ID: " model ;;
-		0) return 0 ;;
-		*) echo -e "${RED}无效选项。${NC}"; return 1 ;;
-	esac
+	models_list=$(fetch_upstream_models)
+	if [ -n "$models_list" ]; then
+		count=$(printf '%s\n' "$models_list" | sed '/^$/d' | wc -l | tr -d ' ')
+		echo "当前默认模型：$(current_model)"
+		echo "可用模型（$count 个，动态获取自 $DEEPSEEK_BASE_URL）："
+		idx=0
+		printf '%s\n' "$models_list" | while IFS= read -r candidate; do
+			[ -n "$candidate" ] || continue
+			idx=$((idx + 1))
+			if [ "$candidate" = "$(current_model)" ]; then
+				echo "  $idx. $candidate ${GREEN}(当前)${NC}"
+			else
+				echo "  $idx. $candidate"
+			fi
+		done
+		echo "m. 手动输入模型 ID"
+		echo "0. 取消"
+		read -r -p "请选择模型编号 (1-$count/m/0): " choice
+		case "$choice" in
+			0) return 0 ;;
+			m|M)
+				read -r -p "请输入模型 ID: " model
+				;;
+			''|*[!0-9]*)
+				echo -e "${RED}无效选项。${NC}"; return 1 ;;
+			*)
+				if [ "$choice" -lt 1 ] || [ "$choice" -gt "$count" ]; then
+					echo -e "${RED}无效选项。${NC}"; return 1
+				fi
+				model=$(printf '%s\n' "$models_list" | sed -n "${choice}p")
+				;;
+		esac
+	else
+		api_key=$(read_api_key)
+		if [ -z "$api_key" ]; then
+			echo -e "${RED}尚未配置脚本托管的 DeepSeek API Key，无法动态获取模型列表。${NC}"
+		else
+			echo -e "${RED}无法获取模型列表（$DEEPSEEK_BASE_URL/models），请检查网络。${NC}"
+		fi
+		echo "回退为手动输入模式。"
+		echo "当前默认模型：$(current_model)"
+		echo "1. 手动输入模型 ID"
+		echo "0. 取消"
+		read -r -p "请选择 (1/0): " choice
+		case "$choice" in
+			0) return 0 ;;
+			1) read -r -p "请输入模型 ID: " model ;;
+			*) echo -e "${RED}无效选项。${NC}"; return 1 ;;
+		esac
+	fi
+	[ -n "$model" ] || {
+		echo -e "${RED}模型未填写。${NC}"
+		return 1
+	}
 	if ! write_model_patch "$model"; then
 		echo -e "${RED}模型 ID 无效。${NC}"
 		return 1
 	fi
 	restart_if_running
 	echo -e "${GREEN}默认模型已切换为：$model${NC}"
+}
+
+fetch_upstream_models() {
+	local api_key base_url models_list
+	command -v curl >/dev/null 2>&1 || return 1
+	command -v jq >/dev/null 2>&1 || return 1
+	api_key=$(read_api_key)
+	[ -n "$api_key" ] || return 1
+	base_url="${DEEPSEEK_BASE_URL%/}"
+	models_list=$(curl -s -m 20 -H "Authorization: Bearer ${api_key}" "$base_url/models" \
+		| jq -r '.data[]?.id' 2>/dev/null \
+		| sed '/^$/d' | sort -u)
+	[ -n "$models_list" ] || return 1
+	printf '%s\n' "$models_list"
 }
 
 run_headless_task() {
