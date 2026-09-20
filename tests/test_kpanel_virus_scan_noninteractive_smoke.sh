@@ -47,9 +47,19 @@ grep -Fx 'KPANEL_VIRUS_SCAN_STATUS=infected' <<< "$output" >/dev/null || fail "i
 if kpanel_virus_scan_run custom relative/path >/dev/null 2>&1; then
 	fail "relative custom path was accepted"
 fi
+if kpanel_virus_scan_run custom "$temporary/scan-one/../scan-two" >/dev/null 2>&1; then
+	fail "non-canonical custom path was accepted"
+fi
+if kpanel_virus_scan_run custom "$temporary/scan-one" "$temporary/scan-one" >/dev/null 2>&1; then
+	fail "duplicate custom path was accepted"
+fi
 mkdir "$temporary/bad,path"
 if kpanel_virus_scan_run custom "$temporary/bad,path" >/dev/null 2>&1; then
 	fail "comma path was accepted"
+fi
+mkdir "$temporary/"$'bad\tpath'
+if kpanel_virus_scan_run custom "$temporary/"$'bad\tpath' >/dev/null 2>&1; then
+	fail "control character path was accepted"
 fi
 if kpanel_virus_scan_run custom >/dev/null 2>&1; then
 	fail "empty custom path set was accepted"

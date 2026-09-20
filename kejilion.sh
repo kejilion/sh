@@ -8980,7 +8980,10 @@ kpanel_virus_scan_update_db() {
 kpanel_virus_scan_valid_path() {
 	local path="$1"
 	[[ "$path" == /* ]] || return 1
-	[[ "$path" != *','* && "$path" != *$'\n'* && "$path" != *$'\r'* ]] || return 1
+	[[ "$path" != *','* && "$path" != *[[:cntrl:]]* ]] || return 1
+	if [ "$path" != / ]; then
+		[[ "$path" != */ && "$path" != *'//'* && "$path" != *'/./'* && "$path" != *'/../'* && "$path" != */. && "$path" != */.. ]] || return 1
+	fi
 	[ -d "$path" ]
 }
 
@@ -8988,6 +8991,7 @@ kpanel_virus_scan_run() {
 	local mode="$1" rc status index=0 path
 	shift
 	local -a paths=() mounts=() targets=()
+	local -A seen_paths=()
 	case "$mode" in
 		full) [ "$#" -eq 0 ] || return 2; paths=(/) ;;
 		important) [ "$#" -eq 0 ] || return 2; paths=(/etc /var /usr /home /root) ;;
@@ -8996,6 +9000,8 @@ kpanel_virus_scan_run() {
 	esac
 	for path in "${paths[@]}"; do
 		kpanel_virus_scan_valid_path "$path" || return 2
+		[ -z "${seen_paths[$path]:-}" ] || return 2
+		seen_paths["$path"]=1
 		mounts+=(--mount "type=bind,source=$path,target=/mnt/scan/$index,readonly")
 		targets+=("/mnt/scan/$index")
 		index=$((index + 1))
