@@ -29,6 +29,16 @@ docker() {
 }
 kpanel_virus_scan_prepare_log() { :; }
 
+kpanel_virus_scan_update_db || fail "virus database update should succeed"
+grep -Fx '<source=clam_db,target=/var/lib/clamav,volume-nocopy>' "$temporary/docker.args" >/dev/null || fail "freshclam volume copy-up is not disabled"
+grep -Fx '<freshclam>' "$temporary/docker.args" >/dev/null || fail "freshclam entrypoint is missing"
+grep -Fx '<--user>' "$temporary/docker.args" >/dev/null || fail "freshclam user option is missing"
+grep -Fx '<root>' "$temporary/docker.args" >/dev/null || fail "freshclam root user is missing"
+grep -Fx '<SETUID>' "$temporary/docker.args" >/dev/null || fail "freshclam SETUID capability is missing"
+grep -Fx '<SETGID>' "$temporary/docker.args" >/dev/null || fail "freshclam SETGID capability is missing"
+grep -Fx '</var/log/clamav:rw,noexec,nosuid,nodev,size=16m,mode=0750>' "$temporary/docker.args" >/dev/null || fail "freshclam log tmpfs is missing"
+: > "$temporary/docker.args"
+
 mkdir "$temporary/scan-one" "$temporary/scan-two"
 output="$(kpanel_virus_scan_run custom "$temporary/scan-one" "$temporary/scan-two")" || fail "custom scan should succeed"
 grep -Fx 'KPANEL_VIRUS_SCAN_PROTOCOL 1' <<< "$output" >/dev/null || fail "protocol header mismatch"
@@ -37,6 +47,8 @@ grep -F 'target=/mnt/scan/0,readonly' "$temporary/docker.args" >/dev/null || fai
 grep -F 'target=/mnt/scan/1,readonly' "$temporary/docker.args" >/dev/null || fail "second read-only mount is missing"
 grep -Fx '<--network>' "$temporary/docker.args" >/dev/null || fail "scan network isolation is missing"
 grep -Fx '<--read-only>' "$temporary/docker.args" >/dev/null || fail "read-only container is missing"
+grep -Fx '<--entrypoint>' "$temporary/docker.args" >/dev/null || fail "explicit ClamAV entrypoint is missing"
+grep -Fx '<clamscan>' "$temporary/docker.args" >/dev/null || fail "clamscan entrypoint is missing"
 
 docker_rc=1
 output="$(kpanel_virus_scan_run custom "$temporary")"

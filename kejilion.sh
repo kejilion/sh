@@ -8947,7 +8947,8 @@ kpanel_virus_scan_emit() {
 }
 
 kpanel_virus_scan_prepare_log() {
-	local root="/home/docker/clamav" log_dir="$root/log"
+	local root="/home/docker/clamav" log_dir
+	log_dir="$root/log"
 	[ ! -L "$root" ] && { [ ! -e "$root" ] || [ -d "$root" ]; } || return 1
 	[ ! -L "$log_dir" ] && { [ ! -e "$log_dir" ] || [ -d "$log_dir" ]; } || return 1
 	install -d -m 700 "$log_dir" || return 1
@@ -8969,12 +8970,16 @@ kpanel_virus_scan_update_db() {
 	docker volume create clam_db >/dev/null || return 1
 	docker run --rm \
 		--name "kpanel-clamav-update-$$" \
-		--mount source=clam_db,target=/var/lib/clamav \
+		--mount source=clam_db,target=/var/lib/clamav,volume-nocopy \
 		--security-opt no-new-privileges \
 		--cap-drop ALL \
+		--cap-add SETUID \
+		--cap-add SETGID \
 		--pids-limit 256 \
+		--tmpfs /var/log/clamav:rw,noexec,nosuid,nodev,size=16m,mode=0750 \
+		--entrypoint freshclam \
 		clamav/clamav-debian:latest \
-		freshclam
+		--user root
 }
 
 kpanel_virus_scan_valid_path() {
@@ -9019,8 +9024,9 @@ kpanel_virus_scan_run() {
 		"${mounts[@]}" \
 		--mount type=bind,source=/home/docker/clamav/log,target=/var/log/clamav \
 		--tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+		--entrypoint clamscan \
 		clamav/clamav-debian:latest \
-		clamscan -r --infected --log=/var/log/clamav/scan.log "${targets[@]}"
+		-r --infected --log=/var/log/clamav/scan.log "${targets[@]}"
 	rc=$?
 	case "$rc" in
 		0) status=clean ;;
