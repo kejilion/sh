@@ -1561,8 +1561,3 @@ DeepSeek Harness新增WebUI域名访问管理，支持HTTPS、Basic Auth和trust
 选择主菜单17可直接进入KPanel原生应用安装与管理流程，k命令高级用法同步补充 k app kpanel 快捷命令。
 本版为 kejilion.sh 独立发布，不要求同步发布 KPanel 镜像或版本。
 
-------------------------
-2026-09-21   v4.5.11
-移除应用市场的 k 通用加密备份与恢复菜单入口及对应按键分支。
-保留应用数据备份与还原、其他菜单备份入口及 KPanel 共享备份接口。
-本版为 kejilion.sh 独立发布，不涉及 KPanel 版本或部署。
