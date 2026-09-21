@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.10"
+sh_v="4.5.11"
 
 
 gl_hui='\e[37m'
@@ -21278,7 +21278,6 @@ while true; do
 
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
-	  echo "k. 通用加密备份与恢复 (.kpb，与 KPanel 互通)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -24997,9 +24996,6 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 		  ;;
 
-	  k)
-		kpanel_backup_center_dispatch menu apps
-		;;
 	  b)
 	  	clear
 	  	send_stats "全部应用备份"
