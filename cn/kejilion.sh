@@ -15742,6 +15742,112 @@ moltbot_menu() {
 		fi
 	}
 
+	# Resolve references with the installed OpenClaw runtime, without writing keys back.
+	openclaw_api_python() {
+		local api_code
+		api_code=$(cat)
+		{
+			cat <<'PY_SECRETS'
+import json
+import os
+import re
+import shutil
+import signal
+import subprocess
+
+def openclaw_key_is_ref(value):
+    return isinstance(value, dict) or (isinstance(value, str) and bool(
+        re.fullmatch(r'\$\{[A-Z][A-Z0-9_]*\}|\$[A-Z][A-Z0-9_]*', value)))
+
+def openclaw_key_usable(value):
+    return (isinstance(value, str) and bool(value.strip())
+            and not openclaw_key_is_ref(value)
+            and value not in ('__OPENCLAW_REDACTED__', 'secretref-managed')
+            and not value.startswith('oc-sent-')
+            and '\r' not in value and '\n' not in value)
+
+def openclaw_api_request_keys(providers, config, config_path):
+    keys = {}
+    refs = []
+    for name, provider in providers.items():
+        if not isinstance(provider, dict):
+            continue
+        value = provider.get('apiKey')
+        if openclaw_key_is_ref(value):
+            refs.append(name)
+        elif openclaw_key_usable(value):
+            keys[name] = value
+    entry = shutil.which('openclaw') if refs else None
+    node = shutil.which('node') if entry else None
+    if not node:
+        return keys
+    resolver = r'''
+const {createRequire} = require('node:module');
+const {pathToFileURL} = require('node:url');
+const {isDeepStrictEqual} = require('node:util');
+const {readFileSync, realpathSync} = require('node:fs');
+const write = process.stdout.write.bind(process.stdout);
+process.stdout.write = () => true;
+(async () => {
+  const input = JSON.parse(readFileSync(0, 'utf8'));
+  const localRequire = createRequire(pathToFileURL(process.argv[1]));
+  const processes = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/process-runtime')));
+  process.once('SIGTERM', () => processes.killProcessTree(process.pid, {detached: false, force: true}));
+  const sdk = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/secret-input-runtime')));
+  const io = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/config-runtime')));
+  const {snapshot, writeOptions} = await io.readConfigFileSnapshotForWrite({observe: false});
+  if (!snapshot.exists || !snapshot.valid ||
+      realpathSync(snapshot.path) !== realpathSync(process.env.OPENCLAW_CONFIG_PATH) ||
+      !isDeepStrictEqual(JSON.parse(snapshot.raw), input.config)) return;
+  Object.assign(process.env, writeOptions.envSnapshotForRestore);
+  const keys = Object.create(null);
+  for (const name of input.names) {
+    try {
+      const value = io.coerceSecretRef(input.config.models.providers[name].apiKey,
+                                     snapshot.config.secrets?.defaults);
+      if (!value) continue;
+      const result = await sdk.resolveConfiguredSecretInputString({
+        config: snapshot.config, env: process.env, value,
+        path: `models.providers.${name}.apiKey`
+      });
+      if (typeof result.value === 'string') keys[name] = result.value;
+    } catch {}
+  }
+  write(JSON.stringify(keys));
+})().catch(() => { process.exitCode = 1; });
+'''
+    try:
+        with subprocess.Popen(
+            [node, '-e', resolver, os.path.realpath(entry)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, start_new_session=True,
+            env=dict(os.environ, OPENCLAW_CONFIG_PATH=os.path.abspath(config_path))) as process:
+            try:
+                output, _ = process.communicate(json.dumps({'config': config, 'names': refs}), timeout=60)
+            except subprocess.TimeoutExpired:
+                # Let OpenClaw reap its exec providers, including detached children.
+                process.terminate()
+                try:
+                    process.communicate(timeout=5)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.communicate(timeout=5)
+                return keys
+            resolved = json.loads(output) if process.returncode == 0 else {}
+        if isinstance(resolved, dict):
+            keys.update({name: resolved[name] for name in refs
+                         if openclaw_key_usable(resolved.get(name))})
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        pass
+    return keys
+PY_SECRETS
+			printf '\n%s\n' "$api_code"
+		} | python3 - "$@"
+	}
+
 	sync_openclaw_api_models() {
 		local config_file
 		config_file=$(openclaw_get_config_file)
@@ -15750,7 +15856,7 @@ moltbot_menu() {
 
 		install jq curl >/dev/null 2>&1
 
-		python3 - "$config_file" "$ENABLE_STATS" "$sh_v" <<'PY'
+		openclaw_api_python "$config_file" "$ENABLE_STATS" "$sh_v" <<'PY'
 import copy
 import json
 import os
@@ -15796,6 +15902,9 @@ providers = models_cfg.get('providers', {})
 if not isinstance(providers, dict) or not providers:
     print('ℹ️ 未检测到 API providers，跳过模型同步')
     raise SystemExit(0)
+
+request_keys = openclaw_api_request_keys(providers, obj, path)
+skipped_refs = []
 
 agents = work.setdefault('agents', {})
 defaults = agents.setdefault('defaults', {})
@@ -15942,6 +16051,8 @@ def fetch_remote_models_with_retry(name, base_url, api_key, retries=3):
             data = json.loads(payload)
             return data, None, attempt
         except Exception as e:
+            if isinstance(e, urllib.error.HTTPError):
+                e.close()
             last_error = e
             if attempt < retries:
                 time.sleep(1)
@@ -15955,8 +16066,13 @@ for name, provider in list(providers.items()):
 
     api = provider.get('api', '')
     base_url = provider.get('baseUrl')
-    api_key = provider.get('apiKey')
+    api_key = request_keys.get(name)
     model_list = provider.get('models', [])
+
+    if openclaw_key_is_ref(provider.get('apiKey')) and not api_key:
+        skipped_refs.append(name)
+        summary.append(f'⚠️ {name}: OpenClaw 未能解析密钥引用，请检查密钥来源与运行环境；原配置已保留')
+        continue
 
     if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
         summary.append(f'ℹ️ 跳过 {name}: 无 baseUrl/apiKey/models')
@@ -15970,7 +16086,10 @@ for name, provider in list(providers.items()):
 
     data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
     if err is not None:
-        summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
+        summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__})')
+        if openclaw_key_is_ref(provider.get('apiKey')):
+            fatal_errors.append(f'❌ {name}: 密钥引用请求失败，保留密钥引用和配置')
+            continue
         send_stat('OpenClaw API确认介入')
         if prompt_delete_provider(name):
             deleted = delete_provider_and_refs(name)
@@ -16072,12 +16191,12 @@ for name, provider in list(providers.items()):
             summary.append(f'  - {mid}')
 
 
-if fatal_errors:
+if fatal_errors or skipped_refs:
     for line in summary:
         print(line)
     for err in fatal_errors:
         print(err)
-    print('❌ 模型同步失败：存在 provider 同步后无可用模型，已中止写入')
+    print('❌ 模型同步未完成，已中止写入并保留原配置')
     raise SystemExit(2)
 
 if changed:
@@ -16225,12 +16344,16 @@ EOF
 		   --arg api "$DETECTED_API" \
 		   --argjson models "$models_array" \
 		'
-		.models |= (
+		.models.providers[$prov].apiKey as $existing_key
+		| .models |= (
 			(. // { mode: "merge", providers: {} })
 			| .mode = "merge"
 			| .providers[$prov] = {
 				baseUrl: $url,
-				apiKey: $key,
+				apiKey: (if ($existing_key | type) == "object"
+					or (($existing_key | type) == "string" and
+					    ($existing_key | test("^\\$\\{[A-Z][A-Z0-9_]*\\}$|^\\$[A-Z][A-Z0-9_]*$")))
+					then $existing_key else $key end),
 				api: $api,
 				models: $models
 			}
@@ -16342,22 +16465,62 @@ EOF
 		done
 		base_url="${base_url%/}"
 
-		# 3. API Key
-		read -rsp "请输入 API Key (输入不显示): " api_key
-		echo
-		while [[ -z "$api_key" ]]; do
-			echo "❌ API Key 不能为空"
-			read -rsp "请输入 API Key: " api_key
+		# 3. API Key (existing references are retained when replacing a provider)
+		local config_file key_is_ref=false
+		config_file=$(openclaw_get_config_file)
+		if [ -f "$config_file" ] && jq -e --arg prov "$provider_name" '
+			.models.providers[$prov].apiKey
+			| type == "object" or (type == "string" and
+			  test("^\\$\\{[A-Z][A-Z0-9_]*\\}$|^\\$[A-Z][A-Z0-9_]*$"))
+		' "$config_file" >/dev/null 2>&1; then
+			key_is_ref=true
+			api_key=''
+			echo "🔍 正在获取可用模型列表..."
+			models_json=$(openclaw_api_python "$config_file" "$provider_name" "$base_url" <<'PY_MODELS'
+import sys
+import urllib.request
+with open(sys.argv[1], encoding='utf-8') as f:
+    obj = json.load(f)
+name = sys.argv[2]
+provider = obj['models']['providers'][name]
+key = openclaw_api_request_keys({name: provider}, obj, sys.argv[1]).get(name)
+if not key:
+    raise SystemExit(1)
+try:
+    request = urllib.request.Request(sys.argv[3].rstrip('/') + '/models',
+                                     headers={'Authorization': f'Bearer {key}'})
+    with urllib.request.urlopen(request, timeout=10) as response:
+        data = json.load(response)
+    if not isinstance(data, dict) or not isinstance(data.get('data'), list):
+        raise ValueError('invalid models response')
+    print(json.dumps(data))
+except Exception:
+    raise SystemExit(1)
+PY_MODELS
+)
+			if [[ $? -ne 0 || -z "$models_json" ]]; then
+				echo "❌ 密钥引用解析或模型请求失败，请检查密钥来源与运行环境；原配置保持不变"
+				return 1
+			fi
+		else
+			read -rsp "请输入 API Key (输入不显示): " api_key
 			echo
-		done
+			while [[ -z "$api_key" ]]; do
+				echo "❌ API Key 不能为空"
+				read -rsp "请输入 API Key: " api_key
+				echo
+			done
+		fi
 
 		# 4. 不再探测/判断 API 类型；协议由用户自行选择与维护
 
 		# 5. 获取模型列表
-		echo "🔍 正在获取可用模型列表..."
-		models_json=$(curl -s -m 10 \
-			-H "Authorization: Bearer $api_key" \
-			"${base_url}/models")
+		if [ "$key_is_ref" = false ]; then
+			echo "🔍 正在获取可用模型列表..."
+			models_json=$(curl -s -m 10 \
+				-H "Authorization: Bearer $api_key" \
+				"${base_url}/models")
+		fi
 
 		if [[ -n "$models_json" ]]; then
 			available_models=$(echo "$models_json" | grep -oP '"id":\s*"\K[^"]+' | sort)
@@ -16397,7 +16560,11 @@ EOF
 		echo "====== 确认信息 ======"
 		echo "Provider    : $provider_name"
 		echo "Base URL    : $base_url"
-		echo "API Key     : ${api_key:0:8}****"
+		if [ "$key_is_ref" = true ]; then
+			echo "API Key     : 已配置（密钥引用）"
+		else
+			echo "API Key     : ${api_key:0:8}****"
+		fi
 		echo "默认模型    : $default_model"
 		echo "模型总数    : $model_count"
 		echo "======================"
@@ -16406,7 +16573,13 @@ EOF
 
 		install jq
 		if [[ "$confirm" =~ ^[Yy]$ ]]; then
-			add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
+			if [ "$key_is_ref" = true ]; then
+				local models_array
+				models_array=$(build-openclaw-provider-models-json "$provider_name" "$available_models")
+				write-openclaw-provider-models "$provider_name" "$base_url" "" "$models_array"
+			else
+				add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
+			fi
 			add_result=$?
 			finish_msg="✅ 完成！所有 $model_count 个模型已加载"
 		else
@@ -16451,7 +16624,7 @@ openclaw_api_manage_list() {
 				printf '%b\n' "[$idx] ${name} | API: ${base_url} | 协议: ${api_type} | 模型数量: ${gl_huang}${model_count}${gl_bai} | 延迟/状态: ${latency_color}${latency_txt}${gl_bai}"
 				;;
 		esac
-	done < <(python3 - "$config_file" <<-'PY'
+	done < <(openclaw_api_python "$config_file" <<-'PY'
 import json
 import sys
 import time
@@ -16507,8 +16680,10 @@ if not isinstance(providers, dict) or not providers:
     raise SystemExit(0)
 
 print('MSG\t--- 已配置 API 列表 ---')
+request_keys = openclaw_api_request_keys(providers, obj, path)
 
 for idx, name in enumerate(sorted(providers.keys()), start=1):
+    api = ''
     provider = providers.get(name)
     if not isinstance(provider, dict):
         base_url = '-'
@@ -16519,11 +16694,13 @@ for idx, name in enumerate(sorted(providers.keys()), start=1):
         models = provider.get('models') if isinstance(provider.get('models'), list) else []
         model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
         api = provider.get('api', '')
-        api_key = provider.get('apiKey')
+        api_key = request_keys.get(name)
 
         latency_raw = '未检测'
         if api in SUPPORTED_APIS:
-            if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
+            if openclaw_key_is_ref(provider.get('apiKey')) and not api_key:
+                latency_raw = '密钥引用未解析（未检测）'
+            elif isinstance(base_url, str) and base_url != '-' and openclaw_key_usable(api_key):
                 try:
                     latency_raw = ping_models(base_url, api_key)
                 except Exception:
@@ -16571,7 +16748,7 @@ sync-openclaw-provider-interactive() {
 
 	install jq curl >/dev/null 2>&1
 
-	python3 - "$config_file" "$provider_name" <<'PY2'
+	openclaw_api_python "$config_file" "$provider_name" <<'PY2'
 import copy
 import json
 import sys
@@ -16649,6 +16826,8 @@ def fetch_remote_models_with_retry(base_url, api_key, retries=3):
                 payload = resp.read().decode('utf-8', 'ignore')
             return json.loads(payload), None, attempt
         except Exception as e:
+            if isinstance(e, urllib.error.HTTPError):
+                e.close()
             last_error = e
             if attempt < retries:
                 time.sleep(1)
@@ -16657,8 +16836,12 @@ def fetch_remote_models_with_retry(base_url, api_key, retries=3):
 
 api = provider.get('api', '')
 base_url = provider.get('baseUrl')
-api_key = provider.get('apiKey')
+api_key = openclaw_api_request_keys({target: provider}, obj, path).get(target)
 model_list = provider.get('models', [])
+
+if openclaw_key_is_ref(provider.get('apiKey')) and not api_key:
+    print(f'❌ {target}: OpenClaw 未能解析密钥引用，请检查密钥来源与运行环境；原配置已保留')
+    raise SystemExit(6)
 
 if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
     print(f'❌ provider {target} 缺少 baseUrl/apiKey/models，无法执行同步')
@@ -16671,7 +16854,7 @@ protocol_msg = None
 
 data, err, attempts = fetch_remote_models_with_retry(base_url, api_key, retries=3)
 if err is not None:
-    print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
+    print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__})')
     raise SystemExit(4)
 
 if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
@@ -16784,6 +16967,9 @@ PY2
 			;;
 		5)
 			echo "❌ 同步失败：上游模型为空或同步后无可用模型"
+			;;
+		6)
+			echo "❌ 同步未执行：密钥引用未能解析，原配置保持不变"
 			;;
 		*)
 			echo "❌ 同步失败：请检查配置文件结构或日志输出"
