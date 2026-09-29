@@ -186,6 +186,9 @@ ai_cli_main() {
 	}
 	local choice result=0
 	while true; do
+		if [ -t 1 ]; then
+			clear 2>/dev/null || printf '\033[H\033[2J'
+		fi
 		echo
 		echo "========== $AI_CLI_NAME 应用管理 =========="
 		if ai_cli_installed; then
