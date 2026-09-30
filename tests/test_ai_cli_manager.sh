@@ -21,6 +21,7 @@ npm() { return 1; }
 
 curl() {
 	local output
+	printf '%s\n' "$*" >> "$scratch/downloads"
 	while [ "$#" -gt 0 ]; do
 		if [ "$1" = -o ]; then output=$2; shift; fi
 		shift
@@ -54,8 +55,13 @@ make_cli() {
 	cat > "$bin" <<'CLI'
 #!/bin/bash
 printf '%s\n' "$PWD" "$@" >> "$HOME/cli-calls"
+printf '%s\n' "$*" >> "$HOME/cli-actions"
 if [ "${1:-}" = --version ]; then echo 'fixture-cli 1.0.0'; fi
 if [ "${2:-}" = --with-api-key ]; then cat > "$HOME/key-input"; fi
+if [ "${0##*/}" = opencode ] && [ "${1:-}" = uninstall ] && [ "${CLI_STATUS:-0}" = 0 ]; then
+	[ "$*" = 'uninstall --keep-config --keep-data --force' ] || exit 42
+	rm -- "$0"
+fi
 exit "${CLI_STATUS:-0}"
 CLI
 	chmod +x "$bin"
@@ -135,6 +141,72 @@ make_cli "$HOME/.local/bin/claude"
 if ai_cli_uninstall_impl; then exit 1; fi
 test -x "$HOME/.local/bin/claude"
 
+# Recognize the original official OpenCode install without reinstalling it.
+ai_cli_select opencode
+test "$AI_CLI_ID" = 121 && test "$AI_CLI_BIN_DIR" = "$HOME/.opencode/bin"
+mkdir -p "$HOME/.opencode/bin" "$HOME/.config/opencode" "$HOME/.local/share/opencode"
+make_cli "$HOME/.opencode/bin/opencode"
+touch "$HOME/.config/opencode/opencode.json" "$HOME/.local/share/opencode/auth.json" "$HOME/.local/share/opencode/opencode.db"
+ai_cli_install_impl
+grep -qx '121:add' "$scratch/markers"
+ai_cli_is_native_install
+: > "$HOME/cli-actions"
+ai_cli_project <<< "$scratch/project with spaces"
+grep -qx '' "$HOME/cli-actions"
+ai_cli_project resume <<< "$scratch/project with spaces"
+ai_cli_login
+ai_cli_auth status
+ai_cli_auth logout
+ai_cli_update_impl
+for expected in '--continue' 'auth login' 'auth list' 'auth logout' 'upgrade --method curl'; do
+	grep -qx -- "$expected" "$HOME/cli-actions"
+done
+export CLI_STATUS=29
+if ai_cli_update_impl; then exit 1; fi
+if ai_cli_uninstall_impl; then exit 1; fi
+! grep -qx '121:remove' "$scratch/markers"
+test -x "$HOME/.opencode/bin/opencode"
+CLI_STATUS=0
+ai_cli_uninstall <<< n
+test -x "$HOME/.opencode/bin/opencode"
+ai_cli_uninstall <<< y
+test ! -e "$HOME/.opencode/bin/opencode"
+grep -qx '121:remove' "$scratch/markers"
+test -f "$HOME/.config/opencode/opencode.json"
+test -f "$HOME/.local/share/opencode/auth.json" && test -f "$HOME/.local/share/opencode/opencode.db"
+
+# Installation download failures do not write a marker or execute partial data.
+DOWNLOAD_STATUS=22
+marker_count=$(wc -l < "$scratch/markers")
+rm -f "$HOME/installer-ran"
+if ai_cli_install_impl; then exit 1; fi
+test "$(wc -l < "$scratch/markers")" = "$marker_count"
+test ! -e "$HOME/installer-ran"
+grep -q 'https://opencode.ai/install' "$scratch/downloads"
+DOWNLOAD_STATUS=0
+
+# npm installs retain the package-manager update/uninstall path.
+mkdir -p "$HOME/npm/node_modules/opencode-ai/bin"
+make_cli "$HOME/npm/node_modules/opencode-ai/bin/opencode"
+ln -s "$HOME/npm/node_modules/opencode-ai/bin/opencode" "$HOME/.opencode/bin/opencode"
+npm() {
+	printf '%s\n' "$*" >> "$scratch/npm-calls"
+	case "$1" in
+		root) printf '%s\n' "$HOME/npm/node_modules" ;;
+		install) return 0 ;;
+		uninstall) rm "$HOME/.opencode/bin/opencode" ;;
+	esac
+}
+ai_cli_update_impl
+grep -qx 'install -g opencode-ai@latest' "$scratch/npm-calls"
+ai_cli_uninstall_impl
+grep -qx 'uninstall -g opencode-ai' "$scratch/npm-calls"
+
+# Unknown installation is left to its original package manager.
+make_cli "$HOME/.local/bin/opencode"
+if ai_cli_uninstall_impl; then exit 1; fi
+test -x "$HOME/.local/bin/opencode"
+
 # EOF and return preserve failures, so KPanel never records a failed task as done.
 ai_cli_main claude-code <<< $'6\n\n0' > "$scratch/menu" && exit 1
 ai_cli_main claude-code <<< 0
@@ -157,11 +229,11 @@ curl() {
 }
 DOWNLOAD_STATUS=0
 export KJ_APP_INTERACTIVE=1 KJ_APP_NONINTERACTIVE=0
-for selector in 119 claude claude-code 120 codex; do
+for selector in 119 claude claude-code 120 codex 121 opencode OpenCode; do
 	status=0
 	linux_panel "$selector" || status=$?
 	test "$status" = 37
-	case "$selector" in 119|claude|claude-code) expected=claude-code ;; *) expected=codex ;; esac
+	case "$selector" in 119|claude|claude-code) expected=claude-code ;; 120|codex) expected=codex ;; *) expected=opencode ;; esac
 	test "$(cat "$scratch/selected")" = "$expected"
 done
 rm "$scratch/selected"

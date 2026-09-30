@@ -1,15 +1,17 @@
 #!/bin/bash
 # Loaded by kejilion.sh: share its application locks and installation markers.
-# Official installers: https://claude.ai/install.sh https://chatgpt.com/codex/install.sh
+# Official installers: https://claude.ai/install.sh https://chatgpt.com/codex/install.sh https://opencode.ai/install
 
 ai_cli_select() {
 	case "$1" in
 		claude-code) AI_CLI_ID=119; AI_CLI_NAME='Claude Code'; AI_CLI_COMMAND=claude; AI_CLI_PACKAGE='@anthropic-ai/claude-code' ;;
 		codex) AI_CLI_ID=120; AI_CLI_NAME='Codex'; AI_CLI_COMMAND=codex; AI_CLI_PACKAGE='@openai/codex' ;;
+		opencode) AI_CLI_ID=121; AI_CLI_NAME='OpenCode'; AI_CLI_COMMAND=opencode; AI_CLI_PACKAGE='opencode-ai' ;;
 		*) echo '未知的 AI 编程工具。' >&2; return 1 ;;
 	esac
 	AI_CLI_BIN_DIR="$HOME/.local/bin"
 	[ "$AI_CLI_COMMAND" != codex ] || AI_CLI_BIN_DIR="${CODEX_INSTALL_DIR:-$AI_CLI_BIN_DIR}"
+	[ "$AI_CLI_COMMAND" != opencode ] || AI_CLI_BIN_DIR="$HOME/.opencode/bin"
 	export PATH="$PATH:$AI_CLI_BIN_DIR"
 }
 
@@ -38,6 +40,11 @@ ai_cli_native_install() (
 		curl -fLsS --connect-timeout 15 --max-time 120 https://claude.ai/install.sh -o "$installer" || return 1
 		[ -s "$installer" ] && bash -n "$installer" || return 1
 		bash "$installer" stable
+		result=$?
+	elif [ "$AI_CLI_COMMAND" = opencode ]; then
+		curl -fLsS --connect-timeout 15 --max-time 120 https://opencode.ai/install -o "$installer" || return 1
+		[ -s "$installer" ] && bash -n "$installer" || return 1
+		bash "$installer"
 		result=$?
 	else
 		curl -fLsS --connect-timeout 15 --max-time 120 https://chatgpt.com/codex/install.sh -o "$installer" || return 1
@@ -70,6 +77,11 @@ ai_cli_is_npm_install() {
 ai_cli_is_native_install() {
 	local binary target native_root
 	binary=$(command -v "$AI_CLI_COMMAND") || return 1
+	if [ "$AI_CLI_COMMAND" = opencode ]; then
+		# The official installer writes a regular executable, not a launch link.
+		[ "$binary" = "$AI_CLI_BIN_DIR/opencode" ] && [ -f "$binary" ] && [ ! -L "$binary" ]
+		return $?
+	fi
 	[ "$binary" = "$AI_CLI_BIN_DIR/$AI_CLI_COMMAND" ] && [ -L "$binary" ] || return 1
 	target=$(readlink -f "$binary") || return 1
 	if [ "$AI_CLI_COMMAND" = claude ]; then
@@ -89,6 +101,8 @@ ai_cli_update_impl() {
 	elif ai_cli_is_native_install; then
 		if [ "$AI_CLI_COMMAND" = claude ]; then
 			claude update || return 1
+		elif [ "$AI_CLI_COMMAND" = opencode ]; then
+			opencode upgrade --method curl || return 1
 		else
 			ai_cli_native_install || return 1
 		fi
@@ -108,9 +122,13 @@ ai_cli_uninstall_impl() {
 	if ai_cli_is_npm_install; then
 		npm uninstall -g "$AI_CLI_PACKAGE" || return 1
 	elif ai_cli_is_native_install; then
-		# Remove only the official launch link. Keep settings, logins, sessions and
-		# downloaded versions; these may also be used by the desktop/IDE clients.
-		rm -f -- "$AI_CLI_BIN_DIR/$AI_CLI_COMMAND" || return 1
+		if [ "$AI_CLI_COMMAND" = opencode ]; then
+			opencode uninstall --keep-config --keep-data --force || return 1
+		else
+			# Remove only the official launch link. Keep settings, logins, sessions and
+			# downloaded versions; these may also be used by the desktop/IDE clients.
+			rm -f -- "$AI_CLI_BIN_DIR/$AI_CLI_COMMAND" || return 1
+		fi
 	else
 		echo '当前程序由其他方式安装，请使用原包管理器卸载。' >&2
 		return 1
@@ -120,7 +138,7 @@ ai_cli_uninstall_impl() {
 		return 1
 	fi
 	ai_cli_mark remove || return 1
-	echo "$AI_CLI_NAME 命令已卸载；配置、登录、会话和下载缓存已保留。"
+	echo "$AI_CLI_NAME 命令已卸载；配置、登录与会话已保留。"
 }
 
 ai_cli_uninstall() {
@@ -138,7 +156,11 @@ ai_cli_project() (
 	[ -d "$directory" ] || { echo '项目目录不存在。' >&2; return 1; }
 	cd -- "$directory" || return 1
 	if [ "${1:-}" = resume ]; then
-		if [ "$AI_CLI_COMMAND" = claude ]; then claude --resume; else codex resume; fi
+		case "$AI_CLI_COMMAND" in
+			claude) claude --resume ;;
+			codex) codex resume ;;
+			opencode) opencode --continue ;;
+		esac
 	else
 		"$AI_CLI_COMMAND"
 	fi
@@ -148,6 +170,8 @@ ai_cli_login() {
 	ai_cli_require_installed || return 1
 	if [ "$AI_CLI_COMMAND" = claude ]; then
 		claude auth login
+	elif [ "$AI_CLI_COMMAND" = opencode ]; then
+		opencode auth login
 	else
 		local choice key result
 		echo '1. ChatGPT 设备码登录（适合远程服务器）'
@@ -173,6 +197,8 @@ ai_cli_auth() {
 	ai_cli_require_installed || return 1
 	if [ "$AI_CLI_COMMAND" = claude ]; then
 		case "$1" in status) claude auth status ;; logout) claude auth logout ;; esac
+	elif [ "$AI_CLI_COMMAND" = opencode ]; then
+		case "$1" in status) opencode auth list ;; logout) opencode auth logout ;; esac
 	else
 		case "$1" in status) codex login status ;; logout) codex logout ;; esac
 	fi
@@ -200,13 +226,19 @@ ai_cli_main() {
 		echo '终端工具：在此终端中运行，无需端口或常驻服务。'
 		echo '1. 安装 / 识别已有安装'
 		echo '2. 进入项目并启动'
-		echo '3. 登录账号'
-		echo '4. 查看版本与登录状态'
-		echo '5. 恢复项目会话'
+		if [ "$AI_CLI_COMMAND" = opencode ]; then
+			echo '3. 登录模型供应商'
+			echo '4. 查看版本与已登录供应商'
+			echo '5. 恢复项目最近会话'
+		else
+			echo '3. 登录账号'
+			echo '4. 查看版本与登录状态'
+			echo '5. 恢复项目会话'
+		fi
 		echo '6. 更新'
 		echo '7. 查看原生命令帮助'
 		echo '8. 卸载（保留配置和会话）'
-		echo '9. 退出账号'
+		if [ "$AI_CLI_COMMAND" = opencode ]; then echo '9. 退出模型供应商'; else echo '9. 退出账号'; fi
 		echo '0. 返回'
 		read -r -p '请选择: ' choice || return "$result"
 		case "$choice" in
