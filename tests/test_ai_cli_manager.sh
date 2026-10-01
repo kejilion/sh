@@ -8,9 +8,19 @@ mkdir -p "$HOME/.local/bin" "$TMPDIR" "$scratch/project with spaces"
 source "$root/ai_cli_manager.sh"
 
 # Execute callbacks and marker writes without touching host application paths.
-kpanel_app_with_lock() { local resource=$1; shift; printf '%s\n' "$resource" >> "$scratch/locks"; "$@"; }
+kpanel_app_with_lock() {
+	local resource=$1
+	shift
+	printf '%s\n' "$resource" >> "$scratch/locks"
+	if [ "$1" = ai_cli_fix_localhost ]; then "$1" "$scratch/hosts"; else "$@"; fi
+}
 kpanel_app_update_marker() { printf '%s:%s\n' "$app_id" "$1" >> "$scratch/markers"; }
 id() { if [ "${1:-}" = -u ]; then echo 0; else echo root; fi; }
+printf '127.0.0.1 localhost\n' > "$scratch/hosts"
+getent() {
+	[ "$*" = 'hosts localhost' ] || return 1
+	awk '{sub(/#.*/, ""); for(i=2;i<=NF;i++) if($i == "localhost") {print $1, "localhost"; found=1}} END {exit !found}' "$scratch/hosts"
+}
 ai_cli_select codex
 
 if ai_cli_select 'codex; touch bad' >/dev/null 2>&1; then exit 1; fi

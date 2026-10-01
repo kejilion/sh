@@ -32,6 +32,66 @@ ai_cli_mark() {
 	kpanel_app_with_lock markers kpanel_app_update_marker "$1"
 }
 
+# Check the system resolver as well as the static mapping used by native tools.
+ai_cli_localhost_resolves() {
+	local addresses
+	addresses=$(getent hosts localhost 2>/dev/null) || return 1
+	printf '%s\n' "$addresses" | awk '
+		{ if ($1 !~ /^127\./ && $1 != "::1" && $1 != "0:0:0:0:0:0:0:1") bad=1; count++ }
+		END { exit (count == 0 || bad) }'
+}
+
+ai_cli_fix_localhost() {
+	local hosts="${1:-/etc/hosts}" state backup
+	command -v getent >/dev/null 2>&1 || {
+		echo '无法检查 localhost：系统缺少 getent，请先安装系统名称解析工具。' >&2; return 1;
+	}
+	[ -f "$hosts" ] && [ ! -L "$hosts" ] && [ -r "$hosts" ] || {
+		echo "无法安全检查 $hosts，请在主机终端检查 localhost 映射。" >&2; return 1;
+	}
+	if awk '
+		{ sub(/#.*/, ""); for (i=2; i<=NF; i++) if (tolower($i) == "localhost") {
+			found=1
+			if ($1 !~ /^127\.[0-9]+\.[0-9]+\.[0-9]+$/ && $1 != "::1" && $1 != "0:0:0:0:0:0:0:1") bad=1
+		} }
+		END { exit (bad ? 2 : (found ? 0 : 1)) }' "$hosts"; then state=0; else state=$?; fi
+	case "$state" in
+		0)
+			ai_cli_localhost_resolves && return 0
+			echo "localhost 已有回环映射，但系统解析失败；请检查 $hosts 和 /etc/nsswitch.conf。" >&2
+			return 1 ;;
+		1) ;;
+		*) echo "localhost 映射异常，未修改 $hosts；请将 localhost 配置为回环地址。" >&2; return 1 ;;
+	esac
+	[ "$(id -u)" = 0 ] && [ -w "$hosts" ] || {
+		echo "localhost 缺少映射，无法写入 $hosts；请在主机 root 终端补充：127.0.0.1 localhost" >&2
+		return 1
+	}
+	backup=$(mktemp "$hosts.kejilion-backup.XXXXXX") || {
+		echo "无法在 $hosts 所在目录创建备份，未补充 localhost；请在主机 root 终端检查权限。" >&2
+		return 1
+	}
+	if ! cp -p -- "$hosts" "$backup"; then
+		rm -f -- "$backup"
+		echo "备份 $hosts 失败，未补充 localhost 映射。" >&2
+		return 1
+	fi
+	# Append in place: /etc/hosts may be a bind mount and cannot be renamed.
+	if ! printf '\n127.0.0.1 localhost\n' >> "$hosts"; then
+		echo "补充 localhost 映射失败；原文件备份：$backup" >&2
+		return 1
+	fi
+	echo "已补充 127.0.0.1 localhost；原文件备份：$backup"
+	ai_cli_localhost_resolves && return 0
+	echo "localhost 仍无法正常解析，请检查 /etc/nsswitch.conf；原文件备份：$backup" >&2
+	return 1
+}
+
+ai_cli_prepare_environment() {
+	[ "$AI_CLI_COMMAND" = agy ] || return 0
+	kpanel_app_with_lock system ai_cli_fix_localhost
+}
+
 # Download completely before execution; a failed/partial response is never run.
 ai_cli_native_install() (
 	local installer result
@@ -62,6 +122,7 @@ ai_cli_native_install() (
 )
 
 ai_cli_install_impl() {
+	ai_cli_prepare_environment || return 1
 	if ! ai_cli_installed; then
 		ai_cli_native_install || return 1
 	fi
@@ -164,6 +225,7 @@ ai_cli_project() (
 	case "$directory" in '~') directory="$HOME" ;; '~/'*) directory="$HOME/${directory#\~/}" ;; esac
 	[ -d "$directory" ] || { echo '项目目录不存在。' >&2; return 1; }
 	cd -- "$directory" || return 1
+	ai_cli_prepare_environment || return 1
 	if [ "${1:-}" = resume ]; then
 		case "$AI_CLI_COMMAND" in
 			claude) claude --resume ;;
@@ -183,6 +245,7 @@ ai_cli_login() {
 	elif [ "$AI_CLI_COMMAND" = opencode ]; then
 		opencode auth login
 	elif [ "$AI_CLI_COMMAND" = agy ]; then
+		ai_cli_prepare_environment || return 1
 		echo '启动 Antigravity CLI 后按官方界面登录；SSH 环境可在本地浏览器完成授权。'
 		agy
 	else
@@ -215,7 +278,10 @@ ai_cli_auth() {
 	elif [ "$AI_CLI_COMMAND" = agy ]; then
 		case "$1" in
 			status) echo '账号状态在 Antigravity CLI 界面中查看；输入 /usage 查看模型额度。' ;;
-			logout) echo '进入 Antigravity CLI 后输入 /logout 退出账号，再输入 /exit 返回管理菜单。'; agy ;;
+			logout)
+				ai_cli_prepare_environment || return 1
+				echo '进入 Antigravity CLI 后输入 /logout 退出账号，再输入 /exit 返回管理菜单。'
+				agy ;;
 		esac
 	else
 		case "$1" in status) codex login status ;; logout) codex logout ;; esac
