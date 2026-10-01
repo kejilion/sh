@@ -1,12 +1,13 @@
 #!/bin/bash
 # Loaded by kejilion.sh: share its application locks and installation markers.
-# Official installers: https://claude.ai/install.sh https://chatgpt.com/codex/install.sh https://opencode.ai/install
+# Official installers: https://claude.ai/install.sh https://chatgpt.com/codex/install.sh https://opencode.ai/install https://antigravity.google/cli/install.sh
 
 ai_cli_select() {
 	case "$1" in
 		claude-code) AI_CLI_ID=119; AI_CLI_NAME='Claude Code'; AI_CLI_COMMAND=claude; AI_CLI_PACKAGE='@anthropic-ai/claude-code' ;;
 		codex) AI_CLI_ID=120; AI_CLI_NAME='Codex'; AI_CLI_COMMAND=codex; AI_CLI_PACKAGE='@openai/codex' ;;
 		opencode) AI_CLI_ID=121; AI_CLI_NAME='OpenCode'; AI_CLI_COMMAND=opencode; AI_CLI_PACKAGE='opencode-ai' ;;
+		antigravity-cli) AI_CLI_ID=122; AI_CLI_NAME='Antigravity CLI'; AI_CLI_COMMAND=agy; AI_CLI_PACKAGE='' ;;
 		*) echo '未知的 AI 编程工具。' >&2; return 1 ;;
 	esac
 	AI_CLI_BIN_DIR="$HOME/.local/bin"
@@ -41,6 +42,11 @@ ai_cli_native_install() (
 		[ -s "$installer" ] && bash -n "$installer" || return 1
 		bash "$installer" stable
 		result=$?
+	elif [ "$AI_CLI_COMMAND" = agy ]; then
+		curl -fLsS --connect-timeout 15 --max-time 120 https://antigravity.google/cli/install.sh -o "$installer" || return 1
+		[ -s "$installer" ] && bash -n "$installer" || return 1
+		bash "$installer"
+		result=$?
 	elif [ "$AI_CLI_COMMAND" = opencode ]; then
 		curl -fLsS --connect-timeout 15 --max-time 120 https://opencode.ai/install -o "$installer" || return 1
 		[ -s "$installer" ] && bash -n "$installer" || return 1
@@ -67,6 +73,7 @@ ai_cli_install_impl() {
 
 ai_cli_is_npm_install() {
 	local npm_root binary
+	[ -n "$AI_CLI_PACKAGE" ] || return 1
 	command -v npm >/dev/null 2>&1 || return 1
 	npm_root=$(npm root -g 2>/dev/null) || return 1
 	binary=$(readlink -f "$(command -v "$AI_CLI_COMMAND")") || return 1
@@ -77,9 +84,9 @@ ai_cli_is_npm_install() {
 ai_cli_is_native_install() {
 	local binary target native_root
 	binary=$(command -v "$AI_CLI_COMMAND") || return 1
-	if [ "$AI_CLI_COMMAND" = opencode ]; then
+	if [ "$AI_CLI_COMMAND" = opencode ] || [ "$AI_CLI_COMMAND" = agy ]; then
 		# The official installer writes a regular executable, not a launch link.
-		[ "$binary" = "$AI_CLI_BIN_DIR/opencode" ] && [ -f "$binary" ] && [ ! -L "$binary" ]
+		[ "$binary" = "$AI_CLI_BIN_DIR/$AI_CLI_COMMAND" ] && [ -f "$binary" ] && [ ! -L "$binary" ]
 		return $?
 	fi
 	[ "$binary" = "$AI_CLI_BIN_DIR/$AI_CLI_COMMAND" ] && [ -L "$binary" ] || return 1
@@ -103,6 +110,8 @@ ai_cli_update_impl() {
 			claude update || return 1
 		elif [ "$AI_CLI_COMMAND" = opencode ]; then
 			opencode upgrade --method curl || return 1
+		elif [ "$AI_CLI_COMMAND" = agy ]; then
+			agy update || return 1
 		else
 			ai_cli_native_install || return 1
 		fi
@@ -125,7 +134,7 @@ ai_cli_uninstall_impl() {
 		if [ "$AI_CLI_COMMAND" = opencode ]; then
 			opencode uninstall --keep-config --keep-data --force || return 1
 		else
-			# Remove only the official launch link. Keep settings, logins, sessions and
+			# Remove only the official launcher. Keep settings, logins, sessions and
 			# downloaded versions; these may also be used by the desktop/IDE clients.
 			rm -f -- "$AI_CLI_BIN_DIR/$AI_CLI_COMMAND" || return 1
 		fi
@@ -160,6 +169,7 @@ ai_cli_project() (
 			claude) claude --resume ;;
 			codex) codex resume ;;
 			opencode) opencode --continue ;;
+			agy) agy --continue ;;
 		esac
 	else
 		"$AI_CLI_COMMAND"
@@ -172,6 +182,9 @@ ai_cli_login() {
 		claude auth login
 	elif [ "$AI_CLI_COMMAND" = opencode ]; then
 		opencode auth login
+	elif [ "$AI_CLI_COMMAND" = agy ]; then
+		echo '启动 Antigravity CLI 后按官方界面登录；SSH 环境可在本地浏览器完成授权。'
+		agy
 	else
 		local choice key result
 		echo '1. ChatGPT 设备码登录（适合远程服务器）'
@@ -199,6 +212,11 @@ ai_cli_auth() {
 		case "$1" in status) claude auth status ;; logout) claude auth logout ;; esac
 	elif [ "$AI_CLI_COMMAND" = opencode ]; then
 		case "$1" in status) opencode auth list ;; logout) opencode auth logout ;; esac
+	elif [ "$AI_CLI_COMMAND" = agy ]; then
+		case "$1" in
+			status) echo '账号状态在 Antigravity CLI 界面中查看；输入 /usage 查看模型额度。' ;;
+			logout) echo '进入 Antigravity CLI 后输入 /logout 退出账号，再输入 /exit 返回管理菜单。'; agy ;;
+		esac
 	else
 		case "$1" in status) codex login status ;; logout) codex logout ;; esac
 	fi
@@ -226,7 +244,11 @@ ai_cli_main() {
 		echo '终端工具：在此终端中运行，无需端口或常驻服务。'
 		echo '1. 安装 / 识别已有安装'
 		echo '2. 进入项目并启动'
-		if [ "$AI_CLI_COMMAND" = opencode ]; then
+		if [ "$AI_CLI_COMMAND" = agy ]; then
+			echo '3. 进入官方登录界面'
+			echo '4. 查看版本与账号状态说明'
+			echo '5. 恢复项目最近会话'
+		elif [ "$AI_CLI_COMMAND" = opencode ]; then
 			echo '3. 登录模型供应商'
 			echo '4. 查看版本与已登录供应商'
 			echo '5. 恢复项目最近会话'

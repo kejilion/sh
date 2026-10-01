@@ -29,6 +29,7 @@ curl() {
 	cat > "$output" <<'INSTALLER'
 #!/bin/sh
 touch "$HOME/installer-ran"
+[ "${INSTALLER_STATUS:-37}" != 0 ] || [ -z "${AGY_FIXTURE:-}" ] || { mkdir -p "$HOME/.local/bin"; cp "$AGY_FIXTURE" "$HOME/.local/bin/agy"; }
 exit "${INSTALLER_STATUS:-37}"
 INSTALLER
 	return "${DOWNLOAD_STATUS:-0}"
@@ -207,6 +208,57 @@ make_cli "$HOME/.local/bin/opencode"
 if ai_cli_uninstall_impl; then exit 1; fi
 test -x "$HOME/.local/bin/opencode"
 
+# Antigravity uses its official flat binary and native TUI account commands.
+ai_cli_select antigravity-cli
+test "$AI_CLI_ID" = 122 && test "$AI_CLI_COMMAND" = agy
+test -z "$AI_CLI_PACKAGE"
+mkdir -p "$HOME/.gemini/antigravity-cli" "$HOME/.cache/antigravity"
+touch "$HOME/.gemini/antigravity-cli/settings.json" "$HOME/.gemini/antigravity-cli/sessions.json" "$HOME/.cache/antigravity/fixture-cache"
+make_cli "$scratch/agy-template"
+export AGY_FIXTURE="$scratch/agy-template" INSTALLER_STATUS=0
+ai_cli_install_impl
+unset AGY_FIXTURE INSTALLER_STATUS
+grep -qx '122:add' "$scratch/markers"
+grep -q 'https://antigravity.google/cli/install.sh' "$scratch/downloads"
+ai_cli_is_native_install
+! ai_cli_is_npm_install
+: > "$HOME/cli-actions"
+ai_cli_project <<< "$scratch/project with spaces"
+ai_cli_project resume <<< "$scratch/project with spaces"
+ai_cli_login
+ai_cli_auth status > "$scratch/agy-status"
+grep -q '/usage' "$scratch/agy-status"
+ai_cli_auth logout
+ai_cli_update_impl
+grep -qx '' "$HOME/cli-actions"
+grep -qx -- '--continue' "$HOME/cli-actions"
+grep -qx update "$HOME/cli-actions"
+! grep -qE '^(auth|login|logout|/logout)' "$HOME/cli-actions"
+export CLI_STATUS=29
+marker_count=$(wc -l < "$scratch/markers")
+if ai_cli_update_impl; then exit 1; fi
+test "$(wc -l < "$scratch/markers")" = "$marker_count"
+CLI_STATUS=0
+ai_cli_uninstall <<< n
+test -x "$HOME/.local/bin/agy"
+ai_cli_uninstall <<< y
+test ! -e "$HOME/.local/bin/agy"
+grep -qx '122:remove' "$scratch/markers"
+test -f "$HOME/.gemini/antigravity-cli/settings.json"
+test -f "$HOME/.gemini/antigravity-cli/sessions.json" && test -f "$HOME/.cache/antigravity/fixture-cache"
+DOWNLOAD_STATUS=22
+marker_count=$(wc -l < "$scratch/markers")
+rm -f "$HOME/installer-ran"
+if ai_cli_install_impl; then exit 1; fi
+test "$(wc -l < "$scratch/markers")" = "$marker_count"
+test ! -e "$HOME/installer-ran"
+DOWNLOAD_STATUS=0
+# A package-manager or unknown symlink cannot be removed as a native install.
+ln -s "$scratch/agy-template" "$HOME/.local/bin/agy"
+if ai_cli_uninstall_impl; then exit 1; fi
+test -L "$HOME/.local/bin/agy"
+rm "$HOME/.local/bin/agy"
+
 # EOF and return preserve failures, so KPanel never records a failed task as done.
 ai_cli_main claude-code <<< $'6\n\n0' > "$scratch/menu" && exit 1
 ai_cli_main claude-code <<< 0
@@ -229,11 +281,11 @@ curl() {
 }
 DOWNLOAD_STATUS=0
 export KJ_APP_INTERACTIVE=1 KJ_APP_NONINTERACTIVE=0
-for selector in 119 claude claude-code 120 codex 121 opencode OpenCode; do
+for selector in 119 claude claude-code 120 codex 121 opencode OpenCode 122 antigravity-cli agy; do
 	status=0
 	linux_panel "$selector" || status=$?
 	test "$status" = 37
-	case "$selector" in 119|claude|claude-code) expected=claude-code ;; 120|codex) expected=codex ;; *) expected=opencode ;; esac
+	case "$selector" in 119|claude|claude-code) expected=claude-code ;; 120|codex) expected=codex ;; 121|opencode|OpenCode) expected=opencode ;; *) expected=antigravity-cli ;; esac
 	test "$(cat "$scratch/selected")" = "$expected"
 done
 rm "$scratch/selected"
