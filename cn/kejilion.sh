@@ -11806,6 +11806,8 @@ kpanel_node_paths() {
 	KPANEL_NODE_SYSTEMD_DIR="/etc/systemd/system"
 	KPANEL_NODE_OPENRC_DIR="/etc/init.d"
 	KPANEL_NODE_UPDATE_PERIODIC="/etc/periodic/hourly/kejilion-node-update"
+	KPANEL_NODE_UPDATE_CRON="${KPANEL_NODE_HOME}/update-cron.sh"
+	KPANEL_NODE_CRONTAB="/etc/crontabs/root"
 	KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_SYSTEMD_DIR}/kejilion-node-ssh-login.service"
 	KPANEL_NODE_SSH_LOGIN_RUNTIME="/run/kejilion-node-ssh"
 	KPANEL_NODE_SSH_LOGIN_EVENT="${KPANEL_NODE_SSH_LOGIN_RUNTIME}/ssh-login.json"
@@ -11821,7 +11823,52 @@ kpanel_node_paths() {
 	KPANEL_NODE_INIT_SYSTEM=""
 }
 
+kpanel_node_procd_helpers_template() {
+	cat <<'KPANEL_NODE_PROCD_HELPERS'
+# Shared installer/updater checks. No distribution names or writable config
+# select the privileged service backend.
+kpanel_node_procd_trusted_path() {
+	local path="$1" mode
+	[ ! -L "$path" ] && { [ -f "$path" ] || [ -d "$path" ]; } || return 1
+	[ "$(stat -c '%u' "$path")" = 0 ] || return 1
+	mode="$(stat -c '%a' "$path")" || return 1
+	[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [ $((8#$mode & 8#022)) -eq 0 ]
+}
+kpanel_node_procd_capable() {
+	local path command_path
+	[ "$(cat /proc/1/comm 2>/dev/null)" = procd ] || return 1
+	for path in /etc /etc/init.d /etc/rc.common /lib /lib/functions /lib/functions/procd.sh; do
+		kpanel_node_procd_trusted_path "$path" || return 1
+	done
+	[ -f /etc/rc.common ] && [ -f /lib/functions/procd.sh ] || return 1
+	for path in ubus jsonfilter; do
+		command_path="$(type -P "$path")" || return 1
+		command_path="$(readlink -f "$command_path")" || return 1
+		[ -x "$command_path" ] && kpanel_node_procd_trusted_path "$command_path" || return 1
+	done
+	ubus -t 5 call service list '{"name":"kejilion-node"}' >/dev/null 2>&1
+}
+kpanel_node_procd_pid() {
+	local service="${1%.service}" data running pid
+	case "$service" in kejilion-node|kejilion-node-terminal|kejilion-node-ssh-login|kejilion-node-file) ;; *) return 1 ;; esac
+	data="$(ubus -t 5 call service list "{\"name\":\"${service}\"}" 2>/dev/null)" || return 1
+	running="$(printf '%s' "$data" | jsonfilter -e "@['${service}'].instances.main.running")" || return 1
+	[ "$running" = true ] || return 1
+	pid="$(printf '%s' "$data" | jsonfilter -e "@['${service}'].instances.main.pid")" || return 1
+	[[ "$pid" =~ ^[1-9][0-9]*$ ]] && [ -e "/proc/${pid}/exe" ] || return 1
+	printf '%s\n' "$pid"
+}
+KPANEL_NODE_PROCD_HELPERS
+}
+
 kpanel_node_detect_init_system() {
+	source <(kpanel_node_procd_helpers_template)
+	if [ "$(cat /proc/1/comm 2>/dev/null)" = procd ]; then
+		kpanel_node_procd_capable || { echo "procd 依赖缺失或不可信：需要 rc.common、procd.sh、ubus、jsonfilter 和可用的 service 总线。" >&2; return 1; }
+		KPANEL_NODE_INIT_SYSTEM=procd
+		KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_OPENRC_DIR}/kejilion-node-ssh-login"
+		return 0
+	fi
 	if [ -d /run/systemd/system ] && [ -n "$KPANEL_NODE_SYSTEMCTL" ] && [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
 		KPANEL_NODE_INIT_SYSTEM=systemd
 		KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_SYSTEMD_DIR}/kejilion-node-ssh-login.service"
@@ -11835,13 +11882,13 @@ kpanel_node_detect_init_system() {
 		KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_OPENRC_DIR}/kejilion-node-ssh-login"
 		return 0
 	fi
-	echo "当前系统需要运行 systemd 或 OpenRC，无法安装 KPanel 轻量节点。" >&2
+	echo "当前系统需要运行 systemd、OpenRC 或原生 procd（需可信的 rc.common/procd.sh、ubus、jsonfilter），无法安装 KPanel 轻量节点。" >&2
 	return 1
 }
 
 kpanel_node_service_name() {
 	case "$KPANEL_NODE_INIT_SYSTEM" in
-		openrc) printf '%s\n' "${1%.service}" ;;
+		openrc|procd) printf '%s\n' "${1%.service}" ;;
 		*) printf '%s\n' "$1" ;;
 	esac
 }
@@ -11852,12 +11899,13 @@ kpanel_node_service_exists() {
 	case "$KPANEL_NODE_INIT_SYSTEM" in
 		systemd) "$KPANEL_NODE_SYSTEMCTL" cat "$service" >/dev/null 2>&1 ;;
 		openrc) [ -f "${KPANEL_NODE_OPENRC_DIR}/${service}" ] && [ ! -L "${KPANEL_NODE_OPENRC_DIR}/${service}" ] && [ -x "${KPANEL_NODE_OPENRC_DIR}/${service}" ] ;;
+		procd) [ -x "${KPANEL_NODE_OPENRC_DIR}/${service}" ] && kpanel_node_procd_trusted_path "${KPANEL_NODE_OPENRC_DIR}/${service}" ;;
 		*) return 1 ;;
 	esac
 }
 
 kpanel_node_service_action() {
-	local action="$1" service
+	local action="$1" service pid
 	service="$(kpanel_node_service_name "$2")" || return 1
 	case "$KPANEL_NODE_INIT_SYSTEM" in
 		systemd) "$KPANEL_NODE_SYSTEMCTL" "$action" "$service" ;;
@@ -11870,6 +11918,27 @@ kpanel_node_service_action() {
 				*) return 2 ;;
 			esac
 			;;
+		procd)
+			kpanel_node_service_exists "$service" || return 1
+			case "$action" in
+				is-active)
+					if [ "$service" = cron ]; then
+						ubus -t 5 call service list '{"name":"cron"}' | jsonfilter -e "@.cron.instances.*.running" | grep -qx true
+					else
+						pid="$(kpanel_node_procd_pid "$service")" && [ "/proc/${pid}/exe" -ef "$KPANEL_NODE_BINARY" ]
+					fi
+					;;
+				status)
+					if kpanel_node_service_action is-active "$service"; then
+						printf '%s: running\n' "$service"
+					else
+						printf '%s: inactive or unavailable\n' "$service"; return 3
+					fi
+					;;
+				enable|disable|start|stop|restart) "${KPANEL_NODE_OPENRC_DIR}/${service}" "$action" ;;
+				*) return 2 ;;
+			esac
+			;;
 		*) return 1 ;;
 	esac
 }
@@ -11877,9 +11946,36 @@ kpanel_node_service_action() {
 kpanel_node_service_reload_manager() {
 	case "$KPANEL_NODE_INIT_SYSTEM" in
 		systemd) "$KPANEL_NODE_SYSTEMCTL" daemon-reload ;;
-		openrc) return 0 ;;
+		openrc|procd) return 0 ;;
 		*) return 1 ;;
 	esac
+}
+
+kpanel_node_procd_cron_line() {
+	printf '%s\n' '17 * * * * /usr/local/lib/kejilion-node/update-cron.sh # KPanel lightweight node updater'
+}
+
+kpanel_node_procd_cron_write() {
+	local action="$1" directory="${KPANEL_NODE_CRONTAB%/*}" temporary line
+	line="$(kpanel_node_procd_cron_line)"
+	if [ "$action" = remove ] && [ ! -e "$KPANEL_NODE_CRONTAB" ] && [ ! -L "$KPANEL_NODE_CRONTAB" ]; then return 0; fi
+	if [ ! -e "$directory" ] && [ ! -L "$directory" ]; then mkdir -m 0700 "$directory" || return 1; fi
+	[ -d "$directory" ] && kpanel_node_procd_trusted_path "$directory" || return 1
+	if [ -e "$KPANEL_NODE_CRONTAB" ] || [ -L "$KPANEL_NODE_CRONTAB" ]; then
+		[ -f "$KPANEL_NODE_CRONTAB" ] && kpanel_node_procd_trusted_path "$KPANEL_NODE_CRONTAB" &&
+			[ "$(stat -c '%h' "$KPANEL_NODE_CRONTAB")" = 1 ] || return 1
+	fi
+	if [ "$action" = remove ] && ! grep -Fxq "$line" "$KPANEL_NODE_CRONTAB"; then return 0; fi
+	temporary="$(mktemp "${directory}/.kejilion-node-cron.XXXXXX")" || return 1
+	if [ -f "$KPANEL_NODE_CRONTAB" ]; then
+		awk -v managed="$line" '$0 != managed { print }' "$KPANEL_NODE_CRONTAB" >"$temporary" || { rm -f -- "$temporary"; return 1; }
+	fi
+	if [ "$action" = add ]; then printf '%s\n' "$line" >>"$temporary" || { rm -f -- "$temporary"; return 1; }; fi
+	# BusyBox crond reloads changed crontab directories at its next minute tick.
+	# Atomic replacement preserves every unrelated job and never stops shared cron.
+	if ! chown root:root "$temporary" || ! chmod 0600 "$temporary" || ! mv -f -- "$temporary" "$KPANEL_NODE_CRONTAB"; then
+		rm -f -- "$temporary"; return 1
+	fi
 }
 
 kpanel_node_update_schedule_enable() {
@@ -11888,6 +11984,10 @@ kpanel_node_update_schedule_enable() {
 		openrc)
 			[ -f "$KPANEL_NODE_UPDATE_PERIODIC" ] && [ ! -L "$KPANEL_NODE_UPDATE_PERIODIC" ] && [ -x "$KPANEL_NODE_UPDATE_PERIODIC" ] || return 1
 			kpanel_node_service_action enable crond
+			;;
+		procd)
+			[ -x "$KPANEL_NODE_UPDATE_CRON" ] && kpanel_node_procd_trusted_path "$KPANEL_NODE_UPDATE_CRON" || return 1
+			kpanel_node_procd_cron_write add && kpanel_node_service_action enable cron
 			;;
 		*) return 1 ;;
 	esac
@@ -11899,6 +11999,7 @@ kpanel_node_update_schedule_start() {
 		openrc)
 			kpanel_node_service_action is-active crond || kpanel_node_service_action start crond
 			;;
+		procd) kpanel_node_service_action is-active cron || kpanel_node_service_action start cron ;;
 		*) return 1 ;;
 	esac
 }
@@ -11908,7 +12009,10 @@ kpanel_node_update_schedule_stop() {
 }
 
 kpanel_node_update_schedule_disable() {
-	[ "$KPANEL_NODE_INIT_SYSTEM" != systemd ] || kpanel_node_service_action disable kejilion-node-update.timer
+	case "$KPANEL_NODE_INIT_SYSTEM" in
+		systemd) kpanel_node_service_action disable kejilion-node-update.timer ;;
+		procd) kpanel_node_procd_cron_write remove ;;
+	esac
 }
 
 kpanel_node_preflight() {
@@ -11916,7 +12020,7 @@ kpanel_node_preflight() {
 		echo "KPanel 轻量节点安装需要 root 权限。" >&2
 		return 1
 	}
-	for command_name in curl sha256sum mktemp flock; do
+	for command_name in bash curl sha256sum mktemp flock stat readlink awk grep sed cmp od tr; do
 		command -v "$command_name" >/dev/null 2>&1 || {
 			echo "缺少必要命令: ${command_name}" >&2
 			return 1
@@ -11941,11 +12045,20 @@ kpanel_node_preflight() {
 			return 1
 		}
 	fi
+	if [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
+		[ -x "${KPANEL_NODE_OPENRC_DIR}/cron" ] && kpanel_node_procd_trusted_path "${KPANEL_NODE_OPENRC_DIR}/cron" || {
+			echo "procd 系统缺少可信的 /etc/init.d/cron，无法启用安全自动更新。" >&2
+			return 1
+		}
+		for command_name in ubus jsonfilter logread; do
+			command -v "$command_name" >/dev/null 2>&1 || { echo "缺少必要命令: ${command_name}" >&2; return 1; }
+		done
+	fi
 	case "$(uname -m)" in
 		x86_64|amd64) KPANEL_NODE_ARCH="amd64" ;;
 		aarch64|arm64) KPANEL_NODE_ARCH="arm64" ;;
 		*)
-			echo "当前 CPU 架构暂不支持 KPanel 轻量节点。" >&2
+			echo "当前 CPU 架构暂不支持 KPanel 轻量节点（支持 amd64/x86_64、arm64/aarch64）。" >&2
 			return 1
 			;;
 	esac
@@ -11954,7 +12067,8 @@ kpanel_node_preflight() {
 kpanel_node_ensure_account() {
 	local nologin_shell="/usr/sbin/nologin" sysusers_config=""
 	if id kejilion-node >/dev/null 2>&1; then
-		[ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] || {
+		[ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] &&
+			[ "$(id -u kejilion-node)" != 0 ] && [ "$(id -g kejilion-node)" != 0 ] || {
 			echo "现有 kejilion-node 账户的主组不安全，拒绝继续。" >&2
 			return 1
 		}
@@ -11964,7 +12078,7 @@ kpanel_node_ensure_account() {
 	[ -x "$nologin_shell" ] || nologin_shell="/bin/false"
 
 	if command -v useradd >/dev/null 2>&1; then
-		useradd --system --no-create-home --home-dir /nonexistent --shell "$nologin_shell" kejilion-node || return 1
+		useradd --system --user-group --no-create-home --home-dir /nonexistent --shell "$nologin_shell" kejilion-node || return 1
 	elif command -v systemd-sysusers >/dev/null 2>&1; then
 		sysusers_config="$(mktemp /tmp/kejilion-node-sysusers.XXXXXX)" || return 1
 		printf 'u kejilion-node - "KPanel Lightweight Monitoring Node" /nonexistent %s\n' "$nologin_shell" >"$sysusers_config"
@@ -11984,7 +12098,8 @@ kpanel_node_ensure_account() {
 		adduser -S -D -H -h /nonexistent -s "$nologin_shell" -G kejilion-node kejilion-node || return 1
 	fi
 
-	id kejilion-node >/dev/null 2>&1 && [ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] || {
+	id kejilion-node >/dev/null 2>&1 && [ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] &&
+		[ "$(id -u kejilion-node)" != 0 ] && [ "$(id -g kejilion-node)" != 0 ] || {
 		echo "KPanel 轻量节点低权限账户创建失败。" >&2
 		return 1
 	}
@@ -12084,8 +12199,9 @@ kpanel_node_write_updater() {
 	updater_temporary="$(mktemp "${KPANEL_NODE_HOME}/.update.sh.XXXXXX")" || return 1
 	printf '#!/bin/bash\n' >"$updater_temporary" || return 1
 	kpanel_node_lock_template >>"$updater_temporary" || return 1
+	kpanel_node_procd_helpers_template >>"$updater_temporary" || return 1
 	cat >>"$updater_temporary" <<'KPANEL_NODE_UPDATE'
-# KPANEL_NODE_RUNTIME_GENERATION=4
+# KPANEL_NODE_RUNTIME_GENERATION=5
 set -euo pipefail
 
 mode="${1:-update}"
@@ -12189,13 +12305,16 @@ release_base="${release_url%/SHA256SUMS}"
 
 file_service="kejilion-node-file.service"
 update_init_system=""
-if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
+if [ "$(cat /proc/1/comm 2>/dev/null)" = procd ]; then
+	kpanel_node_procd_capable || { echo "KPanel lightweight node requires a running, trusted procd service manager with ubus/jsonfilter" >&2; exit 1; }
+	update_init_system=procd
+elif [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
 	update_init_system=systemd
 elif [ -d /run/openrc ] && command -v rc-service >/dev/null 2>&1 && command -v rc-update >/dev/null 2>&1 &&
 	command -v supervise-daemon >/dev/null 2>&1 && command -v logger >/dev/null 2>&1; then
 	update_init_system=openrc
 else
-	echo "KPanel lightweight node requires a running systemd or OpenRC service manager" >&2
+	echo "KPanel lightweight node requires a running systemd, OpenRC or native procd service manager" >&2
 	exit 1
 fi
 if [ "$update_init_system" = systemd ]; then
@@ -12207,7 +12326,7 @@ file_service_definition_changed=false
 
 updater_service_name() {
 	case "$update_init_system" in
-		openrc) printf '%s\n' "${1%.service}" ;;
+		openrc|procd) printf '%s\n' "${1%.service}" ;;
 		*) printf '%s\n' "$1" ;;
 	esac
 }
@@ -12218,6 +12337,7 @@ updater_service_exists() {
 	case "$update_init_system" in
 		systemd) systemctl cat "$service" >/dev/null 2>&1 ;;
 		openrc) [ -f "/etc/init.d/${service}" ] && [ ! -L "/etc/init.d/${service}" ] && [ -x "/etc/init.d/${service}" ] ;;
+		procd) [ -x "/etc/init.d/${service}" ] && kpanel_node_procd_trusted_path "/etc/init.d/${service}" ;;
 	esac
 }
 
@@ -12234,6 +12354,14 @@ updater_service_action() {
 				*) return 2 ;;
 			esac
 			;;
+		procd)
+			updater_service_exists "$service" || return 1
+			case "$action" in
+				is-active) kpanel_node_procd_pid "$service" >/dev/null ;;
+				enable|restart) "/etc/init.d/${service}" "$action" ;;
+				*) return 2 ;;
+			esac
+			;;
 	esac
 }
 
@@ -12244,6 +12372,42 @@ ensure_file_service_unit() {
 		[ $(( 8#$(stat -c '%a' "$file_service_path") & 8#022 )) -eq 0 ] || return 1
 	fi
 	local template legacy_template="" unit_temporary
+	if [ "$update_init_system" = procd ]; then
+		template="${temporary_dir}/file.procd"
+		cat >"$template" <<'KPANEL_NODE_FILE_PROCD'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json'
+	procd_set_param user root
+	procd_set_param group root
+	procd_set_param respawn 3600 15 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
+	procd_close_instance
+}
+KPANEL_NODE_FILE_PROCD
+		if [ -f "$file_service_path" ]; then
+			cmp -s "$file_service_path" "$template" && return 0
+			echo "KPanel file service has custom settings; retaining the existing procd service" >&2
+			return 0
+		fi
+		unit_temporary="$(mktemp "${file_service_path}.XXXXXX")" || return 1
+		if ! install -o root -g root -m 0755 "$template" "$unit_temporary" || ! mv -f -- "$unit_temporary" "$file_service_path"; then
+			rm -f -- "$unit_temporary"
+			return 1
+		fi
+		file_service_definition_changed=true
+		return 0
+	fi
 	if [ "$update_init_system" = openrc ]; then
 		template="${temporary_dir}/file.openrc"
 		cat >"$template" <<'KPANEL_NODE_FILE_OPENRC'
@@ -12352,6 +12516,7 @@ service_running_current() {
 	case "$update_init_system" in
 		systemd) pid="$(systemctl show "$service" --property=MainPID --value)" || return 1 ;;
 		openrc) pid="$(cat "/run/kejilion-node/$(updater_service_name "$service").pid" 2>/dev/null)" || return 1 ;;
+		procd) pid="$(kpanel_node_procd_pid "$service")" || return 1 ;;
 	esac
 	[[ "$pid" =~ ^[1-9][0-9]*$ ]] && [ "/proc/${pid}/exe" -ef "$binary_path" ]
 }
@@ -12629,7 +12794,139 @@ KPANEL_NODE_OPENRC_UPDATE
 		"$KPANEL_NODE_UPDATE_PERIODIC"
 }
 
+kpanel_node_write_procd_units() {
+	local path
+	# Every privileged destination is fixed and in a root-owned, non-writable
+	# directory. Reject linked or custom-owned files before opening a heredoc.
+	for path in "$KPANEL_NODE_OPENRC_DIR" "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"; do
+		[ -d "$path" ] && kpanel_node_procd_trusted_path "$path" || return 1
+	done
+	for path in "${KPANEL_NODE_OPENRC_DIR}/kejilion-node" "${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" \
+		"$KPANEL_NODE_SSH_LOGIN_SERVICE" "${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" "$KPANEL_NODE_UPDATE_CRON"; do
+		if [ -e "$path" ] || [ -L "$path" ]; then
+			[ -f "$path" ] && kpanel_node_procd_trusted_path "$path" && [ "$(stat -c '%h' "$path")" = 1 ] || return 1
+		fi
+	done
+	path="${KPANEL_NODE_CONFIG_DIR}/state"
+	[ ! -L "$path" ] || return 1
+	if [ -e "$path" ]; then
+		[ -d "$path" ] && [ "$(stat -c '%u:%g:%a' "$path")" = 0:0:700 ] || return 1
+	else
+		"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root -m 0700 "$path" || return 1
+	fi
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node" <<'KPANEL_NODE_PROCD_SERVICE'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node run --config /etc/kejilion-node/node.json'
+	procd_set_param user kejilion-node
+	procd_set_param group kejilion-node
+	procd_set_param respawn 3600 15 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
+	procd_close_instance
+}
+KPANEL_NODE_PROCD_SERVICE
+
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" <<'KPANEL_NODE_PROCD_TERMINAL_SERVICE'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	[ -f /etc/kejilion-node/terminal.json ] || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node terminal-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json'
+	procd_set_param user root
+	procd_set_param group root
+	procd_set_param respawn 3600 5 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+KPANEL_NODE_PROCD_TERMINAL_SERVICE
+
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-ssh-login" <<'KPANEL_NODE_PROCD_SSH_LOGIN_SERVICE'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ ! -L /run/kejilion-node-ssh ] || return 1
+	if [ -e /run/kejilion-node-ssh ]; then
+		[ -d /run/kejilion-node-ssh ] && [ "$(stat -c '%u:%a' /run/kejilion-node-ssh)" = 0:750 ] || return 1
+	fi
+	command install -d -o root -g kejilion-node -m 0750 /run/kejilion-node-ssh || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 027; exec /usr/local/lib/kejilion-node/kejilion-node ssh-login-broker --output /run/kejilion-node-ssh/ssh-login.json'
+	procd_set_param user root
+	procd_set_param group kejilion-node
+	procd_set_param respawn 3600 15 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
+	procd_close_instance
+}
+KPANEL_NODE_PROCD_SSH_LOGIN_SERVICE
+
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" <<'KPANEL_NODE_PROCD_FILE_SERVICE'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json'
+	procd_set_param user root
+	procd_set_param group root
+	procd_set_param respawn 3600 15 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
+	procd_close_instance
+}
+KPANEL_NODE_PROCD_FILE_SERVICE
+
+	cat >"$KPANEL_NODE_UPDATE_CRON" <<'KPANEL_NODE_PROCD_UPDATE'
+#!/bin/sh
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+umask 077
+random_value="$(od -An -N2 -tu2 /dev/urandom 2>/dev/null | tr -d ' ' || true)"
+case "$random_value" in *[!0-9]*|'') random_value=0 ;; esac
+sleep "$((random_value % 901))"
+exec /usr/local/lib/kejilion-node/update.sh update
+KPANEL_NODE_PROCD_UPDATE
+	chmod 0755 "${KPANEL_NODE_OPENRC_DIR}/kejilion-node" \
+		"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" "$KPANEL_NODE_SSH_LOGIN_SERVICE" \
+		"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" "$KPANEL_NODE_UPDATE_CRON"
+}
+
 kpanel_node_write_units() {
+	if [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
+		kpanel_node_write_procd_units
+		return
+	fi
 	if [ "$KPANEL_NODE_INIT_SYSTEM" = openrc ]; then
 		kpanel_node_write_openrc_units
 		return
@@ -12999,6 +13296,17 @@ kpanel_node_activate() {
 	if ! kpanel_node_service_action is-active kejilion-node-ssh-login.service >/dev/null; then
 		echo "KPanel SSH 登录采集服务当前不可用；普通遥测仍在运行。" >&2
 	fi
+	if [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
+		local attempt
+		for attempt in {1..20}; do
+			if kpanel_node_service_action is-active kejilion-node.service >/dev/null; then
+				sleep 0.25
+				kpanel_node_service_action is-active kejilion-node.service >/dev/null && return 0
+			fi
+			sleep 0.25
+		done
+		return 1
+	fi
 	kpanel_node_service_action is-active kejilion-node.service >/dev/null
 }
 
@@ -13150,6 +13458,14 @@ kpanel_node_status() {
 	done
 	if [ "$KPANEL_NODE_INIT_SYSTEM" = systemd ]; then
 		kpanel_node_service_action status kejilion-node-update.timer || true
+	elif [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
+		kpanel_node_service_action status cron || true
+		if [ -x "$KPANEL_NODE_UPDATE_CRON" ] && kpanel_node_procd_trusted_path "$KPANEL_NODE_UPDATE_CRON" &&
+			grep -Fxq "$(kpanel_node_procd_cron_line)" "$KPANEL_NODE_CRONTAB"; then
+			echo "KPanel lightweight node updater: enabled (cron)"
+		else
+			echo "KPanel lightweight node updater: disabled or unavailable" >&2
+		fi
 	else
 		kpanel_node_service_action status crond || true
 		if [ -x "$KPANEL_NODE_UPDATE_PERIODIC" ] && [ ! -L "$KPANEL_NODE_UPDATE_PERIODIC" ]; then
@@ -13180,6 +13496,19 @@ kpanel_node_update() {
 	)
 }
 
+kpanel_node_clear_monitoring_relay() {
+	local directory=/run/kejilion-node-monitoring path
+	[ -e "$directory" ] || [ -L "$directory" ] || return 0
+	# An unrecognized entry is preserved; no recursive removal of runtime data.
+	[ -d "$directory" ] && [ ! -L "$directory" ] && [ "$(stat -c '%u:%a' "$directory")" = 0:750 ] || return 1
+	for path in "$directory/check-status.json" "$directory/procd-health.json"; do
+		[ -e "$path" ] || [ -L "$path" ] || continue
+		kpanel_node_safe_regular_file "$path" || return 1
+	done
+	rm -f -- "$directory/check-status.json" "$directory/procd-health.json" || return 1
+	rmdir -- "$directory" 2>/dev/null || true
+}
+
 kpanel_node_uninstall() {
 	(
 	kpanel_node_paths
@@ -13189,13 +13518,18 @@ kpanel_node_uninstall() {
 	}
 	kpanel_node_lock || return 1
 	kpanel_node_detect_init_system >/dev/null 2>&1 || true
+	# Remove only our exact cron entry even if procd/ubus is currently broken.
+	kpanel_node_procd_cron_write remove || { echo "无法安全移除 KPanel 自动更新计划，卸载已停止。" >&2; return 1; }
 	if [ -n "$KPANEL_NODE_INIT_SYSTEM" ]; then
 		for service in kejilion-node.service kejilion-node-terminal.service kejilion-node-ssh-login.service kejilion-node-file.service; do
 			kpanel_node_service_action stop "$service" >/dev/null 2>&1 || true
 			kpanel_node_service_action disable "$service" >/dev/null 2>&1 || true
 		done
 		kpanel_node_update_schedule_stop >/dev/null 2>&1 || true
-		kpanel_node_update_schedule_disable >/dev/null 2>&1 || true
+		if ! kpanel_node_update_schedule_disable; then
+			echo "无法安全移除 KPanel 自动更新计划，卸载已停止。" >&2
+			return 1
+		fi
 	fi
 	rm -f -- /etc/systemd/system/kejilion-node.service \
 		/etc/systemd/system/kejilion-node-terminal.service \
@@ -13208,6 +13542,7 @@ kpanel_node_uninstall() {
 		/etc/init.d/kejilion-node-ssh-login \
 		/etc/init.d/kejilion-node-file \
 		"$KPANEL_NODE_UPDATE_PERIODIC"
+	kpanel_node_clear_monitoring_relay || echo "KPanel 状态中继目录存在未知权限或链接，已保留供人工检查。" >&2
 	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
 	rmdir -- "$KPANEL_NODE_SSH_LOGIN_RUNTIME" 2>/dev/null || true
 	[ "$KPANEL_NODE_INIT_SYSTEM" != systemd ] || kpanel_node_service_reload_manager >/dev/null 2>&1 || true

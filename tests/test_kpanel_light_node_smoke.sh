@@ -84,6 +84,34 @@ openrc_file_service="${temporary_dir}/kejilion-node-file.openrc"
 extract_heredoc "\tcat >\"\${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file\" <<'KPANEL_NODE_OPENRC_FILE_SERVICE'" "KPANEL_NODE_OPENRC_FILE_SERVICE" "${openrc_file_service}"
 openrc_update="${temporary_dir}/kejilion-node-update.openrc"
 extract_heredoc "\tcat >\"\$KPANEL_NODE_UPDATE_PERIODIC\" <<'KPANEL_NODE_OPENRC_UPDATE'" "KPANEL_NODE_OPENRC_UPDATE" "${openrc_update}"
+for marker in SERVICE TERMINAL_SERVICE SSH_LOGIN_SERVICE FILE_SERVICE UPDATE; do
+	definition="${temporary_dir}/procd-${marker}.sh"
+	awk -v marker="KPANEL_NODE_PROCD_${marker}" '
+		index($0, "<<\047" marker "\047") { capture=1; next }
+		capture && $0 == marker { exit }
+		capture { print }
+	' "$normalized_script" >"$definition"
+	test -s "$definition"
+	bash -n "$definition"
+	if [ "$marker" != UPDATE ]; then
+		grep -Fx '#!/bin/sh /etc/rc.common' "$definition" >/dev/null
+		grep -Fx 'USE_PROCD=1' "$definition" >/dev/null
+		grep -F 'procd_open_instance main' "$definition" >/dev/null
+		grep -F 'procd_set_param stdout 1' "$definition" >/dev/null
+		grep -F 'procd_set_param stderr 1' "$definition" >/dev/null
+	fi
+done
+grep -F 'procd_set_param user kejilion-node' "${temporary_dir}/procd-SERVICE.sh" >/dev/null
+grep -F 'procd_set_param group kejilion-node' "${temporary_dir}/procd-SERVICE.sh" >/dev/null
+for marker in SERVICE SSH_LOGIN_SERVICE FILE_SERVICE; do
+	grep -F 'procd_set_param no_new_privs 1' "${temporary_dir}/procd-${marker}.sh" >/dev/null
+done
+if grep -F no_new_privs "${temporary_dir}/procd-TERMINAL_SERVICE.sh"; then
+	echo 'privileged terminal broker must preserve its existing privilege contract' >&2; exit 1
+fi
+grep -F 'procd_set_param user root' "${temporary_dir}/procd-TERMINAL_SERVICE.sh" >/dev/null
+grep -F 'procd_set_param group kejilion-node' "${temporary_dir}/procd-SSH_LOGIN_SERVICE.sh" >/dev/null
+grep -F 'exec /usr/local/lib/kejilion-node/update.sh update' "${temporary_dir}/procd-UPDATE.sh" >/dev/null
 adapter_body="$(
 	awk '
 		/^kpanel_node_service_name\(\) \{/ { capture=1 }
@@ -119,7 +147,7 @@ if printf '%s\n' "${join_body}" | grep -F 'kpanel_node_cleanup_failed_join' >/de
 fi
 printf '%s\n' "${join_body}" | grep -Eq '授权已保存|授權已儲存|authorization (has been )?saved' >/dev/null
 printf '%s\n' "${join_body}" | grep -F '"$KPANEL_NODE_INSTALL_BIN" -d -o root -g kejilion-node' >/dev/null
-printf '%s\n' "${account_body}" | grep -F 'useradd --system --no-create-home' >/dev/null
+printf '%s\n' "${account_body}" | grep -F 'useradd --system --user-group --no-create-home' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'systemd-sysusers "$sysusers_config"' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'adduser --system --group --no-create-home' >/dev/null
 printf '%s\n' "${account_body}" | grep -F 'adduser -S -D -H' >/dev/null
