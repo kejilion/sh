@@ -12132,7 +12132,7 @@ kpanel_node_dependency_package() {
 		flock)
 			case "$KPANEL_NODE_DEPENDENCY_FAMILY" in openwrt|alpine) printf '%s\n' flock ;; *) printf '%s\n' util-linux ;; esac ;;
 		logger)
-			case "$KPANEL_NODE_DEPENDENCY_FAMILY" in alpine) printf '%s\n' logger ;; debian|rpm) printf '%s\n' util-linux ;; *) return 1 ;; esac ;;
+			case "$KPANEL_NODE_DEPENDENCY_FAMILY" in alpine) printf '%s\n' logger ;; debian) printf '%s\n' bsdutils ;; rpm) printf '%s\n' util-linux ;; *) return 1 ;; esac ;;
 		account-tools)
 			case "$KPANEL_NODE_DEPENDENCY_FAMILY" in
 				openwrt) printf '%s\n' shadow-useradd ;; alpine) printf '%s\n' shadow ;;

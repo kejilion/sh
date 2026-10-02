@@ -39,7 +39,12 @@ for package in "$@"; do
         curl|grep|sed|flock|ubus|jsonfilter|logger) provide "$package" ;;
         gawk) provide awk ;;
         diffutils) provide cmp ;;
-        util-linux) provide flock; provide logger ;;
+        util-linux)
+            provide flock
+            # Debian splits logger into bsdutils; do not let this fixture
+            # conceal an incorrect cross-distribution package mapping.
+            case "${0##*/}" in dnf|yum) provide logger ;; esac ;;
+        bsdutils) provide logger ;;
         shadow-useradd|shadow|passwd|shadow-utils) provide useradd ;;
         logd) provide logread ;;
     esac
@@ -185,6 +190,12 @@ source /dependencies.sh
         self.remove('stat', 'od', 'install', 'flock', 'awk', 'cmp', 'useradd')
         self.assert_success(self.run_bootstrap())
         self.assertEqual(self.calls(), ['apt-get|update', 'apt-get|install|-y|--no-install-recommends|util-linux|coreutils|gawk|diffutils|passwd'])
+
+    def test_debian_openrc_logger_comes_from_bsdutils(self):
+        self.family('debian', 'apt-get', 'openrc')
+        self.remove('flock', 'logger')
+        self.assert_success(self.run_bootstrap())
+        self.assertEqual(self.calls(), ['apt-get|update', 'apt-get|install|-y|--no-install-recommends|util-linux|bsdutils'])
 
     def test_rpm_dnf_and_yum_mappings(self):
         for manager in ('dnf', 'yum'):
