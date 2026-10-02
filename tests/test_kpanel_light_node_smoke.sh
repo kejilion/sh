@@ -502,6 +502,9 @@ chmod +x "${join_runtime}/install" "${join_runtime}/systemctl"
 	kpanel_node_preflight() {
 		KPANEL_NODE_INSTALL_BIN="${KPANEL_TEST_JOIN_ROOT}/install"
 	}
+	# Package bootstrap has its own chroot-only fixture; never use the host's
+	# package manager in this enrollment control-flow test.
+	kpanel_node_ensure_dependencies() { :; }
 	kpanel_node_ensure_account() { :; }
 	kpanel_node_write_updater() {
 		mkdir -p "${KPANEL_NODE_HOME}"

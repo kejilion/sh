@@ -227,6 +227,7 @@ while [ ! -f "$NODE_TEST_ROOT/finish-installer" ]; do sleep 0.02; done
         wrapper = self.root / 'lifecycle.sh'
         wrapper.write_text(lifecycle + r'''
 kpanel_node_preflight() { KPANEL_NODE_INSTALL_BIN="$(type -P install)"; }
+kpanel_node_ensure_dependencies() { :; }  # Tested separately inside a chroot.
 kpanel_node_ensure_account() { :; }
 kpanel_node_validate_config_dir() { :; }
 kpanel_node_write_units() { :; }
