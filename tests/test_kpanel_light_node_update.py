@@ -31,19 +31,32 @@ with (root/'downloads').open('a') as f: f.write(args[-1]+'\n')
 assert '--retry' in args and '--retry-max-time' in args and '--max-filesize' in args
 assert args[args.index('--proto-redir')+1]=='=https'
 if (root/'network-down').exists(): sys.exit(7)
+# The mirror proxies an origin URL and follows its redirects itself.
+mirror='https://gh.kejilion.pro/'
+via_mirror=args[-1].startswith(mirror)
+origin=args[-1][len(mirror):] if via_mirror else args[-1]
+if via_mirror and (root/'mirror-down').exists(): sys.exit(7)
+if not via_mirror and (root/'github-down').exists(): sys.exit(7)
 if (root/'pause-download').exists():
  import time
  (root/'download-waiting').touch()
  while (root/'pause-download').exists(): time.sleep(0.05)
 out=pathlib.Path(args[args.index('-o')+1])
-if args[-1].endswith('/SHA256SUMS'):
- assert args[-1]=='https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS'
+if origin.endswith('/SHA256SUMS'):
+ assert origin=='https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS'
  shutil.copyfile(root/'SHA256SUMS',out)
- headers=(root/'response-headers').read_text() if (root/'response-headers').exists() else 'HTTP/2 302\r\nLocation: https://github.com/kejilion/KPanel/releases/download/v9.9.9/SHA256SUMS\r\n\r\nHTTP/2 302\r\nlocation: https://release-assets.githubusercontent.com/test\r\n\r\n'
- pathlib.Path(args[args.index('--dump-header')+1]).write_text(headers)
+ if via_mirror:
+  assert '--dump-header' not in args
+ else:
+  headers=(root/'response-headers').read_text() if (root/'response-headers').exists() else 'HTTP/2 302\r\nLocation: https://github.com/kejilion/KPanel/releases/download/v9.9.9/SHA256SUMS\r\n\r\nHTTP/2 302\r\nlocation: https://release-assets.githubusercontent.com/test\r\n\r\n'
+  pathlib.Path(args[args.index('--dump-header')+1]).write_text(headers)
 else:
  if (root/'binary-network-down').exists(): sys.exit(7)
- assert args[-1]=='https://github.com/kejilion/KPanel/releases/download/v9.9.9/kejilion-node-linux-amd64'
+ if not via_mirror and (root/'release-cdn-down').exists(): sys.exit(7)
+ # Without the origin's redirect the mirror can only serve latest; otherwise
+ # the binary must come from the release the manifest named.
+ latest=via_mirror and (root/'github-down').exists()
+ assert origin==('https://github.com/kejilion/KPanel/releases/latest/download/kejilion-node-linux-amd64' if latest else 'https://github.com/kejilion/KPanel/releases/download/v9.9.9/kejilion-node-linux-amd64')
  shutil.copyfile(root/('bad' if (root/'bad-download').exists() else 'release'),out)
 '''
 
@@ -732,6 +745,56 @@ done
         self.assertIn('node download failed', result.stderr)
         (self.root / 'binary-network-down').unlink()
         self.run_update()
+
+    def downloads(self):
+        path = self.root / 'downloads'
+        return path.read_text().splitlines() if path.exists() else []
+
+    def test_unreachable_github_installs_through_the_mirror(self):
+        (self.root / 'github-down').touch()
+        result = self.run_update(mode='install')
+        self.assertIn('using the gh.kejilion.pro mirror', result.stdout)
+        self.assertEqual(self.binary.read_bytes(), (self.root / 'release').read_bytes())
+        self.assertEqual(self.downloads(), [
+            'https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS',
+            'https://gh.kejilion.pro/https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS',
+            'https://gh.kejilion.pro/https://github.com/kejilion/KPanel/releases/latest/download/kejilion-node-linux-amd64',
+        ])
+
+    def test_unreachable_release_cdn_keeps_the_manifest_release_through_the_mirror(self):
+        (self.root / 'release-cdn-down').touch()
+        result = self.run_update()
+        self.assertIn('GitHub release download is unreachable', result.stdout)
+        self.assertEqual(self.binary.read_bytes(), (self.root / 'release').read_bytes())
+        self.assertEqual(self.downloads(), [
+            'https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS',
+            'https://github.com/kejilion/KPanel/releases/download/v9.9.9/kejilion-node-linux-amd64',
+            'https://gh.kejilion.pro/https://github.com/kejilion/KPanel/releases/download/v9.9.9/kejilion-node-linux-amd64',
+        ])
+
+    def test_mirror_downloads_are_still_verified_and_failures_name_both_sources(self):
+        before = self.binary.read_bytes()
+        (self.root / 'github-down').touch()
+        (self.root / 'bad-download').touch()
+        self.assertIn('checksum verification failed', self.run_update(False).stderr)
+        self.assertEqual(self.binary.read_bytes(), before)
+        (self.root / 'bad-download').unlink()
+        (self.root / 'mirror-down').touch()
+        result = self.run_update(False)
+        self.assertIn('check access to github.com or gh.kejilion.pro', result.stderr)
+        self.assertEqual(self.binary.read_bytes(), before)
+        status = json.loads((self.root / 'config/update-status.json').read_text())
+        self.assertEqual((status['state'], status['errorCode']), ('failed', 'release_check'))
+        (self.root / 'mirror-down').unlink()
+        (self.root / 'github-down').unlink()
+        self.run_update()
+
+    def test_github_redirect_is_still_required_when_github_answers(self):
+        # A reachable origin that hides the release redirect is not silently
+        # replaced by the mirror's latest.
+        (self.root / 'response-headers').write_text('HTTP/2 200\r\n\r\n')
+        self.assertIn('release manifest redirect is invalid', self.run_update(False).stderr)
+        self.assertEqual(len(self.downloads()), 1)
 
     def test_unsafe_config_is_rejected_without_widening_permissions(self):
         config = self.root / 'config/node.json'

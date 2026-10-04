@@ -12372,7 +12372,7 @@ kpanel_node_write_updater() {
 	kpanel_node_lock_template >>"$updater_temporary" || return 1
 	kpanel_node_procd_helpers_template >>"$updater_temporary" || return 1
 	cat >>"$updater_temporary" <<'KPANEL_NODE_UPDATE'
-# KPANEL_NODE_RUNTIME_GENERATION=5
+# KPANEL_NODE_RUNTIME_GENERATION=6
 set -euo pipefail
 
 mode="${1:-update}"
@@ -12393,6 +12393,10 @@ binary_path="${home_dir}/kejilion-node"
 # GitHub URLs and hide the redirects that bind the checksum to one release.
 github_host="github.com"
 base_url="https://${github_host}/kejilion/KPanel/releases/latest/download"
+# Fallback when github.com or its release CDN is unreachable (mainland China,
+# IPv6-only hosts). The mirror belongs to the kejilion.sh author, who already
+# serves this script, and follows GitHub's release redirect itself.
+mirror_prefix="https://gh.kejilion.pro/"
 temporary_dir=""
 
 kpanel_node_acquire_lock || exit 1
@@ -12454,12 +12458,22 @@ if [ "$quiet" != true ] && [ -t 2 ]; then
 fi
 update_error=release_check
 [ "$quiet" = true ] || echo "Checking KPanel lightweight node release..."
+# GitHub is tried first with a short budget so an unreachable host falls back
+# to the mirror within about a minute instead of after every retry.
+manifest_source=github
 if ! curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
-	--connect-timeout 15 --max-time 60 --retry 3 --retry-delay 5 --retry-max-time 240 \
+	--connect-timeout 10 --max-time 30 --retry 1 --retry-delay 2 --retry-max-time 45 \
 	--max-filesize 65536 --dump-header "${temporary_dir}/headers" \
 	-o "${temporary_dir}/SHA256SUMS" "${base_url}/SHA256SUMS"; then
-	echo "KPanel release check failed; check access to github.com and retry." >&2
-	exit 1
+	manifest_source=mirror
+	[ "$quiet" = true ] || echo "github.com is unreachable; using the gh.kejilion.pro mirror..."
+	if ! curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
+		--connect-timeout 15 --max-time 60 --retry 3 --retry-delay 5 --retry-max-time 240 \
+		--max-filesize 65536 \
+		-o "${temporary_dir}/SHA256SUMS" "${mirror_prefix}${base_url}/SHA256SUMS"; then
+		echo "KPanel release check failed; check access to github.com or gh.kejilion.pro and retry." >&2
+		exit 1
+	fi
 fi
 update_error=manifest
 expected="$(awk -v name="$binary_name" '$2 == name { print $1 }' "${temporary_dir}/SHA256SUMS")"
@@ -12467,12 +12481,19 @@ printf '%s' "$expected" | grep -Eq '^[0-9a-f]{64}$' || {
 	echo "release checksum is unavailable" >&2
 	exit 1
 }
-# The first redirect binds the manifest to a release; the following CDN redirect
-# must never be used as a base URL or mixed with a later value of latest.
-release_url="$(awk 'tolower($1) == "location:" { sub(/\r$/, "", $2); print $2 }' "${temporary_dir}/headers" |
-	grep -E '^https://github[.]com/kejilion/KPanel/releases/download/v[0-9]+\.[0-9]+\.[0-9]+/SHA256SUMS$' | tail -n 1 || true)"
-[ -n "$release_url" ] || { echo "release manifest redirect is invalid" >&2; exit 1; }
-release_base="${release_url%/SHA256SUMS}"
+if [ "$manifest_source" = github ]; then
+	# The first redirect binds the manifest to a release; the following CDN redirect
+	# must never be used as a base URL or mixed with a later value of latest.
+	release_url="$(awk 'tolower($1) == "location:" { sub(/\r$/, "", $2); print $2 }' "${temporary_dir}/headers" |
+		grep -E '^https://github[.]com/kejilion/KPanel/releases/download/v[0-9]+\.[0-9]+\.[0-9]+/SHA256SUMS$' | tail -n 1 || true)"
+	[ -n "$release_url" ] || { echo "release manifest redirect is invalid" >&2; exit 1; }
+	release_base="${release_url%/SHA256SUMS}"
+else
+	# The mirror resolves latest itself, so no tag is visible. The binary comes
+	# from the same latest; a release published in between fails the checksum
+	# below and the next run retries.
+	release_base="${mirror_prefix}${base_url}"
+fi
 
 file_service="kejilion-node-file.service"
 update_init_system=""
@@ -12765,12 +12786,27 @@ fi
 
 update_error=download
 [ "$quiet" = true ] || echo "Downloading KPanel lightweight node..."
-if ! curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
-	--connect-timeout 15 --max-time 180 --retry 3 --retry-delay 5 --retry-max-time 600 \
-	--max-filesize 134217728 \
-	-o "${temporary_dir}/${binary_name}" "${release_base}/${binary_name}"; then
-	echo "KPanel node download failed; check access to GitHub release downloads and retry." >&2
-	exit 1
+download_binary() {
+	curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
+		--connect-timeout 15 --max-time 180 "$@" \
+		--max-filesize 134217728 \
+		-o "${temporary_dir}/${binary_name}" "$release_download"
+}
+release_download="${release_base}/${binary_name}"
+if [ "$manifest_source" = mirror ]; then
+	download_binary --retry 3 --retry-delay 5 --retry-max-time 600 || {
+		echo "KPanel node download failed; check access to gh.kejilion.pro and retry." >&2
+		exit 1
+	}
+elif ! download_binary --retry 1 --retry-delay 2 --retry-max-time 200; then
+	# github.com answered but its release CDN did not. The versioned URL through
+	# the mirror keeps the binary bound to the manifest's release.
+	[ "$quiet" = true ] || echo "GitHub release download is unreachable; using the gh.kejilion.pro mirror..."
+	release_download="${mirror_prefix}${release_base}/${binary_name}"
+	download_binary --retry 3 --retry-delay 5 --retry-max-time 600 || {
+		echo "KPanel node download failed; check access to GitHub release downloads or gh.kejilion.pro and retry." >&2
+		exit 1
+	}
 fi
 update_error=checksum
 actual="$(sha256sum "${temporary_dir}/${binary_name}" | awk '{print $1}')"
