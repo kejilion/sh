@@ -10829,7 +10829,9 @@ linux_tools() {
   while true; do
 	  clear
 	  # send_stats "基础工具"
-	  echo -e "基础工具"
+	  local menu_dim="\033[90m"
+	  echo -e "\n  ${gl_kjlan}\033[1m基础工具${gl_bai}"
+	  echo -e "  ${menu_dim}按编号安装工具；绿色表示当前已经安装${gl_bai}"
 
 	  tools=(
 		curl wget sudo socat htop iftop unzip tar tmux ffmpeg
@@ -10858,53 +10860,53 @@ linux_tools() {
 		exit 1
 	  fi
 
-	  echo "📦 使用包管理器: $PM"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  echo -e "  ${menu_dim}包管理器：${gl_kjlan}$PM${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 
 	  for ((i=0; i<${#tools[@]}; i+=2)); do
 		# 左列
 		if command -v "${tools[i]}" >/dev/null 2>&1; then
-		  left=$(printf "✅ %-12s 已安装" "${tools[i]}")
+		  left=$(printf "${gl_lv}%-12s 已安装${gl_bai}" "${tools[i]}")
 		else
-		  left=$(printf "❌ %-12s 未安装" "${tools[i]}")
+		  left=$(printf "${menu_dim}%-12s 未安装${gl_bai}" "${tools[i]}")
 		fi
 
 		# 右列（防止数组越界）
 		if [[ -n "${tools[i+1]}" ]]; then
 		  if command -v "${tools[i+1]}" >/dev/null 2>&1; then
-			right=$(printf "✅ %-12s 已安装" "${tools[i+1]}")
+			right=$(printf "${gl_lv}%-12s 已安装${gl_bai}" "${tools[i+1]}")
 		  else
-			right=$(printf "❌ %-12s 未安装" "${tools[i+1]}")
+			right=$(printf "${menu_dim}%-12s 未安装${gl_bai}" "${tools[i+1]}")
 		  fi
-		  printf "%-42s %s\n" "$left" "$right"
+		  printf "  %s                     %s\n" "$left" "$right"
 		else
 		  printf "%s\n" "$left"
 		fi
 	  done
 
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}curl 下载工具 ${gl_huang}★${gl_bai}                   ${gl_kjlan}2.   ${gl_bai}wget 下载工具 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}sudo 超级管理权限工具             ${gl_kjlan}4.   ${gl_bai}socat 通信连接工具"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}htop 系统监控工具                 ${gl_kjlan}6.   ${gl_bai}iftop 网络流量监控工具"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}unzip ZIP压缩解压工具             ${gl_kjlan}8.   ${gl_bai}tar GZ压缩解压工具"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}tmux 多路后台运行工具             ${gl_kjlan}10.  ${gl_bai}ffmpeg 视频编码直播推流工具"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}11.  ${gl_bai}btop 现代化监控工具 ${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}ranger 文件管理工具"
-	  echo -e "${gl_kjlan}13.  ${gl_bai}ncdu 磁盘占用查看工具             ${gl_kjlan}14.  ${gl_bai}fzf 全局搜索工具"
-	  echo -e "${gl_kjlan}15.  ${gl_bai}vim 文本编辑器                    ${gl_kjlan}16.  ${gl_bai}nano 文本编辑器 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}git 版本控制系统"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}黑客帝国屏保                      ${gl_kjlan}22.  ${gl_bai}跑火车屏保"
-	  echo -e "${gl_kjlan}26.  ${gl_bai}俄罗斯方块小游戏                  ${gl_kjlan}27.  ${gl_bai}贪吃蛇小游戏"
-	  echo -e "${gl_kjlan}28.  ${gl_bai}太空入侵者小游戏"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}31.  ${gl_bai}全部安装                          ${gl_kjlan}32.  ${gl_bai}全部安装（不含屏保和游戏）${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}全部卸载"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}41.  ${gl_bai}安装指定工具                      ${gl_kjlan}42.  ${gl_bai}卸载指定工具"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 1. ${gl_bai}curl 下载工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan} 2. ${gl_bai}wget 下载工具 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan} 3. ${gl_bai}sudo 超级管理权限工具${gl_bai}               ${gl_kjlan} 4. ${gl_bai}socat 通信连接工具${gl_bai}"
+	  echo -e "  ${gl_kjlan} 5. ${gl_bai}htop 系统监控工具${gl_bai}                   ${gl_kjlan} 6. ${gl_bai}iftop 网络流量监控工具${gl_bai}"
+	  echo -e "  ${gl_kjlan} 7. ${gl_bai}unzip ZIP压缩解压工具${gl_bai}               ${gl_kjlan} 8. ${gl_bai}tar GZ压缩解压工具${gl_bai}"
+	  echo -e "  ${gl_kjlan} 9. ${gl_bai}tmux 多路后台运行工具${gl_bai}               ${gl_kjlan}10. ${gl_bai}ffmpeg 视频编码直播推流工具${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan}11. ${gl_bai}btop 现代化监控工具 ${gl_huang}★${gl_bai}               ${gl_kjlan}12. ${gl_bai}ranger 文件管理工具${gl_bai}"
+	  echo -e "  ${gl_kjlan}13. ${gl_bai}ncdu 磁盘占用查看工具${gl_bai}               ${gl_kjlan}14. ${gl_bai}fzf 全局搜索工具${gl_bai}"
+	  echo -e "  ${gl_kjlan}15. ${gl_bai}vim 文本编辑器${gl_bai}                      ${gl_kjlan}16. ${gl_bai}nano 文本编辑器 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan}17. ${gl_bai}git 版本控制系统${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan}21. ${gl_bai}黑客帝国屏保${gl_bai}                        ${gl_kjlan}22. ${gl_bai}跑火车屏保${gl_bai}"
+	  echo -e "  ${gl_kjlan}26. ${gl_bai}俄罗斯方块小游戏${gl_bai}                    ${gl_kjlan}27. ${gl_bai}贪吃蛇小游戏${gl_bai}"
+	  echo -e "  ${gl_kjlan}28. ${gl_bai}太空入侵者小游戏${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan}31. ${gl_lv}全部安装${gl_bai}                            ${gl_kjlan}32. ${gl_lv}全部安装（不含屏保和游戏）${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan}33. ${gl_hong}全部卸载${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan}41. ${gl_lv}安装指定工具${gl_bai}                        ${gl_kjlan}42. ${gl_hong}卸载指定工具${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 0. ${menu_dim}返回主菜单${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
@@ -11514,31 +11516,36 @@ linux_docker() {
 	while true; do
 	  clear
 	  # send_stats "docker管理"
-	  echo -e "Docker管理"
+	  local menu_dim="\033[90m"
+	  echo -e "\n  ${gl_kjlan}\033[1mDocker管理${gl_bai}"
+	  echo -e "  ${menu_dim}容器、镜像、网络与数据卷${gl_bai}"
 	  docker_tato
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}安装更新Docker环境 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}2.   ${gl_bai}查看Docker全局状态 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}Docker容器管理 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}4.   ${gl_bai}Docker镜像管理"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}Docker网络管理"
-	  echo -e "${gl_kjlan}6.   ${gl_bai}Docker卷管理"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}清理无用的docker容器和镜像网络数据卷"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}8.   ${gl_bai}更换Docker源"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}编辑daemon.json文件"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}11.  ${gl_bai}开启Docker-ipv6访问"
-	  echo -e "${gl_kjlan}12.  ${gl_bai}关闭Docker-ipv6访问"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}19.  ${gl_bai}备份/迁移/还原Docker环境"
-	  echo -e "${gl_kjlan}20.  ${gl_bai}卸载Docker环境"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m环境与状态${gl_bai}"
+	  echo -e "  ${gl_kjlan} 1. ${gl_huang}安装更新Docker环境 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 2. ${gl_bai}查看Docker全局状态 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m资源管理${gl_bai}"
+	  echo -e "  ${gl_kjlan} 3. ${gl_bai}Docker容器管理 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan} 4. ${gl_bai}Docker镜像管理${gl_bai}"
+	  echo -e "  ${gl_kjlan} 5. ${gl_bai}Docker网络管理${gl_bai}"
+	  echo -e "  ${gl_kjlan} 6. ${gl_bai}Docker卷管理${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m维护与配置${gl_bai}"
+	  echo -e "  ${gl_kjlan} 7. ${gl_bai}清理无用的docker容器和镜像网络数据卷${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 8. ${gl_bai}更换Docker源${gl_bai}"
+	  echo -e "  ${gl_kjlan} 9. ${gl_bai}编辑daemon.json文件${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan}11. ${gl_bai}开启Docker-ipv6访问${gl_bai}"
+	  echo -e "  ${gl_kjlan}12. ${gl_bai}关闭Docker-ipv6访问${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan}19. ${gl_bai}备份/迁移/还原Docker环境${gl_bai}"
+	  echo -e "  ${gl_kjlan}20. ${gl_hong}卸载Docker环境${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 0. ${menu_dim}返回主菜单${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
@@ -13953,39 +13960,41 @@ linux_test() {
 	while true; do
 	  clear
 	  # send_stats "测试脚本合集"
-	  echo -e "测试脚本合集"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}IP及解锁状态检测"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}ChatGPT 解锁状态检测"
-	  echo -e "${gl_kjlan}2.   ${gl_bai}Region 流媒体解锁测试"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}yeahwu 流媒体解锁检测"
-	  echo -e "${gl_kjlan}4.   ${gl_bai}xykt IP质量体检脚本 ${gl_huang}★${gl_bai}"
+	  local menu_dim="\033[90m"
+	  echo -e "\n  ${gl_kjlan}\033[1m测试脚本合集${gl_bai}"
+	  echo -e "  ${menu_dim}IP 解锁、网络线路与硬件性能${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1mIP及解锁状态检测${gl_bai}"
+	  echo -e "  ${gl_kjlan} 1. ${gl_bai}ChatGPT 解锁状态检测${gl_bai}"
+	  echo -e "  ${gl_kjlan} 2. ${gl_bai}Region 流媒体解锁测试${gl_bai}"
+	  echo -e "  ${gl_kjlan} 3. ${gl_bai}yeahwu 流媒体解锁检测${gl_bai}"
+	  echo -e "  ${gl_kjlan} 4. ${gl_bai}xykt IP质量体检脚本 ${gl_huang}★${gl_bai}"
 
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}网络线路测速"
-	  echo -e "${gl_kjlan}11.  ${gl_bai}besttrace 三网回程延迟路由测试"
-	  echo -e "${gl_kjlan}12.  ${gl_bai}mtr_trace 三网回程线路测试"
-	  echo -e "${gl_kjlan}13.  ${gl_bai}Superspeed 三网测速"
-	  echo -e "${gl_kjlan}14.  ${gl_bai}nxtrace 快速回程测试脚本"
-	  echo -e "${gl_kjlan}15.  ${gl_bai}nxtrace 指定IP回程测试脚本"
-	  echo -e "${gl_kjlan}16.  ${gl_bai}ludashi2020 三网线路测试"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}i-abc 多功能测速脚本"
-	  echo -e "${gl_kjlan}18.  ${gl_bai}NetQuality 网络质量体检脚本 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}19.  ${gl_bai}TcpQuality TCP重传探测脚本 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m网络线路测速${gl_bai}"
+	  echo -e "  ${gl_kjlan}11. ${gl_bai}besttrace 三网回程延迟路由测试${gl_bai}"
+	  echo -e "  ${gl_kjlan}12. ${gl_bai}mtr_trace 三网回程线路测试${gl_bai}"
+	  echo -e "  ${gl_kjlan}13. ${gl_bai}Superspeed 三网测速${gl_bai}"
+	  echo -e "  ${gl_kjlan}14. ${gl_bai}nxtrace 快速回程测试脚本${gl_bai}"
+	  echo -e "  ${gl_kjlan}15. ${gl_bai}nxtrace 指定IP回程测试脚本${gl_bai}"
+	  echo -e "  ${gl_kjlan}16. ${gl_bai}ludashi2020 三网线路测试${gl_bai}"
+	  echo -e "  ${gl_kjlan}17. ${gl_bai}i-abc 多功能测速脚本${gl_bai}"
+	  echo -e "  ${gl_kjlan}18. ${gl_bai}NetQuality 网络质量体检脚本 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan}19. ${gl_bai}TcpQuality TCP重传探测脚本 ${gl_huang}★${gl_bai}"
 
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}硬件性能测试"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}yabs 性能测试"
-	  echo -e "${gl_kjlan}22.  ${gl_bai}icu/gb5 CPU性能测试脚本"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m硬件性能测试${gl_bai}"
+	  echo -e "  ${gl_kjlan}21. ${gl_bai}yabs 性能测试${gl_bai}"
+	  echo -e "  ${gl_kjlan}22. ${gl_bai}icu/gb5 CPU性能测试脚本${gl_bai}"
 
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}综合性测试"
-	  echo -e "${gl_kjlan}31.  ${gl_bai}bench 性能测试"
-	  echo -e "${gl_kjlan}32.  ${gl_bai}spiritysdx 融合怪测评 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}nodequality 融合怪测评 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m综合性测试${gl_bai}"
+	  echo -e "  ${gl_kjlan}31. ${gl_bai}bench 性能测试${gl_bai}"
+	  echo -e "  ${gl_kjlan}32. ${gl_bai}spiritysdx 融合怪测评 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan}33. ${gl_bai}nodequality 融合怪测评 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 0. ${menu_dim}返回主菜单${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
@@ -14139,18 +14148,20 @@ linux_Oracle() {
 	 while true; do
 	  clear
 	  send_stats "甲骨文云脚本合集"
-	  echo -e "甲骨文云脚本合集"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}安装闲置机器活跃脚本"
-	  echo -e "${gl_kjlan}2.   ${gl_bai}卸载闲置机器活跃脚本"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}DD重装系统脚本"
-	  echo -e "${gl_kjlan}4.   ${gl_bai}R探长开机脚本"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}开启ROOT密码登录模式"
-	  echo -e "${gl_kjlan}6.   ${gl_bai}IPV6恢复工具"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  local menu_dim="\033[90m"
+	  echo -e "\n  ${gl_kjlan}\033[1m甲骨文云脚本合集${gl_bai}"
+	  echo -e "  ${menu_dim}实例活跃、系统与网络维护${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 1. ${gl_lv}安装闲置机器活跃脚本${gl_bai}"
+	  echo -e "  ${gl_kjlan} 2. ${gl_hong}卸载闲置机器活跃脚本${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 3. ${gl_hong}DD重装系统脚本${gl_bai}"
+	  echo -e "  ${gl_kjlan} 4. ${gl_bai}R探长开机脚本${gl_bai}"
+	  echo -e "  ${gl_kjlan} 5. ${gl_bai}开启ROOT密码登录模式${gl_bai}"
+	  echo -e "  ${gl_kjlan} 6. ${gl_bai}IPV6恢复工具${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 0. ${menu_dim}返回主菜单${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
@@ -14292,8 +14303,8 @@ docker_tato() {
 	local volume_count=$(docker volume ls -q 2>/dev/null | wc -l)
 
 	if command -v docker &> /dev/null; then
-		echo -e "${gl_kjlan}------------------------"
-		echo -e "${gl_lv}环境已经安装${gl_bai}  容器: ${gl_lv}$container_count${gl_bai}  镜像: ${gl_lv}$image_count${gl_bai}  网络: ${gl_lv}$network_count${gl_bai}  卷: ${gl_lv}$volume_count${gl_bai}"
+		echo -e "\033[90m  -------------------------------------------------${gl_bai}"
+		echo -e "  ${gl_lv}环境已经安装${gl_bai}  容器: ${gl_lv}$container_count${gl_bai}  镜像: ${gl_lv}$image_count${gl_bai}  网络: ${gl_lv}$network_count${gl_bai}  卷: ${gl_lv}$volume_count${gl_bai}"
 	fi
 }
 
@@ -14313,8 +14324,8 @@ local db_output="${gl_lv}${db_count}${gl_bai}"
 
 if command -v docker &>/dev/null; then
 	if docker ps --filter "name=nginx" --filter "status=running" | grep -q nginx; then
-		echo -e "${gl_huang}------------------------"
-		echo -e "${gl_lv}环境已安装${gl_bai}  站点: $output  数据库: $db_output"
+		echo -e "\033[90m  -------------------------------------------------${gl_bai}"
+		echo -e "  ${gl_lv}环境已安装${gl_bai}  站点: $output  数据库: $db_output"
 	fi
 fi
 
@@ -15078,29 +15089,35 @@ linux_ldnmp() {
 	if [ "${KJ_WEB_NONINTERACTIVE:-0}" != "1" ]; then
 	clear
 	# send_stats "LDNMP建站"
-	echo -e "${gl_huang}LDNMP建站"
+	local menu_dim="\033[90m"
+	echo -e "\n  ${gl_kjlan}\033[1mLDNMP建站${gl_bai}"
+	echo -e "  ${menu_dim}网站部署、反向代理与数据维护${gl_bai}"
 	ldnmp_tato
-	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}1.   ${gl_bai}安装LDNMP环境 ${gl_huang}★${gl_bai}                   ${gl_huang}2.   ${gl_bai}安装WordPress ${gl_huang}★${gl_bai}"
-	echo -e "${gl_huang}3.   ${gl_bai}安装Discuz论坛                    ${gl_huang}4.   ${gl_bai}安装可道云桌面"
-	echo -e "${gl_huang}5.   ${gl_bai}安装苹果CMS影视站                 ${gl_huang}6.   ${gl_bai}安装独角数发卡网"
-	echo -e "${gl_huang}7.   ${gl_bai}安装flarum论坛网站                ${gl_huang}8.   ${gl_bai}安装typecho轻量博客网站"
-	echo -e "${gl_huang}9.   ${gl_bai}安装LinkStack共享链接平台         ${gl_huang}20.  ${gl_bai}自定义动态站点"
-	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}21.  ${gl_bai}仅安装nginx ${gl_huang}★${gl_bai}                     ${gl_huang}22.  ${gl_bai}站点重定向"
-	echo -e "${gl_huang}23.  ${gl_bai}站点反向代理-IP+端口 ${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}站点反向代理-域名"
-	echo -e "${gl_huang}25.  ${gl_bai}安装Bitwarden密码管理平台         ${gl_huang}26.  ${gl_bai}安装Halo博客网站"
-	echo -e "${gl_huang}27.  ${gl_bai}安装AI绘画提示词生成器            ${gl_huang}28.  ${gl_bai}站点反向代理-负载均衡"
-	echo -e "${gl_huang}29.  ${gl_bai}Stream四层代理转发                ${gl_huang}30.  ${gl_bai}自定义静态站点"
-	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}31.  ${gl_bai}站点数据管理 ${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}备份全站数据"
-	echo -e "${gl_huang}33.  ${gl_bai}定时远程备份                      ${gl_huang}34.  ${gl_bai}还原全站数据"
-	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}35.  ${gl_bai}防护LDNMP环境                     ${gl_huang}36.  ${gl_bai}优化LDNMP环境"
-	echo -e "${gl_huang}37.  ${gl_bai}更新LDNMP环境                     ${gl_huang}38.  ${gl_bai}卸载LDNMP环境"
-	echo -e "${gl_huang}------------------------"
-	echo -e "${gl_huang}0.   ${gl_bai}返回主菜单"
-	echo -e "${gl_huang}------------------------${gl_bai}"
+	echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	echo -e "\n  ${gl_kjlan}\033[1m环境与动态网站${gl_bai}"
+	echo -e "  ${gl_kjlan} 1. ${gl_lv}安装LDNMP环境 ${gl_huang}★${gl_bai}                     ${gl_kjlan} 2. ${gl_lv}安装WordPress ${gl_huang}★${gl_bai}"
+	echo -e "  ${gl_kjlan} 3. ${gl_lv}安装Discuz论坛${gl_bai}                      ${gl_kjlan} 4. ${gl_lv}安装可道云桌面${gl_bai}"
+	echo -e "  ${gl_kjlan} 5. ${gl_lv}安装苹果CMS影视站${gl_bai}                   ${gl_kjlan} 6. ${gl_lv}安装独角数发卡网${gl_bai}"
+	echo -e "  ${gl_kjlan} 7. ${gl_lv}安装flarum论坛网站${gl_bai}                  ${gl_kjlan} 8. ${gl_lv}安装typecho轻量博客网站${gl_bai}"
+	echo -e "  ${gl_kjlan} 9. ${gl_lv}安装LinkStack共享链接平台${gl_bai}           ${gl_kjlan}20. ${gl_bai}自定义动态站点${gl_bai}"
+	echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	echo -e "\n  ${gl_kjlan}\033[1m代理与更多网站${gl_bai}"
+	echo -e "  ${gl_kjlan}21. ${gl_bai}仅安装nginx ${gl_huang}★${gl_bai}                       ${gl_kjlan}22. ${gl_bai}站点重定向${gl_bai}"
+	echo -e "  ${gl_kjlan}23. ${gl_bai}站点反向代理-IP+端口 ${gl_huang}★${gl_bai}              ${gl_kjlan}24. ${gl_bai}站点反向代理-域名${gl_bai}"
+	echo -e "  ${gl_kjlan}25. ${gl_lv}安装Bitwarden密码管理平台${gl_bai}           ${gl_kjlan}26. ${gl_lv}安装Halo博客网站${gl_bai}"
+	echo -e "  ${gl_kjlan}27. ${gl_lv}安装AI绘画提示词生成器${gl_bai}              ${gl_kjlan}28. ${gl_bai}站点反向代理-负载均衡${gl_bai}"
+	echo -e "  ${gl_kjlan}29. ${gl_bai}Stream四层代理转发${gl_bai}                  ${gl_kjlan}30. ${gl_bai}自定义静态站点${gl_bai}"
+	echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	echo -e "\n  ${gl_kjlan}\033[1m数据管理${gl_bai}"
+	echo -e "  ${gl_kjlan}31. ${gl_bai}站点数据管理 ${gl_huang}★${gl_bai}                      ${gl_kjlan}32. ${gl_bai}备份全站数据${gl_bai}"
+	echo -e "  ${gl_kjlan}33. ${gl_bai}定时远程备份${gl_bai}                        ${gl_kjlan}34. ${gl_bai}还原全站数据${gl_bai}"
+	echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	echo -e "\n  ${gl_kjlan}\033[1m维护与安全${gl_bai}"
+	echo -e "  ${gl_kjlan}35. ${gl_bai}防护LDNMP环境${gl_bai}                       ${gl_kjlan}36. ${gl_bai}优化LDNMP环境${gl_bai}"
+	echo -e "  ${gl_kjlan}37. ${gl_huang}更新LDNMP环境${gl_bai}                       ${gl_kjlan}38. ${gl_hong}卸载LDNMP环境${gl_bai}"
+	echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	echo -e "  ${gl_kjlan} 0. ${menu_dim}返回主菜单${gl_bai}"
+	echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	fi
 	if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
 		sub_choice="${KJ_WEB_RECIPE:-}"
@@ -21913,8 +21930,10 @@ while true; do
 
 	if [ -z "$sub_choice" ]; then
 	  clear
-	  echo -e "应用市场"
-	  echo -e "${gl_kjlan}-------------------------"
+	  local menu_dim="\033[90m"
+	  echo -e "\n  ${gl_kjlan}\033[1m应用市场${gl_bai}"
+	  echo -e "  ${menu_dim}绿色：已安装  |  ★ 推荐 / 新应用${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 
 	  local app_numbers=$([ -f /home/docker/appno.txt ] && cat /home/docker/appno.txt || echo "")
 
@@ -21932,74 +21951,74 @@ while true; do
 	  echo -e "${gl_kjlan}5.   ${color5}OpenList多存储文件列表程序          ${gl_kjlan}6.   ${color6}Ubuntu远程桌面网页版"
 	  echo -e "${gl_kjlan}7.   ${color7}哪吒探针VPS监控面板                 ${gl_kjlan}8.   ${color8}QB离线BT磁力下载面板"
 	  echo -e "${gl_kjlan}9.   ${color9}Poste.io邮件服务器程序              ${gl_kjlan}10.  ${color10}RocketChat多人在线聊天系统"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}11.  ${color11}禅道项目管理软件                    ${gl_kjlan}12.  ${color12}青龙面板定时任务管理平台"
 	  echo -e "${gl_kjlan}13.  ${color13}Cloudreve网盘 ${gl_huang}★${gl_bai}                     ${gl_kjlan}14.  ${color14}简单图床图片管理程序"
 	  echo -e "${gl_kjlan}15.  ${color15}emby多媒体管理系统                  ${gl_kjlan}16.  ${color16}Speedtest测速面板"
 	  echo -e "${gl_kjlan}17.  ${color17}AdGuardHome去广告软件               ${gl_kjlan}18.  ${color18}onlyoffice在线办公OFFICE"
 	  echo -e "${gl_kjlan}19.  ${color19}雷池WAF防火墙面板                   ${gl_kjlan}20.  ${color20}portainer容器管理面板"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}21.  ${color21}VScode网页版                        ${gl_kjlan}22.  ${color22}UptimeKuma监控工具"
 	  echo -e "${gl_kjlan}23.  ${color23}Memos网页备忘录                     ${gl_kjlan}24.  ${color24}Webtop远程桌面网页版 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}25.  ${color25}Nextcloud网盘                       ${gl_kjlan}26.  ${color26}QD-Today定时任务管理框架"
 	  echo -e "${gl_kjlan}27.  ${color27}Dockge容器堆栈管理面板              ${gl_kjlan}28.  ${color28}LibreSpeed测速工具"
 	  echo -e "${gl_kjlan}29.  ${color29}searxng聚合搜索站 ${gl_huang}★${gl_bai}                 ${gl_kjlan}30.  ${color30}PhotoPrism私有相册系统"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}31.  ${color31}StirlingPDF工具大全                 ${gl_kjlan}32.  ${color32}drawio免费的在线图表软件 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}33.  ${color33}Sun-Panel导航面板                   ${gl_kjlan}34.  ${color34}Pingvin-Share文件分享平台"
 	  echo -e "${gl_kjlan}35.  ${color35}极简朋友圈                          ${gl_kjlan}36.  ${color36}LobeChatAI聊天聚合网站"
 	  echo -e "${gl_kjlan}37.  ${color37}MyIP工具箱 ${gl_huang}★${gl_bai}                        ${gl_kjlan}38.  ${color38}小雅alist全家桶"
 	  echo -e "${gl_kjlan}39.  ${color39}Bililive直播录制工具                ${gl_kjlan}40.  ${color40}webssh网页版SSH连接工具"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}41.  ${color41}耗子管理面板                	 ${gl_kjlan}42.  ${color42}Nexterm远程连接工具"
 	  echo -e "${gl_kjlan}43.  ${color43}RustDesk远程桌面(服务端) ${gl_huang}★${gl_bai}          ${gl_kjlan}44.  ${color44}RustDesk远程桌面(中继端) ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}45.  ${color45}Docker加速站            		 ${gl_kjlan}46.  ${color46}GitHub加速站 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}47.  ${color47}普罗米修斯监控			 ${gl_kjlan}48.  ${color48}普罗米修斯(主机监控)"
 	  echo -e "${gl_kjlan}49.  ${color49}普罗米修斯(容器监控)		 ${gl_kjlan}50.  ${color50}补货监控工具"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}51.  ${color51}PVE开小鸡面板			 ${gl_kjlan}52.  ${color52}DPanel容器管理面板"
 	  echo -e "${gl_kjlan}53.  ${color53}llama3聊天AI大模型                  ${gl_kjlan}54.  ${color54}AMH主机建站管理面板"
 	  echo -e "${gl_kjlan}55.  ${color55}FRP内网穿透(服务端) ${gl_huang}★${gl_bai}	         ${gl_kjlan}56.  ${color56}FRP内网穿透(客户端) ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}57.  ${color57}Deepseek聊天AI大模型                ${gl_kjlan}58.  ${color58}Dify大模型知识库 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}59.  ${color59}NewAPI大模型资产管理                ${gl_kjlan}60.  ${color60}JumpServer开源堡垒机"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}61.  ${color61}在线翻译服务器			 ${gl_kjlan}62.  ${color62}RAGFlow大模型知识库"
 	  echo -e "${gl_kjlan}63.  ${color63}OpenWebUI自托管AI平台 ${gl_huang}★${gl_bai}             ${gl_kjlan}64.  ${color64}it-tools工具箱"
 	  echo -e "${gl_kjlan}65.  ${color65}n8n自动化工作流平台 ${gl_huang}★${gl_bai}               ${gl_kjlan}66.  ${color66}yt-dlp视频下载工具"
 	  echo -e "${gl_kjlan}67.  ${color67}ddns-go动态DNS管理工具 ${gl_huang}★${gl_bai}            ${gl_kjlan}68.  ${color68}AllinSSL证书管理平台"
 	  echo -e "${gl_kjlan}69.  ${color69}SFTPGo文件传输工具                  ${gl_kjlan}70.  ${color70}AstrBot聊天机器人框架"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}71.  ${color71}Navidrome私有音乐服务器             ${gl_kjlan}72.  ${color72}bitwarden密码管理器 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}73.  ${color73}LibreTV私有影视                     ${gl_kjlan}74.  ${color74}MoonTV私有影视"
 	  echo -e "${gl_kjlan}75.  ${color75}Melody音乐精灵                      ${gl_kjlan}76.  ${color76}在线DOS老游戏"
 	  echo -e "${gl_kjlan}77.  ${color77}迅雷离线下载工具                    ${gl_kjlan}78.  ${color78}PandaWiki智能文档管理系统"
 	  echo -e "${gl_kjlan}79.  ${color79}Beszel服务器监控                    ${gl_kjlan}80.  ${color80}linkwarden书签管理"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}81.  ${color81}JitsiMeet视频会议                   ${gl_kjlan}82.  ${color82}gpt-load高性能AI透明代理"
 	  echo -e "${gl_kjlan}83.  ${color83}komari服务器监控工具                ${gl_kjlan}84.  ${color84}Wallos个人财务管理工具"
 	  echo -e "${gl_kjlan}85.  ${color85}immich图片视频管理器                ${gl_kjlan}86.  ${color86}jellyfin媒体管理系统"
 	  echo -e "${gl_kjlan}87.  ${color87}SyncTV一起看片神器                  ${gl_kjlan}88.  ${color88}Owncast自托管直播平台"
 	  echo -e "${gl_kjlan}89.  ${color89}FileCodeBox文件快递                 ${gl_kjlan}90.  ${color90}matrix去中心化聊天协议"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}91.  ${color91}gitea私有代码仓库                   ${gl_kjlan}92.  ${color92}FileBrowser文件管理器"
 	  echo -e "${gl_kjlan}93.  ${color93}Dufs极简静态文件服务器              ${gl_kjlan}94.  ${color94}Gopeed高速下载工具"
 	  echo -e "${gl_kjlan}95.  ${color95}paperless文档管理平台               ${gl_kjlan}96.  ${color96}2FAuth自托管二步验证器"
 	  echo -e "${gl_kjlan}97.  ${color97}WireGuard组网(服务端)               ${gl_kjlan}98.  ${color98}WireGuard组网(客户端)"
 	  echo -e "${gl_kjlan}99.  ${color99}DSM群晖虚拟机                       ${gl_kjlan}100. ${color100}Syncthing点对点文件同步工具"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}101. ${color101}AI视频生成工具                      ${gl_kjlan}102. ${color102}VoceChat多人在线聊天系统"
 	  echo -e "${gl_kjlan}103. ${color103}Umami网站统计工具                   ${gl_kjlan}104. ${color104}Stream四层代理转发工具"
 	  echo -e "${gl_kjlan}105. ${color105}思源笔记                            ${gl_kjlan}106. ${color106}Drawnix开源白板工具"
 	  echo -e "${gl_kjlan}107. ${color107}PanSou网盘搜索                      ${gl_kjlan}108. ${color108}LangBot聊天机器人"
 	  echo -e "${gl_kjlan}109. ${color109}ZFile在线网盘                       ${gl_kjlan}110. ${color110}Karakeep书签管理"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}111. ${color111}多格式文件转换工具                  ${gl_kjlan}112. ${color112}Lucky大内网穿透工具"
 	  echo -e "${gl_kjlan}113. ${color113}Firefox浏览器                       ${gl_kjlan}114. ${color114}OpenClaw机器人管理工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}115. ${color115}Hermes机器人管理工具${gl_huang}★${gl_bai}               ${gl_kjlan}116. ${color116}DeepSeek Harness管理工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}117. ${color117}99CDN自建CDN管理平台                ${gl_kjlan}118. ${color118}99DNS智能调度服务"
 	  echo -e "${gl_kjlan}119. ${color119}Claude Code编程助手${gl_huang}★${gl_bai}                ${gl_kjlan}120. ${color120}Codex编程助手${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}121. ${color121}OpenCode编程助手${gl_huang}★${gl_bai}                   ${gl_kjlan}122. ${color122}Antigravity CLI编程助手${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}第三方应用列表"
   	  echo -e "${gl_kjlan}想要让你的应用出现在这里？查看开发者指南: ${gl_huang}https://dev.kejilion.sh/${gl_bai}"
 
@@ -22022,7 +22041,7 @@ while true; do
 
 
 
-	  echo -e "${gl_kjlan}-------------------------"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
@@ -25861,33 +25880,35 @@ linux_work() {
 	while true; do
 	  clear
 	  send_stats "后台工作区"
-	  echo -e "后台工作区"
+	  local menu_dim="\033[90m"
+	  echo -e "\n  ${gl_kjlan}\033[1m后台工作区${gl_bai}"
+	  echo -e "  ${menu_dim}长时间任务管理 · tmux${gl_bai}"
 	  echo -e "系统将为你提供可以后台常驻运行的工作区，你可以用来执行长时间的任务"
 	  echo -e "即使你断开SSH，工作区中的任务也不会中断，后台常驻任务。"
 	  echo -e "${gl_huang}提示: ${gl_bai}进入工作区后使用Ctrl+b再单独按d，退出工作区！"
-	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
 	  echo "当前已存在的工作区列表"
-	  echo -e "${gl_kjlan}------------------------"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
 	  tmux list-sessions
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}1号工作区"
-	  echo -e "${gl_kjlan}2.   ${gl_bai}2号工作区"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}3号工作区"
-	  echo -e "${gl_kjlan}4.   ${gl_bai}4号工作区"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}5号工作区"
-	  echo -e "${gl_kjlan}6.   ${gl_bai}6号工作区"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}7号工作区"
-	  echo -e "${gl_kjlan}8.   ${gl_bai}8号工作区"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}9号工作区"
-	  echo -e "${gl_kjlan}10.  ${gl_bai}10号工作区"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}SSH常驻模式 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}22.  ${gl_bai}创建/进入工作区"
-	  echo -e "${gl_kjlan}23.  ${gl_bai}注入命令到后台工作区"
-	  echo -e "${gl_kjlan}24.  ${gl_bai}删除指定工作区"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 1. ${gl_bai}1号工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan} 2. ${gl_bai}2号工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan} 3. ${gl_bai}3号工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan} 4. ${gl_bai}4号工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan} 5. ${gl_bai}5号工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan} 6. ${gl_bai}6号工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan} 7. ${gl_bai}7号工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan} 8. ${gl_bai}8号工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan} 9. ${gl_bai}9号工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan}10. ${gl_bai}10号工作区${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan}21. ${gl_bai}SSH常驻模式 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan}22. ${gl_lv}创建/进入工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan}23. ${gl_bai}注入命令到后台工作区${gl_bai}"
+	  echo -e "  ${gl_kjlan}24. ${gl_hong}删除指定工作区${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 0. ${menu_dim}返回主菜单${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
@@ -30864,40 +30885,47 @@ linux_Settings() {
 	while true; do
 	  clear
 	  # send_stats "系统工具"
-	  echo -e "系统工具"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}设置脚本启动快捷键                 ${gl_kjlan}2.   ${gl_bai}修改登录密码"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}用户密码登录模式                   ${gl_kjlan}4.   ${gl_bai}安装Python指定版本"
-	  echo -e "${gl_kjlan}5.   ${gl_bai}开放所有端口                       ${gl_kjlan}6.   ${gl_bai}修改SSH连接端口"
-	  echo -e "${gl_kjlan}7.   ${gl_bai}优化DNS地址                        ${gl_kjlan}8.   ${gl_bai}一键重装系统 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}禁用ROOT账户创建新账户             ${gl_kjlan}10.  ${gl_bai}切换优先ipv4/ipv6"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}11.  ${gl_bai}查看端口占用状态                   ${gl_kjlan}12.  ${gl_bai}修改虚拟内存大小"
-	  echo -e "${gl_kjlan}13.  ${gl_bai}用户管理                           ${gl_kjlan}14.  ${gl_bai}用户/密码生成器"
-	  echo -e "${gl_kjlan}15.  ${gl_bai}系统时区调整                       ${gl_kjlan}16.  ${gl_bai}设置BBR3加速"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}防火墙高级管理器                   ${gl_kjlan}18.  ${gl_bai}修改主机名"
-	  echo -e "${gl_kjlan}19.  ${gl_bai}切换系统更新源                     ${gl_kjlan}20.  ${gl_bai}定时任务管理"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}21.  ${gl_bai}本机host解析                       ${gl_kjlan}22.  ${gl_bai}SSH防御程序"
-	  echo -e "${gl_kjlan}23.  ${gl_bai}限流自动关机                       ${gl_kjlan}24.  ${gl_bai}用户密钥登录模式"
-	  echo -e "${gl_kjlan}25.  ${gl_bai}TG-bot系统监控预警                 ${gl_kjlan}26.  ${gl_bai}修复OpenSSH高危漏洞"
-	  echo -e "${gl_kjlan}27.  ${gl_bai}红帽系Linux内核升级                ${gl_kjlan}28.  ${gl_bai}Linux系统内核参数优化 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}29.  ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan}30.  ${gl_bai}文件管理器"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}31.  ${gl_bai}切换系统语言                       ${gl_kjlan}32.  ${gl_bai}命令行美化工具 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}33.  ${gl_bai}设置系统回收站                     ${gl_kjlan}34.  ${gl_bai}系统备份与恢复"
-	  echo -e "${gl_kjlan}35.  ${gl_bai}ssh远程连接工具                    ${gl_kjlan}36.  ${gl_bai}硬盘分区管理工具"
-	  echo -e "${gl_kjlan}37.  ${gl_bai}命令行历史记录                     ${gl_kjlan}38.  ${gl_bai}rsync远程同步工具"
-	  echo -e "${gl_kjlan}39.  ${gl_bai}命令收藏夹 ${gl_huang}★${gl_bai}                       ${gl_kjlan}40.  ${gl_bai}网卡管理工具"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}41.  ${gl_bai}系统日志管理工具 ${gl_huang}★${gl_bai}                 ${gl_kjlan}42.  ${gl_bai}系统变量管理工具"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}61.  ${gl_bai}留言板                             ${gl_kjlan}66.  ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}99.  ${gl_bai}重启服务器                         ${gl_kjlan}100. ${gl_bai}隐私与安全"
-	  echo -e "${gl_kjlan}101. ${gl_bai}k命令高级用法 ${gl_huang}★${gl_bai}                    ${gl_kjlan}102. ${gl_bai}卸载科技lion脚本"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  local menu_dim="\033[90m"
+	  echo -e "\n  ${gl_kjlan}\033[1m系统工具${gl_bai}"
+	  echo -e "  ${menu_dim}账号、网络、安全与系统维护${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m账号与网络${gl_bai}"
+	  echo -e "  ${gl_kjlan}  1. ${gl_bai}设置脚本启动快捷键${gl_bai}                 ${gl_kjlan}  2. ${gl_bai}修改登录密码${gl_bai}"
+	  echo -e "  ${gl_kjlan}  3. ${gl_bai}用户密码登录模式${gl_bai}                   ${gl_kjlan}  4. ${gl_lv}安装Python指定版本${gl_bai}"
+	  echo -e "  ${gl_kjlan}  5. ${gl_bai}开放所有端口${gl_bai}                       ${gl_kjlan}  6. ${gl_bai}修改SSH连接端口${gl_bai}"
+	  echo -e "  ${gl_kjlan}  7. ${gl_bai}优化DNS地址${gl_bai}                        ${gl_kjlan}  8. ${gl_hong}一键重装系统 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan}  9. ${gl_bai}禁用ROOT账户创建新账户${gl_bai}             ${gl_kjlan} 10. ${gl_bai}切换优先ipv4/ipv6${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m系统配置${gl_bai}"
+	  echo -e "  ${gl_kjlan} 11. ${gl_bai}查看端口占用状态${gl_bai}                   ${gl_kjlan} 12. ${gl_bai}修改虚拟内存大小${gl_bai}"
+	  echo -e "  ${gl_kjlan} 13. ${gl_bai}用户管理${gl_bai}                           ${gl_kjlan} 14. ${gl_bai}用户/密码生成器${gl_bai}"
+	  echo -e "  ${gl_kjlan} 15. ${gl_bai}系统时区调整${gl_bai}                       ${gl_kjlan} 16. ${gl_bai}设置BBR3加速${gl_bai}"
+	  echo -e "  ${gl_kjlan} 17. ${gl_bai}防火墙高级管理器${gl_bai}                   ${gl_kjlan} 18. ${gl_bai}修改主机名${gl_bai}"
+	  echo -e "  ${gl_kjlan} 19. ${gl_huang}切换系统更新源${gl_bai}                     ${gl_kjlan} 20. ${gl_bai}定时任务管理${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m安全与维护${gl_bai}"
+	  echo -e "  ${gl_kjlan} 21. ${gl_bai}本机host解析${gl_bai}                       ${gl_kjlan} 22. ${gl_bai}SSH防御程序${gl_bai}"
+	  echo -e "  ${gl_kjlan} 23. ${gl_bai}限流自动关机${gl_bai}                       ${gl_kjlan} 24. ${gl_bai}用户密钥登录模式${gl_bai}"
+	  echo -e "  ${gl_kjlan} 25. ${gl_bai}TG-bot系统监控预警${gl_bai}                 ${gl_kjlan} 26. ${gl_bai}修复OpenSSH高危漏洞${gl_bai}"
+	  echo -e "  ${gl_kjlan} 27. ${gl_huang}红帽系Linux内核升级${gl_bai}                ${gl_kjlan} 28. ${gl_bai}Linux系统内核参数优化 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan} 29. ${gl_bai}病毒扫描工具 ${gl_huang}★${gl_bai}                     ${gl_kjlan} 30. ${gl_bai}文件管理器${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m日常工具${gl_bai}"
+	  echo -e "  ${gl_kjlan} 31. ${gl_bai}切换系统语言${gl_bai}                       ${gl_kjlan} 32. ${gl_bai}命令行美化工具 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan} 33. ${gl_bai}设置系统回收站${gl_bai}                     ${gl_kjlan} 34. ${gl_bai}系统备份与恢复${gl_bai}"
+	  echo -e "  ${gl_kjlan} 35. ${gl_bai}ssh远程连接工具${gl_bai}                    ${gl_kjlan} 36. ${gl_bai}硬盘分区管理工具${gl_bai}"
+	  echo -e "  ${gl_kjlan} 37. ${gl_bai}命令行历史记录${gl_bai}                     ${gl_kjlan} 38. ${gl_bai}rsync远程同步工具${gl_bai}"
+	  echo -e "  ${gl_kjlan} 39. ${gl_bai}命令收藏夹 ${gl_huang}★${gl_bai}                       ${gl_kjlan} 40. ${gl_bai}网卡管理工具${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 41. ${gl_bai}系统日志管理工具 ${gl_huang}★${gl_bai}                 ${gl_kjlan} 42. ${gl_bai}系统变量管理工具${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m更多操作${gl_bai}"
+	  echo -e "  ${gl_kjlan} 61. ${gl_bai}留言板${gl_bai}                             ${gl_kjlan} 66. ${gl_bai}一条龙系统调优 ${gl_huang}★${gl_bai}"
+	  echo -e "  ${gl_kjlan} 99. ${gl_hong}重启服务器${gl_bai}                         ${gl_kjlan}100. ${gl_bai}隐私与安全${gl_bai}"
+	  echo -e "  ${gl_kjlan}101. ${gl_bai}k命令高级用法 ${gl_huang}★${gl_bai}                    ${gl_kjlan}102. ${gl_hong}卸载科技lion脚本${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan}  0. ${menu_dim}返回主菜单${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
@@ -32222,21 +32250,23 @@ fi
 while true; do
 	  clear
 	  send_stats "集群控制中心"
-	  echo "服务器集群控制"
+	  local menu_dim="\033[90m"
+	  echo -e "\n  ${gl_kjlan}\033[1m服务器集群控制${gl_bai}"
+	  echo -e "  ${menu_dim}服务器清单与批量任务${gl_bai}"
 	  cat ~/cluster/servers.py
 	  echo
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  echo -e "${gl_kjlan}服务器列表管理${gl_bai}"
-	  echo -e "${gl_kjlan}1.  ${gl_bai}添加服务器               ${gl_kjlan}2.  ${gl_bai}删除服务器            ${gl_kjlan}3.  ${gl_bai}编辑服务器"
-	  echo -e "${gl_kjlan}4.  ${gl_bai}备份集群                 ${gl_kjlan}5.  ${gl_bai}还原集群"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  echo -e "${gl_kjlan}批量执行任务${gl_bai}"
-	  echo -e "${gl_kjlan}11. ${gl_bai}安装科技lion脚本         ${gl_kjlan}12. ${gl_bai}更新系统              ${gl_kjlan}13. ${gl_bai}清理系统"
-	  echo -e "${gl_kjlan}14. ${gl_bai}安装docker               ${gl_kjlan}15. ${gl_bai}安装BBR3              ${gl_kjlan}16. ${gl_bai}设置1G虚拟内存"
-	  echo -e "${gl_kjlan}17. ${gl_bai}设置时区到上海           ${gl_kjlan}18. ${gl_bai}开放所有端口	       ${gl_kjlan}51. ${gl_bai}自定义指令"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
-	  echo -e "${gl_kjlan}0.  ${gl_bai}返回主菜单"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m服务器列表管理${gl_bai}"
+	  echo -e "  ${gl_kjlan} 1. ${gl_bai}添加服务器${gl_bai}              ${gl_kjlan} 2. ${gl_hong}删除服务器${gl_bai}              ${gl_kjlan} 3. ${gl_bai}编辑服务器${gl_bai}"
+	  echo -e "  ${gl_kjlan} 4. ${gl_bai}备份集群${gl_bai}                            ${gl_kjlan} 5. ${gl_bai}还原集群${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "\n  ${gl_kjlan}\033[1m批量执行任务${gl_bai}"
+	  echo -e "  ${gl_kjlan}11. ${gl_lv}安装科技lion脚本${gl_bai}        ${gl_kjlan}12. ${gl_huang}更新系统${gl_bai}                ${gl_kjlan}13. ${gl_bai}清理系统${gl_bai}"
+	  echo -e "  ${gl_kjlan}14. ${gl_lv}安装docker${gl_bai}              ${gl_kjlan}15. ${gl_lv}安装BBR3${gl_bai}                ${gl_kjlan}16. ${gl_bai}设置1G虚拟内存${gl_bai}"
+	  echo -e "  ${gl_kjlan}17. ${gl_bai}设置时区到上海${gl_bai}          ${gl_kjlan}18. ${gl_bai}开放所有端口${gl_bai}            ${gl_kjlan}51. ${gl_bai}自定义指令${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 0. ${menu_dim}返回主菜单${gl_bai}"
+	  echo -e "  ${menu_dim}--------------------------------------------------------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
@@ -32381,13 +32411,15 @@ games_server_tools() {
 
 	while true; do
 	  clear
-	  echo -e "游戏开服脚本合集"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1. ${gl_bai}幻兽帕鲁开服脚本"
-	  echo -e "${gl_kjlan}2. ${gl_bai}我的世界开服脚本"
-	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0. ${gl_bai}返回主菜单"
-	  echo -e "${gl_kjlan}------------------------${gl_bai}"
+	  local menu_dim="\033[90m"
+	  echo -e "\n  ${gl_kjlan}\033[1m游戏开服脚本合集${gl_bai}"
+	  echo -e "  ${menu_dim}选择游戏，进入对应的原生管理脚本${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 1. ${gl_bai}幻兽帕鲁开服脚本${gl_bai}"
+	  echo -e "  ${gl_kjlan} 2. ${gl_bai}我的世界开服脚本${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
+	  echo -e "  ${gl_kjlan} 0. ${menu_dim}返回主菜单${gl_bai}"
+	  echo -e "  ${menu_dim}-------------------------------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
 
 	  case $sub_choice in
@@ -32579,37 +32611,75 @@ local kpanel_menu_status="${gl_huang}★ 推荐${gl_bai}"
 if grep -qxF "kpanel" /home/docker/appno.txt 2>/dev/null; then
 	kpanel_menu_status="${gl_lv}[已安装]${gl_bai}"
 fi
-echo -e "${gl_kjlan}"
-echo "╦╔═╔═╗ ╦╦╦  ╦╔═╗╔╗╔ ╔═╗╦ ╦"
-echo "╠╩╗║╣  ║║║  ║║ ║║║║ ╚═╗╠═╣"
-echo "╩ ╩╚═╝╚╝╩╩═╝╩╚═╝╝╚╝o╚═╝╩ ╩"
-echo -e "科技lion脚本工具箱 v$sh_v"
-echo -e "命令行输入${gl_huang}k${gl_kjlan}可快速启动脚本${gl_bai}"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}1.   ${gl_bai}系统信息查询"
-echo -e "${gl_kjlan}2.   ${gl_bai}系统更新"
-echo -e "${gl_kjlan}3.   ${gl_bai}系统清理"
-echo -e "${gl_kjlan}4.   ${gl_bai}基础工具"
-echo -e "${gl_kjlan}5.   ${gl_bai}BBR管理"
-echo -e "${gl_kjlan}6.   ${gl_bai}Docker管理"
-echo -e "${gl_kjlan}7.   ${gl_bai}WARP管理"
-echo -e "${gl_kjlan}8.   ${gl_bai}测试脚本合集"
-echo -e "${gl_kjlan}9.   ${gl_bai}甲骨文云脚本合集"
-echo -e "${gl_huang}10.  ${gl_bai}LDNMP建站"
-echo -e "${gl_kjlan}11.  ${gl_bai}应用市场"
-echo -e "${gl_kjlan}12.  ${gl_bai}后台工作区"
-echo -e "${gl_kjlan}13.  ${gl_bai}系统工具"
-echo -e "${gl_kjlan}14.  ${gl_bai}服务器集群控制"
-echo -e "${gl_kjlan}15.  ${gl_bai}广告专栏"
-echo -e "${gl_kjlan}16.  ${gl_bai}游戏开服脚本合集"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_huang}17.  ${gl_bai}KPanel Web管理面板 ${kpanel_menu_status}"
-echo -e "${gl_hui}     kejilion.sh 的现代化网页管理界面${gl_bai}"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}00.  ${gl_bai}脚本更新"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}0.   ${gl_bai}退出脚本"
-echo -e "${gl_kjlan}------------------------${gl_bai}"
+local menu_dim="\033[90m"
+echo -e "\n  ${gl_kjlan}\033[1mKEJILION.SH · 科技lion工具箱${gl_bai}"
+echo -e "  ${menu_dim}版本 v$sh_v  |  快捷启动：${gl_kjlan}k${gl_bai}"
+local menu_cols="${COLUMNS:-}"
+if [[ ! "$menu_cols" =~ ^[0-9]+$ ]]; then
+	menu_cols=$(tput cols 2>/dev/null) || menu_cols=80
+fi
+local menu_line="-------------------------------------------------"
+if [ "$menu_cols" -ge 72 ]; then
+	menu_line="--------------------------------------------------------------------"
+fi
+echo -e "  ${menu_dim}${menu_line}${gl_bai}"
+echo -e "\n  ${gl_kjlan}\033[1m系统与基础${gl_bai}"
+if [ "$menu_cols" -ge 72 ]; then
+	echo -e "  ${gl_kjlan} 1. ${gl_bai}系统信息查询${gl_bai}                      ${gl_kjlan} 2. ${gl_huang}系统更新${gl_bai}"
+else
+	echo -e "  ${gl_kjlan} 1. ${gl_bai}系统信息查询${gl_bai}"
+	echo -e "  ${gl_kjlan} 2. ${gl_huang}系统更新${gl_bai}"
+fi
+if [ "$menu_cols" -ge 72 ]; then
+	echo -e "  ${gl_kjlan} 3. ${gl_bai}系统清理${gl_bai}                          ${gl_kjlan} 4. ${gl_bai}基础工具${gl_bai}"
+else
+	echo -e "  ${gl_kjlan} 3. ${gl_bai}系统清理${gl_bai}"
+	echo -e "  ${gl_kjlan} 4. ${gl_bai}基础工具${gl_bai}"
+fi
+if [ "$menu_cols" -ge 72 ]; then
+	echo -e "  ${gl_kjlan} 5. ${gl_bai}BBR管理${gl_bai}                           ${gl_kjlan} 6. ${gl_bai}Docker管理${gl_bai}"
+else
+	echo -e "  ${gl_kjlan} 5. ${gl_bai}BBR管理${gl_bai}"
+	echo -e "  ${gl_kjlan} 6. ${gl_bai}Docker管理${gl_bai}"
+fi
+echo -e "\n  ${gl_kjlan}\033[1m网络与建站${gl_bai}"
+if [ "$menu_cols" -ge 72 ]; then
+	echo -e "  ${gl_kjlan} 7. ${gl_bai}WARP管理${gl_bai}                          ${gl_kjlan} 8. ${gl_bai}测试脚本合集${gl_bai}"
+else
+	echo -e "  ${gl_kjlan} 7. ${gl_bai}WARP管理${gl_bai}"
+	echo -e "  ${gl_kjlan} 8. ${gl_bai}测试脚本合集${gl_bai}"
+fi
+if [ "$menu_cols" -ge 72 ]; then
+	echo -e "  ${gl_kjlan} 9. ${gl_bai}甲骨文云脚本合集${gl_bai}                  ${gl_kjlan}10. ${gl_bai}LDNMP建站${gl_bai}"
+else
+	echo -e "  ${gl_kjlan} 9. ${gl_bai}甲骨文云脚本合集${gl_bai}"
+	echo -e "  ${gl_kjlan}10. ${gl_bai}LDNMP建站${gl_bai}"
+fi
+echo -e "\n  ${gl_kjlan}\033[1m应用与运维${gl_bai}"
+if [ "$menu_cols" -ge 72 ]; then
+	echo -e "  ${gl_kjlan}11. ${gl_bai}应用市场${gl_bai}                          ${gl_kjlan}12. ${gl_bai}后台工作区${gl_bai}"
+else
+	echo -e "  ${gl_kjlan}11. ${gl_bai}应用市场${gl_bai}"
+	echo -e "  ${gl_kjlan}12. ${gl_bai}后台工作区${gl_bai}"
+fi
+if [ "$menu_cols" -ge 72 ]; then
+	echo -e "  ${gl_kjlan}13. ${gl_bai}系统工具${gl_bai}                          ${gl_kjlan}14. ${gl_bai}服务器集群控制${gl_bai}"
+else
+	echo -e "  ${gl_kjlan}13. ${gl_bai}系统工具${gl_bai}"
+	echo -e "  ${gl_kjlan}14. ${gl_bai}服务器集群控制${gl_bai}"
+fi
+if [ "$menu_cols" -ge 72 ]; then
+	echo -e "  ${gl_kjlan}15. ${gl_bai}广告专栏${gl_bai}                          ${gl_kjlan}16. ${gl_bai}游戏开服脚本合集${gl_bai}"
+else
+	echo -e "  ${gl_kjlan}15. ${gl_bai}广告专栏${gl_bai}"
+	echo -e "  ${gl_kjlan}16. ${gl_bai}游戏开服脚本合集${gl_bai}"
+fi
+echo -e "\n  ${menu_dim}${menu_line}${gl_bai}"
+echo -e "  ${gl_kjlan}17.  ${gl_bai}KPanel Web管理面板 ${kpanel_menu_status}"
+echo -e "  ${menu_dim}     kejilion.sh 的现代化网页管理界面${gl_bai}"
+echo -e "  ${menu_dim}${menu_line}${gl_bai}"
+echo -e "  ${gl_kjlan}00. ${gl_huang}脚本更新${gl_bai}                          ${gl_kjlan} 0. ${menu_dim}退出脚本${gl_bai}"
+echo -e "  ${menu_dim}${menu_line}${gl_bai}"
 read -e -p "请输入你的选择: " choice
 
 case $choice in
