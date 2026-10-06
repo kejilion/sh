@@ -288,6 +288,61 @@ ai_cli_auth() {
 	fi
 }
 
+ai_cli_setup_colors() {
+	AI_CLI_CYAN='' AI_CLI_GREEN='' AI_CLI_YELLOW='' AI_CLI_RED=''
+	AI_CLI_GRAY='' AI_CLI_BOLD='' AI_CLI_RESET=''
+	if [ -t 1 ] && [ "${TERM:-dumb}" != dumb ] && [ -z "${NO_COLOR:-}" ]; then
+		AI_CLI_CYAN="${gl_kjlan:-\033[96m}"
+		AI_CLI_GREEN="${gl_lv:-\033[32m}"
+		AI_CLI_YELLOW="${gl_huang:-\033[33m}"
+		AI_CLI_RED="${gl_hong:-\033[31m}"
+		AI_CLI_GRAY='\033[90m' AI_CLI_BOLD='\033[1m'
+		AI_CLI_RESET="${gl_bai:-\033[0m}"
+	fi
+}
+
+ai_cli_menu_item() {
+	printf ' %b%s.%b %b%s%b\n' "$AI_CLI_CYAN" "$1" "$AI_CLI_RESET" "${3:-}" "$2" "$AI_CLI_RESET"
+}
+
+ai_cli_show_menu() {
+	printf '\n%b%s%b\n' "$AI_CLI_CYAN$AI_CLI_BOLD" "========== $AI_CLI_NAME 应用管理 ==========" "$AI_CLI_RESET"
+	if ai_cli_installed; then
+		printf ' 状态：%b已安装%b  %b%s%b\n' "$AI_CLI_GREEN" "$AI_CLI_RESET" "$AI_CLI_GRAY" "$(command -v "$AI_CLI_COMMAND")" "$AI_CLI_RESET"
+	else
+		printf ' 状态：%b未安装%b\n' "$AI_CLI_YELLOW" "$AI_CLI_RESET"
+	fi
+	printf ' 当前用户：%b%s%b | HOME: %b%s%b\n' "$AI_CLI_CYAN" "$(id -un)" "$AI_CLI_RESET" "$AI_CLI_GRAY" "$HOME" "$AI_CLI_RESET"
+	printf ' %b%s%b\n' "$AI_CLI_GRAY" '终端工具：在此终端中运行，无需端口或常驻服务。' "$AI_CLI_RESET"
+	printf '%b%s%b\n' "$AI_CLI_CYAN" '-------------------------------------------------' "$AI_CLI_RESET"
+	ai_cli_menu_item 1 '安装 / 识别已有安装' "$AI_CLI_GREEN"
+	ai_cli_menu_item 2 '进入项目并启动' "$AI_CLI_GREEN"
+	if [ "$AI_CLI_COMMAND" = agy ]; then
+		ai_cli_menu_item 3 '进入官方登录界面'
+		ai_cli_menu_item 4 '查看版本与账号状态说明'
+		ai_cli_menu_item 5 '恢复项目最近会话'
+	elif [ "$AI_CLI_COMMAND" = opencode ]; then
+		ai_cli_menu_item 3 '登录模型供应商'
+		ai_cli_menu_item 4 '查看版本与已登录供应商'
+		ai_cli_menu_item 5 '恢复项目最近会话'
+	else
+		ai_cli_menu_item 3 '登录账号'
+		ai_cli_menu_item 4 '查看版本与登录状态'
+		ai_cli_menu_item 5 '恢复项目会话'
+	fi
+	printf '%b%s%b\n' "$AI_CLI_GRAY" '-------------------------------------------------' "$AI_CLI_RESET"
+	ai_cli_menu_item 6 '更新' "$AI_CLI_YELLOW"
+	ai_cli_menu_item 7 '查看原生命令帮助'
+	ai_cli_menu_item 8 '卸载（保留配置和会话）' "$AI_CLI_RED"
+	if [ "$AI_CLI_COMMAND" = opencode ]; then
+		ai_cli_menu_item 9 '退出模型供应商' "$AI_CLI_YELLOW"
+	else
+		ai_cli_menu_item 9 '退出账号' "$AI_CLI_YELLOW"
+	fi
+	ai_cli_menu_item 0 '返回' "$AI_CLI_GRAY"
+	printf '%b%s%b\n' "$AI_CLI_CYAN" '-------------------------------------------------' "$AI_CLI_RESET"
+}
+
 ai_cli_main() {
 	ai_cli_select "$1" || return 1
 	[ "$(id -u)" = 0 ] || { echo '请以 root 运行 k app，管理服务器上的安装。' >&2; return 1; }
@@ -295,40 +350,13 @@ ai_cli_main() {
 		echo '请通过最新版 kejilion.sh 的 k app 入口运行。' >&2; return 1;
 	}
 	local choice result=0
+	ai_cli_setup_colors
 	while true; do
 		if [ -t 1 ]; then
 			clear 2>/dev/null || printf '\033[H\033[2J'
 		fi
-		echo
-		echo "========== $AI_CLI_NAME 应用管理 =========="
-		if ai_cli_installed; then
-			echo "状态：已安装（$(command -v "$AI_CLI_COMMAND")）"
-		else
-			echo '状态：未安装'
-		fi
-		echo "当前用户：$(id -un) | HOME: $HOME"
-		echo '终端工具：在此终端中运行，无需端口或常驻服务。'
-		echo '1. 安装 / 识别已有安装'
-		echo '2. 进入项目并启动'
-		if [ "$AI_CLI_COMMAND" = agy ]; then
-			echo '3. 进入官方登录界面'
-			echo '4. 查看版本与账号状态说明'
-			echo '5. 恢复项目最近会话'
-		elif [ "$AI_CLI_COMMAND" = opencode ]; then
-			echo '3. 登录模型供应商'
-			echo '4. 查看版本与已登录供应商'
-			echo '5. 恢复项目最近会话'
-		else
-			echo '3. 登录账号'
-			echo '4. 查看版本与登录状态'
-			echo '5. 恢复项目会话'
-		fi
-		echo '6. 更新'
-		echo '7. 查看原生命令帮助'
-		echo '8. 卸载（保留配置和会话）'
-		if [ "$AI_CLI_COMMAND" = opencode ]; then echo '9. 退出模型供应商'; else echo '9. 退出账号'; fi
-		echo '0. 返回'
-		read -r -p '请选择: ' choice || return "$result"
+		ai_cli_show_menu
+		read -r -p "$(printf '%b请选择:%b ' "$AI_CLI_CYAN" "$AI_CLI_RESET")" choice || return "$result"
 		case "$choice" in
 			1) kpanel_app_with_lock system ai_cli_install_impl ;;
 			2) ai_cli_project ;;
@@ -340,10 +368,10 @@ ai_cli_main() {
 			8) ai_cli_uninstall ;;
 			9) ai_cli_auth logout ;;
 			0) return "$result" ;;
-			*) echo '无效选项。'; continue ;;
+			*) printf '%b无效选项。%b\n' "$AI_CLI_YELLOW" "$AI_CLI_RESET"; continue ;;
 		esac
 		result=$?
-		[ "$result" -eq 0 ] || echo "操作未完成（退出码 $result），请检查上方输出。"
-		read -r -p '按回车继续...' _ || return "$result"
+		[ "$result" -eq 0 ] || printf '%b%s%b\n' "$AI_CLI_RED" "操作未完成（退出码 $result），请检查上方输出。" "$AI_CLI_RESET"
+		read -r -p "$(printf '%b按回车继续...%b' "$AI_CLI_GRAY" "$AI_CLI_RESET")" _ || return "$result"
 	done
 }
