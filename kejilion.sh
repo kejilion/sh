@@ -16161,6 +16161,12 @@ linux_ldnmp() {
 
 moltbot_menu() {
 	local app_id="114"
+	local gl_kjlan="${gl_kjlan:-\033[96m}" gl_lv="${gl_lv:-\033[32m}"
+	local gl_huang="${gl_huang:-\033[33m}" gl_hong="${gl_hong:-\033[31m}"
+	local gl_hui='\033[90m' gl_bai="${gl_bai:-\033[0m}"
+	if [ ! -t 1 ] || [ "${TERM:-dumb}" = dumb ] || [ -n "${NO_COLOR:-}" ]; then
+		gl_kjlan='' gl_lv='' gl_huang='' gl_hong='' gl_hui='' gl_bai=''
+	fi
 
 	send_stats "clawdbot/moltbot管理"
 
@@ -16194,7 +16200,7 @@ moltbot_menu() {
 		if command -v openclaw >/dev/null 2>&1; then
 			echo "${gl_lv}已安装${gl_bai}"
 		else
-			echo "${gl_hui}未安装${gl_bai}"
+			echo "${gl_huang}未安装${gl_bai}"
 		fi
 	}
 
@@ -16202,7 +16208,7 @@ moltbot_menu() {
 		if pgrep -f "openclaw.*gateway" >/dev/null 2>&1; then
 			echo "${gl_lv}运行中${gl_bai}"
 		else
-			echo "${gl_hui}未运行${gl_bai}"
+			echo "${gl_huang}未运行${gl_bai}"
 		fi
 	}
 
@@ -16216,37 +16222,36 @@ moltbot_menu() {
 		local running_status=$(get_running_status)
 		local update_message=$(check_openclaw_update)
 
-		echo "======================================="
-		echo -e "🦞 OPENCLAW 管理工具 by KEJILION 🦞"
-		echo -e "💡 终端执行 \033[1;33mk claw\033[0m 快速进入菜单"
-		echo -e "$install_status $running_status $update_message"
-		echo "======================================="
-		echo "1.  安装"
-		echo "2.  启动"
-		echo "3.  停止"
-		echo "--------------------"
-		echo "4.  状态日志查看"
-		echo "5.  换模型"
-		echo "6.  API管理"
-		echo "7.  机器人连接对接"
-		echo "8.  插件管理（安装/删除）"
-		echo "9.  技能管理（安装/删除）"
-		echo "10. 编辑主配置文件"
-		echo "11. 配置向导"
-		echo "12. 健康检测与修复"
-		echo "13. WebUI访问与设置"
-		echo "14. TUI命令行对话窗口"
-		echo "15. 记忆/Memory"
-		echo "16. 权限管理"
-		echo "17. 多智能体管理"
-		echo "--------------------"
-		echo "18. 备份与还原"
-		echo "19. 更新"
-		echo "20. 卸载"
-		echo "--------------------"
-		echo "0. 返回上一级选单"
-		echo "--------------------"
-		printf "请输入选项并回车: "
+		printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 应用管理 ==========" "${gl_bai:-}"
+		printf ' %b终端执行 %b%s%b 快速进入菜单%b\n' "$gl_hui" "$gl_kjlan" 'k claw' "$gl_hui" "$gl_bai"
+		printf ' 安装状态：%b    运行状态：%b\n' "$install_status" "$running_status"
+		[ -z "$update_message" ] || printf ' %b\n' "$update_message"
+		printf '%b%s%b\n' "${gl_kjlan:-}" '-------------------------------------------------' "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" "${gl_lv:-}" "安装" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_lv:-}" "启动" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" "${gl_huang:-}" "停止" "${gl_bai:-}"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" '' "状态日志查看" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" '' "换模型" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 6 "${gl_bai:-}" '' "API管理" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 7 "${gl_bai:-}" '' "机器人连接对接" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 8 "${gl_bai:-}" '' "插件管理（安装/删除）" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 9 "${gl_bai:-}" '' "技能管理（安装/删除）" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 10 "${gl_bai:-}" '' "编辑主配置文件" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 11 "${gl_bai:-}" '' "配置向导" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 12 "${gl_bai:-}" '' "健康检测与修复" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 13 "${gl_bai:-}" '' "WebUI访问与设置" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 14 "${gl_bai:-}" "${gl_lv:-}" "TUI命令行对话窗口" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 15 "${gl_bai:-}" '' "记忆/Memory" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 16 "${gl_bai:-}" '' "权限管理" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 17 "${gl_bai:-}" '' "多智能体管理" "${gl_bai:-}"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 18 "${gl_bai:-}" '' "备份与还原" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 19 "${gl_bai:-}" "${gl_huang:-}" "更新" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 20 "${gl_bai:-}" "${gl_hong:-}" "卸载" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级选单" "${gl_bai:-}"
+		printf '%b%s%b\n' "${gl_kjlan:-}" '-------------------------------------------------' "${gl_bai:-}"
+		printf '%b请输入选项并回车: %b' "$gl_kjlan" "$gl_bai"
 	}
 
 
@@ -17058,7 +17063,7 @@ PY_MODELS
 			if [[ -n "$available_models" ]]; then
 				model_count=$(echo "$available_models" | wc -l)
 				echo "✅ 发现 $model_count 个可用模型："
-				echo "--------------------------------"
+				printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 				# 全部显示，带序号
 				i=1
 				model_list=()
@@ -17067,7 +17072,7 @@ PY_MODELS
 					model_list+=("$model")
 					((i++))
 				done <<< "$available_models"
-				echo "--------------------------------"
+				printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 			fi
 		fi
 
@@ -17534,9 +17539,9 @@ fix-openclaw-provider-protocol-interactive() {
 	fi
 
 	echo "请选择要设置的 API 类型："
-	echo "1. openai-completions"
-	echo "2. openai-responses"
-	read -erp "请输入你的选择 (1/2): " proto_choice
+	printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "openai-completions" "${gl_bai:-}"
+	printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "openai-responses" "${gl_bai:-}"
+	read -erp "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择 (1/2): " "${gl_bai:-}")" proto_choice
 
 	local new_api=""
 	case "$proto_choice" in
@@ -17815,19 +17820,17 @@ PY
 		send_stats "OpenClaw API入口"
 		while true; do
 			clear
-			echo "======================================="
-			echo "OpenClaw API 管理"
-			echo "======================================="
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw API 管理 ==========" "${gl_bai:-}"
 			openclaw_api_manage_list
-			echo "---------------------------------------"
-			echo "1. 添加API"
-			echo "2. 同步API供应商模型列表"
-			echo "3. 切换 API 类型（completions / responses）"
-			echo "4. 删除API"
-			echo "5. API 厂商推荐"
-			echo "0. 退出"
-			echo "---------------------------------------"
-			read -erp "请输入你的选择: " api_choice
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "添加API" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "同步API供应商模型列表" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "切换 API 类型（completions / responses）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" "${gl_hong:-}" "删除API" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" '' "API 厂商推荐" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "退出" "${gl_bai:-}"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -erp "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" api_choice
 
 			case "$api_choice" in
 				1)
@@ -18172,7 +18175,7 @@ PYTHON_EOF
 				echo "--- 模型管理 ---"
 				echo "当前可用模型:"
 				jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d'
-				echo "----------------"
+				printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 				read -e -p "请输入要设置的模型名称 (例如 openrouter/openai/gpt-4o)（输入 0 退出）： " selected_model
 
 				if [ "$selected_model" = "0" ]; then
@@ -18491,14 +18494,12 @@ PYTHON_EOF
 		send_stats "插件管理"
 		while true; do
 			clear
-			echo "========================================"
-			echo "            插件管理 (安装/删除)            "
-			echo "========================================"
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 插件管理 (安装/删除) ==========" "${gl_bai:-}"
 			echo "当前插件列表:"
 			openclaw plugins list
-			echo "--------------------------------------------------------"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 			echo "推荐的常用插件 ID (直接复制括号内的 ID 即可):"
-			echo "--------------------------------------------------------"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 			echo "📱 通讯渠道:"
 			echo "  - [feishu]       	# 飞书/Lark 集成"
 			echo "  - [telegram]     	# Telegram 机器人"
@@ -18516,12 +18517,12 @@ PYTHON_EOF
 			echo "  - [lobster]      	# 审批流 (带人工确认)"
 			echo "  - [voice-call]   	# 语音通话能力"
 			echo "  - [nostr]        	# 加密隐私聊天"
-			echo "--------------------------------------------------------"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 
-			echo "1) 安装/启用插件"
-			echo "2) 删除/禁用插件"
-			echo "0) 返回"
-			read -e -p "请选择操作：" plugin_action
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" "${gl_lv:-}" "安装/启用插件" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "删除/禁用插件" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回" "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请选择操作：" "${gl_bai:-}")" plugin_action
 
 			[ "$plugin_action" = "0" ] && break
 			[ -z "$plugin_action" ] && continue
@@ -18621,12 +18622,10 @@ PYTHON_EOF
 		send_stats "技能管理"
 		while true; do
 			clear
-			echo "========================================"
-			echo "            技能管理 (安装/删除)            "
-			echo "========================================"
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 技能管理 (安装/删除) ==========" "${gl_bai:-}"
 			echo "当前已安装技能:"
 			openclaw skills list
-			echo "----------------------------------------"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 
 			# 输出推荐的实用技能列表
 			echo "推荐的实用技能（可直接复制名称输入）："
@@ -18644,12 +18643,12 @@ PYTHON_EOF
 			echo "video-frames       # 视频抽帧与短片剪辑 (ffmpeg 驱动)"
 			echo "openai-whisper     # 本地音频转文字 (离线隐私保护)"
 			echo "coding-agent       # 自动运行 Claude Code/Codex 等编程助手"
-			echo "----------------------------------------"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 
-			echo "1) 安装技能"
-			echo "2) 删除技能"
-			echo "0) 返回"
-			read -e -p "请选择操作：" skill_action
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" "${gl_lv:-}" "安装技能" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "删除技能" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回" "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请选择操作：" "${gl_bai:-}")" skill_action
 
 			[ "$skill_action" = "0" ] && break
 			[ -z "$skill_action" ] && continue
@@ -18962,20 +18961,18 @@ openclaw_json_get_bool() {
 		send_stats "机器人对接"
 		while true; do
 			clear
-			echo "========================================"
-			echo "            机器人连接对接            "
-			echo "========================================"
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 机器人连接对接 ==========" "${gl_bai:-}"
 			openclaw_show_bot_local_status_block
-			echo "----------------------------------------"
-			echo "1. Telegram 机器人对接"
-			echo "2. 飞书 (Lark) 机器人对接"
-			echo "3. WhatsApp 机器人对接"
-			echo "4. QQ 机器人对接"
-			echo "5. 微信机器人对接"
-			echo "----------------------------------------"
-			echo "0. 返回上一级选单"
-			echo "----------------------------------------"
-			read -e -p "请输入你的选择: " bot_choice
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "Telegram 机器人对接" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "飞书 (Lark) 机器人对接" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "WhatsApp 机器人对接" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" '' "QQ 机器人对接" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" '' "微信机器人对接" "${gl_bai:-}"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级选单" "${gl_bai:-}"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" bot_choice
 
 			case $bot_choice in
 				1)
@@ -19239,8 +19236,8 @@ if os.path.isdir(agents_root):
 		fi
 
 		echo "备份模式："
-		echo "1. 安全模式（默认，推荐）：workspace + openclaw.json + extensions/skills/prompts/tools（如存在）"
-		echo "2. 完整模式（含更多状态，敏感风险更高）"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "安全模式（默认，推荐）：workspace + openclaw.json + extensions/skills/prompts/tools（如存在）" "${gl_bai:-}"
+		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "完整模式（含更多状态，敏感风险更高）" "${gl_bai:-}"
 		read -e -p "请选择备份模式（默认 1）: " export_mode
 		[ -z "$export_mode" ] && export_mode="1"
 
@@ -20034,7 +20031,7 @@ PY
 	}
 
 	openclaw_memory_render_auto_summary() {
-		echo "---------------------------------------"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 		echo "✅ 环境就绪"
 		echo "方案: ${OPENCLAW_MEMORY_AUTO_SCHEME:-unknown}"
 		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
@@ -20064,7 +20061,7 @@ PY
 		fi
 		echo "最终状态:"
 		openclaw_memory_render_status
-		echo "---------------------------------------"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 	}
 
 	openclaw_memory_auto_confirm() {
@@ -20274,15 +20271,13 @@ EOF
 	openclaw_memory_auto_setup_menu() {
 		while true; do
 			clear
-			echo "======================================="
-			echo "记忆方案自动部署"
-			echo "======================================="
-			echo "1. QMD"
-			echo "2. Local"
-			echo "3. Auto（自动选择）"
-			echo "0. 返回上一级"
-			echo "---------------------------------------"
-			read -e -p "请输入你的选择: " auto_choice
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 记忆方案自动部署 ==========" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "QMD" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "Local" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "Auto（自动选择）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" auto_choice
 			case "$auto_choice" in
 				1)
 					openclaw_memory_auto_setup_run "qmd"
@@ -20357,9 +20352,7 @@ EOF
 			echo "   可切换 Local，或安装 bun + qmd 后再试。"
 		fi
 		include_dm=$(openclaw config get memory.qmd.includeDefaultMemory 2>/dev/null)
-		echo "======================================="
-		echo "索引修复诊断"
-		echo "======================================="
+		printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 索引修复诊断 ==========" "${gl_bai:-}"
 		echo "当前 includeDefaultMemory: ${include_dm:-未设置}"
 		echo ""
 		if [ "$include_dm" = "false" ]; then
@@ -20397,9 +20390,7 @@ EOF
 	openclaw_memory_scheme_menu() {
 		while true; do
 			clear
-			echo "======================================="
-			echo "OpenClaw 记忆方案"
-			echo "======================================="
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 记忆方案 ==========" "${gl_bai:-}"
 			local backend current_label
 			backend=$(openclaw_memory_get_backend)
 			case "$backend" in
@@ -20412,13 +20403,13 @@ EOF
 			echo "QMD  : 轻量索引，依赖 qmd 命令（适合网络受限）"
 			echo "Local: 本地向量检索，依赖 embedding 模型文件"
 			echo "Auto : 自动推荐（基于可用性 + 网络探测）"
-			echo "---------------------------------------"
-			echo "1. 切换 QMD（自动部署/已装则跳过）"
-			echo "2. 切换 Local（自动部署/已装则跳过）"
-			echo "3. Auto（自动推荐并自动部署）"
-			echo "0. 返回上一级"
-			echo "---------------------------------------"
-			read -e -p "请输入你的选择: " scheme_choice
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "切换 QMD（自动部署/已装则跳过）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "切换 Local（自动部署/已装则跳过）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "Auto（自动推荐并自动部署）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" scheme_choice
 			case "$scheme_choice" in
 				1)
 					openclaw_memory_auto_setup_run "qmd"
@@ -20476,7 +20467,7 @@ EOF
 			return 0
 		fi
 		echo "编号 | 归属 | 大小 | 修改时间"
-		echo "---------------------------------------"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 		local i file rel size mtime
 		for i in "${!OPENCLAW_MEMORY_FILES[@]}"; do
 			file="${OPENCLAW_MEMORY_FILES[$i]}"
@@ -20528,20 +20519,18 @@ EOF
 			echo "(空文件)"
 			return 0
 		fi
-		echo "---------------------------------------"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 		sed -n "${start_line},${end_line}p" "$file"
-		echo "---------------------------------------"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 	}
 
 	openclaw_memory_files_menu() {
 		while true; do
 			clear
-			echo "======================================="
-			echo "OpenClaw 记忆文件"
-			echo "======================================="
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 记忆文件 ==========" "${gl_bai:-}"
 			openclaw_memory_file_render_list
-			echo "---------------------------------------"
-			read -e -p "请输入文件编号查看（0 返回）: " file_choice
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入文件编号查看（0 返回）: " "${gl_bai:-}")" file_choice
 			if [ "$file_choice" = "0" ]; then
 				return 0
 			fi
@@ -20586,19 +20575,17 @@ EOF
 		send_stats "OpenClaw记忆管理"
 		while true; do
 			clear
-			echo "======================================="
-			echo "OpenClaw 记忆管理"
-			echo "======================================="
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 记忆管理 ==========" "${gl_bai:-}"
 			openclaw_memory_render_status
-			echo "1. 更新记忆索引"
-			echo "2. 查看记忆文件"
-			echo "3. 索引修复（Indexed 异常）"
-			echo "4. 记忆方案（QMD/Local/Auto）"
-			echo "5. 搜索测试（验证索引是否工作）"
-			echo "6. 深度状态探测（检查嵌入模型）"
-			echo "0. 返回上一级"
-			echo "---------------------------------------"
-			read -e -p "请输入你的选择: " memory_choice
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" "${gl_huang:-}" "更新记忆索引" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "查看记忆文件" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "索引修复（Indexed 异常）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" '' "记忆方案（QMD/Local/Auto）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" '' "搜索测试（验证索引是否工作）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 6 "${gl_bai:-}" '' "深度状态探测（检查嵌入模型）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" memory_choice
 			case "$memory_choice" in
 				1)
 					echo "即将更新记忆索引。"
@@ -20884,7 +20871,7 @@ print(json.dumps(data, indent=2))
 	openclaw_permission_render_status() {
 		echo "应用层配置: ~/.openclaw/openclaw.json"
 		echo "宿主机审批: ~/.openclaw/exec-approvals.json"
-		echo "---------------------------------------"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 		local current_profile current_sec current_ask current_elevated
 		current_profile=$(openclaw config get tools.profile 2>/dev/null | head -n 1 | sed 's/^"//;s/"$//')
 		current_sec=$(openclaw config get tools.exec.security 2>/dev/null | head -n 1 | sed 's/^"//;s/"$//')
@@ -20907,7 +20894,7 @@ print(json.dumps(data, indent=2))
 			current_mode="\033[1;36m官方沙盒兜底\033[0m"
 		fi
 		echo -e "  当前综合安全等级: ${current_mode}"
-		echo "---------------------------------------"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 		echo -e "${gl_huang}[应用层 Tool Policy 状态]${gl_bai}"
 		echo "  Profile (预设): ${current_profile:-(unset)}"
 		echo "  Exec 限制: ${current_sec:-(unset)}"
@@ -21041,11 +21028,9 @@ except Exception:
 	}
 
 	openclaw_permission_run_audit() {
-		echo "======================================="
-		echo "运行 OpenClaw 官方安全审计与体检..."
-		echo "======================================="
+		printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 运行 OpenClaw 官方安全审计与体检... ==========" "${gl_bai:-}"
 		openclaw security audit
-		echo "---------------------------------------"
+		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 		read -e -p "是否尝试自动修复发现的安全隐患？(y/n): " fix_choice
 		if [[ "$fix_choice" == "y" || "$fix_choice" == "Y" || "$fix_choice" == "yes" ]]; then
 			openclaw security audit --fix
@@ -21059,9 +21044,7 @@ except Exception:
 	openclaw_permission_manage_allowlist() {
 		while true; do
 			clear
-			echo "======================================="
-			echo " Exec 命令白名单管理"
-			echo "======================================="
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== Exec 命令白名单管理 ==========" "${gl_bai:-}"
 			echo "当前白名单："
 			local allowlist_json
 			allowlist_json=$(openclaw approvals get --json 2>/dev/null)
@@ -21088,12 +21071,12 @@ except Exception as e:
 			else
 				echo "  (无法获取)"
 			fi
-			echo "---------------------------------------"
-			echo "1. 添加白名单规则"
-			echo "2. 移除白名单规则"
-			echo "0. 返回"
-			echo "---------------------------------------"
-			read -e -p "请选择: " al_choice
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "添加白名单规则" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "移除白名单规则" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回" "${gl_bai:-}"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请选择: " "${gl_bai:-}")" al_choice
 			case "$al_choice" in
 				1)
 					read -e -p "输入要放行的命令路径 (支持 glob，如 /usr/bin/git): " pattern
@@ -21119,11 +21102,9 @@ except Exception as e:
 		send_stats "OpenClaw权限管理"
 		while true; do
 			clear
-			echo "======================================="
-			echo " OpenClaw 权限管理 (双层架构深度适配)"
-			echo "======================================="
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 权限管理 (双层架构深度适配) ==========" "${gl_bai:-}"
 			openclaw_permission_render_status
-			echo "---------------------------------------"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
 			echo -e "${gl_kjlan}1.${gl_bai} 切换为标准安全模式（日常推荐，弹卡片审批）"
 			echo -e "${gl_kjlan}2.${gl_bai} 切换为开发增强模式（允许智能体申请提权）"
 			echo -e "${gl_kjlan}3.${gl_bai} 切换为完全开放模式（${gl_hong}高风险！彻底解除所有宿主机拦截${gl_bai}）"
@@ -21131,8 +21112,8 @@ except Exception as e:
 			echo -e "${gl_kjlan}5.${gl_bai} 运行底层安全审计与自动修复"
 			echo -e "${gl_kjlan}6.${gl_bai} 管理 Exec 命令白名单"
 			echo -e "${gl_kjlan}0.${gl_bai} 返回上一级"
-			echo "---------------------------------------"
-			read -e -p "请输入你的选择: " perm_choice
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" perm_choice
 			case "$perm_choice" in
 				1)
 					echo "准备应用：标准安全模式"
@@ -21584,23 +21565,21 @@ print("✅ 多智能体健康检查完成")
 		send_stats "OpenClaw多智能体管理"
 		while true; do
 			clear
-			echo "======================================="
-			echo "OpenClaw 多智能体管理"
-			echo "======================================="
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 多智能体管理 ==========" "${gl_bai:-}"
 			openclaw_multiagent_render_status
-			echo "---------------------------------------"
-			echo "1. 新增智能体"
-			echo "2. 删除智能体"
-			echo "3. 查看路由绑定"
-			echo "4. 新增路由绑定"
-			echo "5. 移除路由绑定"
-			echo "6. 查看会话概况"
-			echo "7. 运行多智能体健康检查"
-			echo "8. 修改智能体身份（名称/Emoji）"
-			echo "9. 清理过期会话"
-			echo "0. 返回上一级"
-			echo "---------------------------------------"
-			read -e -p "请输入你的选择: " multi_choice
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "新增智能体" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "删除智能体" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "查看路由绑定" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" '' "新增路由绑定" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" "${gl_hong:-}" "移除路由绑定" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 6 "${gl_bai:-}" '' "查看会话概况" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 7 "${gl_bai:-}" '' "运行多智能体健康检查" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 8 "${gl_bai:-}" '' "修改智能体身份（名称/Emoji）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 9 "${gl_bai:-}" "${gl_hong:-}" "清理过期会话" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" multi_choice
 			case "$multi_choice" in
 				1) openclaw_multiagent_add_agent; break_end ;;
 				2) openclaw_multiagent_delete_agent; break_end ;;
@@ -21623,19 +21602,17 @@ openclaw_backup_restore_menu() {
 		send_stats "OpenClaw备份与还原"
 		while true; do
 			clear
-			echo "======================================="
-			echo "OpenClaw 备份与还原"
-			echo "======================================="
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 备份与还原 ==========" "${gl_bai:-}"
 			openclaw_backup_render_file_list
-			echo "---------------------------------------"
-			echo "1. 备份记忆全量"
-			echo "2. 还原记忆全量"
-			echo "3. 备份 OpenClaw 项目（默认安全模式）"
-			echo "4. 还原 OpenClaw 项目（高级/高风险）"
-			echo "5. 删除备份文件"
-			echo "0. 返回上一级"
-			echo "---------------------------------------"
-			read -e -p "请输入你的选择: " backup_choice
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "备份记忆全量" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_huang:-}" "还原记忆全量" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "备份 OpenClaw 项目（默认安全模式）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" "${gl_huang:-}" "还原 OpenClaw 项目（高级/高风险）" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" "${gl_hong:-}" "删除备份文件" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
+			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" backup_choice
 
 			case "$backup_choice" in
 				1) openclaw_memory_backup_export ;;
@@ -21798,13 +21775,14 @@ openclaw_backup_restore_menu() {
 		send_stats "WebUI访问与设置"
 		while true; do
 			clear
+			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw WebUI 访问与设置 ==========" "${gl_bai:-}"
 			openclaw_show_webui_addr
 			echo
-			echo "1. 添加域名访问"
-			echo "2. 删除域名访问"
-			echo "0. 退出"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "添加域名访问" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "删除域名访问" "${gl_bai:-}"
+			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "退出" "${gl_bai:-}"
 			echo
-			read -e -p "请选择: " choice
+			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请选择: " "${gl_bai:-}")" choice
 
 			case "$choice" in
 				1)

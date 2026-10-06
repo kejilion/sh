@@ -3,11 +3,27 @@
 # 官方项目：https://github.com/deepseek-ai/deepseek-harness
 # 仅提供：安装、启动、停止、API 管理、切换模型、命令行任务、WebUI 设置、更新、卸载。
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-CYAN='\033[0;36m'
-NC='\033[0m'
+RED='' GREEN='' YELLOW='' CYAN='' GRAY='' BOLD='' NC=''
+if [ -t 1 ] && [ "${TERM:-dumb}" != dumb ] && [ -z "${NO_COLOR:-}" ]; then
+	RED='\033[31m' GREEN='\033[32m' YELLOW='\033[33m'
+	CYAN='\033[96m' GRAY='\033[90m' BOLD='\033[1m' NC='\033[0m'
+fi
+
+dsh_menu_title() {
+	printf '\n%b%s%b\n' "$CYAN$BOLD" "========== $1 ==========" "$NC"
+}
+
+dsh_menu_separator() {
+	printf '%b%s%b\n' "${1:-$CYAN}" '-------------------------------------------------' "$NC"
+}
+
+dsh_menu_item() {
+	printf ' %b%s.%b %b%s%b\n' "$CYAN" "$1" "$NC" "${3:-}" "$2" "$NC"
+}
+
+dsh_menu_prompt() {
+	printf '%b%s%b' "${2:-$CYAN}" "$1" "$NC"
+}
 
 DSH_HOME="${DSH_HOME:-$HOME/.dsh}"
 DSH_ENV_FILE="${DSH_ENV_FILE:-$DSH_HOME/kejilion.env}"
@@ -633,19 +649,19 @@ api_management_menu() {
 	while true; do
 		clear 2>/dev/null || true
 		api_key=$(read_api_key)
-		echo -e "${CYAN}=======================================${NC}"
-		echo "          DeepSeek Harness API 管理"
-		echo -e "${CYAN}=======================================${NC}"
+		dsh_menu_title 'DeepSeek Harness API 管理'
 		if [ -n "$api_key" ]; then
 			echo -e "脚本托管 API：${GREEN}已配置 $(mask_api_key "$api_key")${NC}"
 		else
 			echo -e "脚本托管 API：${RED}未配置${NC}"
 		fi
-		echo "Base URL：$DEEPSEEK_BASE_URL"
-		echo "1. 设置或更换 API Key"
-		echo "2. 删除脚本托管 API Key"
-		echo "0. 返回"
-		read -r -p "请输入选项: " choice
+		printf ' %bBase URL：%s%b\n' "$GRAY" "$DEEPSEEK_BASE_URL" "$NC"
+		dsh_menu_separator
+		dsh_menu_item 1 '设置或更换 API Key'
+		dsh_menu_item 2 '删除脚本托管 API Key' "$RED"
+		dsh_menu_item 0 '返回' "$GRAY"
+		dsh_menu_separator
+		read -r -p "$(dsh_menu_prompt '请输入选项: ')" choice
 		case "$choice" in
 			1)
 				read -r -s -p "请输入 DeepSeek API Key: " api_key
@@ -695,14 +711,14 @@ change_model() {
 			[ -n "$candidate" ] || continue
 			idx=$((idx + 1))
 			if [ "$candidate" = "$(current_model)" ]; then
-				echo -e "  $idx. $candidate ${GREEN}(当前)${NC}"
+				dsh_menu_item "$idx" "$candidate (当前)" "$GREEN"
 			else
-				echo "  $idx. $candidate"
+				dsh_menu_item "$idx" "$candidate"
 			fi
 		done
-		echo "m. 手动输入模型 ID"
-		echo "0. 取消"
-		read -r -p "请选择模型编号 (1-$count/m/0): " choice
+		dsh_menu_item m '手动输入模型 ID'
+		dsh_menu_item 0 '取消' "$GRAY"
+		read -r -p "$(dsh_menu_prompt "请选择模型编号 (1-$count/m/0): ")" choice
 		case "$choice" in
 			0) return 0 ;;
 			m|M)
@@ -726,9 +742,9 @@ change_model() {
 		fi
 		echo "回退为手动输入模式。"
 		echo "当前默认模型：$(current_model)"
-		echo "1. 手动输入模型 ID"
-		echo "0. 取消"
-		read -r -p "请选择 (1/0): " choice
+		dsh_menu_item 1 '手动输入模型 ID'
+		dsh_menu_item 0 '取消' "$GRAY"
+		read -r -p "$(dsh_menu_prompt '请选择 (1/0): ')" choice
 		case "$choice" in
 			0) return 0 ;;
 			1) read -r -p "请输入模型 ID: " model ;;
@@ -803,14 +819,14 @@ webui_settings_menu() {
 	}
 	while true; do
 		clear 2>/dev/null || true
-		echo -e "${CYAN}=======================================${NC}"
-		echo "        DeepSeek Harness WebUI 设置"
-		echo -e "${CYAN}=======================================${NC}"
+		dsh_menu_title 'DeepSeek Harness WebUI 设置'
 		show_webui_addresses
-		echo "1. 添加域名访问"
-		echo "2. 删除域名访问"
-		echo "0. 返回"
-		read -r -p "请输入选项: " choice
+		dsh_menu_separator
+		dsh_menu_item 1 '添加域名访问'
+		dsh_menu_item 2 '删除域名访问' "$RED"
+		dsh_menu_item 0 '返回' "$GRAY"
+		dsh_menu_separator
+		read -r -p "$(dsh_menu_prompt '请输入选项: ')" choice
 		case "$choice" in
 			1)
 				require_root || { read -r -p "按回车键继续..."; continue; }
@@ -905,7 +921,7 @@ show_menu() {
 		version=$(dsh --version 2>/dev/null)
 		install_status="${GREEN}已安装 ${version}${NC}"
 	else
-		install_status="${RED}未安装${NC}"
+		install_status="${YELLOW}未安装${NC}"
 	fi
 	if harness_running; then
 		running_status="${GREEN}运行中${NC}"
@@ -915,40 +931,39 @@ show_menu() {
 	if [ -n "$(read_api_key)" ]; then
 		api_status="${GREEN}已配置${NC}"
 	else
-		api_status="${RED}未配置${NC}"
+		api_status="${YELLOW}未配置${NC}"
 	fi
 	model=$(current_model)
 	domain_count=$(list_webui_domains | wc -l | tr -d '[:space:]')
 	clear 2>/dev/null || true
-	echo -e "${CYAN}=================================================${NC}"
-	echo "          DeepSeek Harness 基础管理工具"
-	echo -e "${CYAN}=================================================${NC}"
+	dsh_menu_title 'DeepSeek Harness 应用管理'
 	echo -e "安装状态：$install_status    运行状态：$running_status"
-	echo -e "API 状态：$api_status    默认模型：$model"
+	printf 'API 状态：%b    默认模型：%b%s%b\n' "$api_status" "$CYAN" "$model" "$NC"
 	if [ "$domain_count" -gt 0 ]; then
-		echo "Web UI：http://${LISTEN_HOST}:${LISTEN_PORT}（本机）  已配置域名：${domain_count} 个"
+		printf '%b%s%b\n' "$GRAY" "Web UI：http://${LISTEN_HOST}:${LISTEN_PORT}（本机）  已配置域名：${domain_count} 个" "$NC"
 	else
-		echo "Web UI：http://${LISTEN_HOST}:${LISTEN_PORT}（仅本机）"
+		printf '%b%s%b\n' "$GRAY" "Web UI：http://${LISTEN_HOST}:${LISTEN_PORT}（仅本机）" "$NC"
 	fi
-	echo -e "${CYAN}-------------------------------------------------${NC}"
-	echo "1. 安装"
-	echo "2. 启动"
-	echo "3. 停止"
-	echo "4. API 管理"
-	echo "5. 换模型"
-	echo "6. 命令行单次任务"
-	echo "7. 更新"
-	echo "8. 卸载"
-	echo "9. WebUI 设置"
-	echo "0. 返回应用市场"
-	echo -e "${CYAN}=================================================${NC}"
+	dsh_menu_separator
+	dsh_menu_item 1 '安装' "$GREEN"
+	dsh_menu_item 2 '启动' "$GREEN"
+	dsh_menu_item 3 '停止' "$YELLOW"
+	dsh_menu_item 4 'API 管理'
+	dsh_menu_item 5 '换模型'
+	dsh_menu_item 6 '命令行单次任务' "$GREEN"
+	dsh_menu_separator "$GRAY"
+	dsh_menu_item 7 '更新' "$YELLOW"
+	dsh_menu_item 8 '卸载' "$RED"
+	dsh_menu_item 9 'WebUI 设置'
+	dsh_menu_item 0 '返回应用市场' "$GRAY"
+	dsh_menu_separator
 }
 
 deepseek_harness_main() {
 	local choice
 	while true; do
 		show_menu
-		read -r -p "请输入选项 [0-9]: " choice || return 0
+		read -r -p "$(dsh_menu_prompt '请输入选项 [0-9]: ')" choice || return 0
 		case "$choice" in
 			1) install_deepseek_harness ;;
 			2) start_deepseek_harness ;;
@@ -963,7 +978,7 @@ deepseek_harness_main() {
 			*) echo -e "${RED}无效选项。${NC}" ;;
 		esac
 		echo
-		read -r -p "按回车键返回菜单..."
+		read -r -p "$(dsh_menu_prompt '按回车键返回菜单...' "$GRAY")"
 	done
 }
 
