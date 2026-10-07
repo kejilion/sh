@@ -21,6 +21,9 @@ match = re.search(r'\n\t\topenclaw_model_probe\(\) \{.*?\n\t\t\}', text, re.S)
 if not match:
     raise SystemExit('openclaw_model_probe not found')
 func = match.group(0).strip('\n')
+helper_start = text.index('\topenclaw_api_python() {')
+helper_end = text.index('\tsync_openclaw_api_models() {', helper_start)
+helper = text[helper_start:helper_end]
 
 config = {
     "models": {
@@ -42,6 +45,8 @@ OPENCLAW_PROBE_STATUS=""
 OPENCLAW_PROBE_MESSAGE=""
 OPENCLAW_PROBE_LATENCY=""
 OPENCLAW_PROBE_REPLY=""
+openclaw_get_config_file() {{ printf '%s\\n' "$HOME/.openclaw/openclaw.json"; }}
+{helper}
 {func}
 '''
 (workdir / 'harness.sh').write_text(harness, encoding='utf-8')
@@ -74,6 +79,7 @@ from pathlib import Path
 
 script = sys.argv[1]
 args = sys.argv[2:]
+assert 'sk-test' not in args, 'API key must not be passed in argv'
 case = os.environ['CASE_NAME']
 
 class Resp(io.BytesIO):
@@ -89,12 +95,18 @@ real_urlopen = urllib.request.urlopen
 
 def fake_urlopen(req, timeout=0):
     url = getattr(req, 'full_url', '')
-    if case == 'fallback-success':
+    assert req.get_header('Authorization') == 'Bearer sk-test'
+    if case == 'responses-success':
         if url.endswith('/chat/completions'):
             raise urllib.error.HTTPError(url, 404, 'Not Found', {}, io.BytesIO(b'{"error":"chat disabled"}'))
         if url.endswith('/responses'):
             body = json.dumps({"output": [{"content": [{"text": "pong from responses"}]}]}).encode('utf-8')
             return Resp(body, 200)
+    elif case == 'fallback-success':
+        if url.endswith('/responses'):
+            raise urllib.error.HTTPError(url, 404, 'Not Found', {}, io.BytesIO(b'{"error":"responses disabled"}'))
+        if url.endswith('/chat/completions'):
+            return Resp(b'{"choices":[{"message":{"content":"pong from chat"}}]}', 200)
     elif case == 'all-fail':
         if url.endswith('/chat/completions'):
             raise urllib.error.HTTPError(url, 404, 'Not Found', {}, io.BytesIO(b'{"error":"chat disabled"}'))
@@ -117,10 +129,15 @@ printf 'RC=%s\nSTATUS=%s\nMESSAGE=%s\nLATENCY=%s\nREPLY=%s\n' "$probe_rc" "$OPEN
 EOF_CASE
 }
 
-out1=$(run_case fallback-success)
+out1=$(run_case responses-success)
 printf '%s\n' "$out1" | grep -q 'STATUS=OK'
 printf '%s\n' "$out1" | grep -q 'MESSAGE=/responses -> HTTP 200'
 printf '%s\n' "$out1" | grep -q 'REPLY=pong from responses'
+
+fallback=$(run_case fallback-success)
+printf '%s\n' "$fallback" | grep -q 'STATUS=OK'
+printf '%s\n' "$fallback" | grep -q 'MESSAGE=/responses -> HTTP 404，切换 /chat/completions -> HTTP 200'
+printf '%s\n' "$fallback" | grep -q 'REPLY=pong from chat'
 
 out2=$(run_case all-fail || true)
 printf '%s\n' "$out2" | grep -q 'RC=1'

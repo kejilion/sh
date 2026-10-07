@@ -15,10 +15,11 @@ break_end() { return 0; }
 send_stats() { return 0; }
 start_gateway() { return 0; }
 install() { return 0; }
+openclaw_get_config_file() { printf '%s\n' "$HOME/.openclaw/openclaw.json"; }
 EOF_INNER
 
 awk 'BEGIN{p=0}
- /sync_openclaw_api_models\(\) \{/{p=1}
+ /openclaw_api_python\(\) \{/{p=1}
  /install_moltbot\(\) \{/{p=0}
  p{print}
 ' "$SCRIPT" >> "$WORKDIR/harness.sh"

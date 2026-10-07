@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.8"
+sh_v="4.5.10"
 
 
 gl_hui='\e[37m'
@@ -34,7 +34,7 @@ kpanel_app_with_lock() {
 	if kpanel_app_lock_held "$resource"; then "$@"; return $?; fi
 	local lock_dir="/run/lock/kejilion-app"
 	local lock_fd result
-	command -v flock >/dev/null 2>&1 || { echo "錯誤: 應用平行互動需要 flock" >&2; exit 1; }
+	command -v flock >/dev/null 2>&1 || { echo "错误: 应用并行交互需要 flock" >&2; exit 1; }
 	[ "$(id -u)" = "0" ] || exit 1
 	[ ! -L "$lock_dir" ] || exit 1
 	(umask 077; mkdir -p "$lock_dir") || exit 1
@@ -95,6 +95,7 @@ kpanel_protocol_active() {
 	[ "${KJ_ACCOUNT_MANAGEMENT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_SYSTEM_TUNING_NONINTERACTIVE:-}" = "1" ] ||
+	[ "${KJ_VIRUS_SCAN_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_INTERACTIVE:-}" = "1" ] ||
@@ -151,9 +152,9 @@ CheckFirstRun_true() {
 
 
 
-# 收集功能埋藏資訊的函數，記錄當前腳本版本號，使用時間，系統版本，CPU架構，機器所在國家和用戶使用的功能名稱，絕對不涉及任何敏感信息，請放心！請相信我！
-# 為什麼要設計這個功能，目的更好的了解使用者喜歡使用的功能，進一步優化功能推出更多符合使用者需求的功能。
-# 全文可搜尋 send_stats 函數呼叫位置，透明開源，如有顧慮可拒絕使用。
+# 收集功能埋点信息的函数，记录当前脚本版本号，使用时间，系统版本，CPU架构，机器所在国家和用户使用的功能名称，绝对不涉及任何敏感信息，请放心！请相信我！
+# 为什么要设计这个功能，目的更好的了解用户喜欢使用的功能，进一步优化功能推出更多符合用户需求的功能。
+# 全文可搜搜 send_stats 函数调用位置，透明开源，如有顾虑可拒绝使用。
 
 
 
@@ -209,22 +210,22 @@ CheckFirstRun_false() {
 	fi
 }
 
-# 提示使用者同意條款
+# 提示用户同意条款
 UserLicenseAgreement() {
 	clear
-	echo -e "${gl_kjlan}歡迎使用科技lion腳本工具箱${gl_bai}"
-	echo "首次使用腳本，請先閱讀並同意使用者授權協議。"
-	echo "使用者授權協議: https://blog.kejilion.pro/user-license-agreement/"
+	echo -e "${gl_kjlan}欢迎使用科技lion脚本工具箱${gl_bai}"
+	echo "首次使用脚本，请先阅读并同意用户许可协议。"
+	echo "用户许可协议: https://blog.kejilion.pro/user-license-agreement/"
 	echo -e "----------------------"
-	read -e -p "是否同意以上條款？ (y/n):" user_input
+	read -e -p "是否同意以上条款？(y/n): " user_input
 
 
 	if [ "$user_input" = "y" ] || [ "$user_input" = "Y" ]; then
-		send_stats "許可同意"
+		send_stats "许可同意"
 		sed -i 's/^permission_granted="false"/permission_granted="true"/' ~/kejilion.sh
 		sed -i 's/^permission_granted="false"/permission_granted="true"/' /usr/local/bin/k
 	else
-		send_stats "許可拒絕"
+		send_stats "许可拒绝"
 		clear
 		exit
 	fi
@@ -273,13 +274,13 @@ install() {
 		kpanel_app_with_lock system install "$@"; return $?
 	fi
 	if [ $# -eq 0 ]; then
-		echo "未提供軟體包參數!"
+		echo "未提供软件包参数!"
 		return 1
 	fi
 
 	for package in "$@"; do
 		if ! command -v "$package" &>/dev/null; then
-			echo -e "${gl_kjlan}正在安裝$package...${gl_bai}"
+			echo -e "${gl_kjlan}正在安装 $package...${gl_bai}"
 			if command -v dnf &>/dev/null; then
 				dnf -y update
 				dnf install -y epel-release
@@ -307,7 +308,7 @@ install() {
 				pkg update
 				pkg install -y "$package"
 			else
-				echo "未知的套件管理器!"
+				echo "未知的包管理器!"
 				return 1
 			fi
 		fi
@@ -325,11 +326,11 @@ check_disk_space() {
 	local available_space_mb=$(df -m "$path" | awk 'NR==2 {print $4}')
 
 	if [ "$available_space_mb" -lt "$required_space_mb" ]; then
-		echo -e "${gl_huang}提示:${gl_bai}磁碟空間不足！"
+		echo -e "${gl_huang}提示: ${gl_bai}磁盘空间不足！"
 		echo "当前可用空间: $((available_space_mb/1024))G"
-		echo "最小需求空間:${required_gb}G"
-		echo "無法繼續安裝，請清理磁碟空間後重試。"
-		send_stats "磁碟空間不足"
+		echo "最小需求空间: ${required_gb}G"
+		echo "无法继续安装，请清理磁盘空间后重试。"
+		send_stats "磁盘空间不足"
 		break_end
 		kejilion
 	fi
@@ -352,12 +353,12 @@ remove() {
 		kpanel_app_with_lock system remove "$@"; return $?
 	fi
 	if [ $# -eq 0 ]; then
-		echo "未提供軟體包參數!"
+		echo "未提供软件包参数!"
 		return 1
 	fi
 
 	for package in "$@"; do
-		echo -e "${gl_kjlan}正在卸載$package...${gl_bai}"
+		echo -e "${gl_kjlan}正在卸载 $package...${gl_bai}"
 		if command -v dnf &>/dev/null; then
 			dnf remove -y "$package"
 		elif command -v yum &>/dev/null; then
@@ -375,14 +376,14 @@ remove() {
 		elif command -v pkg &>/dev/null; then
 			pkg delete -y "$package"
 		else
-			echo "未知的套件管理器!"
+			echo "未知的包管理器!"
 			return 1
 		fi
 	done
 }
 
 
-# 通用 systemctl 函數，適用於各種發行版
+# 通用 systemctl 函数，适用于各种发行版
 systemctl() {
 	local COMMAND="$1"
 	local SERVICE_NAME="$2"
@@ -395,43 +396,43 @@ systemctl() {
 }
 
 
-# 重啟服務
+# 重启服务
 restart() {
 	systemctl restart "$1"
 	if [ $? -eq 0 ]; then
-		echo "$1服務已重啟。"
+		echo "$1 服务已重启。"
 	else
-		echo "錯誤：重啟$1服務失敗。"
+		echo "错误：重启 $1 服务失败。"
 	fi
 }
 
-# 啟動服務
+# 启动服务
 start() {
 	systemctl start "$1"
 	if [ $? -eq 0 ]; then
-		echo "$1服務已啟動。"
+		echo "$1 服务已启动。"
 	else
-		echo "錯誤：啟動$1服務失敗。"
+		echo "错误：启动 $1 服务失败。"
 	fi
 }
 
-# 停止服務
+# 停止服务
 stop() {
 	systemctl stop "$1"
 	if [ $? -eq 0 ]; then
 		echo "$1 服务已停止。"
 	else
-		echo "錯誤：停止$1服務失敗。"
+		echo "错误：停止 $1 服务失败。"
 	fi
 }
 
-# 查看服務狀態
+# 查看服务状态
 status() {
 	systemctl status "$1"
 	if [ $? -eq 0 ]; then
-		echo "$1服務狀態已顯示。"
+		echo "$1 服务状态已显示。"
 	else
-		echo "錯誤：無法顯示$1 服务状态。"
+		echo "错误：无法显示 $1 服务状态。"
 	fi
 }
 
@@ -451,7 +452,7 @@ enable() {
 
 break_end() {
 	  echo -e "${gl_lv}操作完成${gl_bai}"
-	  echo "按任意鍵繼續..."
+	  echo "按任意键继续..."
 	  read -n 1 -s -r -p ""
 	  echo ""
 	  clear
@@ -557,7 +558,7 @@ install_add_docker() {
 	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
 		kpanel_app_with_lock system install_add_docker "$@"; return $?
 	fi
-	echo -e "${gl_kjlan}正在安裝docker環境...${gl_bai}"
+	echo -e "${gl_kjlan}正在安装docker环境...${gl_bai}"
 	if command -v apt &>/dev/null || command -v yum &>/dev/null || command -v dnf &>/dev/null; then
 		linuxmirrors_install_docker
 	else
@@ -588,9 +589,9 @@ while true; do
 	echo ""
 	echo "容器操作"
 	echo "------------------------"
-	echo "1. 建立新的容器"
+	echo "1. 创建新的容器"
 	echo "------------------------"
-	echo "2. 啟動指定容器 6. 啟動所有容器"
+	echo "2. 启动指定容器             6. 启动所有容器"
 	echo "3. 停止指定容器             7. 停止所有容器"
 	echo "4. 删除指定容器             8. 删除所有容器"
 	echo "5. 重启指定容器             9. 重启所有容器"
@@ -933,20 +934,34 @@ docker_ipv6_off() {
 
 
 
+ip6tables_available() {
+	command -v ip6tables >/dev/null 2>&1 && ip6tables -L >/dev/null 2>&1
+}
+
 save_iptables_rules() {
 	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
 		kpanel_app_with_lock system save_iptables_rules "$@"; return $?
 	fi
 	mkdir -p /etc/iptables
-	local rules_temp
+	local rules_temp rules6_temp
 	rules_temp=$(mktemp /etc/iptables/.rules.v4.XXXXXX) || return 1
+	ip6tables_available && rules6_temp=$(mktemp /etc/iptables/.rules.v6.XXXXXX)
 	if ! iptables-save > "$rules_temp" || ! mv -f -- "$rules_temp" /etc/iptables/rules.v4; then
-		rm -f -- "$rules_temp"
+		rm -f -- "$rules_temp" "$rules6_temp"
 		return 1
 	fi
+	if [ -n "${rules6_temp:-}" ]; then
+		if ! ip6tables-save > "$rules6_temp" || ! mv -f -- "$rules6_temp" /etc/iptables/rules.v6; then
+			rm -f -- "$rules6_temp"
+			return 1
+		fi
+	fi
 	check_crontab_installed || return 1
-	crontab -l | grep -v 'iptables-restore' | crontab - > /dev/null 2>&1 || return 1
+	crontab -l | grep -v 'iptables-restore' | grep -v 'ip6tables-restore' | crontab - > /dev/null 2>&1 || return 1
 	(crontab -l ; echo '@reboot iptables-restore < /etc/iptables/rules.v4') | crontab - > /dev/null 2>&1 || return 1
+	if [ -n "${rules6_temp:-}" ]; then
+		(crontab -l ; echo '@reboot ip6tables-restore < /etc/iptables/rules.v6') | crontab - > /dev/null 2>&1 || return 1
+	fi
 
 }
 
@@ -984,6 +999,8 @@ open_port() {
 	fi
 
 	install iptables || return 1
+	local ipv6_ready=false
+	ip6tables_available && ipv6_ready=true
 
 	for port in "${ports[@]}"; do
 		# 删除已存在的关闭规则
@@ -1001,6 +1018,21 @@ open_port() {
 		fi
 	done
 
+	if [ "$ipv6_ready" = true ]; then
+		for port in "${ports[@]}"; do
+			ip6tables -D INPUT -p tcp --dport $port -j DROP 2>/dev/null
+			ip6tables -D INPUT -p udp --dport $port -j DROP 2>/dev/null
+
+			if ! ip6tables -C INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null; then
+				ip6tables -I INPUT 1 -p tcp --dport $port -j ACCEPT || return 1
+			fi
+
+			if ! ip6tables -C INPUT -p udp --dport $port -j ACCEPT 2>/dev/null; then
+				ip6tables -I INPUT 1 -p udp --dport $port -j ACCEPT || return 1
+			fi
+		done
+	fi
+
 	save_iptables_rules || return 1
 	send_stats "已打开端口"
 }
@@ -1017,6 +1049,8 @@ close_port() {
 	fi
 
 	install iptables || return 1
+	local ipv6_ready=false
+	ip6tables_available && ipv6_ready=true
 
 	for port in "${ports[@]}"; do
 		# 删除已存在的打开规则
@@ -1033,6 +1067,29 @@ close_port() {
 			echo "已关闭端口 $port"
 		fi
 	done
+
+	if [ "$ipv6_ready" = true ]; then
+		for port in "${ports[@]}"; do
+			ip6tables -D INPUT -p tcp --dport $port -j ACCEPT 2>/dev/null
+			ip6tables -D INPUT -p udp --dport $port -j ACCEPT 2>/dev/null
+
+			if ! ip6tables -C INPUT -p tcp --dport $port -j DROP 2>/dev/null; then
+				ip6tables -I INPUT 1 -p tcp --dport $port -j DROP || return 1
+			fi
+
+			if ! ip6tables -C INPUT -p udp --dport $port -j DROP 2>/dev/null; then
+				ip6tables -I INPUT 1 -p udp --dport $port -j DROP || return 1
+			fi
+		done
+
+		# 删除已存在的规则（如果有）
+		ip6tables -D INPUT -i lo -j ACCEPT 2>/dev/null
+		ip6tables -D FORWARD -i lo -j ACCEPT 2>/dev/null
+
+		# 插入新规则到第一条
+		ip6tables -I INPUT 1 -i lo -j ACCEPT || return 1
+		ip6tables -I FORWARD 1 -i lo -j ACCEPT || return 1
+	fi
 
 	# 删除已存在的规则（如果有）
 	iptables -D INPUT -i lo -j ACCEPT 2>/dev/null
@@ -1162,7 +1219,7 @@ manage_country_rules() {
 
 				iptables -I INPUT -m set --match-set "$ipset_name" src -j DROP
 
-				echo "已成功阻止$country_code的 IP 位址"
+				echo "已成功阻止 $country_code 的 IP 地址"
 				rm "${country_code,,}.zone"
 				;;
 
@@ -1185,7 +1242,7 @@ manage_country_rules() {
 				iptables -P INPUT DROP
 				iptables -A INPUT -m set --match-set "$ipset_name" src -j ACCEPT
 
-				echo "已成功允許$country_code 的 IP 地址"
+				echo "已成功允许 $country_code 的 IP 地址"
 				rm "${country_code,,}.zone"
 				;;
 
@@ -1196,7 +1253,7 @@ manage_country_rules() {
 					ipset destroy "$ipset_name"
 				fi
 
-				echo "已成功解除$country_code的 IP 位址限制"
+				echo "已成功解除 $country_code 的 IP 地址限制"
 				;;
 
 			*)
@@ -1222,7 +1279,7 @@ iptables_panel() {
   while true; do
 		  clear
 		  echo "高级防火墙管理"
-		  send_stats "進階防火牆管理"
+		  send_stats "高级防火墙管理"
 		  echo "------------------------"
 		  iptables -L INPUT
 		  echo ""
@@ -1231,32 +1288,32 @@ iptables_panel() {
 		  echo "1.  开放指定端口                 2.  关闭指定端口"
 		  echo "3.  开放所有端口                 4.  关闭所有端口"
 		  echo "------------------------"
-		  echo "5. IP白名單 6. IP黑名單"
+		  echo "5.  IP白名单                  	 6.  IP黑名单"
 		  echo "7.  清除指定IP"
 		  echo "------------------------"
 		  echo "11. 允许PING                  	 12. 禁止PING"
 		  echo "------------------------"
-		  echo "13. 啟動DDOS防禦 14. 關閉DDOS防禦"
+		  echo "13. 启动DDOS防御                 14. 关闭DDOS防御"
 		  echo "------------------------"
-		  echo "15. 阻止指定國家IP 16. 僅允許指定國家IP"
-		  echo "17. 解除指定國家IP限制"
+		  echo "15. 阻止指定国家IP               16. 仅允许指定国家IP"
+		  echo "17. 解除指定国家IP限制"
 		  echo "------------------------"
 		  echo "0. 返回上一级选单"
 		  echo "------------------------"
 		  read -e -p "请输入你的选择: " sub_choice
 		  case $sub_choice in
 			  1)
-				  read -e -p "請輸入開放的連接埠號碼:" o_port
+				  read -e -p "请输入开放的端口号: " o_port
 				  open_port $o_port
 				  send_stats "开放指定端口"
 				  ;;
 			  2)
-				  read -e -p "請輸入關閉的連接埠號碼:" c_port
+				  read -e -p "请输入关闭的端口号: " c_port
 				  close_port $c_port
-				  send_stats "關閉指定連接埠"
+				  send_stats "关闭指定端口"
 				  ;;
 			  3)
-				  # 開放所有連接埠
+				  # 开放所有端口
 				  current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
 				  iptables -F
 				  iptables -X
@@ -1269,10 +1326,24 @@ iptables_panel() {
 				  iptables -A FORWARD -i lo -j ACCEPT
 				  iptables -A INPUT -p tcp --dport $current_port -j ACCEPT
 				  iptables-save > /etc/iptables/rules.v4
+				  if ip6tables_available; then
+					  ip6tables -F
+					  ip6tables -X
+					  ip6tables -P INPUT ACCEPT
+					  ip6tables -P FORWARD ACCEPT
+					  ip6tables -P OUTPUT ACCEPT
+					  ip6tables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+					  ip6tables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+					  ip6tables -A INPUT -i lo -j ACCEPT
+					  ip6tables -A FORWARD -i lo -j ACCEPT
+					  ip6tables -A INPUT -p tcp --dport $current_port -j ACCEPT
+					  ip6tables-save > /etc/iptables/rules.v6
+				  fi
+				  save_iptables_rules
 				  send_stats "开放所有端口"
 				  ;;
 			  4)
-				  # 關閉所有連接埠
+				  # 关闭所有端口
 				  current_port=$(grep -E '^ *Port [0-9]+' /etc/ssh/sshd_config | awk '{print $2}')
 				  iptables -F
 				  iptables -X
@@ -1285,29 +1356,43 @@ iptables_panel() {
 				  iptables -A FORWARD -i lo -j ACCEPT
 				  iptables -A INPUT -p tcp --dport $current_port -j ACCEPT
 				  iptables-save > /etc/iptables/rules.v4
-				  send_stats "關閉所有連接埠"
+				  if ip6tables_available; then
+					  ip6tables -F
+					  ip6tables -X
+					  ip6tables -P INPUT DROP
+					  ip6tables -P FORWARD DROP
+					  ip6tables -P OUTPUT ACCEPT
+					  ip6tables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+					  ip6tables -A OUTPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+					  ip6tables -A INPUT -i lo -j ACCEPT
+					  ip6tables -A FORWARD -i lo -j ACCEPT
+					  ip6tables -A INPUT -p tcp --dport $current_port -j ACCEPT
+					  ip6tables-save > /etc/iptables/rules.v6
+				  fi
+				  save_iptables_rules
+				  send_stats "关闭所有端口"
 				  ;;
 
 			  5)
-				  # IP 白名單
+				  # IP 白名单
 				  read -e -p "请输入放行的IP或IP段: " o_ip
 				  allow_ip $o_ip
 				  ;;
 			  6)
-				  # IP 黑名單
-				  read -e -p "請輸入封鎖的IP或IP段:" c_ip
+				  # IP 黑名单
+				  read -e -p "请输入封锁的IP或IP段: " c_ip
 				  block_ip $c_ip
 				  ;;
 			  7)
 				  # 清除指定 IP
-				  read -e -p "請輸入清除的IP:" d_ip
+				  read -e -p "请输入清除的IP: " d_ip
 				  iptables -D INPUT -s $d_ip -j ACCEPT 2>/dev/null
 				  iptables -D INPUT -s $d_ip -j DROP 2>/dev/null
 				  iptables-save > /etc/iptables/rules.v4
 				  send_stats "清除指定IP"
 				  ;;
 			  11)
-				  # 允許 PING
+				  # 允许 PING
 				  iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
 				  iptables -A OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT
 				  iptables-save > /etc/iptables/rules.v4
@@ -1328,14 +1413,14 @@ iptables_panel() {
 				  ;;
 
 			  15)
-				  read -e -p "請輸入阻止的國家代碼（多個國家代碼可用空格隔開如 CN US JP）:" country_code
+				  read -e -p "请输入阻止的国家代码（多个国家代码可用空格隔开如 CN US JP）: " country_code
 				  manage_country_rules block $country_code
-				  send_stats "允許國家$country_code 的IP"
+				  send_stats "允许国家 $country_code 的IP"
 				  ;;
 			  16)
-				  read -e -p "請輸入允許的國家代碼（多個國家代碼可用空格隔開如 CN US JP）:" country_code
+				  read -e -p "请输入允许的国家代码（多个国家代码可用空格隔开如 CN US JP）: " country_code
 				  manage_country_rules allow $country_code
-				  send_stats "阻止國家$country_code的IP"
+				  send_stats "阻止国家 $country_code 的IP"
 				  ;;
 
 			  17)
@@ -1491,7 +1576,7 @@ update_docker_compose_with_db_creds() {
 
 
 auto_optimize_dns() {
-	# 取得國家代碼（如 CN、US 等）
+	# 获取国家代码（如 CN、US 等）
 	local country=$(curl -s ipinfo.io/country)
 
 	# 根据国家设置 DNS
@@ -1516,7 +1601,7 @@ auto_optimize_dns() {
 prefer_ipv4() {
 grep -q '^precedence ::ffff:0:0/96  100' /etc/gai.conf 2>/dev/null \
 	|| echo 'precedence ::ffff:0:0/96  100' >> /etc/gai.conf
-echo "已切換為 IPv4 優先"
+echo "已切换为 IPv4 优先"
 send_stats "已切换为 IPv4 优先"
 }
 
@@ -1535,7 +1620,7 @@ install_ldnmp() {
 	  fix_phpfpm_conf php
 	  fix_phpfpm_conf php74
 
-	  # mysql調優
+	  # mysql调优
 	  wget -O /home/custom_mysql_config.cnf ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/custom_mysql_config-1.cnf
 	  docker cp /home/custom_mysql_config.cnf mysql:/etc/mysql/conf.d/
 	  rm -rf /home/custom_mysql_config.cnf
@@ -1646,7 +1731,7 @@ kpanel_web_upgrade_certificate_renewal() (
 	{
 		kpanel_web_certificate_renewal_header
 		awk '
-			$0 == "# 定義憑證儲存目錄" { body=1 }
+			$0 == "# 定义证书存储目录" { body=1 }
 			!body { next }
 			skip { skip--; next }
 			$0 == "    # Custom material is renewed by its owner; the PEM files remain the truth." { skip=7; next }
@@ -1970,13 +2055,13 @@ install_ssltls() {
 
 
 install_ssltls_text() {
-	echo -e "${gl_huang}$yuming公鑰資訊${gl_bai}"
+	echo -e "${gl_huang}$yuming 公钥信息${gl_bai}"
 	cat /etc/letsencrypt/live/$yuming/fullchain.pem
 	echo ""
 	echo -e "${gl_huang}$yuming 私钥信息${gl_bai}"
 	cat /etc/letsencrypt/live/$yuming/privkey.pem
 	echo ""
-	echo -e "${gl_huang}證書存放路徑${gl_bai}"
+	echo -e "${gl_huang}证书存放路径${gl_bai}"
 	echo "公钥: /etc/letsencrypt/live/$yuming/fullchain.pem"
 	echo "私钥: /etc/letsencrypt/live/$yuming/privkey.pem"
 	echo ""
@@ -1987,7 +2072,7 @@ install_ssltls_text() {
 
 
 add_ssl() {
-echo -e "${gl_huang}快速申請SSL證書，過期前自動續約${gl_bai}"
+echo -e "${gl_huang}快速申请SSL证书，过期前自动续签${gl_bai}"
 yuming="${1:-}"
 if [ -z "$yuming" ]; then
 	add_yuming
@@ -2052,9 +2137,9 @@ certs_status() {
 	sleep 1
 
 	if kpanel_web_certificate_available; then
-		send_stats "網域憑證可用"
+		send_stats "域名证书可用"
 	else
-		send_stats "網域證書申請失敗"
+		send_stats "域名证书申请失败"
 		if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ] &&
 			! kpanel_web_interactive; then
 			echo "KPANEL_PROGRESS 100 域名证书申请失败，请检查 DNS、80/443 端口和签发限额"
@@ -2073,7 +2158,7 @@ certs_status() {
 		read -e -p "请输入你的选择: " sub_choice
 		case $sub_choice in
 	  	  1)
-	  	  	send_stats "重新申請"
+	  	  	send_stats "重新申请"
 		  	echo "请再次尝试部署 $webname"
 		  	add_yuming
 		  	install_ssltls
@@ -2081,9 +2166,9 @@ certs_status() {
 
 	  		  ;;
 	  	  2)
-	  	  	send_stats "導入已有證書"
+	  	  	send_stats "导入已有证书"
 
-			# 定義檔案路徑
+			# 定义文件路径
 			local cert_file="/home/web/certs/${yuming}_cert.pem"
 			local key_file="/home/web/certs/${yuming}_key.pem"
 
@@ -2112,13 +2197,13 @@ certs_status() {
 
 				# 识别当前证书类型并显示
 				if [[ "$key_content" == *"EC PRIVATE KEY"* ]]; then
-					echo "偵測到 ECC 憑證已成功儲存。"
+					echo "检测到 ECC 证书已成功保存。"
 				else
 					echo "检测到 RSA 证书已成功保存。"
 				fi
 				auth_method="ssl_imported"
 			else
-				echo "錯誤：無效的憑證或私鑰格式！"
+				echo "错误：无效的证书或私钥格式！"
 				certs_status
 			fi
 	  		  ;;
@@ -2168,7 +2253,7 @@ check_ip_and_get_access_port() {
 	local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
 
 	if [[ "$yuming" =~ $ipv4_pattern || "$yuming" =~ $ipv6_pattern ]]; then
-		read -e -p "請輸入訪問/監聽端口，回車預設使用 80:" access_port
+		read -e -p "请输入访问/监听端口，回车默认使用 80: " access_port
 		access_port=${access_port:-80}
 	fi
 }
@@ -2180,10 +2265,10 @@ update_nginx_listen_port() {
 	local access_port="$2"
 	local conf="/home/web/conf.d/${yuming}.conf"
 
-	# 如果 access_port 為空，則跳過
+	# 如果 access_port 为空，则跳过
 	[ -z "$access_port" ] && return 0
 
-	# 刪除所有 listen 行
+	# 删除所有 listen 行
 	sed -i '/^[[:space:]]*listen[[:space:]]\+/d' "$conf"
 
 	# 在 server { 后插入新的 listen
@@ -2212,7 +2297,7 @@ ldnmp_site_domain_is_safe() {
 	  local site_domain="${1:-}"
 	  case "$site_domain" in
 		  ""|"."|".."|*/*)
-			  echo "無效的網站目錄名稱:$site_domain" >&2
+			  echo "无效的站点目录名称: $site_domain" >&2
 			  return 1
 			  ;;
 	  esac
@@ -2231,7 +2316,7 @@ normalize_ldnmp_site_permissions() {
 	  ldnmp_site_domain_is_safe "$site_domain" || return 1
 	  site_root="${ldnmp_web_root_base}/${site_domain}"
 	  [ -d "$site_root" ] || {
-		  echo "站點目錄不存在:$site_root" >&2
+		  echo "站点目录不存在: $site_root" >&2
 		  return 1
 	  }
 
@@ -2292,7 +2377,7 @@ phpmyadmin_upgrade() {
   check_docker_app_ip
   echo "登录信息: "
   echo "用户名: $dbuse"
-  echo "密碼:$dbusepasswd"
+  echo "密码: $dbusepasswd"
   echo
   send_stats "启动$ldnmp_pods"
 }
@@ -2304,29 +2389,29 @@ cf_purge_cache() {
   local EMAIL
   local ZONE_IDS
 
-  # 檢查設定檔是否存在
+  # 检查配置文件是否存在
   if [ -f "$CONFIG_FILE" ]; then
-	# 從設定檔讀取 API_TOKEN 和 zone_id
+	# 从配置文件读取 API_TOKEN 和 zone_id
 	read API_TOKEN EMAIL ZONE_IDS < "$CONFIG_FILE"
 	# 将 ZONE_IDS 转换为数组
 	ZONE_IDS=($ZONE_IDS)
   else
-	# 提示使用者是否清理快取
-	read -e -p "需要清理 Cloudflare 的快取嗎？ （y/n）:" answer
+	# 提示用户是否清理缓存
+	read -e -p "需要清理 Cloudflare 的缓存吗？（y/n）: " answer
 	if [[ "$answer" == "y" ]]; then
-	  echo "CF資訊保存在$CONFIG_FILE，可以後期修改CF訊息"
+	  echo "CF信息保存在$CONFIG_FILE，可以后期修改CF信息"
 	  read -e -p "请输入你的 API_TOKEN: " API_TOKEN
-	  read -e -p "請輸入你的CF用戶名:" EMAIL
-	  read -e -p "請輸入 zone_id（多個以空格分隔）:" -a ZONE_IDS
+	  read -e -p "请输入你的CF用户名: " EMAIL
+	  read -e -p "请输入 zone_id（多个用空格分隔）: " -a ZONE_IDS
 
 	  mkdir -p /home/web/config/
 	  echo "$API_TOKEN $EMAIL ${ZONE_IDS[*]}" > "$CONFIG_FILE"
 	fi
   fi
 
-  # 循環遍歷每個 zone_id 並執行清除快取命令
+  # 循环遍历每个 zone_id 并执行清除缓存命令
   for ZONE_ID in "${ZONE_IDS[@]}"; do
-	echo "正在清除快取 for zone_id:$ZONE_ID"
+	echo "正在清除缓存 for zone_id: $ZONE_ID"
 	curl -X POST "https://api.cloudflare.com/client/v4/zones/$ZONE_ID/purge_cache" \
 	-H "X-Auth-Email: $EMAIL" \
 	-H "X-Auth-Key: $API_TOKEN" \
@@ -2334,13 +2419,13 @@ cf_purge_cache() {
 	--data '{"purge_everything":true}'
   done
 
-  echo "快取清除請求已發送完畢。"
+  echo "缓存清除请求已发送完毕。"
 }
 
 
 
 web_cache() {
-  send_stats "清理網站快取"
+  send_stats "清理站点缓存"
   cf_purge_cache
   cd /home/web && docker compose restart
 }
@@ -2349,7 +2434,7 @@ web_cache() {
 
 web_del() {
 
-	send_stats "刪除站點數據"
+	send_stats "删除站点数据"
 	local -a yuming_list=()
 	if [ "$#" -gt 0 ]; then
 		yuming_list=("$@")
@@ -2374,12 +2459,12 @@ kpanel_app_delete_sites() {
 	for yuming in "${yuming_list[@]}"; do
 		if [ -z "$yuming" ] || [ "${#yuming}" -gt 253 ] ||
 			! printf '%s' "$yuming" | grep -Eq '^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$'; then
-			echo "無效域名，拒絕刪除:$yuming"
+			echo "无效域名，拒绝删除: $yuming"
 			action_status=1
 			continue
 		fi
 
-		echo "正在刪除網域名稱:$yuming"
+		echo "正在删除域名: $yuming"
 		rm -rf -- "/home/web/html/$yuming" > /dev/null 2>&1
 		rm -f -- "/home/web/conf.d/$yuming.conf" > /dev/null 2>&1
 		rm -f -- "/home/web/certs/${yuming}_key.pem" > /dev/null 2>&1
@@ -2387,12 +2472,12 @@ kpanel_app_delete_sites() {
 		rm -f -- "/home/web/certs/${yuming}.custom" > /dev/null 2>&1
 		rm -f -- "/home/web/certs/${yuming}.auto-renewal" > /dev/null 2>&1
 
-		# 將網域名稱轉換為資料庫名
+		# 将域名转换为数据库名
 		dbname=$(echo "$yuming" | sed -e 's/[^A-Za-z0-9]/_/g')
 		if [ -f /home/web/docker-compose.yml ] &&
 			docker inspect mysql > /dev/null 2>&1; then
 			dbrootpasswd=$(grep -oP 'MYSQL_ROOT_PASSWORD:\s*\K.*' /home/web/docker-compose.yml | tr -d '[:space:]')
-			echo "正在刪除資料庫:$dbname"
+			echo "正在删除数据库: $dbname"
 			if docker exec mysql mysql -u root -p"$dbrootpasswd" \
 				-e "DROP DATABASE IF EXISTS \`${dbname}\`;" > /dev/null 2>&1; then
 				echo "KPANEL_DELETE_DATABASE dropped $yuming"
@@ -2408,7 +2493,7 @@ kpanel_app_delete_sites() {
 			[ -e "/home/web/conf.d/$yuming.conf" ] ||
 			[ -e "/home/web/certs/${yuming}_key.pem" ] ||
 			[ -e "/home/web/certs/${yuming}_cert.pem" ]; then
-			echo "站點產物刪除不完整:$yuming"
+			echo "站点产物删除不完整: $yuming"
 			action_status=1
 		else
 			echo "KPANEL_DELETE_SITE deleted $yuming"
@@ -2418,7 +2503,7 @@ kpanel_app_delete_sites() {
 	if docker inspect nginx > /dev/null 2>&1; then
 		if ! docker exec nginx nginx -t > /dev/null 2>&1 ||
 			! docker exec nginx nginx -s reload; then
-			echo "Nginx 設定驗證或重載失敗"
+			echo "Nginx 配置验证或重载失败"
 			action_status=1
 		fi
 	else
@@ -2436,9 +2521,9 @@ nginx_waf() {
 		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
 	fi
 
-	# 根據 mode 參數決定開啟或關閉 WAF
+	# 根据 mode 参数来决定开启或关闭 WAF
 	if [ "$mode" == "on" ]; then
-		# 開啟 WAF：去掉註釋
+		# 开启 WAF：去掉注释
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|load_module /etc/nginx/modules/ngx_http_modsecurity_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 		sed -i 's|^\(\s*\)# modsecurity on;|\1modsecurity on;|' /home/web/nginx.conf > /dev/null 2>&1
 		sed -i 's|^\(\s*\)# modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|\1modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|' /home/web/nginx.conf > /dev/null 2>&1
@@ -2448,11 +2533,11 @@ nginx_waf() {
 		sed -i 's|^\(\s*\)modsecurity on;|\1# modsecurity on;|' /home/web/nginx.conf > /dev/null 2>&1
 		sed -i 's|^\(\s*\)modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|\1# modsecurity_rules_file /etc/nginx/modsec/modsecurity.conf;|' /home/web/nginx.conf > /dev/null 2>&1
 	else
-		echo "無效的參數：使用 'on' 或 'off'"
+		echo "无效的参数：使用 'on' 或 'off'"
 		return 1
 	fi
 
-	# 檢查 nginx 鏡像並根據情況處理
+	# 检查 nginx 镜像并根据情况处理
 	if grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
 		docker exec nginx nginx -s reload
 	else
@@ -2466,7 +2551,7 @@ check_waf_status() {
 	if grep -q "^\s*#\s*modsecurity on;" /home/web/nginx.conf; then
 		waf_status=""
 	elif grep -q "modsecurity on;" /home/web/nginx.conf; then
-		waf_status="WAF已開啟"
+		waf_status=" WAF已开启"
 	else
 		waf_status=""
 	fi
@@ -2475,7 +2560,7 @@ check_waf_status() {
 
 check_cf_mode() {
 	if [ -f "/etc/fail2ban/action.d/cloudflare-docker.conf" ]; then
-		CFmessage="cf模式已開啟"
+		CFmessage=" cf模式已开启"
 	else
 		CFmessage=""
 	fi
@@ -2503,7 +2588,7 @@ patch_wp_memory_limit() {
   local TARGET_DIR="/home/web/html"    # 路径写死
 
   find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
-	# 刪除舊定義
+	# 删除旧定义
 	sed -i "/define(['\"]WP_MEMORY_LIMIT['\"].*/d" "$FILE"
 	sed -i "/define(['\"]WP_MAX_MEMORY_LIMIT['\"].*/d" "$FILE"
 
@@ -2530,12 +2615,12 @@ patch_wp_debug() {
   local TARGET_DIR="/home/web/html"   # 路径写死
 
   find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
-	# 刪除舊定義
+	# 删除旧定义
 	sed -i "/define(['\"]WP_DEBUG['\"].*/d" "$FILE"
 	sed -i "/define(['\"]WP_DEBUG_DISPLAY['\"].*/d" "$FILE"
 	sed -i "/define(['\"]WP_DEBUG_LOG['\"].*/d" "$FILE"
 
-	# 插入新定義，放在含 "Happy publishing" 的行前
+	# 插入新定义，放在含 "Happy publishing" 的行前
 	awk -v insert="define('WP_DEBUG_DISPLAY', $DEBUG_DISPLAY);\ndefine('WP_DEBUG_LOG', $DEBUG_LOG);" \
 	'
 	  /Happy publishing/ {
@@ -2558,11 +2643,11 @@ patch_wp_url() {
   if kpanel_web_http_mode; then TARGET_DIR="/home/web/html/$yuming"; fi
 
   find "$TARGET_DIR" -type f -name "wp-config-sample.php" | while read -r FILE; do
-	# 刪除舊定義
+	# 删除旧定义
 	sed -i "/define(['\"]WP_HOME['\"].*/d" "$FILE"
 	sed -i "/define(['\"]WP_SITEURL['\"].*/d" "$FILE"
 
-	# 產生插入內容
+	# 生成插入内容
 	INSERT="
 define('WP_HOME', '$HOME_URL');
 define('WP_SITEURL', '$SITE_URL');
@@ -2596,7 +2681,7 @@ nginx_br() {
 	fi
 
 	if [ "$mode" == "on" ]; then
-		# 開啟 Brotli：去掉註釋
+		# 开启 Brotli：去掉注释
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 		sed -i 's|# load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 
@@ -2610,7 +2695,7 @@ nginx_br() {
 		sed -i '/brotli_types/,+6 s/^\(\s*\)#\s*/\1/' /home/web/nginx.conf
 
 	elif [ "$mode" == "off" ]; then
-		# 關閉 Brotli：加上註釋
+		# 关闭 Brotli：加上注释
 		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 		sed -i 's|^load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|# load_module /etc/nginx/modules/ngx_http_brotli_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 
@@ -2626,11 +2711,11 @@ nginx_br() {
 		}' /home/web/nginx.conf
 
 	else
-		echo "無效的參數：使用 'on' 或 'off'"
+		echo "无效的参数：使用 'on' 或 'off'"
 		return 1
 	fi
 
-	# 檢查 nginx 鏡像並根據情況處理
+	# 检查 nginx 镜像并根据情况处理
 	if grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
 		docker exec nginx nginx -s reload
 	else
@@ -2667,7 +2752,7 @@ nginx_zstd() {
 
 
 	elif [ "$mode" == "off" ]; then
-		# 關閉 Zstd：加上註釋
+		# 关闭 Zstd：加上注释
 		sed -i 's|^load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|# load_module /etc/nginx/modules/ngx_http_zstd_filter_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 		sed -i 's|^load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|# load_module /etc/nginx/modules/ngx_http_zstd_static_module.so;|' /home/web/nginx.conf > /dev/null 2>&1
 
@@ -2683,11 +2768,11 @@ nginx_zstd() {
 
 
 	else
-		echo "無效的參數：使用 'on' 或 'off'"
+		echo "无效的参数：使用 'on' 或 'off'"
 		return 1
 	fi
 
-	# 檢查 nginx 鏡像並根據情況處理
+	# 检查 nginx 镜像并根据情况处理
 	if grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
 		docker exec nginx nginx -s reload
 	else
@@ -2714,7 +2799,7 @@ nginx_gzip() {
 	elif [ "$mode" == "off" ]; then
 		sed -i 's|^\(\s*\)gzip on;|\1# gzip on;|' /home/web/nginx.conf > /dev/null 2>&1
 	else
-		echo "無效的參數：使用 'on' 或 'off'"
+		echo "无效的参数：使用 'on' 或 'off'"
 		return 1
 	fi
 
@@ -2728,29 +2813,29 @@ nginx_gzip() {
 
 
 web_security() {
-	  send_stats "LDNMP環境防禦"
+	  send_stats "LDNMP环境防御"
 	  while true; do
 		check_f2b_status
 		check_waf_status
 		check_cf_mode
 			  clear
-			  echo -e "伺服器網站防禦程序${check_f2b_status}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
+			  echo -e "服务器网站防御程序 ${check_f2b_status}${gl_lv}${CFmessage}${waf_status}${gl_bai}"
 			  echo "------------------------"
-			  echo "1. 安裝防禦程序"
+			  echo "1. 安装防御程序"
 			  echo "------------------------"
-			  echo "5. 查看SSH攔截記錄 6. 查看網站攔截記錄"
-			  echo "7. 檢視防禦規則清單 8. 查看日誌即時監控"
+			  echo "5. 查看SSH拦截记录                6. 查看网站拦截记录"
+			  echo "7. 查看防御规则列表               8. 查看日志实时监控"
 			  echo "------------------------"
-			  echo "11. 設定攔截參數 12. 清除所有拉黑的IP"
+			  echo "11. 配置拦截参数                  12. 清除所有拉黑的IP"
 			  echo "------------------------"
 			  echo "21. cloudflare模式                22. 高负载开启5秒盾"
 			  echo "------------------------"
-			  echo "31. 開啟WAF 32. 關閉WAF"
-			  echo "33. 開啟DDOS防禦 34. 關閉DDOS防禦"
+			  echo "31. 开启WAF                       32. 关闭WAF"
+			  echo "33. 开启DDOS防御                  34. 关闭DDOS防御"
 			  echo "------------------------"
 			  echo "9. 卸载防御程序"
 			  echo "------------------------"
-			  echo "0. 返回上一級選單"
+			  echo "0. 返回上一级选单"
 			  echo "------------------------"
 			  read -e -p "请输入你的选择: " sub_choice
 			  case $sub_choice in
@@ -2859,7 +2944,7 @@ web_security() {
 					  send_stats "高负载开启5秒盾"
 					  echo -e "${gl_huang}网站每5分钟自动检测，当达检测到高负载会自动开盾，低负载也会自动关闭5秒盾。${gl_bai}"
 					  echo "--------------"
-					  echo "取得CF參數:"
+					  echo "获取CF参数: "
 					  echo -e "到cf后台右上角我的个人资料，选择左侧API令牌，获取${gl_huang}Global API Key${gl_bai}"
 					  echo -e "到cf后台域名概要页面右下方获取${gl_huang}区域ID${gl_bai}"
 					  echo "https://dash.cloudflare.com/login"
@@ -4107,7 +4192,7 @@ docker_app_plus() {
 				;;
 
 			5)
-				echo "${docker_name}域名存取設定"
+				echo "${docker_name}域名访问设置"
 				send_stats "${docker_name}域名访问设置"
 				add_yuming
 				ldnmp_Proxy ${yuming} 127.0.0.1 ${docker_port}
@@ -4222,12 +4307,12 @@ session_exists() {
   tmux has-session -t $1 2>/dev/null
 }
 
-# 循環直到找到一個不存在的會話名稱
+# 循环直到找到一个不存在的会话名称
 while session_exists "$base_name-$tmuxd_ID"; do
   local tmuxd_ID=$((tmuxd_ID + 1))
 done
 
-# 建立新的 tmux 會話
+# 创建新的 tmux 会话
 tmux new -d -s "$base_name-$tmuxd_ID" "$tmuxd"
 
 
@@ -4247,9 +4332,9 @@ f2b_status_xxx() {
 
 check_f2b_status() {
 	if command -v fail2ban-client >/dev/null 2>&1; then
-		check_f2b_status="${gl_lv}已安裝${gl_bai}"
+		check_f2b_status="${gl_lv}已安装${gl_bai}"
 	else
-		check_f2b_status="${gl_hui}未安裝${gl_bai}"
+		check_f2b_status="${gl_hui}未安装${gl_bai}"
 	fi
 }
 
@@ -4284,7 +4369,13 @@ f2b_install_sshd() {
 		/bin/systemctl enable --now fail2ban.service || return 1
 	fi
 	fail2ban-client -t >/dev/null 2>&1 || return 1
-	fail2ban-client reload >/dev/null 2>&1 || /bin/systemctl restart fail2ban.service
+	if ! fail2ban-client reload >/dev/null 2>&1; then
+		if command -v apk >/dev/null 2>&1; then
+			rc-service fail2ban restart || return 1
+		else
+			/bin/systemctl restart fail2ban.service || return 1
+		fi
+	fi
 
 }
 
@@ -4413,7 +4504,7 @@ kpanel_f2b_manager_emit() {
 }
 
 kpanel_f2b_manager_error() {
-	printf '錯誤: %s\n' "$1" >&2
+	printf '错误: %s\n' "$1" >&2
 }
 
 kpanel_f2b_manager_valid_address() {
@@ -4660,7 +4751,7 @@ kpanel_f2b_manager_config_action() {
 		kpanel_f2b_manager_emit conflict "$current_version"
 		return 2
 	fi
-	[ "$F2B_MANAGER_ENABLED" = true ] || { kpanel_f2b_manager_error "SSH jail 未運作"; kpanel_f2b_manager_emit failed "$current_version"; return 1; }
+	[ "$F2B_MANAGER_ENABLED" = true ] || { kpanel_f2b_manager_error "SSH jail 未运行"; kpanel_f2b_manager_emit failed "$current_version"; return 1; }
 	bantime="$F2B_MANAGER_BANTIME"; findtime="$F2B_MANAGER_FINDTIME"; maxretry="$F2B_MANAGER_MAXRETRY"
 	trusted=("${F2B_MANAGER_TRUSTED[@]}")
 	case "$action" in
@@ -4693,20 +4784,20 @@ kpanel_f2b_manager_config_action() {
 		printf '%s\n' false > "$snapshot/config.existed"
 	fi
 	kpanel_f2b_manager_write_config "$F2B_MANAGER_JAIL" "$bantime" "$findtime" "$maxretry" "${trusted[@]}" ||
-		kpanel_f2b_manager_config_failure "$snapshot" "無法寫入 SSH 防禦配置" || return 1
-	fail2ban-client -t >/dev/null 2>&1 || kpanel_f2b_manager_config_failure "$snapshot" "Fail2Ban 設定驗證失敗" || return 1
-	fail2ban-client reload >/dev/null 2>&1 || kpanel_f2b_manager_config_failure "$snapshot" "Fail2Ban 設定重載失敗" || return 1
+		kpanel_f2b_manager_config_failure "$snapshot" "无法写入 SSH 防御配置" || return 1
+	fail2ban-client -t >/dev/null 2>&1 || kpanel_f2b_manager_config_failure "$snapshot" "Fail2Ban 配置验证失败" || return 1
+	fail2ban-client reload >/dev/null 2>&1 || kpanel_f2b_manager_config_failure "$snapshot" "Fail2Ban 配置重载失败" || return 1
 	kpanel_f2b_manager_collect || kpanel_f2b_manager_config_failure "$snapshot" "SSH 防御配置回读失败" || return 1
 	[ "$F2B_MANAGER_BANTIME" = "$bantime" ] && [ "$F2B_MANAGER_FINDTIME" = "$findtime" ] && [ "$F2B_MANAGER_MAXRETRY" = "$maxretry" ] ||
 		kpanel_f2b_manager_config_failure "$snapshot" "SSH 防御策略回读不一致" || return 1
 	case "$action" in
 		add-trusted)
 			for item in "${F2B_MANAGER_TRUSTED[@]}"; do [ "$item" != "$value" ] || changed=verified; done
-			[ "$changed" = verified ] || kpanel_f2b_manager_config_failure "$snapshot" "SSH 防禦信任位址回讀不一致" || return 1
+			[ "$changed" = verified ] || kpanel_f2b_manager_config_failure "$snapshot" "SSH 防御信任地址回读不一致" || return 1
 			;;
 		remove-trusted)
 			for item in "${F2B_MANAGER_TRUSTED[@]}"; do
-				[ "$item" != "$value" ] || kpanel_f2b_manager_config_failure "$snapshot" "SSH 防禦信任位址仍然生效" || return 1
+				[ "$item" != "$value" ] || kpanel_f2b_manager_config_failure "$snapshot" "SSH 防御信任地址仍然生效" || return 1
 			done
 			;;
 	esac
@@ -5014,8 +5105,11 @@ kpanel_system_tuning_prepare_ssh_service() {
 		else
 			"$systemctl_bin" enable --now sshd.service >/dev/null 2>&1 || return 1
 		fi
-	elif command -v rc-service >/dev/null 2>&1; then
+	elif command -v rc-service >/dev/null 2>&1 && command -v rc-update >/dev/null 2>&1; then
+		rc-update add sshd default >/dev/null 2>&1 || return 1
 		rc-service sshd start >/dev/null 2>&1 || return 1
+	else
+		return 1
 	fi
 }
 
@@ -5029,20 +5123,20 @@ kpanel_system_tuning_ensure_ssh_server() {
 		elif command -v apk >/dev/null 2>&1 || command -v pacman >/dev/null 2>&1; then
 			package_name=openssh
 		else
-			kpanel_system_tuning_error "目前系統沒有支援的 OpenSSH Server 安裝適配器"
+			kpanel_system_tuning_error "当前系统没有受支持的 OpenSSH Server 安装适配器"
 			return 1
 		fi
 		install "$package_name" || {
-			kpanel_system_tuning_error "OpenSSH Server 安裝失敗"
+			kpanel_system_tuning_error "OpenSSH Server 安装失败"
 			return 1
 		}
 	fi
 	kpanel_system_tuning_ssh_server_ready || {
-		kpanel_system_tuning_error "OpenSSH Server 安裝後設定或工具仍不可用"
+		kpanel_system_tuning_error "OpenSSH Server 安装后配置或工具仍不可用"
 		return 1
 	}
 	kpanel_system_tuning_prepare_ssh_service || {
-		kpanel_system_tuning_error "OpenSSH Server 運行環境準備失敗"
+		kpanel_system_tuning_error "OpenSSH Server 运行环境准备失败"
 		return 1
 	}
 }
@@ -5090,14 +5184,14 @@ kpanel_system_tuning_emit() {
 kpanel_system_tuning_run_item() {
 	case "$1" in
 		system-update)
-			kpanel_system_tuning_has_package_manager update || { kpanel_system_tuning_error "目前系統沒有受支援的軟體包管理器"; return 1; }
-			# 更新來源最佳化保持盡力執行，不因其回傳碼中斷一條龍調優。
+			kpanel_system_tuning_has_package_manager update || { kpanel_system_tuning_error "当前系统没有受支持的软件包管理器"; return 1; }
+			# 更新源优化保持尽力执行，不因其返回码中断一条龙调优。
 			kpanel_system_tuning_switch_mirror || true
-			kpanel_system_tuning_run_command linux_update || { kpanel_system_tuning_error "系統軟體包更新失敗"; return 1; }
+			kpanel_system_tuning_run_command linux_update || { kpanel_system_tuning_error "系统软件包更新失败"; return 1; }
 			;;
 		system-cleanup)
 			kpanel_system_tuning_has_package_manager cleanup || { kpanel_system_tuning_error "当前系统没有受支持的清理适配器"; return 1; }
-			linux_clean || { kpanel_system_tuning_error "系統清理失敗"; return 1; }
+			linux_clean || { kpanel_system_tuning_error "系统清理失败"; return 1; }
 			;;
 		swap-1g) add_swap 1024 ;;
 		ssh-port-5522) kpanel_system_tuning_ensure_ssh_server && KJ_SSH_PORT_NONINTERACTIVE=1 kpanel_ssh_port_noninteractive 5522 ;;
@@ -5117,12 +5211,12 @@ kpanel_system_tuning_menu_item() {
 	local item="$1" index="$2" label="$3"
 	echo "------------------------------------------------"
 	if ! kpanel_system_tuning_run_item "$item"; then
-		echo -e "[${gl_hong}FAIL${gl_bai}] ${index}/12. ${label}，一條龍調優已停止"
+		echo -e "[${gl_hong}FAIL${gl_bai}] ${index}/12. ${label}，一条龙调优已停止"
 		return 1
 	fi
 	case "$item" in system-update|system-cleanup|dns-auto) ;; *)
 		if ! kpanel_system_tuning_item_ready "$item"; then
-			echo -e "[${gl_hong}FAIL${gl_bai}] ${index}/12. ${label}，完成態回讀失敗，一條龍調優已停止"
+			echo -e "[${gl_hong}FAIL${gl_bai}] ${index}/12. ${label}，完成态回读失败，一条龙调优已停止"
 			return 1
 		fi
 	;; esac
@@ -5147,8 +5241,8 @@ kpanel_system_tuning_dispatch() {
 	local action="${1:-status}" item lock_file
 	shift || true
 	printf '%s\n' "KPANEL_SYSTEM_TUNING_PROTOCOL 1"
-	[ "${KJ_SYSTEM_TUNING_NONINTERACTIVE:-}" = 1 ] || { kpanel_system_tuning_error "KPanel system-tuning 協議環境未啟用"; return 2; }
-	[ "$EUID" -eq 0 ] || { kpanel_system_tuning_error "KPanel system-tuning 協定必須以 root 運行"; return 1; }
+	[ "${KJ_SYSTEM_TUNING_NONINTERACTIVE:-}" = 1 ] || { kpanel_system_tuning_error "KPanel system-tuning 协议环境未启用"; return 2; }
+	[ "$EUID" -eq 0 ] || { kpanel_system_tuning_error "KPanel system-tuning 协议必须以 root 运行"; return 1; }
 	[ "$(uname -s)" = Linux ] || { kpanel_system_tuning_error "KPanel system-tuning 协议仅支持 Linux"; return 1; }
 	case "$action" in
 		status) [ "$#" -eq 0 ] || return 2; kpanel_system_tuning_emit ok; return $? ;;
@@ -5171,16 +5265,16 @@ f2b_sshd() {
 	fi
 }
 
-# 基礎參數配置：封禁時長(bantime)、時間視窗(findtime)、重試次數(maxretry)
-# 說明：
-# - 優先寫入 /etc/fail2ban/jail.d/sshd.local（覆蓋預設 jail 配置，升級不易丟）
-# - 若是 Alpine 且 jail 名稱不同，仍寫 sshd.local；Fail2Ban 會以 jail 名稱配對
+# 基础参数配置：封禁时长(bantime)、时间窗口(findtime)、重试次数(maxretry)
+# 说明：
+# - 优先写入 /etc/fail2ban/jail.d/sshd.local（覆盖默认 jail 配置，升级不易丢）
+# - 若是 Alpine 且 jail 名称不同，依然写 sshd.local；Fail2Ban 会按 jail 名称匹配
 f2b_basic_config() {
 	root_use
 	install nano
 
 	if ! command -v fail2ban-client >/dev/null 2>&1; then
-		echo -e "${gl_hui}未偵測到 fail2ban-client，請先安裝 fail2ban。${gl_bai}"
+		echo -e "${gl_hui}未检测到 fail2ban-client，请先安装 fail2ban。${gl_bai}"
 		return
 	fi
 
@@ -5192,9 +5286,9 @@ f2b_basic_config() {
 		fi
 	fi
 
-	echo "即將配置 SSH jail：$jail_name"
-	read -e -p "封禁時長 bantime (秒/分鐘/小時，如 3600 或 1h) [預設 1h]:" bantime
-	read -e -p "時間窗口 findtime (秒/分鐘/小時，如 600 或 10m) [預設 10m]:" findtime
+	echo "即将配置 SSH jail：$jail_name"
+	read -e -p "封禁时长 bantime (秒/分钟/小时，如 3600 或 1h) [默认 1h]: " bantime
+	read -e -p "时间窗口 findtime (秒/分钟/小时，如 600 或 10m) [默认 10m]: " findtime
 	read -e -p "重试次数 maxretry (整数) [默认 5]: " maxretry
 
 	bantime=${bantime:-1h}
@@ -5220,13 +5314,13 @@ EOF
 		fi
 	fi
 
-	echo -e "${gl_lv}已寫入配置${gl_bai}: /etc/fail2ban/jail.d/sshd.local"
+	echo -e "${gl_lv}已写入配置${gl_bai}: /etc/fail2ban/jail.d/sshd.local"
 	fail2ban-client reload >/dev/null 2>&1 || true
 	sleep 2
 	fail2ban-client status $jail_name || true
 }
 
-# 直接開啟主配置/覆蓋配置編輯（nano）
+# 直接打开主配置/覆盖配置编辑（nano）
 # 优先编辑 /etc/fail2ban/jail.d/sshd.local（更安全），若不存在则创建
 f2b_edit_config() {
 	root_use
@@ -5242,7 +5336,7 @@ f2b_edit_config() {
 	[ -f "$cfg" ] || printf "[sshd]\n# bantime/findtime/maxretry\n" > "$cfg"
 
 	nano "$cfg"
-	echo -e "${gl_lv}已儲存${gl_bai}，正在 reload fail2ban..."
+	echo -e "${gl_lv}已保存${gl_bai}，正在 reload fail2ban..."
 	fail2ban-client reload >/dev/null 2>&1 || true
 }
 
@@ -5253,7 +5347,7 @@ server_reboot() {
 	read -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}现在重启服务器吗？(Y/N): ")" rboot
 	case "$rboot" in
 	  [Yy])
-		echo "已重啟"
+		echo "已重启"
 		reboot
 		;;
 	  *)
@@ -5300,8 +5394,8 @@ ldnmp_install_status_one() {
 
    if docker inspect "php" &>/dev/null; then
 	clear
-	send_stats "無法再次安裝LDNMP環境"
-	echo -e "${gl_huang}提示:${gl_bai}建站環境已安裝。無需再次安裝！"
+	send_stats "无法再次安装LDNMP环境"
+	echo -e "${gl_huang}提示: ${gl_bai}建站环境已安装。无需再次安装！"
 	break_end
 	linux_ldnmp
    fi
@@ -5314,7 +5408,7 @@ cd ~
 send_stats "安装LDNMP环境"
 root_use
 clear
-echo -e "${gl_huang}LDNMP環境未安裝，開始安裝LDNMP環境...${gl_bai}"
+echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境...${gl_bai}"
 check_disk_space 3 /home
 install_dependency
 install_docker
@@ -5327,10 +5421,10 @@ install_ldnmp
 
 nginx_install_all() {
 cd ~
-send_stats "安裝nginx環境"
+send_stats "安装nginx环境"
 root_use
 clear
-echo -e "${gl_huang}nginx未安裝，開始安裝nginx環境...${gl_bai}"
+echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
 install_dependency
 install_docker
 install_certbot
@@ -5339,8 +5433,8 @@ nginx_upgrade
 clear
 local nginx_version=$(docker exec nginx nginx -v 2>&1)
 local nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")
-echo "nginx已安裝完成"
-echo -e "目前版本:${gl_huang}v$nginx_version${gl_bai}"
+echo "nginx已安装完成"
+echo -e "当前版本: ${gl_huang}v$nginx_version${gl_bai}"
 echo ""
 
 }
@@ -5351,7 +5445,7 @@ echo ""
 ldnmp_install_status() {
 
 	if ! docker inspect "php" &>/dev/null; then
-		send_stats "請先安裝LDNMP環境"
+		send_stats "请先安装LDNMP环境"
 		ldnmp_install_all
 	fi
 
@@ -5364,7 +5458,7 @@ nginx_install_status() {
 	fi
 
 	if ! docker inspect "nginx" &>/dev/null; then
-		send_stats "請先安裝nginx環境"
+		send_stats "请先安装nginx环境"
 		nginx_install_all
 	fi
 
@@ -5375,10 +5469,10 @@ nginx_install_status() {
 
 ldnmp_web_on() {
 	  clear
-	  echo "您的$webname搭建好了！"
+	  echo "您的 $webname 搭建好了！"
 	  if kpanel_web_http_mode; then echo "http://$yuming:$KJ_WEB_HTTP_PORT"; else echo "https://$yuming"; fi
 	  echo "------------------------"
-	  echo "$webname安裝資訊如下:"
+	  echo "$webname 安装信息如下: "
 
 }
 
@@ -5392,7 +5486,7 @@ nginx_web_on() {
 	local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
 	local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
 
-	echo "您的$webname搭建好了！"
+	echo "您的 $webname 搭建好了！"
 
 	if [[ "$yuming" =~ $ipv4_pattern || "$yuming" =~ $ipv6_pattern ]]; then
 		mv /home/web/conf.d/"$yuming".conf /home/web/conf.d/"${yuming}_${access_port}".conf
@@ -5411,24 +5505,24 @@ ldnmp_wp() {
   # wordpress
   webname="WordPress"
   yuming="${1:-}"
-  kpanel_web_progress 10 "正在校驗 WordPress 網域與現有站點"
-  send_stats "安裝$webname"
-  echo "開始部署$webname"
+  kpanel_web_progress 10 "正在校验 WordPress 域名与现有站点"
+  send_stats "安装$webname"
+  echo "开始部署 $webname"
   if [ -z "$yuming" ]; then
 	add_yuming
   fi
   repeat_add_yuming
-  kpanel_web_progress 20 "正在準備 kejilion.sh LDNMP 環境"
+  kpanel_web_progress 20 "正在准备 kejilion.sh LDNMP 环境"
   ldnmp_install_status
 
 
-  kpanel_web_progress 35 "正在簽發並配置網站證書"
+  kpanel_web_progress 35 "正在签发并配置站点证书"
   install_ssltls
   certs_status
-  kpanel_web_progress 50 "正在建立 WordPress 資料庫與帳號"
+  kpanel_web_progress 50 "正在创建 WordPress 数据库与账号"
   add_db
 
-  kpanel_web_progress 60 "正在取得 kejilion.sh WordPress Nginx 配置"
+  kpanel_web_progress 60 "正在获取 kejilion.sh WordPress Nginx 配置"
   wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
   wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
   sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
@@ -5455,7 +5549,7 @@ ldnmp_wp() {
   cp /home/web/html/$yuming/wordpress/wp-config-sample.php /home/web/html/$yuming/wordpress/wp-config.php
 
 
-  kpanel_web_progress 90 "正在重新啟動 LDNMP 並核驗 WordPress 站點"
+  kpanel_web_progress 90 "正在重启 LDNMP 并核验 WordPress 站点"
   normalize_ldnmp_site_permissions "$yuming" || return 1
   chmod 0640 "/home/web/html/$yuming/wordpress/wp-config.php" || return 1
   restart_ldnmp
@@ -5467,14 +5561,14 @@ ldnmp_wp() {
 
 ldnmp_Proxy() {
 	clear
-	webname="反向代理-IP+埠"
+	webname="反向代理-IP+端口"
 	yuming="${1:-}"
 	reverseproxy="${2:-}"
 	port="${3:-}"
 
-	kpanel_web_progress 10 "正在校驗反向代理域名與上游地址"
-	send_stats "安裝$webname"
-	echo "開始部署$webname"
+	kpanel_web_progress 10 "正在校验反向代理域名与上游地址"
+	send_stats "安装$webname"
+	echo "开始部署 $webname"
 	if [ -z "$yuming" ]; then
 		add_yuming
 	fi
@@ -5482,14 +5576,14 @@ ldnmp_Proxy() {
 	check_ip_and_get_access_port "$yuming"
 
 	if [ -z "$reverseproxy" ]; then
-		read -e -p "請輸入你的反代IP (回車預設本機IP 127.0.0.1):" reverseproxy
+		read -e -p "请输入你的反代IP (回车默认本机IP 127.0.0.1): " reverseproxy
 		reverseproxy=${reverseproxy:-127.0.0.1}
 	fi
 
 	if [ -z "$port" ]; then
-		read -e -p "請輸入你的反代端口:" port
+		read -e -p "请输入你的反代端口: " port
 	fi
-	kpanel_web_progress 25 "正在準備 kejilion.sh Nginx 環境"
+	kpanel_web_progress 25 "正在准备 kejilion.sh Nginx 环境"
 	nginx_install_status
 
 
@@ -5504,7 +5598,7 @@ kpanel_app_write_proxy() {
 	if [ "${KJ_APP_CONCURRENCY:-}" = "1" ] && ! kpanel_app_lock_held system; then
 		kpanel_app_with_lock system kpanel_app_write_proxy "$@"; return $?
 	fi
-	kpanel_web_progress 60 "正在取得 kejilion.sh 反向代理配置"
+	kpanel_web_progress 60 "正在获取 kejilion.sh 反向代理配置"
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
 	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
 
@@ -5520,7 +5614,7 @@ kpanel_app_write_proxy() {
 		upstream_servers="$upstream_servers    server $server;\n"
 	done
 
-	sed -i "s/# 動態添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
+	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
 	sed -i '/remote_addr/d' /home/web/conf.d/$yuming.conf
 
 	update_nginx_listen_port "$yuming" "$access_port"
@@ -5535,10 +5629,10 @@ kpanel_app_write_proxy() {
 
 ldnmp_Proxy_backend() {
 	clear
-	webname="反向代理-負載平衡"
+	webname="反向代理-负载均衡"
 
-	send_stats "安裝$webname"
-	echo "開始部署$webname"
+	send_stats "安装$webname"
+	echo "开始部署 $webname"
 	if [ -z "$yuming" ]; then
 		add_yuming
 	fi
@@ -5586,7 +5680,7 @@ ldnmp_Proxy_backend() {
 list_stream_services() {
 
 	STREAM_DIR="/home/web/stream.d"
-	printf "%-25s %-18s %-25s %-20s\n" "服务名" "通訊類型" "本機地址" "后端地址"
+	printf "%-25s %-18s %-25s %-20s\n" "服务名" "通信类型" "本机地址" "后端地址"
 
 	if [ -z "$(ls -A "$STREAM_DIR")" ]; then
 		return
@@ -5656,7 +5750,7 @@ stream_panel() {
 			1)
 				nginx_install_status
 				add_app_id || return 1
-				send_stats "安裝Stream四層代理"
+				send_stats "安装Stream四层代理"
 				;;
 			2)
 				update_docker_compose_with_db_creds
@@ -5670,7 +5764,7 @@ stream_panel() {
 					docker rm -f nginx
 					remove_app_id || return 1
 					send_stats "更新Stream四层代理"
-					echo "nginx 容器已刪除。"
+					echo "nginx 容器已删除。"
 				else
 					echo "操作已取消。"
 				fi
@@ -5684,7 +5778,7 @@ stream_panel() {
 				;;
 			5)
 				send_stats "编辑转发配置"
-				read -e -p "請輸入你要編輯的服務名稱:" stream_name
+				read -e -p "请输入你要编辑的服务名: " stream_name
 				install nano
 				nano /home/web/stream.d/$stream_name.conf
 				docker restart nginx
@@ -5711,7 +5805,7 @@ ldnmp_Proxy_backend_stream() {
 	clear
 	webname="Stream四层代理-负载均衡"
 
-	send_stats "安裝$webname"
+	send_stats "安装$webname"
 	echo "开始部署 $webname"
 
 	# 获取代理名称
@@ -5721,7 +5815,7 @@ ldnmp_Proxy_backend_stream() {
 	fi
 
 	# 获取监听端口
-	read -erp "請輸入本機監聽埠 (如 3306):" listen_port
+	read -erp "请输入本机监听端口 (如 3306): " listen_port
 	if ! [[ "$listen_port" =~ ^[0-9]+$ ]]; then
 		echo "端口必须是数字"; return 1
 	fi
@@ -5958,7 +6052,7 @@ ldnmp_web_status() {
 		echo "3.  清理站点缓存                    4.  创建关联站点"
 		echo "5.  查看访问日志                    6.  查看错误日志"
 		echo "7.  编辑全局配置                    8.  编辑站点配置"
-		echo "9. 管理站點資料庫 10. 查看站點分析報告"
+		echo "9.  管理站点数据库                  10. 查看站点分析报告"
 		echo "------------------------"
 		echo "20. 删除指定站点数据"
 		echo "------------------------"
@@ -6039,7 +6133,7 @@ ldnmp_web_status() {
 				break_end
 				;;
 			6)
-				send_stats "查看錯誤日誌"
+				send_stats "查看错误日志"
 				tail -n 200 /home/web/log/nginx/error.log
 				break_end
 				;;
@@ -6052,7 +6146,7 @@ ldnmp_web_status() {
 
 			8)
 				send_stats "编辑站点配置"
-				read -e -p "編輯網站配置，請輸入你要編輯的網域:" yuming
+				read -e -p "编辑站点配置，请输入你要编辑的域名: " yuming
 				install nano
 				nano /home/web/conf.d/$yuming.conf
 				docker exec nginx nginx -s reload
@@ -6129,7 +6223,7 @@ while true; do
 			panel_app_uninstall
 
 			remove_app_id || return 1
-			send_stats "${panelname}解除安裝"
+			send_stats "${panelname}卸载"
 			;;
 		*)
 			break
@@ -6147,7 +6241,7 @@ check_frp_app() {
 if [ -d "/home/frp/" ]; then
 	check_frp="${gl_lv}已安装${gl_bai}"
 else
-	check_frp="${gl_hui}未安裝${gl_bai}"
+	check_frp="${gl_hui}未安装${gl_bai}"
 fi
 
 }
@@ -6202,9 +6296,9 @@ EOF
 	echo "服务IP: $ipv4_address"
 	echo "token: $token"
 	echo
-	echo "FRP面板資訊"
+	echo "FRP面板信息"
 	echo "FRP面板地址: http://$ipv4_address:$dashboard_port"
-	echo "FRP面板使用者名稱:$dashboard_user"
+	echo "FRP面板用户名: $dashboard_user"
 	echo "FRP面板密码: $dashboard_pwd"
 	echo
 
@@ -6220,10 +6314,10 @@ get_frp_ports() {
 
 # 生成访问地址
 generate_access_urls() {
-	# 首先獲取所有連接埠
+	# 首先获取所有端口
 	get_frp_ports
 
-	# 檢查是否有非 8055/8056 的端口
+	# 检查是否有非 8055/8056 的端口
 	local has_valid_ports=false
 	for port in "${ports[@]}"; do
 		if [[ $port != "8055" && $port != "8056" ]]; then
@@ -6234,16 +6328,16 @@ generate_access_urls() {
 
 	# 只在有有效端口时显示标题和内容
 	if [ "$has_valid_ports" = true ]; then
-		echo "FRP服務對外存取位址:"
+		echo "FRP服务对外访问地址:"
 
-		# 處理 IPv4 位址
+		# 处理 IPv4 地址
 		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
 				echo "http://${ipv4_address}:${port}"
 			fi
 		done
 
-		# 處理 IPv6 位址（如果存在）
+		# 处理 IPv6 地址（如果存在）
 		if [ -n "$ipv6_address" ]; then
 			for port in "${ports[@]}"; do
 				if [[ $port != "8055" && $port != "8056" ]]; then
@@ -6252,7 +6346,7 @@ generate_access_urls() {
 			done
 		fi
 
-		# 處理 HTTPS 配置
+		# 处理 HTTPS 配置
 		for port in "${ports[@]}"; do
 			if [[ $port != "8055" && $port != "8056" ]]; then
 				local frps_search_pattern="${ipv4_address}:${port}"
@@ -6284,11 +6378,11 @@ frps_main_ports() {
 #       delete_forwarding_service, list_forwarding_services,
 #       sort_forwarding_services_by_remote_port, frpc_panel
 
-# ===== 第一部分: configure_frpc + 輔助 + 新增/刪除/清單/排序 (行4129-4542) =====
+# ===== 第一部分: configure_frpc + 辅助 + 添加/删除/列表/排序 (行4129-4542) =====
 configure_frpc() {
-	send_stats "安裝frp客戶端"
+	send_stats "安装frp客户端"
 	read -e -p "请输入外网对接IP: " server_addr
-	read -e -p "請輸入外網對接token:" token
+	read -e -p "请输入外网对接token: " token
 	echo
 
 	mkdir -p /home/frp
@@ -6360,18 +6454,18 @@ add_forwarding_service() {
 	send_stats "添加frp内网服务"
 
 	while true; do
-		read -e -p "請輸入服務名稱:" service_name
+		read -e -p "请输入服务名称: " service_name
 		service_name=$(echo "$service_name" | xargs)
 		if [ -z "$service_name" ]; then
-			echo "新增失敗：服務名稱不能為空，請重新輸入。"
+			echo "添加失败：服务名称不能为空，请重新输入。"
 			continue
 		fi
 		if ! is_valid_service_name "$service_name"; then
-			echo "新增失敗：服務名稱僅允許字母、數字、底線和中劃線，請重新輸入。"
+			echo "添加失败：服务名称仅允许字母、数字、下划线和中划线，请重新输入。"
 			continue
 		fi
 		if [ -f /home/frp/frpc.toml ] && grep -qE "^\[$service_name\]$" /home/frp/frpc.toml; then
-			echo "添加失败：服务名称 $service_name已存在，請重新輸入其他名稱。"
+			echo "添加失败：服务名称 $service_name 已存在，请重新输入其他名称。"
 			continue
 		fi
 		break
@@ -6392,7 +6486,7 @@ add_forwarding_service() {
 	local_ip=$(echo "$local_ip" | xargs)
 
 	while true; do
-		read -e -p "請輸入內部網路連接埠:" local_port
+		read -e -p "请输入内网端口: " local_port
 		local_port=$(echo "$local_port" | xargs)
 		if ! is_valid_port "$local_port"; then
 			echo "添加失败：内网端口必须是 1-65535 的数字，请重新输入。"
@@ -6407,11 +6501,11 @@ add_forwarding_service() {
 				read -e -p "请输入外网端口: " remote_port
 				remote_port=$(echo "$remote_port" | xargs)
 				if ! is_valid_port "$remote_port"; then
-					echo "新增失敗：外網連接埠必須是 1-65535 的數字，請重新輸入。"
+					echo "添加失败：外网端口必须是 1-65535 的数字，请重新输入。"
 					continue
 				fi
 				if remote_port_exists "$service_type" "$remote_port"; then
-					echo "新增失敗：$service_type連接埠$remote_port 已存在，请重新输入其他外网端口。"
+					echo "添加失败：$service_type 端口 $remote_port 已存在，请重新输入其他外网端口。"
 					continue
 				fi
 				break
@@ -6428,10 +6522,10 @@ EOF
 			;;
 		http|https)
 			while true; do
-				read -e -p "請輸入綁定網域名稱(如 www.cong86.cn):" custom_domains
+				read -e -p "请输入绑定域名(如 www.cong86.cn): " custom_domains
 				custom_domains=$(echo "$custom_domains" | xargs)
 				if [ -z "$custom_domains" ]; then
-					echo "新增失敗：網域名稱不能為空，請重新輸入。"
+					echo "添加失败：域名不能为空，请重新输入。"
 					continue
 				fi
 				if ! is_valid_domain "$custom_domains"; then
@@ -6449,7 +6543,7 @@ EOF
 					done < <(awk -F= '/^custom_domains = / {gsub(/[" ]/, "", $2); gsub(/,/, "\n", $2); print $2}' /home/frp/frpc.toml)
 				fi
 				if [ "$duplicate_domain" -eq 1 ]; then
-					echo "新增失敗：域名$custom_domains已存在，請重新輸入其他網域名稱。"
+					echo "添加失败：域名 $custom_domains 已存在，请重新输入其他域名。"
 					continue
 				fi
 				break
@@ -6466,11 +6560,11 @@ EOF
 			;;
 	esac
 
-	echo "服務$service_name已成功加入到 frpc.toml"
+	echo "服务 $service_name 已成功添加到 frpc.toml"
 	if docker restart frpc >/dev/null 2>&1; then
-		echo "frpc 已重新啟動。"
+		echo "frpc 已重启。"
 	else
-		echo "警告：frpc 重新啟動失敗，請檢查 /home/frp/frpc.toml 配置。"
+		echo "警告：frpc 重启失败，请检查 /home/frp/frpc.toml 配置。"
 		return 1
 	fi
 }
@@ -6478,18 +6572,18 @@ EOF
 
 delete_forwarding_service() {
 	send_stats "删除frp内网服务"
-	read -e -p "請輸入需要刪除的服務名稱:" service_name
+	read -e -p "请输入需要删除的服务名称: " service_name
 	service_name=$(echo "$service_name" | xargs)
 	if [ -z "$service_name" ]; then
-		echo "刪除失敗：服務名稱不能為空。"
+		echo "删除失败：服务名称不能为空。"
 		return 1
 	fi
 	if [ ! -f /home/frp/frpc.toml ] || ! grep -qE "^\[$service_name\]$" /home/frp/frpc.toml; then
-		echo "刪除失敗：服務$service_name不存在。"
+		echo "删除失败：服务 $service_name 不存在。"
 		return 1
 	fi
 
-	echo "即將刪除服務：$service_name"
+	echo "即将删除服务：$service_name"
 	awk -v svc="$service_name" '
 		BEGIN { in_section=0 }
 		$0 == "[" svc "]" { in_section=1; print; next }
@@ -6497,20 +6591,20 @@ delete_forwarding_service() {
 		in_section { print }
 	' /home/frp/frpc.toml
 
-	read -e -p "確認刪除服務$service_name嗎？ (y/N):" confirm_delete
+	read -e -p "确认删除服务 $service_name 吗？(y/N): " confirm_delete
 	confirm_delete=$(echo "$confirm_delete" | tr '[:upper:]' '[:lower:]' | xargs)
 	if [ "$confirm_delete" != "y" ] && [ "$confirm_delete" != "yes" ]; then
-		echo "已取消刪除。"
+		echo "已取消删除。"
 		return 0
 	fi
 
 	cp -f /home/frp/frpc.toml /home/frp/frpc.toml.bak 2>/dev/null || true
 	sed -i "/\[$service_name\]/,/^$/d" /home/frp/frpc.toml
-	echo "服務$service_name已成功從 frpc.toml 刪除"
+	echo "服务 $service_name 已成功从 frpc.toml 删除"
 	if docker restart frpc >/dev/null 2>&1; then
-		echo "frpc 已重新啟動。"
+		echo "frpc 已重启。"
 	else
-		echo "警告：frpc 重新啟動失敗，請檢查 /home/frp/frpc.toml 配置。"
+		echo "警告：frpc 重启失败，请检查 /home/frp/frpc.toml 配置。"
 		return 1
 	fi
 }
@@ -6519,8 +6613,8 @@ delete_forwarding_service() {
 list_forwarding_services() {
 	local config_file="$1"
 
-	# 列印表頭
-	printf "%-20s %-25s %-40s %-10s\n" "服務名稱" "內部網路位址" "外網地址/域名" "協定"
+	# 打印表头
+	printf "%-20s %-25s %-40s %-10s\n" "服务名称" "内网地址" "外网地址/域名" "协议"
 
 	awk '
 	function trim_value(s) {
@@ -6535,7 +6629,7 @@ list_forwarding_services() {
 				if (custom_domains != "") {
 					printf "%-16s %-21s %-36s %-10s\n", current_service, local_ip ":" local_port, custom_domains, type
 				} else {
-					printf "%-16s %-21s %-36s %-10s\n", current_service, local_ip ":" local_port, "(未設定域名)", type
+					printf "%-16s %-21s %-36s %-10s\n", current_service, local_ip ":" local_port, "(未设置域名)", type
 				}
 			} else {
 				printf "%-16s %-21s %-36s %-10s\n", current_service, local_ip ":" local_port, server_addr ":" remote_port, type
@@ -6602,11 +6696,11 @@ list_forwarding_services() {
 
 
 sort_forwarding_services_by_remote_port() {
-	send_stats "按外網連接埠排序frpc服務"
+	send_stats "按外网端口排序frpc服务"
 	local config_file="/home/frp/frpc.toml"
 
 	if [ ! -f "$config_file" ]; then
-		echo "排序失敗：未找到$config_file"
+		echo "排序失败：未找到 $config_file"
 		return 1
 	fi
 
@@ -6615,7 +6709,7 @@ sort_forwarding_services_by_remote_port() {
 	local tmp_dir
 	tmp_dir=$(mktemp -d)
 	if [ -z "$tmp_dir" ] || [ ! -d "$tmp_dir" ]; then
-		echo "排序失敗：無法建立暫存目錄。"
+		echo "排序失败：无法创建临时目录。"
 		return 1
 	fi
 
@@ -6679,7 +6773,7 @@ sort_forwarding_services_by_remote_port() {
 	done > "$tmp_dir/frpc.sorted.toml"
 
 	if [ ! -s "$tmp_dir/frpc.sorted.toml" ]; then
-		echo "排序失敗：排序後配置為空，已取消覆蓋。"
+		echo "排序失败：排序后配置为空，已取消覆盖。"
 		rm -rf "$tmp_dir"
 		return 1
 	fi
@@ -6687,20 +6781,20 @@ sort_forwarding_services_by_remote_port() {
 	mv "$tmp_dir/frpc.sorted.toml" "$config_file"
 	rm -rf "$tmp_dir"
 
-	echo "已依外網埠升序完成排序（無 remote_port 的服務放在最後）。"
+	echo "已按外网端口升序完成排序（无 remote_port 的服务放在最后）。"
 	if docker restart frpc >/dev/null 2>&1; then
-		echo "frpc 已重新啟動。"
+		echo "frpc 已重启。"
 	else
-		echo "警告：frpc 重新啟動失敗，請檢查 /home/frp/frpc.toml 配置。"
+		echo "警告：frpc 重启失败，请检查 /home/frp/frpc.toml 配置。"
 		return 1
 	fi
 }
 
 
 
-# 取得 FRP 服務端端口
+# 获取 FRP 服务端端口
 
-# ===== 第二部分: frpc_panel 增強版 (行4705-4793) =====
+# ===== 第二部分: frpc_panel 增强版 (行4705-4793) =====
 frpc_panel() {
 	send_stats "FRP客户端"
 	local app_id="56"
@@ -6710,9 +6804,9 @@ frpc_panel() {
 		clear
 		check_frp_app
 		check_docker_image_update $docker_name
-		echo -e "FRP客戶端$check_frp $update_status"
-		echo "與服務端對接，對接後可建立內網穿透服務到網際網路存取"
-		echo "官網介紹:${gh_https_url}github.com/fatedier/frp/"
+		echo -e "FRP客户端 $check_frp $update_status"
+		echo "与服务端对接，对接后可创建内网穿透服务到互联网访问"
+		echo "官网介绍: ${gh_https_url}github.com/fatedier/frp/"
 		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=173.9"
 		echo "------------------------"
 		if [ -d "/home/frp/" ]; then
@@ -6727,7 +6821,7 @@ frpc_panel() {
 		echo "------------------------"
 		echo "7. 按外网端口升序排序"
 		echo "------------------------"
-		echo "0. 返回上一級選單"
+		echo "0. 返回上一级选单"
 		echo "------------------------"
 		read -e -p "输入你的选择: " choice
 		case $choice in
@@ -6737,7 +6831,7 @@ frpc_panel() {
 				configure_frpc
 
 				add_app_id || return 1
-				echo "FRP客戶端已經安裝完成"
+				echo "FRP客户端已经安装完成"
 				;;
 			2)
 				crontab -l | grep -v 'frpc' | crontab - > /dev/null 2>&1
@@ -6758,7 +6852,7 @@ frpc_panel() {
 				close_port 8055
 
 				remove_app_id || return 1
-				echo "應用程式已解除安裝"
+				echo "应用已卸载"
 				;;
 
 			4)
@@ -6792,7 +6886,7 @@ frpc_panel() {
 
 
 frps_panel() {
-	send_stats "FRP服務端"
+	send_stats "FRP服务端"
 	local app_id="55"
 	local docker_name="frps"
 	local docker_port=8056
@@ -6800,10 +6894,10 @@ frps_panel() {
 		clear
 		check_frp_app
 		check_docker_image_update $docker_name
-		echo -e "FRP服務端$check_frp $update_status"
-		echo "建構FRP內網穿透服務環境，將無公網IP的設備暴露到互聯網"
+		echo -e "FRP服务端 $check_frp $update_status"
+		echo "构建FRP内网穿透服务环境，将无公网IP的设备暴露到互联网"
 		echo "官网介绍: ${gh_https_url}github.com/fatedier/frp/"
-		echo "影片教學: https://www.bilibili.com/video/BV1yMw6e2EwL?t=124.0"
+		echo "视频教学: https://www.bilibili.com/video/BV1yMw6e2EwL?t=124.0"
 		if [ -d "/home/frp/" ]; then
 			check_docker_app_ip
 			frps_main_ports
@@ -6812,13 +6906,13 @@ frps_panel() {
 		echo "------------------------"
 		echo "1. 安装                  2. 更新                  3. 卸载"
 		echo "------------------------"
-		echo "5. 內部網路服務網域存取 6. 刪除網域名稱訪問"
+		echo "5. 内网服务域名访问      6. 删除域名访问"
 		echo "------------------------"
-		echo "7. 允許IP+連接埠存取 8. 阻止IP+連接埠訪問"
+		echo "7. 允许IP+端口访问       8. 阻止IP+端口访问"
 		echo "------------------------"
-		echo "00. 刷新服務狀態 0. 返回上一級選單"
+		echo "00. 刷新服务状态         0. 返回上一级选单"
 		echo "------------------------"
-		read -e -p "輸入你的選擇:" choice
+		read -e -p "输入你的选择: " choice
 		case $choice in
 			1)
 				install jq grep ss
@@ -6836,7 +6930,7 @@ frps_panel() {
 				donlond_frp frps
 
 				add_app_id || return 1
-				echo "FRP服務端已經更新完成"
+				echo "FRP服务端已经更新完成"
 				;;
 			3)
 				crontab -l | grep -v 'frps' | crontab - > /dev/null 2>&1
@@ -6858,7 +6952,7 @@ frps_panel() {
 				block_host_port "$frps_port" "$ipv4_address" || return 1
 				;;
 			6)
-				echo "網域格式 example.com 不含https://"
+				echo "域名格式 example.com 不带https://"
 				web_del
 				;;
 
@@ -6869,15 +6963,15 @@ frps_panel() {
 				;;
 
 			8)
-				send_stats "阻止IP訪問"
-				echo "如果你已經反代域名訪問了，可用此功能阻止IP+端口訪問，這樣更安全。"
-				read -e -p "請輸入需要阻止的連接埠:" frps_port
+				send_stats "阻止IP访问"
+				echo "如果你已经反代域名访问了，可用此功能阻止IP+端口访问，这样更安全。"
+				read -e -p "请输入需要阻止的端口: " frps_port
 				block_host_port "$frps_port" "$ipv4_address" || return 1
 				;;
 
 			00)
 				send_stats "刷新FRP服务状态"
-				echo "已經刷新FRP服務狀態"
+				echo "已经刷新FRP服务状态"
 				;;
 
 			*)
@@ -6901,39 +6995,39 @@ yt_menu_pro() {
 	while true; do
 
 		if [ -x "/usr/local/bin/yt-dlp" ]; then
-		   local YTDLP_STATUS="${gl_lv}已安裝${gl_bai}"
+		   local YTDLP_STATUS="${gl_lv}已安装${gl_bai}"
 		else
-		   local YTDLP_STATUS="${gl_hui}未安裝${gl_bai}"
+		   local YTDLP_STATUS="${gl_hui}未安装${gl_bai}"
 		fi
 
 		clear
-		send_stats "yt-dlp 下載工具"
+		send_stats "yt-dlp 下载工具"
 		echo -e "yt-dlp $YTDLP_STATUS"
 		echo -e "yt-dlp 是一个功能强大的视频下载工具，支持 YouTube、Bilibili、Twitter 等数千站点。"
-		echo -e "官網位址：${gh_https_url}github.com/yt-dlp/yt-dlp"
+		echo -e "官网地址：${gh_https_url}github.com/yt-dlp/yt-dlp"
 		echo "-------------------------"
-		echo "已下載影片清單:"
-		ls -td "$VIDEO_DIR"/*/ 2>/dev/null || echo "（暫無）"
+		echo "已下载视频列表:"
+		ls -td "$VIDEO_DIR"/*/ 2>/dev/null || echo "（暂无）"
 		echo "-------------------------"
-		echo "1. 安裝 2. 更新 3. 卸載"
+		echo "1.  安装               2.  更新               3.  卸载"
 		echo "-------------------------"
 		echo "5.  单个视频下载       6.  批量视频下载       7.  自定义参数下载"
 		echo "8.  下载为MP3音频      9.  删除视频目录       10. Cookie管理（开发中）"
 		echo "-------------------------"
-		echo "0. 返回上一級選單"
+		echo "0. 返回上一级选单"
 		echo "-------------------------"
-		read -e -p "請輸入選項編號:" choice
+		read -e -p "请输入选项编号: " choice
 
 		case $choice in
 			1)
-				send_stats "正在安裝 yt-dlp..."
-				echo "正在安裝 yt-dlp..."
+				send_stats "正在安装 yt-dlp..."
+				echo "正在安装 yt-dlp..."
 				install ffmpeg
 				curl -L ${gh_https_url}github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp
 				chmod a+rx /usr/local/bin/yt-dlp
 
 				add_app_id || return 1
-				echo "安裝完成。按任意鍵繼續..."
+				echo "安装完成。按任意键继续..."
 				read ;;
 			2)
 				send_stats "正在更新 yt-dlp..."
@@ -6941,19 +7035,19 @@ yt_menu_pro() {
 				yt-dlp -U
 
 				add_app_id || return 1
-				echo "更新完成。按任意鍵繼續..."
+				echo "更新完成。按任意键继续..."
 				read ;;
 			3)
-				send_stats "正在卸載 yt-dlp..."
-				echo "正在卸載 yt-dlp..."
+				send_stats "正在卸载 yt-dlp..."
+				echo "正在卸载 yt-dlp..."
 				rm -f /usr/local/bin/yt-dlp
 
 				remove_app_id || return 1
-				echo "卸載完成。按任意鍵繼續..."
+				echo "卸载完成。按任意键继续..."
 				read ;;
 			5)
-				send_stats "單一影片下載"
-				read -e -p "請輸入影片連結:" url
+				send_stats "单个视频下载"
+				read -e -p "请输入视频链接: " url
 				yt-dlp -P "$VIDEO_DIR" -f "bv*+ba/b" --merge-output-format mp4 \
 					--write-subs --sub-langs all \
 					--write-thumbnail --embed-thumbnail \
@@ -6962,13 +7056,13 @@ yt_menu_pro() {
 					--no-overwrites --no-post-overwrites "$url"
 				read -e -p "下载完成，按任意键继续..." ;;
 			6)
-				send_stats "大量影片下載"
+				send_stats "批量视频下载"
 				install nano
 				if [ ! -f "$URL_FILE" ]; then
-				  echo -e "# 輸入多個視訊連結位址\n# https://www.bilibili.com/bangumi/play/ep733316?spm_id_from=333.337.0.0&from_spmid=666.25.episode.0" > "$URL_FILE"
+				  echo -e "# 输入多个视频链接地址\n# https://www.bilibili.com/bangumi/play/ep733316?spm_id_from=333.337.0.0&from_spmid=666.25.episode.0" > "$URL_FILE"
 				fi
 				nano $URL_FILE
-				echo "現在開始批量下載..."
+				echo "现在开始批量下载..."
 				yt-dlp -P "$VIDEO_DIR" -f "bv*+ba/b" --merge-output-format mp4 \
 					--write-subs --sub-langs all \
 					--write-thumbnail --embed-thumbnail \
@@ -6978,7 +7072,7 @@ yt_menu_pro() {
 					--no-overwrites --no-post-overwrites
 				read -e -p "批量下载完成，按任意键继续..." ;;
 			7)
-				send_stats "自訂影片下載"
+				send_stats "自定义视频下载"
 				read -e -p "请输入完整 yt-dlp 参数（不含 yt-dlp）: " custom
 				yt-dlp -P "$VIDEO_DIR" $custom \
 					--write-subs --sub-langs all \
@@ -6988,8 +7082,8 @@ yt_menu_pro() {
 					--no-overwrites --no-post-overwrites
 				read -e -p "执行完成，按任意键继续..." ;;
 			8)
-				send_stats "MP3下載"
-				read -e -p "請輸入影片連結:" url
+				send_stats "MP3下载"
+				read -e -p "请输入视频链接: " url
 				yt-dlp -P "$VIDEO_DIR" -x --audio-format mp3 \
 					--write-subs --sub-langs all \
 					--write-thumbnail --embed-thumbnail \
@@ -6999,7 +7093,7 @@ yt_menu_pro() {
 				read -e -p "音频下载完成，按任意键继续..." ;;
 
 			9)
-				send_stats "刪除影片"
+				send_stats "删除视频"
 				read -e -p "请输入删除视频名称: " rmdir
 				rm -rf "$VIDEO_DIR/$rmdir"
 				;;
@@ -7036,7 +7130,7 @@ set_timedate() {
 
 
 
-# 修復dpkg中斷問題
+# 修复dpkg中断问题
 fix_dpkg() {
 	pkill -9 -f 'apt|dpkg'
 	rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock
@@ -7101,9 +7195,9 @@ linux_clean() {
 		journalctl --vacuum-size=500M
 
 	elif command -v apk &>/dev/null; then
-		echo "清理包管理器快取..."
+		echo "清理包管理器缓存..."
 		apk cache clean
-		echo "刪除系統日誌..."
+		echo "删除系统日志..."
 		rm -rf /var/log/*
 		echo "删除APK缓存..."
 		rm -rf /var/cache/apk/*
@@ -7125,17 +7219,17 @@ linux_clean() {
 		journalctl --vacuum-size=500M
 
 	elif command -v opkg &>/dev/null; then
-		echo "刪除系統日誌..."
+		echo "删除系统日志..."
 		rm -rf /var/log/*
-		echo "刪除臨時檔案..."
+		echo "删除临时文件..."
 		rm -rf /tmp/*
 
 	elif command -v pkg &>/dev/null; then
-		echo "清理未使用的依賴..."
+		echo "清理未使用的依赖..."
 		pkg autoremove -y
 		echo "清理包管理器缓存..."
 		pkg clean -y
-		echo "刪除系統日誌..."
+		echo "删除系统日志..."
 		rm -rf /var/log/*
 		echo "删除临时文件..."
 		rm -rf /tmp/*
@@ -7157,7 +7251,7 @@ mkdir -p /etc/sysctl.d
 echo "net.core.default_qdisc=fq" > "$CONF"
 echo "net.ipv4.tcp_congestion_control=bbr" >> "$CONF"
 
-# 清理可能導致衝突的舊版 sysctl.conf 殘留
+# 清理可能导致冲突的旧版 sysctl.conf 残留
 sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf 2>/dev/null
 sed -i '/net.core.default_qdisc/d' /etc/sysctl.conf 2>/dev/null
 
@@ -7294,13 +7388,13 @@ kpanel_dns_write_static() {
 	fi
 	parent="$(dirname "$target")"
 	[ -d "$parent" ] || {
-		echo "錯誤: DNS 配置目錄不存在"
+		echo "错误: DNS 配置目录不存在"
 		return 1
 	}
 	kpanel_dns_wsl_environment && lock_dns="false"
 	if [ "$lock_dns" = "true" ] && ! command -v chattr >/dev/null 2>&1; then
 		kpanel_dns_wsl_environment || {
-			echo "錯誤: chattr 不可用，無法保持 kejilion.sh DNS 生命週期語意"
+			echo "错误: chattr 不可用，无法保持 kejilion.sh DNS 生命周期语义"
 			return 1
 		}
 		lock_dns="false"
@@ -7316,7 +7410,7 @@ kpanel_dns_write_static() {
 	done
 	if [ "$lock_dns" = "false" ] && ! kpanel_dns_wsl_persist_resolver "$expected"; then
 		rm -f "$desired" "$backup"
-		echo "錯誤: WSL DNS 持久化設定失敗"
+		echo "错误: WSL DNS 持久化配置失败"
 		return 1
 	fi
 	printf '%s' "$expected" > "$desired" || {
@@ -7345,7 +7439,7 @@ kpanel_dns_write_static() {
 					lock_dns="false"
 				else
 					rm -f "$desired" "$backup"
-					echo "錯誤: 無法鎖定 DNS 配置"
+					echo "错误: 无法锁定 DNS 配置"
 					return 1
 				fi
 			fi
@@ -7359,7 +7453,7 @@ kpanel_dns_write_static() {
 				lock_dns="false"
 			else
 				rm -f "$desired" "$backup"
-				echo "錯誤: 無法解除現有 DNS 設定鎖定"
+				echo "错误: 无法解除现有 DNS 配置锁定"
 				return 1
 			fi
 		fi
@@ -7373,11 +7467,11 @@ kpanel_dns_write_static() {
 	if ! mv -f "$desired" "$target"; then
 		kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
 			rm -f "$desired" "$backup"
-			echo "錯誤: DNS 寫入失敗且回滾失敗，需要手動檢查"
+			echo "错误: DNS 写入失败且回滚失败，需要人工检查"
 			return 1
 		}
 		rm -f "$desired" "$backup"
-		echo "錯誤: DNS 寫入或回讀驗證失敗，已恢復原始配置"
+		echo "错误: DNS 写入或回读验证失败，已恢复原配置"
 		return 1
 	fi
 	if [ "$lock_dns" = "true" ] && ! chattr +i "$target" >/dev/null 2>&1; then
@@ -7386,22 +7480,22 @@ kpanel_dns_write_static() {
 		else
 			kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
 				rm -f "$desired" "$backup"
-				echo "錯誤: DNS 寫入失敗且回滾失敗，需要手動檢查"
+				echo "错误: DNS 写入失败且回滚失败，需要人工检查"
 				return 1
 			}
 			rm -f "$desired" "$backup"
-			echo "錯誤: DNS 寫入或回讀驗證失敗，已恢復原始配置"
+			echo "错误: DNS 写入或回读验证失败，已恢复原配置"
 			return 1
 		fi
 	fi
 	if [ "$(cat "$target")"$'\n' != "$expected" ]; then
 		kpanel_dns_restore_file "$target" "$backup" "$existed" "$old_immutable" || {
 			rm -f "$desired" "$backup"
-			echo "錯誤: DNS 寫入失敗且回滾失敗，需要手動檢查"
+			echo "错误: DNS 写入失败且回滚失败，需要人工检查"
 			return 1
 		}
 		rm -f "$desired" "$backup"
-		echo "錯誤: DNS 寫入或回讀驗證失敗，已恢復原始配置"
+		echo "错误: DNS 写入或回读验证失败，已恢复原配置"
 		return 1
 	fi
 	rm -f "$backup"
@@ -7414,7 +7508,7 @@ kpanel_dns_write_systemd_resolved() {
 	local parent desired backup existed="false" expected
 
 	command -v systemctl >/dev/null 2>&1 || {
-		echo "錯誤: systemctl 不可用"
+		echo "错误: systemctl 不可用"
 		return 1
 	}
 	parent="$(dirname "$config")"
@@ -7452,7 +7546,7 @@ kpanel_dns_write_systemd_resolved() {
 		if [ "$existed" = "true" ]; then
 			cp -p "$backup" "$config" || {
 				rm -f "$desired" "$backup"
-				echo "錯誤: systemd-resolved DNS 回滾失敗，需要手動檢查"
+				echo "错误: systemd-resolved DNS 回滚失败，需要人工检查"
 				return 1
 			}
 		else
@@ -7460,7 +7554,7 @@ kpanel_dns_write_systemd_resolved() {
 		fi
 		systemctl reload-or-restart systemd-resolved.service >/dev/null 2>&1 || {
 			rm -f "$desired" "$backup"
-			echo "錯誤: systemd-resolved DNS 已恢復文件，但服務重載失敗，需要手動檢查"
+			echo "错误: systemd-resolved DNS 已恢复文件，但服务重载失败，需要人工检查"
 			return 1
 		}
 		rm -f "$desired" "$backup"
@@ -7475,7 +7569,7 @@ kpanel_dns_write_systemd_resolved() {
 kpanel_set_dns_noninteractive() {
 	[ "${KJ_DNS_NONINTERACTIVE:-}" = "1" ] || return 2
 	[ "$EUID" -eq 0 ] || {
-		echo "錯誤: KPanel DNS 協定必須以 root 執行"
+		echo "错误: KPanel DNS 协议必须以 root 运行"
 		return 1
 	}
 	[ "$#" -ge 1 ] && [ "$#" -le 4 ] || {
@@ -7487,28 +7581,28 @@ kpanel_set_dns_noninteractive() {
 	local normalized=()
 	for value in "$@"; do
 		[ -n "$value" ] && [ ${#value} -le 45 ] || {
-			echo "錯誤: DNS 位址為空或過長"
+			echo "错误: DNS 地址为空或过长"
 			return 1
 		}
 		if kpanel_dns_is_ipv4 "$value"; then
 			ipv4_count=$((ipv4_count + 1))
 			[ "$ipv4_count" -le 2 ] || {
-				echo "錯誤: IPv4 DNS 位址最多 2 個"
+				echo "错误: IPv4 DNS 地址最多 2 个"
 				return 1
 			}
 		elif kpanel_dns_is_ipv6 "$value"; then
 			ipv6_count=$((ipv6_count + 1))
 			[ "$ipv6_count" -le 2 ] || {
-				echo "錯誤: IPv6 DNS 位址最多 2 個"
+				echo "错误: IPv6 DNS 地址最多 2 个"
 				return 1
 			}
 		else
-			echo "錯誤: 無效的 DNS 位址"
+			echo "错误: 无效的 DNS 地址"
 			return 1
 		fi
 		for previous in "${normalized[@]}"; do
 			[ "$previous" = "$value" ] && {
-				echo "錯誤: DNS 位址不能重複"
+				echo "错误: DNS 地址不能重复"
 				return 1
 			}
 		done
@@ -7530,23 +7624,23 @@ root_use
 send_stats "优化DNS"
 while true; do
 	clear
-	echo "優化DNS位址"
+	echo "优化DNS地址"
 	echo "------------------------"
-	echo "目前DNS地址"
+	echo "当前DNS地址"
 	cat /etc/resolv.conf
 	echo "------------------------"
 	echo ""
-	echo "1. 國外DNS優化:"
+	echo "1. 国外DNS优化: "
 	echo " v4: 1.1.1.1 8.8.8.8"
 	echo " v6: 2606:4700:4700::1111 2001:4860:4860::8888"
-	echo "2. 國內DNS優化:"
+	echo "2. 国内DNS优化: "
 	echo " v4: 223.5.5.5 183.60.83.19"
 	echo " v6: 2400:3200::1 2400:da00::6666"
-	echo "3. 手動編輯DNS配置"
+	echo "3. 手动编辑DNS配置"
 	echo "------------------------"
-	echo "0. 返回上一級選單"
+	echo "0. 返回上一级选单"
 	echo "------------------------"
-	read -e -p "請輸入你的選擇:" Limiting
+	read -e -p "请输入你的选择: " Limiting
 	case "$Limiting" in
 	  1)
 		local dns1_ipv4="1.1.1.1"
@@ -7554,7 +7648,7 @@ while true; do
 		local dns1_ipv6="2606:4700:4700::1111"
 		local dns2_ipv6="2001:4860:4860::8888"
 		set_dns
-		send_stats "國外DNS優化"
+		send_stats "国外DNS优化"
 		;;
 	  2)
 		local dns1_ipv4="223.5.5.5"
@@ -7562,14 +7656,14 @@ while true; do
 		local dns1_ipv6="2400:3200::1"
 		local dns2_ipv6="2400:da00::6666"
 		set_dns
-		send_stats "國內DNS優化"
+		send_stats "国内DNS优化"
 		;;
 	  3)
 		install nano
 		chattr -i /etc/resolv.conf
 		nano /etc/resolv.conf
 		chattr +i /etc/resolv.conf
-		send_stats "手動編輯DNS配置"
+		send_stats "手动编辑DNS配置"
 		;;
 	  *)
 		break
@@ -7623,7 +7717,7 @@ new_ssh_port() {
   open_port "$new_port" || return 1
   remove iptables-persistent ufw firewalld iptables-services > /dev/null 2>&1
 
-  echo "SSH 連接埠已修改為:$new_port"
+  echo "SSH 端口已修改为: $new_port"
 
   sleep 1
 
@@ -7633,29 +7727,29 @@ new_ssh_port() {
 kpanel_ssh_port_noninteractive() {
 	[ "${KJ_SSH_PORT_NONINTERACTIVE:-}" = "1" ] || return 2
 	[ "$EUID" -eq 0 ] || {
-		echo "錯誤: KPanel SSH 連接埠協定必須以 root 執行"
+		echo "错误: KPanel SSH 端口协议必须以 root 运行"
 		return 1
 	}
 	[ "$#" -eq 1 ] || {
-		echo "錯誤: SSH 連接埠協定需要一個連接埠號"
+		echo "错误: SSH 端口协议需要一个端口号"
 		return 1
 	}
 
 	local new_port="$1"
 	[[ "$new_port" =~ ^[0-9]{1,5}$ ]] && [ "$new_port" -ge 1 ] && [ "$new_port" -le 65535 ] || {
-		echo "錯誤: SSH 連接埠必須為 1-65535"
+		echo "错误: SSH 端口必须为 1-65535"
 		return 1
 	}
 	[ -f /etc/ssh/sshd_config ] && [ ! -L /etc/ssh/sshd_config ] || {
-		echo "錯誤: 未找到可管理的 OpenSSH 配置"
+		echo "错误: 未找到可管理的 OpenSSH 配置"
 		return 1
 	}
 	command -v sshd >/dev/null 2>&1 && command -v ss >/dev/null 2>&1 || {
-		echo "錯誤: SSH 設定校驗或監聽檢查工具不可用"
+		echo "错误: SSH 配置校验或监听检查工具不可用"
 		return 1
 	}
 	sshd -t || {
-		echo "錯誤: 目前 SSH 設定語法驗證失敗"
+		echo "错误: 当前 SSH 配置语法验证失败"
 		return 1
 	}
 
@@ -7670,14 +7764,14 @@ kpanel_ssh_port_noninteractive() {
 		return 0
 	fi
 
-	# 重複使用現有 SSH 修改主業務；適配層只負責非互動校驗和機器可讀結果。
+	# 复用现有 SSH 修改主业务；适配层只负责非交互校验和机器可读结果。
 	new_ssh_port "$new_port" || return 1
 	if ! grep -Eq "^[[:space:]]*Port[[:space:]]+${new_port}([[:space:]]|$)" /etc/ssh/sshd_config; then
-		echo "錯誤: SSH 連接埠修改後回讀驗證失敗"
+		echo "错误: SSH 端口修改后回读验证失败"
 		return 1
 	fi
 	if ! sshd -t; then
-		echo "錯誤: SSH 設定語法驗證失敗"
+		echo "错误: SSH 配置语法验证失败"
 		return 1
 	fi
 	local listening="false"
@@ -7697,7 +7791,7 @@ kpanel_ssh_port_noninteractive() {
 		sleep 0.2
 	done
 	[ "${listening}" = "true" ] || {
-		echo "錯誤: SSH 新連接埠未進入監聽狀態"
+		echo "错误: SSH 新端口未进入监听状态"
 		return 1
 	}
 
@@ -7715,7 +7809,7 @@ sshkey_on() {
 		   -e 's/^\s*#\?\s*ChallengeResponseAuthentication .*/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
 	rm -rf /etc/ssh/sshd_config.d/* /etc/ssh/ssh_config.d/*
 	restart_ssh
-	echo -e "${gl_lv}使用者金鑰登入模式已開啟，已關閉密碼登入模式，重連將會生效${gl_bai}"
+	echo -e "${gl_lv}用户密钥登录模式已开启，已关闭密码登录模式，重连将会生效${gl_bai}"
 
 }
 
@@ -7733,7 +7827,7 @@ add_sshkey() {
 	chmod 600 "${HOME}/.ssh/authorized_keys"
 
 	ip_address
-	echo -e "私鑰資訊已生成，務必複製保存，可保存成${gl_huang}${ipv4_address}_ssh.key${gl_bai}文件，用於以後的SSH登錄"
+	echo -e "私钥信息已生成，务必复制保存，可保存成 ${gl_huang}${ipv4_address}_ssh.key${gl_bai} 文件，用于以后的SSH登录"
 
 	echo "--------------------------------"
 	cat "${HOME}/.ssh/sshkey"
@@ -7754,21 +7848,21 @@ import_sshkey() {
 	local auth_keys="${ssh_dir}/authorized_keys"
 
 	if [[ -z "$public_key" ]]; then
-		read -e -p "請輸入您的SSH公鑰內容（通常以 'ssh-rsa' 或 'ssh-ed25519' 開頭）:" public_key
+		read -e -p "请输入您的SSH公钥内容（通常以 'ssh-rsa' 或 'ssh-ed25519' 开头）: " public_key
 	fi
 
 	if [[ -z "$public_key" ]]; then
-		echo -e "${gl_hong}錯誤：未輸入公鑰內容。${gl_bai}"
+		echo -e "${gl_hong}错误：未输入公钥内容。${gl_bai}"
 		return 1
 	fi
 
 	if [[ ! "$public_key" =~ ^ssh-(rsa|ed25519|ecdsa) ]]; then
-		echo -e "${gl_hong}錯誤：看起來不像合法的 SSH 公鑰。${gl_bai}"
+		echo -e "${gl_hong}错误：看起来不像合法的 SSH 公钥。${gl_bai}"
 		return 1
 	fi
 
 	if grep -Fxq "$public_key" "$auth_keys" 2>/dev/null; then
-		echo "該公鑰已存在，無需重複添加"
+		echo "该公钥已存在，无需重复添加"
 		return 0
 	fi
 
@@ -7801,31 +7895,31 @@ fetch_remote_ssh_keys() {
 	echo "  ${keys_url}"
 	echo ""
 
-	# 建立臨時文件
+	# 创建临时文件
 	temp_file=$(mktemp)
 
-	# 下載公鑰
+	# 下载公钥
 	if command -v curl >/dev/null 2>&1; then
 		curl -fsSL --connect-timeout 10 "${keys_url}" -o "${temp_file}" || {
-			echo "錯誤：無法從 URL 下載公鑰（網路問題或位址無效）" >&2
+			echo "错误：无法从 URL 下载公钥（网络问题或地址无效）" >&2
 			rm -f "${temp_file}"
 			return 1
 		}
 	elif command -v wget >/dev/null 2>&1; then
 		wget -q --timeout=10 -O "${temp_file}" "${keys_url}" || {
-			echo "錯誤：無法從 URL 下載公鑰（網路問題或位址無效）" >&2
+			echo "错误：无法从 URL 下载公钥（网络问题或地址无效）" >&2
 			rm -f "${temp_file}"
 			return 1
 		}
 	else
-		echo "錯誤：系統中未找到 curl 或 wget，無法下載公鑰" >&2
+		echo "错误：系统中未找到 curl 或 wget，无法下载公钥" >&2
 		rm -f "${temp_file}"
 		return 1
 	fi
 
-	# 檢查內容是否有效
+	# 检查内容是否有效
 	if [[ ! -s "${temp_file}" ]]; then
-		echo "錯誤：下載到的檔案為空，URL 可能不包含任何公鑰" >&2
+		echo "错误：下载到的文件为空，URL 可能不包含任何公钥" >&2
 		rm -f "${temp_file}"
 		return 1
 	fi
@@ -7838,10 +7932,10 @@ fetch_remote_ssh_keys() {
 	# 备份原有 authorized_keys
 	if [[ -f "${authorized_keys}" ]]; then
 		cp "${authorized_keys}" "${authorized_keys}.bak.$(date +%Y%m%d-%H%M%S)"
-		echo "已備份原有 authorized_keys 文件"
+		echo "已备份原有 authorized_keys 文件"
 	fi
 
-	# 追加公鑰（避免重複）
+	# 追加公钥（避免重复）
 	local added=0
 	while IFS= read -r line; do
 		[[ -z "${line}" || "${line}" =~ ^# ]] && continue
@@ -7856,10 +7950,10 @@ fetch_remote_ssh_keys() {
 
 	echo ""
 	if (( added > 0 )); then
-		echo "成功添加${added}條新的公鑰到${authorized_keys}"
+		echo "成功添加 ${added} 条新的公钥到 ${authorized_keys}"
 		sshkey_on
 	else
-		echo "沒有新的公鑰需要添加（可能已全部存在）"
+		echo "没有新的公钥需要添加（可能已全部存在）"
 	fi
 
 	echo ""
@@ -7873,12 +7967,12 @@ fetch_github_ssh_keys() {
 	local username="$1"
 	local base_dir="${2:-$HOME}"
 
-	echo "操作前，請確保您已在 GitHub 帳戶中新增了 SSH 公鑰："
-	echo "1. 登入${gh_https_url}github.com/settings/keys"
-	echo "2. 點選 New SSH key 或 Add SSH key"
-	echo "3. Title 可隨意填寫（例如：Home Laptop 2026）"
-	echo "4. 將本機公鑰內容（通常是 ~/.ssh/id_ed25519.pub 或 id_rsa.pub 的全部內容）貼到 Key 字段"
-	echo "5. 點選 Add SSH key 完成新增"
+	echo "操作前，请确保您已在 GitHub 账户中添加了 SSH 公钥："
+	echo "  1. 登录 ${gh_https_url}github.com/settings/keys"
+	echo "  2. 点击 New SSH key 或 Add SSH key"
+	echo "  3. Title 可随意填写（例如：Home Laptop 2026）"
+	echo "  4. 将本地公钥内容（通常是 ~/.ssh/id_ed25519.pub 或 id_rsa.pub 的全部内容）粘贴到 Key 字段"
+	echo "  5. 点击 Add SSH key 完成添加"
 	echo ""
 	echo "添加完成后，GitHub 会公开提供您的所有公钥，地址为："
 	echo "  ${gh_https_url}github.com/您的用户名.keys"
@@ -7886,11 +7980,11 @@ fetch_github_ssh_keys() {
 
 
 	if [[ -z "${username}" ]]; then
-		read -e -p "請輸入您的 GitHub 使用者名稱（username，不含 @）：" username
+		read -e -p "请输入您的 GitHub 用户名（username，不含 @）： " username
 	fi
 
 	if [[ -z "${username}" ]]; then
-		echo "錯誤：GitHub 使用者名稱不能為空" >&2
+		echo "错误：GitHub 用户名不能为空" >&2
 		return 1
 	fi
 
@@ -7903,23 +7997,23 @@ fetch_github_ssh_keys() {
 
 sshkey_panel() {
   root_use
-  send_stats "使用者密鑰登入"
+  send_stats "用户密钥登录"
   while true; do
 	  clear
 	  local REAL_STATUS=$(grep -i "^PubkeyAuthentication" /etc/ssh/sshd_config | tr '[:upper:]' '[:lower:]')
 	  if [[ "$REAL_STATUS" =~ "yes" ]]; then
-		  IS_KEY_ENABLED="${gl_lv}已啟用${gl_bai}"
+		  IS_KEY_ENABLED="${gl_lv}已启用${gl_bai}"
 	  else
-	  	  IS_KEY_ENABLED="${gl_hui}未啟用${gl_bai}"
+	  	  IS_KEY_ENABLED="${gl_hui}未启用${gl_bai}"
 	  fi
-  	  echo -e "使用者密鑰登入模式${IS_KEY_ENABLED}"
-  	  echo "進階玩法: https://blog.kejilion.pro/ssh-key"
+  	  echo -e "用户密钥登录模式 ${IS_KEY_ENABLED}"
+  	  echo "进阶玩法: https://blog.kejilion.pro/ssh-key"
   	  echo "------------------------------------------------"
-  	  echo "將會產生金鑰對，更安全的方式SSH登錄"
+  	  echo "将会生成密钥对，更安全的方式SSH登录"
 	  echo "------------------------"
 	  echo "1. 生成新密钥对                  2. 手动输入已有公钥"
 	  echo "3. 从GitHub导入已有公钥          4. 从URL导入已有公钥"
-	  echo "5. 編輯公鑰檔案 6. 查看本機金鑰"
+	  echo "5. 编辑公钥文件                  6. 查看本机密钥"
 	  echo "------------------------"
 	  echo "0. 返回上一级选单"
 	  echo "------------------------"
@@ -7931,7 +8025,7 @@ sshkey_panel() {
 			break_end
 			  ;;
 		  2)
-			send_stats "導入已有公鑰"
+			send_stats "导入已有公钥"
 			import_sshkey
 			break_end
 			  ;;
@@ -8744,11 +8838,11 @@ elrepo_install() {
 		echo "安装 ELRepo 仓库配置 (版本 10)..."
 		yum -y install https://www.elrepo.org/elrepo-release-10.el10.elrepo.noarch.rpm
 	else
-		echo "不支援的系統版本：$os_version"
+		echo "不支持的系统版本：$os_version"
 		break_end
 		linux_Settings
 	fi
-	# 啟用 ELRepo 內核倉庫並安裝最新的主線內核
+	# 启用 ELRepo 内核仓库并安装最新的主线内核
 	echo "启用 ELRepo 内核仓库并安装最新的主线内核..."
 	# yum -y --enablerepo=elrepo-kernel install kernel-ml
 	yum --nogpgcheck -y --enablerepo=elrepo-kernel install kernel-ml
@@ -8790,7 +8884,7 @@ elrepo() {
 						dnf remove -y elrepo-release
 						rpm -qa | grep elrepo | grep kernel | xargs rpm -e --nodeps
 						echo "elrepo内核已卸载。重启后生效"
-						send_stats "解除安裝紅帽內核"
+						send_stats "卸载红帽内核"
 						server_reboot
 
 						  ;;
@@ -8803,10 +8897,10 @@ elrepo() {
 		else
 
 		  clear
-		  echo "請備份數據，將為你升級Linux內核"
+		  echo "请备份数据，将为你升级Linux内核"
 		  echo "视频介绍: https://www.bilibili.com/video/BV1mH4y1w7qA?t=529.2"
 		  echo "------------------------------------------------"
-		  echo "僅支援紅帽系列發行 CentOS/RedHat/Alma/Rocky/oracle"
+		  echo "仅支持红帽系列发行版 CentOS/RedHat/Alma/Rocky/oracle "
 		  echo "升级Linux内核可提升系统性能和安全，建议有条件的尝试，生产环境谨慎升级！"
 		  echo "------------------------------------------------"
 		  read -e -p "确定继续吗？(Y/N): " choice
@@ -8832,6 +8926,37 @@ elrepo() {
 
 
 
+KPANEL_VIRUS_SCAN_PROTOCOL_VERSION="1"
+
+kpanel_virus_scan_emit() {
+	local status="$1" mode="${2:-}" report="/home/docker/clamav/log/scan.log"
+	local scanned=0 infected=0 errors=0
+	if [ -f "$report" ] && [ ! -L "$report" ]; then
+		scanned="$(awk -F: '/^Scanned files:/ { gsub(/^[[:space:]]+/, "", $2); value=$2 } END { print value+0 }' "$report" 2>/dev/null)"
+		infected="$(awk -F: '/^Infected files:/ { gsub(/^[[:space:]]+/, "", $2); value=$2 } END { print value+0 }' "$report" 2>/dev/null)"
+		errors="$(awk -F: '/^Total errors:/ { gsub(/^[[:space:]]+/, "", $2); value=$2 } END { print value+0 }' "$report" 2>/dev/null)"
+	fi
+	printf '%s\n' \
+		"KPANEL_VIRUS_SCAN_PROTOCOL $KPANEL_VIRUS_SCAN_PROTOCOL_VERSION" \
+		"KPANEL_VIRUS_SCAN_STATUS=$status" \
+		"KPANEL_VIRUS_SCAN_MODE=$mode" \
+		"KPANEL_VIRUS_SCAN_SCANNED=$scanned" \
+		"KPANEL_VIRUS_SCAN_INFECTED=$infected" \
+		"KPANEL_VIRUS_SCAN_ERRORS=$errors" \
+		"KPANEL_VIRUS_SCAN_REPORT=$report"
+}
+
+kpanel_virus_scan_prepare_log() {
+	local root="/home/docker/clamav" log_dir
+	log_dir="$root/log"
+	[ ! -L "$root" ] && { [ ! -e "$root" ] || [ -d "$root" ]; } || return 1
+	[ ! -L "$log_dir" ] && { [ ! -e "$log_dir" ] || [ -d "$log_dir" ]; } || return 1
+	install -d -m 700 "$log_dir" || return 1
+	[ ! -L "$log_dir/scan.log" ] && { [ ! -e "$log_dir/scan.log" ] || [ -f "$log_dir/scan.log" ]; } || return 1
+	: > "$log_dir/scan.log" || return 1
+	chmod 600 "$log_dir/scan.log" || return 1
+}
+
 clamav_freshclam() {
 	echo -e "${gl_kjlan}正在更新病毒库...${gl_bai}"
 	docker run --rm \
@@ -8841,13 +8966,108 @@ clamav_freshclam() {
 		freshclam
 }
 
+kpanel_virus_scan_update_db() {
+	docker volume create clam_db >/dev/null || return 1
+	docker run --rm \
+		--name "kpanel-clamav-update-$$" \
+		--mount source=clam_db,target=/var/lib/clamav,volume-nocopy \
+		--security-opt no-new-privileges \
+		--cap-drop ALL \
+		--cap-add SETUID \
+		--cap-add SETGID \
+		--pids-limit 256 \
+		--tmpfs /var/log/clamav:rw,noexec,nosuid,nodev,size=16m,mode=0750 \
+		--entrypoint freshclam \
+		clamav/clamav-debian:latest \
+		--user root
+}
+
+kpanel_virus_scan_valid_path() {
+	local path="$1"
+	[[ "$path" == /* ]] || return 1
+	[[ "$path" != *','* && "$path" != *[[:cntrl:]]* ]] || return 1
+	if [ "$path" != / ]; then
+		[[ "$path" != */ && "$path" != *'//'* && "$path" != *'/./'* && "$path" != *'/../'* && "$path" != */. && "$path" != */.. ]] || return 1
+	fi
+	[ -d "$path" ]
+}
+
+kpanel_virus_scan_run() {
+	local mode="$1" rc status index=0 path
+	shift
+	local -a paths=() mounts=() targets=()
+	local -A seen_paths=()
+	case "$mode" in
+		full) [ "$#" -eq 0 ] || return 2; paths=(/) ;;
+		important) [ "$#" -eq 0 ] || return 2; paths=(/etc /var /usr /home /root) ;;
+		custom) [ "$#" -ge 1 ] && [ "$#" -le 8 ] || return 2; paths=("$@") ;;
+		*) return 2 ;;
+	esac
+	for path in "${paths[@]}"; do
+		kpanel_virus_scan_valid_path "$path" || return 2
+		[ -z "${seen_paths[$path]:-}" ] || return 2
+		seen_paths["$path"]=1
+		mounts+=(--mount "type=bind,source=$path,target=/mnt/scan/$index,readonly")
+		targets+=("/mnt/scan/$index")
+		index=$((index + 1))
+	done
+	kpanel_virus_scan_prepare_log || return 1
+	docker volume create clam_db >/dev/null || return 1
+	docker run --rm \
+		--name "kpanel-clamav-scan-$$" \
+		--network none \
+		--read-only \
+		--security-opt no-new-privileges \
+		--cap-drop ALL \
+		--pids-limit 256 \
+		--mount source=clam_db,target=/var/lib/clamav,readonly \
+		"${mounts[@]}" \
+		--mount type=bind,source=/home/docker/clamav/log,target=/var/log/clamav \
+		--tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
+		--entrypoint clamscan \
+		clamav/clamav-debian:latest \
+		-r --infected --log=/var/log/clamav/scan.log "${targets[@]}"
+	rc=$?
+	case "$rc" in
+		0) status=clean ;;
+		1) status=infected ;;
+		*) kpanel_virus_scan_emit failed "$mode"; return "$rc" ;;
+	esac
+	kpanel_virus_scan_emit "$status" "$mode"
+}
+
+kpanel_virus_scan_dispatch() {
+	local action="${1:-probe}" lock_file
+	shift || true
+	[ "${KJ_VIRUS_SCAN_NONINTERACTIVE:-}" = "1" ] || { echo "KPanel virus-scan 协议环境未启用" >&2; return 2; }
+	[ "$EUID" -eq 0 ] || { echo "KPanel virus-scan 协议必须以 root 运行" >&2; return 1; }
+	[ "$(uname -s)" = Linux ] || { echo "KPanel virus-scan 协议仅支持 Linux" >&2; return 1; }
+	command -v docker >/dev/null 2>&1 || { echo "Docker 不可用" >&2; return 1; }
+	case "$action" in
+		probe) [ "$#" -eq 0 ] || return 2; kpanel_virus_scan_emit ready; return 0 ;;
+		update-db) [ "$#" -eq 0 ] || return 2 ;;
+		scan) [ "$#" -ge 1 ] || return 2 ;;
+		*) echo "用法: k kpanel virus-scan <probe|update-db|scan mode [paths...]>" >&2; return 2 ;;
+	esac
+	lock_file="/var/lock/kejilion-virus-scan.lock"
+	install -d -m 755 /var/lock || return 1
+	[ ! -L "$lock_file" ] || return 1
+	exec 9>"$lock_file" || return 1
+	flock -w 5 9 || { echo "病毒扫描任务正在运行" >&2; return 2; }
+	if [ "$action" = update-db ]; then
+		if kpanel_virus_scan_update_db; then kpanel_virus_scan_emit updated; else kpanel_virus_scan_emit failed; return 1; fi
+	else
+		kpanel_virus_scan_run "$@"
+	fi
+}
+
 clamav_scan() {
 	if [ $# -eq 0 ]; then
 		echo "请指定要扫描的目录。"
 		return
 	fi
 
-	echo -e "${gl_kjlan}正在掃描目錄$@...${gl_bai}"
+	echo -e "${gl_kjlan}正在扫描目录$@... ${gl_bai}"
 
 	# 构建 mount 参数
 	local MOUNT_PARAMS=""
@@ -8855,7 +9075,7 @@ clamav_scan() {
 		MOUNT_PARAMS+="--mount type=bind,source=${dir},target=/mnt/host${dir} "
 	done
 
-	# 建構 clamscan 指令參數
+	# 构建 clamscan 命令参数
 	local SCAN_PARAMS=""
 	for dir in "$@"; do
 		SCAN_PARAMS+="/mnt/host${dir} "
@@ -8874,7 +9094,7 @@ clamav_scan() {
 		clamscan -r --log=/var/log/clamav/scan.log $SCAN_PARAMS
 
 	echo -e "${gl_lv}$@ 扫描完成，病毒报告存放在${gl_huang}/home/docker/clamav/log/scan.log${gl_bai}"
-	echo -e "${gl_lv}如果有病毒請在${gl_huang}scan.log${gl_lv}文件中搜尋FOUND關鍵字確認病毒位置${gl_bai}"
+	echo -e "${gl_lv}如果有病毒请在${gl_huang}scan.log${gl_lv}文件中搜索FOUND关键字确认病毒位置 ${gl_bai}"
 
 }
 
@@ -8889,20 +9109,20 @@ clamav() {
 		  send_stats "病毒扫描管理"
 		  while true; do
 				clear
-				echo "clamav病毒掃描工具"
-				echo "影片介紹: https://www.bilibili.com/video/BV1TqvZe4EQm?t=0.1"
+				echo "clamav病毒扫描工具"
+				echo "视频介绍: https://www.bilibili.com/video/BV1TqvZe4EQm?t=0.1"
 				echo "------------------------"
-				echo "是一個開源的防毒軟體工具，主要用於偵測和刪除各種類型的惡意軟體。"
-				echo "包括病毒、木馬、間諜軟體、惡意腳本和其他有害軟體。"
+				echo "是一个开源的防病毒软件工具，主要用于检测和删除各种类型的恶意软件。"
+				echo "包括病毒、特洛伊木马、间谍软件、恶意脚本和其他有害软件。"
 				echo "------------------------"
-				echo -e "${gl_lv}1. 全盤掃描${gl_bai}             ${gl_huang}2. 重要目錄掃描${gl_bai}            ${gl_kjlan}3. 自訂目錄掃描${gl_bai}"
+				echo -e "${gl_lv}1. 全盘扫描 ${gl_bai}             ${gl_huang}2. 重要目录扫描 ${gl_bai}            ${gl_kjlan} 3. 自定义目录扫描 ${gl_bai}"
 				echo "------------------------"
-				echo "0. 返回上一級選單"
+				echo "0. 返回上一级选单"
 				echo "------------------------"
-				read -e -p "請輸入你的選擇:" sub_choice
+				read -e -p "请输入你的选择: " sub_choice
 				case $sub_choice in
 					1)
-					  send_stats "全碟掃描"
+					  send_stats "全盘扫描"
 					  install_docker
 					  docker volume create clam_db > /dev/null 2>&1
 					  clamav_freshclam
@@ -8919,8 +9139,8 @@ clamav() {
 					  break_end
 						;;
 					3)
-					  send_stats "自訂目錄掃描"
-					  read -e -p "請輸入要掃描的目錄，用空格分隔（例如：/etc /var /usr /home /root）:" directories
+					  send_stats "自定义目录扫描"
+					  read -e -p "请输入要扫描的目录，用空格分隔（例如：/etc /var /usr /home /root）: " directories
 					  install_docker
 					  clamav_freshclam
 					  clamav_scan $directories
@@ -8936,7 +9156,7 @@ clamav() {
 
 
 # ============================================================================
-# Linux 核心調優模組（重構版）
+# Linux 内核调优模块（重构版）
 # 统一核心函数 + 场景差异化参数 + 持久化到配置文件 + 硬件自适应
 # 替换原 optimize_high_performance / optimize_balanced / optimize_web_server / restore_defaults
 # ============================================================================
@@ -8956,7 +9176,7 @@ _kernel_optimize_core() {
 
 	echo -e "${gl_lv}切换到${mode_name}...${gl_bai}"
 
-	# ── 根據場景設定參數 ──
+	# ── 根据场景设定参数 ──
 	local SWAPPINESS DIRTY_RATIO DIRTY_BG_RATIO OVERCOMMIT MIN_FREE_KB VFS_PRESSURE
 	local RMEM_MAX WMEM_MAX TCP_RMEM TCP_WMEM
 	local SOMAXCONN BACKLOG SYN_BACKLOG
@@ -8965,7 +9185,7 @@ _kernel_optimize_core() {
 
 	case "$scene" in
 		high|stream|game)
-			# 高效能/直播/遊戲：激進參數
+			# 高性能/直播/游戏：激进参数
 			SWAPPINESS=10
 			DIRTY_RATIO=15
 			DIRTY_BG_RATIO=5
@@ -8988,7 +9208,7 @@ _kernel_optimize_core() {
 			KEEPALIVE_PROBES=5
 			;;
 		web)
-			# 網站伺服器：高並發優先
+			# 网站服务器：高并发优先
 			SWAPPINESS=10
 			DIRTY_RATIO=20
 			DIRTY_BG_RATIO=10
@@ -9043,7 +9263,7 @@ _kernel_optimize_core() {
 		MIN_FREE_KB=65536
 	elif [ "$MEM_MB" -ge 1024 ]; then
 		MIN_FREE_KB=32768
-		# 小記憶體縮小緩衝區
+		# 小内存缩小缓冲区
 		if [ "$scene" != "balanced" ]; then
 			RMEM_MAX=16777216
 			WMEM_MAX=16777216
@@ -9062,11 +9282,11 @@ _kernel_optimize_core() {
 		BACKLOG=1000
 	fi
 
-	# ── 直播場景額外：UDP 緩衝區加大 ──
+	# ── 直播场景额外：UDP 缓冲区加大 ──
 	local STREAM_EXTRA=""
 	if [ "$scene" = "stream" ]; then
 		STREAM_EXTRA="
-# 直播推流 UDP 優化
+# 直播推流 UDP 优化
 net.ipv4.udp_rmem_min = 16384
 net.ipv4.udp_wmem_min = 16384
 net.ipv4.tcp_notsent_lowat = 16384"
@@ -9076,14 +9296,14 @@ net.ipv4.tcp_notsent_lowat = 16384"
 	local GAME_EXTRA=""
 	if [ "$scene" = "game" ]; then
 		GAME_EXTRA="
-# 遊戲服低延遲優化
+# 游戏服低延迟优化
 net.ipv4.udp_rmem_min = 16384
 net.ipv4.udp_wmem_min = 16384
 net.ipv4.tcp_notsent_lowat = 16384
 net.ipv4.tcp_slow_start_after_idle = 0"
 	fi
 
-	# ── 載入 BBR 模組 ──
+	# ── 加载 BBR 模块 ──
 	local CC="bbr"
 	local QDISC="fq"
 	local KVER
@@ -9104,8 +9324,8 @@ net.ipv4.tcp_slow_start_after_idle = 0"
 	# ── 备份已有配置 ──
 	[ -f "$CONF" ] && cp "$CONF" "${CONF}.bak.$(date +%s)"
 
-	# ── 寫入設定檔（持久化） ──
-	echo -e "${gl_lv}寫入優化配置...${gl_bai}"
+	# ── 写入配置文件（持久化） ──
+	echo -e "${gl_lv}写入优化配置...${gl_bai}"
 	cat > "$CONF" << SYSCTL
 # kejilion 内核调优配置
 # 模式: $mode_name | 场景: $scene
@@ -9128,7 +9348,7 @@ net.core.somaxconn = $SOMAXCONN
 net.core.netdev_max_backlog = $BACKLOG
 net.ipv4.tcp_max_syn_backlog = $SYN_BACKLOG
 
-# ── TCP 連線最佳化 ──
+# ── TCP 连接优化 ──
 net.ipv4.tcp_fastopen = 3
 net.ipv4.tcp_tw_reuse = 1
 net.ipv4.tcp_fin_timeout = $FIN_TIMEOUT
@@ -9149,7 +9369,7 @@ net.ipv4.ip_local_port_range = $PORT_RANGE
 net.ipv4.tcp_mem = $((MEM_MB * 1024 / 8)) $((MEM_MB * 1024 / 4)) $((MEM_MB * 1024 / 2))
 net.ipv4.tcp_max_orphans = 32768
 
-# ── 虛擬記憶體 ──
+# ── 虚拟内存 ──
 vm.swappiness = $SWAPPINESS
 vm.dirty_ratio = $DIRTY_RATIO
 vm.dirty_background_ratio = $DIRTY_BG_RATIO
@@ -9161,7 +9381,7 @@ vm.vfs_cache_pressure = $VFS_PRESSURE
 kernel.sched_autogroup_enabled = $SCHED_AUTOGROUP
 $([ -f /proc/sys/kernel/numa_balancing ] && echo "kernel.numa_balancing = $NUMA" || echo "# numa_balancing 不支持")
 
-# ── 安全防護 ──
+# ── 安全防护 ──
 net.ipv4.conf.all.rp_filter = 1
 net.ipv4.conf.default.rp_filter = 1
 net.ipv4.icmp_echo_ignore_broadcasts = 1
@@ -9177,7 +9397,7 @@ net.ipv6.conf.default.accept_redirects = 0
 fs.file-max = 1048576
 fs.nr_open = 1048576
 
-# ── 連結追蹤 ──
+# ── 连接跟踪 ──
 $(if [ -f /proc/sys/net/netfilter/nf_conntrack_max ]; then
 echo "net.netfilter.nf_conntrack_max = $((SOMAXCONN * 32))"
 echo "net.netfilter.nf_conntrack_tcp_timeout_established = 7200"
@@ -9185,17 +9405,17 @@ echo "net.netfilter.nf_conntrack_tcp_timeout_time_wait = 30"
 echo "net.netfilter.nf_conntrack_tcp_timeout_close_wait = 15"
 echo "net.netfilter.nf_conntrack_tcp_timeout_fin_wait = 15"
 else
-echo "# conntrack 未啟用"
+echo "# conntrack 未启用"
 fi)
 $STREAM_EXTRA
 $GAME_EXTRA
 SYSCTL
 
-	# ── 應用配置（逐行，跳過不支援的參數） ──
+	# ── 应用配置（逐行，跳过不支持的参数） ──
 	echo -e "${gl_lv}应用优化参数...${gl_bai}"
 	local applied=0 skipped=0
 	while IFS= read -r line; do
-		# 跳過註解和空行
+		# 跳过注释和空行
 		[[ "$line" =~ ^[[:space:]]*# ]] && continue
 		[[ -z "${line// /}" ]] && continue
 		if sysctl -w "$line" >/dev/null 2>&1; then
@@ -9204,9 +9424,9 @@ SYSCTL
 			skipped=$((skipped + 1))
 		fi
 	done < "$CONF"
-	echo -e "${gl_lv}已應用${applied} 项参数${skipped:+，跳过 ${skipped}項不支援的參數}${gl_bai}"
+	echo -e "${gl_lv}已应用 ${applied} 项参数${skipped:+，跳过 ${skipped} 项不支持的参数}${gl_bai}"
 
-	# ── 透明大頁面 ──
+	# ── 透明大页面 ──
 	if [ -f /sys/kernel/mm/transparent_hugepage/enabled ]; then
 		echo "$THP" > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null
 	fi
@@ -9231,24 +9451,24 @@ LIMITS
 	fi
 
 	echo -e "${gl_lv}${mode_name} 优化完成！配置已持久化到 ${CONF}${gl_bai}"
-	echo -e "${gl_lv}記憶體:${MEM_MB}MB | 拥塞算法: ${CC}| 隊列:${QDISC}${gl_bai}"
+	echo -e "${gl_lv}内存: ${MEM_MB}MB | 拥塞算法: ${CC} | 队列: ${QDISC}${gl_bai}"
 }
 
-# ── 各模式入口函數（保持原有呼叫介面不變） ──
+# ── 各模式入口函数（保持原有调用接口不变） ──
 
 optimize_high_performance() {
 	_kernel_optimize_core "${tiaoyou_moshi:-高性能优化模式}" "high"
 }
 
 optimize_balanced() {
-	_kernel_optimize_core "均衡最佳化模式" "balanced"
+	_kernel_optimize_core "均衡优化模式" "balanced"
 }
 
 optimize_web_server() {
-	_kernel_optimize_core "網站建置優化模式" "web"
+	_kernel_optimize_core "网站搭建优化模式" "web"
 }
 
-# ── 還原預設設定（完全清理） ──
+# ── 还原默认设置（完全清理） ──
 restore_defaults() {
 	echo -e "${gl_lv}还原到默认设置...${gl_bai}"
 
@@ -9258,13 +9478,13 @@ restore_defaults() {
 	rm -f "$CONF"
 	rm -f /etc/sysctl.d/99-network-optimize.conf
 
-	# 清理 sysctl.conf 裡可能殘留的 bbr 配置
+	# 清理 sysctl.conf 里可能残留的 bbr 配置
 	sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf 2>/dev/null
 
 	# 重新加载系统默认配置
 	sysctl --system 2>/dev/null | tail -1
 
-	# 還原透明大頁面
+	# 还原透明大页面
 	[ -f /sys/kernel/mm/transparent_hugepage/enabled ] && \
 		echo always > /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null
 
@@ -9276,7 +9496,7 @@ restore_defaults() {
 	# 清理 BBR 持久化
 	rm -f /etc/modules-load.d/bbr.conf 2>/dev/null
 
-	echo -e "${gl_lv}系統已還原到預設設定${gl_bai}"
+	echo -e "${gl_lv}系统已还原到默认设置${gl_bai}"
 }
 
 
@@ -9284,76 +9504,76 @@ Kernel_optimize() {
 	root_use
 	while true; do
 	  clear
-	  send_stats "Linux核心調優管理"
+	  send_stats "Linux内核调优管理"
 	  local current_mode=$(grep "^# 模式:" /etc/sysctl.d/99-kejilion-optimize.conf 2>/dev/null | sed 's/# 模式: //' | awk -F'|' '{print $1}' | xargs)
 	  [ -z "$current_mode" ] && [ -f /etc/sysctl.d/99-network-optimize.conf ] && current_mode="自动调优模式"
 	  echo "Linux系统内核参数优化"
 	  if [ -n "$current_mode" ]; then
 		  echo -e "当前模式: ${gl_lv}${current_mode}${gl_bai}"
 	  else
-		  echo -e "當前模式:${gl_hui}未最佳化${gl_bai}"
+		  echo -e "当前模式: ${gl_hui}未优化${gl_bai}"
 	  fi
 	  echo "视频介绍: https://www.bilibili.com/video/BV1Kb421J7yg?t=0.1"
 	  echo "------------------------------------------------"
-	  echo "提供多種系統參數調優模式，使用者可依自身使用場景進行選擇切換。"
-	  echo -e "${gl_huang}提示:${gl_bai}生產環境請謹慎使用！"
+	  echo "提供多种系统参数调优模式，用户可以根据自身使用场景进行选择切换。"
+	  echo -e "${gl_huang}提示: ${gl_bai}生产环境请谨慎使用！"
 	  echo -e "--------------------"
-	  echo -e "1. 高效能最佳化模式： 最大化系統效能，激進的記憶體和網路參數。"
-	  echo -e "2. 均衡最佳化模式： 在效能與資源消耗之間取得平衡，適合日常使用。"
-	  echo -e "3. 網站最佳化模式： 針對網站伺服器最佳化，超高並發連線佇列。"
+	  echo -e "1. 高性能优化模式：     最大化系统性能，激进的内存和网络参数。"
+	  echo -e "2. 均衡优化模式：       在性能与资源消耗之间取得平衡，适合日常使用。"
+	  echo -e "3. 网站优化模式：       针对网站服务器优化，超高并发连接队列。"
 	  echo -e "4. 直播优化模式：       针对直播推流优化，UDP 缓冲区加大，减少延迟。"
-	  echo -e "5. 遊戲服最佳化模式： 針對遊戲伺服器最佳化，低延遲優先。"
-	  echo -e "6. 還原預設設定： 將系統設定還原為預設配置。"
-	  echo -e "7. 自動調優： 依測試資料自動調優核心參數。${gl_huang}★${gl_bai}"
+	  echo -e "5. 游戏服优化模式：     针对游戏服务器优化，低延迟优先。"
+	  echo -e "6. 还原默认设置：       将系统设置还原为默认配置。"
+	  echo -e "7. 自动调优：           根据测试数据自动调优内核参数。${gl_huang}★${gl_bai}"
 	  echo "--------------------"
-	  echo "0. 返回上一級選單"
+	  echo "0. 返回上一级选单"
 	  echo "--------------------"
-	  read -e -p "請輸入你的選擇:" sub_choice
+	  read -e -p "请输入你的选择: " sub_choice
 	  case $sub_choice in
 		  1)
 			  cd ~
 			  clear
-			  local tiaoyou_moshi="高效能最佳化模式"
+			  local tiaoyou_moshi="高性能优化模式"
 			  optimize_high_performance
-			  send_stats "高性能模式最​​佳化"
+			  send_stats "高性能模式优化"
 			  ;;
 		  2)
 			  cd ~
 			  clear
 			  optimize_balanced
-			  send_stats "均衡模式最佳化"
+			  send_stats "均衡模式优化"
 			  ;;
 		  3)
 			  cd ~
 			  clear
 			  optimize_web_server
-			  send_stats "網站優化模式"
+			  send_stats "网站优化模式"
 			  ;;
 		  4)
 			  cd ~
 			  clear
-			  _kernel_optimize_core "直播優化模式" "stream"
+			  _kernel_optimize_core "直播优化模式" "stream"
 			  send_stats "直播推流优化"
 			  ;;
 		  5)
 			  cd ~
 			  clear
-			  _kernel_optimize_core "遊戲服優化模式" "game"
-			  send_stats "遊戲服優化"
+			  _kernel_optimize_core "游戏服优化模式" "game"
+			  send_stats "游戏服优化"
 			  ;;
 		  6)
 			  cd ~
 			  clear
 			  restore_defaults
 			  curl -sS ${gh_proxy}raw.githubusercontent.com/kejilion/sh/refs/heads/main/network-optimize.sh -o /tmp/network-optimize.sh && source /tmp/network-optimize.sh && restore_network_defaults
-			  send_stats "還原預設設定"
+			  send_stats "还原默认设置"
 			  ;;
 
 		  7)
 			  cd ~
 			  clear
 			  curl -sS ${gh_proxy}raw.githubusercontent.com/kejilion/sh/refs/heads/main/network-optimize.sh | bash
-			  send_stats "核心自動調優"
+			  send_stats "内核自动调优"
 			  ;;
 
 		  *)
@@ -9383,7 +9603,7 @@ update_locale() {
 				locale-gen
 				echo "LANG=${lang}" > /etc/default/locale
 				export LANG=${lang}
-				echo -e "${gl_lv}系統語言已經修改為:$lang 重新连接SSH生效。${gl_bai}"
+				echo -e "${gl_lv}系统语言已经修改为: $lang 重新连接SSH生效。${gl_bai}"
 				hash -r
 				break_end
 
@@ -9392,7 +9612,7 @@ update_locale() {
 				install glibc-langpack-zh
 				localectl set-locale LANG=${lang}
 				echo "LANG=${lang}" | tee /etc/locale.conf
-				echo -e "${gl_lv}系统语言已经修改为: $lang重新連線SSH生效。${gl_bai}"
+				echo -e "${gl_lv}系统语言已经修改为: $lang 重新连接SSH生效。${gl_bai}"
 				hash -r
 				break_end
 				;;
@@ -9402,7 +9622,7 @@ update_locale() {
 				;;
 		esac
 	else
-		echo "不支援的系統，無法辨識系統類型。"
+		echo "不支持的系统，无法识别系统类型。"
 		break_end
 	fi
 }
@@ -9412,12 +9632,12 @@ update_locale() {
 
 linux_language() {
 root_use
-send_stats "切換系統語言"
+send_stats "切换系统语言"
 while true; do
   clear
   echo "当前系统语言: $LANG"
   echo "------------------------"
-  echo "1. 英文 2. 簡體中文 3. 繁體中文"
+  echo "1. 英文          2. 简体中文          3. 繁体中文"
   echo "------------------------"
   echo "0. 返回上一级选单"
   echo "------------------------"
@@ -9434,7 +9654,7 @@ while true; do
 		  ;;
 	  3)
 		  update_locale "zh_TW.UTF-8" "zh_TW.UTF-8"
-		  send_stats "切換到繁體中文"
+		  send_stats "切换到繁体中文"
 		  ;;
 	  *)
 		  break
@@ -9482,7 +9702,7 @@ shell_bianse() {
 	echo "------------------------"
 	echo "0. 返回上一级选单"
 	echo "------------------------"
-	read -e -p "輸入你的選擇:" choice
+	read -e -p "输入你的选择: " choice
 
 	case $choice in
 	  1)
@@ -9527,7 +9747,7 @@ shell_bianse() {
 
 linux_trash() {
   root_use
-  send_stats "系統回收站"
+  send_stats "系统回收站"
 
   local bashrc_profile="/root/.bashrc"
   local TRASH_DIR="$HOME/.local/share/Trash/files"
@@ -9605,7 +9825,7 @@ create_backup() {
 	local TIMESTAMP=$(date +"%Y%m%d%H%M%S")
 
 	# 提示用户输入备份目录
-	echo "建立備份範例："
+	echo "创建备份示例："
 	echo "  - 备份单个目录: /var/www"
 	echo "  - 备份多个目录: /etc /home /var/log"
 	echo "  - 直接回车将使用默认目录 (/etc /usr /home)"
@@ -9623,7 +9843,7 @@ create_backup() {
 		IFS=' ' read -r -a BACKUP_PATHS <<< "$input"
 	fi
 
-	# 產生備份檔案前綴
+	# 生成备份文件前缀
 	local PREFIX=""
 	for path in "${BACKUP_PATHS[@]}"; do
 		# 提取目录名称并去除斜杠
@@ -9634,7 +9854,7 @@ create_backup() {
 	# 去除最后一个下划线
 	local PREFIX=${PREFIX%_}
 
-	# 產生備份檔名
+	# 生成备份文件名
 	local BACKUP_NAME="${PREFIX}_$TIMESTAMP.tar.gz"
 
 	# 打印用户选择的目录
@@ -9643,16 +9863,16 @@ create_backup() {
 		echo "- $path"
 	done
 
-	# 建立備份
+	# 创建备份
 	echo "正在创建备份 $BACKUP_NAME..."
 	install tar
 	tar -czvf "$BACKUP_DIR/$BACKUP_NAME" "${BACKUP_PATHS[@]}"
 
-	# 檢查命令是否成功
+	# 检查命令是否成功
 	if [ $? -eq 0 ]; then
-		echo "備份建立成功:$BACKUP_DIR/$BACKUP_NAME"
+		echo "备份创建成功: $BACKUP_DIR/$BACKUP_NAME"
 	else
-		echo "備份建立失敗！"
+		echo "备份创建失败！"
 		exit 1
 	fi
 }
@@ -9669,18 +9889,18 @@ restore_backup() {
 		exit 1
 	fi
 
-	echo "正在恢復備份$BACKUP_NAME..."
+	echo "正在恢复备份 $BACKUP_NAME..."
 	tar -xzvf "$BACKUP_DIR/$BACKUP_NAME" -C /
 
 	if [ $? -eq 0 ]; then
 		echo "备份恢复成功！"
 	else
-		echo "備份恢復失敗！"
+		echo "备份恢复失败！"
 		exit 1
 	fi
 }
 
-# 列出備份
+# 列出备份
 list_backups() {
 	echo "可用的备份："
 	ls -1 "$BACKUP_DIR"
@@ -9698,13 +9918,13 @@ delete_backup() {
 		exit 1
 	fi
 
-	# 刪除備份
+	# 删除备份
 	rm -f "$BACKUP_DIR/$BACKUP_NAME"
 
 	if [ $? -eq 0 ]; then
 		echo "备份删除成功！"
 	else
-		echo "備份刪除失敗！"
+		echo "备份删除失败！"
 		exit 1
 	fi
 }
@@ -9724,7 +9944,7 @@ linux_backup() {
 		echo "------------------------"
 		echo "0. 返回上一级选单"
 		echo "------------------------"
-		read -e -p "請輸入你的選擇:" choice
+		read -e -p "请输入你的选择: " choice
 		case $choice in
 			1) create_backup ;;
 			2) restore_backup ;;
@@ -9743,7 +9963,7 @@ linux_backup() {
 
 
 
-# SSH 輸入標準化函數
+# SSH 输入标准化函数
 kj_ssh_validate_host() {
 	local host="$1"
 	[[ -n "$host" && ! "$host" =~ [[:space:]] && "$host" =~ ^[A-Za-z0-9._:-]+$ ]]
@@ -9815,7 +10035,7 @@ kj_ssh_parse_remote() {
 	fi
 
 	if ! kj_ssh_validate_user "$remote_user"; then
-		echo "錯誤: SSH 使用者名稱格式不正確。"
+		echo "错误: SSH 用户名格式不正确。"
 		return 1
 	fi
 
@@ -9833,14 +10053,14 @@ kj_ssh_read_auth() {
 	local key_file="$1"
 	local password_or_key=""
 
-	echo "請選擇身份驗證方式:"
+	echo "请选择身份验证方式:"
 	echo "1. 密码"
-	echo "2. 密鑰"
+	echo "2. 密钥"
 	read -e -p "请输入选择 (1/2): " auth_choice
 
 	case $auth_choice in
 		1)
-			read -s -p "請輸入密碼:" password_or_key
+			read -s -p "请输入密码: " password_or_key
 			echo
 			if [ -z "$password_or_key" ]; then
 				echo "错误: 密码不能为空。"
@@ -9861,7 +10081,7 @@ kj_ssh_read_auth() {
 			done
 
 			if [[ "$password_or_key" != *"-----BEGIN"* || "$password_or_key" != *"PRIVATE KEY-----"* ]]; then
-				echo "無效的密鑰內容！"
+				echo "无效的密钥内容！"
 				return 1
 			fi
 
@@ -9872,7 +10092,7 @@ kj_ssh_read_auth() {
 			KJ_SSH_AUTH_SECRET="$key_file"
 			;;
 		*)
-			echo "無效的選擇！"
+			echo "无效的选择！"
 			return 1
 			;;
 	esac
@@ -9884,7 +10104,7 @@ kj_ssh_read_password() {
 		read -e -s -p "$prompt" KJ_SSH_PASSWORD
 		echo
 		[ -n "$KJ_SSH_PASSWORD" ] && break
-		echo "錯誤: 密碼不能為空。"
+		echo "错误: 密码不能为空。"
 	done
 }
 
@@ -9903,49 +10123,49 @@ kj_ssh_read_port() {
 
 # 显示连接列表
 list_connections() {
-	echo "已儲存的連線:"
+	echo "已保存的连接:"
 	echo "------------------------"
 	cat "$CONFIG_FILE" | awk -F'|' '{print NR " - " $1 " (" $2 ")"}'
 	echo "------------------------"
 }
 
 
-# 新增連接
+# 添加新连接
 add_connection() {
 	send_stats "添加新连接"
 	echo "创建新连接示例："
-	echo "- 連線名稱: my_server"
-	echo "- IP位址: 192.168.1.100"
-	echo "- 使用者名稱: root"
-	echo "- 連接埠: 22"
+	echo "  - 连接名称: my_server"
+	echo "  - IP地址: 192.168.1.100"
+	echo "  - 用户名: root"
+	echo "  - 端口: 22"
 	echo "------------------------"
 	read -e -p "请输入连接名称: " name
 
-	kj_ssh_read_host_user_port "請輸入IP位址:" "請輸入使用者名稱 (預設: root):" "請輸入連接埠號碼 (預設: 22):" "root" "22"
+	kj_ssh_read_host_user_port "请输入IP地址: " "请输入用户名 (默认: root): " "请输入端口号 (默认: 22): " "root" "22"
 	if ! kj_ssh_read_auth "$KEY_DIR/$name.key"; then
 		return
 	fi
 
 	echo "$name|$KJ_SSH_HOST|$KJ_SSH_USER|$KJ_SSH_PORT|$KJ_SSH_AUTH_SECRET" >> "$CONFIG_FILE"
-	echo "連線已儲存!"
+	echo "连接已保存!"
 }
 
 
 
-# 刪除連接
+# 删除连接
 delete_connection() {
-	send_stats "刪除連接"
+	send_stats "删除连接"
 	read -e -p "请输入要删除的连接编号: " num
 
 	local connection=$(sed -n "${num}p" "$CONFIG_FILE")
 	if [[ -z "$connection" ]]; then
-		echo "錯誤：未找到對應的連線。"
+		echo "错误：未找到对应的连接。"
 		return
 	fi
 
 	IFS='|' read -r name ip user port password_or_key <<< "$connection"
 
-	# 如果連接使用的是密鑰文件，則刪除該密鑰文件
+	# 如果连接使用的是密钥文件，则删除该密钥文件
 	if [[ "$password_or_key" == "$KEY_DIR"* ]]; then
 		rm -f "$password_or_key"
 	fi
@@ -9954,56 +10174,56 @@ delete_connection() {
 	echo "连接已删除!"
 }
 
-# 使用連接
+# 使用连接
 use_connection() {
-	send_stats "使用連接"
+	send_stats "使用连接"
 	read -e -p "请输入要使用的连接编号: " num
 
 	local connection=$(sed -n "${num}p" "$CONFIG_FILE")
 	if [[ -z "$connection" ]]; then
-		echo "錯誤：未找到對應的連線。"
+		echo "错误：未找到对应的连接。"
 		return
 	fi
 
 	IFS='|' read -r name ip user port password_or_key <<< "$connection"
 
-	echo "正在連接到$name ($ip)..."
+	echo "正在连接到 $name ($ip)..."
 	if [[ -f "$password_or_key" ]]; then
-		# 使用密鑰連接
+		# 使用密钥连接
 		ssh -o StrictHostKeyChecking=no -i "$password_or_key" -p "$port" "$user@$ip"
 		if [[ $? -ne 0 ]]; then
-			echo "連線失敗！請檢查以下內容："
-			echo "1. 密鑰檔案路徑是否正確：$password_or_key"
-			echo "2. 密鑰檔案權限是否正確（應為 600）。"
-			echo "3. 目標伺服器是否允許使用金鑰登入。"
+			echo "连接失败！请检查以下内容："
+			echo "1. 密钥文件路径是否正确：$password_or_key"
+			echo "2. 密钥文件权限是否正确（应为 600）。"
+			echo "3. 目标服务器是否允许使用密钥登录。"
 		fi
 	else
-		# 使用密碼連接
+		# 使用密码连接
 		if ! command -v sshpass &> /dev/null; then
 			echo "错误：未安装 sshpass，请先安装 sshpass。"
-			echo "安裝方法："
+			echo "安装方法："
 			echo "  - Ubuntu/Debian: apt install sshpass"
 			echo "  - CentOS/RHEL: yum install sshpass"
 			return
 		fi
 		sshpass -p "$password_or_key" ssh -o StrictHostKeyChecking=no -p "$port" "$user@$ip"
 		if [[ $? -ne 0 ]]; then
-			echo "連線失敗！請檢查以下內容："
-			echo "1. 使用者名稱和密碼是否正確。"
-			echo "2. 目標伺服器是否允許密碼登入。"
-			echo "3. 目標伺服器的 SSH 服務是否正常運作。"
+			echo "连接失败！请检查以下内容："
+			echo "1. 用户名和密码是否正确。"
+			echo "2. 目标服务器是否允许密码登录。"
+			echo "3. 目标服务器的 SSH 服务是否正常运行。"
 		fi
 	fi
 }
 
 
 ssh_manager() {
-	send_stats "ssh遠端連線工具"
+	send_stats "ssh远程连接工具"
 
 	CONFIG_FILE="$HOME/.ssh_connections"
 	KEY_DIR="$HOME/.ssh/ssh_manager_keys"
 
-	# 檢查設定檔和金鑰目錄是否存在，如果不存在則創建
+	# 检查配置文件和密钥目录是否存在，如果不存在则创建
 	if [[ ! -f "$CONFIG_FILE" ]]; then
 		touch "$CONFIG_FILE"
 	fi
@@ -10015,21 +10235,21 @@ ssh_manager() {
 
 	while true; do
 		clear
-		echo "SSH 遠端連線工具"
-		echo "可以透過SSH連接到其他Linux系統上"
+		echo "SSH 远程连接工具"
+		echo "可以通过SSH连接到其他Linux系统上"
 		echo "------------------------"
 		list_connections
-		echo "1. 建立新連接 2. 使用連接 3. 刪除連接"
+		echo "1. 创建新连接        2. 使用连接        3. 删除连接"
 		echo "------------------------"
-		echo "0. 返回上一級選單"
+		echo "0. 返回上一级选单"
 		echo "------------------------"
-		read -e -p "請輸入你的選擇:" choice
+		read -e -p "请输入你的选择: " choice
 		case $choice in
 			1) add_connection ;;
 			2) use_connection ;;
 			3) delete_connection ;;
 			0) break ;;
-			*) echo "無效的選擇，請重試。" ;;
+			*) echo "无效的选择，请重试。" ;;
 		esac
 	done
 }
@@ -10045,96 +10265,96 @@ ssh_manager() {
 
 
 
-# 列出可用的硬碟分割區
+# 列出可用的硬盘分区
 list_partitions() {
-	echo "可用的硬碟分割區："
+	echo "可用的硬盘分区："
 	lsblk -o NAME,SIZE,FSTYPE,MOUNTPOINT | grep -v "sr\|loop"
 }
 
 
-# 持久化掛載分區
+# 持久化挂载分区
 mount_partition() {
-	send_stats "掛載分割區"
+	send_stats "挂载分区"
 	read -e -p "请输入要挂载的分区名称（例如 sda1）: " PARTITION
 
 	DEVICE="/dev/$PARTITION"
 	MOUNT_POINT="/mnt/$PARTITION"
 
-	# 檢查分割區是否存在
+	# 检查分区是否存在
 	if ! lsblk -no NAME | grep -qw "$PARTITION"; then
-		echo "分區不存在！"
+		echo "分区不存在！"
 		return 1
 	fi
 
-	# 檢查是否已掛載
+	# 检查是否已挂载
 	if mount | grep -qw "$DEVICE"; then
-		echo "分區已經掛載！"
+		echo "分区已经挂载！"
 		return 1
 	fi
 
-	# 取得 UUID
+	# 获取 UUID
 	UUID=$(blkid -s UUID -o value "$DEVICE")
 	if [ -z "$UUID" ]; then
-		echo "無法取得 UUID！"
+		echo "无法获取 UUID！"
 		return 1
 	fi
 
-	# 取得檔案系統類型
+	# 获取文件系统类型
 	FSTYPE=$(blkid -s TYPE -o value "$DEVICE")
 	if [ -z "$FSTYPE" ]; then
 		echo "无法获取文件系统类型！"
 		return 1
 	fi
 
-	# 建立掛載點
+	# 创建挂载点
 	mkdir -p "$MOUNT_POINT"
 
-	# 掛載
+	# 挂载
 	if ! mount "$DEVICE" "$MOUNT_POINT"; then
-		echo "分區掛載失敗！"
+		echo "分区挂载失败！"
 		rmdir "$MOUNT_POINT"
 		return 1
 	fi
 
-	echo "分區已成功掛載到$MOUNT_POINT"
+	echo "分区已成功挂载到 $MOUNT_POINT"
 
-	# 檢查 /etc/fstab 是否已經存在 UUID 或掛載點
+	# 检查 /etc/fstab 是否已经存在 UUID 或挂载点
 	if grep -qE "UUID=$UUID|[[:space:]]$MOUNT_POINT[[:space:]]" /etc/fstab; then
-		echo "/etc/fstab 中已存在該分區記錄，跳過寫入"
+		echo "/etc/fstab 中已存在该分区记录，跳过写入"
 		return 0
 	fi
 
-	# 寫入 /etc/fstab
+	# 写入 /etc/fstab
 	echo "UUID=$UUID $MOUNT_POINT $FSTYPE defaults,nofail 0 2" >> /etc/fstab
 
-	echo "已寫入 /etc/fstab，實現持久化掛載"
+	echo "已写入 /etc/fstab，实现持久化挂载"
 }
 
 
-# 解除安裝分割區
+# 卸载分区
 unmount_partition() {
-	send_stats "解除安裝分割區"
-	read -e -p "請輸入要卸載的分割區名稱（例如 sda1）:" PARTITION
+	send_stats "卸载分区"
+	read -e -p "请输入要卸载的分区名称（例如 sda1）: " PARTITION
 
-	# 檢查分割區是否已經掛載
+	# 检查分区是否已经挂载
 	MOUNT_POINT=$(lsblk -o MOUNTPOINT | grep -w "$PARTITION")
 	if [ -z "$MOUNT_POINT" ]; then
 		echo "分区未挂载！"
 		return
 	fi
 
-	# 解除安裝分割區
+	# 卸载分区
 	umount "/dev/$PARTITION"
 
 	if [ $? -eq 0 ]; then
 		echo "分区卸载成功: $MOUNT_POINT"
 		rmdir "$MOUNT_POINT"
 	else
-		echo "分區卸載失敗！"
+		echo "分区卸载失败！"
 	fi
 }
 
-# 列出已掛載的分割區
+# 列出已挂载的分区
 list_mounted_partitions() {
 	echo "已挂载的分区："
 	df -h | grep -v "tmpfs\|udev\|overlay"
@@ -10157,20 +10377,20 @@ format_partition() {
 		return
 	fi
 
-	# 選擇檔案系統類型
+	# 选择文件系统类型
 	echo "请选择文件系统类型："
 	echo "1. ext4"
 	echo "2. xfs"
 	echo "3. ntfs"
 	echo "4. vfat"
-	read -e -p "請輸入你的選擇:" FS_CHOICE
+	read -e -p "请输入你的选择: " FS_CHOICE
 
 	case $FS_CHOICE in
 		1) FS_TYPE="ext4" ;;
 		2) FS_TYPE="xfs" ;;
 		3) FS_TYPE="ntfs" ;;
 		4) FS_TYPE="vfat" ;;
-		*) echo "無效的選擇！"; return ;;
+		*) echo "无效的选择！"; return ;;
 	esac
 
 	# 确认格式化
@@ -10564,7 +10784,7 @@ linux_info() {
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}主机名:         ${gl_bai}$hostname"
 	echo -e "${gl_kjlan}系统版本:       ${gl_bai}$os_info"
-	echo -e "${gl_kjlan}Linux版本:${gl_bai}$kernel_version"
+	echo -e "${gl_kjlan}Linux版本:      ${gl_bai}$kernel_version"
 	echo -e "${gl_kjlan}-------------"
 	echo -e "${gl_kjlan}CPU架构:        ${gl_bai}$cpu_arch"
 	echo -e "${gl_kjlan}CPU型号:        ${gl_bai}$cpu_info"
@@ -10574,7 +10794,7 @@ linux_info() {
 	echo -e "${gl_kjlan}CPU占用:        ${gl_bai}$cpu_usage_percent%"
 	echo -e "${gl_kjlan}系统负载:       ${gl_bai}$load"
 	echo -e "${gl_kjlan}TCP|UDP连接数:  ${gl_bai}$tcp_count|$udp_count"
-	echo -e "${gl_kjlan}實體記憶體:${gl_bai}$mem_info"
+	echo -e "${gl_kjlan}物理内存:       ${gl_bai}$mem_info"
 	echo -e "${gl_kjlan}虚拟内存:       ${gl_bai}$swap_info"
 	echo -e "${gl_kjlan}硬盘占用:       ${gl_bai}$disk_info"
 	echo -e "${gl_kjlan}-------------"
@@ -10672,7 +10892,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}btop 现代化监控工具 ${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}ranger 文件管理工具"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}ncdu 磁盘占用查看工具             ${gl_kjlan}14.  ${gl_bai}fzf 全局搜索工具"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}vim 文本编辑器                    ${gl_kjlan}16.  ${gl_bai}nano 文本编辑器 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}git 版本控制系统                  ${gl_kjlan}18.  ${gl_bai}opencode AI编程助手 ${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}17.  ${gl_bai}git 版本控制系统"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}黑客帝国屏保                      ${gl_kjlan}22.  ${gl_bai}跑火车屏保"
 	  echo -e "${gl_kjlan}26.  ${gl_bai}俄罗斯方块小游戏                  ${gl_kjlan}27.  ${gl_bai}贪吃蛇小游戏"
@@ -10702,7 +10922,7 @@ linux_tools() {
 			  clear
 			  echo "工具已安装，使用方法如下："
 			  wget --help
-			  send_stats "安裝wget"
+			  send_stats "安装wget"
 			  ;;
 			3)
 			  clear
@@ -10748,7 +10968,7 @@ linux_tools() {
 			  clear
 			  echo "工具已安装，使用方法如下："
 			  tar --help
-			  send_stats "安裝tar"
+			  send_stats "安装tar"
 			  ;;
 			9)
 			  clear
@@ -10756,7 +10976,7 @@ linux_tools() {
 			  clear
 			  echo "工具已安装，使用方法如下："
 			  tmux --help
-			  send_stats "安裝tmux"
+			  send_stats "安装tmux"
 			  ;;
 			10)
 			  clear
@@ -10764,7 +10984,7 @@ linux_tools() {
 			  clear
 			  echo "工具已安装，使用方法如下："
 			  ffmpeg --help
-			  send_stats "安裝ffmpeg"
+			  send_stats "安装ffmpeg"
 			  ;;
 
 			11)
@@ -10772,7 +10992,7 @@ linux_tools() {
 			  install btop
 			  clear
 			  btop
-			  send_stats "安裝btop"
+			  send_stats "安装btop"
 			  ;;
 			12)
 			  clear
@@ -10808,7 +11028,7 @@ linux_tools() {
 			  clear
 			  vim -h
 			  cd ~
-			  send_stats "安裝vim"
+			  send_stats "安装vim"
 			  ;;
 			16)
 			  clear
@@ -10831,17 +11051,6 @@ linux_tools() {
 			  send_stats "安装git"
 			  ;;
 
-			18)
-			  clear
-			  cd ~
-			  curl -fsSL https://opencode.ai/install | bash
-			  source ~/.bashrc
-			  source ~/.profile
-			  opencode
-			  send_stats "安装opencode"
-			  ;;
-
-
 			21)
 			  clear
 			  install cmatrix
@@ -10854,7 +11063,7 @@ linux_tools() {
 			  install sl
 			  clear
 			  sl
-			  send_stats "安裝sl"
+			  send_stats "安装sl"
 			  ;;
 			26)
 			  clear
@@ -10868,7 +11077,7 @@ linux_tools() {
 			  install nsnake
 			  clear
 			  nsnake
-			  send_stats "安裝nsnake"
+			  send_stats "安装nsnake"
 			  ;;
 
 			28)
@@ -10876,12 +11085,12 @@ linux_tools() {
 			  install ninvaders
 			  clear
 			  ninvaders
-			  send_stats "安裝ninvaders"
+			  send_stats "安装ninvaders"
 			  ;;
 
 		  31)
 			  clear
-			  send_stats "全部安裝"
+			  send_stats "全部安装"
 			  install curl wget sudo socat htop iftop unzip tar tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
 			  ;;
 
@@ -10894,23 +11103,21 @@ linux_tools() {
 
 		  33)
 			  clear
-			  send_stats "全部解除安裝"
+			  send_stats "全部卸载"
 			  remove htop iftop tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
-			  opencode uninstall
-			  rm -rf ~/.opencode
 			  ;;
 
 		  41)
 			  clear
-			  read -e -p "請輸入已安裝的工具名稱（wget curl sudo htop）:" installname
+			  read -e -p "请输入安装的工具名（wget curl sudo htop）: " installname
 			  install $installname
-			  send_stats "安裝指定軟體"
+			  send_stats "安装指定软件"
 			  ;;
 		  42)
 			  clear
 			  read -e -p "请输入卸载的工具名（htop ufw tmux cmatrix）: " removename
 			  remove $removename
-			  send_stats "解除安裝指定軟體"
+			  send_stats "卸载指定软件"
 			  ;;
 
 		  0)
@@ -10918,7 +11125,7 @@ linux_tools() {
 			  ;;
 
 		  *)
-			  echo "無效的輸入!"
+			  echo "无效的输入!"
 			  ;;
 	  esac
 	  break_end
@@ -11034,17 +11241,17 @@ docker_ssh_migration() {
 			docker inspect "$c" > "$inspect_file"
 
 			if is_compose_container "$c"; then
-				echo -e "${gl_kjlan}检测到 $c是 docker-compose 容器${gl_bai}"
+				echo -e "${gl_kjlan}检测到 $c 是 docker-compose 容器${gl_bai}"
 				local project_dir=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project.working_dir"] // empty')
 				local project_name=$(docker inspect "$c" | jq -r '.[0].Config.Labels["com.docker.compose.project"] // empty')
 
 				if [ -z "$project_dir" ]; then
-					read -e -p  "未偵測到 compose 目錄，請手動輸入路徑:" project_dir
+					read -e -p  "未检测到 compose 目录，请手动输入路径: " project_dir
 				fi
 
 				# 如果该 Compose 项目已经打包过，跳过
 				if [[ -n "${PACKED_COMPOSE_PATHS[$project_dir]}" ]]; then
-					echo -e "${gl_huang}Compose 項目 [$project_name] 已备份过，跳过重复打包...${gl_bai}"
+					echo -e "${gl_huang}Compose 项目 [$project_name] 已备份过，跳过重复打包...${gl_bai}"
 					continue
 				fi
 
@@ -11060,11 +11267,11 @@ docker_ssh_migration() {
 					echo -e "${gl_hong}未找到 docker-compose.yml，跳过此容器...${gl_bai}"
 				fi
 			else
-				# 普通容器備份卷
+				# 普通容器备份卷
 				local VOL_PATHS
 				VOL_PATHS=$(docker inspect "$c" --format '{{range .Mounts}}{{.Source}} {{end}}')
 				for path in $VOL_PATHS; do
-					echo "打包卷:$path"
+					echo "打包卷: $path"
 					tar -czpf "${BACKUP_DIR}/${c}_$(basename $path).tar.gz" -C / "$(echo $path | sed 's/^\///')"
 				done
 
@@ -11082,11 +11289,11 @@ docker_ssh_migration() {
 				local VOL_ARGS=""
 				for path in $VOL_PATHS; do VOL_ARGS+="-v $path:$path "; done
 
-				# 鏡像
+				# 镜像
 				local IMAGE
 				IMAGE=$(jq -r '.[0].Config.Image' "$inspect_file")
 
-				echo -e "\n# 還原容器:$c" >> "$RESTORE_SCRIPT"
+				echo -e "\n# 还原容器: $c" >> "$RESTORE_SCRIPT"
 				echo "docker run -d --name $c $PORT_ARGS $VOL_ARGS $ENV_VARS $IMAGE" >> "$RESTORE_SCRIPT"
 			fi
 		done
@@ -11094,7 +11301,7 @@ docker_ssh_migration() {
 
 		# 备份 /home/docker 下的所有文件（不含子目录）
 		if [ -d "/home/docker" ]; then
-			echo -e "${gl_kjlan}備份 /home/docker 下的檔案...${gl_bai}"
+			echo -e "${gl_kjlan}备份 /home/docker 下的文件...${gl_bai}"
 			find /home/docker -maxdepth 1 -type f | tar -czf "${BACKUP_DIR}/home_docker_files.tar.gz" -T -
 			echo -e "${gl_lv}/home/docker 下的文件已打包到: ${BACKUP_DIR}/home_docker_files.tar.gz${gl_bai}"
 		fi
@@ -11132,7 +11339,7 @@ docker_ssh_migration() {
 				# 检查该 compose 项目的容器是否已经在运行
 				running_count=$(docker ps --filter "label=com.docker.compose.project=$project_name" --format '{{.Names}}' | wc -l)
 				if [[ "$running_count" -gt 0 ]]; then
-					echo -e "${gl_huang}Compose 项目 [$project_name] 已有容器在運行，跳過還原...${gl_bai}"
+					echo -e "${gl_huang}Compose 项目 [$project_name] 已有容器在运行，跳过还原...${gl_bai}"
 					continue
 				fi
 
@@ -11254,7 +11461,7 @@ docker_ssh_migration() {
 	# ----------------------------
 	delete_backup() {
 		send_stats "Docker备份文件删除"
-		read -e -p  "請輸入要刪除的備份目錄:" BACKUP_DIR
+		read -e -p  "请输入要删除的备份目录: " BACKUP_DIR
 		[[ ! -d "$BACKUP_DIR" ]] && { echo -e "${gl_hong}备份目录不存在${gl_bai}"; return; }
 		rm -rf "$BACKUP_DIR"
 		echo -e "${gl_lv}已删除备份: ${BACKUP_DIR}${gl_bai}"
@@ -11264,11 +11471,11 @@ docker_ssh_migration() {
 	# 主菜单
 	# ----------------------------
 	main_menu() {
-		send_stats "Docker備份遷移還原"
+		send_stats "Docker备份迁移还原"
 		while true; do
 			clear
 			echo "------------------------"
-			echo -e "Docker備份/遷移/還原工具"
+			echo -e "Docker备份/迁移/还原工具"
 			echo "------------------------"
 			list_backups
 			echo -e ""
@@ -11276,12 +11483,12 @@ docker_ssh_migration() {
 			echo -e "1. 备份docker项目"
 			echo -e "2. 迁移docker项目"
 			echo -e "3. 还原docker项目"
-			echo -e "4. 刪除docker專案的備份文件"
-			echo "5. 通用加密備份與復原 (.kpb，與 KPanel 互通)"
+			echo -e "4. 删除docker项目的备份文件"
+			echo "5. 通用加密备份与恢复 (.kpb，与 KPanel 互通)"
 			echo "------------------------"
-			echo -e "0. 返回上一級選單"
+			echo -e "0. 返回上一级选单"
 			echo "------------------------"
-			read -e -p  "請選擇:" choice
+			read -e -p  "请选择: " choice
 			case $choice in
 				1) backup_docker ;;
 				2) migrate_docker ;;
@@ -11310,27 +11517,27 @@ linux_docker() {
 	  echo -e "Docker管理"
 	  docker_tato
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}1.   ${gl_bai}安裝更新Docker環境${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}1.   ${gl_bai}安装更新Docker环境 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}2.   ${gl_bai}查看Docker全域狀態${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}2.   ${gl_bai}查看Docker全局状态 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}3.   ${gl_bai}Docker容器管理${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}3.   ${gl_bai}Docker容器管理 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}4.   ${gl_bai}Docker镜像管理"
 	  echo -e "${gl_kjlan}5.   ${gl_bai}Docker网络管理"
-	  echo -e "${gl_kjlan}6.   ${gl_bai}Docker磁碟區管理"
+	  echo -e "${gl_kjlan}6.   ${gl_bai}Docker卷管理"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}7.   ${gl_bai}清理无用的docker容器和镜像网络数据卷"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}8.   ${gl_bai}更換Docker源"
-	  echo -e "${gl_kjlan}9.   ${gl_bai}編輯daemon.json文件"
+	  echo -e "${gl_kjlan}8.   ${gl_bai}更换Docker源"
+	  echo -e "${gl_kjlan}9.   ${gl_bai}编辑daemon.json文件"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}11.  ${gl_bai}開啟Docker-ipv6訪問"
+	  echo -e "${gl_kjlan}11.  ${gl_bai}开启Docker-ipv6访问"
 	  echo -e "${gl_kjlan}12.  ${gl_bai}关闭Docker-ipv6访问"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}19.  ${gl_bai}备份/迁移/还原Docker环境"
-	  echo -e "${gl_kjlan}20.  ${gl_bai}解除安裝Docker環境"
+	  echo -e "${gl_kjlan}20.  ${gl_bai}卸载Docker环境"
 	  echo -e "${gl_kjlan}------------------------"
-	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主選單"
+	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
 	  read -e -p "请输入你的选择: " sub_choice
 
@@ -11360,7 +11567,7 @@ linux_docker() {
 			  echo -e "Docker容器: ${gl_lv}$container_count${gl_bai}"
 			  docker ps -a
 			  echo ""
-			  echo -e "Docker磁碟區:${gl_lv}$volume_count${gl_bai}"
+			  echo -e "Docker卷: ${gl_lv}$volume_count${gl_bai}"
 			  docker volume ls
 			  echo ""
 			  echo -e "Docker网络: ${gl_lv}$network_count${gl_bai}"
@@ -11379,14 +11586,14 @@ linux_docker() {
 			  while true; do
 				  clear
 				  send_stats "Docker网络管理"
-				  echo "Docker網路列表"
+				  echo "Docker网络列表"
 				  echo "------------------------------------------------------------"
 				  docker network ls
 				  echo ""
 
 				  echo "------------------------------------------------------------"
 				  container_ids=$(docker ps -q)
-				  printf "%-25s %-25s %-25s\n" "容器名稱" "網路名稱" "IP地址"
+				  printf "%-25s %-25s %-25s\n" "容器名称" "网络名称" "IP地址"
 
 				  for container_id in $container_ids; do
 					  local container_info=$(docker inspect --format '{{ .Name }}{{ range $network, $config := .NetworkSettings.Networks }} {{ $network }} {{ $config.IPAddress }}{{ end }}' "$container_id")
@@ -11403,35 +11610,35 @@ linux_docker() {
 				  done
 
 				  echo ""
-				  echo "網路操作"
+				  echo "网络操作"
 				  echo "------------------------"
-				  echo "1. 建立網絡"
+				  echo "1. 创建网络"
 				  echo "2. 加入网络"
 				  echo "3. 退出网络"
 				  echo "4. 删除网络"
 				  echo "------------------------"
-				  echo "0. 返回上一級選單"
+				  echo "0. 返回上一级选单"
 				  echo "------------------------"
-				  read -e -p "請輸入你的選擇:" sub_choice
+				  read -e -p "请输入你的选择: " sub_choice
 
 				  case $sub_choice in
 					  1)
 						  send_stats "创建网络"
-						  read -e -p "設定新網路名稱:" dockernetwork
+						  read -e -p "设置新网络名: " dockernetwork
 						  docker network create $dockernetwork
 						  ;;
 					  2)
 						  send_stats "加入网络"
-						  read -e -p "加入網路名稱:" dockernetwork
-						  read -e -p "那些容器加入該網路（多個容器名稱請以空格分隔）:" dockernames
+						  read -e -p "加入网络名: " dockernetwork
+						  read -e -p "那些容器加入该网络（多个容器名请用空格分隔）: " dockernames
 
 						  for dockername in $dockernames; do
 							  docker network connect $dockernetwork $dockername
 						  done
 						  ;;
 					  3)
-						  send_stats "加入網路"
-						  read -e -p "退出網路名稱:" dockernetwork
+						  send_stats "加入网络"
+						  read -e -p "退出网络名: " dockernetwork
 						  read -e -p "那些容器退出该网络（多个容器名请用空格分隔）: " dockernames
 
 						  for dockername in $dockernames; do
@@ -11441,7 +11648,7 @@ linux_docker() {
 						  ;;
 
 					  4)
-						  send_stats "刪除網絡"
+						  send_stats "删除网络"
 						  read -e -p "请输入要删除的网络名: " dockernetwork
 						  docker network rm $dockernetwork
 						  ;;
@@ -11456,7 +11663,7 @@ linux_docker() {
 		  6)
 			  while true; do
 				  clear
-				  send_stats "Docker磁碟區管理"
+				  send_stats "Docker卷管理"
 				  echo "Docker卷列表"
 				  docker volume ls
 				  echo ""
@@ -11478,7 +11685,7 @@ linux_docker() {
 
 						  ;;
 					  2)
-						  read -e -p "輸入刪除卷名（多個卷名請以空格分隔）:" dockerjuans
+						  read -e -p "输入删除卷名（多个卷名请用空格分隔）: " dockerjuans
 
 						  for dockerjuan in $dockerjuans; do
 							  docker volume rm $dockerjuan
@@ -11596,7 +11803,12 @@ kpanel_node_paths() {
 	KPANEL_NODE_BINARY="${KPANEL_NODE_HOME}/kejilion-node"
 	KPANEL_NODE_UPDATER="${KPANEL_NODE_HOME}/update.sh"
 	KPANEL_NODE_FILE_SERVICE="kejilion-node-file.service"
-	KPANEL_NODE_SSH_LOGIN_SERVICE="/etc/systemd/system/kejilion-node-ssh-login.service"
+	KPANEL_NODE_SYSTEMD_DIR="/etc/systemd/system"
+	KPANEL_NODE_OPENRC_DIR="/etc/init.d"
+	KPANEL_NODE_UPDATE_PERIODIC="/etc/periodic/hourly/kejilion-node-update"
+	KPANEL_NODE_UPDATE_CRON="${KPANEL_NODE_HOME}/update-cron.sh"
+	KPANEL_NODE_CRONTAB="/etc/crontabs/root"
+	KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_SYSTEMD_DIR}/kejilion-node-ssh-login.service"
 	KPANEL_NODE_SSH_LOGIN_RUNTIME="/run/kejilion-node-ssh"
 	KPANEL_NODE_SSH_LOGIN_EVENT="${KPANEL_NODE_SSH_LOGIN_RUNTIME}/ssh-login.json"
 	KPANEL_NODE_CONFIG_DIR="/etc/kejilion-node"
@@ -11605,6 +11817,202 @@ kpanel_node_paths() {
 	KPANEL_NODE_ENROLLMENT_FINGERPRINT="${KPANEL_NODE_CONFIG_DIR}/enrollment-token.sha256"
 	KPANEL_NODE_ENROLLMENT_STAGE="${KPANEL_NODE_CONFIG_DIR}/.enrollment-stage"
 	KPANEL_NODE_SYSTEMCTL="$(type -P systemctl 2>/dev/null || true)"
+	KPANEL_NODE_RC_SERVICE="$(type -P rc-service 2>/dev/null || true)"
+	KPANEL_NODE_RC_UPDATE="$(type -P rc-update 2>/dev/null || true)"
+	KPANEL_NODE_SUPERVISE_DAEMON="$(type -P supervise-daemon 2>/dev/null || true)"
+	KPANEL_NODE_INIT_SYSTEM=""
+}
+
+kpanel_node_procd_helpers_template() {
+	cat <<'KPANEL_NODE_PROCD_HELPERS'
+# Shared installer/updater checks. No distribution names or writable config
+# select the privileged service backend.
+kpanel_node_procd_trusted_path() {
+	local path="$1" mode
+	[ ! -L "$path" ] && { [ -f "$path" ] || [ -d "$path" ]; } || return 1
+	[ "$(stat -c '%u' "$path")" = 0 ] || return 1
+	mode="$(stat -c '%a' "$path")" || return 1
+	[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [ $((8#$mode & 8#022)) -eq 0 ]
+}
+kpanel_node_procd_capable() {
+	local path command_path
+	[ "$(cat /proc/1/comm 2>/dev/null)" = procd ] || return 1
+	for path in /etc /etc/init.d /etc/rc.common /lib /lib/functions /lib/functions/procd.sh; do
+		kpanel_node_procd_trusted_path "$path" || return 1
+	done
+	[ -f /etc/rc.common ] && [ -f /lib/functions/procd.sh ] || return 1
+	for path in ubus jsonfilter; do
+		command_path="$(type -P "$path")" || return 1
+		command_path="$(readlink -f "$command_path")" || return 1
+		[ -x "$command_path" ] && kpanel_node_procd_trusted_path "$command_path" || return 1
+	done
+	ubus -t 5 call service list '{"name":"kejilion-node"}' >/dev/null 2>&1
+}
+kpanel_node_procd_pid() {
+	local service="${1%.service}" data running pid
+	case "$service" in kejilion-node|kejilion-node-terminal|kejilion-node-ssh-login|kejilion-node-file) ;; *) return 1 ;; esac
+	data="$(ubus -t 5 call service list "{\"name\":\"${service}\"}" 2>/dev/null)" || return 1
+	running="$(printf '%s' "$data" | jsonfilter -e "@['${service}'].instances.main.running")" || return 1
+	[ "$running" = true ] || return 1
+	pid="$(printf '%s' "$data" | jsonfilter -e "@['${service}'].instances.main.pid")" || return 1
+	[[ "$pid" =~ ^[1-9][0-9]*$ ]] && [ -e "/proc/${pid}/exe" ] || return 1
+	printf '%s\n' "$pid"
+}
+KPANEL_NODE_PROCD_HELPERS
+}
+
+kpanel_node_detect_init_system() {
+	source <(kpanel_node_procd_helpers_template)
+	if [ "$(cat /proc/1/comm 2>/dev/null)" = procd ]; then
+		kpanel_node_procd_capable || { echo "procd 依赖缺失或不可信：需要 rc.common、procd.sh、ubus、jsonfilter 和可用的 service 总线。" >&2; return 1; }
+		KPANEL_NODE_INIT_SYSTEM=procd
+		KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_OPENRC_DIR}/kejilion-node-ssh-login"
+		return 0
+	fi
+	if [ -d /run/systemd/system ] && [ -n "$KPANEL_NODE_SYSTEMCTL" ] && [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
+		KPANEL_NODE_INIT_SYSTEM=systemd
+		KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_SYSTEMD_DIR}/kejilion-node-ssh-login.service"
+		return 0
+	fi
+	if [ -d /run/openrc ] && [ -n "$KPANEL_NODE_RC_SERVICE" ] && [ -x "$KPANEL_NODE_RC_SERVICE" ] &&
+		[ -n "$KPANEL_NODE_RC_UPDATE" ] && [ -x "$KPANEL_NODE_RC_UPDATE" ] &&
+		[ -n "$KPANEL_NODE_SUPERVISE_DAEMON" ] && [ -x "$KPANEL_NODE_SUPERVISE_DAEMON" ] &&
+		command -v logger >/dev/null 2>&1; then
+		KPANEL_NODE_INIT_SYSTEM=openrc
+		KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_OPENRC_DIR}/kejilion-node-ssh-login"
+		return 0
+	fi
+	echo "当前系统需要运行 systemd、OpenRC 或原生 procd（需可信的 rc.common/procd.sh、ubus、jsonfilter），无法安装 KPanel 轻量节点。" >&2
+	return 1
+}
+
+kpanel_node_service_name() {
+	case "$KPANEL_NODE_INIT_SYSTEM" in
+		openrc|procd) printf '%s\n' "${1%.service}" ;;
+		*) printf '%s\n' "$1" ;;
+	esac
+}
+
+kpanel_node_service_exists() {
+	local service
+	service="$(kpanel_node_service_name "$1")" || return 1
+	case "$KPANEL_NODE_INIT_SYSTEM" in
+		systemd) "$KPANEL_NODE_SYSTEMCTL" cat "$service" >/dev/null 2>&1 ;;
+		openrc) [ -f "${KPANEL_NODE_OPENRC_DIR}/${service}" ] && [ ! -L "${KPANEL_NODE_OPENRC_DIR}/${service}" ] && [ -x "${KPANEL_NODE_OPENRC_DIR}/${service}" ] ;;
+		procd) [ -x "${KPANEL_NODE_OPENRC_DIR}/${service}" ] && kpanel_node_procd_trusted_path "${KPANEL_NODE_OPENRC_DIR}/${service}" ;;
+		*) return 1 ;;
+	esac
+}
+
+kpanel_node_service_action() {
+	local action="$1" service pid
+	service="$(kpanel_node_service_name "$2")" || return 1
+	case "$KPANEL_NODE_INIT_SYSTEM" in
+		systemd) "$KPANEL_NODE_SYSTEMCTL" "$action" "$service" ;;
+		openrc)
+			case "$action" in
+				enable) "$KPANEL_NODE_RC_UPDATE" add "$service" default ;;
+				disable) "$KPANEL_NODE_RC_UPDATE" del "$service" default ;;
+				start|stop|restart|status) "$KPANEL_NODE_RC_SERVICE" "$service" "$action" ;;
+				is-active) "$KPANEL_NODE_RC_SERVICE" "$service" status >/dev/null 2>&1 ;;
+				*) return 2 ;;
+			esac
+			;;
+		procd)
+			kpanel_node_service_exists "$service" || return 1
+			case "$action" in
+				is-active)
+					if [ "$service" = cron ]; then
+						ubus -t 5 call service list '{"name":"cron"}' | jsonfilter -e "@.cron.instances.*.running" | grep -qx true
+					else
+						pid="$(kpanel_node_procd_pid "$service")" && [ "/proc/${pid}/exe" -ef "$KPANEL_NODE_BINARY" ]
+					fi
+					;;
+				status)
+					if kpanel_node_service_action is-active "$service"; then
+						printf '%s: running\n' "$service"
+					else
+						printf '%s: inactive or unavailable\n' "$service"; return 3
+					fi
+					;;
+				enable|disable|start|stop|restart) "${KPANEL_NODE_OPENRC_DIR}/${service}" "$action" ;;
+				*) return 2 ;;
+			esac
+			;;
+		*) return 1 ;;
+	esac
+}
+
+kpanel_node_service_reload_manager() {
+	case "$KPANEL_NODE_INIT_SYSTEM" in
+		systemd) "$KPANEL_NODE_SYSTEMCTL" daemon-reload ;;
+		openrc|procd) return 0 ;;
+		*) return 1 ;;
+	esac
+}
+
+kpanel_node_procd_cron_line() {
+	printf '%s\n' '17 * * * * /usr/local/lib/kejilion-node/update-cron.sh # KPanel lightweight node updater'
+}
+
+kpanel_node_procd_cron_write() {
+	local action="$1" directory="${KPANEL_NODE_CRONTAB%/*}" temporary line
+	line="$(kpanel_node_procd_cron_line)"
+	if [ "$action" = remove ] && [ ! -e "$KPANEL_NODE_CRONTAB" ] && [ ! -L "$KPANEL_NODE_CRONTAB" ]; then return 0; fi
+	if [ ! -e "$directory" ] && [ ! -L "$directory" ]; then mkdir -m 0700 "$directory" || return 1; fi
+	[ -d "$directory" ] && kpanel_node_procd_trusted_path "$directory" || return 1
+	if [ -e "$KPANEL_NODE_CRONTAB" ] || [ -L "$KPANEL_NODE_CRONTAB" ]; then
+		[ -f "$KPANEL_NODE_CRONTAB" ] && kpanel_node_procd_trusted_path "$KPANEL_NODE_CRONTAB" &&
+			[ "$(stat -c '%h' "$KPANEL_NODE_CRONTAB")" = 1 ] || return 1
+	fi
+	if [ "$action" = remove ] && ! grep -Fxq "$line" "$KPANEL_NODE_CRONTAB"; then return 0; fi
+	temporary="$(mktemp "${directory}/.kejilion-node-cron.XXXXXX")" || return 1
+	if [ -f "$KPANEL_NODE_CRONTAB" ]; then
+		awk -v managed="$line" '$0 != managed { print }' "$KPANEL_NODE_CRONTAB" >"$temporary" || { rm -f -- "$temporary"; return 1; }
+	fi
+	if [ "$action" = add ]; then printf '%s\n' "$line" >>"$temporary" || { rm -f -- "$temporary"; return 1; }; fi
+	# BusyBox crond reloads changed crontab directories at its next minute tick.
+	# Atomic replacement preserves every unrelated job and never stops shared cron.
+	if ! chown root:root "$temporary" || ! chmod 0600 "$temporary" || ! mv -f -- "$temporary" "$KPANEL_NODE_CRONTAB"; then
+		rm -f -- "$temporary"; return 1
+	fi
+}
+
+kpanel_node_update_schedule_enable() {
+	case "$KPANEL_NODE_INIT_SYSTEM" in
+		systemd) kpanel_node_service_action enable kejilion-node-update.timer ;;
+		openrc)
+			[ -f "$KPANEL_NODE_UPDATE_PERIODIC" ] && [ ! -L "$KPANEL_NODE_UPDATE_PERIODIC" ] && [ -x "$KPANEL_NODE_UPDATE_PERIODIC" ] || return 1
+			kpanel_node_service_action enable crond
+			;;
+		procd)
+			[ -x "$KPANEL_NODE_UPDATE_CRON" ] && kpanel_node_procd_trusted_path "$KPANEL_NODE_UPDATE_CRON" || return 1
+			kpanel_node_procd_cron_write add && kpanel_node_service_action enable cron
+			;;
+		*) return 1 ;;
+	esac
+}
+
+kpanel_node_update_schedule_start() {
+	case "$KPANEL_NODE_INIT_SYSTEM" in
+		systemd) kpanel_node_service_action start kejilion-node-update.timer ;;
+		openrc)
+			kpanel_node_service_action is-active crond || kpanel_node_service_action start crond
+			;;
+		procd) kpanel_node_service_action is-active cron || kpanel_node_service_action start cron ;;
+		*) return 1 ;;
+	esac
+}
+
+kpanel_node_update_schedule_stop() {
+	[ "$KPANEL_NODE_INIT_SYSTEM" != systemd ] || kpanel_node_service_action stop kejilion-node-update.timer
+}
+
+kpanel_node_update_schedule_disable() {
+	case "$KPANEL_NODE_INIT_SYSTEM" in
+		systemd) kpanel_node_service_action disable kejilion-node-update.timer ;;
+		procd) kpanel_node_procd_cron_write remove ;;
+	esac
 }
 
 kpanel_node_preflight() {
@@ -11612,16 +12020,13 @@ kpanel_node_preflight() {
 		echo "KPanel 轻量节点安装需要 root 权限。" >&2
 		return 1
 	}
-	for command_name in curl sha256sum mktemp flock; do
+	for command_name in bash curl sha256sum mktemp flock stat readlink awk grep sed cmp od tr; do
 		command -v "$command_name" >/dev/null 2>&1 || {
 			echo "缺少必要命令: ${command_name}" >&2
 			return 1
 		}
 	done
-	[ -n "$KPANEL_NODE_SYSTEMCTL" ] && [ -x "$KPANEL_NODE_SYSTEMCTL" ] || {
-		echo "缺少必要命令: systemctl" >&2
-		return 1
-	}
+	kpanel_node_detect_init_system || return 1
 	KPANEL_NODE_INSTALL_BIN="$(type -P install 2>/dev/null || true)"
 	[ -n "$KPANEL_NODE_INSTALL_BIN" ] && [ -x "$KPANEL_NODE_INSTALL_BIN" ] || {
 		echo "缺少必要命令: install (coreutils)" >&2
@@ -11633,15 +12038,27 @@ kpanel_node_preflight() {
 		echo "缺少系统账户创建工具: useradd、systemd-sysusers 或 adduser" >&2
 		return 1
 	fi
-	[ -d /run/systemd/system ] || {
-		echo "当前系统未运行 systemd，无法安装 KPanel 轻量节点。" >&2
-		return 1
-	}
+	if [ "$KPANEL_NODE_INIT_SYSTEM" = openrc ]; then
+		[ -d "$KPANEL_NODE_OPENRC_DIR" ] && [ -d "${KPANEL_NODE_UPDATE_PERIODIC%/*}" ] &&
+			[ -x "${KPANEL_NODE_OPENRC_DIR}/crond" ] || {
+			echo "OpenRC 系统缺少 crond 服务或 /etc/periodic/hourly，无法启用安全自动更新。" >&2
+			return 1
+		}
+	fi
+	if [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
+		[ -x "${KPANEL_NODE_OPENRC_DIR}/cron" ] && kpanel_node_procd_trusted_path "${KPANEL_NODE_OPENRC_DIR}/cron" || {
+			echo "procd 系统缺少可信的 /etc/init.d/cron，无法启用安全自动更新。" >&2
+			return 1
+		}
+		for command_name in ubus jsonfilter logread; do
+			command -v "$command_name" >/dev/null 2>&1 || { echo "缺少必要命令: ${command_name}" >&2; return 1; }
+		done
+	fi
 	case "$(uname -m)" in
 		x86_64|amd64) KPANEL_NODE_ARCH="amd64" ;;
 		aarch64|arm64) KPANEL_NODE_ARCH="arm64" ;;
 		*)
-			echo "当前 CPU 架构暂不支持 KPanel 轻量节点。" >&2
+			echo "当前 CPU 架构暂不支持 KPanel 轻量节点（支持 amd64/x86_64、arm64/aarch64）。" >&2
 			return 1
 			;;
 	esac
@@ -11650,7 +12067,8 @@ kpanel_node_preflight() {
 kpanel_node_ensure_account() {
 	local nologin_shell="/usr/sbin/nologin" sysusers_config=""
 	if id kejilion-node >/dev/null 2>&1; then
-		[ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] || {
+		[ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] &&
+			[ "$(id -u kejilion-node)" != 0 ] && [ "$(id -g kejilion-node)" != 0 ] || {
 			echo "现有 kejilion-node 账户的主组不安全，拒绝继续。" >&2
 			return 1
 		}
@@ -11660,7 +12078,7 @@ kpanel_node_ensure_account() {
 	[ -x "$nologin_shell" ] || nologin_shell="/bin/false"
 
 	if command -v useradd >/dev/null 2>&1; then
-		useradd --system --no-create-home --home-dir /nonexistent --shell "$nologin_shell" kejilion-node || return 1
+		useradd --system --user-group --no-create-home --home-dir /nonexistent --shell "$nologin_shell" kejilion-node || return 1
 	elif command -v systemd-sysusers >/dev/null 2>&1; then
 		sysusers_config="$(mktemp /tmp/kejilion-node-sysusers.XXXXXX)" || return 1
 		printf 'u kejilion-node - "KPanel Lightweight Monitoring Node" /nonexistent %s\n' "$nologin_shell" >"$sysusers_config"
@@ -11680,7 +12098,8 @@ kpanel_node_ensure_account() {
 		adduser -S -D -H -h /nonexistent -s "$nologin_shell" -G kejilion-node kejilion-node || return 1
 	fi
 
-	id kejilion-node >/dev/null 2>&1 && [ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] || {
+	id kejilion-node >/dev/null 2>&1 && [ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] &&
+		[ "$(id -u kejilion-node)" != 0 ] && [ "$(id -g kejilion-node)" != 0 ] || {
 		echo "KPanel 轻量节点低权限账户创建失败。" >&2
 		return 1
 	}
@@ -11780,8 +12199,9 @@ kpanel_node_write_updater() {
 	updater_temporary="$(mktemp "${KPANEL_NODE_HOME}/.update.sh.XXXXXX")" || return 1
 	printf '#!/bin/bash\n' >"$updater_temporary" || return 1
 	kpanel_node_lock_template >>"$updater_temporary" || return 1
+	kpanel_node_procd_helpers_template >>"$updater_temporary" || return 1
 	cat >>"$updater_temporary" <<'KPANEL_NODE_UPDATE'
-# KPANEL_NODE_RUNTIME_GENERATION=3
+# KPANEL_NODE_RUNTIME_GENERATION=5
 set -euo pipefail
 
 mode="${1:-update}"
@@ -11884,8 +12304,66 @@ release_url="$(awk 'tolower($1) == "location:" { sub(/\r$/, "", $2); print $2 }'
 release_base="${release_url%/SHA256SUMS}"
 
 file_service="kejilion-node-file.service"
-file_service_path="/etc/systemd/system/${file_service}"
-file_service_unit_changed=false
+update_init_system=""
+if [ "$(cat /proc/1/comm 2>/dev/null)" = procd ]; then
+	kpanel_node_procd_capable || { echo "KPanel lightweight node requires a running, trusted procd service manager with ubus/jsonfilter" >&2; exit 1; }
+	update_init_system=procd
+elif [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
+	update_init_system=systemd
+elif [ -d /run/openrc ] && command -v rc-service >/dev/null 2>&1 && command -v rc-update >/dev/null 2>&1 &&
+	command -v supervise-daemon >/dev/null 2>&1 && command -v logger >/dev/null 2>&1; then
+	update_init_system=openrc
+else
+	echo "KPanel lightweight node requires a running systemd, OpenRC or native procd service manager" >&2
+	exit 1
+fi
+if [ "$update_init_system" = systemd ]; then
+	file_service_path="/etc/systemd/system/${file_service}"
+else
+	file_service_path="/etc/init.d/${file_service%.service}"
+fi
+file_service_definition_changed=false
+
+updater_service_name() {
+	case "$update_init_system" in
+		openrc|procd) printf '%s\n' "${1%.service}" ;;
+		*) printf '%s\n' "$1" ;;
+	esac
+}
+
+updater_service_exists() {
+	local service
+	service="$(updater_service_name "$1")" || return 1
+	case "$update_init_system" in
+		systemd) systemctl cat "$service" >/dev/null 2>&1 ;;
+		openrc) [ -f "/etc/init.d/${service}" ] && [ ! -L "/etc/init.d/${service}" ] && [ -x "/etc/init.d/${service}" ] ;;
+		procd) [ -x "/etc/init.d/${service}" ] && kpanel_node_procd_trusted_path "/etc/init.d/${service}" ;;
+	esac
+}
+
+updater_service_action() {
+	local action="$1" service
+	service="$(updater_service_name "$2")" || return 1
+	case "$update_init_system" in
+		systemd) systemctl "$action" "$service" ;;
+		openrc)
+			case "$action" in
+				enable) rc-update add "$service" default ;;
+				is-active) rc-service "$service" status >/dev/null 2>&1 ;;
+				restart) rc-service "$service" restart ;;
+				*) return 2 ;;
+			esac
+			;;
+		procd)
+			updater_service_exists "$service" || return 1
+			case "$action" in
+				is-active) kpanel_node_procd_pid "$service" >/dev/null ;;
+				enable|restart) "/etc/init.d/${service}" "$action" ;;
+				*) return 2 ;;
+			esac
+			;;
+	esac
+}
 
 ensure_file_service_unit() {
 	if [ -e "$file_service_path" ] || [ -L "$file_service_path" ]; then
@@ -11893,7 +12371,90 @@ ensure_file_service_unit() {
 		[ "$(stat -c '%u' "$file_service_path")" = "0" ] || return 1
 		[ $(( 8#$(stat -c '%a' "$file_service_path") & 8#022 )) -eq 0 ] || return 1
 	fi
-	local template="${temporary_dir}/file.service" legacy_template="${temporary_dir}/file.legacy.service" unit_temporary
+	local template legacy_template="" unit_temporary
+	if [ "$update_init_system" = procd ]; then
+		template="${temporary_dir}/file.procd"
+		cat >"$template" <<'KPANEL_NODE_FILE_PROCD'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json'
+	procd_set_param user root
+	procd_set_param group root
+	procd_set_param respawn 3600 15 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
+	procd_close_instance
+}
+KPANEL_NODE_FILE_PROCD
+		if [ -f "$file_service_path" ]; then
+			cmp -s "$file_service_path" "$template" && return 0
+			echo "KPanel file service has custom settings; retaining the existing procd service" >&2
+			return 0
+		fi
+		unit_temporary="$(mktemp "${file_service_path}.XXXXXX")" || return 1
+		if ! install -o root -g root -m 0755 "$template" "$unit_temporary" || ! mv -f -- "$unit_temporary" "$file_service_path"; then
+			rm -f -- "$unit_temporary"
+			return 1
+		fi
+		file_service_definition_changed=true
+		return 0
+	fi
+	if [ "$update_init_system" = openrc ]; then
+		template="${temporary_dir}/file.openrc"
+		cat >"$template" <<'KPANEL_NODE_FILE_OPENRC'
+#!/sbin/openrc-run
+
+name="KPanel Lightweight Node File Manager"
+description="Privileged file broker for KPanel lightweight node"
+command="/usr/local/lib/kejilion-node/kejilion-node"
+command_args="file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json"
+command_user="root:root"
+directory="/"
+pidfile="/run/kejilion-node/kejilion-node-file.pid"
+supervisor="supervise-daemon"
+respawn_delay=15
+respawn_max=0
+retry="TERM/30/KILL/5"
+stopgroup=true
+umask=0077
+output_logger="logger -t kejilion-node-file"
+error_logger="logger -t kejilion-node-file"
+no_new_privs=true
+
+depend() {
+	need localmount
+	use net logger
+}
+
+start_pre() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	checkpath --directory --mode 0750 --owner root:root /run/kejilion-node
+}
+KPANEL_NODE_FILE_OPENRC
+		if [ -f "$file_service_path" ]; then
+			cmp -s "$file_service_path" "$template" && return 0
+			echo "KPanel file service has custom settings; retaining the existing OpenRC service" >&2
+			return 0
+		fi
+		unit_temporary="$(mktemp "${file_service_path}.XXXXXX")" || return 1
+		if ! install -o root -g root -m 0755 "$template" "$unit_temporary" || ! mv -f -- "$unit_temporary" "$file_service_path"; then
+			rm -f -- "$unit_temporary"
+			return 1
+		fi
+		file_service_definition_changed=true
+		return 0
+	fi
+	template="${temporary_dir}/file.service"
+	legacy_template="${temporary_dir}/file.legacy.service"
 	cat >"$template" <<'KPANEL_NODE_FILE_SERVICE'
 [Unit]
 Description=KPanel Lightweight Node File Manager
@@ -11945,14 +12506,18 @@ KPANEL_NODE_FILE_SERVICE
 		rm -f -- "$unit_temporary"
 		return 1
 	fi
-	file_service_unit_changed=true
+	file_service_definition_changed=true
 	systemctl daemon-reload
 }
 
 service_running_current() {
 	local service="$1" pid
-	systemctl is-active --quiet "$service" || return 1
-	pid="$(systemctl show "$service" --property=MainPID --value)" || return 1
+	updater_service_action is-active "$service" || return 1
+	case "$update_init_system" in
+		systemd) pid="$(systemctl show "$service" --property=MainPID --value)" || return 1 ;;
+		openrc) pid="$(cat "/run/kejilion-node/$(updater_service_name "$service").pid" 2>/dev/null)" || return 1 ;;
+		procd) pid="$(kpanel_node_procd_pid "$service")" || return 1 ;;
+	esac
 	[[ "$pid" =~ ^[1-9][0-9]*$ ]] && [ "/proc/${pid}/exe" -ef "$binary_path" ]
 }
 wait_for_service() {
@@ -11982,7 +12547,7 @@ repair_config_access() {
 	chown "root:${gid}" "$config" && chmod 0640 "$config"
 }
 restart_required=false
-if [ "$mode" = "update" ] && systemctl cat kejilion-node.service >/dev/null 2>&1; then
+if [ "$mode" = "update" ] && updater_service_exists kejilion-node.service; then
 	restart_required=true
 fi
 
@@ -11991,14 +12556,14 @@ restart_optional_services() {
 		optional_degraded=true
 		echo "KPanel lightweight node updated; file service unit is unavailable" >&2
 	fi
-	systemctl enable "$file_service" >/dev/null 2>&1 || optional_degraded=true
+	updater_service_action enable "$file_service" >/dev/null 2>&1 || optional_degraded=true
 	# Telemetry is the core update contract. Optional brokers can be unavailable
 	# on older centers; their failure must not roll back a healthy reporting node.
 	local service
 	for service in kejilion-node-terminal.service kejilion-node-ssh-login.service kejilion-node-file.service; do
-		if systemctl cat "$service" >/dev/null 2>&1; then
-			if service_running_current "$service" && { [ "$service" != "$file_service" ] || [ "$file_service_unit_changed" != true ]; }; then continue; fi
-			if ! systemctl restart "$service" || ! wait_for_service "$service"; then
+		if updater_service_exists "$service"; then
+			if service_running_current "$service" && { [ "$service" != "$file_service" ] || [ "$file_service_definition_changed" != true ]; }; then continue; fi
+			if ! updater_service_action restart "$service" || ! wait_for_service "$service"; then
 				optional_degraded=true
 				echo "KPanel lightweight node updated; optional service unavailable: ${service}" >&2
 			fi
@@ -12009,7 +12574,7 @@ restart_services() {
 	update_error=config
 	repair_config_access || return 1
 	update_error=restart
-	systemctl restart kejilion-node.service || return 1
+	updater_service_action restart kejilion-node.service || return 1
 	wait_for_service kejilion-node.service || return 1
 	restart_optional_services
 }
@@ -12084,7 +12649,288 @@ KPANEL_NODE_UPDATE
 	fi
 }
 
+kpanel_node_write_openrc_units() {
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node" <<'KPANEL_NODE_OPENRC_SERVICE'
+#!/sbin/openrc-run
+
+name="KPanel Lightweight Monitoring Node"
+description="Low-privilege telemetry service for KPanel"
+command="/usr/local/lib/kejilion-node/kejilion-node"
+command_args="run --config /etc/kejilion-node/node.json"
+command_user="kejilion-node:kejilion-node"
+directory="/"
+pidfile="/run/kejilion-node/kejilion-node.pid"
+supervisor="supervise-daemon"
+respawn_delay=15
+respawn_max=0
+retry="TERM/30/KILL/5"
+stopgroup=true
+umask=0077
+output_logger="logger -t kejilion-node"
+error_logger="logger -t kejilion-node"
+no_new_privs=true
+
+depend() {
+	need localmount
+	use net logger
+	after kejilion-node-terminal
+}
+
+start_pre() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	checkpath --directory --mode 0750 --owner root:root /run/kejilion-node
+}
+KPANEL_NODE_OPENRC_SERVICE
+
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" <<'KPANEL_NODE_OPENRC_TERMINAL_SERVICE'
+#!/sbin/openrc-run
+
+name="KPanel Lightweight Node Root PTY Broker"
+description="Privileged terminal broker for KPanel lightweight node"
+command="/usr/local/lib/kejilion-node/kejilion-node"
+command_args="terminal-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json"
+command_user="root:root"
+directory="/"
+pidfile="/run/kejilion-node/kejilion-node-terminal.pid"
+supervisor="supervise-daemon"
+respawn_delay=5
+respawn_max=0
+retry="TERM/30/KILL/5"
+stopgroup=true
+umask=0077
+output_logger="logger -t kejilion-node-terminal"
+error_logger="logger -t kejilion-node-terminal"
+
+depend() {
+	need localmount
+	use net logger
+}
+
+start_pre() {
+	[ -f /etc/kejilion-node/node.json ] && [ -f /etc/kejilion-node/terminal.json ] || return 1
+	checkpath --directory --mode 0750 --owner root:root /run/kejilion-node
+}
+KPANEL_NODE_OPENRC_TERMINAL_SERVICE
+
+	cat >"$KPANEL_NODE_SSH_LOGIN_SERVICE" <<'KPANEL_NODE_OPENRC_SSH_LOGIN_SERVICE'
+#!/sbin/openrc-run
+
+name="KPanel SSH Login Event Collector"
+description="SSH login event collector for KPanel lightweight node"
+command="/usr/local/lib/kejilion-node/kejilion-node"
+command_args="ssh-login-broker --output /run/kejilion-node-ssh/ssh-login.json"
+command_user="root:kejilion-node"
+directory="/"
+pidfile="/run/kejilion-node/kejilion-node-ssh-login.pid"
+supervisor="supervise-daemon"
+respawn_delay=15
+respawn_max=0
+retry="TERM/30/KILL/5"
+stopgroup=true
+umask=0027
+output_logger="logger -t kejilion-node-ssh-login"
+error_logger="logger -t kejilion-node-ssh-login"
+no_new_privs=true
+
+depend() {
+	need localmount
+	use logger
+	after sshd dropbear
+}
+
+start_pre() {
+	checkpath --directory --mode 0750 --owner root:root /run/kejilion-node
+	checkpath --directory --mode 0750 --owner root:kejilion-node /run/kejilion-node-ssh
+}
+KPANEL_NODE_OPENRC_SSH_LOGIN_SERVICE
+
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" <<'KPANEL_NODE_OPENRC_FILE_SERVICE'
+#!/sbin/openrc-run
+
+name="KPanel Lightweight Node File Manager"
+description="Privileged file broker for KPanel lightweight node"
+command="/usr/local/lib/kejilion-node/kejilion-node"
+command_args="file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json"
+command_user="root:root"
+directory="/"
+pidfile="/run/kejilion-node/kejilion-node-file.pid"
+supervisor="supervise-daemon"
+respawn_delay=15
+respawn_max=0
+retry="TERM/30/KILL/5"
+stopgroup=true
+umask=0077
+output_logger="logger -t kejilion-node-file"
+error_logger="logger -t kejilion-node-file"
+no_new_privs=true
+
+depend() {
+	need localmount
+	use net logger
+}
+
+start_pre() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	checkpath --directory --mode 0750 --owner root:root /run/kejilion-node
+}
+KPANEL_NODE_OPENRC_FILE_SERVICE
+
+	cat >"$KPANEL_NODE_UPDATE_PERIODIC" <<'KPANEL_NODE_OPENRC_UPDATE'
+#!/bin/sh
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+umask 077
+random_value="$(od -An -N2 -tu2 /dev/urandom 2>/dev/null | tr -d ' ' || true)"
+case "$random_value" in *[!0-9]*|'') random_value=0 ;; esac
+sleep "$((random_value % 901))"
+exec /usr/local/lib/kejilion-node/update.sh update
+KPANEL_NODE_OPENRC_UPDATE
+
+	chmod 0755 "${KPANEL_NODE_OPENRC_DIR}/kejilion-node" \
+		"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" \
+		"$KPANEL_NODE_SSH_LOGIN_SERVICE" \
+		"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" \
+		"$KPANEL_NODE_UPDATE_PERIODIC"
+}
+
+kpanel_node_write_procd_units() {
+	local path
+	# Every privileged destination is fixed and in a root-owned, non-writable
+	# directory. Reject linked or custom-owned files before opening a heredoc.
+	for path in "$KPANEL_NODE_OPENRC_DIR" "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"; do
+		[ -d "$path" ] && kpanel_node_procd_trusted_path "$path" || return 1
+	done
+	for path in "${KPANEL_NODE_OPENRC_DIR}/kejilion-node" "${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" \
+		"$KPANEL_NODE_SSH_LOGIN_SERVICE" "${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" "$KPANEL_NODE_UPDATE_CRON"; do
+		if [ -e "$path" ] || [ -L "$path" ]; then
+			[ -f "$path" ] && kpanel_node_procd_trusted_path "$path" && [ "$(stat -c '%h' "$path")" = 1 ] || return 1
+		fi
+	done
+	path="${KPANEL_NODE_CONFIG_DIR}/state"
+	[ ! -L "$path" ] || return 1
+	if [ -e "$path" ]; then
+		[ -d "$path" ] && [ "$(stat -c '%u:%g:%a' "$path")" = 0:0:700 ] || return 1
+	else
+		"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root -m 0700 "$path" || return 1
+	fi
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node" <<'KPANEL_NODE_PROCD_SERVICE'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node run --config /etc/kejilion-node/node.json'
+	procd_set_param user kejilion-node
+	procd_set_param group kejilion-node
+	procd_set_param respawn 3600 15 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
+	procd_close_instance
+}
+KPANEL_NODE_PROCD_SERVICE
+
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" <<'KPANEL_NODE_PROCD_TERMINAL_SERVICE'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	[ -f /etc/kejilion-node/terminal.json ] || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node terminal-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json'
+	procd_set_param user root
+	procd_set_param group root
+	procd_set_param respawn 3600 5 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+KPANEL_NODE_PROCD_TERMINAL_SERVICE
+
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-ssh-login" <<'KPANEL_NODE_PROCD_SSH_LOGIN_SERVICE'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ ! -L /run/kejilion-node-ssh ] || return 1
+	if [ -e /run/kejilion-node-ssh ]; then
+		[ -d /run/kejilion-node-ssh ] && [ "$(stat -c '%u:%a' /run/kejilion-node-ssh)" = 0:750 ] || return 1
+	fi
+	command install -d -o root -g kejilion-node -m 0750 /run/kejilion-node-ssh || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 027; exec /usr/local/lib/kejilion-node/kejilion-node ssh-login-broker --output /run/kejilion-node-ssh/ssh-login.json'
+	procd_set_param user root
+	procd_set_param group kejilion-node
+	procd_set_param respawn 3600 15 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
+	procd_close_instance
+}
+KPANEL_NODE_PROCD_SSH_LOGIN_SERVICE
+
+	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" <<'KPANEL_NODE_PROCD_FILE_SERVICE'
+#!/bin/sh /etc/rc.common
+# KPanel managed procd service
+USE_PROCD=1
+START=95
+STOP=10
+
+start_service() {
+	[ -f /etc/kejilion-node/node.json ] || return 1
+	procd_open_instance main
+	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json'
+	procd_set_param user root
+	procd_set_param group root
+	procd_set_param respawn 3600 15 0
+	procd_set_param term_timeout 30
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
+	procd_close_instance
+}
+KPANEL_NODE_PROCD_FILE_SERVICE
+
+	cat >"$KPANEL_NODE_UPDATE_CRON" <<'KPANEL_NODE_PROCD_UPDATE'
+#!/bin/sh
+set -eu
+PATH=/usr/sbin:/usr/bin:/sbin:/bin
+export PATH
+umask 077
+random_value="$(od -An -N2 -tu2 /dev/urandom 2>/dev/null | tr -d ' ' || true)"
+case "$random_value" in *[!0-9]*|'') random_value=0 ;; esac
+sleep "$((random_value % 901))"
+exec /usr/local/lib/kejilion-node/update.sh update
+KPANEL_NODE_PROCD_UPDATE
+	chmod 0755 "${KPANEL_NODE_OPENRC_DIR}/kejilion-node" \
+		"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" "$KPANEL_NODE_SSH_LOGIN_SERVICE" \
+		"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" "$KPANEL_NODE_UPDATE_CRON"
+}
+
 kpanel_node_write_units() {
+	if [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
+		kpanel_node_write_procd_units
+		return
+	fi
+	if [ "$KPANEL_NODE_INIT_SYSTEM" = openrc ]; then
+		kpanel_node_write_openrc_units
+		return
+	fi
 	cat >/etc/systemd/system/kejilion-node.service <<'KPANEL_NODE_SERVICE'
 [Unit]
 Description=KPanel Lightweight Monitoring Node
@@ -12278,6 +13124,7 @@ kpanel_node_stage_paths() {
 	KPANEL_NODE_STAGE_CONFIG_SHA="${KPANEL_NODE_ENROLLMENT_STAGE}/node.sha256"
 	KPANEL_NODE_STAGE_TERMINAL="${KPANEL_NODE_ENROLLMENT_STAGE}/terminal.json"
 	KPANEL_NODE_STAGE_TERMINAL_STATE="${KPANEL_NODE_ENROLLMENT_STAGE}/terminal.state"
+	KPANEL_NODE_STAGE_BATCH_ATTEMPT="${KPANEL_NODE_ENROLLMENT_STAGE}/batch-enrollment-attempt.json"
 }
 
 kpanel_node_safe_regular_file() {
@@ -12308,7 +13155,14 @@ kpanel_node_clear_enrollment_stage() {
 	[ -d "$KPANEL_NODE_ENROLLMENT_STAGE" ] && [ ! -L "$KPANEL_NODE_ENROLLMENT_STAGE" ] &&
 		[ "$(stat -c '%u:%a' "$KPANEL_NODE_ENROLLMENT_STAGE")" = "0:700" ] || return 1
 	for path in "$KPANEL_NODE_STAGE_TOKEN" "$KPANEL_NODE_STAGE_CONFIG" "$KPANEL_NODE_STAGE_CONFIG_SHA" \
-		"$KPANEL_NODE_STAGE_TERMINAL" "$KPANEL_NODE_STAGE_TERMINAL_STATE"; do
+		"$KPANEL_NODE_STAGE_TERMINAL" "$KPANEL_NODE_STAGE_TERMINAL_STATE" "$KPANEL_NODE_STAGE_BATCH_ATTEMPT"; do
+		[ -e "$path" ] || [ -L "$path" ] || continue
+		kpanel_node_safe_regular_file "$path" || return 1
+		rm -f -- "$path" || return 1
+	done
+	for path in "$KPANEL_NODE_ENROLLMENT_STAGE"/.node.json.tmp-* \
+		"$KPANEL_NODE_ENROLLMENT_STAGE"/.terminal.json.tmp-* \
+		"$KPANEL_NODE_ENROLLMENT_STAGE"/.batch-enrollment-attempt.tmp-*; do
 		[ -e "$path" ] || [ -L "$path" ] || continue
 		kpanel_node_safe_regular_file "$path" || return 1
 		rm -f -- "$path" || return 1
@@ -12409,46 +13263,58 @@ kpanel_node_finalize_enrollment() {
 kpanel_node_stop_runtime() {
 	local service
 	for service in kejilion-node.service kejilion-node-terminal.service kejilion-node-ssh-login.service "$KPANEL_NODE_FILE_SERVICE"; do
-		"$KPANEL_NODE_SYSTEMCTL" stop "$service" >/dev/null 2>&1 || true
+		kpanel_node_service_action stop "$service" >/dev/null 2>&1 || true
 	done
 }
 
 kpanel_node_activate() {
-	"$KPANEL_NODE_SYSTEMCTL" daemon-reload || return 1
+	kpanel_node_service_reload_manager || return 1
 	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
-		"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-terminal.service || return 1
+		kpanel_node_service_action enable kejilion-node-terminal.service || return 1
 	else
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-terminal.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-terminal.service >/dev/null 2>&1 || true
+		kpanel_node_service_action disable kejilion-node-terminal.service >/dev/null 2>&1 || true
+		kpanel_node_service_action stop kejilion-node-terminal.service >/dev/null 2>&1 || true
 	fi
-	"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node.service || return 1
-	"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-ssh-login.service || return 1
-	"$KPANEL_NODE_SYSTEMCTL" enable kejilion-node-update.timer || return 1
+	kpanel_node_service_action enable kejilion-node.service || return 1
+	kpanel_node_service_action enable kejilion-node-ssh-login.service || return 1
+	kpanel_node_update_schedule_enable || return 1
 	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ]; then
-		if ! "$KPANEL_NODE_SYSTEMCTL" start kejilion-node-terminal.service; then
+		if ! kpanel_node_service_action start kejilion-node-terminal.service; then
 			echo "KPanel 轻量节点终端 broker 启动失败；文件管理和遥测服务仍将继续。" >&2
 		fi
 	fi
-	if ! "$KPANEL_NODE_SYSTEMCTL" start kejilion-node-ssh-login.service; then
+	if ! kpanel_node_service_action start kejilion-node-ssh-login.service; then
 		echo "KPanel SSH 登录采集服务启动失败；普通遥测仍将继续。" >&2
 	fi
-	"$KPANEL_NODE_SYSTEMCTL" start kejilion-node.service || return 1
-	"$KPANEL_NODE_SYSTEMCTL" start kejilion-node-update.timer || return 1
-	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ] && ! "$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-terminal.service >/dev/null; then
+	kpanel_node_service_action start kejilion-node.service || return 1
+	kpanel_node_update_schedule_start || return 1
+	if [ -f "$KPANEL_NODE_TERMINAL_CONFIG" ] && ! kpanel_node_service_action is-active kejilion-node-terminal.service >/dev/null; then
 		echo "KPanel 轻量节点终端 broker 当前不可用；文件管理和遥测服务仍在运行。" >&2
 	fi
-	"$KPANEL_NODE_SYSTEMCTL" enable "$KPANEL_NODE_FILE_SERVICE" || return 1
-	{ "$KPANEL_NODE_SYSTEMCTL" start "$KPANEL_NODE_FILE_SERVICE" >/dev/null 2>&1 || true; }
-	if ! "$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node-ssh-login.service >/dev/null; then
+	kpanel_node_service_action enable "$KPANEL_NODE_FILE_SERVICE" || return 1
+	{ kpanel_node_service_action start "$KPANEL_NODE_FILE_SERVICE" >/dev/null 2>&1 || true; }
+	if ! kpanel_node_service_action is-active kejilion-node-ssh-login.service >/dev/null; then
 		echo "KPanel SSH 登录采集服务当前不可用；普通遥测仍在运行。" >&2
 	fi
-	"$KPANEL_NODE_SYSTEMCTL" is-active kejilion-node.service >/dev/null
+	if [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
+		local attempt
+		for attempt in {1..20}; do
+			if kpanel_node_service_action is-active kejilion-node.service >/dev/null; then
+				sleep 0.25
+				kpanel_node_service_action is-active kejilion-node.service >/dev/null && return 0
+			fi
+			sleep 0.25
+		done
+		return 1
+	fi
+	kpanel_node_service_action is-active kejilion-node.service >/dev/null
 }
 
 kpanel_node_join() {
 	(
 	local token="${1:-}" node_name="" fingerprint="" saved_fingerprint="" staged_fingerprint="" update_mode=install
-	local enrollment_output="" node_id="" node_version=""
+	local enrollment_output="" node_id="" node_version="" batch_token=false enroll_required=false
+	local -a enrollment_attempt_args=()
 	shift || true
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
@@ -12464,6 +13330,7 @@ kpanel_node_join() {
 	kpanel_node_preflight || return 1
 	case "$token" in
 		kpl1.*) ;;
+		kpb1.*) batch_token=true ;;
 		*) echo "轻量节点接入授权无效。" >&2; return 2 ;;
 	esac
 	[ "${#token}" -le 2048 ] || {
@@ -12515,9 +13382,29 @@ kpanel_node_join() {
 			"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root -m 0700 "$KPANEL_NODE_ENROLLMENT_STAGE" || return 1
 			printf '%s\n' "$fingerprint" >"$KPANEL_NODE_STAGE_TOKEN" || return 1
 			chmod 0600 "$KPANEL_NODE_STAGE_TOKEN" || return 1
-			if ! enrollment_output="$("$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_STAGE_CONFIG" --terminal-config "$KPANEL_NODE_STAGE_TERMINAL")"; then
+			enroll_required=true
+		elif [ "$batch_token" = true ] &&
+			[ ! -e "$KPANEL_NODE_STAGE_CONFIG" ] && [ ! -L "$KPANEL_NODE_STAGE_CONFIG" ] &&
+			[ ! -e "$KPANEL_NODE_STAGE_CONFIG_SHA" ] && [ ! -L "$KPANEL_NODE_STAGE_CONFIG_SHA" ]; then
+			if [ -e "$KPANEL_NODE_STAGE_BATCH_ATTEMPT" ] || [ -L "$KPANEL_NODE_STAGE_BATCH_ATTEMPT" ]; then
+				kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_BATCH_ATTEMPT" || {
+					echo "本机存在无法安全恢复的 KPanel 批量接入状态；请检查 ${KPANEL_NODE_ENROLLMENT_STAGE}。" >&2
+					return 1
+				}
+			fi
+			enroll_required=true
+		fi
+		if [ "$enroll_required" = true ]; then
+			if [ "$batch_token" = true ]; then
+				enrollment_attempt_args=(--attempt-file "$KPANEL_NODE_STAGE_BATCH_ATTEMPT")
+			fi
+			if ! enrollment_output="$("$KPANEL_NODE_BINARY" enroll --token "$token" --name "$node_name" --config "$KPANEL_NODE_STAGE_CONFIG" --terminal-config "$KPANEL_NODE_STAGE_TERMINAL" "${enrollment_attempt_args[@]}")"; then
 				if kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_CONFIG" && [ -s "$KPANEL_NODE_STAGE_CONFIG" ]; then
 					echo "新节点授权已取得但本地保存未完成，原有连接保持不变；再次执行同一条命令可继续。" >&2
+					return 1
+				fi
+				if [ "$batch_token" = true ] && kpanel_node_safe_regular_file "$KPANEL_NODE_STAGE_BATCH_ATTEMPT"; then
+					echo "批量接入请求尚未确认，已安全保留本机身份；再次执行同一条命令可继续。" >&2
 					return 1
 				fi
 				kpanel_node_clear_enrollment_stage || true
@@ -12539,11 +13426,11 @@ kpanel_node_join() {
 	fi
 	kpanel_node_stop_runtime
 	if ! kpanel_node_write_units; then
-		echo "节点授权已保存，但 systemd 单元写入失败；再次执行接入命令可继续。" >&2
+		echo "节点授权已保存，但 ${KPANEL_NODE_INIT_SYSTEM} 服务定义写入失败；再次执行接入命令可继续。" >&2
 		return 1
 	fi
 	if ! kpanel_node_activate; then
-		echo "KPanel 轻量节点授权已保存，但服务启动失败；修复 systemd 后再次执行接入命令即可续装。" >&2
+		echo "KPanel 轻量节点授权已保存，但服务启动失败；修复 ${KPANEL_NODE_INIT_SYSTEM} 后再次执行接入命令即可续装。" >&2
 		return 1
 	fi
 	node_version="$("$KPANEL_NODE_BINARY" version 2>/dev/null | awk 'NR == 1 { print $1; exit }' || true)"
@@ -12562,10 +13449,31 @@ kpanel_node_status() {
 		echo "KPanel 轻量节点未安装。" >&2
 		return 1
 	}
+	kpanel_node_detect_init_system || return 1
 	"$KPANEL_NODE_BINARY" version
-	"$KPANEL_NODE_SYSTEMCTL" --no-pager --full status kejilion-node.service
+	kpanel_node_service_action status kejilion-node.service
 	main_status=$?
-	"$KPANEL_NODE_SYSTEMCTL" --no-pager --full status kejilion-node-update.timer kejilion-node-terminal.service kejilion-node-file.service kejilion-node-ssh-login.service || true
+	for service in kejilion-node-terminal.service kejilion-node-file.service kejilion-node-ssh-login.service; do
+		kpanel_node_service_action status "$service" || true
+	done
+	if [ "$KPANEL_NODE_INIT_SYSTEM" = systemd ]; then
+		kpanel_node_service_action status kejilion-node-update.timer || true
+	elif [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
+		kpanel_node_service_action status cron || true
+		if [ -x "$KPANEL_NODE_UPDATE_CRON" ] && kpanel_node_procd_trusted_path "$KPANEL_NODE_UPDATE_CRON" &&
+			grep -Fxq "$(kpanel_node_procd_cron_line)" "$KPANEL_NODE_CRONTAB"; then
+			echo "KPanel lightweight node updater: enabled (cron)"
+		else
+			echo "KPanel lightweight node updater: disabled or unavailable" >&2
+		fi
+	else
+		kpanel_node_service_action status crond || true
+		if [ -x "$KPANEL_NODE_UPDATE_PERIODIC" ] && [ ! -L "$KPANEL_NODE_UPDATE_PERIODIC" ]; then
+			echo "KPanel lightweight node updater: enabled (${KPANEL_NODE_UPDATE_PERIODIC})"
+		else
+			echo "KPanel lightweight node updater: disabled" >&2
+		fi
+	fi
 	local health_output
 	# Old release binaries do not support this optional read-only summary yet.
 	if health_output="$("$KPANEL_NODE_BINARY" health 2>/dev/null)"; then printf '%s\n' "$health_output"; fi
@@ -12588,6 +13496,19 @@ kpanel_node_update() {
 	)
 }
 
+kpanel_node_clear_monitoring_relay() {
+	local directory=/run/kejilion-node-monitoring path
+	[ -e "$directory" ] || [ -L "$directory" ] || return 0
+	# An unrecognized entry is preserved; no recursive removal of runtime data.
+	[ -d "$directory" ] && [ ! -L "$directory" ] && [ "$(stat -c '%u:%a' "$directory")" = 0:750 ] || return 1
+	for path in "$directory/check-status.json" "$directory/procd-health.json"; do
+		[ -e "$path" ] || [ -L "$path" ] || continue
+		kpanel_node_safe_regular_file "$path" || return 1
+	done
+	rm -f -- "$directory/check-status.json" "$directory/procd-health.json" || return 1
+	rmdir -- "$directory" 2>/dev/null || true
+}
+
 kpanel_node_uninstall() {
 	(
 	kpanel_node_paths
@@ -12596,27 +13517,35 @@ kpanel_node_uninstall() {
 		return 1
 	}
 	kpanel_node_lock || return 1
-	if [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-terminal.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-ssh-login.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-file.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" stop kejilion-node-update.timer >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-terminal.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-ssh-login.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-file.service >/dev/null 2>&1 || true
-		"$KPANEL_NODE_SYSTEMCTL" disable kejilion-node-update.timer >/dev/null 2>&1 || true
+	kpanel_node_detect_init_system >/dev/null 2>&1 || true
+	# Remove only our exact cron entry even if procd/ubus is currently broken.
+	kpanel_node_procd_cron_write remove || { echo "无法安全移除 KPanel 自动更新计划，卸载已停止。" >&2; return 1; }
+	if [ -n "$KPANEL_NODE_INIT_SYSTEM" ]; then
+		for service in kejilion-node.service kejilion-node-terminal.service kejilion-node-ssh-login.service kejilion-node-file.service; do
+			kpanel_node_service_action stop "$service" >/dev/null 2>&1 || true
+			kpanel_node_service_action disable "$service" >/dev/null 2>&1 || true
+		done
+		kpanel_node_update_schedule_stop >/dev/null 2>&1 || true
+		if ! kpanel_node_update_schedule_disable; then
+			echo "无法安全移除 KPanel 自动更新计划，卸载已停止。" >&2
+			return 1
+		fi
 	fi
 	rm -f -- /etc/systemd/system/kejilion-node.service \
 		/etc/systemd/system/kejilion-node-terminal.service \
 		"$KPANEL_NODE_SSH_LOGIN_SERVICE" \
 		/etc/systemd/system/kejilion-node-file.service \
 		/etc/systemd/system/kejilion-node-update.service \
-		/etc/systemd/system/kejilion-node-update.timer
+		/etc/systemd/system/kejilion-node-update.timer \
+		/etc/init.d/kejilion-node \
+		/etc/init.d/kejilion-node-terminal \
+		/etc/init.d/kejilion-node-ssh-login \
+		/etc/init.d/kejilion-node-file \
+		"$KPANEL_NODE_UPDATE_PERIODIC"
+	kpanel_node_clear_monitoring_relay || echo "KPanel 状态中继目录存在未知权限或链接，已保留供人工检查。" >&2
 	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
 	rmdir -- "$KPANEL_NODE_SSH_LOGIN_RUNTIME" 2>/dev/null || true
-	[ ! -x "$KPANEL_NODE_SYSTEMCTL" ] || "$KPANEL_NODE_SYSTEMCTL" daemon-reload >/dev/null 2>&1 || true
+	[ "$KPANEL_NODE_INIT_SYSTEM" != systemd ] || kpanel_node_service_reload_manager >/dev/null 2>&1 || true
 	echo "KPanel 轻量节点已从本机卸载；中心端的离线记录需在集群页面删除。"
 	)
 }
@@ -13113,7 +14042,7 @@ linux_Oracle() {
 
 		  4)
 			  clear
-			  send_stats "R探長開機腳本"
+			  send_stats "R探长开机脚本"
 			  bash <(wget -qO- ${gh_proxy}github.com/Yohann0617/oci-helper/releases/latest/download/sh_oci-helper_install.sh)
 			  ;;
 		  5)
@@ -13131,7 +14060,7 @@ linux_Oracle() {
 
 			  ;;
 		  *)
-			  echo "無效的輸入!"
+			  echo "无效的输入!"
 			  ;;
 	  esac
 	  break_end
@@ -13155,7 +14084,7 @@ docker_tato() {
 
 	if command -v docker &> /dev/null; then
 		echo -e "${gl_kjlan}------------------------"
-		echo -e "${gl_lv}環境已經安裝${gl_bai}  容器: ${gl_lv}$container_count${gl_bai}鏡像:${gl_lv}$image_count${gl_bai}網路:${gl_lv}$network_count${gl_bai}卷:${gl_lv}$volume_count${gl_bai}"
+		echo -e "${gl_lv}环境已经安装${gl_bai}  容器: ${gl_lv}$container_count${gl_bai}  镜像: ${gl_lv}$image_count${gl_bai}  网络: ${gl_lv}$network_count${gl_bai}  卷: ${gl_lv}$volume_count${gl_bai}"
 	fi
 }
 
@@ -13176,7 +14105,7 @@ local db_output="${gl_lv}${db_count}${gl_bai}"
 if command -v docker &>/dev/null; then
 	if docker ps --filter "name=nginx" --filter "status=running" | grep -q nginx; then
 		echo -e "${gl_huang}------------------------"
-		echo -e "${gl_lv}環境已安裝${gl_bai}站點:$output  数据库: $db_output"
+		echo -e "${gl_lv}环境已安装${gl_bai}  站点: $output  数据库: $db_output"
 	fi
 fi
 
@@ -13213,10 +14142,10 @@ kpanel_web_http_port_available() {
 	mode=$(docker inspect --format '{{.HostConfig.NetworkMode}}' nginx 2>/dev/null) || mode=""
 	if [ -n "$mode" ] && [ "$mode" != host ]; then
 		docker port nginx "$port/tcp" 2>/dev/null | grep -Eq ":${port}$" && return 0
-		echo "HTTP 端口 $port尚未對應到 Nginx 容器。" >&2
+		echo "HTTP 端口 $port 尚未映射到 Nginx 容器。" >&2
 		return 1
 	fi
-	command -v ss >/dev/null 2>&1 || { echo '檢查 HTTP 連接埠需要 ss（iproute2）。' >&2; return 1; }
+	command -v ss >/dev/null 2>&1 || { echo '检查 HTTP 端口需要 ss（iproute2）。' >&2; return 1; }
 	listeners=$(ss -H -ltnp "sport = :$port") || return 1
 	[ -n "$listeners" ] || return 0
 	owned=$(docker top nginx -eo pid 2>/dev/null) || return 1
@@ -13225,7 +14154,7 @@ kpanel_web_http_port_available() {
 		[ -n "$pids" ] || return 1
 		for pid in $pids; do
 			printf '%s\n' "$owned" | grep -Eq "^[[:space:]]*${pid}[[:space:]]*$" || {
-				echo "HTTP 連接埠$port 已被其他服务占用。" >&2
+				echo "HTTP 端口 $port 已被其他服务占用。" >&2
 				return 1
 			}
 		done
@@ -13244,7 +14173,7 @@ kpanel_web_http_wait_listener() {
 		fi
 		sleep 0.1
 	done
-	echo "Nginx 未能監聽 HTTP 端口$1。" >&2
+	echo "Nginx 未能监听 HTTP 端口 $1。" >&2
 	return 1
 }
 
@@ -13290,10 +14219,10 @@ kpanel_run_http_site() (
 		fi
 		if [ "$http_nginx_was_running" = true ] &&
 			[ "$(docker inspect --format "{{.State.Running}}" nginx 2>/dev/null)" != true ]; then
-			docker start nginx >/dev/null 2>&1 || echo "恢復原 Nginx 容器失敗，請檢查容器日誌。" >&2
+			docker start nginx >/dev/null 2>&1 || echo "恢复原 Nginx 容器失败，请检查容器日志。" >&2
 		fi
 		docker exec nginx nginx -t >/dev/null 2>&1 && docker exec nginx nginx -s reload >/dev/null 2>&1 ||
-			echo "本次 HTTP 設定已撤回，原 Nginx 重載失敗，請檢查容器日誌。" >&2
+			echo "本次 HTTP 配置已撤回，原 Nginx 重载失败，请检查容器日志。" >&2
 	fi' EXIT
 	trap 'exit 130' INT
 	trap 'exit 143' TERM
@@ -13319,7 +14248,7 @@ kpanel_web_http_config() (
 	mode=$(docker inspect --format '{{.HostConfig.NetworkMode}}' nginx) || return 1
 	if [ "$mode" != host ]; then
 		docker port nginx "${KJ_WEB_HTTP_PORT}/tcp" 2>/dev/null | grep -Eq ":${KJ_WEB_HTTP_PORT}$" || {
-			echo "HTTP 連接埠${KJ_WEB_HTTP_PORT} 尚未映射到 Nginx 容器，请先配置相同端口映射。" >&2
+			echo "HTTP 端口 ${KJ_WEB_HTTP_PORT} 尚未映射到 Nginx 容器，请先配置相同端口映射。" >&2
 			return 1
 		}
 	fi
@@ -13381,7 +14310,7 @@ kpanel_run_web_recipe_cli() {
 	local lock_fd rc
 	exec {lock_fd}>/run/lock/kejilion-web-environment.lock
 	if ! flock -n "$lock_fd"; then
-		echo "已有網站或 LDNMP 環境任務正在執行" >&2
+		echo "已有网站或 LDNMP 环境任务正在执行" >&2
 		exec {lock_fd}>&-
 		return 75
 	fi
@@ -13444,7 +14373,7 @@ kpanel_ldnmp_component() {
 				;;
 		esac
 	fi
-	printf '{"name":"%s","re​​quired":%s,"exists":%s,"running":%s,"state":"%s","image":"%s","version":"%s","re​​poDigest":"%s","updateStatus":"%s","re​​poDigest":"%s","updateStatus」' \
+	printf '{"name":"%s","required":%s,"exists":%s,"running":%s,"state":"%s","image":"%s","version":"%s","repoDigest":"%s","updateStatus":"unknown","updateReason":"Registry 状态仅在更新任务中实时确认"}' \
 		"$name" "$required" "$exists" "$running" "$(kpanel_ldnmp_escape "$state")" \
 		"$(kpanel_ldnmp_escape "$image")" "$(kpanel_ldnmp_escape "$version")" "$(kpanel_ldnmp_escape "$digest")"
 }
@@ -13515,14 +14444,14 @@ ldnmp_environment_status() {
 }
 
 ldnmp_environment_catalog() {
-	printf '%s\n' '{"protocolVersion":"1","installProfiles":[{"id":"full","label":"完整 LDNMP"},{"id":"nginx","label":"僅Nginx"}],"protectionActions":["fail2ban-install","fail2ban-uninstall","unban-all","waf-on","waf-off","ddos-on","ddos-off","cloudfl are-fail2ban","cloudflare-shield"],"optimizationActions":["standard","high","gzip-on","gzip-off","brotli-on","brotli-off","zstd-on ","zstd-off"],"updateComponents":[{"id":"nginx","versions":["latest"]},{"id":"mysql","versions":["latest","8.0","8.3","8.4","9.0"] },{"id":"php","versions":["7.4","8.0","8.1","8.2","8.3"]},{"id":"redis","versions":["latest"]},{"id":"all","versions":}"'
+	printf '%s\n' '{"protocolVersion":"1","installProfiles":[{"id":"full","label":"完整 LDNMP"},{"id":"nginx","label":"仅 Nginx"}],"protectionActions":["fail2ban-install","fail2ban-uninstall","unban-all","waf-on","waf-off","ddos-on","ddos-off","cloudflare-fail2ban","cloudflare-shield"],"optimizationActions":["standard","high","gzip-on","gzip-off","brotli-on","brotli-off","zstd-on","zstd-off"],"updateComponents":[{"id":"nginx","versions":["latest"]},{"id":"mysql","versions":["latest","8.0","8.3","8.4","9.0"]},{"id":"php","versions":["7.4","8.0","8.1","8.2","8.3"]},{"id":"redis","versions":["latest"]},{"id":"all","versions":["latest"]}]}'
 }
 
 ldnmp_environment_install() {
 	local profile="${1:-full}" states
-	kpanel_ldnmp_event preflight 5 "正在檢查安裝條件"
+	kpanel_ldnmp_event preflight 5 "正在检查安装条件"
 	case "$profile" in
-		full) kpanel_ldnmp_event install 15 "正在安裝完整 LDNMP"; ldnmp_install_all ;;
+		full) kpanel_ldnmp_event install 15 "正在安装完整 LDNMP"; ldnmp_install_all ;;
 		nginx) kpanel_ldnmp_event install 15 "正在安装 Nginx"; nginx_install_all ;;
 		*) echo "不支持的安装形态" >&2; return 2 ;;
 	esac
@@ -13890,7 +14819,7 @@ ldnmp_environment_menu() {
 			7) ldnmp_backup_action ;;
 			8)
 				find /home -maxdepth 1 -type f -name 'web_*.tar.gz' -printf '%f\n' 2>/dev/null | sort -r
-				read -e -p "輸入要還原的備份檔名:" backup_name
+				read -e -p "输入要还原的备份文件名: " backup_name
 				ldnmp_restore_action "$backup_name"
 				;;
 			9)
@@ -13945,19 +14874,18 @@ linux_ldnmp() {
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}1.   ${gl_bai}安装LDNMP环境 ${gl_huang}★${gl_bai}                   ${gl_huang}2.   ${gl_bai}安装WordPress ${gl_huang}★${gl_bai}"
 	echo -e "${gl_huang}3.   ${gl_bai}安装Discuz论坛                    ${gl_huang}4.   ${gl_bai}安装可道云桌面"
-	echo -e "${gl_huang}5.   ${gl_bai}安装苹果CMS影视站                 ${gl_huang}6.   ${gl_bai}安裝獨角數發卡網"
+	echo -e "${gl_huang}5.   ${gl_bai}安装苹果CMS影视站                 ${gl_huang}6.   ${gl_bai}安装独角数发卡网"
 	echo -e "${gl_huang}7.   ${gl_bai}安装flarum论坛网站                ${gl_huang}8.   ${gl_bai}安装typecho轻量博客网站"
 	echo -e "${gl_huang}9.   ${gl_bai}安装LinkStack共享链接平台         ${gl_huang}20.  ${gl_bai}自定义动态站点"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}21.  ${gl_bai}仅安装nginx ${gl_huang}★${gl_bai}                     ${gl_huang}22.  ${gl_bai}站点重定向"
 	echo -e "${gl_huang}23.  ${gl_bai}站点反向代理-IP+端口 ${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}站点反向代理-域名"
-	echo -e "${gl_huang}25.  ${gl_bai}安装Bitwarden密码管理平台         ${gl_huang}26.  ${gl_bai}安裝Halo部落格網站"
+	echo -e "${gl_huang}25.  ${gl_bai}安装Bitwarden密码管理平台         ${gl_huang}26.  ${gl_bai}安装Halo博客网站"
 	echo -e "${gl_huang}27.  ${gl_bai}安装AI绘画提示词生成器            ${gl_huang}28.  ${gl_bai}站点反向代理-负载均衡"
 	echo -e "${gl_huang}29.  ${gl_bai}Stream四层代理转发                ${gl_huang}30.  ${gl_bai}自定义静态站点"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}31.  ${gl_bai}站点数据管理 ${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}备份全站数据"
 	echo -e "${gl_huang}33.  ${gl_bai}定时远程备份                      ${gl_huang}34.  ${gl_bai}还原全站数据"
-	echo "k. 通用加密备份与恢复 (.kpb，与 KPanel 互通)"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}35.  ${gl_bai}防护LDNMP环境                     ${gl_huang}36.  ${gl_bai}优化LDNMP环境"
 	echo -e "${gl_huang}37.  ${gl_bai}更新LDNMP环境                     ${gl_huang}38.  ${gl_bai}卸载LDNMP环境"
@@ -13970,7 +14898,7 @@ linux_ldnmp() {
 		case "$sub_choice" in
 			2|3|4|5|6|7|8|9|20|22|23|24|25|26|27|28|30) ;;
 			*)
-				echo "KPANEL_PROGRESS 100 不支援的 KJ_WEB_RECIPE"
+				echo "KPANEL_PROGRESS 100 不支持的 KJ_WEB_RECIPE"
 				return 1
 				;;
 		esac
@@ -14050,8 +14978,8 @@ linux_ldnmp() {
 	  ldnmp_web_on
 	  echo "数据库地址: mysql"
 	  echo "数据库名: $dbname"
-	  echo "使用者名稱:$dbuse"
-	  echo "密碼:$dbusepasswd"
+	  echo "用户名: $dbuse"
+	  echo "密码: $dbusepasswd"
 	  echo "表前缀: discuz_"
 
 
@@ -14059,10 +14987,10 @@ linux_ldnmp() {
 
 	  4)
 	  clear
-	  # 可道雲桌面
-	  webname="可道雲桌面"
+	  # 可道云桌面
+	  webname="可道云桌面"
 	  send_stats "安装$webname"
-	  echo "開始部署$webname"
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
@@ -14092,7 +15020,7 @@ linux_ldnmp() {
 	  echo "数据库地址: mysql"
 	  echo "用户名: $dbuse"
 	  echo "密码: $dbusepasswd"
-	  echo "資料庫名稱:$dbname"
+	  echo "数据库名: $dbname"
 	  echo "redis主机: redis"
 
 		;;
@@ -14100,9 +15028,9 @@ linux_ldnmp() {
 	  5)
 	  clear
 	  # 苹果CMS
-	  webname="蘋果CMS"
-	  send_stats "安裝$webname"
-	  echo "開始部署$webname"
+	  webname="苹果CMS"
+	  send_stats "安装$webname"
+	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
 	  ldnmp_install_status
@@ -14134,8 +15062,8 @@ linux_ldnmp() {
 
 
 	  ldnmp_web_on
-	  echo "資料庫位址: mysql"
-	  echo "資料庫連接埠: 3306"
+	  echo "数据库地址: mysql"
+	  echo "数据库端口: 3306"
 	  echo "数据库名: $dbname"
 	  echo "用户名: $dbuse"
 	  echo "密码: $dbusepasswd"
@@ -14148,9 +15076,9 @@ linux_ldnmp() {
 
 	  6)
 	  clear
-	  # 獨腳數卡
+	  # 独脚数卡
 	  webname="独脚数卡"
-	  send_stats "安裝$webname"
+	  send_stats "安装$webname"
 	  echo "开始部署 $webname"
 	  add_yuming
 	  repeat_add_yuming
@@ -14189,7 +15117,7 @@ linux_ldnmp() {
 	  echo "redis密码: 默认不填写"
 	  echo "redis端口: 6379"
 	  echo ""
-	  echo "網址url: https://$yuming"
+	  echo "网站url: https://$yuming"
 	  echo "后台登录路径: /admin"
 	  echo "------------------------"
 	  echo "用户名: admin"
@@ -14203,7 +15131,7 @@ linux_ldnmp() {
 
 	  7)
 	  clear
-	  # flarum論壇
+	  # flarum论坛
 	  webname="flarum论坛"
 	  send_stats "安装$webname"
 	  echo "开始部署 $webname"
@@ -15135,6 +16063,112 @@ moltbot_menu() {
 		fi
 	}
 
+	# Resolve references with the installed OpenClaw runtime, without writing keys back.
+	openclaw_api_python() {
+		local api_code
+		api_code=$(cat)
+		{
+			cat <<'PY_SECRETS'
+import json
+import os
+import re
+import shutil
+import signal
+import subprocess
+
+def openclaw_key_is_ref(value):
+    return isinstance(value, dict) or (isinstance(value, str) and bool(
+        re.fullmatch(r'\$\{[A-Z][A-Z0-9_]*\}|\$[A-Z][A-Z0-9_]*', value)))
+
+def openclaw_key_usable(value):
+    return (isinstance(value, str) and bool(value.strip())
+            and not openclaw_key_is_ref(value)
+            and value not in ('__OPENCLAW_REDACTED__', 'secretref-managed')
+            and not value.startswith('oc-sent-')
+            and '\r' not in value and '\n' not in value)
+
+def openclaw_api_request_keys(providers, config, config_path):
+    keys = {}
+    refs = []
+    for name, provider in providers.items():
+        if not isinstance(provider, dict):
+            continue
+        value = provider.get('apiKey')
+        if openclaw_key_is_ref(value):
+            refs.append(name)
+        elif openclaw_key_usable(value):
+            keys[name] = value
+    entry = shutil.which('openclaw') if refs else None
+    node = shutil.which('node') if entry else None
+    if not node:
+        return keys
+    resolver = r'''
+const {createRequire} = require('node:module');
+const {pathToFileURL} = require('node:url');
+const {isDeepStrictEqual} = require('node:util');
+const {readFileSync, realpathSync} = require('node:fs');
+const write = process.stdout.write.bind(process.stdout);
+process.stdout.write = () => true;
+(async () => {
+  const input = JSON.parse(readFileSync(0, 'utf8'));
+  const localRequire = createRequire(pathToFileURL(process.argv[1]));
+  const processes = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/process-runtime')));
+  process.once('SIGTERM', () => processes.killProcessTree(process.pid, {detached: false, force: true}));
+  const sdk = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/secret-input-runtime')));
+  const io = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/config-runtime')));
+  const {snapshot, writeOptions} = await io.readConfigFileSnapshotForWrite({observe: false});
+  if (!snapshot.exists || !snapshot.valid ||
+      realpathSync(snapshot.path) !== realpathSync(process.env.OPENCLAW_CONFIG_PATH) ||
+      !isDeepStrictEqual(JSON.parse(snapshot.raw), input.config)) return;
+  Object.assign(process.env, writeOptions.envSnapshotForRestore);
+  const keys = Object.create(null);
+  for (const name of input.names) {
+    try {
+      const value = io.coerceSecretRef(input.config.models.providers[name].apiKey,
+                                     snapshot.config.secrets?.defaults);
+      if (!value) continue;
+      const result = await sdk.resolveConfiguredSecretInputString({
+        config: snapshot.config, env: process.env, value,
+        path: `models.providers.${name}.apiKey`
+      });
+      if (typeof result.value === 'string') keys[name] = result.value;
+    } catch {}
+  }
+  write(JSON.stringify(keys));
+})().catch(() => { process.exitCode = 1; });
+'''
+    try:
+        with subprocess.Popen(
+            [node, '-e', resolver, os.path.realpath(entry)],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            text=True, start_new_session=True,
+            env=dict(os.environ, OPENCLAW_CONFIG_PATH=os.path.abspath(config_path))) as process:
+            try:
+                output, _ = process.communicate(json.dumps({'config': config, 'names': refs}), timeout=60)
+            except subprocess.TimeoutExpired:
+                # Let OpenClaw reap its exec providers, including detached children.
+                process.terminate()
+                try:
+                    process.communicate(timeout=5)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.communicate(timeout=5)
+                return keys
+            resolved = json.loads(output) if process.returncode == 0 else {}
+        if isinstance(resolved, dict):
+            keys.update({name: resolved[name] for name in refs
+                         if openclaw_key_usable(resolved.get(name))})
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        pass
+    return keys
+PY_SECRETS
+			printf '\n%s\n' "$api_code"
+		} | python3 - "$@"
+	}
+
 	sync_openclaw_api_models() {
 		local config_file
 		config_file=$(openclaw_get_config_file)
@@ -15143,7 +16177,7 @@ moltbot_menu() {
 
 		install jq curl >/dev/null 2>&1
 
-		python3 - "$config_file" "$ENABLE_STATS" "$sh_v" <<'PY'
+		openclaw_api_python "$config_file" "$ENABLE_STATS" "$sh_v" <<'PY'
 import copy
 import json
 import os
@@ -15189,6 +16223,9 @@ providers = models_cfg.get('providers', {})
 if not isinstance(providers, dict) or not providers:
     print('ℹ️ 未检测到 API providers，跳过模型同步')
     raise SystemExit(0)
+
+request_keys = openclaw_api_request_keys(providers, obj, path)
+skipped_refs = []
 
 agents = work.setdefault('agents', {})
 defaults = agents.setdefault('defaults', {})
@@ -15335,6 +16372,8 @@ def fetch_remote_models_with_retry(name, base_url, api_key, retries=3):
             data = json.loads(payload)
             return data, None, attempt
         except Exception as e:
+            if isinstance(e, urllib.error.HTTPError):
+                e.close()
             last_error = e
             if attempt < retries:
                 time.sleep(1)
@@ -15348,8 +16387,13 @@ for name, provider in list(providers.items()):
 
     api = provider.get('api', '')
     base_url = provider.get('baseUrl')
-    api_key = provider.get('apiKey')
+    api_key = request_keys.get(name)
     model_list = provider.get('models', [])
+
+    if openclaw_key_is_ref(provider.get('apiKey')) and not api_key:
+        skipped_refs.append(name)
+        summary.append(f'⚠️ {name}: OpenClaw 未能解析密钥引用，请检查密钥来源与运行环境；原配置已保留')
+        continue
 
     if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
         summary.append(f'ℹ️ 跳过 {name}: 无 baseUrl/apiKey/models')
@@ -15363,7 +16407,10 @@ for name, provider in list(providers.items()):
 
     data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
     if err is not None:
-        summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
+        summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__})')
+        if openclaw_key_is_ref(provider.get('apiKey')):
+            fatal_errors.append(f'❌ {name}: 密钥引用请求失败，保留密钥引用和配置')
+            continue
         send_stat('OpenClaw API确认介入')
         if prompt_delete_provider(name):
             deleted = delete_provider_and_refs(name)
@@ -15465,12 +16512,12 @@ for name, provider in list(providers.items()):
             summary.append(f'  - {mid}')
 
 
-if fatal_errors:
+if fatal_errors or skipped_refs:
     for line in summary:
         print(line)
     for err in fatal_errors:
         print(err)
-    print('❌ 模型同步失败：存在 provider 同步后无可用模型，已中止写入')
+    print('❌ 模型同步未完成，已中止写入并保留原配置')
     raise SystemExit(2)
 
 if changed:
@@ -15618,12 +16665,16 @@ EOF
 		   --arg api "$DETECTED_API" \
 		   --argjson models "$models_array" \
 		'
-		.models |= (
+		.models.providers[$prov].apiKey as $existing_key
+		| .models |= (
 			(. // { mode: "merge", providers: {} })
 			| .mode = "merge"
 			| .providers[$prov] = {
 				baseUrl: $url,
-				apiKey: $key,
+				apiKey: (if ($existing_key | type) == "object"
+					or (($existing_key | type) == "string" and
+					    ($existing_key | test("^\\$\\{[A-Z][A-Z0-9_]*\\}$|^\\$[A-Z][A-Z0-9_]*$")))
+					then $existing_key else $key end),
 				api: $api,
 				models: $models
 			}
@@ -15735,22 +16786,62 @@ EOF
 		done
 		base_url="${base_url%/}"
 
-		# 3. API Key
-		read -rsp "请输入 API Key (输入不显示): " api_key
-		echo
-		while [[ -z "$api_key" ]]; do
-			echo "❌ API Key 不能为空"
-			read -rsp "请输入 API Key: " api_key
+		# 3. API Key (existing references are retained when replacing a provider)
+		local config_file key_is_ref=false
+		config_file=$(openclaw_get_config_file)
+		if [ -f "$config_file" ] && jq -e --arg prov "$provider_name" '
+			.models.providers[$prov].apiKey
+			| type == "object" or (type == "string" and
+			  test("^\\$\\{[A-Z][A-Z0-9_]*\\}$|^\\$[A-Z][A-Z0-9_]*$"))
+		' "$config_file" >/dev/null 2>&1; then
+			key_is_ref=true
+			api_key=''
+			echo "🔍 正在获取可用模型列表..."
+			models_json=$(openclaw_api_python "$config_file" "$provider_name" "$base_url" <<'PY_MODELS'
+import sys
+import urllib.request
+with open(sys.argv[1], encoding='utf-8') as f:
+    obj = json.load(f)
+name = sys.argv[2]
+provider = obj['models']['providers'][name]
+key = openclaw_api_request_keys({name: provider}, obj, sys.argv[1]).get(name)
+if not key:
+    raise SystemExit(1)
+try:
+    request = urllib.request.Request(sys.argv[3].rstrip('/') + '/models',
+                                     headers={'Authorization': f'Bearer {key}'})
+    with urllib.request.urlopen(request, timeout=10) as response:
+        data = json.load(response)
+    if not isinstance(data, dict) or not isinstance(data.get('data'), list):
+        raise ValueError('invalid models response')
+    print(json.dumps(data))
+except Exception:
+    raise SystemExit(1)
+PY_MODELS
+)
+			if [[ $? -ne 0 || -z "$models_json" ]]; then
+				echo "❌ 密钥引用解析或模型请求失败，请检查密钥来源与运行环境；原配置保持不变"
+				return 1
+			fi
+		else
+			read -rsp "请输入 API Key (输入不显示): " api_key
 			echo
-		done
+			while [[ -z "$api_key" ]]; do
+				echo "❌ API Key 不能为空"
+				read -rsp "请输入 API Key: " api_key
+				echo
+			done
+		fi
 
 		# 4. 不再探测/判断 API 类型；协议由用户自行选择与维护
 
 		# 5. 获取模型列表
-		echo "🔍 正在获取可用模型列表..."
-		models_json=$(curl -s -m 10 \
-			-H "Authorization: Bearer $api_key" \
-			"${base_url}/models")
+		if [ "$key_is_ref" = false ]; then
+			echo "🔍 正在获取可用模型列表..."
+			models_json=$(curl -s -m 10 \
+				-H "Authorization: Bearer $api_key" \
+				"${base_url}/models")
+		fi
 
 		if [[ -n "$models_json" ]]; then
 			available_models=$(echo "$models_json" | grep -oP '"id":\s*"\K[^"]+' | sort)
@@ -15790,7 +16881,11 @@ EOF
 		echo "====== 确认信息 ======"
 		echo "Provider    : $provider_name"
 		echo "Base URL    : $base_url"
-		echo "API Key     : ${api_key:0:8}****"
+		if [ "$key_is_ref" = true ]; then
+			echo "API Key     : 已配置（密钥引用）"
+		else
+			echo "API Key     : ${api_key:0:8}****"
+		fi
 		echo "默认模型    : $default_model"
 		echo "模型总数    : $model_count"
 		echo "======================"
@@ -15799,7 +16894,13 @@ EOF
 
 		install jq
 		if [[ "$confirm" =~ ^[Yy]$ ]]; then
-			add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
+			if [ "$key_is_ref" = true ]; then
+				local models_array
+				models_array=$(build-openclaw-provider-models-json "$provider_name" "$available_models")
+				write-openclaw-provider-models "$provider_name" "$base_url" "" "$models_array"
+			else
+				add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
+			fi
 			add_result=$?
 			finish_msg="✅ 完成！所有 $model_count 个模型已加载"
 		else
@@ -15844,7 +16945,7 @@ openclaw_api_manage_list() {
 				printf '%b\n' "[$idx] ${name} | API: ${base_url} | 协议: ${api_type} | 模型数量: ${gl_huang}${model_count}${gl_bai} | 延迟/状态: ${latency_color}${latency_txt}${gl_bai}"
 				;;
 		esac
-	done < <(python3 - "$config_file" <<-'PY'
+	done < <(openclaw_api_python "$config_file" <<-'PY'
 import json
 import sys
 import time
@@ -15900,8 +17001,10 @@ if not isinstance(providers, dict) or not providers:
     raise SystemExit(0)
 
 print('MSG\t--- 已配置 API 列表 ---')
+request_keys = openclaw_api_request_keys(providers, obj, path)
 
 for idx, name in enumerate(sorted(providers.keys()), start=1):
+    api = ''
     provider = providers.get(name)
     if not isinstance(provider, dict):
         base_url = '-'
@@ -15912,11 +17015,13 @@ for idx, name in enumerate(sorted(providers.keys()), start=1):
         models = provider.get('models') if isinstance(provider.get('models'), list) else []
         model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
         api = provider.get('api', '')
-        api_key = provider.get('apiKey')
+        api_key = request_keys.get(name)
 
         latency_raw = '未检测'
         if api in SUPPORTED_APIS:
-            if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
+            if openclaw_key_is_ref(provider.get('apiKey')) and not api_key:
+                latency_raw = '密钥引用未解析（未检测）'
+            elif isinstance(base_url, str) and base_url != '-' and openclaw_key_usable(api_key):
                 try:
                     latency_raw = ping_models(base_url, api_key)
                 except Exception:
@@ -15964,7 +17069,7 @@ sync-openclaw-provider-interactive() {
 
 	install jq curl >/dev/null 2>&1
 
-	python3 - "$config_file" "$provider_name" <<'PY2'
+	openclaw_api_python "$config_file" "$provider_name" <<'PY2'
 import copy
 import json
 import sys
@@ -16042,6 +17147,8 @@ def fetch_remote_models_with_retry(base_url, api_key, retries=3):
                 payload = resp.read().decode('utf-8', 'ignore')
             return json.loads(payload), None, attempt
         except Exception as e:
+            if isinstance(e, urllib.error.HTTPError):
+                e.close()
             last_error = e
             if attempt < retries:
                 time.sleep(1)
@@ -16050,8 +17157,12 @@ def fetch_remote_models_with_retry(base_url, api_key, retries=3):
 
 api = provider.get('api', '')
 base_url = provider.get('baseUrl')
-api_key = provider.get('apiKey')
+api_key = openclaw_api_request_keys({target: provider}, obj, path).get(target)
 model_list = provider.get('models', [])
+
+if openclaw_key_is_ref(provider.get('apiKey')) and not api_key:
+    print(f'❌ {target}: OpenClaw 未能解析密钥引用，请检查密钥来源与运行环境；原配置已保留')
+    raise SystemExit(6)
 
 if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
     print(f'❌ provider {target} 缺少 baseUrl/apiKey/models，无法执行同步')
@@ -16064,7 +17175,7 @@ protocol_msg = None
 
 data, err, attempts = fetch_remote_models_with_retry(base_url, api_key, retries=3)
 if err is not None:
-    print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
+    print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__})')
     raise SystemExit(4)
 
 if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
@@ -16177,6 +17288,9 @@ PY2
 			;;
 		5)
 			echo "❌ 同步失败：上游模型为空或同步后无可用模型"
+			;;
+		6)
+			echo "❌ 同步未执行：密钥引用未能解析，原配置保持不变"
 			;;
 		*)
 			echo "❌ 同步失败：请检查配置文件结构或日志输出"
@@ -16591,7 +17705,7 @@ REPO
 			local target_model="$1"
 			local probe_timeout=25
 			local tmp_payload tmp_response probe_result probe_status reply_preview reply_trimmed
-			local oc_config provider_name base_url api_key request_model
+			local oc_config provider_name base_url request_model
 			local first_endpoint second_endpoint
 			local first_exit first_http first_latency second_exit second_http second_latency
 			local first_reply second_reply
@@ -16608,10 +17722,9 @@ REPO
 			provider_name="${target_model%%/*}"
 			request_model="${target_model#*/}"
 			base_url=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].baseUrl // empty' "$oc_config" 2>/dev/null)
-			api_key=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].apiKey // empty' "$oc_config" 2>/dev/null)
-			if [ -z "$provider_name" ] || [ -z "$base_url" ] || [ -z "$api_key" ]; then
+			if [ -z "$provider_name" ] || [ -z "$base_url" ]; then
 				OPENCLAW_PROBE_STATUS="ERROR"
-				OPENCLAW_PROBE_MESSAGE="未读取到 provider/baseUrl/apiKey"
+				OPENCLAW_PROBE_MESSAGE="未读取到 provider/baseUrl"
 				OPENCLAW_PROBE_LATENCY="-"
 				OPENCLAW_PROBE_REPLY="-"
 				return 1
@@ -16683,14 +17796,27 @@ PYTHON_EOF
 					printf '{"model":"%s","messages":[{"role":"user","content":"hi"}],"temperature":0,"max_tokens":16}' "$request_model" > "$tmp_payload"
 				fi
 
-				probe_result=$(python3 - "$base_url" "$api_key" "$tmp_payload" "$tmp_response" "$probe_timeout" "$endpoint" <<'PYTHON_EOF'
+				probe_result=$(openclaw_api_python "$oc_config" "$provider_name" "$tmp_payload" "$tmp_response" "$probe_timeout" "$endpoint" <<'PYTHON_EOF'
 import sys
 import time
 import urllib.error
 import urllib.request
 
-base_url, api_key, payload_path, response_path, timeout, endpoint = sys.argv[1:7]
+config_path, provider_name, payload_path, response_path, timeout, endpoint = sys.argv[1:7]
 timeout = int(timeout)
+try:
+    with open(config_path, encoding='utf-8') as f:
+        obj = json.load(f)
+    provider = obj['models']['providers'][provider_name]
+    base_url = provider['baseUrl'].rstrip('/')
+    api_key = openclaw_api_request_keys({provider_name: provider}, obj, config_path).get(provider_name)
+except Exception:
+    api_key = None
+if not api_key:
+    with open(response_path, 'w', encoding='utf-8') as f:
+        json.dump({'error': '未能读取或解析 API Key，请检查密钥来源与运行环境'}, f, ensure_ascii=False)
+    print('6|0|0')
+    raise SystemExit(0)
 url = base_url + endpoint
 payload = open(payload_path, 'rb').read()
 req = urllib.request.Request(
@@ -16713,11 +17839,31 @@ try:
 except urllib.error.HTTPError as e:
     status = getattr(e, 'code', 0) or 0
     body = e.read()
+    e.close()
     exit_code = 22
 except Exception as e:
     body = str(e).encode('utf-8', errors='replace')
     exit_code = 1
 elapsed = int((time.time() - start) * 1000)
+
+def redact(value):
+    if isinstance(value, str):
+        return value.replace(api_key, '[REDACTED]')
+    if isinstance(value, list):
+        return [redact(item) for item in value]
+    if isinstance(value, dict):
+        return {redact(key): redact(item) for key, item in value.items()}
+    return value
+
+try:
+    decoded = json.loads(body)
+except (ValueError, UnicodeError, RecursionError):
+    body = body.replace(api_key.encode('utf-8'), b'[REDACTED]')
+else:
+    try:
+        body = json.dumps(redact(decoded), ensure_ascii=False).encode('utf-8')
+    except (ValueError, UnicodeError, RecursionError):
+        body = b'{"error":"Unable to safely display response"}'
 with open(response_path, 'wb') as f:
     f.write(body)
 print(f"{exit_code}|{status}|{elapsed}")
@@ -16735,6 +17881,13 @@ PYTHON_EOF
 			first_http=${first_http%%|*}
 			first_latency=${probe_result##*|}
 			first_reply="$reply_preview"
+			if [ "$first_exit" = "6" ]; then
+				OPENCLAW_PROBE_STATUS="ERROR"
+				OPENCLAW_PROBE_MESSAGE="$first_reply"
+				OPENCLAW_PROBE_LATENCY="-"
+				OPENCLAW_PROBE_REPLY="-"
+				return 1
+			fi
 
 			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
 			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
@@ -16848,7 +18001,7 @@ PYTHON_EOF
 				gum style --faint "↑↓ 选择 / Enter 测试 / Esc 退出"
 				echo ""
 
-				selected_model=$(echo "$models_list" | gum filter 					--placeholder "搜尋模型（如 cli-api/gpt-5.2）" 					--prompt "选择模型 > " 					--indicator "➜ " 					--prompt.foreground "$orange" 					--indicator.foreground "$orange" 					--cursor-text.foreground "$orange" 					--match.foreground "$orange" 					--header "" 					--height 35)
+				selected_model=$(echo "$models_list" | gum filter 					--placeholder "搜索模型（如 cli-api/gpt-5.2）" 					--prompt "选择模型 > " 					--indicator "➜ " 					--prompt.foreground "$orange" 					--indicator.foreground "$orange" 					--cursor-text.foreground "$orange" 					--match.foreground "$orange" 					--header "" 					--height 35)
 
 				if [ -z "$selected_model" ] || echo "$selected_model" | head -n 1 | grep -iqE '^(error|usage|gum:)'; then
 					echo "操作已取消，正在退出..."
@@ -16866,11 +18019,11 @@ PYTHON_EOF
 				openclaw_probe_status_line "不可用"
 			fi
 			echo "状态：$OPENCLAW_PROBE_MESSAGE"
-			echo "延遲：$OPENCLAW_PROBE_LATENCY"
+			echo "延迟：$OPENCLAW_PROBE_LATENCY"
 			echo "摘要：$OPENCLAW_PROBE_REPLY"
 			echo ""
 
-			printf "是否切換到該模型？ [y/N，Esc 返回列表]:"
+			printf "是否切换到该模型？[y/N，Esc 返回列表]: "
 			IFS= read -rsn1 confirm_switch
 			echo ""
 			if [ "$confirm_switch" = $'' ]; then
@@ -16894,7 +18047,7 @@ PYTHON_EOF
 
 			echo "正在切换模型为: $selected_model ..."
 			if ! openclaw models set "$selected_model"; then
-				echo "切換失敗：openclaw models set 回傳錯誤。"
+				echo "切换失败：openclaw models set 返回错误。"
 				break_end
 				return 1
 			fi
@@ -17008,7 +18161,7 @@ PYTHON_EOF
 					| .plugins.allow = (if (.plugins.allow | type) == "array" then .plugins.allow else [] end)
 					| if (.plugins.allow | index($pid)) == null then .plugins.allow += [$pid] else . end
 				' "$config_file" > "$tmp_json" 2>/dev/null && mv "$tmp_json" "$config_file"; then
-					echo "✅ 已同步 plugins.allow 白名單:$plugin_id"
+					echo "✅ 已同步 plugins.allow 白名单: $plugin_id"
 					return 0
 				fi
 				rm -f "$tmp_json"
@@ -17046,7 +18199,7 @@ data['plugins'] = plugins
 config_file.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding='utf-8')
 PYTHON_EOF
 				then
-					echo "✅ 已同步 plugins.allow 白名單:$plugin_id"
+					echo "✅ 已同步 plugins.allow 白名单: $plugin_id"
 					return 0
 				fi
 			fi
@@ -17075,7 +18228,7 @@ PYTHON_EOF
 					| .plugins.allow = (if (.plugins.allow | type) == "array" then .plugins.allow else [] end)
 					| .plugins.allow = (.plugins.allow | map(select(. != $pid)))
 				' "$config_file" > "$tmp_json" 2>/dev/null && mv "$tmp_json" "$config_file"; then
-					echo "✅ 已從 plugins.allow 移除:$plugin_id"
+					echo "✅ 已从 plugins.allow 移除: $plugin_id"
 					return 0
 				fi
 				rm -f "$tmp_json"
@@ -20549,6 +21702,17 @@ refresh_apps_catalog() {
 	fi
 }
 
+run_ai_cli_manager() (
+	local app="$1" manager
+	case "$app" in claude-code|codex|opencode|antigravity-cli) ;; *) return 1 ;; esac
+	manager=$(mktemp "${TMPDIR:-/tmp}/kejilion-ai-cli.XXXXXX") || return 1
+	trap 'rm -f -- "$manager"' EXIT
+	curl -fLsS --connect-timeout 15 --max-time 120 "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/ai_cli_manager.sh" -o "$manager" || return 1
+	[ -s "$manager" ] && bash -n "$manager" || return 1
+	. "$manager" || return 1
+	ai_cli_main "$app"
+)
+
 linux_panel() {
 
 local sub_choice="$1"
@@ -20646,6 +21810,8 @@ while true; do
 	  echo -e "${gl_kjlan}113. ${color113}Firefox浏览器                       ${gl_kjlan}114. ${color114}OpenClaw机器人管理工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}115. ${color115}Hermes机器人管理工具${gl_huang}★${gl_bai}               ${gl_kjlan}116. ${color116}DeepSeek Harness管理工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}117. ${color117}99CDN自建CDN管理平台                ${gl_kjlan}118. ${color118}99DNS智能调度服务"
+	  echo -e "${gl_kjlan}119. ${color119}Claude Code编程助手${gl_huang}★${gl_bai}                ${gl_kjlan}120. ${color120}Codex编程助手${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}121. ${color121}OpenCode编程助手${gl_huang}★${gl_bai}                   ${gl_kjlan}122. ${color122}Antigravity CLI编程助手${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}第三方应用列表"
   	  echo -e "${gl_kjlan}想要让你的应用出现在这里？查看开发者指南: ${gl_huang}https://dev.kejilion.sh/${gl_bai}"
@@ -20671,7 +21837,6 @@ while true; do
 
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
-	  echo "k. 通用加密备份与恢复 (.kpb，与 KPanel 互通)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -24334,6 +25499,22 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  bash <(curl -fsSL ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/deepseek_harness_manager.sh)
 		  ;;
 
+	  119|claude-code|claude)
+		  run_ai_cli_manager claude-code
+		  ;;
+
+	  120|codex)
+		  run_ai_cli_manager codex
+		  ;;
+
+	  121|opencode|OpenCode)
+		  run_ai_cli_manager opencode
+		  ;;
+
+	  122|antigravity-cli|agy)
+		  run_ai_cli_manager antigravity-cli
+		  ;;
+
 	  117|99cdn)
 
 		local app_id="117"
@@ -24390,9 +25571,6 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 		  ;;
 
-	  k)
-		kpanel_backup_center_dispatch menu apps
-		;;
 	  b)
 	  	clear
 	  	send_stats "全部应用备份"
@@ -25910,7 +27088,7 @@ kpanel_system_resource_cron_action() {
 				kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
 				return 2
 			fi
-			kpanel_system_resource_error "無法安全讀取 cron 指令 stdin 幀"
+			kpanel_system_resource_error "无法安全读取 cron 命令 stdin 帧"
 			kpanel_system_resource_emit failed "$KPANEL_SYSTEM_RESOURCE_CURRENT_VERSION"
 			return 1
 		fi
@@ -30495,7 +31673,7 @@ EOF
 				  kpanel_system_tuning_menu_item ipv4-preferred 10 "设置网络为${gl_huang}IPv4优先${gl_bai}" || break
 				  kpanel_system_tuning_menu_item basic-tools 11 "安装基础工具${gl_huang}docker wget sudo tar unzip socat btop nano vim${gl_bai}" || break
 				  kpanel_system_tuning_menu_item kernel-auto 12 "Linux系统内核参数优化" || break
-				  echo -e "${gl_lv}一條龍系統調優已完成${gl_bai}"
+				  echo -e "${gl_lv}一条龙系统调优已完成${gl_bai}"
 
 				  ;;
 				[Nn])
@@ -30526,7 +31704,7 @@ EOF
 			  	local status_message="无法确定的状态"
 			  fi
 
-			  echo "隱私與安全"
+			  echo "隐私与安全"
 			  echo "脚本将收集用户使用功能的数据，优化脚本体验，制作更多好玩好用的功能"
 			  echo "将收集脚本版本号，使用的时间，系统版本，CPU架构，机器所属国家和使用的功能的名称，"
 			  echo "------------------------------------------------"
@@ -30551,7 +31729,7 @@ EOF
 					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' /usr/local/bin/k
 					  sed -i 's/^ENABLE_STATS="true"/ENABLE_STATS="false"/' ~/kejilion.sh
 					  echo "已关闭采集"
-					  send_stats "隱私與安全已關閉採集"
+					  send_stats "隐私与安全已关闭采集"
 					  ;;
 				  *)
 					  break
@@ -30598,7 +31776,7 @@ EOF
 
 			  ;;
 		  *)
-			  echo "無效的輸入!"
+			  echo "无效的输入!"
 			  ;;
 	  esac
 	  break_end
@@ -30685,7 +31863,7 @@ linux_file() {
 			13) # 修改文件权限
 				read -e -p "请输入文件名: " filename
 				read -e -p "请输入权限 (如 755): " perm
-				chmod "$perm" "$filename" && echo "權限已修改" || echo "修改失败"
+				chmod "$perm" "$filename" && echo "权限已修改" || echo "修改失败"
 				send_stats "修改文件权限"
 				;;
 			14) # 重命名文件
@@ -31210,6 +32388,10 @@ done
 kejilion_sh() {
 while true; do
 clear
+local kpanel_menu_status="${gl_huang}★ 推荐${gl_bai}"
+if grep -qxF "kpanel" /home/docker/appno.txt 2>/dev/null; then
+	kpanel_menu_status="${gl_lv}[已安装]${gl_bai}"
+fi
 echo -e "${gl_kjlan}"
 echo "╦╔═╔═╗ ╦╦╦  ╦╔═╗╔╗╔ ╔═╗╦ ╦"
 echo "╠╩╗║╣  ║║║  ║║ ║║║║ ╚═╗╠═╣"
@@ -31234,9 +32416,12 @@ echo -e "${gl_kjlan}14.  ${gl_bai}服务器集群控制"
 echo -e "${gl_kjlan}15.  ${gl_bai}广告专栏"
 echo -e "${gl_kjlan}16.  ${gl_bai}游戏开服脚本合集"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
+echo -e "${gl_huang}17.  ${gl_bai}KPanel Web管理面板 ${kpanel_menu_status}"
+echo -e "${gl_hui}     kejilion.sh 的现代化网页管理界面${gl_bai}"
+echo -e "${gl_kjlan}------------------------${gl_bai}"
 echo -e "${gl_kjlan}00.  ${gl_bai}脚本更新"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
-echo -e "${gl_kjlan}0.   ${gl_bai}退出腳本"
+echo -e "${gl_kjlan}0.   ${gl_bai}退出脚本"
 echo -e "${gl_kjlan}------------------------${gl_bai}"
 read -e -p "请输入你的选择: " choice
 
@@ -31259,6 +32444,7 @@ case $choice in
   14) linux_cluster ;;
   15) kejilion_Affiliates ;;
   16) games_server_tools ;;
+  17) linux_panel kpanel ;;
   00) kejilion_update ;;
   0) clear ; exit ;;
   *) echo "无效的输入!" ;;
@@ -31315,6 +32501,7 @@ echo "阻止IP              k zzip 177.5.25.36 |k 阻止IP 177.5.25.36"
 echo "命令收藏夹          k fav | k 命令收藏夹"
 echo "应用市场管理        k app"
 echo "应用编号快捷管理    k app 26 | k app 1panel | k app npm"
+echo "KPanel管理          k app kpanel"
 echo "fail2ban管理        k fail2ban | k f2b [status|enable|disable]"
 echo "显示系统信息        k info"
 echo "ROOT密钥管理        k sshkey"
@@ -31677,8 +32864,11 @@ else
 			elif [ "${1:-}" = "system-tuning" ]; then
 				shift
 				kpanel_system_tuning_dispatch "$@"
+			elif [ "${1:-}" = "virus-scan" ]; then
+				shift
+				kpanel_virus_scan_dispatch "$@"
 			else
-				echo "用法: k kpanel node ... | system-resource ... | disk-management ... | network-operations ... | account-management ... | system-tuning ..." >&2
+				echo "用法: k kpanel node ... | system-resource ... | disk-management ... | network-operations ... | account-management ... | system-tuning ... | virus-scan ..." >&2
 				return 2 2>/dev/null || exit 2
 			fi
 			;;
