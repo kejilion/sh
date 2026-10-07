@@ -18,8 +18,7 @@ import unittest
 
 SOURCE = Path(os.environ.get('SCRIPT_PATH', Path(__file__).resolve().parents[1] / 'kejilion.sh')).read_text()
 LOCK_TEMPLATE = SOURCE.split("<<'KPANEL_NODE_LIFECYCLE'\n", 1)[1].split('\nKPANEL_NODE_LIFECYCLE\n', 1)[0]
-PROCD_HELPERS = SOURCE.split("<<'KPANEL_NODE_PROCD_HELPERS'\n", 1)[1].split('\nKPANEL_NODE_PROCD_HELPERS\n', 1)[0]
-UPDATER = '#!/bin/bash\n' + LOCK_TEMPLATE + '\n' + PROCD_HELPERS + '\n' + SOURCE.split("<<'KPANEL_NODE_UPDATE'\n", 1)[1].split('\nKPANEL_NODE_UPDATE\n', 1)[0]
+UPDATER = '#!/bin/bash\n' + LOCK_TEMPLATE + '\n' + SOURCE.split("<<'KPANEL_NODE_UPDATE'\n", 1)[1].split('\nKPANEL_NODE_UPDATE\n', 1)[0]
 FILE_UNIT = UPDATER.split("<<'KPANEL_NODE_FILE_SERVICE'\n", 1)[1].split('\nKPANEL_NODE_FILE_SERVICE\n', 1)[0] + '\n'
 # Verbatim installer-owned unit from kejilion/sh@2ee9856c9916b7ede8bbc19edc97e22872e86203.
 LEGACY_FILE_UNIT = (Path(__file__).resolve().parent / 'fixtures/kpanel-node-file-2ee9856.service').read_text()
@@ -31,32 +30,19 @@ with (root/'downloads').open('a') as f: f.write(args[-1]+'\n')
 assert '--retry' in args and '--retry-max-time' in args and '--max-filesize' in args
 assert args[args.index('--proto-redir')+1]=='=https'
 if (root/'network-down').exists(): sys.exit(7)
-# The mirror proxies an origin URL and follows its redirects itself.
-mirror='https://gh.kejilion.pro/'
-via_mirror=args[-1].startswith(mirror)
-origin=args[-1][len(mirror):] if via_mirror else args[-1]
-if via_mirror and (root/'mirror-down').exists(): sys.exit(7)
-if not via_mirror and (root/'github-down').exists(): sys.exit(7)
 if (root/'pause-download').exists():
  import time
  (root/'download-waiting').touch()
  while (root/'pause-download').exists(): time.sleep(0.05)
 out=pathlib.Path(args[args.index('-o')+1])
-if origin.endswith('/SHA256SUMS'):
- assert origin=='https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS'
+if args[-1].endswith('/SHA256SUMS'):
+ assert args[-1]=='https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS'
  shutil.copyfile(root/'SHA256SUMS',out)
- if via_mirror:
-  assert '--dump-header' not in args
- else:
-  headers=(root/'response-headers').read_text() if (root/'response-headers').exists() else 'HTTP/2 302\r\nLocation: https://github.com/kejilion/KPanel/releases/download/v9.9.9/SHA256SUMS\r\n\r\nHTTP/2 302\r\nlocation: https://release-assets.githubusercontent.com/test\r\n\r\n'
-  pathlib.Path(args[args.index('--dump-header')+1]).write_text(headers)
+ headers=(root/'response-headers').read_text() if (root/'response-headers').exists() else 'HTTP/2 302\r\nLocation: https://github.com/kejilion/KPanel/releases/download/v9.9.9/SHA256SUMS\r\n\r\nHTTP/2 302\r\nlocation: https://release-assets.githubusercontent.com/test\r\n\r\n'
+ pathlib.Path(args[args.index('--dump-header')+1]).write_text(headers)
 else:
  if (root/'binary-network-down').exists(): sys.exit(7)
- if not via_mirror and (root/'release-cdn-down').exists(): sys.exit(7)
- # Without the origin's redirect the mirror can only serve latest; otherwise
- # the binary must come from the release the manifest named.
- latest=via_mirror and (root/'github-down').exists()
- assert origin==('https://github.com/kejilion/KPanel/releases/latest/download/kejilion-node-linux-amd64' if latest else 'https://github.com/kejilion/KPanel/releases/download/v9.9.9/kejilion-node-linux-amd64')
+ assert args[-1]=='https://github.com/kejilion/KPanel/releases/download/v9.9.9/kejilion-node-linux-amd64'
  shutil.copyfile(root/('bad' if (root/'bad-download').exists() else 'release'),out)
 '''
 
@@ -126,44 +112,6 @@ root=pathlib.Path(os.environ['NODE_TEST_ROOT'])
 with (root/'calls').open('a') as f: f.write('rc-update '+' '.join(sys.argv[1:])+'\n')
 '''
 
-PROCD_UBUS = r'''#!/usr/bin/python3
-import json,os,pathlib,sys
-root=pathlib.Path(os.environ['NODE_TEST_ROOT']); name=json.loads(sys.argv[-1])['name']
-pidfile=root/'run'/(name+'.pid'); pid=int(pidfile.read_text()) if pidfile.exists() else 0
-running=pid>0 and pathlib.Path('/proc/%d/exe'%pid).exists()
-if (root/'procd-false-running').exists(): running=False
-print(json.dumps({name:{'instances':{'main':{'running':running,'pid':pid}}}}))
-'''
-
-PROCD_JSONFILTER = r'''#!/usr/bin/python3
-import json,re,sys
-path=re.fullmatch(r"@\['([^']+)'\]\.instances\.main\.(running|pid)",sys.argv[-1]); data=json.load(sys.stdin)
-try: value=data[path[1]]['instances']['main'][path[2]]
-except (KeyError,TypeError): sys.exit(1)
-print(str(value).lower() if isinstance(value,bool) else value)
-'''
-
-PROCD_FIXTURE = r'''#!/usr/bin/python3
-import os,pathlib,signal,subprocess,sys
-root=pathlib.Path(os.environ['NODE_TEST_ROOT']); service=pathlib.Path(sys.argv[1]).name; action=sys.argv[2]
-with (root/'calls').open('a') as f: f.write('procd '+service+' '+action+'\n')
-if action=='enable': sys.exit(0)
-if action!='restart': sys.exit(1)
-pidfile=root/'run'/(service+'.pid')
-if pidfile.exists():
- try: os.killpg(int(pidfile.read_text()),signal.SIGKILL)
- except ProcessLookupError: pass
- pidfile.unlink()
-binary=root/'home/kejilion-node'
-if service=='kejilion-node' and (root/'core-fail').exists() and binary.read_bytes()==(root/'release').read_bytes(): sys.exit(1)
-if service!='kejilion-node' and (root/'optional-fail').exists(): sys.exit(1)
-if service=='kejilion-node':
- check=subprocess.run(['/bin/cat',str(root/'config/node.json')],user=65534,group=65534,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
- if check.returncode: sys.exit(1)
-p=subprocess.Popen([str(binary),'-c','while :; do sleep 30; done'],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,start_new_session=True,close_fds=True)
-pidfile.write_text(str(p.pid))
-'''
-
 @unittest.skipUnless(sys.platform.startswith('linux') and os.geteuid() == 0, 'requires isolated Linux root')
 class NodeUpdater(unittest.TestCase):
     def setUp(self):
@@ -194,7 +142,7 @@ class NodeUpdater(unittest.TestCase):
         self.env = {**os.environ, 'NODE_TEST_ROOT': str(self.root), 'PATH': str(self.root / 'bin') + ':' + os.environ['PATH']}
 
     def isolate_paths(self, script):
-        return script.replace('/usr/local/lib/kejilion-node', str(self.root / 'home')).replace('/etc/kejilion-node', str(self.root / 'config')).replace('/etc/systemd/system', str(self.root / 'units')).replace('/etc/init.d', str(self.root / 'init')).replace('/run/systemd/system', str(self.root / 'systemd-run')).replace('/run/openrc', str(self.root / 'openrc-run')).replace('/run/lock/kejilion-node-update.lock', str(self.root / 'legacy.lock')).replace('/run/kejilion-node-lifecycle.lock', str(self.root / 'lifecycle.lock')).replace('/run/kejilion-node', str(self.root / 'run')).replace('/etc/rc.common', str(self.root / 'etc/rc.common')).replace('/lib/functions', str(self.root / 'lib/functions')).replace('in /etc ', 'in %s ' % (self.root / 'etc')).replace(' /lib ', ' %s ' % (self.root / 'lib')).replace('/proc/1/comm', str(self.root / 'pid1')).replace('/etc/crontabs', str(self.root / 'crontabs'))
+        return script.replace('/usr/local/lib/kejilion-node', str(self.root / 'home')).replace('/etc/kejilion-node', str(self.root / 'config')).replace('/etc/systemd/system', str(self.root / 'units')).replace('/etc/init.d', str(self.root / 'init')).replace('/run/systemd/system', str(self.root / 'systemd-run')).replace('/run/openrc', str(self.root / 'openrc-run')).replace('/run/lock/kejilion-node-update.lock', str(self.root / 'legacy.lock')).replace('/run/kejilion-node-lifecycle.lock', str(self.root / 'lifecycle.lock')).replace('/run/kejilion-node', str(self.root / 'run'))
 
     def test_inherited_installer_lock_spans_child_update_and_home_removal(self):
         # The child must use the same lock, but may not release the parent's
@@ -240,7 +188,6 @@ while [ ! -f "$NODE_TEST_ROOT/finish-installer" ]; do sleep 0.02; done
         wrapper = self.root / 'lifecycle.sh'
         wrapper.write_text(lifecycle + r'''
 kpanel_node_preflight() { KPANEL_NODE_INSTALL_BIN="$(type -P install)"; }
-kpanel_node_ensure_dependencies() { :; }  # Tested separately inside a chroot.
 kpanel_node_ensure_account() { :; }
 kpanel_node_validate_config_dir() { :; }
 kpanel_node_write_units() { :; }
@@ -296,7 +243,7 @@ done
                 process.communicate()
 
     def tearDown(self):
-        for path in [*self.root.glob('*.service.pid'), *self.root.glob('run/*.pid')]:
+        for path in self.root.glob('*.service.pid'):
             try: os.killpg(int(path.read_text()), signal.SIGKILL)
             except ProcessLookupError: pass
         self.temp.cleanup()
@@ -362,120 +309,6 @@ done
         self.assertIn('rc-service kejilion-node restart', calls)
         pid = int((self.root / 'run/kejilion-node.pid').read_text())
         self.assertTrue(os.path.samefile('/proc/%d/exe' % pid, self.binary))
-
-    def configure_procd(self):
-        (self.root / 'systemd-run').rmdir()
-        for name in ('etc', 'lib', 'lib/functions'):
-            (self.root / name).mkdir()
-        (self.root / 'pid1').write_text('procd\n')
-        (self.root / 'lib/functions/procd.sh').write_text('# native procd fixture\n')
-        rc_common = self.root / 'etc/rc.common'
-        rc_common.write_text('#!/bin/sh\nexec /usr/bin/python3 "$NODE_TEST_ROOT/procd-fixture.py" "$@"\n')
-        rc_common.chmod(0o755)
-        (self.root / 'procd-fixture.py').write_text(PROCD_FIXTURE)
-        for name, content in [('ubus', PROCD_UBUS), ('jsonfilter', PROCD_JSONFILTER)]:
-            path = self.root / 'bin' / name
-            path.write_text(content)
-            path.chmod(0o755)
-        for name, marker in [('kejilion-node', 'SERVICE'), ('kejilion-node-terminal', 'TERMINAL_SERVICE'), ('kejilion-node-ssh-login', 'SSH_LOGIN_SERVICE')]:
-            template = SOURCE.split("<<'KPANEL_NODE_PROCD_" + marker + "'\n", 1)[1].split('\nKPANEL_NODE_PROCD_' + marker + '\n', 1)[0]
-            path = self.root / 'init' / name
-            path.write_text(self.isolate_paths(template) + '\n')
-            path.chmod(0o755)
-
-    def test_procd_update_repairs_service_and_keeps_backend(self):
-        self.configure_procd()
-        # A stale systemd marker must not override the actual PID 1 backend.
-        (self.root / 'systemd-run').mkdir()
-        self.run_update()
-        service = self.root / 'init/kejilion-node-file'
-        self.assertIn('procd_open_instance main', service.read_text())
-        self.assertIn('procd_set_param user root', service.read_text())
-        calls = (self.root / 'calls').read_text()
-        self.assertIn('procd kejilion-node restart', calls)
-        self.assertIn('procd kejilion-node-file enable', calls)
-        self.assertNotIn('rc-service', calls)
-        self.assertNotIn('systemctl', calls)
-        pid = int((self.root / 'run/kejilion-node.pid').read_text())
-        self.assertTrue(os.path.samefile('/proc/%d/exe' % pid, self.binary))
-        self.run_update()
-        self.assertEqual((self.root / 'calls').read_text().count('procd kejilion-node restart'), 1)
-
-    def test_procd_failed_core_rolls_back_but_optional_failure_is_degraded(self):
-        self.configure_procd()
-        before = self.binary.read_bytes()
-        (self.root / 'core-fail').touch()
-        result = self.run_update(False)
-        self.assertIn('was rolled back', result.stderr)
-        self.assertEqual(self.binary.read_bytes(), before)
-        (self.root / 'core-fail').unlink()
-        (self.root / 'optional-fail').touch()
-        result = self.run_update()
-        self.assertIn('optional service unavailable', result.stderr)
-        self.assertEqual(json.loads((self.root / 'config/update-status.json').read_text())['state'], 'degraded')
-
-    def test_procd_detection_rejects_untrusted_scripts_and_non_procd_pid1(self):
-        self.configure_procd()
-        before = self.binary.read_bytes()
-        for path, contents in [(self.root / 'pid1', 'init\n'), (self.root / 'pid1', 'procd\n')]:
-            path.write_text(contents)
-            if contents == 'procd\n': (self.root / 'lib/functions/procd.sh').chmod(0o666)
-            result = self.run_update(False)
-            self.assertIn('requires a running', result.stderr)
-            self.assertEqual(self.binary.read_bytes(), before)
-        self.assertEqual((self.root / 'downloads').read_text().count('/kejilion-node-linux-amd64'), 0)
-
-    def test_procd_running_false_is_not_treated_as_healthy_pid(self):
-        self.configure_procd()
-        self.run_update()
-        (self.root / 'procd-false-running').touch()
-        probe = self.root / 'probe.sh'
-        probe.write_text(self.isolate_paths(PROCD_HELPERS) + '\nkpanel_node_procd_pid kejilion-node\n')
-        result = subprocess.run(['/bin/bash', str(probe)], env=self.env, capture_output=True, text=True)
-        self.assertNotEqual(result.returncode, 0)
-
-    def test_procd_cron_preserves_unrelated_jobs_and_rejects_symlinks(self):
-        self.configure_procd()
-        functions = SOURCE.split('kpanel_node_paths() {', 1)[1].split('\nkpanel_node_preflight() {', 1)[0]
-        wrapper = self.root / 'cron-test.sh'
-        wrapper.write_text(self.isolate_paths('kpanel_node_paths() {' + functions) + '\nkpanel_node_paths\nsource <(kpanel_node_procd_helpers_template)\nkpanel_node_procd_cron_write "$1"\n')
-        crontabs = self.root / 'crontabs'
-        crontabs.mkdir()
-        crontab = crontabs / 'root'
-        original = '# existing jobs\n7 * * * * /bin/true # keep\n'
-        crontab.write_text(original)
-        line = self.isolate_paths('17 * * * * /usr/local/lib/kejilion-node/update-cron.sh # KPanel lightweight node updater')
-        for action in ('add', 'add', 'remove'):
-            result = subprocess.run(['/bin/bash', str(wrapper), action], env=self.env, capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertEqual(crontab.read_text(), original + (line + '\n' if action == 'add' else ''))
-        crontab.unlink()
-        target = self.root / 'untouched'
-        target.write_text(original)
-        crontab.symlink_to(target)
-        result = subprocess.run(['/bin/bash', str(wrapper), 'add'], env=self.env, capture_output=True, text=True)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(target.read_text(), original)
-
-    def test_monitoring_relay_cleanup_preserves_unknown_entries_and_symlinks(self):
-        helper = SOURCE.split('kpanel_node_clear_monitoring_relay() {', 1)[1].split('\nkpanel_node_uninstall() {', 1)[0]
-        safe_file = SOURCE.split('kpanel_node_safe_regular_file() {', 1)[1].split('\nkpanel_node_validate_config_dir() {', 1)[0]
-        wrapper = self.root / 'relay-cleanup.sh'
-        wrapper.write_text(self.isolate_paths('kpanel_node_safe_regular_file() {' + safe_file + '\nkpanel_node_clear_monitoring_relay() {' + helper) + '\nkpanel_node_clear_monitoring_relay\n')
-        directory = self.root / 'run-monitoring'
-        directory.mkdir(mode=0o750)
-        (directory / 'check-status.json').write_text('{}')
-        (directory / 'procd-health.json').write_text('{}')
-        unknown = directory / 'keep-me'
-        unknown.write_text('keep')
-        result = subprocess.run(['/bin/bash', str(wrapper)], env=self.env, capture_output=True, text=True)
-        self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(list(directory.iterdir()), [unknown])
-        (directory / 'check-status.json').symlink_to(unknown)
-        result = subprocess.run(['/bin/bash', str(wrapper)], env=self.env, capture_output=True, text=True)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(unknown.read_text(), 'keep')
-        self.assertTrue((directory / 'check-status.json').is_symlink())
 
     def test_failed_core_rolls_back_and_restart_failure_cannot_be_masked(self):
         before = self.binary.read_bytes()
@@ -745,56 +578,6 @@ done
         self.assertIn('node download failed', result.stderr)
         (self.root / 'binary-network-down').unlink()
         self.run_update()
-
-    def downloads(self):
-        path = self.root / 'downloads'
-        return path.read_text().splitlines() if path.exists() else []
-
-    def test_unreachable_github_installs_through_the_mirror(self):
-        (self.root / 'github-down').touch()
-        result = self.run_update(mode='install')
-        self.assertIn('using the gh.kejilion.pro mirror', result.stdout)
-        self.assertEqual(self.binary.read_bytes(), (self.root / 'release').read_bytes())
-        self.assertEqual(self.downloads(), [
-            'https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS',
-            'https://gh.kejilion.pro/https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS',
-            'https://gh.kejilion.pro/https://github.com/kejilion/KPanel/releases/latest/download/kejilion-node-linux-amd64',
-        ])
-
-    def test_unreachable_release_cdn_keeps_the_manifest_release_through_the_mirror(self):
-        (self.root / 'release-cdn-down').touch()
-        result = self.run_update()
-        self.assertIn('GitHub release download is unreachable', result.stdout)
-        self.assertEqual(self.binary.read_bytes(), (self.root / 'release').read_bytes())
-        self.assertEqual(self.downloads(), [
-            'https://github.com/kejilion/KPanel/releases/latest/download/SHA256SUMS',
-            'https://github.com/kejilion/KPanel/releases/download/v9.9.9/kejilion-node-linux-amd64',
-            'https://gh.kejilion.pro/https://github.com/kejilion/KPanel/releases/download/v9.9.9/kejilion-node-linux-amd64',
-        ])
-
-    def test_mirror_downloads_are_still_verified_and_failures_name_both_sources(self):
-        before = self.binary.read_bytes()
-        (self.root / 'github-down').touch()
-        (self.root / 'bad-download').touch()
-        self.assertIn('checksum verification failed', self.run_update(False).stderr)
-        self.assertEqual(self.binary.read_bytes(), before)
-        (self.root / 'bad-download').unlink()
-        (self.root / 'mirror-down').touch()
-        result = self.run_update(False)
-        self.assertIn('check access to github.com or gh.kejilion.pro', result.stderr)
-        self.assertEqual(self.binary.read_bytes(), before)
-        status = json.loads((self.root / 'config/update-status.json').read_text())
-        self.assertEqual((status['state'], status['errorCode']), ('failed', 'release_check'))
-        (self.root / 'mirror-down').unlink()
-        (self.root / 'github-down').unlink()
-        self.run_update()
-
-    def test_github_redirect_is_still_required_when_github_answers(self):
-        # A reachable origin that hides the release redirect is not silently
-        # replaced by the mirror's latest.
-        (self.root / 'response-headers').write_text('HTTP/2 200\r\n\r\n')
-        self.assertIn('release manifest redirect is invalid', self.run_update(False).stderr)
-        self.assertEqual(len(self.downloads()), 1)
 
     def test_unsafe_config_is_rejected_without_widening_permissions(self):
         config = self.root / 'config/node.json'

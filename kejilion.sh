@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.12"
+sh_v="4.5.10"
 
 
 gl_hui='\e[37m'
@@ -95,7 +95,6 @@ kpanel_protocol_active() {
 	[ "${KJ_ACCOUNT_MANAGEMENT_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_F2B_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_SYSTEM_TUNING_NONINTERACTIVE:-}" = "1" ] ||
-	[ "${KJ_VIRUS_SCAN_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_BBRV3_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_NONINTERACTIVE:-}" = "1" ] ||
 	[ "${KJ_APP_INTERACTIVE:-}" = "1" ] ||
@@ -8926,37 +8925,6 @@ elrepo() {
 
 
 
-KPANEL_VIRUS_SCAN_PROTOCOL_VERSION="1"
-
-kpanel_virus_scan_emit() {
-	local status="$1" mode="${2:-}" report="/home/docker/clamav/log/scan.log"
-	local scanned=0 infected=0 errors=0
-	if [ -f "$report" ] && [ ! -L "$report" ]; then
-		scanned="$(awk -F: '/^Scanned files:/ { gsub(/^[[:space:]]+/, "", $2); value=$2 } END { print value+0 }' "$report" 2>/dev/null)"
-		infected="$(awk -F: '/^Infected files:/ { gsub(/^[[:space:]]+/, "", $2); value=$2 } END { print value+0 }' "$report" 2>/dev/null)"
-		errors="$(awk -F: '/^Total errors:/ { gsub(/^[[:space:]]+/, "", $2); value=$2 } END { print value+0 }' "$report" 2>/dev/null)"
-	fi
-	printf '%s\n' \
-		"KPANEL_VIRUS_SCAN_PROTOCOL $KPANEL_VIRUS_SCAN_PROTOCOL_VERSION" \
-		"KPANEL_VIRUS_SCAN_STATUS=$status" \
-		"KPANEL_VIRUS_SCAN_MODE=$mode" \
-		"KPANEL_VIRUS_SCAN_SCANNED=$scanned" \
-		"KPANEL_VIRUS_SCAN_INFECTED=$infected" \
-		"KPANEL_VIRUS_SCAN_ERRORS=$errors" \
-		"KPANEL_VIRUS_SCAN_REPORT=$report"
-}
-
-kpanel_virus_scan_prepare_log() {
-	local root="/home/docker/clamav" log_dir
-	log_dir="$root/log"
-	[ ! -L "$root" ] && { [ ! -e "$root" ] || [ -d "$root" ]; } || return 1
-	[ ! -L "$log_dir" ] && { [ ! -e "$log_dir" ] || [ -d "$log_dir" ]; } || return 1
-	install -d -m 700 "$log_dir" || return 1
-	[ ! -L "$log_dir/scan.log" ] && { [ ! -e "$log_dir/scan.log" ] || [ -f "$log_dir/scan.log" ]; } || return 1
-	: > "$log_dir/scan.log" || return 1
-	chmod 600 "$log_dir/scan.log" || return 1
-}
-
 clamav_freshclam() {
 	echo -e "${gl_kjlan}正在更新病毒库...${gl_bai}"
 	docker run --rm \
@@ -8964,101 +8932,6 @@ clamav_freshclam() {
 		--mount source=clam_db,target=/var/lib/clamav \
 		clamav/clamav-debian:latest \
 		freshclam
-}
-
-kpanel_virus_scan_update_db() {
-	docker volume create clam_db >/dev/null || return 1
-	docker run --rm \
-		--name "kpanel-clamav-update-$$" \
-		--mount source=clam_db,target=/var/lib/clamav,volume-nocopy \
-		--security-opt no-new-privileges \
-		--cap-drop ALL \
-		--cap-add SETUID \
-		--cap-add SETGID \
-		--pids-limit 256 \
-		--tmpfs /var/log/clamav:rw,noexec,nosuid,nodev,size=16m,mode=0750 \
-		--entrypoint freshclam \
-		clamav/clamav-debian:latest \
-		--user root
-}
-
-kpanel_virus_scan_valid_path() {
-	local path="$1"
-	[[ "$path" == /* ]] || return 1
-	[[ "$path" != *','* && "$path" != *[[:cntrl:]]* ]] || return 1
-	if [ "$path" != / ]; then
-		[[ "$path" != */ && "$path" != *'//'* && "$path" != *'/./'* && "$path" != *'/../'* && "$path" != */. && "$path" != */.. ]] || return 1
-	fi
-	[ -d "$path" ]
-}
-
-kpanel_virus_scan_run() {
-	local mode="$1" rc status index=0 path
-	shift
-	local -a paths=() mounts=() targets=()
-	local -A seen_paths=()
-	case "$mode" in
-		full) [ "$#" -eq 0 ] || return 2; paths=(/) ;;
-		important) [ "$#" -eq 0 ] || return 2; paths=(/etc /var /usr /home /root) ;;
-		custom) [ "$#" -ge 1 ] && [ "$#" -le 8 ] || return 2; paths=("$@") ;;
-		*) return 2 ;;
-	esac
-	for path in "${paths[@]}"; do
-		kpanel_virus_scan_valid_path "$path" || return 2
-		[ -z "${seen_paths[$path]:-}" ] || return 2
-		seen_paths["$path"]=1
-		mounts+=(--mount "type=bind,source=$path,target=/mnt/scan/$index,readonly")
-		targets+=("/mnt/scan/$index")
-		index=$((index + 1))
-	done
-	kpanel_virus_scan_prepare_log || return 1
-	docker volume create clam_db >/dev/null || return 1
-	docker run --rm \
-		--name "kpanel-clamav-scan-$$" \
-		--network none \
-		--read-only \
-		--security-opt no-new-privileges \
-		--cap-drop ALL \
-		--pids-limit 256 \
-		--mount source=clam_db,target=/var/lib/clamav,readonly \
-		"${mounts[@]}" \
-		--mount type=bind,source=/home/docker/clamav/log,target=/var/log/clamav \
-		--tmpfs /tmp:rw,noexec,nosuid,nodev,size=64m \
-		--entrypoint clamscan \
-		clamav/clamav-debian:latest \
-		-r --infected --log=/var/log/clamav/scan.log "${targets[@]}"
-	rc=$?
-	case "$rc" in
-		0) status=clean ;;
-		1) status=infected ;;
-		*) kpanel_virus_scan_emit failed "$mode"; return "$rc" ;;
-	esac
-	kpanel_virus_scan_emit "$status" "$mode"
-}
-
-kpanel_virus_scan_dispatch() {
-	local action="${1:-probe}" lock_file
-	shift || true
-	[ "${KJ_VIRUS_SCAN_NONINTERACTIVE:-}" = "1" ] || { echo "KPanel virus-scan 协议环境未启用" >&2; return 2; }
-	[ "$EUID" -eq 0 ] || { echo "KPanel virus-scan 协议必须以 root 运行" >&2; return 1; }
-	[ "$(uname -s)" = Linux ] || { echo "KPanel virus-scan 协议仅支持 Linux" >&2; return 1; }
-	command -v docker >/dev/null 2>&1 || { echo "Docker 不可用" >&2; return 1; }
-	case "$action" in
-		probe) [ "$#" -eq 0 ] || return 2; kpanel_virus_scan_emit ready; return 0 ;;
-		update-db) [ "$#" -eq 0 ] || return 2 ;;
-		scan) [ "$#" -ge 1 ] || return 2 ;;
-		*) echo "用法: k kpanel virus-scan <probe|update-db|scan mode [paths...]>" >&2; return 2 ;;
-	esac
-	lock_file="/var/lock/kejilion-virus-scan.lock"
-	install -d -m 755 /var/lock || return 1
-	[ ! -L "$lock_file" ] || return 1
-	exec 9>"$lock_file" || return 1
-	flock -w 5 9 || { echo "病毒扫描任务正在运行" >&2; return 2; }
-	if [ "$action" = update-db ]; then
-		if kpanel_virus_scan_update_db; then kpanel_virus_scan_emit updated; else kpanel_virus_scan_emit failed; return 1; fi
-	else
-		kpanel_virus_scan_run "$@"
-	fi
 }
 
 clamav_scan() {
@@ -10892,7 +10765,7 @@ linux_tools() {
 	  echo -e "${gl_kjlan}11.  ${gl_bai}btop 现代化监控工具 ${gl_huang}★${gl_bai}             ${gl_kjlan}12.  ${gl_bai}ranger 文件管理工具"
 	  echo -e "${gl_kjlan}13.  ${gl_bai}ncdu 磁盘占用查看工具             ${gl_kjlan}14.  ${gl_bai}fzf 全局搜索工具"
 	  echo -e "${gl_kjlan}15.  ${gl_bai}vim 文本编辑器                    ${gl_kjlan}16.  ${gl_bai}nano 文本编辑器 ${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}17.  ${gl_bai}git 版本控制系统"
+	  echo -e "${gl_kjlan}17.  ${gl_bai}git 版本控制系统                  ${gl_kjlan}18.  ${gl_bai}opencode AI编程助手 ${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}21.  ${gl_bai}黑客帝国屏保                      ${gl_kjlan}22.  ${gl_bai}跑火车屏保"
 	  echo -e "${gl_kjlan}26.  ${gl_bai}俄罗斯方块小游戏                  ${gl_kjlan}27.  ${gl_bai}贪吃蛇小游戏"
@@ -11051,6 +10924,17 @@ linux_tools() {
 			  send_stats "安装git"
 			  ;;
 
+			18)
+			  clear
+			  cd ~
+			  curl -fsSL https://opencode.ai/install | bash
+			  source ~/.bashrc
+			  source ~/.profile
+			  opencode
+			  send_stats "安装opencode"
+			  ;;
+
+
 			21)
 			  clear
 			  install cmatrix
@@ -11105,6 +10989,8 @@ linux_tools() {
 			  clear
 			  send_stats "全部卸载"
 			  remove htop iftop tmux ffmpeg btop ranger ncdu fzf cmatrix sl bastet nsnake ninvaders vim nano git
+			  opencode uninstall
+			  rm -rf ~/.opencode
 			  ;;
 
 		  41)
@@ -11806,8 +11692,6 @@ kpanel_node_paths() {
 	KPANEL_NODE_SYSTEMD_DIR="/etc/systemd/system"
 	KPANEL_NODE_OPENRC_DIR="/etc/init.d"
 	KPANEL_NODE_UPDATE_PERIODIC="/etc/periodic/hourly/kejilion-node-update"
-	KPANEL_NODE_UPDATE_CRON="${KPANEL_NODE_HOME}/update-cron.sh"
-	KPANEL_NODE_CRONTAB="/etc/crontabs/root"
 	KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_SYSTEMD_DIR}/kejilion-node-ssh-login.service"
 	KPANEL_NODE_SSH_LOGIN_RUNTIME="/run/kejilion-node-ssh"
 	KPANEL_NODE_SSH_LOGIN_EVENT="${KPANEL_NODE_SSH_LOGIN_RUNTIME}/ssh-login.json"
@@ -11823,52 +11707,7 @@ kpanel_node_paths() {
 	KPANEL_NODE_INIT_SYSTEM=""
 }
 
-kpanel_node_procd_helpers_template() {
-	cat <<'KPANEL_NODE_PROCD_HELPERS'
-# Shared installer/updater checks. No distribution names or writable config
-# select the privileged service backend.
-kpanel_node_procd_trusted_path() {
-	local path="$1" mode
-	[ ! -L "$path" ] && { [ -f "$path" ] || [ -d "$path" ]; } || return 1
-	[ "$(stat -c '%u' "$path")" = 0 ] || return 1
-	mode="$(stat -c '%a' "$path")" || return 1
-	[[ "$mode" =~ ^[0-7]{3,4}$ ]] && [ $((8#$mode & 8#022)) -eq 0 ]
-}
-kpanel_node_procd_capable() {
-	local path command_path
-	[ "$(cat /proc/1/comm 2>/dev/null)" = procd ] || return 1
-	for path in /etc /etc/init.d /etc/rc.common /lib /lib/functions /lib/functions/procd.sh; do
-		kpanel_node_procd_trusted_path "$path" || return 1
-	done
-	[ -f /etc/rc.common ] && [ -f /lib/functions/procd.sh ] || return 1
-	for path in ubus jsonfilter; do
-		command_path="$(type -P "$path")" || return 1
-		command_path="$(readlink -f "$command_path")" || return 1
-		[ -x "$command_path" ] && kpanel_node_procd_trusted_path "$command_path" || return 1
-	done
-	ubus -t 5 call service list '{"name":"kejilion-node"}' >/dev/null 2>&1
-}
-kpanel_node_procd_pid() {
-	local service="${1%.service}" data running pid
-	case "$service" in kejilion-node|kejilion-node-terminal|kejilion-node-ssh-login|kejilion-node-file) ;; *) return 1 ;; esac
-	data="$(ubus -t 5 call service list "{\"name\":\"${service}\"}" 2>/dev/null)" || return 1
-	running="$(printf '%s' "$data" | jsonfilter -e "@['${service}'].instances.main.running")" || return 1
-	[ "$running" = true ] || return 1
-	pid="$(printf '%s' "$data" | jsonfilter -e "@['${service}'].instances.main.pid")" || return 1
-	[[ "$pid" =~ ^[1-9][0-9]*$ ]] && [ -e "/proc/${pid}/exe" ] || return 1
-	printf '%s\n' "$pid"
-}
-KPANEL_NODE_PROCD_HELPERS
-}
-
 kpanel_node_detect_init_system() {
-	source <(kpanel_node_procd_helpers_template)
-	if [ "$(cat /proc/1/comm 2>/dev/null)" = procd ]; then
-		kpanel_node_procd_capable || { echo "procd 依赖缺失或不可信：需要 rc.common、procd.sh、ubus、jsonfilter 和可用的 service 总线。" >&2; return 1; }
-		KPANEL_NODE_INIT_SYSTEM=procd
-		KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_OPENRC_DIR}/kejilion-node-ssh-login"
-		return 0
-	fi
 	if [ -d /run/systemd/system ] && [ -n "$KPANEL_NODE_SYSTEMCTL" ] && [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
 		KPANEL_NODE_INIT_SYSTEM=systemd
 		KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_SYSTEMD_DIR}/kejilion-node-ssh-login.service"
@@ -11882,13 +11721,13 @@ kpanel_node_detect_init_system() {
 		KPANEL_NODE_SSH_LOGIN_SERVICE="${KPANEL_NODE_OPENRC_DIR}/kejilion-node-ssh-login"
 		return 0
 	fi
-	echo "当前系统需要运行 systemd、OpenRC 或原生 procd（需可信的 rc.common/procd.sh、ubus、jsonfilter），无法安装 KPanel 轻量节点。" >&2
+	echo "当前系统需要运行 systemd 或 OpenRC，无法安装 KPanel 轻量节点。" >&2
 	return 1
 }
 
 kpanel_node_service_name() {
 	case "$KPANEL_NODE_INIT_SYSTEM" in
-		openrc|procd) printf '%s\n' "${1%.service}" ;;
+		openrc) printf '%s\n' "${1%.service}" ;;
 		*) printf '%s\n' "$1" ;;
 	esac
 }
@@ -11899,13 +11738,12 @@ kpanel_node_service_exists() {
 	case "$KPANEL_NODE_INIT_SYSTEM" in
 		systemd) "$KPANEL_NODE_SYSTEMCTL" cat "$service" >/dev/null 2>&1 ;;
 		openrc) [ -f "${KPANEL_NODE_OPENRC_DIR}/${service}" ] && [ ! -L "${KPANEL_NODE_OPENRC_DIR}/${service}" ] && [ -x "${KPANEL_NODE_OPENRC_DIR}/${service}" ] ;;
-		procd) [ -x "${KPANEL_NODE_OPENRC_DIR}/${service}" ] && kpanel_node_procd_trusted_path "${KPANEL_NODE_OPENRC_DIR}/${service}" ;;
 		*) return 1 ;;
 	esac
 }
 
 kpanel_node_service_action() {
-	local action="$1" service pid
+	local action="$1" service
 	service="$(kpanel_node_service_name "$2")" || return 1
 	case "$KPANEL_NODE_INIT_SYSTEM" in
 		systemd) "$KPANEL_NODE_SYSTEMCTL" "$action" "$service" ;;
@@ -11918,27 +11756,6 @@ kpanel_node_service_action() {
 				*) return 2 ;;
 			esac
 			;;
-		procd)
-			kpanel_node_service_exists "$service" || return 1
-			case "$action" in
-				is-active)
-					if [ "$service" = cron ]; then
-						ubus -t 5 call service list '{"name":"cron"}' | jsonfilter -e "@.cron.instances.*.running" | grep -qx true
-					else
-						pid="$(kpanel_node_procd_pid "$service")" && [ "/proc/${pid}/exe" -ef "$KPANEL_NODE_BINARY" ]
-					fi
-					;;
-				status)
-					if kpanel_node_service_action is-active "$service"; then
-						printf '%s: running\n' "$service"
-					else
-						printf '%s: inactive or unavailable\n' "$service"; return 3
-					fi
-					;;
-				enable|disable|start|stop|restart) "${KPANEL_NODE_OPENRC_DIR}/${service}" "$action" ;;
-				*) return 2 ;;
-			esac
-			;;
 		*) return 1 ;;
 	esac
 }
@@ -11946,36 +11763,9 @@ kpanel_node_service_action() {
 kpanel_node_service_reload_manager() {
 	case "$KPANEL_NODE_INIT_SYSTEM" in
 		systemd) "$KPANEL_NODE_SYSTEMCTL" daemon-reload ;;
-		openrc|procd) return 0 ;;
+		openrc) return 0 ;;
 		*) return 1 ;;
 	esac
-}
-
-kpanel_node_procd_cron_line() {
-	printf '%s\n' '17 * * * * /usr/local/lib/kejilion-node/update-cron.sh # KPanel lightweight node updater'
-}
-
-kpanel_node_procd_cron_write() {
-	local action="$1" directory="${KPANEL_NODE_CRONTAB%/*}" temporary line
-	line="$(kpanel_node_procd_cron_line)"
-	if [ "$action" = remove ] && [ ! -e "$KPANEL_NODE_CRONTAB" ] && [ ! -L "$KPANEL_NODE_CRONTAB" ]; then return 0; fi
-	if [ ! -e "$directory" ] && [ ! -L "$directory" ]; then mkdir -m 0700 "$directory" || return 1; fi
-	[ -d "$directory" ] && kpanel_node_procd_trusted_path "$directory" || return 1
-	if [ -e "$KPANEL_NODE_CRONTAB" ] || [ -L "$KPANEL_NODE_CRONTAB" ]; then
-		[ -f "$KPANEL_NODE_CRONTAB" ] && kpanel_node_procd_trusted_path "$KPANEL_NODE_CRONTAB" &&
-			[ "$(stat -c '%h' "$KPANEL_NODE_CRONTAB")" = 1 ] || return 1
-	fi
-	if [ "$action" = remove ] && ! grep -Fxq "$line" "$KPANEL_NODE_CRONTAB"; then return 0; fi
-	temporary="$(mktemp "${directory}/.kejilion-node-cron.XXXXXX")" || return 1
-	if [ -f "$KPANEL_NODE_CRONTAB" ]; then
-		awk -v managed="$line" '$0 != managed { print }' "$KPANEL_NODE_CRONTAB" >"$temporary" || { rm -f -- "$temporary"; return 1; }
-	fi
-	if [ "$action" = add ]; then printf '%s\n' "$line" >>"$temporary" || { rm -f -- "$temporary"; return 1; }; fi
-	# BusyBox crond reloads changed crontab directories at its next minute tick.
-	# Atomic replacement preserves every unrelated job and never stops shared cron.
-	if ! chown root:root "$temporary" || ! chmod 0600 "$temporary" || ! mv -f -- "$temporary" "$KPANEL_NODE_CRONTAB"; then
-		rm -f -- "$temporary"; return 1
-	fi
 }
 
 kpanel_node_update_schedule_enable() {
@@ -11984,10 +11774,6 @@ kpanel_node_update_schedule_enable() {
 		openrc)
 			[ -f "$KPANEL_NODE_UPDATE_PERIODIC" ] && [ ! -L "$KPANEL_NODE_UPDATE_PERIODIC" ] && [ -x "$KPANEL_NODE_UPDATE_PERIODIC" ] || return 1
 			kpanel_node_service_action enable crond
-			;;
-		procd)
-			[ -x "$KPANEL_NODE_UPDATE_CRON" ] && kpanel_node_procd_trusted_path "$KPANEL_NODE_UPDATE_CRON" || return 1
-			kpanel_node_procd_cron_write add && kpanel_node_service_action enable cron
 			;;
 		*) return 1 ;;
 	esac
@@ -11999,7 +11785,6 @@ kpanel_node_update_schedule_start() {
 		openrc)
 			kpanel_node_service_action is-active crond || kpanel_node_service_action start crond
 			;;
-		procd) kpanel_node_service_action is-active cron || kpanel_node_service_action start cron ;;
 		*) return 1 ;;
 	esac
 }
@@ -12009,203 +11794,19 @@ kpanel_node_update_schedule_stop() {
 }
 
 kpanel_node_update_schedule_disable() {
-	case "$KPANEL_NODE_INIT_SYSTEM" in
-		systemd) kpanel_node_service_action disable kejilion-node-update.timer ;;
-		procd) kpanel_node_procd_cron_write remove ;;
-	esac
+	[ "$KPANEL_NODE_INIT_SYSTEM" != systemd ] || kpanel_node_service_action disable kejilion-node-update.timer
 }
 
-kpanel_node_require_platform() {
+kpanel_node_preflight() {
 	[ "$(id -u)" = "0" ] || {
 		echo "KPanel 轻量节点安装需要 root 权限。" >&2
 		return 1
 	}
-	[ "$(uname -s)" = Linux ] || { echo "KPanel 轻量节点仅支持 Linux。" >&2; return 1; }
-	case "$(uname -m)" in
-		x86_64|amd64) KPANEL_NODE_ARCH=amd64 ;;
-		aarch64|arm64) KPANEL_NODE_ARCH=arm64 ;;
-		*) echo "当前 CPU 架构暂不支持 KPanel 轻量节点（支持 amd64/x86_64、arm64/aarch64）。" >&2; return 1 ;;
-	esac
-}
-
-# Only join calls the package bootstrap. Status, manual/periodic update and
-# uninstall keep their existing read-only dependency checks.
-kpanel_node_dependency_init_hint() {
-	local pid1=""
-	IFS= read -r pid1 </proc/1/comm || true
-	KPANEL_NODE_DEPENDENCY_INIT=""
-	if [ "$pid1" = procd ]; then
-		[ -f /etc/rc.common ] && [ -f /lib/functions/procd.sh ] && [ -x /etc/init.d/cron ] || {
-			echo "procd 基础服务不完整，无法自动安装轻量节点依赖。" >&2; return 1
+	for command_name in curl sha256sum mktemp flock; do
+		command -v "$command_name" >/dev/null 2>&1 || {
+			echo "缺少必要命令: ${command_name}" >&2
+			return 1
 		}
-		KPANEL_NODE_DEPENDENCY_INIT=procd
-	elif [ -d /run/systemd/system ] && [ -n "$KPANEL_NODE_SYSTEMCTL" ] && [ -x "$KPANEL_NODE_SYSTEMCTL" ]; then
-		KPANEL_NODE_DEPENDENCY_INIT=systemd
-	elif [ -d /run/openrc ] && [ -n "$KPANEL_NODE_RC_SERVICE" ] && [ -x "$KPANEL_NODE_RC_SERVICE" ] &&
-		[ -n "$KPANEL_NODE_RC_UPDATE" ] && [ -x "$KPANEL_NODE_RC_UPDATE" ] &&
-		[ -n "$KPANEL_NODE_SUPERVISE_DAEMON" ] && [ -x "$KPANEL_NODE_SUPERVISE_DAEMON" ]; then
-		[ -x /etc/init.d/crond ] && [ -d /etc/periodic/hourly ] || {
-			echo "OpenRC 缺少 crond 服务或 /etc/periodic/hourly，无法自动安装轻量节点依赖。" >&2; return 1
-		}
-		KPANEL_NODE_DEPENDENCY_INIT=openrc
-	else
-		echo "当前系统需要运行 systemd、OpenRC 或原生 procd，无法自动安装轻量节点依赖。" >&2
-		return 1
-	fi
-}
-
-kpanel_node_account_tool_available() {
-	type -P useradd >/dev/null 2>&1 || type -P systemd-sysusers >/dev/null 2>&1 || {
-		type -P adduser >/dev/null 2>&1 && type -P addgroup >/dev/null 2>&1
-	}
-}
-
-kpanel_node_collect_missing_dependencies() {
-	local command_name
-	KPANEL_NODE_MISSING_DEPENDENCIES=()
-	local -a commands=(bash curl sha256sum mktemp flock stat readlink awk grep sed cmp od tr install)
-	case "${KPANEL_NODE_DEPENDENCY_INIT:-}" in
-		procd) commands+=(ubus jsonfilter logread) ;;
-		openrc) commands+=(logger) ;;
-	esac
-	for command_name in "${commands[@]}"; do
-		type -P "$command_name" >/dev/null 2>&1 || KPANEL_NODE_MISSING_DEPENDENCIES+=("$command_name")
-	done
-	kpanel_node_account_tool_available || KPANEL_NODE_MISSING_DEPENDENCIES+=(account-tools)
-}
-
-kpanel_node_report_missing_dependencies() {
-	echo "仍缺少轻量节点依赖: ${KPANEL_NODE_MISSING_DEPENDENCIES[*]}。请按系统软件源提示处理后重试。" >&2
-}
-
-kpanel_node_dependency_family() {
-	local release=/etc/os-release key value os_id="" os_like="" family
-	local -a families=()
-	[ -r "$release" ] || release=/usr/lib/os-release
-	# os-release is data, never shell code. No source/eval or external parser is
-	# used here because grep/awk/sed themselves may be missing.
-	if [ -r "$release" ]; then
-		while IFS='=' read -r key value; do
-			case "$key" in ID|ID_LIKE) ;; *) continue ;; esac
-			case "$value" in \"*\") value="${value:1:${#value}-2}" ;; \'*\') value="${value:1:${#value}-2}" ;; esac
-			[[ "$value" =~ ^[a-z0-9._\ -]*$ ]] || continue
-			case "$key" in ID) os_id="$value" ;; ID_LIKE) os_like="$value" ;; esac
-		done <"$release"
-	fi
-	# Native procd plus OpenWrt metadata also covers derivatives with their own
-	# ID. apk on OpenWrt still uses OpenWrt's split package names, not Alpine's.
-	if [ "$KPANEL_NODE_DEPENDENCY_INIT" = procd ] && [ -f /etc/openwrt_release ]; then
-		KPANEL_NODE_DEPENDENCY_FAMILY=openwrt; return 0
-	fi
-	read -r -a families <<<"$os_id $os_like"
-	for family in "${families[@]}"; do
-		case "$family" in
-			openwrt) KPANEL_NODE_DEPENDENCY_FAMILY=openwrt; return 0 ;;
-			alpine) KPANEL_NODE_DEPENDENCY_FAMILY=alpine; return 0 ;;
-			debian|ubuntu) KPANEL_NODE_DEPENDENCY_FAMILY=debian; return 0 ;;
-			fedora|rhel|centos|rocky|almalinux|ol|amzn) KPANEL_NODE_DEPENDENCY_FAMILY=rpm; return 0 ;;
-		esac
-	done
-	echo "无法识别原生软件包家族，未自动安装依赖。" >&2
-	return 1
-}
-
-kpanel_node_native_package_manager() {
-	local name="$1" directory
-	# Never pick an Entware /opt binary or a user-supplied PATH wrapper.
-	for directory in /usr/bin /bin /usr/sbin /sbin; do
-		if [ -f "${directory}/${name}" ] && [ -x "${directory}/${name}" ]; then
-			printf '%s\n' "${directory}/${name}"; return 0
-		fi
-	done
-	return 1
-}
-
-kpanel_node_dependency_package() {
-	local dependency="$1"
-	case "$dependency" in
-		bash|curl|grep|sed) printf '%s\n' "$dependency" ;;
-		awk) printf '%s\n' gawk ;;
-		cmp) printf '%s\n' diffutils ;;
-		install|od|stat|sha256sum|mktemp|readlink|tr)
-			if [ "$KPANEL_NODE_DEPENDENCY_FAMILY" = openwrt ]; then printf 'coreutils-%s\n' "$dependency"; else printf '%s\n' coreutils; fi ;;
-		flock)
-			case "$KPANEL_NODE_DEPENDENCY_FAMILY" in openwrt|alpine) printf '%s\n' flock ;; *) printf '%s\n' util-linux ;; esac ;;
-		logger)
-			case "$KPANEL_NODE_DEPENDENCY_FAMILY" in alpine) printf '%s\n' logger ;; debian) printf '%s\n' bsdutils ;; rpm) printf '%s\n' util-linux ;; *) return 1 ;; esac ;;
-		account-tools)
-			case "$KPANEL_NODE_DEPENDENCY_FAMILY" in
-				openwrt) printf '%s\n' shadow-useradd ;; alpine) printf '%s\n' shadow ;;
-				debian) printf '%s\n' passwd ;; rpm) printf '%s\n' shadow-utils ;;
-			esac ;;
-		ubus|jsonfilter|logread)
-			[ "$KPANEL_NODE_DEPENDENCY_FAMILY" = openwrt ] || return 1
-			if [ "$dependency" = logread ]; then printf '%s\n' logd; else printf '%s\n' "$dependency"; fi ;;
-		*) return 1 ;;
-	esac
-}
-
-kpanel_node_ensure_dependencies() {
-	local manager="" alternate="" manager_name="" dependency package found existing
-	local -a packages=()
-	kpanel_node_require_platform || return 1
-	kpanel_node_dependency_init_hint || return 1
-	kpanel_node_collect_missing_dependencies
-	[ "${#KPANEL_NODE_MISSING_DEPENDENCIES[@]}" -gt 0 ] || return 0
-	if ! kpanel_node_dependency_family; then kpanel_node_report_missing_dependencies; return 1; fi
-	case "$KPANEL_NODE_DEPENDENCY_FAMILY" in
-		openwrt)
-			manager="$(kpanel_node_native_package_manager opkg || true)"
-			alternate="$(kpanel_node_native_package_manager apk || true)"
-			if [ -n "$manager" ] && [ -n "$alternate" ]; then
-				echo "同时发现原生 opkg 和 apk，无法安全确定软件包管理器；请手动补齐依赖。" >&2
-				kpanel_node_report_missing_dependencies; return 1
-			fi
-			if [ -n "$manager" ]; then manager_name=opkg; else manager="$alternate"; manager_name=apk; fi ;;
-		alpine) manager_name=apk; manager="$(kpanel_node_native_package_manager apk || true)" ;;
-		debian) manager_name=apt-get; manager="$(kpanel_node_native_package_manager apt-get || true)" ;;
-		rpm)
-			manager_name=dnf; manager="$(kpanel_node_native_package_manager dnf || true)"
-			if [ -z "$manager" ]; then manager_name=yum; manager="$(kpanel_node_native_package_manager yum || true)"; fi ;;
-	esac
-	if [ -z "$manager" ]; then
-		echo "未找到该系统的原生软件包管理器，未自动安装依赖。" >&2
-		kpanel_node_report_missing_dependencies; return 1
-	fi
-	for dependency in "${KPANEL_NODE_MISSING_DEPENDENCIES[@]}"; do
-		package="$(kpanel_node_dependency_package "$dependency")" || {
-			echo "该系统没有可确认的依赖包映射: $dependency" >&2
-			kpanel_node_report_missing_dependencies; return 1
-		}
-		found=false
-		for existing in "${packages[@]}"; do [ "$existing" != "$package" ] || found=true; done
-		[ "$found" = true ] || packages+=("$package")
-	done
-	echo "正在使用 ${manager_name} 补齐轻量节点依赖: ${packages[*]}"
-	# One index refresh and one transaction; never change repositories, disable
-	# signature checks, install an init system, or upgrade the whole system.
-	local installed=false
-	case "$manager_name" in
-		opkg) "$manager" update && "$manager" install "${packages[@]}" && installed=true ;;
-		apk) "$manager" update && "$manager" add "${packages[@]}" && installed=true ;;
-		apt-get) "$manager" update && DEBIAN_FRONTEND=noninteractive "$manager" install -y --no-install-recommends "${packages[@]}" && installed=true ;;
-		dnf|yum) "$manager" -y makecache && "$manager" -y install "${packages[@]}" && installed=true ;;
-	esac
-	hash -r
-	kpanel_node_collect_missing_dependencies
-	if [ "$installed" != true ]; then
-		echo "轻量节点依赖安装失败；请检查上方软件包管理器的原始错误。" >&2
-		[ "${#KPANEL_NODE_MISSING_DEPENDENCIES[@]}" -eq 0 ] || kpanel_node_report_missing_dependencies
-		return 1
-	fi
-	[ "${#KPANEL_NODE_MISSING_DEPENDENCIES[@]}" -eq 0 ] || { kpanel_node_report_missing_dependencies; return 1; }
-}
-
-kpanel_node_preflight() {
-	local command_name
-	kpanel_node_require_platform || return 1
-	for command_name in bash curl sha256sum mktemp flock stat readlink awk grep sed cmp od tr; do
-		command -v "$command_name" >/dev/null 2>&1 || { echo "缺少必要命令: ${command_name}" >&2; return 1; }
 	done
 	kpanel_node_detect_init_system || return 1
 	KPANEL_NODE_INSTALL_BIN="$(type -P install 2>/dev/null || true)"
@@ -12213,8 +11814,10 @@ kpanel_node_preflight() {
 		echo "缺少必要命令: install (coreutils)" >&2
 		return 1
 	}
-	if ! kpanel_node_account_tool_available; then
-		echo "缺少系统账户创建工具: useradd、systemd-sysusers 或 adduser/addgroup" >&2
+	if ! command -v useradd >/dev/null 2>&1 &&
+		! command -v systemd-sysusers >/dev/null 2>&1 &&
+		! command -v adduser >/dev/null 2>&1; then
+		echo "缺少系统账户创建工具: useradd、systemd-sysusers 或 adduser" >&2
 		return 1
 	fi
 	if [ "$KPANEL_NODE_INIT_SYSTEM" = openrc ]; then
@@ -12224,22 +11827,20 @@ kpanel_node_preflight() {
 			return 1
 		}
 	fi
-	if [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
-		[ -x "${KPANEL_NODE_OPENRC_DIR}/cron" ] && kpanel_node_procd_trusted_path "${KPANEL_NODE_OPENRC_DIR}/cron" || {
-			echo "procd 系统缺少可信的 /etc/init.d/cron，无法启用安全自动更新。" >&2
+	case "$(uname -m)" in
+		x86_64|amd64) KPANEL_NODE_ARCH="amd64" ;;
+		aarch64|arm64) KPANEL_NODE_ARCH="arm64" ;;
+		*)
+			echo "当前 CPU 架构暂不支持 KPanel 轻量节点。" >&2
 			return 1
-		}
-		for command_name in ubus jsonfilter logread; do
-			command -v "$command_name" >/dev/null 2>&1 || { echo "缺少必要命令: ${command_name}" >&2; return 1; }
-		done
-	fi
+			;;
+	esac
 }
 
 kpanel_node_ensure_account() {
 	local nologin_shell="/usr/sbin/nologin" sysusers_config=""
 	if id kejilion-node >/dev/null 2>&1; then
-		[ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] &&
-			[ "$(id -u kejilion-node)" != 0 ] && [ "$(id -g kejilion-node)" != 0 ] || {
+		[ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] || {
 			echo "现有 kejilion-node 账户的主组不安全，拒绝继续。" >&2
 			return 1
 		}
@@ -12249,7 +11850,7 @@ kpanel_node_ensure_account() {
 	[ -x "$nologin_shell" ] || nologin_shell="/bin/false"
 
 	if command -v useradd >/dev/null 2>&1; then
-		useradd --system --user-group --no-create-home --home-dir /nonexistent --shell "$nologin_shell" kejilion-node || return 1
+		useradd --system --no-create-home --home-dir /nonexistent --shell "$nologin_shell" kejilion-node || return 1
 	elif command -v systemd-sysusers >/dev/null 2>&1; then
 		sysusers_config="$(mktemp /tmp/kejilion-node-sysusers.XXXXXX)" || return 1
 		printf 'u kejilion-node - "KPanel Lightweight Monitoring Node" /nonexistent %s\n' "$nologin_shell" >"$sysusers_config"
@@ -12269,8 +11870,7 @@ kpanel_node_ensure_account() {
 		adduser -S -D -H -h /nonexistent -s "$nologin_shell" -G kejilion-node kejilion-node || return 1
 	fi
 
-	id kejilion-node >/dev/null 2>&1 && [ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] &&
-		[ "$(id -u kejilion-node)" != 0 ] && [ "$(id -g kejilion-node)" != 0 ] || {
+	id kejilion-node >/dev/null 2>&1 && [ "$(id -gn kejilion-node 2>/dev/null)" = "kejilion-node" ] || {
 		echo "KPanel 轻量节点低权限账户创建失败。" >&2
 		return 1
 	}
@@ -12370,9 +11970,8 @@ kpanel_node_write_updater() {
 	updater_temporary="$(mktemp "${KPANEL_NODE_HOME}/.update.sh.XXXXXX")" || return 1
 	printf '#!/bin/bash\n' >"$updater_temporary" || return 1
 	kpanel_node_lock_template >>"$updater_temporary" || return 1
-	kpanel_node_procd_helpers_template >>"$updater_temporary" || return 1
 	cat >>"$updater_temporary" <<'KPANEL_NODE_UPDATE'
-# KPANEL_NODE_RUNTIME_GENERATION=6
+# KPANEL_NODE_RUNTIME_GENERATION=4
 set -euo pipefail
 
 mode="${1:-update}"
@@ -12393,10 +11992,6 @@ binary_path="${home_dir}/kejilion-node"
 # GitHub URLs and hide the redirects that bind the checksum to one release.
 github_host="github.com"
 base_url="https://${github_host}/kejilion/KPanel/releases/latest/download"
-# Fallback when github.com or its release CDN is unreachable (mainland China,
-# IPv6-only hosts). The mirror belongs to the kejilion.sh author, who already
-# serves this script, and follows GitHub's release redirect itself.
-mirror_prefix="https://gh.kejilion.pro/"
 temporary_dir=""
 
 kpanel_node_acquire_lock || exit 1
@@ -12458,22 +12053,12 @@ if [ "$quiet" != true ] && [ -t 2 ]; then
 fi
 update_error=release_check
 [ "$quiet" = true ] || echo "Checking KPanel lightweight node release..."
-# GitHub is tried first with a short budget so an unreachable host falls back
-# to the mirror within about a minute instead of after every retry.
-manifest_source=github
 if ! curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
-	--connect-timeout 10 --max-time 30 --retry 1 --retry-delay 2 --retry-max-time 45 \
+	--connect-timeout 15 --max-time 60 --retry 3 --retry-delay 5 --retry-max-time 240 \
 	--max-filesize 65536 --dump-header "${temporary_dir}/headers" \
 	-o "${temporary_dir}/SHA256SUMS" "${base_url}/SHA256SUMS"; then
-	manifest_source=mirror
-	[ "$quiet" = true ] || echo "github.com is unreachable; using the gh.kejilion.pro mirror..."
-	if ! curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
-		--connect-timeout 15 --max-time 60 --retry 3 --retry-delay 5 --retry-max-time 240 \
-		--max-filesize 65536 \
-		-o "${temporary_dir}/SHA256SUMS" "${mirror_prefix}${base_url}/SHA256SUMS"; then
-		echo "KPanel release check failed; check access to github.com or gh.kejilion.pro and retry." >&2
-		exit 1
-	fi
+	echo "KPanel release check failed; check access to github.com and retry." >&2
+	exit 1
 fi
 update_error=manifest
 expected="$(awk -v name="$binary_name" '$2 == name { print $1 }' "${temporary_dir}/SHA256SUMS")"
@@ -12481,32 +12066,22 @@ printf '%s' "$expected" | grep -Eq '^[0-9a-f]{64}$' || {
 	echo "release checksum is unavailable" >&2
 	exit 1
 }
-if [ "$manifest_source" = github ]; then
-	# The first redirect binds the manifest to a release; the following CDN redirect
-	# must never be used as a base URL or mixed with a later value of latest.
-	release_url="$(awk 'tolower($1) == "location:" { sub(/\r$/, "", $2); print $2 }' "${temporary_dir}/headers" |
-		grep -E '^https://github[.]com/kejilion/KPanel/releases/download/v[0-9]+\.[0-9]+\.[0-9]+/SHA256SUMS$' | tail -n 1 || true)"
-	[ -n "$release_url" ] || { echo "release manifest redirect is invalid" >&2; exit 1; }
-	release_base="${release_url%/SHA256SUMS}"
-else
-	# The mirror resolves latest itself, so no tag is visible. The binary comes
-	# from the same latest; a release published in between fails the checksum
-	# below and the next run retries.
-	release_base="${mirror_prefix}${base_url}"
-fi
+# The first redirect binds the manifest to a release; the following CDN redirect
+# must never be used as a base URL or mixed with a later value of latest.
+release_url="$(awk 'tolower($1) == "location:" { sub(/\r$/, "", $2); print $2 }' "${temporary_dir}/headers" |
+	grep -E '^https://github[.]com/kejilion/KPanel/releases/download/v[0-9]+\.[0-9]+\.[0-9]+/SHA256SUMS$' | tail -n 1 || true)"
+[ -n "$release_url" ] || { echo "release manifest redirect is invalid" >&2; exit 1; }
+release_base="${release_url%/SHA256SUMS}"
 
 file_service="kejilion-node-file.service"
 update_init_system=""
-if [ "$(cat /proc/1/comm 2>/dev/null)" = procd ]; then
-	kpanel_node_procd_capable || { echo "KPanel lightweight node requires a running, trusted procd service manager with ubus/jsonfilter" >&2; exit 1; }
-	update_init_system=procd
-elif [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
+if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
 	update_init_system=systemd
 elif [ -d /run/openrc ] && command -v rc-service >/dev/null 2>&1 && command -v rc-update >/dev/null 2>&1 &&
 	command -v supervise-daemon >/dev/null 2>&1 && command -v logger >/dev/null 2>&1; then
 	update_init_system=openrc
 else
-	echo "KPanel lightweight node requires a running systemd, OpenRC or native procd service manager" >&2
+	echo "KPanel lightweight node requires a running systemd or OpenRC service manager" >&2
 	exit 1
 fi
 if [ "$update_init_system" = systemd ]; then
@@ -12518,7 +12093,7 @@ file_service_definition_changed=false
 
 updater_service_name() {
 	case "$update_init_system" in
-		openrc|procd) printf '%s\n' "${1%.service}" ;;
+		openrc) printf '%s\n' "${1%.service}" ;;
 		*) printf '%s\n' "$1" ;;
 	esac
 }
@@ -12529,7 +12104,6 @@ updater_service_exists() {
 	case "$update_init_system" in
 		systemd) systemctl cat "$service" >/dev/null 2>&1 ;;
 		openrc) [ -f "/etc/init.d/${service}" ] && [ ! -L "/etc/init.d/${service}" ] && [ -x "/etc/init.d/${service}" ] ;;
-		procd) [ -x "/etc/init.d/${service}" ] && kpanel_node_procd_trusted_path "/etc/init.d/${service}" ;;
 	esac
 }
 
@@ -12546,14 +12120,6 @@ updater_service_action() {
 				*) return 2 ;;
 			esac
 			;;
-		procd)
-			updater_service_exists "$service" || return 1
-			case "$action" in
-				is-active) kpanel_node_procd_pid "$service" >/dev/null ;;
-				enable|restart) "/etc/init.d/${service}" "$action" ;;
-				*) return 2 ;;
-			esac
-			;;
 	esac
 }
 
@@ -12564,42 +12130,6 @@ ensure_file_service_unit() {
 		[ $(( 8#$(stat -c '%a' "$file_service_path") & 8#022 )) -eq 0 ] || return 1
 	fi
 	local template legacy_template="" unit_temporary
-	if [ "$update_init_system" = procd ]; then
-		template="${temporary_dir}/file.procd"
-		cat >"$template" <<'KPANEL_NODE_FILE_PROCD'
-#!/bin/sh /etc/rc.common
-# KPanel managed procd service
-USE_PROCD=1
-START=95
-STOP=10
-
-start_service() {
-	[ -f /etc/kejilion-node/node.json ] || return 1
-	procd_open_instance main
-	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json'
-	procd_set_param user root
-	procd_set_param group root
-	procd_set_param respawn 3600 15 0
-	procd_set_param term_timeout 30
-	procd_set_param stdout 1
-	procd_set_param stderr 1
-	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
-	procd_close_instance
-}
-KPANEL_NODE_FILE_PROCD
-		if [ -f "$file_service_path" ]; then
-			cmp -s "$file_service_path" "$template" && return 0
-			echo "KPanel file service has custom settings; retaining the existing procd service" >&2
-			return 0
-		fi
-		unit_temporary="$(mktemp "${file_service_path}.XXXXXX")" || return 1
-		if ! install -o root -g root -m 0755 "$template" "$unit_temporary" || ! mv -f -- "$unit_temporary" "$file_service_path"; then
-			rm -f -- "$unit_temporary"
-			return 1
-		fi
-		file_service_definition_changed=true
-		return 0
-	fi
 	if [ "$update_init_system" = openrc ]; then
 		template="${temporary_dir}/file.openrc"
 		cat >"$template" <<'KPANEL_NODE_FILE_OPENRC'
@@ -12708,7 +12238,6 @@ service_running_current() {
 	case "$update_init_system" in
 		systemd) pid="$(systemctl show "$service" --property=MainPID --value)" || return 1 ;;
 		openrc) pid="$(cat "/run/kejilion-node/$(updater_service_name "$service").pid" 2>/dev/null)" || return 1 ;;
-		procd) pid="$(kpanel_node_procd_pid "$service")" || return 1 ;;
 	esac
 	[[ "$pid" =~ ^[1-9][0-9]*$ ]] && [ "/proc/${pid}/exe" -ef "$binary_path" ]
 }
@@ -12786,27 +12315,12 @@ fi
 
 update_error=download
 [ "$quiet" = true ] || echo "Downloading KPanel lightweight node..."
-download_binary() {
-	curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
-		--connect-timeout 15 --max-time 180 "$@" \
-		--max-filesize 134217728 \
-		-o "${temporary_dir}/${binary_name}" "$release_download"
-}
-release_download="${release_base}/${binary_name}"
-if [ "$manifest_source" = mirror ]; then
-	download_binary --retry 3 --retry-delay 5 --retry-max-time 600 || {
-		echo "KPanel node download failed; check access to gh.kejilion.pro and retry." >&2
-		exit 1
-	}
-elif ! download_binary --retry 1 --retry-delay 2 --retry-max-time 200; then
-	# github.com answered but its release CDN did not. The versioned URL through
-	# the mirror keeps the binary bound to the manifest's release.
-	[ "$quiet" = true ] || echo "GitHub release download is unreachable; using the gh.kejilion.pro mirror..."
-	release_download="${mirror_prefix}${release_base}/${binary_name}"
-	download_binary --retry 3 --retry-delay 5 --retry-max-time 600 || {
-		echo "KPanel node download failed; check access to GitHub release downloads or gh.kejilion.pro and retry." >&2
-		exit 1
-	}
+if ! curl --proto '=https' --proto-redir '=https' --tlsv1.2 --fail --location "${curl_progress[@]}" \
+	--connect-timeout 15 --max-time 180 --retry 3 --retry-delay 5 --retry-max-time 600 \
+	--max-filesize 134217728 \
+	-o "${temporary_dir}/${binary_name}" "${release_base}/${binary_name}"; then
+	echo "KPanel node download failed; check access to GitHub release downloads and retry." >&2
+	exit 1
 fi
 update_error=checksum
 actual="$(sha256sum "${temporary_dir}/${binary_name}" | awk '{print $1}')"
@@ -13001,139 +12515,7 @@ KPANEL_NODE_OPENRC_UPDATE
 		"$KPANEL_NODE_UPDATE_PERIODIC"
 }
 
-kpanel_node_write_procd_units() {
-	local path
-	# Every privileged destination is fixed and in a root-owned, non-writable
-	# directory. Reject linked or custom-owned files before opening a heredoc.
-	for path in "$KPANEL_NODE_OPENRC_DIR" "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"; do
-		[ -d "$path" ] && kpanel_node_procd_trusted_path "$path" || return 1
-	done
-	for path in "${KPANEL_NODE_OPENRC_DIR}/kejilion-node" "${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" \
-		"$KPANEL_NODE_SSH_LOGIN_SERVICE" "${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" "$KPANEL_NODE_UPDATE_CRON"; do
-		if [ -e "$path" ] || [ -L "$path" ]; then
-			[ -f "$path" ] && kpanel_node_procd_trusted_path "$path" && [ "$(stat -c '%h' "$path")" = 1 ] || return 1
-		fi
-	done
-	path="${KPANEL_NODE_CONFIG_DIR}/state"
-	[ ! -L "$path" ] || return 1
-	if [ -e "$path" ]; then
-		[ -d "$path" ] && [ "$(stat -c '%u:%g:%a' "$path")" = 0:0:700 ] || return 1
-	else
-		"$KPANEL_NODE_INSTALL_BIN" -d -o root -g root -m 0700 "$path" || return 1
-	fi
-	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node" <<'KPANEL_NODE_PROCD_SERVICE'
-#!/bin/sh /etc/rc.common
-# KPanel managed procd service
-USE_PROCD=1
-START=95
-STOP=10
-
-start_service() {
-	[ -f /etc/kejilion-node/node.json ] || return 1
-	procd_open_instance main
-	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node run --config /etc/kejilion-node/node.json'
-	procd_set_param user kejilion-node
-	procd_set_param group kejilion-node
-	procd_set_param respawn 3600 15 0
-	procd_set_param term_timeout 30
-	procd_set_param stdout 1
-	procd_set_param stderr 1
-	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
-	procd_close_instance
-}
-KPANEL_NODE_PROCD_SERVICE
-
-	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" <<'KPANEL_NODE_PROCD_TERMINAL_SERVICE'
-#!/bin/sh /etc/rc.common
-# KPanel managed procd service
-USE_PROCD=1
-START=95
-STOP=10
-
-start_service() {
-	[ -f /etc/kejilion-node/node.json ] || return 1
-	[ -f /etc/kejilion-node/terminal.json ] || return 1
-	procd_open_instance main
-	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node terminal-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json'
-	procd_set_param user root
-	procd_set_param group root
-	procd_set_param respawn 3600 5 0
-	procd_set_param term_timeout 30
-	procd_set_param stdout 1
-	procd_set_param stderr 1
-	procd_close_instance
-}
-KPANEL_NODE_PROCD_TERMINAL_SERVICE
-
-	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-ssh-login" <<'KPANEL_NODE_PROCD_SSH_LOGIN_SERVICE'
-#!/bin/sh /etc/rc.common
-# KPanel managed procd service
-USE_PROCD=1
-START=95
-STOP=10
-
-start_service() {
-	[ ! -L /run/kejilion-node-ssh ] || return 1
-	if [ -e /run/kejilion-node-ssh ]; then
-		[ -d /run/kejilion-node-ssh ] && [ "$(stat -c '%u:%a' /run/kejilion-node-ssh)" = 0:750 ] || return 1
-	fi
-	command install -d -o root -g kejilion-node -m 0750 /run/kejilion-node-ssh || return 1
-	procd_open_instance main
-	procd_set_param command /bin/sh -c 'umask 027; exec /usr/local/lib/kejilion-node/kejilion-node ssh-login-broker --output /run/kejilion-node-ssh/ssh-login.json'
-	procd_set_param user root
-	procd_set_param group kejilion-node
-	procd_set_param respawn 3600 15 0
-	procd_set_param term_timeout 30
-	procd_set_param stdout 1
-	procd_set_param stderr 1
-	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
-	procd_close_instance
-}
-KPANEL_NODE_PROCD_SSH_LOGIN_SERVICE
-
-	cat >"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" <<'KPANEL_NODE_PROCD_FILE_SERVICE'
-#!/bin/sh /etc/rc.common
-# KPanel managed procd service
-USE_PROCD=1
-START=95
-STOP=10
-
-start_service() {
-	[ -f /etc/kejilion-node/node.json ] || return 1
-	procd_open_instance main
-	procd_set_param command /bin/sh -c 'umask 077; exec /usr/local/lib/kejilion-node/kejilion-node file-broker --config /etc/kejilion-node/node.json --terminal-config /etc/kejilion-node/terminal.json'
-	procd_set_param user root
-	procd_set_param group root
-	procd_set_param respawn 3600 15 0
-	procd_set_param term_timeout 30
-	procd_set_param stdout 1
-	procd_set_param stderr 1
-	grep -q no_new_privs /lib/functions/procd.sh && procd_set_param no_new_privs 1
-	procd_close_instance
-}
-KPANEL_NODE_PROCD_FILE_SERVICE
-
-	cat >"$KPANEL_NODE_UPDATE_CRON" <<'KPANEL_NODE_PROCD_UPDATE'
-#!/bin/sh
-set -eu
-PATH=/usr/sbin:/usr/bin:/sbin:/bin
-export PATH
-umask 077
-random_value="$(od -An -N2 -tu2 /dev/urandom 2>/dev/null | tr -d ' ' || true)"
-case "$random_value" in *[!0-9]*|'') random_value=0 ;; esac
-sleep "$((random_value % 901))"
-exec /usr/local/lib/kejilion-node/update.sh update
-KPANEL_NODE_PROCD_UPDATE
-	chmod 0755 "${KPANEL_NODE_OPENRC_DIR}/kejilion-node" \
-		"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-terminal" "$KPANEL_NODE_SSH_LOGIN_SERVICE" \
-		"${KPANEL_NODE_OPENRC_DIR}/kejilion-node-file" "$KPANEL_NODE_UPDATE_CRON"
-}
-
 kpanel_node_write_units() {
-	if [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
-		kpanel_node_write_procd_units
-		return
-	fi
 	if [ "$KPANEL_NODE_INIT_SYSTEM" = openrc ]; then
 		kpanel_node_write_openrc_units
 		return
@@ -13503,17 +12885,6 @@ kpanel_node_activate() {
 	if ! kpanel_node_service_action is-active kejilion-node-ssh-login.service >/dev/null; then
 		echo "KPanel SSH 登录采集服务当前不可用；普通遥测仍在运行。" >&2
 	fi
-	if [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
-		local attempt
-		for attempt in {1..20}; do
-			if kpanel_node_service_action is-active kejilion-node.service >/dev/null; then
-				sleep 0.25
-				kpanel_node_service_action is-active kejilion-node.service >/dev/null && return 0
-			fi
-			sleep 0.25
-		done
-		return 1
-	fi
 	kpanel_node_service_action is-active kejilion-node.service >/dev/null
 }
 
@@ -13534,24 +12905,22 @@ kpanel_node_join() {
 		esac
 	done
 	kpanel_node_paths
+	kpanel_node_preflight || return 1
 	case "$token" in
 		kpl1.*) ;;
 		kpb1.*) batch_token=true ;;
 		*) echo "轻量节点接入授权无效。" >&2; return 2 ;;
 	esac
-	[ "${#token}" -le 2048 ] && [[ "$token" =~ ^kp[lb]1\.[A-Za-z0-9_-]+$ ]] || {
+	[ "${#token}" -le 2048 ] || {
 		echo "轻量节点接入授权无效。" >&2
 		return 2
 	}
 	if [ -n "$node_name" ]; then
-		[ "${#node_name}" -le 80 ] && [[ "$node_name" != *[[:cntrl:]]* ]] || {
+		[ "${#node_name}" -le 80 ] && ! LC_ALL=C printf '%s' "$node_name" | grep -q '[[:cntrl:]]' || {
 			echo "轻量节点名称无效。" >&2
 			return 2
 		}
-	fi
-	kpanel_node_ensure_dependencies || return 1
-	kpanel_node_preflight || return 1
-	if [ -z "$node_name" ]; then
+	else
 		node_name="$(hostname 2>/dev/null | LC_ALL=C tr -cd '[:alnum:]_. -' | cut -c1-80)"
 	fi
 	kpanel_node_lock || return 1
@@ -13667,14 +13036,6 @@ kpanel_node_status() {
 	done
 	if [ "$KPANEL_NODE_INIT_SYSTEM" = systemd ]; then
 		kpanel_node_service_action status kejilion-node-update.timer || true
-	elif [ "$KPANEL_NODE_INIT_SYSTEM" = procd ]; then
-		kpanel_node_service_action status cron || true
-		if [ -x "$KPANEL_NODE_UPDATE_CRON" ] && kpanel_node_procd_trusted_path "$KPANEL_NODE_UPDATE_CRON" &&
-			grep -Fxq "$(kpanel_node_procd_cron_line)" "$KPANEL_NODE_CRONTAB"; then
-			echo "KPanel lightweight node updater: enabled (cron)"
-		else
-			echo "KPanel lightweight node updater: disabled or unavailable" >&2
-		fi
 	else
 		kpanel_node_service_action status crond || true
 		if [ -x "$KPANEL_NODE_UPDATE_PERIODIC" ] && [ ! -L "$KPANEL_NODE_UPDATE_PERIODIC" ]; then
@@ -13705,19 +13066,6 @@ kpanel_node_update() {
 	)
 }
 
-kpanel_node_clear_monitoring_relay() {
-	local directory=/run/kejilion-node-monitoring path
-	[ -e "$directory" ] || [ -L "$directory" ] || return 0
-	# An unrecognized entry is preserved; no recursive removal of runtime data.
-	[ -d "$directory" ] && [ ! -L "$directory" ] && [ "$(stat -c '%u:%a' "$directory")" = 0:750 ] || return 1
-	for path in "$directory/check-status.json" "$directory/procd-health.json"; do
-		[ -e "$path" ] || [ -L "$path" ] || continue
-		kpanel_node_safe_regular_file "$path" || return 1
-	done
-	rm -f -- "$directory/check-status.json" "$directory/procd-health.json" || return 1
-	rmdir -- "$directory" 2>/dev/null || true
-}
-
 kpanel_node_uninstall() {
 	(
 	kpanel_node_paths
@@ -13727,18 +13075,13 @@ kpanel_node_uninstall() {
 	}
 	kpanel_node_lock || return 1
 	kpanel_node_detect_init_system >/dev/null 2>&1 || true
-	# Remove only our exact cron entry even if procd/ubus is currently broken.
-	kpanel_node_procd_cron_write remove || { echo "无法安全移除 KPanel 自动更新计划，卸载已停止。" >&2; return 1; }
 	if [ -n "$KPANEL_NODE_INIT_SYSTEM" ]; then
 		for service in kejilion-node.service kejilion-node-terminal.service kejilion-node-ssh-login.service kejilion-node-file.service; do
 			kpanel_node_service_action stop "$service" >/dev/null 2>&1 || true
 			kpanel_node_service_action disable "$service" >/dev/null 2>&1 || true
 		done
 		kpanel_node_update_schedule_stop >/dev/null 2>&1 || true
-		if ! kpanel_node_update_schedule_disable; then
-			echo "无法安全移除 KPanel 自动更新计划，卸载已停止。" >&2
-			return 1
-		fi
+		kpanel_node_update_schedule_disable >/dev/null 2>&1 || true
 	fi
 	rm -f -- /etc/systemd/system/kejilion-node.service \
 		/etc/systemd/system/kejilion-node-terminal.service \
@@ -13751,7 +13094,6 @@ kpanel_node_uninstall() {
 		/etc/init.d/kejilion-node-ssh-login \
 		/etc/init.d/kejilion-node-file \
 		"$KPANEL_NODE_UPDATE_PERIODIC"
-	kpanel_node_clear_monitoring_relay || echo "KPanel 状态中继目录存在未知权限或链接，已保留供人工检查。" >&2
 	rm -rf -- "$KPANEL_NODE_HOME" "$KPANEL_NODE_CONFIG_DIR"
 	rmdir -- "$KPANEL_NODE_SSH_LOGIN_RUNTIME" 2>/dev/null || true
 	[ "$KPANEL_NODE_INIT_SYSTEM" != systemd ] || kpanel_node_service_reload_manager >/dev/null 2>&1 || true
@@ -15095,6 +14437,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}31.  ${gl_bai}站点数据管理 ${gl_huang}★${gl_bai}                    ${gl_huang}32.  ${gl_bai}备份全站数据"
 	echo -e "${gl_huang}33.  ${gl_bai}定时远程备份                      ${gl_huang}34.  ${gl_bai}还原全站数据"
+	echo "k. 通用加密备份与恢复 (.kpb，与 KPanel 互通)"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}35.  ${gl_bai}防护LDNMP环境                     ${gl_huang}36.  ${gl_bai}优化LDNMP环境"
 	echo -e "${gl_huang}37.  ${gl_bai}更新LDNMP环境                     ${gl_huang}38.  ${gl_bai}卸载LDNMP环境"
@@ -16161,12 +15504,6 @@ linux_ldnmp() {
 
 moltbot_menu() {
 	local app_id="114"
-	local gl_kjlan="${gl_kjlan:-\033[96m}" gl_lv="${gl_lv:-\033[32m}"
-	local gl_huang="${gl_huang:-\033[33m}" gl_hong="${gl_hong:-\033[31m}"
-	local gl_hui='\033[90m' gl_bai="${gl_bai:-\033[0m}"
-	if [ ! -t 1 ] || [ "${TERM:-dumb}" = dumb ] || [ -n "${NO_COLOR:-}" ]; then
-		gl_kjlan='' gl_lv='' gl_huang='' gl_hong='' gl_hui='' gl_bai=''
-	fi
 
 	send_stats "clawdbot/moltbot管理"
 
@@ -16200,7 +15537,7 @@ moltbot_menu() {
 		if command -v openclaw >/dev/null 2>&1; then
 			echo "${gl_lv}已安装${gl_bai}"
 		else
-			echo "${gl_huang}未安装${gl_bai}"
+			echo "${gl_hui}未安装${gl_bai}"
 		fi
 	}
 
@@ -16208,7 +15545,7 @@ moltbot_menu() {
 		if pgrep -f "openclaw.*gateway" >/dev/null 2>&1; then
 			echo "${gl_lv}运行中${gl_bai}"
 		else
-			echo "${gl_huang}未运行${gl_bai}"
+			echo "${gl_hui}未运行${gl_bai}"
 		fi
 	}
 
@@ -16222,36 +15559,37 @@ moltbot_menu() {
 		local running_status=$(get_running_status)
 		local update_message=$(check_openclaw_update)
 
-		printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 应用管理 ==========" "${gl_bai:-}"
-		printf ' %b终端执行 %b%s%b 快速进入菜单%b\n' "$gl_hui" "$gl_kjlan" 'k claw' "$gl_hui" "$gl_bai"
-		printf ' 安装状态：%b    运行状态：%b\n' "$install_status" "$running_status"
-		[ -z "$update_message" ] || printf ' %b\n' "$update_message"
-		printf '%b%s%b\n' "${gl_kjlan:-}" '-------------------------------------------------' "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" "${gl_lv:-}" "安装" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_lv:-}" "启动" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" "${gl_huang:-}" "停止" "${gl_bai:-}"
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" '' "状态日志查看" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" '' "换模型" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 6 "${gl_bai:-}" '' "API管理" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 7 "${gl_bai:-}" '' "机器人连接对接" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 8 "${gl_bai:-}" '' "插件管理（安装/删除）" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 9 "${gl_bai:-}" '' "技能管理（安装/删除）" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 10 "${gl_bai:-}" '' "编辑主配置文件" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 11 "${gl_bai:-}" '' "配置向导" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 12 "${gl_bai:-}" '' "健康检测与修复" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 13 "${gl_bai:-}" '' "WebUI访问与设置" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 14 "${gl_bai:-}" "${gl_lv:-}" "TUI命令行对话窗口" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 15 "${gl_bai:-}" '' "记忆/Memory" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 16 "${gl_bai:-}" '' "权限管理" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 17 "${gl_bai:-}" '' "多智能体管理" "${gl_bai:-}"
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 18 "${gl_bai:-}" '' "备份与还原" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 19 "${gl_bai:-}" "${gl_huang:-}" "更新" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 20 "${gl_bai:-}" "${gl_hong:-}" "卸载" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级选单" "${gl_bai:-}"
-		printf '%b%s%b\n' "${gl_kjlan:-}" '-------------------------------------------------' "${gl_bai:-}"
-		printf '%b请输入选项并回车: %b' "$gl_kjlan" "$gl_bai"
+		echo "======================================="
+		echo -e "🦞 OPENCLAW 管理工具 by KEJILION 🦞"
+		echo -e "💡 终端执行 \033[1;33mk claw\033[0m 快速进入菜单"
+		echo -e "$install_status $running_status $update_message"
+		echo "======================================="
+		echo "1.  安装"
+		echo "2.  启动"
+		echo "3.  停止"
+		echo "--------------------"
+		echo "4.  状态日志查看"
+		echo "5.  换模型"
+		echo "6.  API管理"
+		echo "7.  机器人连接对接"
+		echo "8.  插件管理（安装/删除）"
+		echo "9.  技能管理（安装/删除）"
+		echo "10. 编辑主配置文件"
+		echo "11. 配置向导"
+		echo "12. 健康检测与修复"
+		echo "13. WebUI访问与设置"
+		echo "14. TUI命令行对话窗口"
+		echo "15. 记忆/Memory"
+		echo "16. 权限管理"
+		echo "17. 多智能体管理"
+		echo "--------------------"
+		echo "18. 备份与还原"
+		echo "19. 更新"
+		echo "20. 卸载"
+		echo "--------------------"
+		echo "0. 返回上一级选单"
+		echo "--------------------"
+		printf "请输入选项并回车: "
 	}
 
 
@@ -16277,112 +15615,6 @@ moltbot_menu() {
 		fi
 	}
 
-	# Resolve references with the installed OpenClaw runtime, without writing keys back.
-	openclaw_api_python() {
-		local api_code
-		api_code=$(cat)
-		{
-			cat <<'PY_SECRETS'
-import json
-import os
-import re
-import shutil
-import signal
-import subprocess
-
-def openclaw_key_is_ref(value):
-    return isinstance(value, dict) or (isinstance(value, str) and bool(
-        re.fullmatch(r'\$\{[A-Z][A-Z0-9_]*\}|\$[A-Z][A-Z0-9_]*', value)))
-
-def openclaw_key_usable(value):
-    return (isinstance(value, str) and bool(value.strip())
-            and not openclaw_key_is_ref(value)
-            and value not in ('__OPENCLAW_REDACTED__', 'secretref-managed')
-            and not value.startswith('oc-sent-')
-            and '\r' not in value and '\n' not in value)
-
-def openclaw_api_request_keys(providers, config, config_path):
-    keys = {}
-    refs = []
-    for name, provider in providers.items():
-        if not isinstance(provider, dict):
-            continue
-        value = provider.get('apiKey')
-        if openclaw_key_is_ref(value):
-            refs.append(name)
-        elif openclaw_key_usable(value):
-            keys[name] = value
-    entry = shutil.which('openclaw') if refs else None
-    node = shutil.which('node') if entry else None
-    if not node:
-        return keys
-    resolver = r'''
-const {createRequire} = require('node:module');
-const {pathToFileURL} = require('node:url');
-const {isDeepStrictEqual} = require('node:util');
-const {readFileSync, realpathSync} = require('node:fs');
-const write = process.stdout.write.bind(process.stdout);
-process.stdout.write = () => true;
-(async () => {
-  const input = JSON.parse(readFileSync(0, 'utf8'));
-  const localRequire = createRequire(pathToFileURL(process.argv[1]));
-  const processes = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/process-runtime')));
-  process.once('SIGTERM', () => processes.killProcessTree(process.pid, {detached: false, force: true}));
-  const sdk = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/secret-input-runtime')));
-  const io = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/config-runtime')));
-  const {snapshot, writeOptions} = await io.readConfigFileSnapshotForWrite({observe: false});
-  if (!snapshot.exists || !snapshot.valid ||
-      realpathSync(snapshot.path) !== realpathSync(process.env.OPENCLAW_CONFIG_PATH) ||
-      !isDeepStrictEqual(JSON.parse(snapshot.raw), input.config)) return;
-  Object.assign(process.env, writeOptions.envSnapshotForRestore);
-  const keys = Object.create(null);
-  for (const name of input.names) {
-    try {
-      const value = io.coerceSecretRef(input.config.models.providers[name].apiKey,
-                                     snapshot.config.secrets?.defaults);
-      if (!value) continue;
-      const result = await sdk.resolveConfiguredSecretInputString({
-        config: snapshot.config, env: process.env, value,
-        path: `models.providers.${name}.apiKey`
-      });
-      if (typeof result.value === 'string') keys[name] = result.value;
-    } catch {}
-  }
-  write(JSON.stringify(keys));
-})().catch(() => { process.exitCode = 1; });
-'''
-    try:
-        with subprocess.Popen(
-            [node, '-e', resolver, os.path.realpath(entry)],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-            text=True, start_new_session=True,
-            env=dict(os.environ, OPENCLAW_CONFIG_PATH=os.path.abspath(config_path))) as process:
-            try:
-                output, _ = process.communicate(json.dumps({'config': config, 'names': refs}), timeout=60)
-            except subprocess.TimeoutExpired:
-                # Let OpenClaw reap its exec providers, including detached children.
-                process.terminate()
-                try:
-                    process.communicate(timeout=5)
-                except subprocess.TimeoutExpired:
-                    try:
-                        os.killpg(process.pid, signal.SIGKILL)
-                    except ProcessLookupError:
-                        pass
-                    process.communicate(timeout=5)
-                return keys
-            resolved = json.loads(output) if process.returncode == 0 else {}
-        if isinstance(resolved, dict):
-            keys.update({name: resolved[name] for name in refs
-                         if openclaw_key_usable(resolved.get(name))})
-    except (OSError, ValueError, subprocess.TimeoutExpired):
-        pass
-    return keys
-PY_SECRETS
-			printf '\n%s\n' "$api_code"
-		} | python3 - "$@"
-	}
-
 	sync_openclaw_api_models() {
 		local config_file
 		config_file=$(openclaw_get_config_file)
@@ -16391,7 +15623,7 @@ PY_SECRETS
 
 		install jq curl >/dev/null 2>&1
 
-		openclaw_api_python "$config_file" "$ENABLE_STATS" "$sh_v" <<'PY'
+		python3 - "$config_file" "$ENABLE_STATS" "$sh_v" <<'PY'
 import copy
 import json
 import os
@@ -16437,9 +15669,6 @@ providers = models_cfg.get('providers', {})
 if not isinstance(providers, dict) or not providers:
     print('ℹ️ 未检测到 API providers，跳过模型同步')
     raise SystemExit(0)
-
-request_keys = openclaw_api_request_keys(providers, obj, path)
-skipped_refs = []
 
 agents = work.setdefault('agents', {})
 defaults = agents.setdefault('defaults', {})
@@ -16586,8 +15815,6 @@ def fetch_remote_models_with_retry(name, base_url, api_key, retries=3):
             data = json.loads(payload)
             return data, None, attempt
         except Exception as e:
-            if isinstance(e, urllib.error.HTTPError):
-                e.close()
             last_error = e
             if attempt < retries:
                 time.sleep(1)
@@ -16601,13 +15828,8 @@ for name, provider in list(providers.items()):
 
     api = provider.get('api', '')
     base_url = provider.get('baseUrl')
-    api_key = request_keys.get(name)
+    api_key = provider.get('apiKey')
     model_list = provider.get('models', [])
-
-    if openclaw_key_is_ref(provider.get('apiKey')) and not api_key:
-        skipped_refs.append(name)
-        summary.append(f'⚠️ {name}: OpenClaw 未能解析密钥引用，请检查密钥来源与运行环境；原配置已保留')
-        continue
 
     if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
         summary.append(f'ℹ️ 跳过 {name}: 无 baseUrl/apiKey/models')
@@ -16621,10 +15843,7 @@ for name, provider in list(providers.items()):
 
     data, err, attempts = fetch_remote_models_with_retry(name, base_url, api_key, retries=3)
     if err is not None:
-        summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__})')
-        if openclaw_key_is_ref(provider.get('apiKey')):
-            fatal_errors.append(f'❌ {name}: 密钥引用请求失败，保留密钥引用和配置')
-            continue
+        summary.append(f'⚠️ {name}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
         send_stat('OpenClaw API确认介入')
         if prompt_delete_provider(name):
             deleted = delete_provider_and_refs(name)
@@ -16726,12 +15945,12 @@ for name, provider in list(providers.items()):
             summary.append(f'  - {mid}')
 
 
-if fatal_errors or skipped_refs:
+if fatal_errors:
     for line in summary:
         print(line)
     for err in fatal_errors:
         print(err)
-    print('❌ 模型同步未完成，已中止写入并保留原配置')
+    print('❌ 模型同步失败：存在 provider 同步后无可用模型，已中止写入')
     raise SystemExit(2)
 
 if changed:
@@ -16879,16 +16098,12 @@ EOF
 		   --arg api "$DETECTED_API" \
 		   --argjson models "$models_array" \
 		'
-		.models.providers[$prov].apiKey as $existing_key
-		| .models |= (
+		.models |= (
 			(. // { mode: "merge", providers: {} })
 			| .mode = "merge"
 			| .providers[$prov] = {
 				baseUrl: $url,
-				apiKey: (if ($existing_key | type) == "object"
-					or (($existing_key | type) == "string" and
-					    ($existing_key | test("^\\$\\{[A-Z][A-Z0-9_]*\\}$|^\\$[A-Z][A-Z0-9_]*$")))
-					then $existing_key else $key end),
+				apiKey: $key,
 				api: $api,
 				models: $models
 			}
@@ -17000,62 +16215,22 @@ EOF
 		done
 		base_url="${base_url%/}"
 
-		# 3. API Key (existing references are retained when replacing a provider)
-		local config_file key_is_ref=false
-		config_file=$(openclaw_get_config_file)
-		if [ -f "$config_file" ] && jq -e --arg prov "$provider_name" '
-			.models.providers[$prov].apiKey
-			| type == "object" or (type == "string" and
-			  test("^\\$\\{[A-Z][A-Z0-9_]*\\}$|^\\$[A-Z][A-Z0-9_]*$"))
-		' "$config_file" >/dev/null 2>&1; then
-			key_is_ref=true
-			api_key=''
-			echo "🔍 正在获取可用模型列表..."
-			models_json=$(openclaw_api_python "$config_file" "$provider_name" "$base_url" <<'PY_MODELS'
-import sys
-import urllib.request
-with open(sys.argv[1], encoding='utf-8') as f:
-    obj = json.load(f)
-name = sys.argv[2]
-provider = obj['models']['providers'][name]
-key = openclaw_api_request_keys({name: provider}, obj, sys.argv[1]).get(name)
-if not key:
-    raise SystemExit(1)
-try:
-    request = urllib.request.Request(sys.argv[3].rstrip('/') + '/models',
-                                     headers={'Authorization': f'Bearer {key}'})
-    with urllib.request.urlopen(request, timeout=10) as response:
-        data = json.load(response)
-    if not isinstance(data, dict) or not isinstance(data.get('data'), list):
-        raise ValueError('invalid models response')
-    print(json.dumps(data))
-except Exception:
-    raise SystemExit(1)
-PY_MODELS
-)
-			if [[ $? -ne 0 || -z "$models_json" ]]; then
-				echo "❌ 密钥引用解析或模型请求失败，请检查密钥来源与运行环境；原配置保持不变"
-				return 1
-			fi
-		else
-			read -rsp "请输入 API Key (输入不显示): " api_key
+		# 3. API Key
+		read -rsp "请输入 API Key (输入不显示): " api_key
+		echo
+		while [[ -z "$api_key" ]]; do
+			echo "❌ API Key 不能为空"
+			read -rsp "请输入 API Key: " api_key
 			echo
-			while [[ -z "$api_key" ]]; do
-				echo "❌ API Key 不能为空"
-				read -rsp "请输入 API Key: " api_key
-				echo
-			done
-		fi
+		done
 
 		# 4. 不再探测/判断 API 类型；协议由用户自行选择与维护
 
 		# 5. 获取模型列表
-		if [ "$key_is_ref" = false ]; then
-			echo "🔍 正在获取可用模型列表..."
-			models_json=$(curl -s -m 10 \
-				-H "Authorization: Bearer $api_key" \
-				"${base_url}/models")
-		fi
+		echo "🔍 正在获取可用模型列表..."
+		models_json=$(curl -s -m 10 \
+			-H "Authorization: Bearer $api_key" \
+			"${base_url}/models")
 
 		if [[ -n "$models_json" ]]; then
 			available_models=$(echo "$models_json" | grep -oP '"id":\s*"\K[^"]+' | sort)
@@ -17063,7 +16238,7 @@ PY_MODELS
 			if [[ -n "$available_models" ]]; then
 				model_count=$(echo "$available_models" | wc -l)
 				echo "✅ 发现 $model_count 个可用模型："
-				printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+				echo "--------------------------------"
 				# 全部显示，带序号
 				i=1
 				model_list=()
@@ -17072,7 +16247,7 @@ PY_MODELS
 					model_list+=("$model")
 					((i++))
 				done <<< "$available_models"
-				printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+				echo "--------------------------------"
 			fi
 		fi
 
@@ -17095,11 +16270,7 @@ PY_MODELS
 		echo "====== 确认信息 ======"
 		echo "Provider    : $provider_name"
 		echo "Base URL    : $base_url"
-		if [ "$key_is_ref" = true ]; then
-			echo "API Key     : 已配置（密钥引用）"
-		else
-			echo "API Key     : ${api_key:0:8}****"
-		fi
+		echo "API Key     : ${api_key:0:8}****"
 		echo "默认模型    : $default_model"
 		echo "模型总数    : $model_count"
 		echo "======================"
@@ -17108,13 +16279,7 @@ PY_MODELS
 
 		install jq
 		if [[ "$confirm" =~ ^[Yy]$ ]]; then
-			if [ "$key_is_ref" = true ]; then
-				local models_array
-				models_array=$(build-openclaw-provider-models-json "$provider_name" "$available_models")
-				write-openclaw-provider-models "$provider_name" "$base_url" "" "$models_array"
-			else
-				add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
-			fi
+			add-all-models-from-provider "$provider_name" "$base_url" "$api_key"
 			add_result=$?
 			finish_msg="✅ 完成！所有 $model_count 个模型已加载"
 		else
@@ -17159,7 +16324,7 @@ openclaw_api_manage_list() {
 				printf '%b\n' "[$idx] ${name} | API: ${base_url} | 协议: ${api_type} | 模型数量: ${gl_huang}${model_count}${gl_bai} | 延迟/状态: ${latency_color}${latency_txt}${gl_bai}"
 				;;
 		esac
-	done < <(openclaw_api_python "$config_file" <<-'PY'
+	done < <(python3 - "$config_file" <<-'PY'
 import json
 import sys
 import time
@@ -17215,10 +16380,8 @@ if not isinstance(providers, dict) or not providers:
     raise SystemExit(0)
 
 print('MSG\t--- 已配置 API 列表 ---')
-request_keys = openclaw_api_request_keys(providers, obj, path)
 
 for idx, name in enumerate(sorted(providers.keys()), start=1):
-    api = ''
     provider = providers.get(name)
     if not isinstance(provider, dict):
         base_url = '-'
@@ -17229,13 +16392,11 @@ for idx, name in enumerate(sorted(providers.keys()), start=1):
         models = provider.get('models') if isinstance(provider.get('models'), list) else []
         model_count = sum(1 for m in models if isinstance(m, dict) and m.get('id'))
         api = provider.get('api', '')
-        api_key = request_keys.get(name)
+        api_key = provider.get('apiKey')
 
         latency_raw = '未检测'
         if api in SUPPORTED_APIS:
-            if openclaw_key_is_ref(provider.get('apiKey')) and not api_key:
-                latency_raw = '密钥引用未解析（未检测）'
-            elif isinstance(base_url, str) and base_url != '-' and openclaw_key_usable(api_key):
+            if isinstance(base_url, str) and base_url != '-' and isinstance(api_key, str) and api_key:
                 try:
                     latency_raw = ping_models(base_url, api_key)
                 except Exception:
@@ -17283,7 +16444,7 @@ sync-openclaw-provider-interactive() {
 
 	install jq curl >/dev/null 2>&1
 
-	openclaw_api_python "$config_file" "$provider_name" <<'PY2'
+	python3 - "$config_file" "$provider_name" <<'PY2'
 import copy
 import json
 import sys
@@ -17361,8 +16522,6 @@ def fetch_remote_models_with_retry(base_url, api_key, retries=3):
                 payload = resp.read().decode('utf-8', 'ignore')
             return json.loads(payload), None, attempt
         except Exception as e:
-            if isinstance(e, urllib.error.HTTPError):
-                e.close()
             last_error = e
             if attempt < retries:
                 time.sleep(1)
@@ -17371,12 +16530,8 @@ def fetch_remote_models_with_retry(base_url, api_key, retries=3):
 
 api = provider.get('api', '')
 base_url = provider.get('baseUrl')
-api_key = openclaw_api_request_keys({target: provider}, obj, path).get(target)
+api_key = provider.get('apiKey')
 model_list = provider.get('models', [])
-
-if openclaw_key_is_ref(provider.get('apiKey')) and not api_key:
-    print(f'❌ {target}: OpenClaw 未能解析密钥引用，请检查密钥来源与运行环境；原配置已保留')
-    raise SystemExit(6)
 
 if not base_url or not api_key or not isinstance(model_list, list) or not model_list:
     print(f'❌ provider {target} 缺少 baseUrl/apiKey/models，无法执行同步')
@@ -17389,7 +16544,7 @@ protocol_msg = None
 
 data, err, attempts = fetch_remote_models_with_retry(base_url, api_key, retries=3)
 if err is not None:
-    print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__})')
+    print(f'❌ {target}: /models 探测失败，已重试 {attempts} 次 ({type(err).__name__}: {err})')
     raise SystemExit(4)
 
 if not (isinstance(data, dict) and isinstance(data.get('data'), list)):
@@ -17503,9 +16658,6 @@ PY2
 		5)
 			echo "❌ 同步失败：上游模型为空或同步后无可用模型"
 			;;
-		6)
-			echo "❌ 同步未执行：密钥引用未能解析，原配置保持不变"
-			;;
 		*)
 			echo "❌ 同步失败：请检查配置文件结构或日志输出"
 			;;
@@ -17539,9 +16691,9 @@ fix-openclaw-provider-protocol-interactive() {
 	fi
 
 	echo "请选择要设置的 API 类型："
-	printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "openai-completions" "${gl_bai:-}"
-	printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "openai-responses" "${gl_bai:-}"
-	read -erp "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择 (1/2): " "${gl_bai:-}")" proto_choice
+	echo "1. openai-completions"
+	echo "2. openai-responses"
+	read -erp "请输入你的选择 (1/2): " proto_choice
 
 	local new_api=""
 	case "$proto_choice" in
@@ -17820,17 +16972,19 @@ PY
 		send_stats "OpenClaw API入口"
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw API 管理 ==========" "${gl_bai:-}"
+			echo "======================================="
+			echo "OpenClaw API 管理"
+			echo "======================================="
 			openclaw_api_manage_list
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "添加API" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "同步API供应商模型列表" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "切换 API 类型（completions / responses）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" "${gl_hong:-}" "删除API" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" '' "API 厂商推荐" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "退出" "${gl_bai:-}"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -erp "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" api_choice
+			echo "---------------------------------------"
+			echo "1. 添加API"
+			echo "2. 同步API供应商模型列表"
+			echo "3. 切换 API 类型（completions / responses）"
+			echo "4. 删除API"
+			echo "5. API 厂商推荐"
+			echo "0. 退出"
+			echo "---------------------------------------"
+			read -erp "请输入你的选择: " api_choice
 
 			case "$api_choice" in
 				1)
@@ -17917,7 +17071,7 @@ REPO
 			local target_model="$1"
 			local probe_timeout=25
 			local tmp_payload tmp_response probe_result probe_status reply_preview reply_trimmed
-			local oc_config provider_name base_url request_model
+			local oc_config provider_name base_url api_key request_model
 			local first_endpoint second_endpoint
 			local first_exit first_http first_latency second_exit second_http second_latency
 			local first_reply second_reply
@@ -17934,9 +17088,10 @@ REPO
 			provider_name="${target_model%%/*}"
 			request_model="${target_model#*/}"
 			base_url=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].baseUrl // empty' "$oc_config" 2>/dev/null)
-			if [ -z "$provider_name" ] || [ -z "$base_url" ]; then
+			api_key=$(jq -r --arg provider "$provider_name" '.models.providers[$provider].apiKey // empty' "$oc_config" 2>/dev/null)
+			if [ -z "$provider_name" ] || [ -z "$base_url" ] || [ -z "$api_key" ]; then
 				OPENCLAW_PROBE_STATUS="ERROR"
-				OPENCLAW_PROBE_MESSAGE="未读取到 provider/baseUrl"
+				OPENCLAW_PROBE_MESSAGE="未读取到 provider/baseUrl/apiKey"
 				OPENCLAW_PROBE_LATENCY="-"
 				OPENCLAW_PROBE_REPLY="-"
 				return 1
@@ -18008,27 +17163,14 @@ PYTHON_EOF
 					printf '{"model":"%s","messages":[{"role":"user","content":"hi"}],"temperature":0,"max_tokens":16}' "$request_model" > "$tmp_payload"
 				fi
 
-				probe_result=$(openclaw_api_python "$oc_config" "$provider_name" "$tmp_payload" "$tmp_response" "$probe_timeout" "$endpoint" <<'PYTHON_EOF'
+				probe_result=$(python3 - "$base_url" "$api_key" "$tmp_payload" "$tmp_response" "$probe_timeout" "$endpoint" <<'PYTHON_EOF'
 import sys
 import time
 import urllib.error
 import urllib.request
 
-config_path, provider_name, payload_path, response_path, timeout, endpoint = sys.argv[1:7]
+base_url, api_key, payload_path, response_path, timeout, endpoint = sys.argv[1:7]
 timeout = int(timeout)
-try:
-    with open(config_path, encoding='utf-8') as f:
-        obj = json.load(f)
-    provider = obj['models']['providers'][provider_name]
-    base_url = provider['baseUrl'].rstrip('/')
-    api_key = openclaw_api_request_keys({provider_name: provider}, obj, config_path).get(provider_name)
-except Exception:
-    api_key = None
-if not api_key:
-    with open(response_path, 'w', encoding='utf-8') as f:
-        json.dump({'error': '未能读取或解析 API Key，请检查密钥来源与运行环境'}, f, ensure_ascii=False)
-    print('6|0|0')
-    raise SystemExit(0)
 url = base_url + endpoint
 payload = open(payload_path, 'rb').read()
 req = urllib.request.Request(
@@ -18051,31 +17193,11 @@ try:
 except urllib.error.HTTPError as e:
     status = getattr(e, 'code', 0) or 0
     body = e.read()
-    e.close()
     exit_code = 22
 except Exception as e:
     body = str(e).encode('utf-8', errors='replace')
     exit_code = 1
 elapsed = int((time.time() - start) * 1000)
-
-def redact(value):
-    if isinstance(value, str):
-        return value.replace(api_key, '[REDACTED]')
-    if isinstance(value, list):
-        return [redact(item) for item in value]
-    if isinstance(value, dict):
-        return {redact(key): redact(item) for key, item in value.items()}
-    return value
-
-try:
-    decoded = json.loads(body)
-except (ValueError, UnicodeError, RecursionError):
-    body = body.replace(api_key.encode('utf-8'), b'[REDACTED]')
-else:
-    try:
-        body = json.dumps(redact(decoded), ensure_ascii=False).encode('utf-8')
-    except (ValueError, UnicodeError, RecursionError):
-        body = b'{"error":"Unable to safely display response"}'
 with open(response_path, 'wb') as f:
     f.write(body)
 print(f"{exit_code}|{status}|{elapsed}")
@@ -18093,13 +17215,6 @@ PYTHON_EOF
 			first_http=${first_http%%|*}
 			first_latency=${probe_result##*|}
 			first_reply="$reply_preview"
-			if [ "$first_exit" = "6" ]; then
-				OPENCLAW_PROBE_STATUS="ERROR"
-				OPENCLAW_PROBE_MESSAGE="$first_reply"
-				OPENCLAW_PROBE_LATENCY="-"
-				OPENCLAW_PROBE_REPLY="-"
-				return 1
-			fi
 
 			reply_trimmed=$(printf '%s' "$first_reply" | cut -c1-120)
 			[ -z "$reply_trimmed" ] && reply_trimmed="(空返回)"
@@ -18175,7 +17290,7 @@ PYTHON_EOF
 				echo "--- 模型管理 ---"
 				echo "当前可用模型:"
 				jq -r '.agents.defaults.models | if type == "object" then keys[] else .[] end' "$oc_config" 2>/dev/null | sed '/^\s*$/d'
-				printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+				echo "----------------"
 				read -e -p "请输入要设置的模型名称 (例如 openrouter/openai/gpt-4o)（输入 0 退出）： " selected_model
 
 				if [ "$selected_model" = "0" ]; then
@@ -18494,12 +17609,14 @@ PYTHON_EOF
 		send_stats "插件管理"
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 插件管理 (安装/删除) ==========" "${gl_bai:-}"
+			echo "========================================"
+			echo "            插件管理 (安装/删除)            "
+			echo "========================================"
 			echo "当前插件列表:"
 			openclaw plugins list
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			echo "--------------------------------------------------------"
 			echo "推荐的常用插件 ID (直接复制括号内的 ID 即可):"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			echo "--------------------------------------------------------"
 			echo "📱 通讯渠道:"
 			echo "  - [feishu]       	# 飞书/Lark 集成"
 			echo "  - [telegram]     	# Telegram 机器人"
@@ -18517,12 +17634,12 @@ PYTHON_EOF
 			echo "  - [lobster]      	# 审批流 (带人工确认)"
 			echo "  - [voice-call]   	# 语音通话能力"
 			echo "  - [nostr]        	# 加密隐私聊天"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			echo "--------------------------------------------------------"
 
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" "${gl_lv:-}" "安装/启用插件" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "删除/禁用插件" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回" "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请选择操作：" "${gl_bai:-}")" plugin_action
+			echo "1) 安装/启用插件"
+			echo "2) 删除/禁用插件"
+			echo "0) 返回"
+			read -e -p "请选择操作：" plugin_action
 
 			[ "$plugin_action" = "0" ] && break
 			[ -z "$plugin_action" ] && continue
@@ -18622,10 +17739,12 @@ PYTHON_EOF
 		send_stats "技能管理"
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 技能管理 (安装/删除) ==========" "${gl_bai:-}"
+			echo "========================================"
+			echo "            技能管理 (安装/删除)            "
+			echo "========================================"
 			echo "当前已安装技能:"
 			openclaw skills list
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			echo "----------------------------------------"
 
 			# 输出推荐的实用技能列表
 			echo "推荐的实用技能（可直接复制名称输入）："
@@ -18643,12 +17762,12 @@ PYTHON_EOF
 			echo "video-frames       # 视频抽帧与短片剪辑 (ffmpeg 驱动)"
 			echo "openai-whisper     # 本地音频转文字 (离线隐私保护)"
 			echo "coding-agent       # 自动运行 Claude Code/Codex 等编程助手"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			echo "----------------------------------------"
 
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" "${gl_lv:-}" "安装技能" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "删除技能" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回" "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请选择操作：" "${gl_bai:-}")" skill_action
+			echo "1) 安装技能"
+			echo "2) 删除技能"
+			echo "0) 返回"
+			read -e -p "请选择操作：" skill_action
 
 			[ "$skill_action" = "0" ] && break
 			[ -z "$skill_action" ] && continue
@@ -18961,18 +18080,20 @@ openclaw_json_get_bool() {
 		send_stats "机器人对接"
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 机器人连接对接 ==========" "${gl_bai:-}"
+			echo "========================================"
+			echo "            机器人连接对接            "
+			echo "========================================"
 			openclaw_show_bot_local_status_block
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "Telegram 机器人对接" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "飞书 (Lark) 机器人对接" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "WhatsApp 机器人对接" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" '' "QQ 机器人对接" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" '' "微信机器人对接" "${gl_bai:-}"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级选单" "${gl_bai:-}"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" bot_choice
+			echo "----------------------------------------"
+			echo "1. Telegram 机器人对接"
+			echo "2. 飞书 (Lark) 机器人对接"
+			echo "3. WhatsApp 机器人对接"
+			echo "4. QQ 机器人对接"
+			echo "5. 微信机器人对接"
+			echo "----------------------------------------"
+			echo "0. 返回上一级选单"
+			echo "----------------------------------------"
+			read -e -p "请输入你的选择: " bot_choice
 
 			case $bot_choice in
 				1)
@@ -19236,8 +18357,8 @@ if os.path.isdir(agents_root):
 		fi
 
 		echo "备份模式："
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "安全模式（默认，推荐）：workspace + openclaw.json + extensions/skills/prompts/tools（如存在）" "${gl_bai:-}"
-		printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "完整模式（含更多状态，敏感风险更高）" "${gl_bai:-}"
+		echo "1. 安全模式（默认，推荐）：workspace + openclaw.json + extensions/skills/prompts/tools（如存在）"
+		echo "2. 完整模式（含更多状态，敏感风险更高）"
 		read -e -p "请选择备份模式（默认 1）: " export_mode
 		[ -z "$export_mode" ] && export_mode="1"
 
@@ -20031,7 +19152,7 @@ PY
 	}
 
 	openclaw_memory_render_auto_summary() {
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		echo "---------------------------------------"
 		echo "✅ 环境就绪"
 		echo "方案: ${OPENCLAW_MEMORY_AUTO_SCHEME:-unknown}"
 		if [ "$OPENCLAW_MEMORY_CONFIG_ONLY" = "true" ]; then
@@ -20061,7 +19182,7 @@ PY
 		fi
 		echo "最终状态:"
 		openclaw_memory_render_status
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		echo "---------------------------------------"
 	}
 
 	openclaw_memory_auto_confirm() {
@@ -20271,13 +19392,15 @@ EOF
 	openclaw_memory_auto_setup_menu() {
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 记忆方案自动部署 ==========" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "QMD" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "Local" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "Auto（自动选择）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" auto_choice
+			echo "======================================="
+			echo "记忆方案自动部署"
+			echo "======================================="
+			echo "1. QMD"
+			echo "2. Local"
+			echo "3. Auto（自动选择）"
+			echo "0. 返回上一级"
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " auto_choice
 			case "$auto_choice" in
 				1)
 					openclaw_memory_auto_setup_run "qmd"
@@ -20352,7 +19475,9 @@ EOF
 			echo "   可切换 Local，或安装 bun + qmd 后再试。"
 		fi
 		include_dm=$(openclaw config get memory.qmd.includeDefaultMemory 2>/dev/null)
-		printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 索引修复诊断 ==========" "${gl_bai:-}"
+		echo "======================================="
+		echo "索引修复诊断"
+		echo "======================================="
 		echo "当前 includeDefaultMemory: ${include_dm:-未设置}"
 		echo ""
 		if [ "$include_dm" = "false" ]; then
@@ -20390,7 +19515,9 @@ EOF
 	openclaw_memory_scheme_menu() {
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 记忆方案 ==========" "${gl_bai:-}"
+			echo "======================================="
+			echo "OpenClaw 记忆方案"
+			echo "======================================="
 			local backend current_label
 			backend=$(openclaw_memory_get_backend)
 			case "$backend" in
@@ -20403,13 +19530,13 @@ EOF
 			echo "QMD  : 轻量索引，依赖 qmd 命令（适合网络受限）"
 			echo "Local: 本地向量检索，依赖 embedding 模型文件"
 			echo "Auto : 自动推荐（基于可用性 + 网络探测）"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "切换 QMD（自动部署/已装则跳过）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "切换 Local（自动部署/已装则跳过）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "Auto（自动推荐并自动部署）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" scheme_choice
+			echo "---------------------------------------"
+			echo "1. 切换 QMD（自动部署/已装则跳过）"
+			echo "2. 切换 Local（自动部署/已装则跳过）"
+			echo "3. Auto（自动推荐并自动部署）"
+			echo "0. 返回上一级"
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " scheme_choice
 			case "$scheme_choice" in
 				1)
 					openclaw_memory_auto_setup_run "qmd"
@@ -20467,7 +19594,7 @@ EOF
 			return 0
 		fi
 		echo "编号 | 归属 | 大小 | 修改时间"
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		echo "---------------------------------------"
 		local i file rel size mtime
 		for i in "${!OPENCLAW_MEMORY_FILES[@]}"; do
 			file="${OPENCLAW_MEMORY_FILES[$i]}"
@@ -20519,18 +19646,20 @@ EOF
 			echo "(空文件)"
 			return 0
 		fi
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		echo "---------------------------------------"
 		sed -n "${start_line},${end_line}p" "$file"
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		echo "---------------------------------------"
 	}
 
 	openclaw_memory_files_menu() {
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 记忆文件 ==========" "${gl_bai:-}"
+			echo "======================================="
+			echo "OpenClaw 记忆文件"
+			echo "======================================="
 			openclaw_memory_file_render_list
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入文件编号查看（0 返回）: " "${gl_bai:-}")" file_choice
+			echo "---------------------------------------"
+			read -e -p "请输入文件编号查看（0 返回）: " file_choice
 			if [ "$file_choice" = "0" ]; then
 				return 0
 			fi
@@ -20575,17 +19704,19 @@ EOF
 		send_stats "OpenClaw记忆管理"
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 记忆管理 ==========" "${gl_bai:-}"
+			echo "======================================="
+			echo "OpenClaw 记忆管理"
+			echo "======================================="
 			openclaw_memory_render_status
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" "${gl_huang:-}" "更新记忆索引" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" '' "查看记忆文件" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "索引修复（Indexed 异常）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" '' "记忆方案（QMD/Local/Auto）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" '' "搜索测试（验证索引是否工作）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 6 "${gl_bai:-}" '' "深度状态探测（检查嵌入模型）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" memory_choice
+			echo "1. 更新记忆索引"
+			echo "2. 查看记忆文件"
+			echo "3. 索引修复（Indexed 异常）"
+			echo "4. 记忆方案（QMD/Local/Auto）"
+			echo "5. 搜索测试（验证索引是否工作）"
+			echo "6. 深度状态探测（检查嵌入模型）"
+			echo "0. 返回上一级"
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " memory_choice
 			case "$memory_choice" in
 				1)
 					echo "即将更新记忆索引。"
@@ -20871,7 +20002,7 @@ print(json.dumps(data, indent=2))
 	openclaw_permission_render_status() {
 		echo "应用层配置: ~/.openclaw/openclaw.json"
 		echo "宿主机审批: ~/.openclaw/exec-approvals.json"
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		echo "---------------------------------------"
 		local current_profile current_sec current_ask current_elevated
 		current_profile=$(openclaw config get tools.profile 2>/dev/null | head -n 1 | sed 's/^"//;s/"$//')
 		current_sec=$(openclaw config get tools.exec.security 2>/dev/null | head -n 1 | sed 's/^"//;s/"$//')
@@ -20894,7 +20025,7 @@ print(json.dumps(data, indent=2))
 			current_mode="\033[1;36m官方沙盒兜底\033[0m"
 		fi
 		echo -e "  当前综合安全等级: ${current_mode}"
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		echo "---------------------------------------"
 		echo -e "${gl_huang}[应用层 Tool Policy 状态]${gl_bai}"
 		echo "  Profile (预设): ${current_profile:-(unset)}"
 		echo "  Exec 限制: ${current_sec:-(unset)}"
@@ -21028,9 +20159,11 @@ except Exception:
 	}
 
 	openclaw_permission_run_audit() {
-		printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== 运行 OpenClaw 官方安全审计与体检... ==========" "${gl_bai:-}"
+		echo "======================================="
+		echo "运行 OpenClaw 官方安全审计与体检..."
+		echo "======================================="
 		openclaw security audit
-		printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+		echo "---------------------------------------"
 		read -e -p "是否尝试自动修复发现的安全隐患？(y/n): " fix_choice
 		if [[ "$fix_choice" == "y" || "$fix_choice" == "Y" || "$fix_choice" == "yes" ]]; then
 			openclaw security audit --fix
@@ -21044,7 +20177,9 @@ except Exception:
 	openclaw_permission_manage_allowlist() {
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== Exec 命令白名单管理 ==========" "${gl_bai:-}"
+			echo "======================================="
+			echo " Exec 命令白名单管理"
+			echo "======================================="
 			echo "当前白名单："
 			local allowlist_json
 			allowlist_json=$(openclaw approvals get --json 2>/dev/null)
@@ -21071,12 +20206,12 @@ except Exception as e:
 			else
 				echo "  (无法获取)"
 			fi
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "添加白名单规则" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "移除白名单规则" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回" "${gl_bai:-}"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请选择: " "${gl_bai:-}")" al_choice
+			echo "---------------------------------------"
+			echo "1. 添加白名单规则"
+			echo "2. 移除白名单规则"
+			echo "0. 返回"
+			echo "---------------------------------------"
+			read -e -p "请选择: " al_choice
 			case "$al_choice" in
 				1)
 					read -e -p "输入要放行的命令路径 (支持 glob，如 /usr/bin/git): " pattern
@@ -21102,9 +20237,11 @@ except Exception as e:
 		send_stats "OpenClaw权限管理"
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 权限管理 (双层架构深度适配) ==========" "${gl_bai:-}"
+			echo "======================================="
+			echo " OpenClaw 权限管理 (双层架构深度适配)"
+			echo "======================================="
 			openclaw_permission_render_status
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
+			echo "---------------------------------------"
 			echo -e "${gl_kjlan}1.${gl_bai} 切换为标准安全模式（日常推荐，弹卡片审批）"
 			echo -e "${gl_kjlan}2.${gl_bai} 切换为开发增强模式（允许智能体申请提权）"
 			echo -e "${gl_kjlan}3.${gl_bai} 切换为完全开放模式（${gl_hong}高风险！彻底解除所有宿主机拦截${gl_bai}）"
@@ -21112,8 +20249,8 @@ except Exception as e:
 			echo -e "${gl_kjlan}5.${gl_bai} 运行底层安全审计与自动修复"
 			echo -e "${gl_kjlan}6.${gl_bai} 管理 Exec 命令白名单"
 			echo -e "${gl_kjlan}0.${gl_bai} 返回上一级"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" perm_choice
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " perm_choice
 			case "$perm_choice" in
 				1)
 					echo "准备应用：标准安全模式"
@@ -21565,21 +20702,23 @@ print("✅ 多智能体健康检查完成")
 		send_stats "OpenClaw多智能体管理"
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 多智能体管理 ==========" "${gl_bai:-}"
+			echo "======================================="
+			echo "OpenClaw 多智能体管理"
+			echo "======================================="
 			openclaw_multiagent_render_status
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "新增智能体" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "删除智能体" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "查看路由绑定" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" '' "新增路由绑定" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" "${gl_hong:-}" "移除路由绑定" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 6 "${gl_bai:-}" '' "查看会话概况" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 7 "${gl_bai:-}" '' "运行多智能体健康检查" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 8 "${gl_bai:-}" '' "修改智能体身份（名称/Emoji）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 9 "${gl_bai:-}" "${gl_hong:-}" "清理过期会话" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" multi_choice
+			echo "---------------------------------------"
+			echo "1. 新增智能体"
+			echo "2. 删除智能体"
+			echo "3. 查看路由绑定"
+			echo "4. 新增路由绑定"
+			echo "5. 移除路由绑定"
+			echo "6. 查看会话概况"
+			echo "7. 运行多智能体健康检查"
+			echo "8. 修改智能体身份（名称/Emoji）"
+			echo "9. 清理过期会话"
+			echo "0. 返回上一级"
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " multi_choice
 			case "$multi_choice" in
 				1) openclaw_multiagent_add_agent; break_end ;;
 				2) openclaw_multiagent_delete_agent; break_end ;;
@@ -21602,17 +20741,19 @@ openclaw_backup_restore_menu() {
 		send_stats "OpenClaw备份与还原"
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw 备份与还原 ==========" "${gl_bai:-}"
+			echo "======================================="
+			echo "OpenClaw 备份与还原"
+			echo "======================================="
 			openclaw_backup_render_file_list
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "备份记忆全量" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_huang:-}" "还原记忆全量" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 3 "${gl_bai:-}" '' "备份 OpenClaw 项目（默认安全模式）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 4 "${gl_bai:-}" "${gl_huang:-}" "还原 OpenClaw 项目（高级/高风险）" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 5 "${gl_bai:-}" "${gl_hong:-}" "删除备份文件" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "返回上一级" "${gl_bai:-}"
-			printf '%b%s%b\n' "${gl_hui:-}" '-------------------------------------------------' "${gl_bai:-}"
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请输入你的选择: " "${gl_bai:-}")" backup_choice
+			echo "---------------------------------------"
+			echo "1. 备份记忆全量"
+			echo "2. 还原记忆全量"
+			echo "3. 备份 OpenClaw 项目（默认安全模式）"
+			echo "4. 还原 OpenClaw 项目（高级/高风险）"
+			echo "5. 删除备份文件"
+			echo "0. 返回上一级"
+			echo "---------------------------------------"
+			read -e -p "请输入你的选择: " backup_choice
 
 			case "$backup_choice" in
 				1) openclaw_memory_backup_export ;;
@@ -21775,14 +20916,13 @@ openclaw_backup_restore_menu() {
 		send_stats "WebUI访问与设置"
 		while true; do
 			clear
-			printf '\n%b%s%b\n' "${gl_kjlan:-}${gl_kjlan:+\033[1m}" "========== OpenClaw WebUI 访问与设置 ==========" "${gl_bai:-}"
 			openclaw_show_webui_addr
 			echo
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 1 "${gl_bai:-}" '' "添加域名访问" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 2 "${gl_bai:-}" "${gl_hong:-}" "删除域名访问" "${gl_bai:-}"
-			printf ' %b%2s.%b %b%s%b\n' "${gl_kjlan:-}" 0 "${gl_bai:-}" "${gl_hui:-}" "退出" "${gl_bai:-}"
+			echo "1. 添加域名访问"
+			echo "2. 删除域名访问"
+			echo "0. 退出"
 			echo
-			read -e -p "$(printf '%b%s%b' "${gl_kjlan:-}" "请选择: " "${gl_bai:-}")" choice
+			read -e -p "请选择: " choice
 
 			case "$choice" in
 				1)
@@ -21889,17 +21029,6 @@ refresh_apps_catalog() {
 	fi
 }
 
-run_ai_cli_manager() (
-	local app="$1" manager
-	case "$app" in claude-code|codex|opencode|antigravity-cli) ;; *) return 1 ;; esac
-	manager=$(mktemp "${TMPDIR:-/tmp}/kejilion-ai-cli.XXXXXX") || return 1
-	trap 'rm -f -- "$manager"' EXIT
-	curl -fLsS --connect-timeout 15 --max-time 120 "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/ai_cli_manager.sh" -o "$manager" || return 1
-	[ -s "$manager" ] && bash -n "$manager" || return 1
-	. "$manager" || return 1
-	ai_cli_main "$app"
-)
-
 linux_panel() {
 
 local sub_choice="$1"
@@ -21997,8 +21126,6 @@ while true; do
 	  echo -e "${gl_kjlan}113. ${color113}Firefox浏览器                       ${gl_kjlan}114. ${color114}OpenClaw机器人管理工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}115. ${color115}Hermes机器人管理工具${gl_huang}★${gl_bai}               ${gl_kjlan}116. ${color116}DeepSeek Harness管理工具${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}117. ${color117}99CDN自建CDN管理平台                ${gl_kjlan}118. ${color118}99DNS智能调度服务"
-	  echo -e "${gl_kjlan}119. ${color119}Claude Code编程助手${gl_huang}★${gl_bai}                ${gl_kjlan}120. ${color120}Codex编程助手${gl_huang}★${gl_bai}"
-	  echo -e "${gl_kjlan}121. ${color121}OpenCode编程助手${gl_huang}★${gl_bai}                   ${gl_kjlan}122. ${color122}Antigravity CLI编程助手${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}第三方应用列表"
   	  echo -e "${gl_kjlan}想要让你的应用出现在这里？查看开发者指南: ${gl_huang}https://dev.kejilion.sh/${gl_bai}"
@@ -22024,6 +21151,7 @@ while true; do
 
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}b.   ${gl_bai}备份全部应用数据                    ${gl_kjlan}r.   ${gl_bai}还原全部应用数据"
+	  echo "k. 通用加密备份与恢复 (.kpb，与 KPanel 互通)"
 	  echo -e "${gl_kjlan}------------------------"
 	  echo -e "${gl_kjlan}0.   ${gl_bai}返回主菜单"
 	  echo -e "${gl_kjlan}------------------------${gl_bai}"
@@ -25686,22 +24814,6 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  bash <(curl -fsSL ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/deepseek_harness_manager.sh)
 		  ;;
 
-	  119|claude-code|claude)
-		  run_ai_cli_manager claude-code
-		  ;;
-
-	  120|codex)
-		  run_ai_cli_manager codex
-		  ;;
-
-	  121|opencode|OpenCode)
-		  run_ai_cli_manager opencode
-		  ;;
-
-	  122|antigravity-cli|agy)
-		  run_ai_cli_manager antigravity-cli
-		  ;;
-
 	  117|99cdn)
 
 		local app_id="117"
@@ -25758,6 +24870,9 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 		  ;;
 
+	  k)
+		kpanel_backup_center_dispatch menu apps
+		;;
 	  b)
 	  	clear
 	  	send_stats "全部应用备份"
@@ -33051,11 +32166,8 @@ else
 			elif [ "${1:-}" = "system-tuning" ]; then
 				shift
 				kpanel_system_tuning_dispatch "$@"
-			elif [ "${1:-}" = "virus-scan" ]; then
-				shift
-				kpanel_virus_scan_dispatch "$@"
 			else
-				echo "用法: k kpanel node ... | system-resource ... | disk-management ... | network-operations ... | account-management ... | system-tuning ... | virus-scan ..." >&2
+				echo "用法: k kpanel node ... | system-resource ... | disk-management ... | network-operations ... | account-management ... | system-tuning ..." >&2
 				return 2 2>/dev/null || exit 2
 			fi
 			;;
