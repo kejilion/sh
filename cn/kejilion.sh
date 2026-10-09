@@ -21981,7 +21981,7 @@ refresh_apps_catalog() {
 
 run_ai_cli_manager() (
 	local app="$1" manager
-	case "$app" in claude-code|codex|opencode|antigravity-cli) ;; *) return 1 ;; esac
+	case "$app" in claude-code|codex|opencode|antigravity-cli|cursor) ;; *) return 1 ;; esac
 	manager=$(mktemp "${TMPDIR:-/tmp}/kejilion-ai-cli.XXXXXX") || return 1
 	trap 'rm -f -- "$manager"' EXIT
 	curl -fLsS --connect-timeout 15 --max-time 120 "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/ai_cli_manager.sh" -o "$manager" || return 1
@@ -22089,6 +22089,7 @@ while true; do
 	  echo -e "${gl_kjlan}117. ${color117}99CDN自建CDN管理平台                ${gl_kjlan}118. ${color118}99DNS智能调度服务"
 	  echo -e "${gl_kjlan}119. ${color119}Claude Code编程助手${gl_huang}★${gl_bai}                ${gl_kjlan}120. ${color120}Codex编程助手${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}121. ${color121}OpenCode编程助手${gl_huang}★${gl_bai}                   ${gl_kjlan}122. ${color122}Antigravity CLI编程助手${gl_huang}★${gl_bai}"
+	  echo -e "${gl_kjlan}123. ${color123}Cursor CLI编程助手${gl_huang}★${gl_bai}"
 	  echo -e "${gl_kjlan}-------------------------"
 	  echo -e "${gl_kjlan}第三方应用列表"
   	  echo -e "${gl_kjlan}想要让你的应用出现在这里？查看开发者指南: ${gl_huang}https://dev.kejilion.sh/${gl_bai}"
@@ -25790,6 +25791,10 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 
 	  122|antigravity-cli|agy)
 		  run_ai_cli_manager antigravity-cli
+		  ;;
+
+	  123|cursor|cursor-cli|cursor-agent)
+		  run_ai_cli_manager cursor
 		  ;;
 
 	  117|99cdn)

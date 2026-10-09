@@ -40,6 +40,12 @@ curl() {
 #!/bin/sh
 touch "$HOME/installer-ran"
 [ "${INSTALLER_STATUS:-37}" != 0 ] || [ -z "${AGY_FIXTURE:-}" ] || { mkdir -p "$HOME/.local/bin"; cp "$AGY_FIXTURE" "$HOME/.local/bin/agy"; }
+if [ "${INSTALLER_STATUS:-37}" = 0 ] && [ -n "${CURSOR_FIXTURE:-}" ]; then
+	mkdir -p "$HOME/.local/share/cursor-agent/versions/test"
+	cp "$CURSOR_FIXTURE" "$HOME/.local/share/cursor-agent/versions/test/cursor-agent"
+	ln -s "$HOME/.local/share/cursor-agent/versions/test/cursor-agent" "$HOME/.local/bin/cursor-agent"
+	ln -s "$HOME/.local/share/cursor-agent/versions/test/cursor-agent" "$HOME/.local/bin/agent"
+fi
 exit "${INSTALLER_STATUS:-37}"
 INSTALLER
 	return "${DOWNLOAD_STATUS:-0}"
@@ -69,6 +75,9 @@ printf '%s\n' "$PWD" "$@" >> "$HOME/cli-calls"
 printf '%s\n' "$*" >> "$HOME/cli-actions"
 if [ "${1:-}" = --version ]; then echo 'fixture-cli 1.0.0'; fi
 if [ "${2:-}" = --with-api-key ]; then cat > "$HOME/key-input"; fi
+if [ "${0##*/}" = cursor-agent ] && [ "${1:-}" = login ]; then
+	[ "${NO_OPEN_BROWSER:-}" = 1 ] || exit 42
+fi
 if [ "${0##*/}" = opencode ] && [ "${1:-}" = uninstall ] && [ "${CLI_STATUS:-0}" = 0 ]; then
 	[ "$*" = 'uninstall --keep-config --keep-data --force' ] || exit 42
 	rm -- "$0"
@@ -269,6 +278,81 @@ if ai_cli_uninstall_impl; then exit 1; fi
 test -L "$HOME/.local/bin/agy"
 rm "$HOME/.local/bin/agy"
 
+# Cursor's official installer owns two aliases; keep all configuration and chats.
+ai_cli_select cursor
+test "$AI_CLI_ID" = 123 && test "$AI_CLI_COMMAND" = cursor-agent
+make_cli "$scratch/cursor-template"
+export CURSOR_FIXTURE="$scratch/cursor-template" INSTALLER_STATUS=0
+mkdir -p "$HOME/.config/cursor" "$HOME/.cursor/chats"
+touch "$HOME/.config/cursor/cli-config.json" "$HOME/.cursor/chats/fixture-session"
+ai_cli_install_impl
+unset CURSOR_FIXTURE INSTALLER_STATUS
+grep -q 'https://cursor.com/install' "$scratch/downloads"
+grep -qx '123:add' "$scratch/markers"
+ai_cli_is_native_install
+! ai_cli_is_npm_install
+: > "$HOME/cli-actions"
+ai_cli_project <<< "$scratch/project with spaces"
+ai_cli_project resume <<< "$scratch/project with spaces"
+ai_cli_login
+ai_cli_auth status
+ai_cli_auth logout
+ai_cli_update_impl
+for expected in '' resume login status logout update; do
+	grep -qx -- "$expected" "$HOME/cli-actions"
+done
+export CLI_STATUS=29
+marker_count=$(wc -l < "$scratch/markers")
+if ai_cli_update_impl; then exit 1; fi
+test "$(wc -l < "$scratch/markers")" = "$marker_count"
+CLI_STATUS=0
+ai_cli_uninstall <<< n
+test -L "$HOME/.local/bin/agent" && test -L "$HOME/.local/bin/cursor-agent"
+ai_cli_uninstall <<< y
+test ! -e "$HOME/.local/bin/agent" && test ! -e "$HOME/.local/bin/cursor-agent"
+grep -qx '123:remove' "$scratch/markers"
+test -f "$HOME/.config/cursor/cli-config.json" && test -f "$HOME/.cursor/chats/fixture-session"
+test -x "$HOME/.local/share/cursor-agent/versions/test/cursor-agent"
+
+# A current installation exposing only `agent` is recognized by its real target.
+ln -s "$HOME/.local/share/cursor-agent/versions/test/cursor-agent" "$HOME/.local/bin/agent"
+ai_cli_select cursor
+test "$AI_CLI_COMMAND" = agent
+ai_cli_install_impl
+ai_cli_is_native_install
+ai_cli_uninstall_impl
+test ! -e "$HOME/.local/bin/agent"
+
+# Never execute, overwrite, or uninstall a different tool named `agent`.
+make_cli "$HOME/.local/bin/agent"
+ai_cli_select cursor
+test "$AI_CLI_COMMAND" = cursor-agent
+! ai_cli_installed
+marker_count=$(wc -l < "$scratch/markers")
+if ai_cli_install_impl; then exit 1; fi
+test "$(wc -l < "$scratch/markers")" = "$marker_count"
+test -x "$HOME/.local/bin/agent"
+ln -s "$HOME/.local/share/cursor-agent/versions/test/cursor-agent" "$HOME/.local/bin/cursor-agent"
+if ai_cli_update_impl; then exit 1; fi
+test -x "$HOME/.local/bin/agent"
+ai_cli_uninstall_impl
+test ! -e "$HOME/.local/bin/cursor-agent" && test -x "$HOME/.local/bin/agent"
+rm "$HOME/.local/bin/agent"
+
+# Failed downloads do not run a partial installer or create an app marker.
+DOWNLOAD_STATUS=22
+marker_count=$(wc -l < "$scratch/markers")
+rm -f "$HOME/installer-ran"
+if ai_cli_install_impl; then exit 1; fi
+test "$(wc -l < "$scratch/markers")" = "$marker_count"
+test ! -e "$HOME/installer-ran"
+DOWNLOAD_STATUS=0
+# An unknown installation is left to its original package manager.
+make_cli "$HOME/.local/bin/cursor-agent"
+if ai_cli_uninstall_impl; then exit 1; fi
+test -x "$HOME/.local/bin/cursor-agent"
+rm "$HOME/.local/bin/cursor-agent"
+
 # EOF and return preserve failures, so KPanel never records a failed task as done.
 ai_cli_main claude-code <<< $'6\n\n0' > "$scratch/menu" && exit 1
 ai_cli_main claude-code <<< 0
@@ -291,11 +375,11 @@ curl() {
 }
 DOWNLOAD_STATUS=0
 export KJ_APP_INTERACTIVE=1 KJ_APP_NONINTERACTIVE=0
-for selector in 119 claude claude-code 120 codex 121 opencode OpenCode 122 antigravity-cli agy; do
+for selector in 119 claude claude-code 120 codex 121 opencode OpenCode 122 antigravity-cli agy 123 cursor cursor-cli cursor-agent; do
 	status=0
 	linux_panel "$selector" || status=$?
 	test "$status" = 37
-	case "$selector" in 119|claude|claude-code) expected=claude-code ;; 120|codex) expected=codex ;; 121|opencode|OpenCode) expected=opencode ;; *) expected=antigravity-cli ;; esac
+	case "$selector" in 119|claude|claude-code) expected=claude-code ;; 120|codex) expected=codex ;; 121|opencode|OpenCode) expected=opencode ;; 122|antigravity-cli|agy) expected=antigravity-cli ;; *) expected=cursor ;; esac
 	test "$(cat "$scratch/selected")" = "$expected"
 done
 rm "$scratch/selected"

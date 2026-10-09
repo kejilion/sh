@@ -1,6 +1,6 @@
 #!/bin/bash
 # Loaded by kejilion.sh: share its application locks and installation markers.
-# Official installers: https://claude.ai/install.sh https://chatgpt.com/codex/install.sh https://opencode.ai/install https://antigravity.google/cli/install.sh
+# Official installers: https://claude.ai/install.sh https://chatgpt.com/codex/install.sh https://opencode.ai/install https://antigravity.google/cli/install.sh https://cursor.com/install
 
 ai_cli_select() {
 	case "$1" in
@@ -8,12 +8,41 @@ ai_cli_select() {
 		codex) AI_CLI_ID=120; AI_CLI_NAME='Codex'; AI_CLI_COMMAND=codex; AI_CLI_PACKAGE='@openai/codex' ;;
 		opencode) AI_CLI_ID=121; AI_CLI_NAME='OpenCode'; AI_CLI_COMMAND=opencode; AI_CLI_PACKAGE='opencode-ai' ;;
 		antigravity-cli) AI_CLI_ID=122; AI_CLI_NAME='Antigravity CLI'; AI_CLI_COMMAND=agy; AI_CLI_PACKAGE='' ;;
+		cursor) AI_CLI_ID=123; AI_CLI_NAME='Cursor CLI'; AI_CLI_COMMAND=cursor-agent; AI_CLI_PACKAGE='' ;;
 		*) echo '未知的 AI 编程工具。' >&2; return 1 ;;
 	esac
 	AI_CLI_BIN_DIR="$HOME/.local/bin"
 	[ "$AI_CLI_COMMAND" != codex ] || AI_CLI_BIN_DIR="${CODEX_INSTALL_DIR:-$AI_CLI_BIN_DIR}"
 	[ "$AI_CLI_COMMAND" != opencode ] || AI_CLI_BIN_DIR="$HOME/.opencode/bin"
 	export PATH="$PATH:$AI_CLI_BIN_DIR"
+	# Prefer Cursor's distinct alias; never mistake an unrelated `agent` for Cursor.
+	hash -r
+	if [ "$AI_CLI_ID" = 123 ] && ! command -v cursor-agent >/dev/null 2>&1; then
+		ai_cli_is_cursor_launcher "$(command -v agent)" && AI_CLI_COMMAND=agent
+	fi
+	return 0
+}
+
+# The official installer creates both launch links under ~/.local/bin.
+ai_cli_is_cursor_launcher() {
+	local binary="$1" target native_root
+	case "$binary" in "$HOME/.local/bin/agent"|"$HOME/.local/bin/cursor-agent") ;; *) return 1 ;; esac
+	[ -L "$binary" ] && [ -x "$binary" ] || return 1
+	target=$(readlink -f "$binary") || return 1
+	native_root=$(readlink -f "$HOME/.local/share/cursor-agent/versions") || return 1
+	case "$target" in "$native_root/"*/cursor-agent) return 0 ;; *) return 1 ;; esac
+}
+
+ai_cli_check_cursor_aliases() {
+	local launcher
+	# Both the installer and updater can replace these launch links.
+	for launcher in "$HOME/.local/bin/agent" "$HOME/.local/bin/cursor-agent"; do
+		if [ -e "$launcher" ] || [ -L "$launcher" ]; then
+			ai_cli_is_cursor_launcher "$launcher" || {
+				echo "$launcher 已被其他安装占用，请先处理命令冲突。" >&2; return 1;
+			}
+		fi
+	done
 }
 
 ai_cli_installed() {
@@ -112,6 +141,13 @@ ai_cli_native_install() (
 		[ -s "$installer" ] && bash -n "$installer" || return 1
 		bash "$installer"
 		result=$?
+	elif [ "$AI_CLI_ID" = 123 ]; then
+		# Cursor's installer replaces both aliases; protect other tools using `agent`.
+		ai_cli_check_cursor_aliases || return 1
+		curl -fLsS --connect-timeout 15 --max-time 120 https://cursor.com/install -o "$installer" || return 1
+		[ -s "$installer" ] && bash -n "$installer" || return 1
+		bash "$installer"
+		result=$?
 	else
 		curl -fLsS --connect-timeout 15 --max-time 120 https://chatgpt.com/codex/install.sh -o "$installer" || return 1
 		[ -s "$installer" ] && sh -n "$installer" || return 1
@@ -145,6 +181,10 @@ ai_cli_is_npm_install() {
 ai_cli_is_native_install() {
 	local binary target native_root
 	binary=$(command -v "$AI_CLI_COMMAND") || return 1
+	if [ "$AI_CLI_ID" = 123 ]; then
+		ai_cli_is_cursor_launcher "$binary"
+		return $?
+	fi
 	if [ "$AI_CLI_COMMAND" = opencode ] || [ "$AI_CLI_COMMAND" = agy ]; then
 		# The official installer writes a regular executable, not a launch link.
 		[ "$binary" = "$AI_CLI_BIN_DIR/$AI_CLI_COMMAND" ] && [ -f "$binary" ] && [ ! -L "$binary" ]
@@ -173,6 +213,9 @@ ai_cli_update_impl() {
 			opencode upgrade --method curl || return 1
 		elif [ "$AI_CLI_COMMAND" = agy ]; then
 			agy update || return 1
+		elif [ "$AI_CLI_ID" = 123 ]; then
+			ai_cli_check_cursor_aliases || return 1
+			"$AI_CLI_COMMAND" update || return 1
 		else
 			ai_cli_native_install || return 1
 		fi
@@ -185,6 +228,7 @@ ai_cli_update_impl() {
 }
 
 ai_cli_uninstall_impl() {
+	local launcher
 	if ! ai_cli_installed; then
 		ai_cli_mark remove
 		return $?
@@ -194,6 +238,12 @@ ai_cli_uninstall_impl() {
 	elif ai_cli_is_native_install; then
 		if [ "$AI_CLI_COMMAND" = opencode ]; then
 			opencode uninstall --keep-config --keep-data --force || return 1
+		elif [ "$AI_CLI_ID" = 123 ]; then
+			for launcher in "$HOME/.local/bin/agent" "$HOME/.local/bin/cursor-agent"; do
+				if ai_cli_is_cursor_launcher "$launcher"; then
+					rm -f -- "$launcher" || return 1
+				fi
+			done
 		else
 			# Remove only the official launcher. Keep settings, logins, sessions and
 			# downloaded versions; these may also be used by the desktop/IDE clients.
@@ -232,6 +282,7 @@ ai_cli_project() (
 			codex) codex resume ;;
 			opencode) opencode --continue ;;
 			agy) agy --continue ;;
+			cursor-agent|agent) "$AI_CLI_COMMAND" resume ;;
 		esac
 	else
 		"$AI_CLI_COMMAND"
@@ -248,6 +299,9 @@ ai_cli_login() {
 		ai_cli_prepare_environment || return 1
 		echo '启动 Antigravity CLI 后按官方界面登录；SSH 环境可在本地浏览器完成授权。'
 		agy
+	elif [ "$AI_CLI_ID" = 123 ]; then
+		echo '请在本地浏览器打开官方登录链接，完成 Cursor 账号授权。'
+		NO_OPEN_BROWSER=1 "$AI_CLI_COMMAND" login
 	else
 		local choice key result
 		echo '1. ChatGPT 设备码登录（适合远程服务器）'
@@ -283,6 +337,8 @@ ai_cli_auth() {
 				echo '进入 Antigravity CLI 后输入 /logout 退出账号，再输入 /exit 返回管理菜单。'
 				agy ;;
 		esac
+	elif [ "$AI_CLI_ID" = 123 ]; then
+		case "$1" in status) "$AI_CLI_COMMAND" status ;; logout) "$AI_CLI_COMMAND" logout ;; esac
 	else
 		case "$1" in status) codex login status ;; logout) codex logout ;; esac
 	fi
