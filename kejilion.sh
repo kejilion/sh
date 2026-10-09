@@ -2009,6 +2009,9 @@ kpanel_web_force_renew_certificate() (
 	fi
 	# Never replace material this tool did not obtain from Let's Encrypt.
 	openssl x509 -in "$cert" -noout -issuer 2>/dev/null | grep -qF "Let's Encrypt" || { echo 'KPANEL_CERTIFICATE not_managed'; return 2; }
+	# Legacy cron workers do not take the certificate lock. Upgrade only known
+	# renewal scripts and reject unknown policies or an already-running worker.
+	kpanel_web_upgrade_certificate_renewal || { echo 'KPANEL_CERTIFICATE unavailable'; return 2; }
 	# Standalone validation needs port 80; the running Nginx container is the only holder.
 	docker ps -q --filter name='^/nginx$' 2>/dev/null | grep -q . || { echo 'KPANEL_CERTIFICATE unavailable'; return 2; }
 	command -v flock >/dev/null 2>&1 || { echo 'KPANEL_CERTIFICATE unavailable'; return 2; }

@@ -11,6 +11,11 @@ if ! command -v flock >/dev/null; then
 fi
 fixture_root="$(mktemp -d)"
 trap 'rm -rf -- "$fixture_root"' EXIT
+# Reuse the actual renewal compatibility check, with only its installed path
+# redirected. Never inspect or rewrite the host's renewal job.
+sed -n '/^kpanel_web_certificate_renewal_header()/,/^kpanel_web_certificate_pair_valid()/p' "$root/kejilion.sh" |
+	sed -e '$d' -e "s|~root/auto_cert_renewal.sh|$fixture_root/auto_cert_renewal.sh|g" > "$fixture_root/migration.sh"
+source "$fixture_root/migration.sh"
 # Exercise only the certificate functions, never source the host-management entrypoint.
 sed -n '/^kpanel_web_certificate_pair_valid()/,/^kpanel_web_certificate_available()/p;/^kpanel_web_force_renew_certificate()/,/^install_ssltls()/p' "$root/kejilion.sh" |
 	sed -e '/^kpanel_web_certificate_available()/d' -e '/^install_ssltls()/d' \
@@ -101,6 +106,29 @@ run 'bad;domain.com'
 rm "$certs/example.com_key.pem"; run example.com
 [ "$status" = 2 ]; grep -Fx 'KPANEL_CERTIFICATE unavailable' "$fixture_root/receipt"; [ ! -e "$fixture_root/calls" ]
 printf 'force_renew_guards=pass\n'
+
+# An installed legacy entry is upgraded before manual renewal reaches Docker.
+reset
+cp "$root/tests/fixtures/certificate-renewal-b3d0d35.sh" "$fixture_root/auto_cert_renewal.sh"
+chmod 700 "$fixture_root/auto_cert_renewal.sh"
+run example.com
+[ "$status" = 1 ]; cmp "$fixture_root/auto_cert_renewal.sh" "$root/auto_cert_renewal.sh"
+printf 'force_renew_upgrades_known_legacy=pass\n'
+
+# Unknown local policy and an in-flight legacy job must fail before Docker.
+reset
+echo '# locally customized' >> "$fixture_root/auto_cert_renewal.sh"
+run example.com
+[ "$status" = 2 ]; grep -Fx 'KPANEL_CERTIFICATE unavailable' "$fixture_root/receipt"; [ ! -e "$fixture_root/calls" ]
+grep -F '# locally customized' "$fixture_root/auto_cert_renewal.sh" >/dev/null
+cp "$root/tests/fixtures/certificate-renewal-b3d0d35.sh" "$fixture_root/auto_cert_renewal.sh"
+chmod 700 "$fixture_root/auto_cert_renewal.sh"
+pgrep() { return 0; }
+run example.com
+unset -f pgrep
+[ "$status" = 2 ]; grep -Fx 'KPANEL_CERTIFICATE unavailable' "$fixture_root/receipt"; [ ! -e "$fixture_root/calls" ]
+cmp "$fixture_root/auto_cert_renewal.sh" "$root/auto_cert_renewal.sh"
+printf 'force_renew_legacy_and_custom_policy_guards=pass\n'
 
 # The daily renewal job and replacement transaction share this lock.
 reset
