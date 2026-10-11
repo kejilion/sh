@@ -266,6 +266,103 @@ class SecretRefTests(unittest.TestCase):
                 self.assertEqual(saved['apiKey'], FAKE_KEY if ref == 'previous-plaintext' else ref)
                 self.assertEqual(saved['models'], [{'id': 'replacement'}])
 
+@unittest.skipUnless(shutil.which('node'), 'requires Node.js for SDK export compatibility')
+class SDKCompatibilityTests(unittest.TestCase):
+    """Run the actual Node resolver against isolated old/new package exports."""
+    setUpClass = classmethod(SecretRefTests.setUpClass.__func__)
+    tearDownClass = classmethod(SecretRefTests.tearDownClass.__func__)
+    setUp = SecretRefTests.setUp
+    fixture = SecretRefTests.fixture
+    run_code = SecretRefTests.run_code
+
+    def make_sdk(self, layout, broken_current=False):
+        package = Path(self.tmp.name) / 'node_modules' / 'openclaw'
+        package.mkdir(parents=True)
+        entry = package / 'openclaw.mjs'
+        entry.write_text('// fixture CLI entry\n', encoding='utf-8')
+        exports = {
+            './plugin-sdk/process-runtime': './process.mjs',
+            './plugin-sdk/secret-input-runtime': './secrets.mjs',
+        }
+        coerce = '''
+export function coerceSecretRef(value, defaults) {
+  if (typeof value === 'string') {
+    return {source: 'env', provider: defaults?.env ?? 'default',
+            id: value.replace(/[${}]/g, '')};
+  }
+  return value;
+}
+'''
+        reader = '''
+import {readFileSync} from 'node:fs';
+export async function readConfigFileSnapshotForWrite(options) {
+  if (options.observe !== false) throw Error('expected read-only snapshot');
+  const path = process.env.OPENCLAW_CONFIG_PATH;
+  const raw = readFileSync(path, 'utf8');
+  return {snapshot: {exists: true, valid: true, path, raw, config: JSON.parse(raw)},
+          writeOptions: {envSnapshotForRestore: {SDK_FIXTURE_KEY: process.env.FIXTURE_KEY}}};
+}
+'''
+        if layout != 'legacy':
+            exports['./plugin-sdk/config-mutation'] = './current.mjs'
+            (package / 'current.mjs').write_text(
+                "throw Error('fixture SDK load failure');\n" if broken_current else reader,
+                encoding='utf-8')
+        if layout != 'current':
+            exports['./plugin-sdk/config-runtime'] = './legacy.mjs'
+            legacy = reader + coerce if layout == 'legacy' or broken_current else (
+                "throw Error('legacy SDK must not load when current SDK is available');\n")
+            (package / 'legacy.mjs').write_text(legacy, encoding='utf-8')
+        (package / 'package.json').write_text(json.dumps({
+            'name': 'openclaw', 'type': 'module', 'exports': exports,
+        }), encoding='utf-8')
+        (package / 'process.mjs').write_text(
+            'export function killProcessTree() {}\n', encoding='utf-8')
+        (package / 'secrets.mjs').write_text((coerce if layout != 'legacy' else '') + '''
+export async function resolveConfiguredSecretInputString({value, env, path}) {
+  if (!value.source || path !== 'models.providers.demo.apiKey') throw Error('bad ref');
+  return {value: env.SDK_FIXTURE_KEY};
+}
+''', encoding='utf-8')
+        self.native = True
+        node = shutil.which('node')
+        return patch('shutil.which', side_effect=lambda name: str(entry) if name == 'openclaw' else node)
+
+    def check_layout(self, layout):
+        with self.make_sdk(layout), patch.dict(os.environ, FIXTURE_KEY=FAKE_KEY):
+            refs = [{'source': source, 'provider': 'default', 'id': 'FIXTURE_KEY'}
+                    for source in ('env', 'file', 'exec', 'store')]
+            refs += ['${FIXTURE_KEY}', '$FIXTURE_KEY']
+            for ref in refs:
+                for kind in ('list', 'sync', 'all'):
+                    with self.subTest(layout=layout, ref=ref, kind=kind):
+                        self.config.write_text(json.dumps(self.fixture(ref)), encoding='utf-8')
+                        self.requests.clear()
+                        code, output = self.run_code(kind)
+                        self.assertEqual(code, 0, output)
+                        self.assertEqual(self.requests, ['Bearer ' + FAKE_KEY])
+                        saved = json.loads(self.config.read_text(encoding='utf-8'))
+                        self.assertEqual(saved['models']['providers']['demo']['apiKey'], ref)
+                        self.assertNotIn(FAKE_KEY, self.config.read_text(encoding='utf-8'))
+
+    def test_current_sdk_without_removed_config_runtime(self):
+        self.check_layout('current')
+
+    def test_legacy_sdk_without_config_mutation(self):
+        self.check_layout('legacy')
+
+    def test_current_sdk_preferred_when_both_are_exported(self):
+        self.check_layout('both')
+
+    def test_broken_current_sdk_fails_closed_without_legacy_fallback(self):
+        self.config.write_text(json.dumps(self.fixture('${FIXTURE_KEY}')), encoding='utf-8')
+        original = self.config.read_bytes()
+        with self.make_sdk('both', broken_current=True), patch.dict(os.environ, FIXTURE_KEY=FAKE_KEY):
+            self.assertEqual(self.run_code('sync')[0], 6)
+        self.assertEqual(self.requests, [])
+        self.assertEqual(self.config.read_bytes(), original)
+
+
 @unittest.skipUnless(os.environ.get('OPENCLAW_NATIVE_TEST') == '1', 'opt-in installed OpenClaw SDK tests')
 class NativeRuntimeTests(unittest.TestCase):
     setUpClass = classmethod(SecretRefTests.setUpClass.__func__)

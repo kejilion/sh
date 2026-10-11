@@ -16419,7 +16419,16 @@ process.stdout.write = () => true;
   const processes = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/process-runtime')));
   process.once('SIGTERM', () => processes.killProcessTree(process.pid, {detached: false, force: true}));
   const sdk = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/secret-input-runtime')));
-  const io = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/config-runtime')));
+  let configModule;
+  try {
+    configModule = localRequire.resolve('openclaw/plugin-sdk/config-mutation');
+  } catch (error) {
+    // Older OpenClaw releases expose config I/O through the broad runtime barrel.
+    if (!['ERR_PACKAGE_PATH_NOT_EXPORTED', 'MODULE_NOT_FOUND'].includes(error.code)) throw error;
+    configModule = localRequire.resolve('openclaw/plugin-sdk/config-runtime');
+  }
+  const io = await import(pathToFileURL(configModule));
+  const coerceSecretRef = sdk.coerceSecretRef ?? io.coerceSecretRef;
   const {snapshot, writeOptions} = await io.readConfigFileSnapshotForWrite({observe: false});
   if (!snapshot.exists || !snapshot.valid ||
       realpathSync(snapshot.path) !== realpathSync(process.env.OPENCLAW_CONFIG_PATH) ||
@@ -16428,8 +16437,8 @@ process.stdout.write = () => true;
   const keys = Object.create(null);
   for (const name of input.names) {
     try {
-      const value = io.coerceSecretRef(input.config.models.providers[name].apiKey,
-                                     snapshot.config.secrets?.defaults);
+      const value = coerceSecretRef(input.config.models.providers[name].apiKey,
+                                   snapshot.config.secrets?.defaults);
       if (!value) continue;
       const result = await sdk.resolveConfiguredSecretInputString({
         config: snapshot.config, env: process.env, value,
