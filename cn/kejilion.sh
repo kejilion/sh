@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.10"
+sh_v="4.5.13"
 
 
 gl_hui='\e[37m'
@@ -23836,14 +23836,54 @@ while true; do
 
 		local app_id="60"
 		local app_name="JumpServer开源堡垒机"
-		local app_text="是一个开源的特权访问管理 (PAM) 工具，该程序占用80端口不支持添加域名访问了"
+		local app_text="开源特权访问管理 (PAM) 工具，使用自定义 HTTP 端口；域名反代需将域名加入 /opt/jumpserver/config/config.txt 的 DOMAINS"
 		local app_url="官方介绍: ${gh_https_url}github.com/jumpserver/jumpserver"
 		local docker_name="jms_web"
-		local docker_port="80"
+		local docker_port="8060"
 		local app_size="2"
 
 		docker_app_install() {
-			curl -sSL ${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh | bash
+			local jms_version="v4.10.19"
+			# GitHub 官方发布资产的 SHA256 digest。
+			local jms_sha256="3a9fb2b5256ae60eff1340cca24a1546157d09fc174244b342f38e4117418f87"
+			local jms_dir="/opt/jumpserver-installer-${jms_version}"
+			local jms_config="/opt/jumpserver/config/config.txt"
+			local jms_archive="jumpserver-installer-${jms_version}.tar.gz"
+			local jms_url="${gh_proxy}github.com/jumpserver/installer/releases/download/${jms_version}"
+			local jms_tmp="" jms_domains=""
+			if ! is_valid_port "$docker_port" || [ "$((10#$docker_port))" -eq 80 ] || [ "$((10#$docker_port))" -eq 443 ]; then
+				echo "错误: JumpServer 端口必须在 1-65535 之间，且不能使用 80 或 443"
+				return 1
+			fi
+			docker_port=$((10#$docker_port))
+			if [ -e "$jms_config" ]; then
+				echo "检测到已有 JumpServer 配置，请使用更新功能，避免覆盖原有数据与密钥。"
+				return 1
+			fi
+			install curl tar coreutils gettext iptables python3 || return 1
+			jms_tmp=$(mktemp -d) || return 1
+			if ! curl -fSL --retry 3 -o "$jms_tmp/$jms_archive" "$jms_url/$jms_archive" ||
+				! (cd "$jms_tmp" && printf '%s  %s\n' "$jms_sha256" "$jms_archive" | sha256sum -c -); then
+				rm -rf -- "$jms_tmp"
+				echo "JumpServer 安装包下载或 SHA256 校验失败"
+				return 1
+			fi
+			if ! tar --no-same-owner -xzf "$jms_tmp/$jms_archive" -C /opt; then
+				rm -rf -- "$jms_tmp"
+				return 1
+			fi
+			rm -rf -- "$jms_tmp"
+			ip_address
+			jms_domains="localhost:${docker_port},127.0.0.1:${docker_port}"
+			[ -z "${ipv4_address:-}" ] || jms_domains+=",${ipv4_address}:${docker_port}"
+			[ -z "${ipv6_address:-}" ] || jms_domains+=",[${ipv6_address}]:${docker_port}"
+			mkdir -p /opt/jumpserver/config || return 1
+			cp "$jms_dir/config-example.txt" "$jms_config" || return 1
+			chmod 600 "$jms_config" || return 1
+			# 官方安装器读取配置文件；仅设置环境变量 HTTP_PORT 不会生效。
+			sed -i -e '/^HTTP_PORT=/d' -e '/^HTTPS_PORT=/d' -e '/^DOMAINS=/d' "$jms_config" || return 1
+			printf 'HTTP_PORT=%s\nHTTPS_PORT=\nDOMAINS=%s\n' "$docker_port" "$jms_domains" >> "$jms_config" || return 1
+			(cd "$jms_dir" && AUTO_INSTALL=1 ./jmsctl.sh install && ./jmsctl.sh start) || return 1
 			clear
 			echo "已经安装完成"
 			check_docker_app_ip
@@ -23853,18 +23893,13 @@ while true; do
 
 
 		docker_app_update() {
-			cd /opt/jumpserver-installer*/
-			./jmsctl.sh upgrade
+			jmsctl upgrade || return 1
 			echo "应用已更新"
 		}
 
 
 		docker_app_uninstall() {
-			cd /opt/jumpserver-installer*/
-			./jmsctl.sh uninstall
-			cd /opt
-			rm -rf jumpserver-installer*/
-			rm -rf jumpserver
+			jmsctl uninstall || return 1
 			echo "应用已卸载"
 		}
 
