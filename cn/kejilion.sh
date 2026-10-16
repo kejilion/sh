@@ -21999,6 +21999,36 @@ run_ai_cli_manager() (
 	ai_cli_main "$app"
 )
 
+# 本地自建应用只接受当前用户所有、不可被他人写入的普通文件
+local_app_config_trusted() {
+	local name="$1" path owner mode
+	case "$name" in
+		""|[!A-Za-z0-9]*|*[!A-Za-z0-9_.-]*) return 1 ;;
+	esac
+	path="$HOME/apps-local/${name}.conf"
+	[ -f "$path" ] && [ ! -L "$path" ] || return 1
+	read -r owner mode < <(stat -c '%u %a' -- "$path" 2>/dev/null) || return 1
+	[ "$owner" = "$(id -u)" ] || return 1
+	[ $((8#$mode & 8#022)) -eq 0 ]
+}
+
+# 官方 ~/apps 优先，其次 ~/apps-local；输出配置路径
+resolve_app_config() {
+	local name="$1"
+	if [ -f "$HOME/apps/${name}.conf" ]; then
+		printf '%s\n' "$HOME/apps/${name}.conf"
+		return 0
+	fi
+	if local_app_config_trusted "$name"; then
+		printf '%s\n' "$HOME/apps-local/${name}.conf"
+		return 0
+	fi
+	if [ -e "$HOME/apps-local/${name}.conf" ]; then
+		echo -e "${gl_hong}错误: ${gl_bai}~/apps-local/${name}.conf 须为当前用户所有且不可被组或他人写入 (chmod 644)" >&2
+	fi
+	return 1
+}
+
 linux_panel() {
 
 local sub_choice="$1"
@@ -22116,6 +22146,28 @@ while true; do
 			  echo -e "${gl_kjlan}$base_name${gl_bai} - ${gl_lv}$app_text [已安装]${gl_bai}"
 		  else
 			  # 如果未安装：正常显示
+			  echo -e "${gl_kjlan}$base_name${gl_bai} - $app_text"
+		  fi
+	  done
+
+	  # 本地自建应用：~/apps-local/*.conf，与官方同名时以官方为准
+	  local local_header_shown=0
+	  for f in "$HOME"/apps-local/*.conf; do
+		  local base_name=$(basename "$f" .conf)
+		  local_app_config_trusted "$base_name" || continue
+		  if [ "$local_header_shown" = 0 ]; then
+			  echo -e "${gl_kjlan}-------------------------"
+			  echo -e "${gl_kjlan}本地应用列表 ${gl_bai}(~/apps-local，未经官方审核)"
+			  local_header_shown=1
+		  fi
+		  if [ -e "$HOME/apps/${base_name}.conf" ]; then
+			  echo -e "${gl_huang}$base_name${gl_bai} - 与官方应用同名，已忽略"
+			  continue
+		  fi
+		  local app_text=$(grep "app_text=" "$f" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+		  if echo "$app_numbers" | grep -q "^$base_name$"; then
+			  echo -e "${gl_kjlan}$base_name${gl_bai} - ${gl_lv}$app_text [已安装]${gl_bai}"
+		  else
 			  echo -e "${gl_kjlan}$base_name${gl_bai} - $app_text"
 		  fi
 	  done
@@ -25968,8 +26020,8 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  ;;
 	  *)
 		refresh_apps_catalog || return 1
-		local custom_app="$HOME/apps/${sub_choice}.conf"
-		if [ -f "$custom_app" ]; then
+		local custom_app
+		if custom_app=$(resolve_app_config "$sub_choice"); then
 			if [ "${KJ_APP_CONCURRENCY:-}" = "1" ]; then
 				kpanel_app_source_config "$custom_app"
 			else

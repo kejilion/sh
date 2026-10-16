@@ -9,7 +9,7 @@ mkdir -p "$test_root/home/apps"
 
 # Exercise the entire production dispatcher in a child shell without errexit:
 # a failing app must survive the case and protocol checks as its process status.
-awk '/^linux_panel\(\) \{/ { capture=1 } /^linux_work\(\) \{/ { exit } capture { print }' "$script_path" > "$test_root/dispatcher.sh"
+awk '/^local_app_config_trusted\(\) \{/ { capture=1 } /^linux_work\(\) \{/ { exit } capture { print }' "$script_path" > "$test_root/dispatcher.sh"
 test -s "$test_root/dispatcher.sh"
 cat > "$test_root/home/apps/standard.conf" <<'EOF'
 docker_app
