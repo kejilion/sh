@@ -65,4 +65,20 @@ if resolve_app_config missing >/dev/null 2>&1; then
 	exit 1
 fi
 
+# local: 前缀只解析 ~/apps-local，避开 b/r 等内置菜单别名
+printf 'local app_text="restore-like"\n' >"$HOME/apps-local/r.conf"
+chmod 644 "$HOME/apps-local/r.conf"
+[ "$(resolve_app_config local:r)" = "$HOME/apps-local/r.conf" ]
+printf 'local app_text="official"\n' >"$HOME/apps/shadow.conf"
+cp "$HOME/apps-local/r.conf" "$HOME/apps-local/shadow.conf"
+if resolve_app_config local:shadow >"$test_root/shadow.out" 2>&1; then
+	echo "local: prefix bypassed an official config with the same name" >&2
+	exit 1
+fi
+grep -F '与官方应用同名' "$test_root/shadow.out" >/dev/null
+if resolve_app_config local:../apps/shadow >/dev/null 2>&1; then
+	echo "local: prefix accepted a traversal name" >&2
+	exit 1
+fi
+
 echo "app_local_config_smoke=pass"

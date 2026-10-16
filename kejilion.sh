@@ -22014,9 +22014,17 @@ local_app_config_trusted() {
 }
 
 # 官方 ~/apps 优先，其次 ~/apps-local；输出配置路径
+# local:<名称> 只查 ~/apps-local，供 KPanel 避开内置菜单别名(如 b/r/bt)
 resolve_app_config() {
-	local name="$1"
+	local name="$1" local_only=0
+	case "$name" in
+		local:*) name="${name#local:}"; local_only=1 ;;
+	esac
 	if [ -f "$HOME/apps/${name}.conf" ]; then
+		if [ "$local_only" = 1 ]; then
+			echo -e "${gl_hong}错误: ${gl_bai}${name} 与官方应用同名，本地配置已忽略" >&2
+			return 1
+		fi
 		printf '%s\n' "$HOME/apps/${name}.conf"
 		return 0
 	fi
