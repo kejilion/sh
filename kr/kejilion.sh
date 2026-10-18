@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.10"
+sh_v="4.5.13"
 
 
 gl_hui='\e[37m'
@@ -19,6 +19,7 @@ KPANEL_WEB_CERTIFICATE_PROTOCOL_VERSION="1"
 KPANEL_WEB_CERTIFICATE_REPLACE_PROTOCOL_VERSION="1"
 KPANEL_WEB_CERTIFICATE_FORCE_RENEW_PROTOCOL_VERSION="1"
 KPANEL_APP_CONCURRENCY_PROTOCOL_VERSION="1"
+KPANEL_LOCAL_APPS_PROTOCOL_VERSION="1"
 unset KJ_APP_LOCKS_HELD
 
 # Locks live outside PrivateTmp and app data. Only the paired KPanel worker
@@ -16419,7 +16420,16 @@ process.stdout.write = () => true;
   const processes = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/process-runtime')));
   process.once('SIGTERM', () => processes.killProcessTree(process.pid, {detached: false, force: true}));
   const sdk = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/secret-input-runtime')));
-  const io = await import(pathToFileURL(localRequire.resolve('openclaw/plugin-sdk/config-runtime')));
+  let configModule;
+  try {
+    configModule = localRequire.resolve('openclaw/plugin-sdk/config-mutation');
+  } catch (error) {
+    // Older OpenClaw releases expose config I/O through the broad runtime barrel.
+    if (!['ERR_PACKAGE_PATH_NOT_EXPORTED', 'MODULE_NOT_FOUND'].includes(error.code)) throw error;
+    configModule = localRequire.resolve('openclaw/plugin-sdk/config-runtime');
+  }
+  const io = await import(pathToFileURL(configModule));
+  const coerceSecretRef = sdk.coerceSecretRef ?? io.coerceSecretRef;
   const {snapshot, writeOptions} = await io.readConfigFileSnapshotForWrite({observe: false});
   if (!snapshot.exists || !snapshot.valid ||
       realpathSync(snapshot.path) !== realpathSync(process.env.OPENCLAW_CONFIG_PATH) ||
@@ -16428,8 +16438,8 @@ process.stdout.write = () => true;
   const keys = Object.create(null);
   for (const name of input.names) {
     try {
-      const value = io.coerceSecretRef(input.config.models.providers[name].apiKey,
-                                     snapshot.config.secrets?.defaults);
+      const value = coerceSecretRef(input.config.models.providers[name].apiKey,
+                                   snapshot.config.secrets?.defaults);
       if (!value) continue;
       const result = await sdk.resolveConfiguredSecretInputString({
         config: snapshot.config, env: process.env, value,
@@ -21990,6 +22000,44 @@ run_ai_cli_manager() (
 	ai_cli_main "$app"
 )
 
+# 本地自建应用只接受当前用户所有、不可被他人写入的普通文件
+local_app_config_trusted() {
+	local name="$1" path owner mode
+	case "$name" in
+		""|[!A-Za-z0-9]*|*[!A-Za-z0-9_.-]*) return 1 ;;
+	esac
+	path="$HOME/apps-local/${name}.conf"
+	[ -f "$path" ] && [ ! -L "$path" ] || return 1
+	read -r owner mode < <(stat -c '%u %a' -- "$path" 2>/dev/null) || return 1
+	[ "$owner" = "$(id -u)" ] || return 1
+	[ $((8#$mode & 8#022)) -eq 0 ]
+}
+
+# 官方 ~/apps 优先，其次 ~/apps-local；输出配置路径
+# local:<名称> 只查 ~/apps-local，供 KPanel 避开内置菜单别名(如 b/r/bt)
+resolve_app_config() {
+	local name="$1" local_only=0
+	case "$name" in
+		local:*) name="${name#local:}"; local_only=1 ;;
+	esac
+	if [ -f "$HOME/apps/${name}.conf" ]; then
+		if [ "$local_only" = 1 ]; then
+			echo -e "${gl_hong}错误: ${gl_bai}${name} 与官方应用同名，本地配置已忽略" >&2
+			return 1
+		fi
+		printf '%s\n' "$HOME/apps/${name}.conf"
+		return 0
+	fi
+	if local_app_config_trusted "$name"; then
+		printf '%s\n' "$HOME/apps-local/${name}.conf"
+		return 0
+	fi
+	if [ -e "$HOME/apps-local/${name}.conf" ]; then
+		echo -e "${gl_hong}错误: ${gl_bai}~/apps-local/${name}.conf 须为当前用户所有且不可被组或他人写入 (chmod 644)" >&2
+	fi
+	return 1
+}
+
 linux_panel() {
 
 local sub_choice="$1"
@@ -22107,6 +22155,28 @@ while true; do
 			  echo -e "${gl_kjlan}$base_name${gl_bai} - ${gl_lv}$app_text [已安装]${gl_bai}"
 		  else
 			  # 如果未安装：正常显示
+			  echo -e "${gl_kjlan}$base_name${gl_bai} - $app_text"
+		  fi
+	  done
+
+	  # 本地自建应用：~/apps-local/*.conf，与官方同名时以官方为准
+	  local local_header_shown=0
+	  for f in "$HOME"/apps-local/*.conf; do
+		  local base_name=$(basename "$f" .conf)
+		  local_app_config_trusted "$base_name" || continue
+		  if [ "$local_header_shown" = 0 ]; then
+			  echo -e "${gl_kjlan}-------------------------"
+			  echo -e "${gl_kjlan}本地应用列表 ${gl_bai}(~/apps-local，未经官方审核)"
+			  local_header_shown=1
+		  fi
+		  if [ -e "$HOME/apps/${base_name}.conf" ]; then
+			  echo -e "${gl_huang}$base_name${gl_bai} - 与官方应用同名，已忽略"
+			  continue
+		  fi
+		  local app_text=$(grep "app_text=" "$f" | cut -d'=' -f2 | tr -d '"' | tr -d "'")
+		  if echo "$app_numbers" | grep -q "^$base_name$"; then
+			  echo -e "${gl_kjlan}$base_name${gl_bai} - ${gl_lv}$app_text [已安装]${gl_bai}"
+		  else
 			  echo -e "${gl_kjlan}$base_name${gl_bai} - $app_text"
 		  fi
 	  done
@@ -23827,14 +23897,54 @@ while true; do
 
 		local app_id="60"
 		local app_name="JumpServer开源堡垒机"
-		local app_text="是一个开源的特权访问管理 (PAM) 工具，该程序占用80端口不支持添加域名访问了"
+		local app_text="开源特权访问管理 (PAM) 工具，使用自定义 HTTP 端口；域名反代需将域名加入 /opt/jumpserver/config/config.txt 的 DOMAINS"
 		local app_url="官方介绍: ${gh_https_url}github.com/jumpserver/jumpserver"
 		local docker_name="jms_web"
-		local docker_port="80"
+		local docker_port="8060"
 		local app_size="2"
 
 		docker_app_install() {
-			curl -sSL ${gh_proxy}github.com/jumpserver/jumpserver/releases/latest/download/quick_start.sh | bash
+			local jms_version="v4.10.19"
+			# GitHub 官方发布资产的 SHA256 digest。
+			local jms_sha256="3a9fb2b5256ae60eff1340cca24a1546157d09fc174244b342f38e4117418f87"
+			local jms_dir="/opt/jumpserver-installer-${jms_version}"
+			local jms_config="/opt/jumpserver/config/config.txt"
+			local jms_archive="jumpserver-installer-${jms_version}.tar.gz"
+			local jms_url="${gh_proxy}github.com/jumpserver/installer/releases/download/${jms_version}"
+			local jms_tmp="" jms_domains=""
+			if ! is_valid_port "$docker_port" || [ "$((10#$docker_port))" -eq 80 ] || [ "$((10#$docker_port))" -eq 443 ]; then
+				echo "错误: JumpServer 端口必须在 1-65535 之间，且不能使用 80 或 443"
+				return 1
+			fi
+			docker_port=$((10#$docker_port))
+			if [ -e "$jms_config" ]; then
+				echo "检测到已有 JumpServer 配置，请使用更新功能，避免覆盖原有数据与密钥。"
+				return 1
+			fi
+			install curl tar coreutils gettext iptables python3 || return 1
+			jms_tmp=$(mktemp -d) || return 1
+			if ! curl -fSL --retry 3 -o "$jms_tmp/$jms_archive" "$jms_url/$jms_archive" ||
+				! (cd "$jms_tmp" && printf '%s  %s\n' "$jms_sha256" "$jms_archive" | sha256sum -c -); then
+				rm -rf -- "$jms_tmp"
+				echo "JumpServer 安装包下载或 SHA256 校验失败"
+				return 1
+			fi
+			if ! tar --no-same-owner -xzf "$jms_tmp/$jms_archive" -C /opt; then
+				rm -rf -- "$jms_tmp"
+				return 1
+			fi
+			rm -rf -- "$jms_tmp"
+			ip_address
+			jms_domains="localhost:${docker_port},127.0.0.1:${docker_port}"
+			[ -z "${ipv4_address:-}" ] || jms_domains+=",${ipv4_address}:${docker_port}"
+			[ -z "${ipv6_address:-}" ] || jms_domains+=",[${ipv6_address}]:${docker_port}"
+			mkdir -p /opt/jumpserver/config || return 1
+			cp "$jms_dir/config-example.txt" "$jms_config" || return 1
+			chmod 600 "$jms_config" || return 1
+			# 官方安装器读取配置文件；仅设置环境变量 HTTP_PORT 不会生效。
+			sed -i -e '/^HTTP_PORT=/d' -e '/^HTTPS_PORT=/d' -e '/^DOMAINS=/d' "$jms_config" || return 1
+			printf 'HTTP_PORT=%s\nHTTPS_PORT=\nDOMAINS=%s\n' "$docker_port" "$jms_domains" >> "$jms_config" || return 1
+			(cd "$jms_dir" && AUTO_INSTALL=1 ./jmsctl.sh install && ./jmsctl.sh start) || return 1
 			clear
 			echo "已经安装完成"
 			check_docker_app_ip
@@ -23844,18 +23954,13 @@ while true; do
 
 
 		docker_app_update() {
-			cd /opt/jumpserver-installer*/
-			./jmsctl.sh upgrade
+			jmsctl upgrade || return 1
 			echo "应用已更新"
 		}
 
 
 		docker_app_uninstall() {
-			cd /opt/jumpserver-installer*/
-			./jmsctl.sh uninstall
-			cd /opt
-			rm -rf jumpserver-installer*/
-			rm -rf jumpserver
+			jmsctl uninstall || return 1
 			echo "应用已卸载"
 		}
 
@@ -25924,8 +26029,8 @@ discourse,yunsou,ahhhhfs,nsgame,gying" \
 		  ;;
 	  *)
 		refresh_apps_catalog || return 1
-		local custom_app="$HOME/apps/${sub_choice}.conf"
-		if [ -f "$custom_app" ]; then
+		local custom_app
+		if custom_app=$(resolve_app_config "$sub_choice"); then
 			if [ "${KJ_APP_CONCURRENCY:-}" = "1" ]; then
 				kpanel_app_source_config "$custom_app"
 			else
