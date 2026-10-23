@@ -3271,6 +3271,11 @@ def wait_ready(compose, services, check_nginx=True):
                     ready = ready and state['Running'] and state.get('Health', {}).get('Status', 'healthy') == 'healthy'
                     if state['Running'] and name == 'mysql':
                         command('docker', 'exec', identifier, 'mysqladmin', 'ping', '--silent', '--connect-timeout=2')
+                        result = command('docker', 'exec', identifier, 'sh', '-c',
+                                         'export MYSQL_PWD="$MYSQL_ROOT_PASSWORD"; '
+                                         'exec mysql -uroot --batch --skip-column-names -e "$1"', 'sh', 'SELECT 1')
+                        if result.strip() != '1':
+                            raise RuntimeError('MySQL 原凭据 SQL 探针未通过')
                     if state['Running'] and name in {'php', 'php74'}:
                         command('docker', 'exec', identifier, 'php-fpm', '-t')
                     if state['Running'] and name == 'redis':

@@ -149,6 +149,10 @@ class TransactionTests(unittest.TestCase):
                     return '/var/lib/mysql/\n'
                 if args[-1] == 'SELECT @@socket':
                     return '/run/mysqld/mysqld.sock\n'
+                if args[-1] == 'SELECT 1':
+                    if self.failure == 'mysql-auth' and self.switched:
+                        raise RuntimeError('Access denied after image switch')
+                    return '1\n'
                 if args[-1].startswith('SHOW VARIABLES LIKE'):
                     return ''
                 if args[-1].startswith('SHOW VARIABLES'):
@@ -503,6 +507,14 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(service['network_mode'], 'none')
         for field in ('ports', 'networks', 'depends_on', 'links'):
             self.assertNotIn(field, service)
+
+    def test_new_mysql_authentication_failure_is_caught_before_business_exposure(self):
+        self.failure = 'mysql-auth'
+        with self.assertRaisesRegex(RuntimeError, '未通过就绪检查'):
+            self.update('all')
+        self.assertEqual(json.loads((self.directory / 'journal.json').read_text())['phase'], 'switching')
+        updater.rollback(self.root, self.directory)
+        self.assert_restored()
 
     def test_exposed_candidate_failure_keeps_acknowledged_database_writes(self):
         original = self.command
