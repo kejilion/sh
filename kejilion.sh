@@ -2430,41 +2430,60 @@ restart_ldnmp() {
 
 }
 
+nginx_wait_ready() {
+  local attempt
+  for attempt in {1..20}; do
+    if docker exec nginx nginx -t >/dev/null 2>&1 && docker top nginx -eo args | grep -q 'nginx: worker process'; then return 0; fi
+    sleep 1
+  done
+  return 1
+}
+
 nginx_upgrade() {
-  local ldnmp_pods="nginx" previous_image rollback_file ready=false attempt
+  (
+  local ldnmp_pods="nginx" previous_image directory interpreter ready=false
   cd /home/web/ || return 1
   shared_waf_refresh || return 1
-  previous_image=$(docker inspect -f '{{.Image}}' "$ldnmp_pods" 2>/dev/null)
-  # Fetch and validate before recreating the serving container; retain the old image.
-  docker compose pull "$ldnmp_pods" || return 1
-  docker compose run --rm --no-deps --entrypoint nginx "$ldnmp_pods" -t || return 1
-  if docker compose up -d --force-recreate "$ldnmp_pods"; then
-    for attempt in {1..20}; do
-      if docker exec "$ldnmp_pods" nginx -t >/dev/null 2>&1 && docker top "$ldnmp_pods" -eo args | grep -q 'nginx: worker process'; then ready=true; break; fi
-      sleep 1
-    done
-  fi
+  previous_image=$(docker inspect -f '{{.Image}}' "$ldnmp_pods" 2>/dev/null) || return 1
+  [[ "$previous_image" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+  interpreter=$(command -v python3) || { echo "Nginx 安全更新需要 Python 3 保存完整 Compose 配置" >&2; return 1; }
+  umask 077
+  directory=$(mktemp -d /home/web/.nginx-update.XXXXXX) || return 1
+  trap 'rm -f -- "$directory/current.json" "$directory/rendered.json" "$directory/rollback.json"; rmdir -- "$directory" 2>/dev/null || true' EXIT
+  # Freeze the actual merged model, including default/COMPOSE_FILE overrides.
+  docker compose config --format json > "$directory/current.json" || return 1
+  local -a compose=(docker compose --project-directory /home/web -f "$directory/current.json")
+  "${compose[@]}" config --format json > "$directory/rendered.json" || return 1
+  # Refuse Compose versions that cannot round-trip their canonical data model.
+  "$interpreter" -I - "$directory/current.json" "$directory/rendered.json" <<'NGINX_COMPOSE'
+import json,sys
+with open(sys.argv[1]) as stream:before=json.load(stream)
+with open(sys.argv[2]) as stream:after=json.load(stream)
+if before!=after:raise SystemExit('Compose 配置快照回读不一致，未更新容器')
+NGINX_COMPOSE
+  [ "$?" -eq 0 ] || return 1
+  # Preflight and recovery use the same frozen model, retaining the old image.
+  "${compose[@]}" pull "$ldnmp_pods" || return 1
+  "${compose[@]}" run --rm --no-deps --entrypoint nginx "$ldnmp_pods" -t || return 1
+  if "${compose[@]}" up -d --force-recreate "$ldnmp_pods" && nginx_wait_ready; then ready=true; fi
   if [ "$ready" != true ]; then
-    if [[ "$previous_image" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-      rollback_file=$(mktemp /root/.nginx-rollback.XXXXXX.yml) || return 1
-      printf 'services:\n  nginx:\n    image: "%s"\n' "$previous_image" > "$rollback_file"
-      if docker compose -f docker-compose.yml -f "$rollback_file" up -d --force-recreate --pull never "$ldnmp_pods"; then
-        echo "Nginx 更新失败，已恢复旧镜像；请检查候选镜像日志" >&2
-      else
-        echo "Nginx 更新与恢复均失败；旧镜像仍保留，请检查容器日志" >&2
-      fi
-      rm -f -- "$rollback_file"
+    printf '{"services":{"nginx":{"image":"%s"}}}\n' "$previous_image" > "$directory/rollback.json"
+    if "${compose[@]}" -f "$directory/rollback.json" up -d --force-recreate --pull never "$ldnmp_pods" && nginx_wait_ready; then
+      echo "Nginx 更新失败，已恢复并核验旧镜像；请检查候选镜像日志" >&2
+    else
+      echo "Nginx 更新失败，旧镜像恢复未能通过核验；请检查容器日志" >&2
     fi
     return 1
   fi
   # Preserve the shared WAF minute rotation and unrelated administrator jobs.
   (crontab -l 2>/dev/null | grep -Fvx '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf';
-   printf '%s\n' '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf') | crontab -
-  docker exec nginx chown -R nginx:nginx /var/www/html
-  docker exec nginx mkdir -p /var/cache/nginx/proxy /var/cache/nginx/fastcgi
-  docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy /var/cache/nginx/fastcgi
+   printf '%s\n' '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf') | crontab - || return 1
+  docker exec nginx chown -R nginx:nginx /var/www/html || return 1
+  docker exec nginx mkdir -p /var/cache/nginx/proxy /var/cache/nginx/fastcgi || return 1
+  docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy /var/cache/nginx/fastcgi || return 1
   send_stats "更新$ldnmp_pods"
   echo "更新${ldnmp_pods}完成"
+  )
 }
 
 
@@ -2743,8 +2762,32 @@ WAF_DOWNLOAD
 	)
 }
 
+shared_waf_cached() {
+	local revision interpreter
+	revision=$(shared_waf_revision)
+	[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || return 1
+	WAF_DIRECTORY="/home/web/config/waf/packages/$revision"
+	WAF_PYTHON=""
+	for interpreter in python3 python3.13 python3.12 python3.11; do
+		if command -v "$interpreter" >/dev/null 2>&1 && "$interpreter" -I -c 'import sys; raise SystemExit(sys.version_info < (3,11))' >/dev/null 2>&1; then
+			WAF_PYTHON=$(command -v "$interpreter"); break
+		fi
+	done
+	[ -n "$WAF_PYTHON" ] || return 1
+	# No mkdir or download: every ancestor must be stable before root execution.
+	"$WAF_PYTHON" -I - "$WAF_DIRECTORY" <<'WAF_CACHED_PATH'
+import pathlib,stat,sys
+path=pathlib.Path(sys.argv[1])
+for parent in [path,*path.parents]:
+ info=parent.lstat()
+ if not stat.S_ISDIR(info.st_mode) or info.st_uid!=0 or info.st_mode & 0o022:
+  raise SystemExit('WAF 配置目录所有权或权限不可信')
+WAF_CACHED_PATH
+	[ "$?" -eq 0 ] && shared_waf_verified "$WAF_DIRECTORY"
+}
+
 shared_waf() {
-	shared_waf_prepare || return 1
+	if [ "${1:-}" = status ]; then shared_waf_cached || return 1; else shared_waf_prepare || return 1; fi
 	"$WAF_PYTHON" -E -s -B "$WAF_DIRECTORY/configure.py" --root /home/web "$@"
 }
 
@@ -2788,20 +2831,11 @@ nginx_waf() {
 }
 
 shared_waf_mode() {
-	# Status must never download or execute an unverified package.
-	local revision directory interpreter
-	revision=$(shared_waf_revision); directory="/home/web/config/waf/packages/$revision"
-	shared_waf_verified "$directory" || return 1
-	for interpreter in python3 python3.13 python3.12 python3.11; do
-		if command -v "$interpreter" >/dev/null 2>&1 && "$interpreter" -I -c 'import sys; raise SystemExit(sys.version_info < (3,11))' >/dev/null 2>&1; then
-			"$interpreter" -E -s -B "$directory/configure.py" --root /home/web status |
-				"$interpreter" -I -c 'import json,sys; s=json.load(sys.stdin)["mode"]; assert s in {"on","off","detect","mixed"}; print(s)'
-			local -a statuses=("${PIPESTATUS[@]}")
-			[ "${statuses[0]}" -eq 0 ] && [ "${statuses[1]}" -eq 0 ]
-			return $?
-		fi
-	done
-	return 1
+	shared_waf_cached || return 1
+	"$WAF_PYTHON" -E -s -B "$WAF_DIRECTORY/configure.py" --root /home/web status |
+		"$WAF_PYTHON" -I -c 'import json,sys; s=json.load(sys.stdin)["mode"]; assert s in {"on","off","detect","mixed"}; print(s)'
+	local -a statuses=("${PIPESTATUS[@]}")
+	[ "${statuses[0]}" -eq 0 ] && [ "${statuses[1]}" -eq 0 ]
 }
 
 check_waf_status() {
@@ -14939,7 +14973,7 @@ ldnmp_environment_status() {
 	grep -qE '^[[:space:]]*modsecurity on;' /home/web/nginx.conf 2>/dev/null && waf=true
 	if [ -f /home/web/config/waf/policy.json ]; then
 		waf_mode=$(shared_waf_mode 2>/dev/null) || waf_mode=unknown
-		case "$waf_mode" in on|mixed) waf=true ;; off|detect) waf=false ;; esac
+		case "$waf_mode" in on|mixed) waf=true ;; *) waf=false ;; esac
 	elif [ "$waf" = true ]; then waf_mode=legacy; fi
 	[ -f /etc/fail2ban/action.d/cloudflare-docker.conf ] && cloudflare=true
 	iptables -C INPUT -p tcp --syn -j DROP >/dev/null 2>&1 && ddos=true
@@ -15050,6 +15084,9 @@ ldnmp_protection_action_apply() {
 }
 
 ldnmp_protection_action() {
+	# Shared WAF owns its full configuration transaction and readiness verification.
+	# The legacy snapshot below cannot restore that write set and must not wrap it.
+	case "$1" in waf-on) nginx_waf on; return $? ;; waf-off) nginx_waf off; return $? ;; esac
 	local action="$1" snapshot rc=0 fail2ban_existed=false
 	snapshot=$(mktemp -d /home/.kpanel-ldnmp-protection.XXXXXX) || return 1
 	if [ -d /etc/fail2ban ]; then
