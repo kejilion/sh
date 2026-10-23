@@ -2961,6 +2961,16 @@ def data_sources(compose, services, verify_active=False):
         container = json.loads(command('docker', 'inspect', identifiers[0]))[0]
         if verify_active and not container['State']['Running']:
             raise ValueError('数据库未运行，无法核验实际数据目录，未执行完整更新: ' + service)
+        def private_socket(path):
+            if not path:
+                return
+            actual = command('docker', 'exec', identifiers[0], 'readlink', '-f', path).strip()
+            for mount in container['Mounts']:
+                if mount['Type'] not in {'bind', 'volume'}:
+                    continue
+                mounted = command('docker', 'exec', identifiers[0], 'readlink', '-f', mount['Destination']).strip()
+                if actual == mounted or actual.startswith(mounted.rstrip('/') + '/'):
+                    raise ValueError('数据库 Unix socket 位于共享挂载，无法隔离候选写入')
         if service == 'mysql' and container['State']['Running']:
             def mysql(query):
                 return command('docker', 'exec', identifiers[0], 'sh', '-c',
@@ -2980,10 +2990,18 @@ def data_sources(compose, services, verify_active=False):
                     raise ValueError('MySQL 数据/日志位于冷备挂载之外，未执行切换: ' + key)
             if any(not inside(path) for path in mysql('SELECT PATH FROM INFORMATION_SCHEMA.INNODB_DATAFILES').splitlines()):
                 raise ValueError('MySQL 外部表空间不在冷备边界内，未执行切换')
+            private_socket(mysql('SELECT @@socket'))
+            mysqlx = mysql("SHOW VARIABLES LIKE 'mysqlx_socket'")
+            if mysqlx:
+                private_socket(mysqlx.split('\t', 1)[1])
         if service == 'redis' and container['State']['Running']:
             values = command('docker', 'exec', identifiers[0], 'redis-cli', '--raw', 'CONFIG', 'GET', 'dir').splitlines()
             if len(values) != 2 or (os.path.normpath(values[1]) != target and not os.path.normpath(values[1]).startswith(target + '/')):
                 raise ValueError('Redis 数据目录未通过持久化挂载核验，未执行切换')
+            socket = command('docker', 'exec', identifiers[0], 'redis-cli', '--raw', 'CONFIG', 'GET', 'unixsocket').splitlines()
+            if len(socket) != 2:
+                raise ValueError('Redis Unix socket 配置无法核验')
+            private_socket(socket[1])
         mounts = [item for item in container['Mounts'] if item['Destination'] == target]
         if len(mounts) != 1 or mounts[0]['Type'] not in {'bind', 'volume'} or not mounts[0].get('RW'):
             raise ValueError('数据库缺少可恢复的 bind/named volume: ' + service)
@@ -3200,9 +3218,30 @@ def execute_update(root, directory, component, prefix):
     json_write(directory / 'journal.json', journal)
     if component == 'all':
         snapshot_data(directory, compose, services, data_plan)
+        # Validate databases with no network or published ports while every
+        # application/ingress remains stopped. This is a complete model, not a
+        # merge override whose missing keys would retain published ports.
+        isolated = copy.deepcopy(model)
+        databases = [name for name in ('mysql', 'redis') if name in services]
+        for name in databases:
+            config = isolated['services'][name]
+            for key in ('networks', 'ports', 'expose', 'links', 'external_links', 'depends_on'):
+                config.pop(key, None)
+            config['network_mode'] = 'none'
+        isolated_compose = compose_file(directory, 'database-validation.json', isolated)
+        if databases:
+            command(*isolated_compose, 'up', '--no-start', '--force-recreate', '--no-deps', '--pull', 'never', *databases)
+            restore_runtime(directory, isolated_compose)
+            command(*isolated_compose, 'start', *databases)
+            wait_ready(isolated_compose, databases, check_nginx=False)
+            command(*isolated_compose, 'stop', '-t', '120', *databases)
     command(*compose, 'up', '--no-start', '--force-recreate', '--no-deps', '--pull', 'never', *services)
     if component == 'all':
         restore_runtime(directory, compose)
+        # From the first opportunity to accept business writes, never silently
+        # discard acknowledged SQL/Redis changes by restoring the cold snapshot.
+        journal['phase'] = 'write-exposed'
+        json_write(directory / 'journal.json', journal)
     command(*compose, 'start', *services)
     if component == 'all' and fresh_php:
         command('bash', str(directory / 'after-switch.sh'), *fresh_php)
@@ -3220,7 +3259,7 @@ def execute_update(root, directory, component, prefix):
     print('Nginx 配置与' + ('完整环境' if component == 'all' else '镜像') + '更新完成；恢复点: ' + str(directory))
 
 
-def wait_ready(compose, services):
+def wait_ready(compose, services, check_nginx=True):
     for attempt in range(60):
         ready = True
         try:
@@ -3234,8 +3273,12 @@ def wait_ready(compose, services):
                         command('docker', 'exec', identifier, 'mysqladmin', 'ping', '--silent', '--connect-timeout=2')
                     if state['Running'] and name in {'php', 'php74'}:
                         command('docker', 'exec', identifier, 'php-fpm', '-t')
-            command('docker', 'exec', 'nginx', 'nginx', '-t')
-            ready = ready and 'nginx: worker process' in command('docker', 'top', 'nginx', '-eo', 'pid,args')
+                    if state['Running'] and name == 'redis':
+                        if command('docker', 'exec', identifier, 'redis-cli', '--raw', 'PING').strip() != 'PONG':
+                            raise RuntimeError('Redis 未通过隔离就绪检查')
+            if check_nginx:
+                command('docker', 'exec', 'nginx', 'nginx', '-t')
+                ready = ready and 'nginx: worker process' in command('docker', 'top', 'nginx', '-eo', 'pid,args')
             if ready:
                 return
         except (RuntimeError, subprocess.TimeoutExpired):
@@ -3248,6 +3291,8 @@ def rollback(root, directory):
     journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
     if journal['phase'] == 'committed':
         return
+    if journal['phase'] == 'write-exposed':
+        raise RuntimeError('候选数据库已进入业务写入阶段，已保留当前数据、镜像及冷备恢复点；为防止丢失已确认写入，不自动回退。需要检查并继续修复或针对精确冷备人工恢复: ' + str(directory))
     restore_files(root, directory)
     images = directory / 'images.json'
     if journal['phase'] == 'switching' and images.exists():

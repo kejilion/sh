@@ -138,6 +138,7 @@ class TransactionTests(unittest.TestCase):
                 Path(args[3]).chmod(0o600)
             else:
                 container, path = args[3].split(':', 1)
+                self.assertFalse(self.images[container.removeprefix('container-')]['State']['Running'])
                 self.runtime[container.removeprefix('container-')][path] = Path(args[2]).read_bytes()
             return ''
         if args[:2] == ('docker', 'restart'):
@@ -146,11 +147,19 @@ class TransactionTests(unittest.TestCase):
             if args[3:5] == ('sh', '-c') and 'MYSQL_PWD' in args[5]:
                 if args[-1] == 'SELECT @@datadir':
                     return '/var/lib/mysql/\n'
+                if args[-1] == 'SELECT @@socket':
+                    return '/run/mysqld/mysqld.sock\n'
+                if args[-1].startswith('SHOW VARIABLES LIKE'):
+                    return ''
                 if args[-1].startswith('SHOW VARIABLES'):
                     return 'innodb_data_file_path\tibdata1:12M:autoextend\ninnodb_undo_directory\t./\n'
                 return './mysql.ibd\n'
             if args[3:6] == ('redis-cli', '--raw', 'CONFIG'):
-                return 'dir\n/data\n'
+                return 'dir\n/data\n' if args[-1] == 'dir' else 'unixsocket\n\n'
+            if args[3:6] == ('redis-cli', '--raw', 'PING'):
+                return 'PONG\n'
+            if args[3:5] == ('readlink', '-f'):
+                return args[-1].replace('/var/run/', '/run/')
             if args[3:5] == ('rm', '-f'):
                 self.runtime[args[2].removeprefix('container-')][args[5]] = None
             return ''
@@ -356,8 +365,9 @@ class TransactionTests(unittest.TestCase):
         self.failure = 'php-hook'
         with self.assertRaises(RuntimeError):
             self.update('all')
-        updater.rollback(self.root, self.directory)
-        self.assert_restored()
+        with self.assertRaisesRegex(RuntimeError, '业务写入阶段'):
+            updater.rollback(self.root, self.directory)
+        self.assertTrue((self.directory / 'data/0.tar').exists())
 
     def test_preexisting_admin_change_is_not_claimed_by_update(self):
         self.seed('conf.d/custom.example.conf', self.site + '# SSH administrator edit\n')
@@ -478,11 +488,36 @@ class TransactionTests(unittest.TestCase):
 
     def test_runtime_configuration_is_copied_before_first_container_start(self):
         self.update('all')
-        created = next(i for i, call in enumerate(self.calls) if '--no-start' in call)
-        started = next(i for i, call in enumerate(self.calls) if 'start' in call)
         copied = [i for i, call in enumerate(self.calls) if call[:2] == ('docker', 'cp') and call[3].startswith('container-')]
         self.assertTrue(copied)
-        self.assertTrue(all(created < i < started for i in copied))
+        # The command fixture also asserts every cp destination is stopped.
+        for i in copied:
+            service = self.calls[i][3].split(':')[0].removeprefix('container-')
+            self.assertTrue(any(j > i and 'start' in call and service in call for j, call in enumerate(self.calls)))
+
+    def test_isolated_database_model_removes_all_network_and_published_port_paths(self):
+        self.model['services']['mysql'].update(ports=['3306:3306'], networks=['private'], depends_on=['php'])
+        self.update('all')
+        isolated = json.loads((self.directory / 'database-validation.json').read_text())
+        service = isolated['services']['mysql']
+        self.assertEqual(service['network_mode'], 'none')
+        for field in ('ports', 'networks', 'depends_on', 'links'):
+            self.assertNotIn(field, service)
+
+    def test_exposed_candidate_failure_keeps_acknowledged_database_writes(self):
+        original = self.command
+        def command(*args):
+            result = original(*args)
+            if 'start' in args and 'current.json' in ' '.join(args):
+                (self.root / 'mysql/original').write_text('acknowledged business write')
+                raise RuntimeError('post-exposure failure')
+            return result
+        with patch.object(updater, 'command', side_effect=command), self.assertRaisesRegex(RuntimeError, 'post-exposure'):
+            self.update('all')
+        with self.assertRaisesRegex(RuntimeError, '业务写入阶段'):
+            updater.rollback(self.root, self.directory)
+        self.assertEqual((self.root / 'mysql/original').read_text(), 'acknowledged business write')
+        self.assertTrue(all(value['Image'] == 'sha256:' + 'f' * 64 for value in self.images.values()))
 
     def test_stopped_database_is_rejected_before_writes_or_container_switch(self):
         self.images['mysql']['State']['Running'] = False
@@ -526,6 +561,16 @@ class TransactionTests(unittest.TestCase):
             with self.subTest(query=query_kind), patch.object(updater, 'command', side_effect=command), self.assertRaisesRegex(ValueError, '冷备|表空间'):
                 updater.prepare_data(self.directory, ['docker', 'compose'], list(self.model['services']))
             self.assertFalse(self.switched)
+
+    def test_shared_database_unix_socket_is_rejected_with_run_alias_normalization(self):
+        original = self.command
+        self.images['mysql']['Mounts'].append({'Destination': '/run/shared', 'Source': str(self.root / 'shared-socket'), 'Type': 'bind', 'RW': True})
+        def command(*args):
+            if args[0] == 'docker' and args[-1] == 'SELECT @@socket':
+                return '/var/run/shared/mysql.sock\n'
+            return original(*args)
+        with patch.object(updater, 'command', side_effect=command), self.assertRaisesRegex(ValueError, 'Unix socket.*共享挂载'):
+            updater.prepare_data(self.directory, ['docker', 'compose'], list(self.model['services']))
 
 
 class EntryPointTests(unittest.TestCase):

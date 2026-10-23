@@ -89,13 +89,13 @@ echo "stack-php-ok:$value:$cached";
             def redis(*args):
                 return real('docker', 'exec', names['redis'], 'redis-cli', '--raw', *args).strip()
 
-            def http():
+            def http(expected=b'stack-php-ok:baseline:baseline'):
                 binding = real(*compose, 'port', 'nginx', '80').strip()
                 request = urllib.request.Request('http://' + binding + '/', headers={'Host': 'stack.example'})
                 for _ in range(30):
                     try:
                         with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=3) as response:
-                            self.assertEqual(response.read(), b'stack-php-ok:baseline:baseline')
+                            self.assertEqual(response.read(), expected)
                             return
                     except (OSError, AssertionError):
                         time.sleep(1)
@@ -119,13 +119,28 @@ echo "stack-php-ok:$value:$cached";
                 if args[:2] == ('docker', 'compose') and 'pull' in args:
                     return ''  # Fixture inputs were explicitly pulled and frozen before the test.
                 result = real(*args)
-                if mode['value'] == 'failure' and args[:2] == ('docker', 'compose') and 'start' in args:
+                isolated_start = 'database-validation.json' in ' '.join(args)
+                if mode['value'] == 'failure' and args[:2] == ('docker', 'compose') and 'start' in args and isolated_start:
                     mode['value'] = 'recovering'
+                    for database in ('mysql', 'redis'):
+                        actual = json.loads(real('docker', 'inspect', names[database]))[0]
+                        self.assertEqual(actual['HostConfig']['NetworkMode'], 'none')
+                        self.assertFalse(actual['HostConfig'].get('PortBindings'))
+                    for application in ('nginx', 'php'):
+                        self.assertFalse(json.loads(real('docker', 'inspect', names[application]))[0]['State']['Running'])
                     wait_sql()
                     sql("UPDATE fixture.marker SET value='candidate'; CREATE TABLE fixture.candidate_only (id INT)")
                     redis('SET', 'fixture-marker', 'candidate')
                     redis('SAVE')
-                    raise RuntimeError('fixture: failure after candidate database writes')
+                    print('ISOLATION VERIFIED: network_mode=none; no published DB ports; nginx/php stopped; writes are internal probes')
+                    raise RuntimeError('fixture: failure after isolated candidate probe writes')
+                if mode['value'] == 'business-failure' and args[:2] == ('docker', 'compose') and 'start' in args and not isolated_start:
+                    mode['value'] = 'business-exposed'
+                    wait_sql()
+                    sql("UPDATE fixture.marker SET value='business'; CREATE TABLE fixture.business_only (id INT)")
+                    redis('SET', 'fixture-marker', 'business')
+                    redis('SAVE')
+                    raise RuntimeError('fixture: failure after acknowledged business writes')
                 return result
 
             def recovery(label):
@@ -137,7 +152,7 @@ echo "stack-php-ok:$value:$cached";
             with patch.object(updater, 'command', side_effect=command), patch.object(updater, 'download', side_effect=template):
                 first = recovery('rollback')
                 mode['value'] = 'failure'
-                with self.assertRaisesRegex(RuntimeError, 'after candidate database writes'):
+                with self.assertRaisesRegex(RuntimeError, 'after isolated candidate probe writes'):
                     updater.execute_update(root, first, 'all', 'https://')
                 updater.rollback(root, first)
                 wait_sql()
@@ -163,6 +178,17 @@ echo "stack-php-ok:$value:$cached";
                 self.assertEqual(redis('GET', 'fixture-marker'), 'baseline')
                 self.assertEqual((root / 'conf.d/stack.conf').read_text(), site)
                 http()
+                third = recovery('business-writes')
+                mode['value'] = 'business-failure'
+                with self.assertRaisesRegex(RuntimeError, 'acknowledged business writes'):
+                    updater.execute_update(root, third, 'all', 'https://')
+                with self.assertRaisesRegex(RuntimeError, '业务写入阶段'):
+                    updater.rollback(root, third)
+                self.assertEqual(sql('SELECT value FROM fixture.marker'), 'business')
+                self.assertEqual(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='fixture' AND table_name='business_only'"), '1')
+                self.assertEqual(redis('GET', 'fixture-marker'), 'business')
+                http(b'stack-php-ok:business:business')
+                print('BUSINESS WRITES PRESERVED: SQL=business; business table exists; Redis=business; PHP HTTP reflects both; automatic data/image rollback refused')
                 print('STACK VERIFIED: real PHP socket HTTP; MySQL SQL/config; Redis persistence; bind/named cold backup; data rollback; successful full update')
         finally:
             real(*compose, 'down', '--volumes', '--remove-orphans')
