@@ -1,5 +1,6 @@
 """Linux root fixture for native package integrity; never contacts the network."""
 import hashlib
+import json
 import os
 from pathlib import Path
 import shlex
@@ -131,6 +132,42 @@ class BootstrapTests(unittest.TestCase):
         shutil.rmtree(self.package.parent/f'{0:040x}')
         self.seed()
         self.assertEqual(self.run_fixture('shared_waf status').returncode,0)
+
+
+@unittest.skipUnless(sys.platform.startswith('linux') and os.geteuid() == 0, 'requires isolated Linux root fixtures')
+class NativeStatusTests(unittest.TestCase):
+    def test_legacy_boolean_never_claims_unverified_or_partial_blocking(self):
+        with tempfile.TemporaryDirectory(prefix='waf-status-',dir='/root') as directory:
+            root=Path(directory);web=root/'web';(web/'config/waf').mkdir(parents=True)
+            (web/'nginx.conf').write_text('events {} http { modsecurity on; }\n',encoding='utf-8')
+            # The historical bool scanner is line-based, as in old native configs.
+            (web/'nginx.conf').write_text('events {}\nhttp {\nmodsecurity on;\n}\n',encoding='utf-8')
+            policy_file=web/'config/waf/policy.json';policy_file.write_text('{}\n',encoding='utf-8')
+            source=(Path(__file__).resolve().parents[1]/'kejilion.sh').read_text(encoding='utf-8')
+            start=source.index('ldnmp_environment_status() {\n');end=source.index('\n}\n',start)+3
+            body=source[start:end].replace('/home/web',str(web)).replace('find /home -maxdepth','find '+shlex.quote(str(root))+' -maxdepth').replace('/etc/fail2ban/action.d',str(root/'no-actions'))
+            script=root/'status.sh'
+            script.write_text(body+'''
+docker() { return 1; }
+iptables() { return 1; }
+ss() { :; }
+ldnmp_site_count() { printf '0'; }
+kpanel_ldnmp_escape() { printf '%s' "$1"; }
+kpanel_ldnmp_component() { printf '{}'; }
+shared_waf_mode() { printf '%s' "$FIXTURE_MODE"; [ "$FIXTURE_MODE" != unknown ]; }
+sh_v=fixture
+ldnmp_environment_status
+''',encoding='utf-8')
+            for mode in ['on','off','detect','mixed','unknown']:
+                result=subprocess.run(['bash',str(script)],env=dict(os.environ,FIXTURE_MODE=mode),capture_output=True,text=True,timeout=10,check=True)
+                protection=json.loads(result.stdout)['protection']
+                self.assertEqual(protection['wafMode'],mode)
+                self.assertEqual(protection['waf'],mode=='on')
+            policy_file.unlink()
+            result=subprocess.run(['bash',str(script)],capture_output=True,text=True,timeout=10,check=True)
+            protection=json.loads(result.stdout)['protection']
+            self.assertEqual(protection['wafMode'],'legacy')
+            self.assertTrue(protection['waf'])
 
 
 if __name__=='__main__':unittest.main()

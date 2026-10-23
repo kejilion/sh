@@ -15014,7 +15014,7 @@ ldnmp_environment_status() {
 	grep -qE '^[[:space:]]*modsecurity on;' /home/web/nginx.conf 2>/dev/null && waf=true
 	if [ -f /home/web/config/waf/policy.json ]; then
 		waf_mode=$(shared_waf_mode 2>/dev/null) || waf_mode=unknown
-		case "$waf_mode" in on|mixed) waf=true ;; *) waf=false ;; esac
+		case "$waf_mode" in on) waf=true ;; *) waf=false ;; esac
 	elif [ "$waf" = true ]; then waf_mode=legacy; fi
 	[ -f /etc/fail2ban/action.d/cloudflare-docker.conf ] && cloudflare=true
 	iptables -C INPUT -p tcp --syn -j DROP >/dev/null 2>&1 && ddos=true
