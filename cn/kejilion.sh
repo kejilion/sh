@@ -3004,9 +3004,11 @@ def data_sources(compose, services, verify_active=False):
             for name in directories + files:
                 path = Path(current) / name
                 if path.is_symlink():
-                    resolved = path.resolve()
+                    link = os.readlink(path)
+                    # Absolute links are interpreted in the container namespace.
+                    resolved = (source / link[len(target):].lstrip('/')).resolve() if link == target or link.startswith(target + '/') else path.resolve()
                     socket_names = {'mysql.sock': ('mysql.sock', 'mysqld.sock'), 'mysqlx.sock': ('mysqlx.sock',)}
-                    socket = service == 'mysql' and path.parent == source and name in socket_names and os.readlink(path) in {
+                    socket = service == 'mysql' and path.parent == source and name in socket_names and link in {
                         prefix + item for prefix in ('/run/mysqld/', '/var/run/mysqld/') for item in socket_names[name]}
                     if socket and container['State']['Running']:
                         command('docker', 'exec', identifiers[0], 'test', '-S', target + '/' + name)

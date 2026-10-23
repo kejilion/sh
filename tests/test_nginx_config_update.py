@@ -508,6 +508,7 @@ class TransactionTests(unittest.TestCase):
 
     def test_external_data_symlink_is_rejected_but_standard_socket_link_is_supported(self):
         data = self.root / 'mysql'
+        (data / 'internal-link').symlink_to('/var/lib/mysql/original')
         (data / 'mysql.sock').symlink_to('/var/run/mysqld/mysqld.sock')
         updater.prepare_data(self.directory, updater.compose_file(self.directory, 'socket.json', self.model), list(self.model['services']))
         (data / 'external-table.ibd').symlink_to(self.root / 'outside-table.ibd')
