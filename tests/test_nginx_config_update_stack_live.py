@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import time
+import subprocess
 import unittest
 import urllib.request
 import uuid
@@ -157,6 +158,28 @@ echo "stack-php-ok:$value:$cached";
                 return directory
 
             with patch.object(updater, 'command', side_effect=command), patch.object(updater, 'download', side_effect=template):
+                if os.environ.get('KJ_STACK_EXPECT_UPGRADE_REJECTION') == '1':
+                    rejected = recovery('unsupported-upgrade')
+                    mode['value'] = 'expected-rejection'
+                    with self.assertRaisesRegex(RuntimeError, '未通过就绪检查'):
+                        updater.execute_update(root, rejected, 'all', 'https://')
+                    logs = subprocess.run(['docker', 'logs', '--tail', '120', names['mysql']], capture_output=True, text=True, timeout=30)
+                    engine_log = logs.stdout + logs.stderr
+                    self.assertRegex(engine_log.lower(), 'upgrade')
+                    self.assertRegex(engine_log, '804|8\\.4')
+                    print('UPSTREAM UPGRADE REJECTION LOG:\n' + engine_log)
+                    updater.rollback(root, rejected)
+                    wait_sql()
+                    self.assertEqual(sql('SELECT value FROM fixture.marker'), 'baseline')
+                    self.assertEqual(sql('SELECT @@max_connections'), '123')
+                    self.assertEqual(redis('GET', 'fixture-marker'), 'baseline')
+                    self.assertEqual(json.loads(real('docker', 'inspect', names['nginx']))[0]['Image'], old_image)
+                    self.assertFalse((root / updater.STATE).exists())
+                    http()
+                    print('UNSUPPORTED UPGRADE SAFELY REJECTED:', json.dumps({'from': from_images, 'to': to_images,
+                          'restored_mysql_version': sql('SELECT VERSION()'), 'sql_marker': sql('SELECT value FROM fixture.marker'),
+                          'redis_marker': redis('GET', 'fixture-marker'), 'php_http': 'baseline:baseline'}))
+                    return
                 first = recovery('rollback')
                 mode['value'] = 'failure'
                 with self.assertRaisesRegex(RuntimeError, 'after isolated candidate probe writes'):
