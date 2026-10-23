@@ -2962,18 +2962,35 @@ def data_sources(compose, services, verify_active=False):
         if verify_active and not container['State']['Running']:
             raise ValueError('数据库未运行，无法核验实际数据目录，未执行完整更新: ' + service)
         if service == 'mysql' and container['State']['Running']:
-            datadir = command('docker', 'exec', identifiers[0], 'sh', '-c',
-                              'export MYSQL_PWD="$MYSQL_ROOT_PASSWORD"; '
-                              'exec mysql -uroot --batch --skip-column-names -e "SELECT @@datadir"').strip().rstrip('/')
+            def mysql(query):
+                return command('docker', 'exec', identifiers[0], 'sh', '-c',
+                               'export MYSQL_PWD="$MYSQL_ROOT_PASSWORD"; '
+                               'exec mysql -uroot --batch --skip-column-names -e "$1"', 'sh', query).rstrip('\r\n')
+            datadir = os.path.normpath(mysql('SELECT @@datadir'))
             if datadir != target and not datadir.startswith(target + '/'):
                 raise ValueError('MySQL 使用标准持久化挂载之外的数据目录，未执行切换')
+            def inside(value):
+                value = os.path.normpath(value if value.startswith('/') else datadir + '/' + value)
+                return value == target or value.startswith(target + '/')
+            variables = mysql("SHOW VARIABLES WHERE Variable_name IN ('innodb_data_home_dir','innodb_undo_directory','innodb_log_group_home_dir','innodb_doublewrite_dir','log_bin_basename','relay_log_basename','innodb_data_file_path')")
+            for line in variables.splitlines():
+                key, value = line.split('\t', 1)
+                paths = [part.split(':', 1)[0] for part in value.split(';')] if key == 'innodb_data_file_path' else [value]
+                if any(path and not inside(path) for path in paths):
+                    raise ValueError('MySQL 数据/日志位于冷备挂载之外，未执行切换: ' + key)
+            if any(not inside(path) for path in mysql('SELECT PATH FROM INFORMATION_SCHEMA.INNODB_DATAFILES').splitlines()):
+                raise ValueError('MySQL 外部表空间不在冷备边界内，未执行切换')
         if service == 'redis' and container['State']['Running']:
             values = command('docker', 'exec', identifiers[0], 'redis-cli', '--raw', 'CONFIG', 'GET', 'dir').splitlines()
-            if len(values) != 2 or (values[1].rstrip('/') != target and not values[1].startswith(target + '/')):
+            if len(values) != 2 or (os.path.normpath(values[1]) != target and not os.path.normpath(values[1]).startswith(target + '/')):
                 raise ValueError('Redis 数据目录未通过持久化挂载核验，未执行切换')
         mounts = [item for item in container['Mounts'] if item['Destination'] == target]
         if len(mounts) != 1 or mounts[0]['Type'] not in {'bind', 'volume'} or not mounts[0].get('RW'):
             raise ValueError('数据库缺少可恢复的 bind/named volume: ' + service)
+        for item in container['Mounts']:
+            destination = item['Destination'].rstrip('/')
+            if destination.startswith(target + '/'):
+                raise ValueError('数据库含未覆盖的嵌套数据挂载，未执行切换')
         source = Path(mounts[0]['Source'])
         if not source.is_absolute() or source == Path('/'):
             raise ValueError('数据库数据路径无效')
@@ -2984,6 +3001,17 @@ def data_sources(compose, services, verify_active=False):
         for current, directories, files in os.walk(source, followlinks=False):
             if any(os.path.ismount(Path(current) / name) for name in directories):
                 raise ValueError('数据库数据目录含嵌套挂载')
+            for name in directories + files:
+                path = Path(current) / name
+                if path.is_symlink():
+                    resolved = path.resolve()
+                    socket_names = {'mysql.sock': ('mysql.sock', 'mysqld.sock'), 'mysqlx.sock': ('mysqlx.sock',)}
+                    socket = service == 'mysql' and path.parent == source and name in socket_names and os.readlink(path) in {
+                        prefix + item for prefix in ('/run/mysqld/', '/var/run/mysqld/') for item in socket_names[name]}
+                    if socket and container['State']['Running']:
+                        command('docker', 'exec', identifiers[0], 'test', '-S', target + '/' + name)
+                    if not socket and resolved != source and source not in resolved.parents:
+                        raise ValueError('数据库数据目录含外部符号链接，未执行切换')
         records.append({'service': service, 'source': str(source), 'target': target,
                         'type': mounts[0]['Type'], 'name': mounts[0].get('Name')})
     return records

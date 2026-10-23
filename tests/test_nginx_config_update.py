@@ -143,8 +143,12 @@ class TransactionTests(unittest.TestCase):
         if args[:2] == ('docker', 'restart'):
             return ''
         if args[:2] == ('docker', 'exec') and args[2].startswith('container-'):
-            if args[3:5] == ('sh', '-c') and 'SELECT @@datadir' in args[5]:
-                return '/var/lib/mysql/\n'
+            if args[3:5] == ('sh', '-c') and 'MYSQL_PWD' in args[5]:
+                if args[-1] == 'SELECT @@datadir':
+                    return '/var/lib/mysql/\n'
+                if args[-1].startswith('SHOW VARIABLES'):
+                    return 'innodb_data_file_path\tibdata1:12M:autoextend\ninnodb_undo_directory\t./\n'
+                return './mysql.ibd\n'
             if args[3:6] == ('redis-cli', '--raw', 'CONFIG'):
                 return 'dir\n/data\n'
             if args[3:5] == ('rm', '-f'):
@@ -493,6 +497,34 @@ class TransactionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '其他运行容器共享'):
             self.update('all')
         self.assertFalse(self.switched)
+
+    def test_container_nested_data_mount_is_rejected_even_when_host_root_is_plain_directory(self):
+        outside = self.root / 'actual-mysql-data'
+        outside.mkdir()
+        self.images['mysql']['Mounts'].append({'Destination': '/var/lib/mysql/custom', 'Source': str(outside), 'Type': 'bind', 'RW': True})
+        with self.assertRaisesRegex(ValueError, '嵌套数据挂载'):
+            self.update('all')
+        self.assertFalse(self.switched)
+
+    def test_external_data_symlink_is_rejected_but_standard_socket_link_is_supported(self):
+        data = self.root / 'mysql'
+        (data / 'mysql.sock').symlink_to('/var/run/mysqld/mysqld.sock')
+        updater.prepare_data(self.directory, updater.compose_file(self.directory, 'socket.json', self.model), list(self.model['services']))
+        (data / 'external-table.ibd').symlink_to(self.root / 'outside-table.ibd')
+        with self.assertRaisesRegex(ValueError, '外部符号链接'):
+            self.update('all')
+        self.assertFalse(self.switched)
+
+    def test_external_mysql_log_or_tablespace_path_is_rejected_before_switch(self):
+        original = self.command
+        for query_kind in ('SHOW VARIABLES', 'SELECT PATH'):
+            def command(*args):
+                if args[0] == 'docker' and args[-1].startswith(query_kind):
+                    return 'innodb_undo_directory\t/external/undo\n' if query_kind == 'SHOW VARIABLES' else '/external/table.ibd\n'
+                return original(*args)
+            with self.subTest(query=query_kind), patch.object(updater, 'command', side_effect=command), self.assertRaisesRegex(ValueError, '冷备|表空间'):
+                updater.prepare_data(self.directory, ['docker', 'compose'], list(self.model['services']))
+            self.assertFalse(self.switched)
 
 
 class EntryPointTests(unittest.TestCase):
