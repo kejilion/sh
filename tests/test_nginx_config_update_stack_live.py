@@ -24,6 +24,10 @@ class StackUpdateTests(unittest.TestCase):
         candidate_image = name + ':candidate'
         created_image = False
         mode = {'value': 'initial'}
+        from_images = {'nginx': os.environ.get('KJ_STACK_FROM_NGINX_IMAGE', 'nginx:1.29-alpine'),
+                       'mysql': os.environ.get('KJ_STACK_FROM_MYSQL_IMAGE', 'mysql:8.4'),
+                       'redis': os.environ.get('KJ_STACK_FROM_REDIS_IMAGE', 'redis:7-alpine')}
+        to_images = {service: os.environ.get('KJ_STACK_TO_' + service.upper() + '_IMAGE', image) for service, image in from_images.items()}
         try:
             for folder in ('conf.d', 'stream.d', 'certs', 'html', 'mysql'):
                 (root / folder).mkdir(mode=0o755)
@@ -46,18 +50,18 @@ echo "stack-php-ok:$value:$cached";
             volumes = {'php-socket': {'driver': 'local', 'driver_opts': {'type': 'tmpfs', 'device': 'tmpfs', 'o': 'size=64m'}},
                        'redis-data': {}}
             model = {'name': name, 'services': {
-                'nginx': {'image': 'nginx:1.29-alpine', 'container_name': names['nginx'], 'ports': ['127.0.0.1::80'],
+                'nginx': {'image': from_images['nginx'], 'container_name': names['nginx'], 'ports': ['127.0.0.1::80'],
                           'volumes': [str(root / source) + ':' + target for source, target in (
                               ('nginx.conf', '/etc/nginx/nginx.conf'), ('conf.d', '/etc/nginx/conf.d'),
                               ('stream.d', '/etc/nginx/stream.d'), ('certs', '/etc/nginx/certs'), ('html', '/var/www/html'))] + ['php-socket:/run/php']},
                 'php': {'image': 'kjlion/php:fpm-alpine', 'container_name': names['php'],
                         'volumes': [str(root / 'html') + ':/var/www/html', 'php-socket:/run/php']},
-                'mysql': {'image': 'mysql:8.4', 'container_name': names['mysql'], 'restart': 'always',
+                'mysql': {'image': from_images['mysql'], 'container_name': names['mysql'], 'restart': 'always',
                           'environment': {'MYSQL_ROOT_PASSWORD': 'fixture-only-password', 'MYSQL_ROOT_HOST': '%'},
                           'volumes': [str(root / 'mysql') + ':/var/lib/mysql'],
                           'healthcheck': {'test': ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-pfixture-only-password'],
                                           'interval': '1s', 'timeout': '3s', 'retries': 90}},
-                'redis': {'image': 'redis:7-alpine', 'container_name': names['redis'], 'restart': 'always', 'volumes': ['redis-data:/data']}},
+                'redis': {'image': from_images['redis'], 'container_name': names['redis'], 'restart': 'always', 'volumes': ['redis-data:/data']}},
                      'volumes': volumes}
             (root / 'docker-compose.yml').write_text(json.dumps(model))
             real(*compose, 'up', '-d', '--wait', '--wait-timeout', '150')
@@ -108,9 +112,12 @@ echo "stack-php-ok:$value:$cached";
             redis('SAVE')
             http()
             old_image = json.loads(real('docker', 'inspect', names['nginx']))[0]['Image']
-            real('docker', 'commit', '-c', 'LABEL kejilion.updater.fixture=true', names['nginx'], candidate_image)
-            created_image = True
-            model['services']['nginx']['image'] = candidate_image
+            if not os.environ.get('KJ_STACK_TO_NGINX_IMAGE'):
+                real('docker', 'commit', '-c', 'LABEL kejilion.updater.fixture=true', names['nginx'], candidate_image)
+                created_image = True
+                to_images['nginx'] = candidate_image
+            for service, image in to_images.items():
+                model['services'][service]['image'] = image
             (root / 'docker-compose.yml').write_text(json.dumps(model))
 
             def command(*args):
@@ -178,6 +185,9 @@ echo "stack-php-ok:$value:$cached";
                 self.assertEqual(redis('GET', 'fixture-marker'), 'baseline')
                 self.assertEqual((root / 'conf.d/stack.conf').read_text(), site)
                 http()
+                print('UPGRADE VERIFIED:', json.dumps({'from': from_images, 'to': to_images,
+                      'mysql_version': sql('SELECT VERSION()'), 'redis_version': redis('INFO', 'server').splitlines()[1],
+                      'images': {service: json.loads(real('docker', 'inspect', names[service]))[0]['Image'] for service in names}}))
                 third = recovery('business-writes')
                 mode['value'] = 'business-failure'
                 with self.assertRaisesRegex(RuntimeError, 'acknowledged business writes'):
