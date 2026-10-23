@@ -12463,8 +12463,27 @@ kpanel_node_write_updater() {
 	kpanel_node_lock_template >>"$updater_temporary" || return 1
 	kpanel_node_procd_helpers_template >>"$updater_temporary" || return 1
 	cat >>"$updater_temporary" <<'KPANEL_NODE_UPDATE'
-# KPANEL_NODE_RUNTIME_GENERATION=6
+# KPANEL_NODE_RUNTIME_GENERATION=7
 set -euo pipefail
+
+# Compare release identities without trusting the mirror's latest selection.
+# Return 0 for a downgrade, 1 for equal/newer, 2 for an invalid identity.
+kpanel_node_version_is_older() {
+	local expression='^v?(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})(-rc\.([1-9][0-9]{0,8}))?$'
+	[[ "$1" =~ $expression ]] || return 2
+	local candidate=("${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}" "${BASH_REMATCH[5]:-}")
+	[[ "$2" =~ $expression ]] || return 2
+	local installed=("${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}" "${BASH_REMATCH[3]}" "${BASH_REMATCH[5]:-}")
+	local index
+	for index in 0 1 2; do
+		(( 10#${candidate[$index]} < 10#${installed[$index]} )) && return 0
+		(( 10#${candidate[$index]} > 10#${installed[$index]} )) && return 1
+	done
+	[ -n "${candidate[3]}" ] || return 1
+	[ -n "${installed[3]}" ] || return 0
+	(( 10#${candidate[3]} < 10#${installed[3]} )) && return 0
+	return 1
+}
 
 mode="${1:-update}"
 case "$mode" in
@@ -12912,6 +12931,31 @@ printf '%s\n' "$version_output" | grep -Eq '^[^[:space:]]+ light-v1$' || {
 	echo "release binary protocol is invalid" >&2
 	exit 1
 }
+
+update_error=version
+candidate_version="${version_output% light-v1}"
+installed_version="$candidate_version"
+if [ -f "$binary_path" ]; then
+	installed_output="$("$binary_path" version)" || {
+		echo "installed node version could not be read; keeping the current binary" >&2
+		exit 1
+	}
+	printf '%s\n' "$installed_output" | grep -Eq '^[^[:space:]]+ light-v1$' || {
+		echo "installed node version is invalid; keeping the current binary" >&2
+		exit 1
+	}
+	installed_version="${installed_output% light-v1}"
+fi
+if kpanel_node_version_is_older "$candidate_version" "$installed_version"; then
+	echo "release would downgrade the installed node; keeping the current binary" >&2
+	exit 1
+else
+	version_check=$?
+	[ "$version_check" = 1 ] || {
+		echo "node release version is invalid; keeping the current binary" >&2
+		exit 1
+	}
+fi
 
 update_error=internal
 install -o root -g root -m 0755 "${temporary_dir}/${binary_name}" "${binary_path}.new"

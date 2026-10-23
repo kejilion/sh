@@ -179,7 +179,7 @@ fi
 
 grep -F 'base_url="https://${github_host}/kejilion/KPanel/releases/latest/download"' "${updater}" >/dev/null
 grep -F 'mirror_prefix="https://gh.kejilion.pro/"' "${updater}" >/dev/null
-grep -F '# KPANEL_NODE_RUNTIME_GENERATION=6' "${updater}" >/dev/null
+grep -F '# KPANEL_NODE_RUNTIME_GENERATION=7' "${updater}" >/dev/null
 grep -F -- "--proto '=https' --proto-redir '=https' --tlsv1.2" "${updater}" >/dev/null
 grep -F 'SHA256SUMS' "${updater}" >/dev/null
 grep -F 'sha256sum' "${updater}" >/dev/null

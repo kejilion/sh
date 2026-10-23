@@ -182,7 +182,9 @@ class NodeUpdater(unittest.TestCase):
         shutil.copyfile('/bin/dash', self.binary)
         self.binary.chmod(0o755)
         shutil.copyfile('/bin/bash', self.root / 'release')
-        (self.root / 'version').write_text('echo "9.9.9 light-v1"\n')
+        (self.root / 'candidate-version').write_text('9.9.9 light-v1\n')
+        (self.root / 'installed-version').write_text('9.9.8 light-v1\n')
+        (self.root / 'version').write_text('if [ -n "${BASH_VERSION:-}" ]; then cat "$NODE_TEST_ROOT/candidate-version"; else cat "$NODE_TEST_ROOT/installed-version"; fi\n')
         (self.root / 'bad').write_text('corrupt')
         digest = hashlib.sha256((self.root / 'release').read_bytes()).hexdigest()
         (self.root / 'SHA256SUMS').write_text(digest + '  kejilion-node-linux-amd64\n')
@@ -305,6 +307,40 @@ done
         result = subprocess.run(['/bin/bash', str(self.root / 'update.sh'), mode], cwd=self.root, env=self.env, text=True, capture_output=True, timeout=20)
         self.assertEqual(result.returncode == 0, success, result.stdout + result.stderr)
         return result
+
+    def test_updates_reject_downgrades_and_invalid_version_identities(self):
+        before = self.binary.read_bytes()
+        for installed, candidate in (
+            ('9.10.0', '9.9.9'), ('10.0.0', '9.9.9'),
+            ('9.9.9', '9.9.9-rc.1'), ('9.9.9-rc.10', '9.9.9-rc.2'),
+            ('dev', '9.9.9'), ('9.9.8', 'garbage'),
+            ('9.9.8', '09.9.9'), ('9.9.8', '99999999999999999999.0.0'),
+        ):
+            with self.subTest(installed=installed, candidate=candidate):
+                (self.root / 'installed-version').write_text(installed + ' light-v1\n')
+                (self.root / 'candidate-version').write_text(candidate + ' light-v1\n')
+                self.run_update(False)
+                self.assertEqual(self.binary.read_bytes(), before)
+                self.assertFalse((self.root / 'home/kejilion-node.previous').exists())
+                status = json.loads((self.root / 'config/update-status.json').read_text())
+                self.assertEqual((status['state'], status['errorCode']), ('failed', 'version'))
+                self.assertNotIn('restart ', (self.root / 'calls').read_text() if (self.root / 'calls').exists() else '')
+
+    def test_version_order_preserves_upgrade_and_same_version_repair(self):
+        expression = UPDATER.split('kpanel_node_version_is_older() {', 1)[1].split('\n}\n', 1)[0]
+        function = 'kpanel_node_version_is_older() {' + expression + '\n}\n'
+        for candidate, installed, expected in (
+            ('9.10.0', '9.9.9', 1), ('10.0.0', '9.99.99', 1),
+            ('9.9.9', '9.9.9', 1), ('9.9.9', '9.9.9-rc.10', 1),
+            ('9.9.9-rc.10', '9.9.9-rc.2', 1), ('v9.9.9', 'v9.9.8', 1),
+            ('9.9.9', '10.0.0-rc.1', 0), ('9.9.9-rc.1', '9.9.9', 0),
+        ):
+            with self.subTest(candidate=candidate, installed=installed):
+                result = subprocess.run(['/bin/bash', '-c', function + 'kpanel_node_version_is_older "$1" "$2"', 'review', candidate, installed], capture_output=True, text=True)
+                self.assertEqual(result.returncode, expected, result.stderr)
+        (self.root / 'installed-version').write_text('9.9.9 light-v1\n')
+        self.run_update()
+        self.assertEqual(self.binary.read_bytes(), (self.root / 'release').read_bytes())
 
     def test_quiet_mode_suppresses_progress_but_preserves_errors(self):
         quiet_env = {**self.env, 'KPANEL_NODE_QUIET': '1'}
