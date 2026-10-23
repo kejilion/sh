@@ -25,12 +25,25 @@ hermes_menu_prompt() {
     printf '%b%s%b' "${2:-$CYAN}" "$1" "$NC"
 }
 
-# 确保 hermes 命令可用 (处理环境变量未加载的情况)
-if ! command -v hermes >/dev/null 2>&1; then
-    if [ -d "$HOME/.hermes/hermes-agent/venv/bin" ]; then
-        export PATH="$HOME/.hermes/hermes-agent/venv/bin:$PATH"
-    fi
-fi
+# 面板通过非登录 shell 运行，不一定加载安装器写入的 ~/.local/bin。
+refresh_hermes_path() {
+    local hermes_home install_dir bin_dir
+    hash -r 2>/dev/null || true
+    command -v hermes >/dev/null 2>&1 && return 0
+
+    hermes_home="${HERMES_HOME:-$HOME/.hermes}"
+    install_dir="${HERMES_INSTALL_DIR:-$hermes_home/hermes-agent}"
+    for bin_dir in "$HOME/.local/bin" "$install_dir/.hermes/bin" \
+        "$install_dir/venv/bin" "$install_dir/.venv/bin" \
+        /usr/local/bin /usr/bin; do
+        [ -x "$bin_dir/hermes" ] || continue
+        export PATH="$bin_dir:$PATH"
+        return 0
+    done
+    return 1
+}
+
+refresh_hermes_path || true
 
 # 检查是否安装
 
@@ -783,7 +796,7 @@ api_management_submenu() {
     done
 }
 check_installed() {
-    if command -v hermes >/dev/null 2>&1; then return 0; else return 1; fi
+    refresh_hermes_path
 }
 
 # 获取版本号（优先直接读取安装元数据，避免启动 hermes CLI 导致菜单变慢）
@@ -792,28 +805,57 @@ get_version() {
         return
     fi
 
-    local hermes_bin python_bin venv_dir metadata version
+    local hermes_bin python_bin venv_dir metadata version install_dir source_dir
+    local -a source_dirs venv_dirs
     hermes_bin="$(command -v hermes 2>/dev/null)"
+    hermes_bin="$(readlink -f "$hermes_bin" 2>/dev/null || printf '%s' "$hermes_bin")"
+    install_dir="${HERMES_INSTALL_DIR:-${HERMES_HOME:-$HOME/.hermes}/hermes-agent}"
+    source_dirs=("$install_dir")
+    case "$hermes_bin" in
+        */.hermes/bin/hermes) source_dirs+=("${hermes_bin%/.hermes/bin/hermes}") ;;
+        */venv/bin/hermes) source_dirs+=("${hermes_bin%/venv/bin/hermes}") ;;
+        */.venv/bin/hermes) source_dirs+=("${hermes_bin%/.venv/bin/hermes}") ;;
+    esac
+
+    # 当前源码安装以 install-stamp.json 记录发布版本。
+    # 旧版源码直接声明 __version__；均只读文件，不导入 Hermes/Python。
+    for source_dir in "${source_dirs[@]}"; do
+        for metadata in "$source_dir/install-stamp.json" "$source_dir/hermes_cli/__init__.py"; do
+            [ -r "$metadata" ] || continue
+            version=$(sed -nE 's/.*"baseVersion"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p; s/^__version__[[:space:]]*=[[:space:]]*["\x27]([^"\x27]+)["\x27].*/\1/p' "$metadata" | head -n 1)
+            if [[ "$version" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([.+-][[:alnum:].-]+)?$ ]] && [ "${version#v}" != 0.0.0 ]; then
+                echo "Hermes Agent v${version#v}"
+                return
+            fi
+        done
+    done
+    venv_dirs=()
+    for source_dir in "${source_dirs[@]}"; do
+        venv_dirs+=("$source_dir/venv" "$source_dir/.venv")
+    done
 
     # pip/venv 生成的 hermes 入口第一行通常指向 venv/bin/python3。
     # 直接读 dist-info/METADATA，比执行 `hermes --version` 更快。
     if [ -n "$hermes_bin" ] && [ -r "$hermes_bin" ]; then
-        python_bin="$(sed -n '1s/^#!//p' "$hermes_bin" 2>/dev/null)"
-        if [ -n "$python_bin" ] && [ -x "$python_bin" ]; then
-            venv_dir="$(dirname "$(dirname "$python_bin")")"
-            for metadata in "$venv_dir"/lib/python*/site-packages/hermes_agent-*.dist-info/METADATA; do
-                [ -r "$metadata" ] || continue
-                version="$(sed -n 's/^Version: //p' "$metadata" 2>/dev/null | sed -n '1p')"
-                if [ -n "$version" ]; then
-                    echo "Hermes Agent v${version#v}"
-                    return
-                fi
-            done
+        IFS= read -r python_bin < "$hermes_bin" || true
+        python_bin="${python_bin#\#!}"
+        if [[ "${python_bin##*/}" =~ ^python[0-9.]*$ ]] && [ -x "$python_bin" ]; then
+            venv_dirs+=("${python_bin%/bin/*}")
         fi
     fi
+    for venv_dir in "${venv_dirs[@]}"; do
+        for metadata in "$venv_dir"/lib/python*/site-packages/hermes_agent-*.dist-info/METADATA; do
+            [ -r "$metadata" ] || continue
+            version="$(sed -n 's/^Version: //p' "$metadata" 2>/dev/null | sed -n '1p')"
+            if [ -n "$version" ]; then
+                echo "Hermes Agent v${version#v}"
+                return
+            fi
+        done
+    done
 
-    # 兜底：兼容非标准安装方式。
-    hermes --version 2>/dev/null | sed -n '1p'
+    # 非标准安装没有元数据时显示未知，菜单不启动完整 CLI。
+    echo '未知'
 }
 
 # 提取语义版本号，例如 v0.13.0 / 0.13.0
@@ -828,7 +870,7 @@ version_lt() {
 
 # 获取 PyPI 最新版本：优先读缓存，过期后后台刷新，避免拖慢主菜单显示
 get_latest_version() {
-    local cache_dir cache_file lock_dir now cache_mtime lock_mtime ttl lock_ttl version
+    local cache_dir cache_file lock_dir now cache_mtime lock_mtime ttl lock_ttl version=""
     cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/hermes-manager"
     cache_file="$cache_dir/hermes-agent-latest-version"
     lock_dir="$cache_dir/hermes-agent-latest-version.lock"
@@ -888,12 +930,9 @@ PY
 
 # 检查是否有新版本
 get_update_notice() {
-    if ! check_installed; then
-        return
-    fi
-
     local current_version latest_version current_plain latest_plain
-    current_version="$(extract_semver "$(get_version)")"
+    current_version="$(extract_semver "${1:-}")"
+    [ -n "$current_version" ] || return 0
     latest_version="$(extract_semver "$(get_latest_version)")"
     current_plain="${current_version#v}"
     latest_plain="${latest_version#v}"
@@ -911,14 +950,14 @@ get_gateway_status() {
     fi
 
     # 优先检查 Hermes 安装的 user systemd 服务，速度快且比扫进程更准。
-    if command -v systemctl >/dev/null 2>&1; then
-        case "$(systemctl --user is-active hermes-gateway.service 2>/dev/null)" in
+    if command -v systemctl >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1; then
+        case "$(timeout 1s systemctl --user is-active hermes-gateway.service 2>/dev/null)" in
             active)
-                echo -e "${GREEN}运行中${NC}$(get_update_notice)"
+                echo -e "${GREEN}运行中${NC}"
                 return
                 ;;
             inactive|failed|activating|deactivating)
-                echo -e "${YELLOW}已停止${NC}$(get_update_notice)"
+                echo -e "${YELLOW}已停止${NC}"
                 return
                 ;;
         esac
@@ -926,19 +965,39 @@ get_gateway_status() {
 
     # 兜底：兼容非 systemd 或手动启动的 gateway。
     if pgrep -u "$(id -u)" -f "(^|[[:space:]])(([^[:space:]]*/)?python[0-9.]*[[:space:]]+-m[[:space:]]+hermes_cli\.main[[:space:]]+gateway[[:space:]]+run|([^[:space:]]*/)?hermes[[:space:]]+gateway[[:space:]]+run|hermes-gateway)([[:space:]]|$)" >/dev/null 2>&1; then
-        echo -e "${GREEN}运行中${NC}$(get_update_notice)"
+        echo -e "${GREEN}运行中${NC}"
     else
-        echo -e "${YELLOW}已停止${NC}$(get_update_notice)"
+        echo -e "${YELLOW}已停止${NC}"
     fi
 }
 
 
-refresh_hermes_path() {
-    if ! command -v hermes >/dev/null 2>&1; then
-        if [ -d "$HOME/.hermes/hermes-agent/venv/bin" ]; then
-            export PATH="$HOME/.hermes/hermes-agent/venv/bin:$PATH"
-        fi
+uninstall_hermes() {
+    if ! check_installed; then
+        echo -e "${YELLOW}未找到可用的 Hermes 命令，无法调用官方卸载程序。若仍有安装目录，请先修复命令入口后重试。${NC}"
+        return 1
     fi
+
+    local confirm
+    read -r -p "确定要卸载 Hermes 吗？配置和数据的保留按官方卸载程序提示选择。(y/N): " confirm || return 1
+    if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+        echo "已取消。"
+        return 0
+    fi
+
+    if ! hermes uninstall; then
+        echo -e "${RED}Hermes 卸载失败，已保留应用登记，请检查上方错误。${NC}"
+        return 1
+    fi
+    # 官方卸载流程可能取消后返回成功；命令仍存在时不能清除登记。
+    if check_installed; then
+        echo -e "${YELLOW}仍检测到 Hermes 命令，卸载可能已取消或未完成，已保留应用登记。${NC}"
+        return 1
+    fi
+    if [ -f /home/docker/appno.txt ]; then
+        sed -i '/^115$/d' /home/docker/appno.txt || return 1
+    fi
+    echo -e "${GREEN}Hermes 已卸载。${NC}"
 }
 
 add_app_id() {
@@ -956,7 +1015,7 @@ show_menu() {
     local current_version
     current_version=$(get_version)
     hermes_menu_title 'Hermes Agent 应用管理'
-    echo -e " 运行状态 : $(get_gateway_status)"
+    echo -e " 运行状态 : $(get_gateway_status)$(get_update_notice "$current_version")"
     printf ' 当前版本 : %b%s%b\n' "$GRAY" "${current_version:---}" "$NC"
     hermes_menu_separator
     hermes_menu_item 1 '安装 Hermes Agent' "$GREEN"
@@ -1024,13 +1083,7 @@ show_menu() {
             else echo -e "${RED}请先安装 Hermes。${NC}"; fi
             ;;
         8)
-            if check_installed; then
-                read -p "确定要卸载 Hermes 吗？所有数据将被清除。(y/N): " confirm
-                if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                    hermes uninstall
-                    sed -i "/\b115\b/d" /home/docker/appno.txt
-                else echo "已取消。"; fi
-            else echo -e "${RED}请先安装 Hermes。${NC}"; fi
+            uninstall_hermes
             ;;
         0)
             echo -e "${GREEN}感谢使用，再见！${NC}"
