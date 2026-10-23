@@ -577,12 +577,13 @@ class TransactionTests(unittest.TestCase):
     def test_shared_database_unix_socket_is_rejected_with_run_alias_normalization(self):
         original = self.command
         self.images['mysql']['Mounts'].append({'Destination': '/run/shared', 'Source': str(self.root / 'shared-socket'), 'Type': 'bind', 'RW': True})
-        def command(*args):
-            if args[0] == 'docker' and args[-1] == 'SELECT @@socket':
-                return '/var/run/shared/mysql.sock\n'
-            return original(*args)
-        with patch.object(updater, 'command', side_effect=command), self.assertRaisesRegex(ValueError, 'Unix socket.*共享挂载'):
-            updater.prepare_data(self.directory, ['docker', 'compose'], list(self.model['services']))
+        for socket in ('/var/run/shared/mysql.sock', './shared.sock'):
+            def command(*args):
+                if args[0] == 'docker' and args[-1] == 'SELECT @@socket':
+                    return socket + '\n'
+                return original(*args)
+            with self.subTest(socket=socket), patch.object(updater, 'command', side_effect=command), self.assertRaisesRegex(ValueError, 'Unix socket.*共享挂载'):
+                updater.prepare_data(self.directory, ['docker', 'compose'], list(self.model['services']))
 
 
 class EntryPointTests(unittest.TestCase):

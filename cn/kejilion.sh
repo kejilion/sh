@@ -2961,9 +2961,11 @@ def data_sources(compose, services, verify_active=False):
         container = json.loads(command('docker', 'inspect', identifiers[0]))[0]
         if verify_active and not container['State']['Running']:
             raise ValueError('数据库未运行，无法核验实际数据目录，未执行完整更新: ' + service)
-        def private_socket(path):
+        def private_socket(path, base):
             if not path:
                 return
+            if not path.startswith('/'):
+                path = base + '/' + path
             actual = command('docker', 'exec', identifiers[0], 'readlink', '-f', path).strip()
             for mount in container['Mounts']:
                 if mount['Type'] not in {'bind', 'volume'}:
@@ -2990,10 +2992,10 @@ def data_sources(compose, services, verify_active=False):
                     raise ValueError('MySQL 数据/日志位于冷备挂载之外，未执行切换: ' + key)
             if any(not inside(path) for path in mysql('SELECT PATH FROM INFORMATION_SCHEMA.INNODB_DATAFILES').splitlines()):
                 raise ValueError('MySQL 外部表空间不在冷备边界内，未执行切换')
-            private_socket(mysql('SELECT @@socket'))
+            private_socket(mysql('SELECT @@socket'), datadir)
             mysqlx = mysql("SHOW VARIABLES LIKE 'mysqlx_socket'")
             if mysqlx:
-                private_socket(mysqlx.split('\t', 1)[1])
+                private_socket(mysqlx.split('\t', 1)[1], datadir)
         if service == 'redis' and container['State']['Running']:
             values = command('docker', 'exec', identifiers[0], 'redis-cli', '--raw', 'CONFIG', 'GET', 'dir').splitlines()
             if len(values) != 2 or (os.path.normpath(values[1]) != target and not os.path.normpath(values[1]).startswith(target + '/')):
@@ -3001,7 +3003,7 @@ def data_sources(compose, services, verify_active=False):
             socket = command('docker', 'exec', identifiers[0], 'redis-cli', '--raw', 'CONFIG', 'GET', 'unixsocket').splitlines()
             if len(socket) != 2:
                 raise ValueError('Redis Unix socket 配置无法核验')
-            private_socket(socket[1])
+            private_socket(socket[1], values[1])
         mounts = [item for item in container['Mounts'] if item['Destination'] == target]
         if len(mounts) != 1 or mounts[0]['Type'] not in {'bind', 'volume'} or not mounts[0].get('RW'):
             raise ValueError('数据库缺少可恢复的 bind/named volume: ' + service)
