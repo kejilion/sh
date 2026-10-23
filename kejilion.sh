@@ -2654,14 +2654,14 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' 'e154917ea39b96b8c37c29b85e26b9ea2ee69a1f'
+	printf '%s\n' 'd72f601aaf4e16244c65a2a2350da79115ba238e'
 }
 
 shared_waf_manifest() {
 	cat <<'WAF_MANIFEST'
-76027a5d00cd4c88d608903ce11796e845abd865f3a7f327e621842ad8092a35  configure.py
-a68313c347195d55af351636a63921e6df3245955d2edf8b4d063339ee0e99c7  policy.py
-c182d37ebfb7ec92e247b1ea4b8f2cb32b7c808545d682c75f94364c956f69d0  nginx_edit.py
+7aa05863a9a0721d07e88aeeab4653b5e3bf5ebc62946c5f1173a3e362316395  configure.py
+f9cd06f5ac38b2cbf5b5262ef907b636c7d781101b3f8935d1dc7224a0e27c88  policy.py
+55d8d735af55e65c11fedc897fa93c6f28aa31b06e1dc741aebe153d27547d88  nginx_edit.py
 aee6fd651ceb6441acce6dc6b510e504d7127b2bba1ce84ca361655590c615b0  example-policy.json
 e6be6df199bc4ad607b6bcd7273a62a4884e5aa841786db1d8d5a2284f573179  cloudflare-ips.json
 6fd82147b99201beebe7b1a983f146e5c23ade7f9454ac883830848b7f753e30  legacy-jails.local
@@ -2824,7 +2824,9 @@ shared_waf_remove_rotation() {
 	if LC_ALL=C crontab -l > "$directory/before" 2> "$directory/error"; then :
 	else
 		status=$?
-		[ "$status" -eq 1 ] && grep -Fq 'no crontab for' "$directory/error" && return 0
+		if [ "$status" -eq 1 ] && [ ! -s "$directory/before" ]; then
+			grep -Eq "^(no crontab for [^/]+|crontab: (can't|cannot) open 'root': No such file or directory)$" "$directory/error" && return 0
+		fi
 		return 1
 	fi
 	# Remove only this package's tagged job; keep every administrator/SSH job.
@@ -15266,29 +15268,42 @@ ldnmp_update_action() {
 }
 
 ldnmp_backup_action() {
+	(
+	set -o pipefail
 	[ -d /home/web ] || return 1
-	local stamp archive tmp checksum source_bytes free_bytes running_services
-	stamp=$(date '+%Y%m%d%H%M%S'); archive="/home/web_${stamp}.tar.gz"; tmp="${archive}.tmp.$$"
-	source_bytes=$(du -sb /home/web 2>/dev/null | awk '{print $1}')
-	free_bytes=$(df -PB1 /home | awk 'NR==2 {print $4}')
+	local stamp archive tmp metadata checksum verified source_bytes free_bytes running_services stopped=false status
+	stamp=$(date '+%Y%m%d%H%M%S') || return 1
+	archive="/home/web_${stamp}.tar.gz"
+	[ ! -e "$archive" ] && [ ! -L "$archive" ] && [ ! -e "${archive}.kpanel.json" ] && [ ! -L "${archive}.kpanel.json" ] || return 1
+	source_bytes=$(du -sb /home/web 2>/dev/null | awk '{print $1}') || return 1
+	free_bytes=$(df -PB1 /home | awk 'NR==2 {print $4}') || return 1
+	[[ "$source_bytes" =~ ^[0-9]+$ && "$free_bytes" =~ ^[0-9]+$ ]] || return 1
 	[ "${source_bytes:-0}" -le $((free_bytes * 8 / 10)) ] || return 1
+	umask 077
+	tmp=$(mktemp /home/.ldnmp-backup.XXXXXX) || return 1
+	metadata=$(mktemp /home/.ldnmp-backup-meta.XXXXXX) || { rm -f -- "$tmp"; return 1; }
+	trap 'status=$?; trap - EXIT; rm -f -- "$tmp" "$metadata"; if [ "$stopped" = true ] && [ -n "$running_services" ]; then docker compose start $running_services || status=86; fi; exit "$status"' EXIT
 	kpanel_ldnmp_event backup_stop 15 "正在短暂停止 LDNMP"
 	cd /home/web || return 1
-	running_services=$(docker compose ps --services --filter status=running 2>/dev/null | tr '\n' ' ')
+	running_services=$(docker compose ps --services --filter status=running 2>/dev/null | tr '\n' ' ') || return 1
+	set -f
+	stopped=true
 	docker compose stop || return 1
 	kpanel_ldnmp_event backup_archive 45 "正在归档 /home/web"
-	if ! tar -C /home -czf "$tmp" web; then
-		[ -n "$running_services" ] && docker compose start $running_services >/dev/null 2>&1
-		rm -f "$tmp"
-		return 1
-	fi
-	chmod 600 "$tmp"; checksum=$(sha256sum "$tmp" | awk '{print $1}'); mv -f "$tmp" "$archive"
-	umask 077
+	tar -C /home -czf "$tmp" web && gzip -t "$tmp" && chmod 600 "$tmp" || return 1
+	checksum=$(sha256sum "$tmp" | awk '{print $1}') || return 1
+	[[ "$checksum" =~ ^[a-f0-9]{64}$ ]] || return 1
 	printf '{"format":"kejilion-ldnmp-v1","file":"%s","sha256":"%s","createdAt":"%s","scriptVersion":"%s"}\n' \
-		"$(basename "$archive")" "$checksum" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$sh_v" > "${archive}.kpanel.json"
+		"$(basename "$archive")" "$checksum" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$sh_v" > "$metadata" || return 1
+	chmod 600 "$metadata" && mv -f -- "$tmp" "$archive" && mv -f -- "$metadata" "${archive}.kpanel.json" || return 1
+	[ -s "$archive" ] && [ ! -L "$archive" ] && [ -s "${archive}.kpanel.json" ] && [ ! -L "${archive}.kpanel.json" ] || return 1
+	verified=$(sha256sum "$archive" | awk '{print $1}') || return 1
+	[ "$verified" = "$checksum" ] && grep -Fq "\"sha256\":\"$checksum\"" "${archive}.kpanel.json" || return 1
 	kpanel_ldnmp_event backup_start 80 "正在恢复 LDNMP"
-	[ -z "$running_services" ] || docker compose start $running_services
+	if [ -n "$running_services" ]; then docker compose start $running_services || return 86; fi
+	stopped=false
 	printf 'KPANEL_LDNMP_BACKUP %s\n' "$(basename "$archive")"
+	)
 }
 
 ldnmp_backup_delete_action() {

@@ -158,6 +158,11 @@ printf '%s\n' "* * * * * /usr/sbin/logrotate --state $fixture/web/config/waf/log
 cp "$cron_state" "$fixture/cron-original"
 crontab() {
   if [ "${1:-}" = -l ]; then
+    case "${cron_empty:-}" in
+      vixie) echo 'no crontab for root' >&2; return 1 ;;
+      busybox) echo "crontab: can't open 'root': No such file or directory" >&2; return 1 ;;
+      busybox-cannot) echo "crontab: cannot open 'root': No such file or directory" >&2; return 1 ;;
+    esac
     [ "${cron_query_failure:-0}" = 0 ] || { echo 'permission denied' >&2; return 1; }
     cat "$cron_state"
   elif [[ "$1" = */after ]] && [ "${cron_write_failure:-0}" = 1 ]; then
@@ -181,6 +186,8 @@ cron_write_failure=0; cron_restore_failure=0; cron_query_failure=1
 if shared_waf_remove_rotation; then exit 1; fi
 cmp "$cron_state" "$fixture/cron-original"
 cron_query_failure=0
+for cron_empty in vixie busybox busybox-cannot; do shared_waf_remove_rotation; done
+cron_empty=
 docker() { return "${compose_down_failure:-0}"; }
 compose_down_failure=1
 if ldnmp_uninstall_action false; then exit 1; fi
@@ -194,5 +201,57 @@ cron_write_failure=0
 ldnmp_uninstall_action false
 [ ! -e "$fixture/web" ]
 cmp "$cron_state" "$fixture/cron-expected"
+
+# Execute the real backup + uninstall functions against a tiny private archive.
+(
+  cd "$fixture"
+  backup_home="$fixture/backup-home"
+  mkdir -p "$backup_home/web"
+  printf 'retained\n' > "$backup_home/web/data"
+  for name in ldnmp_backup_action ldnmp_uninstall_action; do
+    sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh"
+  done | sed "s|/home|$backup_home|g" > "$fixture/backup-functions"
+  source "$fixture/backup-functions"
+  sh_v=test
+  kpanel_ldnmp_event() { :; }
+  shared_waf_remove_rotation() { :; }
+  docker() {
+    printf '%s\n' "$*" >> "$fixture/backup-docker"
+    case "$*" in
+      'compose ps --services --filter status=running') printf 'nginx\n' ;;
+      'compose start nginx') [ "${backup_fault:-}" != restart ] ;;
+      *) return 0 ;;
+    esac
+  }
+  mv() {
+    case "${backup_fault:-}:$*" in
+      rename:*) return 1 ;;
+      sidecar:*kpanel.json) return 1 ;;
+    esac
+    command mv "$@"
+  }
+  sha256sum() { [ "${backup_fault:-}" != hash ] || return 1; command sha256sum "$@"; }
+  chmod() { [ "${backup_fault:-}" != chmod ] || return 1; command chmod "$@"; }
+  printf() {
+    if [ "${backup_fault:-}" = metadata ] && [[ "${1:-}" = '{"format":'* ]]; then return 1; fi
+    builtin printf "$@"
+  }
+  for backup_fault in rename sidecar hash chmod metadata restart; do
+    rm -f -- "$backup_home"/web_*.tar.gz "$backup_home"/web_*.kpanel.json
+    : > "$fixture/backup-docker"
+    if ldnmp_uninstall_action true > "$fixture/backup-output"; then exit 1; else rc=$?; fi
+    if [ "$backup_fault" = restart ]; then [ "$rc" = 86 ]; else [ "$rc" = 1 ]; fi
+    [ -f "$backup_home/web/data" ]
+    ! grep -q 'compose down' "$fixture/backup-docker"
+    grep -q 'compose start nginx' "$fixture/backup-docker"
+    ! grep -q 'KPANEL_LDNMP_BACKUP' "$fixture/backup-output"
+  done
+  backup_fault=
+  rm -f -- "$backup_home"/web_*.tar.gz "$backup_home"/web_*.kpanel.json
+  ldnmp_backup_action > "$fixture/backup-output"
+  grep -q 'KPANEL_LDNMP_BACKUP web_' "$fixture/backup-output"
+  [ "$(find "$backup_home" -maxdepth 1 -name '*.tar.gz' | wc -l)" = 1 ]
+  [ "$(find "$backup_home" -maxdepth 1 -name '*.kpanel.json' | wc -l)" = 1 ]
+)
 
 echo shared_waf_protocol_dependencies_rollback=pass
