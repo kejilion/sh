@@ -73,6 +73,13 @@ class BootstrapTests(unittest.TestCase):
         self.assertFalse(self.calls.exists())
         self.assertFalse((self.web/'config').exists())
 
+    def test_prefixed_options_and_unknown_actions_are_rejected_before_preparation(self):
+        for command in ['shared_waf --policy /root/policy.json status','shared_waf invalid','shared_waf --help']:
+            result=self.run_fixture(command)
+            self.assertEqual(result.returncode,2,result.stderr)
+            self.assertFalse(self.calls.exists())
+            self.assertFalse((self.web/'config').exists())
+
     def test_status_rejects_writable_and_symlink_ancestors(self):
         self.seed()
         self.web.chmod(0o777)

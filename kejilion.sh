@@ -2441,11 +2441,17 @@ nginx_wait_ready() {
 
 nginx_upgrade() {
   (
-  local ldnmp_pods="nginx" previous_image directory interpreter ready=false
+  local ldnmp_pods="nginx" previous_image existing_ids directory interpreter ready=false
   cd /home/web/ || return 1
   shared_waf_refresh || return 1
-  previous_image=$(docker inspect -f '{{.Image}}' "$ldnmp_pods" 2>/dev/null) || return 1
-  [[ "$previous_image" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+  if previous_image=$(docker inspect -f '{{.Image}}' "$ldnmp_pods" 2>/dev/null); then
+    [[ "$previous_image" =~ ^sha256:[0-9a-f]{64}$ ]] || return 1
+  else
+    # Only a confirmed absent container is a first installation, not a daemon error.
+    existing_ids=$(docker container ls -a --filter 'name=^/nginx$' --format '{{.ID}}') || return 1
+    [ -z "$existing_ids" ] || return 1
+    previous_image=""
+  fi
   interpreter=$(command -v python3) || { echo "Nginx 安全更新需要 Python 3 保存完整 Compose 配置" >&2; return 1; }
   umask 077
   directory=$(mktemp -d /home/web/.nginx-update.XXXXXX) || return 1
@@ -2467,11 +2473,16 @@ NGINX_COMPOSE
   "${compose[@]}" run --rm --no-deps --entrypoint nginx "$ldnmp_pods" -t || return 1
   if "${compose[@]}" up -d --force-recreate "$ldnmp_pods" && nginx_wait_ready; then ready=true; fi
   if [ "$ready" != true ]; then
+    if [ -z "$previous_image" ]; then
+      echo "Nginx 首次安装未通过就绪核验，没有旧镜像可恢复；请检查容器日志" >&2
+      return 86
+    fi
     printf '{"services":{"nginx":{"image":"%s"}}}\n' "$previous_image" > "$directory/rollback.json"
     if "${compose[@]}" -f "$directory/rollback.json" up -d --force-recreate --pull never "$ldnmp_pods" && nginx_wait_ready; then
       echo "Nginx 更新失败，已恢复并核验旧镜像；请检查候选镜像日志" >&2
     else
       echo "Nginx 更新失败，旧镜像恢复未能通过核验；请检查容器日志" >&2
+      return 86
     fi
     return 1
   fi
@@ -2787,7 +2798,12 @@ WAF_CACHED_PATH
 }
 
 shared_waf() {
-	if [ "${1:-}" = status ]; then shared_waf_cached || return 1; else shared_waf_prepare || return 1; fi
+	# Native CLI requires action-first syntax; reject options before any preparation.
+	case "${1:-}" in
+		status) shared_waf_cached || return 1 ;;
+		plan|apply|configure|doctor|rollback|refresh-ips|retire-jails|existing-filters|rotation|trust-cloudflare) shared_waf_prepare || return 1 ;;
+		*) echo "用法: k web waf <action> [options]；状态查询: k web waf status" >&2; return 2 ;;
+	esac
 	"$WAF_PYTHON" -E -s -B "$WAF_DIRECTORY/configure.py" --root /home/web "$@"
 }
 
@@ -5730,7 +5746,7 @@ install_dependency
 install_docker
 install_certbot
 install_ldnmp_conf
-nginx_upgrade
+nginx_upgrade || return $?
 clear
 local nginx_version=$(docker exec nginx nginx -v 2>&1)
 local nginx_version=$(echo "$nginx_version" | grep -oP "nginx/\K[0-9]+\.[0-9]+\.[0-9]+")

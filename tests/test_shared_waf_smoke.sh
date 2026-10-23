@@ -4,7 +4,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 bash -n "$root/kejilion.sh"
-for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh nginx_reload nginx_waf shared_waf_mode nginx_wait_ready nginx_upgrade ldnmp_protection_action; do
+for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh nginx_reload nginx_waf shared_waf_mode nginx_wait_ready nginx_upgrade nginx_install_all ldnmp_protection_action; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh" >> "$fixture/functions"
 done
 sed -e "s|/home/web|$fixture/web|g" -e "s|/root/.nginx-rollback.|$fixture/.nginx-rollback.|g" "$fixture/functions" > "$fixture/isolated"
@@ -13,7 +13,7 @@ source "$fixture/isolated"
 [ "$(shared_waf_manifest | wc -l)" -eq 6 ]
 [ "$(shared_waf_manifest | awk '{print $2}' | sort -u | wc -l)" -eq 6 ]
 shared_waf_manifest | awk 'length($1)!=64 || $1~/[^0-9a-f]/ {exit 1}'
-if grep -Eq 'systemctl (enable|start)|retire-jails' "$fixture/functions"; then
+if grep -Eq 'systemctl (enable|start)|shared_waf retire-jails' "$fixture/functions"; then
   echo 'Unexpected automatic backend or legacy jail replacement' >&2; exit 1
 fi
 
@@ -89,7 +89,12 @@ crontab() { if [ "${1:-}" = -l ]; then printf '* * * * * private-logrotate # use
 docker() {
   printf 'docker %s\n' "$*" >> "$calls"
   case "$*" in
-    "inspect -f {{.Image}} nginx") printf 'sha256:%064d\n' 1 ;;
+    "inspect -f {{.Image}} nginx")
+      [ "${inspect_failure:-0}" = 0 ] || return 1
+      printf 'sha256:%064d\n' 1 ;;
+    'container ls -a --filter name=^/nginx$ --format {{.ID}}')
+      [ "${list_failure:-0}" = 0 ] || return 1
+      printf '%s' "${container_list_result:-}" ;;
     'top nginx -eo args') printf 'nginx: worker process\n' ;;
     'compose config --format json')
       [ "${config_failure:-0}" = 0 ] || return 1
@@ -125,4 +130,24 @@ config_failure=0
 reset_calls; up_failure=0
 nginx_upgrade >/dev/null
 grep -Fx '* * * * * private-logrotate # user-job' "$fixture/cron"
+# Fresh installation must reach compose; an unavailable daemon must not.
+reset_calls; inspect_failure=1
+nginx_upgrade >/dev/null
+grep -F ' up -d --force-recreate nginx' "$calls"
+! grep -q -- '--pull never' "$calls"
+reset_calls; list_failure=1
+if nginx_upgrade >/dev/null 2>&1; then exit 1; fi
+! grep -q ' pull nginx' "$calls"
+reset_calls; list_failure=0; container_list_result=container-with-unreadable-image
+if nginx_upgrade >/dev/null 2>&1; then exit 1; fi
+! grep -q ' pull nginx' "$calls"
+container_list_result=""
+root_use() { :; }; clear() { :; }; install_dependency() { :; }
+install_docker() { :; }; install_certbot() { :; }; install_ldnmp_conf() { :; }
+gl_huang=""; gl_bai=""
+up_failure=1
+if nginx_install_all > "$fixture/install-failure" 2>&1; then exit 1; fi
+! grep -Fq 'nginx已安装完成' "$fixture/install-failure"
+! grep -q -- '--pull never' "$calls"
+
 echo shared_waf_protocol_dependencies_rollback=pass
