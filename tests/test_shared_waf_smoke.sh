@@ -4,10 +4,10 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 bash -n "$root/kejilion.sh"
-for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh nginx_reload nginx_waf shared_waf_mode nginx_wait_ready nginx_upgrade nginx_install_all ldnmp_protection_action; do
+for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh shared_waf_remove_rotation nginx_reload nginx_waf shared_waf_mode nginx_wait_ready nginx_upgrade nginx_install_all ldnmp_protection_action ldnmp_uninstall_action; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh" >> "$fixture/functions"
 done
-sed -e "s|/home/web|$fixture/web|g" -e "s|/root/.nginx-rollback.|$fixture/.nginx-rollback.|g" "$fixture/functions" > "$fixture/isolated"
+sed -e "s|/home/web|$fixture/web|g" -e "s|/root/.waf-cron-cleanup.|$fixture/.waf-cron-cleanup.|g" "$fixture/functions" > "$fixture/isolated"
 source "$fixture/isolated"
 [[ "$(shared_waf_revision)" =~ ^[0-9a-f]{40}$ ]]
 [ "$(shared_waf_manifest | wc -l)" -eq 6 ]
@@ -149,5 +149,50 @@ up_failure=1
 if nginx_install_all > "$fixture/install-failure" 2>&1; then exit 1; fi
 ! grep -Fq 'nginx已安装完成' "$fixture/install-failure"
 ! grep -q -- '--pull never' "$calls"
+
+# Environment removal must remove only the owned WAF job, with exact recovery.
+cron_state="$fixture/cron-state"
+printf '%s\n' '* * * * * private-logrotate # user-job' '* * * * * other-command # kejilion-waf-logrotate' > "$fixture/cron-expected"
+cp "$fixture/cron-expected" "$cron_state"
+printf '%s\n' "* * * * * /usr/sbin/logrotate --state $fixture/web/config/waf/logrotate.status $fixture/web/config/waf/logrotate.conf >/dev/null 2>&1 # kejilion-waf-logrotate" >> "$cron_state"
+cp "$cron_state" "$fixture/cron-original"
+crontab() {
+  if [ "${1:-}" = -l ]; then
+    [ "${cron_query_failure:-0}" = 0 ] || { echo 'permission denied' >&2; return 1; }
+    cat "$cron_state"
+  elif [[ "$1" = */after ]] && [ "${cron_write_failure:-0}" = 1 ]; then
+    printf 'partial-write\n' > "$cron_state"; return 1
+  elif [[ "$1" = */before ]] && [ "${cron_restore_failure:-0}" = 1 ]; then
+    return 1
+  else cp "$1" "$cron_state"
+  fi
+}
+shared_waf_remove_rotation
+cmp "$cron_state" "$fixture/cron-expected"
+shared_waf_remove_rotation
+cmp "$cron_state" "$fixture/cron-expected"
+cp "$fixture/cron-original" "$cron_state"; cron_write_failure=1
+if shared_waf_remove_rotation; then exit 1; fi
+cmp "$cron_state" "$fixture/cron-original"
+cron_restore_failure=1
+if shared_waf_remove_rotation; then exit 1; else [ "$?" = 86 ]; fi
+cp "$fixture/cron-original" "$cron_state"
+cron_write_failure=0; cron_restore_failure=0; cron_query_failure=1
+if shared_waf_remove_rotation; then exit 1; fi
+cmp "$cron_state" "$fixture/cron-original"
+cron_query_failure=0
+docker() { return "${compose_down_failure:-0}"; }
+compose_down_failure=1
+if ldnmp_uninstall_action false; then exit 1; fi
+[ -d "$fixture/web" ]
+cmp "$cron_state" "$fixture/cron-original"
+compose_down_failure=0; cron_write_failure=1
+if ldnmp_uninstall_action false; then exit 1; fi
+[ -d "$fixture/web" ]
+cmp "$cron_state" "$fixture/cron-original"
+cron_write_failure=0
+ldnmp_uninstall_action false
+[ ! -e "$fixture/web" ]
+cmp "$cron_state" "$fixture/cron-expected"
 
 echo shared_waf_protocol_dependencies_rollback=pass

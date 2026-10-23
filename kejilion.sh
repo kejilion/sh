@@ -2812,6 +2812,31 @@ shared_waf_refresh() {
 	shared_waf apply
 }
 
+shared_waf_remove_rotation() {
+	(
+	local directory status
+	if ! command -v crontab >/dev/null 2>&1; then
+		[ ! -f /home/web/config/waf/policy.json ]; return $?
+	fi
+	umask 077
+	directory=$(mktemp -d /root/.waf-cron-cleanup.XXXXXX) || return 1
+	trap 'rm -f -- "$directory/before" "$directory/after" "$directory/error" "$directory/readback"; rmdir -- "$directory" 2>/dev/null || true' EXIT
+	if LC_ALL=C crontab -l > "$directory/before" 2> "$directory/error"; then :
+	else
+		status=$?
+		[ "$status" -eq 1 ] && grep -Fq 'no crontab for' "$directory/error" && return 0
+		return 1
+	fi
+	# Remove only this package's tagged job; keep every administrator/SSH job.
+	awk '!(/# kejilion-waf-logrotate$/ && index($0," /home/web/config/waf/logrotate.conf >/dev/null 2>&1 ")>0)' "$directory/before" > "$directory/after" || return 1
+	cmp -s "$directory/before" "$directory/after" && return 0
+	if crontab "$directory/after" && crontab -l > "$directory/readback" && cmp -s "$directory/after" "$directory/readback"; then return 0; fi
+	crontab "$directory/before" || return 86
+	crontab -l > "$directory/readback" && cmp -s "$directory/before" "$directory/readback" || return 86
+	return 1
+	)
+}
+
 nginx_reload() {
 	if [ -f /home/web/config/waf/policy.json ]; then
 		shared_waf_refresh
@@ -15325,13 +15350,16 @@ ldnmp_restore_action() {
 }
 
 ldnmp_uninstall_action() {
-	[ "${1:-false}" = true ] && ldnmp_backup_action
+	if [ "${1:-false}" = true ]; then ldnmp_backup_action || return $?; fi
 	if [ -d /home/web ]; then
 		cd /home/web || return 1
-		docker compose down --rmi all
-		[ -f docker-compose.phpmyadmin.yml ] && docker compose -f docker-compose.phpmyadmin.yml down --rmi all >/dev/null 2>&1
-		rm -rf /home/web
+		docker compose down --rmi all || return 1
+		if [ -f docker-compose.phpmyadmin.yml ]; then
+			docker compose -f docker-compose.phpmyadmin.yml down --rmi all >/dev/null 2>&1 || return 1
+		fi
 	fi
+	shared_waf_remove_rotation || return $?
+	[ ! -d /home/web ] || rm -rf /home/web
 }
 
 kpanel_ldnmp_run() {
@@ -16478,11 +16506,7 @@ linux_ldnmp() {
 		read -e -p "$(echo -e "${gl_hong}强烈建议：${gl_bai}先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ")" choice
 		case "$choice" in
 		  [Yy])
-			cd /home/web/
-			docker compose down --rmi all
-			docker compose -f docker-compose.phpmyadmin.yml down > /dev/null 2>&1
-			docker compose -f docker-compose.phpmyadmin.yml down --rmi all > /dev/null 2>&1
-			rm -rf /home/web
+			ldnmp_uninstall_action false || return $?
 			;;
 		  [Nn])
 
