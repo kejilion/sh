@@ -1,0 +1,2 @@
+# Preserve the upstream bytes used by the pinned SHA-256 checks.
+*.conf -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

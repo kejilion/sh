@@ -4,7 +4,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 bash -n "$root/kejilion.sh"
-for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh shared_waf_remove_rotation nginx_reload nginx_waf shared_waf_mode nginx_wait_ready nginx_upgrade nginx_install_all ldnmp_protection_action ldnmp_uninstall_action; do
+for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh shared_waf_remove_rotation nginx_reload nginx_waf shared_waf_mode nginx_wait_ready nginx_upgrade ldnmp_upgrade_all nginx_install_all ldnmp_protection_action ldnmp_uninstall_action; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh" >> "$fixture/functions"
 done
 sed -e "s|/home/web|$fixture/web|g" -e "s|/root/.waf-cron-cleanup.|$fixture/.waf-cron-cleanup.|g" "$fixture/functions" > "$fixture/isolated"
@@ -82,74 +82,21 @@ printf '{}\n' > "$fixture/web/config/waf/policy.json"
 shared_waf_refresh
 grep -Fx apply "$calls"
 
-shared_waf_refresh() { :; }
+# Image/config migration failure cases live in test_nginx_config_update.py.
+# Keep this suite focused on native WAF behavior and entry-point delegation.
 send_stats() { :; }
-sleep() { :; }
-crontab() { if [ "${1:-}" = -l ]; then printf '* * * * * private-logrotate # user-job\n'; else cat > "$fixture/cron"; fi; }
-docker() {
-  printf 'docker %s\n' "$*" >> "$calls"
-  case "$*" in
-    "inspect -f {{.Image}} nginx")
-      [ "${inspect_failure:-0}" = 0 ] || return 1
-      printf 'sha256:%064d\n' 1 ;;
-    'container ls -a --filter name=^/nginx$ --format {{.ID}}')
-      [ "${list_failure:-0}" = 0 ] || return 1
-      printf '%s' "${container_list_result:-}" ;;
-    'top nginx -eo pid,args') printf 'PID COMMAND\n123 nginx: worker process\n' ;;
-    'top nginx -eo args') echo "Couldn't find PID field in ps output" >&2; return 1 ;;
-    'compose config --format json')
-      [ "${config_failure:-0}" = 0 ] || return 1
-      printf '%s\n' '{"name":"fixture","services":{"nginx":{"image":"fixture:latest","environment":{"LITERAL":"hello$world"},"ports":["127.0.0.1:18443:443"]}}}' ;;
-    'exec nginx nginx -t') return "${ready_failure:-0}" ;;
-    *' config --format json') cat -- "$5" ;;
-    *' pull nginx') return "${pull_failure:-0}" ;;
-    *' run --rm --no-deps --entrypoint nginx nginx -t') return "${preflight_failure:-0}" ;;
-    *' up -d --force-recreate nginx')
-      # Assert the frozen model keeps overrides and literal dollar values.
-      "$test_python" -I -c 'import json,sys; s=json.load(open(sys.argv[1]))["services"]["nginx"]; assert s["environment"]["LITERAL"]=="hello$world"; assert s["ports"]==["127.0.0.1:18443:443"]' "$5" || return 1
-      return "${up_failure:-0}" ;;
-  esac
-}
-reset_calls; pull_failure=1
-if nginx_upgrade >/dev/null 2>&1; then exit 1; fi
-! grep -q ' up -d ' "$calls"
-reset_calls; pull_failure=0; preflight_failure=1
-if nginx_upgrade >/dev/null 2>&1; then exit 1; fi
-! grep -q ' up -d ' "$calls"
-reset_calls; preflight_failure=0; up_failure=1
-if nginx_upgrade >/dev/null 2>&1; then exit 1; fi
-grep -F -- '--pull never nginx' "$calls"
-! grep -Eq 'docker rm |docker rmi ' "$calls"
-reset_calls; up_failure=0; ready_failure=1
-if nginx_upgrade > "$fixture/not-ready" 2>&1; then exit 1; fi
-grep -F '旧镜像恢复未能通过核验' "$fixture/not-ready"
-! grep -Fq '已恢复并核验旧镜像' "$fixture/not-ready"
-reset_calls; ready_failure=0; config_failure=1
-if nginx_upgrade >/dev/null 2>&1; then exit 1; fi
-! grep -q ' up -d ' "$calls"
-config_failure=0
-reset_calls; up_failure=0
-nginx_upgrade >/dev/null
-grep -Fx '* * * * * private-logrotate # user-job' "$fixture/cron"
-# Fresh installation must reach compose; an unavailable daemon must not.
-reset_calls; inspect_failure=1
-nginx_upgrade >/dev/null
-grep -F ' up -d --force-recreate nginx' "$calls"
-! grep -q -- '--pull never' "$calls"
-reset_calls; list_failure=1
-if nginx_upgrade >/dev/null 2>&1; then exit 1; fi
-! grep -q ' pull nginx' "$calls"
-reset_calls; list_failure=0; container_list_result=container-with-unreadable-image
-if nginx_upgrade >/dev/null 2>&1; then exit 1; fi
-! grep -q ' pull nginx' "$calls"
-container_list_result=""
+nginx_update_transaction() { printf 'transaction %s\n' "$1" >> "$calls"; return "${transaction_failure:-0}"; }
+reset_calls
+nginx_upgrade
+grep -Fx 'transaction nginx' "$calls"
+ldnmp_upgrade_all
+grep -Fx 'transaction all' "$calls"
 root_use() { :; }; clear() { :; }; install_dependency() { :; }
 install_docker() { :; }; install_certbot() { :; }; install_ldnmp_conf() { :; }
 gl_huang=""; gl_bai=""
-up_failure=1
+transaction_failure=1
 if nginx_install_all > "$fixture/install-failure" 2>&1; then exit 1; fi
 ! grep -Fq 'nginx已安装完成' "$fixture/install-failure"
-! grep -q -- '--pull never' "$calls"
 
 # Environment removal must remove only the owned WAF job, with exact recovery.
 cron_state="$fixture/cron-state"
