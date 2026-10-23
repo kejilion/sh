@@ -95,7 +95,8 @@ docker() {
     'container ls -a --filter name=^/nginx$ --format {{.ID}}')
       [ "${list_failure:-0}" = 0 ] || return 1
       printf '%s' "${container_list_result:-}" ;;
-    'top nginx -eo args') printf 'nginx: worker process\n' ;;
+    'top nginx -eo pid,args') printf 'PID COMMAND\n123 nginx: worker process\n' ;;
+    'top nginx -eo args') echo "Couldn't find PID field in ps output" >&2; return 1 ;;
     'compose config --format json')
       [ "${config_failure:-0}" = 0 ] || return 1
       printf '%s\n' '{"name":"fixture","services":{"nginx":{"image":"fixture:latest","environment":{"LITERAL":"hello$world"},"ports":["127.0.0.1:18443:443"]}}}' ;;

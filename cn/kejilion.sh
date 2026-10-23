@@ -2433,7 +2433,7 @@ restart_ldnmp() {
 nginx_wait_ready() {
   local attempt
   for attempt in {1..20}; do
-    if docker exec nginx nginx -t >/dev/null 2>&1 && docker top nginx -eo args | grep -q 'nginx: worker process'; then return 0; fi
+    if docker exec nginx nginx -t >/dev/null 2>&1 && docker top nginx -eo pid,args | grep -q 'nginx: worker process'; then return 0; fi
     sleep 1
   done
   return 1
