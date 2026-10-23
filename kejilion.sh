@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.13"
+sh_v="4.5.14"
 
 
 gl_hui='\e[37m'
@@ -2449,6 +2449,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import stat
 import subprocess
 import sys
@@ -2813,7 +2814,13 @@ def snapshot(root, directory):
     size = 0
     for entry in entries:
         trusted(entry, directory=True)
+        if entry != directory and (entry / 'journal.json').exists():
+            previous = json.loads((entry / 'journal.json').read_text(encoding='utf-8'))
+            if previous.get('phase') not in {'committed', 'rolled-back'}:
+                raise ValueError('存在未完成的更新恢复点，请先检查恢复: ' + str(entry))
         for current, directories, files in os.walk(entry, followlinks=False):
+            if Path(current) == entry:
+                directories[:] = [item for item in directories if item != 'data']
             for item in directories:
                 trusted(Path(current) / item, directory=True)
             for item in files:
@@ -2833,13 +2840,33 @@ def snapshot(root, directory):
 
 
 def remember(root, directory):
+    # A difference is not ownership: SSH administrators do not hold our lock.
     journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
     current = inventory(root)
     for name in journal['before'].keys() | current.keys():
-        if journal['before'].get(name) != current.get(name):
-            journal['touched'][name] = current.get(name)
-    json_write(directory / 'journal.json', journal)
+        expected = journal['touched'].get(name, journal['before'].get(name))
+        if expected != current.get(name):
+            raise ValueError('配置发生变化，保留管理员修改: ' + name)
     return journal
+
+
+def install_configuration(root, directory, name, data, mode):
+    journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
+    journal['touched'][name] = {'sha256': digest(data), 'mode': mode}
+    json_write(directory / 'journal.json', journal)
+    # SIGINT/SIGTERM cannot interrupt the inode-preserving write before its actual
+    # postimage is durable in the journal. SIGKILL/power loss remain explicit risks.
+    blocked = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGINT, signal.SIGTERM}) if hasattr(signal, 'pthread_sigmask') else None
+    try:
+        try:
+            write(root / name, data, mode, inplace=True)
+        except BaseException:
+            journal['touched'][name] = {'sha256': digest((root / name).read_bytes()), 'mode': mode}
+            json_write(directory / 'journal.json', journal)
+            raise
+    finally:
+        if blocked is not None:
+            signal.pthread_sigmask(signal.SIG_SETMASK, blocked)
 
 
 def restore_files(root, directory):
@@ -2908,19 +2935,158 @@ def restore_runtime(directory, compose):
         for identifier in identifiers:
             for item in files:
                 if item['file'] is None:
-                    command('docker', 'exec', identifier, 'rm', '-f', item['path'])
+                    # Empty .conf/.ini has the same semantics as an absent file,
+                    # and docker cp works before the new entrypoint ever starts.
+                    saved = directory / 'runtime/empty'
+                    if not saved.exists():
+                        saved.write_bytes(b'')
+                        saved.chmod(0o644)
+                    command('docker', 'cp', str(saved), identifier + ':' + item['path'])
                 else:
                     saved = directory / 'runtime' / item['file']
                     trusted(saved)
                     if digest(saved.read_bytes()) != item['sha256']:
                         raise ValueError('PHP/MySQL 配置恢复点摘要不一致')
-                    command('docker', 'exec', identifier, 'mkdir', '-p', item['path'].rsplit('/', 1)[0])
                     command('docker', 'cp', str(saved), identifier + ':' + item['path'])
-            command('docker', 'restart', identifier)
+
+
+def data_sources(compose, services, verify_active=False):
+    records = []
+    for service, target in (('mysql', '/var/lib/mysql'), ('redis', '/data')):
+        if service not in services:
+            continue
+        identifiers = command(*compose, 'ps', '-a', '-q', service).split()
+        if len(identifiers) != 1:
+            raise ValueError('完整更新需要已有的单实例数据库和持久化挂载: ' + service)
+        container = json.loads(command('docker', 'inspect', identifiers[0]))[0]
+        if verify_active and not container['State']['Running']:
+            raise ValueError('数据库未运行，无法核验实际数据目录，未执行完整更新: ' + service)
+        if service == 'mysql' and container['State']['Running']:
+            datadir = command('docker', 'exec', identifiers[0], 'sh', '-c',
+                              'export MYSQL_PWD="$MYSQL_ROOT_PASSWORD"; '
+                              'exec mysql -uroot --batch --skip-column-names -e "SELECT @@datadir"').strip().rstrip('/')
+            if datadir != target and not datadir.startswith(target + '/'):
+                raise ValueError('MySQL 使用标准持久化挂载之外的数据目录，未执行切换')
+        if service == 'redis' and container['State']['Running']:
+            values = command('docker', 'exec', identifiers[0], 'redis-cli', '--raw', 'CONFIG', 'GET', 'dir').splitlines()
+            if len(values) != 2 or (values[1].rstrip('/') != target and not values[1].startswith(target + '/')):
+                raise ValueError('Redis 数据目录未通过持久化挂载核验，未执行切换')
+        mounts = [item for item in container['Mounts'] if item['Destination'] == target]
+        if len(mounts) != 1 or mounts[0]['Type'] not in {'bind', 'volume'} or not mounts[0].get('RW'):
+            raise ValueError('数据库缺少可恢复的 bind/named volume: ' + service)
+        source = Path(mounts[0]['Source'])
+        if not source.is_absolute() or source == Path('/'):
+            raise ValueError('数据库数据路径无效')
+        for parent in [source, *source.parents]:
+            if parent.is_symlink() or not parent.is_dir():
+                raise ValueError('数据库数据路径包含符号链接或无效目录')
+        # Tar must not cross an unaccounted nested host mount or follow symlinks.
+        for current, directories, files in os.walk(source, followlinks=False):
+            if any(os.path.ismount(Path(current) / name) for name in directories):
+                raise ValueError('数据库数据目录含嵌套挂载')
+        records.append({'service': service, 'source': str(source), 'target': target,
+                        'type': mounts[0]['Type'], 'name': mounts[0].get('Name')})
+    return records
+
+
+def ensure_exclusive_data(compose, services, records):
+    ours = set()
+    for service in services:
+        ours.update(command(*compose, 'ps', '-a', '-q', service).split())
+    for identifier in command('docker', 'ps', '-q').split():
+        container = json.loads(command('docker', 'inspect', identifier))[0]
+        if container['Id'] in ours or identifier in ours:
+            continue
+        for mount in container['Mounts']:
+            source = mount.get('Source', '')
+            if mount.get('RW') and source and any(
+                    Path(source) == Path(item['source']) or Path(source) in Path(item['source']).parents or
+                    Path(item['source']) in Path(source).parents for item in records):
+                raise ValueError('数据库数据目录被其他运行容器共享，未执行切换')
+
+
+def prepare_data(directory, compose, services):
+    records = data_sources(compose, services, verify_active=True)
+    for item in records:
+        source = Path(item['source'])
+        if source == directory or source in directory.parents or directory in source.parents:
+            raise ValueError('数据库数据目录与恢复点重叠')
+    ensure_exclusive_data(compose, services, records)
+    # Disk budget is independent of the bounded configuration snapshots. Keep the
+    # complete cold backup; never prune it as part of an update.
+    needed = sum(int(command('du', '-sx', '--block-size=1', item['source']).split()[0]) for item in records)
+    if shutil.disk_usage(directory).free < needed * 2 + 64 * 1024 * 1024:
+        raise ValueError('数据库冷备空间不足，需要数据已用空间两倍及64MiB余量')
+    return records
+
+
+def snapshot_data(directory, compose, services, records):
+    if data_sources(compose, services, verify_active=True) != records:
+        raise ValueError('数据库挂载在预检期间发生变化')
+    ensure_exclusive_data(compose, services, records)
+    state = {'records': records, 'complete': False, 'stopped': True}
+    json_write(directory / 'data.json', state)
+    command(*compose, 'stop', '-t', '120', *services)
+    for service in services:
+        for identifier in command(*compose, 'ps', '-a', '-q', service).split():
+            if json.loads(command('docker', 'inspect', identifier))[0]['State']['Running']:
+                raise ValueError('服务未停止，拒绝数据库冷备')
+    if data_sources(compose, services) != records:
+        raise ValueError('数据库挂载在停止期间发生变化')
+    (directory / 'data').mkdir(mode=0o700)
+    for index, item in enumerate(records):
+        archive = directory / 'data' / (str(index) + '.tar')
+        command('tar', '--acls', '--xattrs', '--numeric-owner', '--sparse', '-cpf', str(archive), '-C', item['source'], '.')
+        command('tar', '--acls', '--xattrs', '--numeric-owner', '--compare', '-f', str(archive), '-C', item['source'])
+        item['sha256'] = file_digest(archive)
+        item['archive'] = archive.name
+    state['complete'] = True
+    json_write(directory / 'data.json', state)
+
+
+def file_digest(path):
+    result = hashlib.sha256()
+    with path.open('rb') as stream:
+        for block in iter(lambda: stream.read(1024 * 1024), b''):
+            result.update(block)
+    return result.hexdigest()
+
+
+def restore_data(directory, compose, services):
+    state = json.loads((directory / 'data.json').read_text(encoding='utf-8'))
+    if not state['complete']:
+        return  # No candidate starts until every archive has been verified.
+    command(*compose, 'stop', '-t', '120', *services)
+    for service in services:
+        for identifier in command(*compose, 'ps', '-a', '-q', service).split():
+            if json.loads(command('docker', 'inspect', identifier))[0]['State']['Running']:
+                raise ValueError('候选服务仍运行，拒绝恢复数据库')
+    records = state['records']
+    actual = data_sources(compose, services)
+    if actual != [{key: item[key] for key in ('service', 'source', 'target', 'type', 'name')} for item in records]:
+        raise ValueError('数据库挂载已改变，保留冷备并停止恢复')
+    ensure_exclusive_data(compose, services, records)
+    # Verify every backup before removing any live data.
+    for item in records:
+        archive = directory / 'data' / item['archive']
+        trusted(archive)
+        if file_digest(archive) != item['sha256']:
+            raise ValueError('数据库恢复点摘要不一致')
+        command('tar', '-tf', str(archive))
+    for item in records:
+        source = Path(item['source'])
+        for child in source.iterdir():
+            if child.is_symlink() or not child.is_dir():
+                child.unlink()
+            else:
+                shutil.rmtree(child)
+        archive = directory / 'data' / item['archive']
+        command('tar', '--acls', '--xattrs', '--numeric-owner', '--same-owner', '--same-permissions', '-xpf', str(archive), '-C', str(source))
+        command('tar', '--acls', '--xattrs', '--numeric-owner', '--compare', '-f', str(archive), '-C', str(source))
 
 
 def execute_update(root, directory, component, prefix):
-    remember(root, directory)  # Includes changes made by the shared WAF transaction.
+    remember(root, directory)
     model = json.loads(command('docker', 'compose', '--project-directory', str(root), 'config', '--format', 'json'))
     compose = compose_file(directory, 'current.json', model)
     rendered = json.loads(command(*compose, 'config', '--format', 'json'))
@@ -2958,6 +3124,16 @@ def execute_update(root, directory, component, prefix):
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         path.write_bytes((root / name).read_bytes())
     state, messages = migrate(root, stage, prefix)
+    fresh_php = [name for name in ('php', 'php74') if name in services and name not in previous]
+    if component == 'all':
+        for relative in inventory_before:
+            if relative.startswith('conf.d/') and relative.endswith('.conf'):
+                path = stage / relative
+                text = path.read_text(encoding='utf-8')
+                for name in fresh_php:
+                    text = text.replace('fastcgi_pass ' + name + ':9000;',
+                                        'fastcgi_pass unix:/run/' + name + '/php-fpm.sock;')
+                path.write_text(text, encoding='utf-8')
     candidate = copy.deepcopy(model)
     covered = set()
     mappings = {'nginx.conf': '/etc/nginx/nginx.conf', 'conf.d': '/etc/nginx/conf.d',
@@ -2980,36 +3156,28 @@ def execute_update(root, directory, component, prefix):
     command(*preflight, 'run', '--rm', '--no-deps', '--entrypoint', 'nginx', 'nginx', '-t')
     if inventory(root) != inventory_before:
         raise ValueError('预检期间配置发生变化，未写入候选配置')
+    data_plan = prepare_data(directory, compose, services) if component == 'all' else None
     journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
     for name, before in inventory_before.items():
         if name == STATE:
             continue
         data = (stage / name).read_bytes()
         if digest(data) != before['sha256']:
-            # Journal the expected postimage before writing, including partial-write recovery.
-            journal['touched'][name] = {'sha256': digest(data), 'mode': before['mode']}
-            json_write(directory / 'journal.json', journal)
-            try:
-                write(root / name, data, before['mode'], inplace=True)
-            except OSError:
-                # A short write is ours, not a concurrent administrator edit.
-                journal['touched'][name] = {'sha256': digest((root / name).read_bytes()), 'mode': before['mode']}
-                json_write(directory / 'journal.json', journal)
-                raise
+            remember(root, directory)
+            install_configuration(root, directory, name, data, before['mode'])
+    journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
     journal['phase'] = 'switching'
     json_write(directory / 'journal.json', journal)
-    command(*compose, 'up', '-d', '--force-recreate', '--no-deps', *services)
+    if component == 'all':
+        snapshot_data(directory, compose, services, data_plan)
+    command(*compose, 'up', '--no-start', '--force-recreate', '--no-deps', '--pull', 'never', *services)
     if component == 'all':
         restore_runtime(directory, compose)
-        try:
-            fresh_php = [name for name in ('php', 'php74') if name in services and name not in previous]
-            if fresh_php:
-                command('bash', str(directory / 'after-switch.sh'), *fresh_php)
-        finally:
-            # Existing full updates restore PHP's shared Unix socket configuration.
-            # Account for the associated fastcgi_pass migration in the same journal.
-            journal = remember(root, directory)
+    command(*compose, 'start', *services)
+    if component == 'all' and fresh_php:
+        command('bash', str(directory / 'after-switch.sh'), *fresh_php)
     wait_ready(compose, services)
+    remember(root, directory)
     # Versions only advance after the real container passes validation/readiness.
     data = (json.dumps(state, ensure_ascii=False) + '\n').encode()
     journal['touched'][STATE] = {'sha256': digest(data), 'mode': 0o600}
@@ -3032,6 +3200,10 @@ def wait_ready(compose, services):
                 for identifier in identifiers:
                     state = json.loads(command('docker', 'inspect', identifier))[0]['State']
                     ready = ready and state['Running'] and state.get('Health', {}).get('Status', 'healthy') == 'healthy'
+                    if state['Running'] and name == 'mysql':
+                        command('docker', 'exec', identifier, 'mysqladmin', 'ping', '--silent', '--connect-timeout=2')
+                    if state['Running'] and name in {'php', 'php74'}:
+                        command('docker', 'exec', identifier, 'php-fpm', '-t')
             command('docker', 'exec', 'nginx', 'nginx', '-t')
             ready = ready and 'nginx: worker process' in command('docker', 'top', 'nginx', '-eo', 'pid,args')
             if ready:
@@ -3054,13 +3226,17 @@ def rollback(root, directory):
         override = {'services': {name: {'image': value['image']} for name, value in data['previous'].items()}}
         json_write(directory / 'rollback.json', override)
         compose = ['docker', 'compose', '--project-directory', str(root), '-f', str(directory / 'current.json')]
+        if (directory / 'data.json').exists():
+            restore_data(directory, compose, data['services'])
         existing = list(data['previous'])
         if existing:
-            command(*compose, '-f', str(directory / 'rollback.json'), 'up', '-d', '--force-recreate', '--no-deps', '--pull', 'never', *existing)
+            command(*compose, '-f', str(directory / 'rollback.json'), 'up', '--no-start', '--force-recreate', '--no-deps', '--pull', 'never', *existing)
             if (directory / 'runtime.json').exists():
                 restore_runtime(directory, compose)
             running = [name for name in existing if data['previous'][name]['running']]
             stopped = [name for name in existing if not data['previous'][name]['running']]
+            if running:
+                command(*compose, 'start', *running)
             if 'nginx' in running:
                 wait_ready(compose, running)
             if stopped:
@@ -3074,7 +3250,7 @@ def rollback(root, directory):
         command('docker', 'exec', 'nginx', 'nginx', '-s', 'reload')
     journal['phase'] = 'rolled-back'
     json_write(directory / 'journal.json', journal)
-    print('更新失败，已恢复更新前配置和容器状态；恢复点: ' + str(directory), file=sys.stderr)
+    print('更新失败，已恢复更新前配置和容器状态；已成功的独立 WAF 刷新保留；恢复点: ' + str(directory), file=sys.stderr)
 
 
 def main():
@@ -3130,6 +3306,9 @@ nginx_update_transaction() {
     flock -n "$lock_fd" || { echo "已有网站或 LDNMP 环境任务正在执行" >&2; return 75; }
   fi
   [ ! -L /home/web/backups ] && [ ! -L /home/web/backups/nginx-update ] || return 1
+  # WAF has its own complete transaction. Its successful refresh remains applied
+  # if a later image/config update fails; never claim unrelated SSH edits as ours.
+  shared_waf_refresh || return $?
   mkdir -p /home/web/backups/nginx-update || return 1
   directory=$(mktemp -d /home/web/backups/nginx-update/$(date -u +%Y%m%dT%H%M%SZ).XXXXXX) || return 1
   trap 'rc=$?; trap - EXIT; if [ "$prepared" = true ]; then
@@ -3142,7 +3321,7 @@ nginx_update_transaction() {
   if [ "$component" = all ]; then
     { printf '%s\n' 'set -e'; declare -f fix_phpfpm_conf;
       printf '%s\n' 'for component in "$@"; do' \
-        '  fix_phpfpm_conf "$component"' \
+        '  fix_phpfpm_conf "$component" container-only' \
         '  docker restart "$component" >/dev/null' \
         '  ready=false' \
         '  for attempt in {1..20}; do if docker exec "$component" test -S "/run/$component/php-fpm.sock"; then ready=true; break; fi; sleep 1; done' \
@@ -3152,12 +3331,6 @@ nginx_update_transaction() {
         'docker exec nginx nginx -s reload';
     } > "$directory/after-switch.sh" || return 1
   fi
-  # The existing WAF writer has its own lock and validation; include its postimage
-  # in this outer recovery point before touching images or migrating configuration.
-  rc=0
-  shared_waf_refresh || rc=$?
-  nginx_config_update remember /home/web "$directory" "$component" "${gh_proxy:-https://}" || return 1
-  [ "$rc" -eq 0 ] || return "$rc"
   nginx_config_update update /home/web "$directory" "$component" "${gh_proxy:-https://}" || return 1
   send_stats "更新$component" || true
   )
@@ -15399,7 +15572,9 @@ fix_phpfpm_conf() {
 	docker exec "$container_name" sh -c "echo -e '\nlisten = /run/$container_name/php-fpm.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0777' >> /usr/local/etc/php-fpm.d/www.conf"
 	docker exec "$container_name" sh -c "rm -f /usr/local/etc/php-fpm.d/zz-docker.conf"
 
-	find /home/web/conf.d/ -type f -name "*.conf" -exec sed -i "s#fastcgi_pass ${container_name}:9000;#fastcgi_pass unix:/run/${container_name}/php-fpm.sock;#g" {} \;
+	if [ "${2:-}" != container-only ]; then
+		find /home/web/conf.d/ -type f -name "*.conf" -exec sed -i "s#fastcgi_pass ${container_name}:9000;#fastcgi_pass unix:/run/${container_name}/php-fpm.sock;#g" {} \;
+	fi
 
 }
 

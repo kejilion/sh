@@ -1,0 +1,175 @@
+"""Opt-in real PHP-FPM/MySQL/Redis cold-backup and rollback integration test."""
+import json
+import os
+from pathlib import Path
+import tempfile
+import time
+import unittest
+import urllib.request
+import uuid
+from unittest.mock import patch
+
+from test_nginx_config_update import updater, template
+
+
+@unittest.skipUnless(os.environ.get('KJ_NGINX_UPDATE_STACK_LIVE') == '1', 'opt-in isolated Docker stack')
+class StackUpdateTests(unittest.TestCase):
+    def test_real_stack_success_and_data_rollback(self):
+        real = updater.command
+        name = 'kj-stack-update-' + uuid.uuid4().hex[:12]
+        base = tempfile.TemporaryDirectory(prefix=name + '-', dir='/root')
+        root = Path(base.name)
+        names = {service: name + '-' + service for service in ('nginx', 'php', 'mysql', 'redis')}
+        compose = ['docker', 'compose', '--project-directory', str(root), '-f', str(root / 'docker-compose.yml')]
+        candidate_image = name + ':candidate'
+        created_image = False
+        mode = {'value': 'initial'}
+        try:
+            for folder in ('conf.d', 'stream.d', 'certs', 'html', 'mysql'):
+                (root / folder).mkdir(mode=0o755)
+            real('openssl', 'req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-days', '1', '-subj', '/CN=localhost',
+                 '-keyout', str(root / 'certs/default_server.key'), '-out', str(root / 'certs/default_server.crt'))
+            for relative, source in (('nginx.conf', 'nginx10.conf'), ('conf.d/default.conf', 'default10.conf'), ('conf.d/map.conf', 'map.conf')):
+                (root / relative).write_text(template(updater.LEGACY, source))
+            (root / 'html/index.php').write_text('''<?php
+$db = new mysqli("mysql", "root", "fixture-only-password", "fixture");
+$value = $db->query("SELECT value FROM marker")->fetch_row()[0];
+$redis = fsockopen("redis", 6379, $errno, $errstr, 3);
+fwrite($redis, "GET fixture-marker\\r\\n");
+fgets($redis);
+$cached = trim(fgets($redis));
+echo "stack-php-ok:$value:$cached";
+?>''')
+            (root / 'html/index.php').chmod(0o644)
+            site = 'server { listen 80; server_name stack.example; root /var/www/html; location / { include fastcgi_params; fastcgi_param SCRIPT_FILENAME /var/www/html/index.php; fastcgi_pass unix:/run/php/php-fpm.sock; } }\n'
+            (root / 'conf.d/stack.conf').write_text(site)
+            volumes = {'php-socket': {'driver': 'local', 'driver_opts': {'type': 'tmpfs', 'device': 'tmpfs', 'o': 'size=64m'}},
+                       'redis-data': {}}
+            model = {'name': name, 'services': {
+                'nginx': {'image': 'nginx:1.29-alpine', 'container_name': names['nginx'], 'ports': ['127.0.0.1::80'],
+                          'volumes': [str(root / source) + ':' + target for source, target in (
+                              ('nginx.conf', '/etc/nginx/nginx.conf'), ('conf.d', '/etc/nginx/conf.d'),
+                              ('stream.d', '/etc/nginx/stream.d'), ('certs', '/etc/nginx/certs'), ('html', '/var/www/html'))] + ['php-socket:/run/php']},
+                'php': {'image': 'kjlion/php:fpm-alpine', 'container_name': names['php'],
+                        'volumes': [str(root / 'html') + ':/var/www/html', 'php-socket:/run/php']},
+                'mysql': {'image': 'mysql:8.4', 'container_name': names['mysql'], 'restart': 'always',
+                          'environment': {'MYSQL_ROOT_PASSWORD': 'fixture-only-password', 'MYSQL_ROOT_HOST': '%'},
+                          'volumes': [str(root / 'mysql') + ':/var/lib/mysql'],
+                          'healthcheck': {'test': ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-pfixture-only-password'],
+                                          'interval': '1s', 'timeout': '3s', 'retries': 90}},
+                'redis': {'image': 'redis:7-alpine', 'container_name': names['redis'], 'restart': 'always', 'volumes': ['redis-data:/data']}},
+                     'volumes': volumes}
+            (root / 'docker-compose.yml').write_text(json.dumps(model))
+            real(*compose, 'up', '-d', '--wait', '--wait-timeout', '150')
+            real('docker', 'exec', names['php'], 'sh', '-c',
+                 "mkdir -p /run/php; chmod 777 /run/php; sed -i '/^listen =/d' /usr/local/etc/php-fpm.d/www.conf; "
+                 "sed -i '1i [global]\\ndaemonize = no' /usr/local/etc/php-fpm.d/www.conf; "
+                 "printf '\nlisten = /run/php/php-fpm.sock\nlisten.owner = www-data\nlisten.group = www-data\nlisten.mode = 0777\n' >> /usr/local/etc/php-fpm.d/www.conf; "
+                 'rm -f /usr/local/etc/php-fpm.d/zz-docker.conf')
+            real('docker', 'restart', names['php'])
+            mysql_config = root / 'custom_mysql_config.cnf'
+            mysql_config.write_text('[mysqld]\nmax_connections=123\n')
+            real('docker', 'cp', str(mysql_config), names['mysql'] + ':/etc/mysql/conf.d/custom_mysql_config.cnf')
+            real('docker', 'restart', names['mysql'])
+
+            def sql(query):
+                return real('docker', 'exec', '-e', 'MYSQL_PWD=fixture-only-password', names['mysql'],
+                            'mysql', '-uroot', '--batch', '--skip-column-names', '-e', query).strip()
+
+            def wait_sql():
+                for _ in range(90):
+                    try:
+                        if sql('SELECT 1') == '1':
+                            return
+                    except RuntimeError:
+                        pass
+                    time.sleep(1)
+                self.fail('MySQL failed to accept real SQL')
+
+            def redis(*args):
+                return real('docker', 'exec', names['redis'], 'redis-cli', '--raw', *args).strip()
+
+            def http():
+                binding = real(*compose, 'port', 'nginx', '80').strip()
+                request = urllib.request.Request('http://' + binding + '/', headers={'Host': 'stack.example'})
+                for _ in range(30):
+                    try:
+                        with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(request, timeout=3) as response:
+                            self.assertEqual(response.read(), b'stack-php-ok:baseline:baseline')
+                            return
+                    except (OSError, AssertionError):
+                        time.sleep(1)
+                self.fail('real Nginx to PHP-FPM socket request failed')
+
+            wait_sql()
+            sql("CREATE DATABASE fixture; CREATE TABLE fixture.marker (value VARCHAR(30)); INSERT INTO fixture.marker VALUES ('baseline')")
+            self.assertEqual(sql('SELECT @@max_connections'), '123')
+            redis('SET', 'fixture-marker', 'baseline')
+            redis('SAVE')
+            http()
+            old_image = json.loads(real('docker', 'inspect', names['nginx']))[0]['Image']
+            real('docker', 'commit', '-c', 'LABEL kejilion.updater.fixture=true', names['nginx'], candidate_image)
+            created_image = True
+            model['services']['nginx']['image'] = candidate_image
+            (root / 'docker-compose.yml').write_text(json.dumps(model))
+
+            def command(*args):
+                if args[:3] in (('docker', 'exec', 'nginx'), ('docker', 'top', 'nginx')):
+                    args = (*args[:2], names['nginx'], *args[3:])
+                if args[:2] == ('docker', 'compose') and 'pull' in args:
+                    return ''  # Fixture inputs were explicitly pulled and frozen before the test.
+                result = real(*args)
+                if mode['value'] == 'failure' and args[:2] == ('docker', 'compose') and 'start' in args:
+                    mode['value'] = 'recovering'
+                    wait_sql()
+                    sql("UPDATE fixture.marker SET value='candidate'; CREATE TABLE fixture.candidate_only (id INT)")
+                    redis('SET', 'fixture-marker', 'candidate')
+                    redis('SAVE')
+                    raise RuntimeError('fixture: failure after candidate database writes')
+                return result
+
+            def recovery(label):
+                directory = root / 'backups/nginx-update' / label
+                directory.mkdir(parents=True, mode=0o700)
+                updater.snapshot(root, directory)
+                return directory
+
+            with patch.object(updater, 'command', side_effect=command), patch.object(updater, 'download', side_effect=template):
+                first = recovery('rollback')
+                mode['value'] = 'failure'
+                with self.assertRaisesRegex(RuntimeError, 'after candidate database writes'):
+                    updater.execute_update(root, first, 'all', 'https://')
+                updater.rollback(root, first)
+                wait_sql()
+                self.assertEqual(sql('SELECT value FROM fixture.marker'), 'baseline')
+                self.assertEqual(sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='fixture' AND table_name='candidate_only'"), '0')
+                self.assertEqual(sql('SELECT @@max_connections'), '123')
+                self.assertEqual(redis('GET', 'fixture-marker'), 'baseline')
+                self.assertEqual(json.loads(real('docker', 'inspect', names['nginx']))[0]['Image'], old_image)
+                print('ROLLBACK VERIFIED:', json.dumps({'mysql_version': sql('SELECT VERSION()'),
+                      'mysql_marker': sql('SELECT value FROM fixture.marker'), 'max_connections': sql('SELECT @@max_connections'),
+                      'candidate_table_count': sql("SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='fixture' AND table_name='candidate_only'"),
+                      'redis_marker': redis('GET', 'fixture-marker'), 'nginx_image': old_image}))
+                http()
+                cold = json.loads((first / 'data.json').read_text())
+                self.assertEqual({record['type'] for record in cold['records']}, {'bind', 'volume'})
+                print('COLD BACKUP VERIFIED:', json.dumps(cold))
+                mode['value'] = 'success'
+                second = recovery('success')
+                updater.execute_update(root, second, 'all', 'https://')
+                wait_sql()
+                self.assertEqual(sql('SELECT value FROM fixture.marker'), 'baseline')
+                self.assertEqual(sql('SELECT @@max_connections'), '123')
+                self.assertEqual(redis('GET', 'fixture-marker'), 'baseline')
+                self.assertEqual((root / 'conf.d/stack.conf').read_text(), site)
+                http()
+                print('STACK VERIFIED: real PHP socket HTTP; MySQL SQL/config; Redis persistence; bind/named cold backup; data rollback; successful full update')
+        finally:
+            real(*compose, 'down', '--volumes', '--remove-orphans')
+            if created_image:
+                real('docker', 'image', 'rm', candidate_image)
+            base.cleanup()
+
+
+if __name__ == '__main__':
+    unittest.main()

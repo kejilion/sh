@@ -76,7 +76,8 @@ class DockerUpdateTests(unittest.TestCase):
                         stream.write('\nunknown_fixture_directive;\n')
                 result = real_command(*args)
                 if (mode['value'] == 'switch-failure' and args[:2] == ('docker', 'compose') and
-                        'up' in args and '--pull' not in args):
+                        'start' in args):
+                    mode['value'] = 'recovering'
                     raise RuntimeError('fixture: connection lost after actual container recreation')
                 return result
 
@@ -107,7 +108,7 @@ class DockerUpdateTests(unittest.TestCase):
                 mode['value'] = 'switch-failure'
                 second = recovery_point('rollback')
                 with self.assertRaisesRegex(RuntimeError, 'connection lost'):
-                    updater.execute_update(root, second, 'all', 'https://')
+                    updater.execute_update(root, second, 'nginx', 'https://')
                 updater.rollback(root, second)
                 self.assertEqual(current_image(), original)
                 self.assertEqual((root / 'nginx.conf').read_bytes(), before)
@@ -115,7 +116,7 @@ class DockerUpdateTests(unittest.TestCase):
                 check_http()
                 mode['value'] = 'success'
                 third = recovery_point('success')
-                updater.execute_update(root, third, 'all', 'https://')
+                updater.execute_update(root, third, 'nginx', 'https://')
                 self.assertEqual(current_image(), candidate_id)
                 self.assertIn(b'waf/load-module', (root / 'nginx.conf').read_bytes())
                 self.assertEqual((root / 'conf.d/live.example.conf').read_bytes(), site)

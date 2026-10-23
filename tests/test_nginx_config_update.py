@@ -93,8 +93,12 @@ class TransactionTests(unittest.TestCase):
                                                        ('conf.d', '/etc/nginx/conf.d'), ('stream.d', '/etc/nginx/stream.d')]]},
             'php': {'image': 'custom/php:8.3'}, 'mysql': {'image': 'custom/mysql:8.4'}},
             'networks': {'private': {'external': True}}}
-        self.images = {name: {'Image': 'sha256:' + str(number) * 64, 'State': {'Running': True}}
+        data = self.root / 'mysql'
+        data.mkdir()
+        (data / 'original').write_text('original database')
+        self.images = {name: {'Id': 'container-' + name, 'Mounts': [], 'Image': 'sha256:' + str(number) * 64, 'State': {'Running': True}}
                        for number, name in enumerate(self.model['services'], 1)}
+        self.images['mysql']['Mounts'] = [{'Destination': '/var/lib/mysql', 'Source': str(data), 'Type': 'bind', 'RW': True}]
         self.old_images = copy.deepcopy(self.images)
         self.runtime = {service: {path: (b'custom php socket/config\n' if path.endswith('www.conf') else None)
                                   for path in paths} for service, paths in updater.RUNTIME_PATHS.items() if service in self.images}
@@ -117,6 +121,13 @@ class TransactionTests(unittest.TestCase):
 
     def command(self, *args):
         self.calls.append(args)
+        if args[0] in {'du', 'tar'}:
+            result = subprocess.run(args, capture_output=True, text=True)
+            if result.returncode:
+                raise RuntimeError(result.stderr)
+            return result.stdout
+        if args[:3] == ('docker', 'ps', '-q'):
+            return ' '.join('container-' + name for name, value in self.images.items() if value['State']['Running'])
         if args[:2] == ('docker', 'cp'):
             if args[2].startswith('container-'):
                 container, path = args[2].split(':', 1)
@@ -132,6 +143,10 @@ class TransactionTests(unittest.TestCase):
         if args[:2] == ('docker', 'restart'):
             return ''
         if args[:2] == ('docker', 'exec') and args[2].startswith('container-'):
+            if args[3:5] == ('sh', '-c') and 'SELECT @@datadir' in args[5]:
+                return '/var/lib/mysql/\n'
+            if args[3:6] == ('redis-cli', '--raw', 'CONFIG'):
+                return 'dir\n/data\n'
             if args[3:5] == ('rm', '-f'):
                 self.runtime[args[2].removeprefix('container-')][args[5]] = None
             return ''
@@ -177,20 +192,22 @@ class TransactionTests(unittest.TestCase):
             return ''
         if 'up' in args:
             self.assertNotIn('down', args)
-            if '--pull' in args:
+            if len(files) == 2:
                 override = json.loads(files[-1].read_text(encoding='utf-8'))
                 for name, value in override['services'].items():
                     self.images[name] = copy.deepcopy(self.old_images[name])
                     if name in updater.RUNTIME_PATHS:
                         self.runtime[name] = {path: b'image-default' for path in updater.RUNTIME_PATHS[name]}
+                    self.images[name]['State']['Running'] = False
                     self.assertEqual(self.images[name]['Image'], value['image'])
                 self.switched = False
                 if self.failure == 'rollback':
                     raise RuntimeError('old image recovery failed')
                 return ''
-            services = args[args.index('--no-deps') + 1:]
+            services = args[args.index('never') + 1:]
             for name in services:
-                self.images[name] = {'Image': 'sha256:' + 'f' * 64, 'State': {'Running': True}}
+                prior = self.images.get(name, {'Id': 'container-' + name, 'Mounts': []})
+                self.images[name] = dict(prior, Image='sha256:' + 'f' * 64, State={'Running': False})
                 if name in updater.RUNTIME_PATHS:
                     self.runtime[name] = {path: b'image-default' for path in updater.RUNTIME_PATHS[name]}
             self.switched = True
@@ -198,14 +215,20 @@ class TransactionTests(unittest.TestCase):
             if self.failure in ('up', 'rollback'):
                 raise RuntimeError('up failed')
             return ''
+        if 'start' in args:
+            for name in args[args.index('start') + 1:]:
+                self.images[name]['State']['Running'] = True
+            return ''
         if 'rm' in args:
             for name in args[args.index('-f') + 1:]:
                 self.images.pop(name, None)
                 self.runtime.pop(name, None)
             return ''
         if 'stop' in args:
-            for name in args[args.index('stop') + 1:]:
-                self.images[name]['State']['Running'] = False
+            offset = args.index('stop') + (3 if '-t' in args else 1)
+            for name in args[offset:]:
+                if name in self.images:
+                    self.images[name]['State']['Running'] = False
             return ''
         raise AssertionError(args)
 
@@ -227,7 +250,11 @@ class TransactionTests(unittest.TestCase):
             self.assertEqual((self.root / name).read_bytes(), data, name)
         self.assertFalse((self.root / updater.STATE).exists())
         self.assertEqual(self.images, self.old_images)
-        self.assertEqual(self.runtime, self.old_runtime)
+        self.assertEqual(self.normalized_runtime(self.runtime), self.normalized_runtime(self.old_runtime))
+
+    @staticmethod
+    def normalized_runtime(runtime):
+        return {service: {path: value or None for path, value in files.items()} for service, files in runtime.items()}
 
     def test_success_migrates_common_files_preserves_sites_and_persists_verified_baselines(self):
         original_inode = (self.root / 'nginx.conf').stat().st_ino
@@ -283,19 +310,23 @@ class TransactionTests(unittest.TestCase):
 
     def test_up_failure_restores_original_stopped_service_state(self):
         self.model['services']['redis'] = {'image': 'redis:latest'}
-        self.images['mysql']['State']['Running'] = False
+        data = self.root / 'redis'
+        data.mkdir()
+        self.images['redis'] = {'Id': 'container-redis', 'Image': 'sha256:' + 'a' * 64, 'State': {'Running': True},
+                                'Mounts': [{'Destination': '/data', 'Source': str(data), 'Type': 'volume', 'Name': 'redis-data', 'RW': True}]}
+        self.images['php']['State']['Running'] = False
         self.old_images = copy.deepcopy(self.images)
         self.failure = 'up'
         with self.assertRaises(RuntimeError):
             self.update('all')
         updater.rollback(self.root, self.directory)
         self.assert_restored()
-        self.assertNotIn('redis', self.images)
+        self.assertIn('redis', self.images)
 
     def test_full_update_covers_all_services_and_restores_php_configuration(self):
         self.update('all')
-        self.assertTrue(any(call[:2] == ('docker', 'restart') for call in self.calls))
-        self.assertEqual(self.runtime, self.old_runtime)
+        self.assertTrue(any('--no-start' in call for call in self.calls))
+        self.assertEqual(self.normalized_runtime(self.runtime), self.normalized_runtime(self.old_runtime))
         self.assertTrue(all(value['Image'] == 'sha256:' + 'f' * 64 for value in self.images.values()))
         self.assertFalse(any('down' in call or 'rmi' in call for call in self.calls))
 
@@ -312,7 +343,7 @@ class TransactionTests(unittest.TestCase):
             self.update()
         updater.rollback(self.root, self.directory)
         self.assert_restored()
-        self.assertFalse(any('--pull' in call and 'never' in call for call in self.calls))
+        self.assertFalse(any('rollback.json' in ' '.join(call) for call in self.calls))
 
     def test_php_hook_failure_rolls_back_full_update(self):
         self.images.pop('php')
@@ -324,16 +355,13 @@ class TransactionTests(unittest.TestCase):
         updater.rollback(self.root, self.directory)
         self.assert_restored()
 
-    def test_shared_waf_changes_are_included_in_recovery_point(self):
-        self.seed('conf.d/custom.example.conf', self.site + '# WAF-managed change\n')
-        self.seed('conf.d/waf/http.conf', 'modsecurity off;\n')
-        updater.remember(self.root, self.directory)
+    def test_preexisting_admin_change_is_not_claimed_by_update(self):
+        self.seed('conf.d/custom.example.conf', self.site + '# SSH administrator edit\n')
         self.failure = 'pull'
-        with self.assertRaises(RuntimeError):
+        with self.assertRaisesRegex(ValueError, '保留管理员修改'):
             self.update()
         updater.rollback(self.root, self.directory)
-        self.assert_restored()
-        self.assertFalse((self.root / 'conf.d/waf/http.conf').exists())
+        self.assertIn('SSH administrator edit', (self.root / 'conf.d/custom.example.conf').read_text())
 
     def test_concurrent_administrator_changes_are_not_overwritten(self):
         self.failure = 'concurrent'
@@ -361,12 +389,14 @@ class TransactionTests(unittest.TestCase):
 
     def test_tampered_baseline_prevents_switch(self):
         self.seed(updater.STATE, json.dumps({'files': {}, 'templates': {updater.LEGACY + '/nginx10.conf': 'tampered'}}))
-        with self.assertRaisesRegex(ValueError, '摘要'):
+        with self.assertRaisesRegex(ValueError, '摘要|配置发生变化'):
             self.update()
         self.assertFalse(self.changed)
 
     def test_cf_mode_and_custom_trust_are_preserved(self):
         self.seed('conf.d/default.conf', template(updater.LEGACY, 'default11.conf') + '\nset_real_ip_from 192.0.2.0/24;\n')
+        updater.snapshot(self.root, self.directory)
+        self.initial = {name: (self.root / name).read_bytes() for name in updater.inventory(self.root)}
         self.update()
         data = (self.root / 'conf.d/default.conf').read_text(encoding='utf-8')
         self.assertIn('real_ip_header CF-Connecting-IP;', data)
@@ -388,8 +418,81 @@ class TransactionTests(unittest.TestCase):
 
     def test_missing_common_file_is_not_reintroduced(self):
         (self.root / 'conf.d/default.conf').unlink()
+        updater.snapshot(self.root, self.directory)
         self.update()
         self.assertFalse((self.root / 'conf.d/default.conf').exists())
+
+    def test_keyboard_interrupt_during_inplace_write_can_restore_actual_postimage(self):
+        original = updater.write
+        def interrupted(path, data, mode=0o600, inplace=False):
+            if path == self.root / 'nginx.conf' and inplace:
+                path.write_bytes(b'')
+                raise KeyboardInterrupt()
+            return original(path, data, mode, inplace)
+        with patch.object(updater, 'write', side_effect=interrupted), self.assertRaises(KeyboardInterrupt):
+            self.update()
+        updater.rollback(self.root, self.directory)
+        self.assert_restored()
+
+    def test_cold_data_rollback_removes_new_files_and_preserves_links_modes(self):
+        data = self.root / 'mysql'
+        (data / 'original').chmod(0o640)
+        os.link(data / 'original', data / 'hardlink')
+        (data / 'symlink').symlink_to('original')
+        self.update('all')
+        journal = json.loads((self.directory / 'journal.json').read_text())
+        journal['phase'] = 'switching'  # Exercise recovery of a switched, uncommitted candidate.
+        updater.json_write(self.directory / 'journal.json', journal)
+        (data / 'original').write_text('new database dictionary')
+        (data / 'new-table').write_text('candidate-only')
+        updater.rollback(self.root, self.directory)
+        self.assertEqual((data / 'original').read_text(), 'original database')
+        self.assertEqual((data / 'original').stat().st_mode & 0o777, 0o640)
+        self.assertEqual((data / 'original').stat().st_ino, (data / 'hardlink').stat().st_ino)
+        self.assertTrue((data / 'symlink').is_symlink())
+        self.assertFalse((data / 'new-table').exists())
+
+    def test_tampered_data_backup_is_rejected_before_deleting_live_data(self):
+        self.update('all')
+        (self.directory / 'data/0.tar').write_bytes(b'corrupt')
+        compose = updater.compose_file(self.directory, 'current.json.test', self.model)
+        with self.assertRaisesRegex(ValueError, '摘要'):
+            updater.restore_data(self.directory, compose, list(self.model['services']))
+        self.assertEqual((self.root / 'mysql/original').read_text(), 'original database')
+
+    def test_full_update_requires_real_persistent_database_mount(self):
+        self.images['mysql']['Mounts'] = []
+        with self.assertRaisesRegex(ValueError, 'bind/named volume'):
+            self.update('all')
+        self.assertFalse(self.switched)
+
+    def test_database_space_budget_fails_before_stop_or_switch(self):
+        with patch.object(updater.shutil, 'disk_usage', return_value=type('Usage', (), {'free': 1})()), self.assertRaisesRegex(ValueError, '冷备空间不足'):
+            self.update('all')
+        self.assertFalse(any('stop' in call for call in self.calls))
+        self.assertFalse(self.switched)
+
+    def test_runtime_configuration_is_copied_before_first_container_start(self):
+        self.update('all')
+        created = next(i for i, call in enumerate(self.calls) if '--no-start' in call)
+        started = next(i for i, call in enumerate(self.calls) if 'start' in call)
+        copied = [i for i, call in enumerate(self.calls) if call[:2] == ('docker', 'cp') and call[3].startswith('container-')]
+        self.assertTrue(copied)
+        self.assertTrue(all(created < i < started for i in copied))
+
+    def test_stopped_database_is_rejected_before_writes_or_container_switch(self):
+        self.images['mysql']['State']['Running'] = False
+        with self.assertRaisesRegex(ValueError, '数据库未运行'):
+            self.update('all')
+        self.assertEqual((self.root / 'nginx.conf').read_bytes(), self.initial['nginx.conf'])
+        self.assertFalse(any('up' in call or 'stop' in call for call in self.calls))
+
+    def test_external_database_volume_writer_prevents_switch(self):
+        self.images['external'] = copy.deepcopy(self.images['mysql'])
+        self.images['external']['Id'] = 'container-external'
+        with self.assertRaisesRegex(ValueError, '其他运行容器共享'):
+            self.update('all')
+        self.assertFalse(self.switched)
 
 
 class EntryPointTests(unittest.TestCase):
@@ -423,7 +526,7 @@ nginx_config_update() {
 }
 '''+isolated+'\nnginx_update_transaction nginx\n'
             scenarios = [({}, 0, True), ({'FAIL_STAGE': 'prepare'}, 1, False),
-                         ({'FAIL_STAGE': 'update'}, 1, True), ({'WAF_FAILURE': '3'}, 3, True),
+                         ({'FAIL_STAGE': 'update'}, 1, True), ({'WAF_FAILURE': '3'}, 3, False),
                          ({'FAIL_STAGE': 'update', 'RECOVERY_FAILURE': '1'}, 86, True),
                          ({'BUSY': '1'}, 75, False)]
             for settings, code, recovered in scenarios:
