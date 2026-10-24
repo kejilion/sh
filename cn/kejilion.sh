@@ -2458,7 +2458,8 @@ import urllib.parse
 import urllib.request
 
 LEGACY = '99f7169d84901be3f34452f375b3e0079cd86b4c'
-REVISION = '8773850871f991b027f62841fde2795121251620'
+PREVIOUS = '8773850871f991b027f62841fde2795121251620'
+REVISION = 'bdb8cc42fb123b09b02dc5940d2596354efebb87'
 SOURCES = {
     LEGACY: {
         'nginx10.conf': 'a4384558dde49df81cefc3da3133daa917563149a002790d5a270701c28a1fbb',
@@ -2466,8 +2467,14 @@ SOURCES = {
         'default11.conf': '8020fb1aa901931c1d0f5e5919159d21eeffe5aa595e80d454c71b6f2bae7ac9',
         'map.conf': 'c35a546a15a40633af6fa8d5f77e5426f03c545e88aeb915bd3a41de9a5ff684',
     },
-    REVISION: {
+    PREVIOUS: {
         'nginx10.conf': 'de56702ed3a5f995059469b833b96c0187a64a5adf912e253800afe683323df3',
+        'default10.conf': '732003ecee46b0c1c17b81439b164e0b8804dcbc27dbd863dd89079006b84d17',
+        'default11.conf': 'd5ba2ae3f712e5ec9631ba0e74bbfcfc0fd80efbab61c4abf74036ddccd524a9',
+        'map.conf': 'c35a546a15a40633af6fa8d5f77e5426f03c545e88aeb915bd3a41de9a5ff684',
+    },
+    REVISION: {
+        'nginx10.conf': 'c1d5d9706c9f1965c1af3664979cf54e0c9173b9b1c3924aeea49da228347d22',
         'default10.conf': '732003ecee46b0c1c17b81439b164e0b8804dcbc27dbd863dd89079006b84d17',
         'default11.conf': 'd5ba2ae3f712e5ec9631ba0e74bbfcfc0fd80efbab61c4abf74036ddccd524a9',
         'map.conf': 'c35a546a15a40633af6fa8d5f77e5426f03c545e88aeb915bd3a41de9a5ff684',

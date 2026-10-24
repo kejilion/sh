@@ -67,6 +67,17 @@ class MergeTests(unittest.TestCase):
             for name, expected in files.items():
                 self.assertEqual(updater.digest(template(revision, name).encode()), expected)
 
+    def test_previous_managed_buffers_migrate_and_custom_buffers_stay(self):
+        old = template(updater.PREVIOUS, 'nginx10.conf')
+        new = template(updater.REVISION, 'nginx10.conf')
+        for live, expected_gzip in [(old, 'gzip_buffers 16 32k;'),
+                                   (old.replace('gzip_buffers 8 256k;', 'gzip_buffers 32 16k;'), 'gzip_buffers 32 16k;')]:
+            with self.subTest(custom=live != old):
+                merged, _ = updater.merge_configuration(old, live, new)
+                self.assertIn(expected_gzip, merged)
+                self.assertIn('output_buffers 2 128k;', merged)
+                self.assertIn('ssl_buffer_size 32k;', merged)
+
 
 class TransactionTests(unittest.TestCase):
     def setUp(self):
