@@ -196,6 +196,10 @@ class TransactionTests(unittest.TestCase):
         files = [Path(args[index + 1]) for index, item in enumerate(args) if item == '-f']
         if args[-3:] == ('config', '--format', 'json'):
             if not files:
+                if getattr(self, 'waf_fixture', False):
+                    current = copy.deepcopy(self.model)
+                    current['services']['nginx']['image'] = json.loads((self.root / 'docker-compose.yml').read_text())['services']['nginx']['image']
+                    return json.dumps(current)
                 return json.dumps(self.model)
             literal = json.loads(files[0].read_text(encoding='utf-8'))
             return json.dumps(literal)
@@ -211,7 +215,8 @@ class TransactionTests(unittest.TestCase):
             self.assertEqual(candidate['services']['nginx']['environment'], self.unescape(self.model['services']['nginx']['environment']))
             self.assertEqual(candidate['services']['nginx']['ports'], ['127.0.0.1:8443:443'])
             main_volume = candidate['services']['nginx']['volumes'][0]
-            self.assertIn('waf/load-module', Path(main_volume['source']).read_text(encoding='utf-8'))
+            if not getattr(self, 'waf_fixture', False):
+                self.assertIn('waf/load-module', Path(main_volume['source']).read_text(encoding='utf-8'))
             self.assertEqual((self.root / 'nginx.conf').read_bytes(), self.initial['nginx.conf'])
             if self.failure == 'preflight':
                 raise RuntimeError('nginx -t failed')
@@ -283,6 +288,59 @@ class TransactionTests(unittest.TestCase):
     @staticmethod
     def normalized_runtime(runtime):
         return {service: {path: value or None for path, value in files.items()} for service, files in runtime.items()}
+
+    def prepare_waf(self):
+        self.waf_fixture = True
+        self.model['services']['nginx']['image'] = 'nginx:alpine'
+        self.seed('docker-compose.yml', json.dumps(self.model))
+        self.images['nginx']['Config'] = {'Image': 'nginx:alpine', 'Labels': {
+            'com.docker.compose.project.config_files': str(self.root / 'docker-compose.yml')}}
+        self.old_images = copy.deepcopy(self.images)
+        updater.snapshot(self.root, self.directory)
+        self.initial = {name: (self.root / name).read_bytes() for name in updater.inventory(self.root)}
+
+    def test_waf_image_switch_preserves_custom_config_and_does_not_commit_before_policy(self):
+        self.prepare_waf()
+        updater.execute_update(self.root, self.directory, 'waf', 'https://')
+        self.assertEqual(json.loads((self.directory / 'journal.json').read_text())['phase'], 'switching')
+        self.assertEqual((self.root / 'nginx.conf').read_bytes(), self.initial['nginx.conf'])
+        self.assertEqual(json.loads((self.root / 'docker-compose.yml').read_text())['services']['nginx']['image'], 'kjlion/nginx:alpine')
+        updater.rollback(self.root, self.directory)  # A later policy/configuration failure.
+        self.assertEqual((self.root / 'docker-compose.yml').read_bytes(), self.initial['docker-compose.yml'])
+        self.assertEqual(self.images, self.old_images)
+
+    def test_waf_pull_and_preflight_and_switch_failures_restore_compose_and_image(self):
+        self.prepare_waf()
+        updater.rollback(self.root, self.directory)
+        for failure in ('pull', 'preflight', 'up', 'ready'):
+            with self.subTest(failure=failure):
+                self.failure = failure
+                self.directory = self.root / 'backups/nginx-update' / failure
+                self.directory.mkdir(mode=0o700)
+                updater.snapshot(self.root, self.directory)
+                with self.assertRaises(RuntimeError):
+                    updater.execute_update(self.root, self.directory, 'waf', 'https://')
+                updater.rollback(self.root, self.directory)
+                self.assertEqual((self.root / 'docker-compose.yml').read_bytes(), self.initial['docker-compose.yml'])
+                self.assertEqual(self.images, self.old_images)
+
+    def test_waf_yaml_override_image_only_edit_preserves_comments_and_other_services(self):
+        self.prepare_waf()
+        original = '# user\nservices:\n  nginx:\n    environment:\n      CF_MODE: "true"\n    image: ${NGINX_IMAGE:-nginx:alpine} # old\n  php:\n    image: custom/php:8.3\n'
+        self.seed('docker-compose.override.yml', original)
+        container = copy.deepcopy(self.images['nginx'])
+        container['Config']['Labels']['com.docker.compose.project.config_files'] += ',' + str(self.root / 'docker-compose.override.yml')
+        name, result = updater.waf_image_plan(self.root, self.model, container)
+        self.assertEqual(name, 'docker-compose.override.yml')
+        self.assertEqual(result.decode(), original.replace('image: ${NGINX_IMAGE:-nginx:alpine} # old', 'image: kjlion/nginx:alpine'))
+
+    def test_waf_custom_image_or_build_cannot_be_automatically_replaced(self):
+        self.prepare_waf()
+        for changes in ({'image': 'custom/nginx:latest'}, {'build': './custom'}):
+            model = copy.deepcopy(self.model)
+            model['services']['nginx'].update(changes)
+            with self.assertRaisesRegex(ValueError, '自定义镜像'):
+                updater.waf_image_plan(self.root, model, self.images['nginx'])
 
     def test_success_migrates_common_files_preserves_sites_and_persists_verified_baselines(self):
         original_inode = (self.root / 'nginx.conf').stat().st_ino
@@ -598,6 +656,38 @@ class TransactionTests(unittest.TestCase):
 
 
 class EntryPointTests(unittest.TestCase):
+    @unittest.skipUnless(os.name != 'nt', 'requires Linux Bash and /proc')
+    def test_waf_commit_handoff_and_interrupted_policy_do_not_rollback_image(self):
+        start = SCRIPT.index('nginx_update_transaction() {\n')
+        body = SCRIPT[start:SCRIPT.index('\n}\n', start) + 3]
+        with tempfile.TemporaryDirectory(prefix='nginx-waf-handoff-', dir='/root') as temporary:
+            root = Path(temporary)
+            body = body.replace('/home/web', str(root)).replace('/run/lock', str(root))
+            shell = '''
+WAF_PYTHON=python3
+send_stats() { :; }
+shared_waf() { echo unexpected-policy-rollback >> "$ACTIONS"; }
+nginx_waf_configure() {
+  if [ "$SCENARIO" = interrupted ]; then kill -TERM "$BASHPID"; fi
+  printf '{"backup":"/test-policy"}\\n'
+}
+nginx_config_update() {
+  printf '%s\\n' "$1" >> "$ACTIONS"
+  case "$1" in
+    commit-waf) touch "$COMMITTED"; return 1 ;;
+    phase) if [ -f "$COMMITTED" ]; then echo committed; else echo switching; fi ;;
+  esac
+}
+'''+body+'\nnginx_update_transaction waf on\n'
+            for scenario, code in [('handoff', 1), ('interrupted', 86)]:
+                log, committed = root / 'actions', root / 'committed'
+                log.write_text('')
+                committed.unlink(missing_ok=True)
+                result = subprocess.run(['bash', '-c', shell], capture_output=True, text=True,
+                                        env=dict(os.environ, ACTIONS=str(log), COMMITTED=str(committed), SCENARIO=scenario), timeout=20)
+                self.assertEqual(result.returncode, code, result.stderr)
+                self.assertNotIn('rollback', log.read_text())
+
     def test_cli_and_panel_full_update_use_same_transaction(self):
         body = SCRIPT.split('ldnmp_update_action() {\n', 1)[1].split('\n}\n', 1)[0]
         self.assertIn('ldnmp_upgrade_all', body)

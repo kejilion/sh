@@ -3142,6 +3142,89 @@ def restore_data(directory, compose, services):
         command('tar', '--acls', '--xattrs', '--numeric-owner', '--compare', '-f', str(archive), '-C', str(source))
 
 
+def waf_image_plan(root, model, container):
+    """Edit only the active nginx image declaration, then verify the full model."""
+    official = r'(?:(?:docker\.io/)?library/|docker\.io/)?nginx(?::[\w.-]+|@sha256:[0-9a-f]{64})?'
+    service = model['services']['nginx']
+    if service.get('build') or not re.fullmatch(official, service.get('image', '')):
+        raise ValueError('仅自动迁移官方 nginx 镜像；自定义镜像请先核对 ModSecurity 兼容性')
+    sources = container['Config'].get('Labels', {}).get('com.docker.compose.project.config_files', '')
+    paths = [Path(name) for name in sources.split(',') if name]
+    owned = inventory(root)
+    if not paths or any(path.parent != root or path.name not in owned for path in paths):
+        # A previous transactional rollback used an immutable canonical snapshot.
+        # Resolve today's native Compose inputs so a failed attempt can be retried.
+        environment = command('docker', 'compose', '--project-directory', str(root), 'config', '--environment')
+        values = dict(line.split('=', 1) for line in environment.splitlines() if '=' in line)
+        if values.get('COMPOSE_FILE'):
+            paths = [Path(name) if Path(name).is_absolute() else root / name
+                     for name in values['COMPOSE_FILE'].split(values.get('COMPOSE_PATH_SEPARATOR', os.pathsep))]
+        else:
+            base = next((root / name for name in ('compose.yaml', 'compose.yml', 'docker-compose.yml', 'docker-compose.yaml')
+                         if (root / name).exists()), None)
+            if base is None:
+                raise ValueError('无法找到原生 Compose 文件，未修改镜像')
+            overrides = ('compose.override.yaml', 'compose.override.yml') if base.name.startswith('compose.') else ('docker-compose.override.yml', 'docker-compose.override.yaml')
+            extra = next((root / name for name in overrides if (root / name).exists()), None)
+            paths = [base] + ([extra] if extra else [])
+        if any(path.parent != root or path.name not in owned for path in paths):
+            raise ValueError('当前 Compose 文件超出受管恢复范围，未修改镜像')
+    # Last active declaration wins. Keep YAML comments, env interpolation, all
+    # other services and overrides verbatim; unsupported flow syntax fails closed.
+    insertion = None
+    for path in reversed(paths):
+        data = path.read_bytes()
+        text = data.decode('utf-8')
+        try:
+            document = json.loads(text)
+        except ValueError:
+            document = None
+        if isinstance(document, dict):
+            if 'nginx' not in document.get('services', {}):
+                continue
+            explicit = 'image' in document['services']['nginx']
+            document['services']['nginx']['image'] = 'kjlion/nginx:alpine'
+            candidate = path.name, (json.dumps(document, ensure_ascii=False) + '\n').encode()
+            if explicit:
+                return candidate
+            if insertion is None:
+                insertion = candidate
+            continue
+        lines = text.splitlines(keepends=True)
+        services = False
+        for index, line in enumerate(lines):
+            if re.match(r'^services:\s*(?:#.*)?$', line.rstrip()):
+                services = True
+                continue
+            if services and re.match(r'^\S', line) and not line.lstrip().startswith('#'):
+                services = False
+            match = re.fullmatch(r'( +)nginx:\s*(?:&[\w-]+\s*)?(?:#.*)?', line.rstrip()) if services else None
+            if not match:
+                continue
+            indent = len(match[1])
+            end = index + 1
+            while end < len(lines):
+                stripped = lines[end].strip()
+                if stripped and not stripped.startswith('#') and len(lines[end]) - len(lines[end].lstrip()) <= indent:
+                    break
+                end += 1
+            direct = [len(item) - len(item.lstrip()) for item in lines[index + 1:end]
+                      if item.strip() and not item.lstrip().startswith('#')]
+            child = min(direct) if direct else indent + 2
+            newline = '\r\n' if line.endswith('\r\n') else '\n'
+            for offset in range(index + 1, end):
+                if re.match(r'^ {%d}image\s*:' % child, lines[offset]):
+                    lines[offset] = ' ' * child + 'image: kjlion/nginx:alpine' + newline
+                    return path.name, ''.join(lines).encode()
+            lines.insert(index + 1, ' ' * child + 'image: kjlion/nginx:alpine' + newline)
+            if insertion is None:
+                insertion = path.name, ''.join(lines).encode()
+            break
+    if insertion is not None:
+        return insertion
+    raise ValueError('Compose 使用了未支持的 nginx 声明格式，未修改镜像')
+
+
 def execute_update(root, directory, component, prefix):
     remember(root, directory)
     model = json.loads(command('docker', 'compose', '--project-directory', str(root), 'config', '--format', 'json'))
@@ -3157,9 +3240,12 @@ def execute_update(root, directory, component, prefix):
     if 'nginx' not in services:
         raise ValueError('Nginx 所需的 Compose profile 未启用')
     previous = {}
+    nginx_container = None
     for name in services:
         identifiers = command(*compose, 'ps', '-a', '-q', name).split()
         containers = [json.loads(command('docker', 'inspect', item))[0] for item in identifiers]
+        if name == 'nginx' and len(containers) == 1:
+            nginx_container = containers[0]
         if len({item['Image'] for item in containers}) > 1:
             raise ValueError('同一服务使用多个镜像，无法建立完整恢复点: ' + name)
         if len({item['State']['Running'] for item in containers}) > 1:
@@ -3170,6 +3256,21 @@ def execute_update(root, directory, component, prefix):
             previous[name] = {'image': containers[0]['Image'],
                               'running': any(item['State']['Running'] for item in containers)}
     json_write(directory / 'images.json', {'services': services, 'previous': previous})
+    if component == 'waf':
+        if nginx_container is None or not nginx_container['State']['Running']:
+            raise ValueError('WAF 自动迁移需要单个运行中的 nginx 容器')
+        journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
+        journal['component'] = 'waf'
+        json_write(directory / 'journal.json', journal)
+        name, data = waf_image_plan(root, model, nginx_container)
+        remember(root, directory)
+        install_configuration(root, directory, name, data, inventory(root)[name]['mode'])
+        desired = copy.deepcopy(model)
+        desired['services']['nginx']['image'] = 'kjlion/nginx:alpine'
+        model = json.loads(command('docker', 'compose', '--project-directory', str(root), 'config', '--format', 'json'))
+        if model != desired:
+            raise ValueError('镜像迁移改变了其他有效 Compose 参数，已中止: ' + ', '.join(changed_paths(desired, model)[:10]))
+        compose = compose_file(directory, 'target.json', model)
     if component == 'all':
         snapshot_runtime(directory, compose, previous)
     command(*compose, 'pull', *services)
@@ -3180,7 +3281,7 @@ def execute_update(root, directory, component, prefix):
         path = stage / name
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         path.write_bytes((root / name).read_bytes())
-    state, messages = migrate(root, stage, prefix)
+    state, messages = migrate(root, stage, prefix) if component != 'waf' else (None, [])
     fresh_php = [name for name in ('php', 'php74') if name in services and name not in previous]
     if component == 'all':
         for relative in inventory_before:
@@ -3210,7 +3311,7 @@ def execute_update(root, directory, component, prefix):
     if not {'nginx.conf', 'conf.d'} <= covered:
         raise ValueError('需要 nginx.conf 和 conf.d 的独立 bind 挂载才能隔离验证候选配置')
     preflight = compose_file(directory, 'candidate.json', candidate)
-    command(*preflight, 'run', '--rm', '--no-deps', '--entrypoint', 'nginx', 'nginx', '-t')
+    command(*preflight, 'run', '--rm', '--no-deps', '--pull', 'never', '--entrypoint', 'nginx', 'nginx', '-t')
     if inventory(root) != inventory_before:
         raise ValueError('预检期间配置发生变化，未写入候选配置')
     data_plan = prepare_data(directory, compose, services) if component == 'all' else None
@@ -3256,6 +3357,10 @@ def execute_update(root, directory, component, prefix):
         command('bash', str(directory / 'after-switch.sh'), *fresh_php)
     wait_ready(compose, services)
     remember(root, directory)
+    if component == 'waf':
+        # The caller activates the shared policy before committing this image
+        # transaction. A policy failure therefore restores the exact old image.
+        return
     # Versions only advance after the real container passes validation/readiness.
     data = (json.dumps(state, ensure_ascii=False) + '\n').encode()
     journal['touched'][STATE] = {'sha256': digest(data), 'mode': 0o600}
@@ -3319,6 +3424,10 @@ def rollback(root, directory):
             restore_data(directory, compose, data['services'])
         existing = list(data['previous'])
         if existing:
+            if journal.get('component') == 'waf':
+                # Do not replace a working WAF-capable container with an ordinary
+                # image if policy recovery left any ModSecurity directives active.
+                command(*compose, '-f', str(directory / 'rollback.json'), 'run', '--rm', '--no-deps', '--pull', 'never', '--entrypoint', 'nginx', 'nginx', '-t')
             command(*compose, '-f', str(directory / 'rollback.json'), 'up', '--no-start', '--force-recreate', '--no-deps', '--pull', 'never', *existing)
             if (directory / 'runtime.json').exists():
                 restore_runtime(directory, compose)
@@ -3350,7 +3459,7 @@ def main():
         trusted(parent, directory=True)
     if directory.parent != root / 'backups/nginx-update':
         raise ValueError('更新恢复点不在约定目录')
-    if component not in {'nginx', 'all'}:
+    if component not in {'nginx', 'all', 'waf'}:
         raise ValueError('不支持的更新组件')
     if action == 'prepare':
         snapshot(root, directory)
@@ -3358,8 +3467,19 @@ def main():
         execute_update(root, directory, component, prefix)
     elif action == 'remember':
         remember(root, directory)
+    elif action == 'phase':
+        print(json.loads((directory / 'journal.json').read_text(encoding='utf-8'))['phase'])
     elif action == 'rollback':
         rollback(root, directory)
+    elif action == 'commit-waf' and component == 'waf':
+        journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
+        if journal['phase'] != 'switching':
+            raise ValueError('WAF 镜像事务尚未完成切换')
+        for name, expected in journal['touched'].items():
+            if inventory(root).get(name) != expected:
+                raise ValueError('WAF 迁移期间 Compose 发生变化: ' + name)
+        journal['phase'] = 'committed'
+        json_write(directory / 'journal.json', journal)
     else:
         raise ValueError('不支持的配置迁移动作')
 
@@ -3376,7 +3496,7 @@ NGINX_CONFIG_UPDATE
 nginx_update_transaction() {
   (
   local inherited_lock_fd="${lock_fd:-${http_lock_fd:-}}"
-  local component="${1:-nginx}" directory lock_fd prepared=false rc
+  local component="${1:-nginx}" directory lock_fd prepared=false rc waf_result="" waf_backup="" waf_policy_pending=false
   cd /home/web/ || return 1
   command -v python3 >/dev/null 2>&1 && python3 -I -c 'import sys; raise SystemExit(sys.version_info < (3,8))' || {
     echo "Nginx 配置更新需要 Python 3.8+" >&2; return 1;
@@ -3397,13 +3517,24 @@ nginx_update_transaction() {
   [ ! -L /home/web/backups ] && [ ! -L /home/web/backups/nginx-update ] || return 1
   # WAF has its own complete transaction. Its successful refresh remains applied
   # if a later image/config update fails; never claim unrelated SSH edits as ours.
-  shared_waf_refresh || return $?
+  if [ "$component" != waf ]; then shared_waf_refresh || return $?; fi
   mkdir -p /home/web/backups/nginx-update || return 1
   directory=$(mktemp -d /home/web/backups/nginx-update/$(date -u +%Y%m%dT%H%M%SZ).XXXXXX) || return 1
   trap 'rc=$?; trap - EXIT; if [ "$prepared" = true ]; then
+    phase=$(nginx_config_update phase /home/web "$directory" "$component" "${gh_proxy:-https://}") || {
+      echo "无法确认事务提交状态，保留恢复点: $directory" >&2; exit 86;
+    };
+    if [ "$phase" != committed ]; then
+    if [ "$waf_policy_pending" = true ]; then
+      echo "WAF 策略结果尚未确认，保留当前兼容镜像和恢复点，请检查: $directory" >&2; exit 86;
+    fi;
+    if [ -n "$waf_backup" ]; then shared_waf rollback --backup "$waf_backup" || {
+      echo "WAF 策略恢复失败，保留当前镜像及恢复点: $directory" >&2; exit 86;
+    }; fi;
     nginx_config_update rollback /home/web "$directory" "$component" "${gh_proxy:-https://}" || {
       echo "自动恢复未完成，请使用保留的恢复点检查配置和容器: $directory" >&2; rc=86;
     };
+    fi;
   else rmdir -- "$directory" 2>/dev/null || true; fi; exit "$rc"' EXIT
   nginx_config_update prepare /home/web "$directory" "$component" "${gh_proxy:-https://}" || return 1
   prepared=true
@@ -3421,6 +3552,17 @@ nginx_update_transaction() {
     } > "$directory/after-switch.sh" || return 1
   fi
   nginx_config_update update /home/web "$directory" "$component" "${gh_proxy:-https://}" || return 1
+  if [ "$component" = waf ]; then
+    waf_policy_pending=true
+    waf_result=$(nginx_waf_configure "${2:-on}") || {
+      rc=$?; if [ "$rc" -ne 86 ] && [ "$rc" -lt 128 ]; then waf_policy_pending=false; fi; return "$rc";
+    }
+    waf_backup=$(printf '%s' "$waf_result" | "$WAF_PYTHON" -I -c 'import json,sys; print(json.load(sys.stdin).get("backup",""))') || return 1
+    waf_policy_pending=false
+    nginx_config_update commit-waf /home/web "$directory" "$component" "${gh_proxy:-https://}" || return 1
+    waf_backup=""
+    printf '%s\n' "$waf_result"
+  fi
   send_stats "更新$component" || true
   )
 }
@@ -3785,11 +3927,18 @@ nginx_reload() {
 
 nginx_waf() {
 	case "${1:-}" in on|off|detect) ;; *) echo "使用 on / off / detect" >&2; return 2 ;; esac
-	shared_waf_prepare || return 1
-	if ! docker exec nginx test -f /etc/nginx/modules/ngx_http_modsecurity_module.so; then
-		echo "当前镜像不支持 ModSecurity；请先按兼容说明迁移至 kjlion/nginx，再启用 WAF" >&2
-		return 1
+	[ "$(docker inspect --format '{{.State.Running}}' nginx)" = true ] || {
+		echo "nginx 容器不可用，未更改 WAF" >&2; return 1;
+	}
+	local has_module=false
+	if docker exec nginx test -f /etc/nginx/modules/ngx_http_modsecurity_module.so; then has_module=true; fi
+	if [ "$has_module" = false ] && [ "$1" = off ]; then
+		# An unavailable daemon/container must never be mistaken for WAF Off.
+		docker exec nginx nginx -t || return 1
+		echo "当前 Nginx 未加载 ModSecurity，WAF 已处于关闭状态"
+		return 0
 	fi
+	shared_waf_prepare || return 1
 	# Dependencies are checked before changing inspection or existing jails.
 	if [ "$1" != off ]; then
 		command -v logrotate >/dev/null 2>&1 && command -v crontab >/dev/null 2>&1 || {
@@ -3797,13 +3946,28 @@ nginx_waf() {
 		}
 	fi
 	# The rotation preflight must succeed before changing request inspection.
-	if [ "$1" != off ]; then shared_waf rotation || return 1; fi
+	if [ "$1" != off ]; then
+		if [ -f /home/web/config/waf/policy.json ]; then
+			shared_waf rotation || return 1
+		else
+			shared_waf rotation --policy "$WAF_DIRECTORY/example-policy.json" || return 1
+		fi
+	fi
+	if [ "$has_module" = false ]; then
+		echo "正在自动迁移至 WAF 兼容镜像；保留现有配置并建立恢复点" >&2
+		nginx_update_transaction waf "$1"
+		return $?
+	fi
+	nginx_waf_configure "$1"
+}
+
+nginx_waf_configure() {
 	local result backup
-	result=$(shared_waf configure --mode "$1") || return 1
+	result=$(shared_waf configure --mode "$1") || return $?
 	# Refresh only an existing managed event source; preserve every action/backend.
-	if ! shared_waf existing-filters; then
+	if ! shared_waf existing-filters >/dev/null; then
 		backup=$(printf '%s' "$result" | "$WAF_PYTHON" -I -c 'import json,sys; print(json.load(sys.stdin).get("backup",""))') || return 1
-		if [ -n "$backup" ]; then shared_waf rollback --backup "$backup" || return 1; fi
+		if [ -n "$backup" ]; then shared_waf rollback --backup "$backup" || return 86; fi
 		return 1
 	fi
 	printf '%s\n' "$result"
@@ -4256,15 +4420,25 @@ web_security() {
 					  ;;
 
 				  31)
-					  nginx_waf on
-					  echo "站点WAF已开启"
-					  send_stats "站点WAF已开启"
+					  if nginx_waf on; then
+						  echo "站点WAF已开启"
+						  send_stats "站点WAF已开启"
+					  else
+						  echo "WAF 开启失败，请检查以上错误与恢复点" >&2
+						  read -r -n 1 -s -p "按任意键继续..."
+						  continue
+					  fi
 					  ;;
 
 				  32)
-				  	  nginx_waf off
-					  echo "站点WAF已关闭"
-					  send_stats "站点WAF已关闭"
+					  if nginx_waf off; then
+						  echo "站点WAF已关闭"
+						  send_stats "站点WAF已关闭"
+					  else
+						  echo "WAF 关闭失败，请检查以上错误与恢复点" >&2
+						  read -r -n 1 -s -p "按任意键继续..."
+						  continue
+					  fi
 					  ;;
 
 				  33)

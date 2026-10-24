@@ -4,7 +4,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 bash -n "$root/kejilion.sh"
-for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh shared_waf_remove_rotation nginx_reload nginx_waf shared_waf_mode nginx_wait_ready nginx_upgrade ldnmp_upgrade_all nginx_install_all ldnmp_protection_action ldnmp_uninstall_action; do
+for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh shared_waf_remove_rotation nginx_reload nginx_waf nginx_waf_configure web_security shared_waf_mode nginx_wait_ready nginx_upgrade ldnmp_upgrade_all nginx_install_all ldnmp_protection_action ldnmp_uninstall_action; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh" >> "$fixture/functions"
 done
 sed -e "s|/home/web|$fixture/web|g" -e "s|/root/.waf-cron-cleanup.|$fixture/.waf-cron-cleanup.|g" "$fixture/functions" > "$fixture/isolated"
@@ -20,8 +20,14 @@ fi
 calls="$fixture/calls"
 test_python="${WAF_TEST_PYTHON:-$(command -v python3)}"
 python3() { "$test_python" "$@"; }
-shared_waf_prepare() { WAF_PYTHON="$test_python"; }
-docker() { printf 'docker %s\n' "$*" >> "$calls"; return "${module_failure:-0}"; }
+shared_waf_prepare() { WAF_PYTHON="$test_python"; WAF_DIRECTORY="$fixture/bundle"; }
+docker() {
+  printf 'docker %s\n' "$*" >> "$calls"
+  if [ "$1" = inspect ]; then printf '%s\n' "${container_running:-true}"; return 0; fi
+  if [ "${2:-}" = nginx ] && [ "${3:-}" = test ]; then return "${module_failure:-0}"; fi
+  return 0
+}
+nginx_update_transaction() { printf 'transaction %s\n' "$*" >> "$calls"; return "${migration_failure:-0}"; }
 logrotate() { :; }
 crontab() { :; }
 shared_waf() {
@@ -29,18 +35,29 @@ shared_waf() {
   case "$1" in
     rotation) return "${rotation_failure:-0}" ;;
     configure)
-      [ "${configure_failure:-0}" = 0 ] || return 1
+      [ "${configure_failure:-0}" = 0 ] || return "$configure_failure"
       printf '{"applied":true,"backup":"/home/web/backups/waf-managed/test-policy"}\n' ;;
-    existing-filters) return "${filter_failure:-0}" ;;
+    existing-filters) printf '{"changed":false}\n'; return "${filter_failure:-0}" ;;
+    rollback) return "${rollback_failure:-0}" ;;
   esac
 }
-reset_calls() { : > "$calls"; module_failure=0; rotation_failure=0; configure_failure=0; filter_failure=0; }
+reset_calls() { : > "$calls"; module_failure=0; rotation_failure=0; configure_failure=0; filter_failure=0; rollback_failure=0; migration_failure=0; container_running=true; }
 reset_calls
 if nginx_waf invalid 2>/dev/null; then exit 1; fi
 [ ! -s "$calls" ]
-module_failure=1
+module_failure=1; migration_failure=1
 if nginx_waf on 2>/dev/null; then exit 1; fi
 ! grep -q configure "$calls"
+grep -Fx 'transaction waf on' "$calls"
+reset_calls; module_failure=1
+nginx_waf detect >/dev/null
+grep -Fx 'transaction waf detect' "$calls"
+reset_calls; module_failure=1
+nginx_waf off >/dev/null
+! grep -q '^transaction\|^configure' "$calls"
+reset_calls; container_running=false
+if nginx_waf off 2>/dev/null; then exit 1; fi
+! grep -q '^transaction\|^configure' "$calls"
 
 reset_calls; rotation_failure=1
 if nginx_waf on; then exit 1; fi
@@ -50,9 +67,18 @@ reset_calls; configure_failure=1
 if nginx_waf on; then exit 1; fi
 ! grep -q existing-filters "$calls"
 
+reset_calls; configure_failure=143
+if nginx_waf on >/dev/null; then exit 1; else [ "$?" = 143 ]; fi
+! grep -q existing-filters "$calls"
+
 reset_calls; filter_failure=1
 if nginx_waf on >/dev/null; then exit 1; fi
 grep -Fx 'rollback --backup /home/web/backups/waf-managed/test-policy' "$calls"
+reset_calls; filter_failure=1; rollback_failure=1
+if nginx_waf on >/dev/null; then exit 1; else [ "$?" = 86 ]; fi
+
+reset_calls
+nginx_waf_configure on | "$test_python" -I -c 'import json,sys; assert json.load(sys.stdin)["applied"]'
 
 reset_calls
 nginx_waf off >/dev/null
@@ -63,7 +89,7 @@ grep -Fx existing-filters "$calls"
 reset_calls
 nginx_waf on >/dev/null
 grep -Fx 'configure --mode on' "$calls"
-grep -Fx rotation "$calls"
+grep -F "rotation --policy $fixture/bundle/example-policy.json" "$calls"
 
 # The legacy partial snapshot must never wrap a complete shared transaction.
 reset_calls
@@ -81,6 +107,24 @@ mkdir -p "$fixture/web/config/waf"
 printf '{}\n' > "$fixture/web/config/waf/policy.json"
 shared_waf_refresh
 grep -Fx apply "$calls"
+
+# Execute the actual menu branches: no success text, telemetry, or generic
+# completion after either failure. Continue and return remain interactive.
+(
+  send_stats() { printf 'stats %s\n' "$*" >> "$calls"; }
+  check_f2b_status() { :; }; check_waf_status() { :; }; check_cf_mode() { :; }; clear() { :; }
+  break_end() { echo '操作完成'; }
+  gl_lv=; gl_bai=; CFmessage=; waf_status=; check_f2b_status=
+  nginx_waf() { return 1; }
+  for choice in 31 32; do
+    : > "$calls"
+    web_security <<< "$choice
+x0" > "$fixture/menu-failure" 2>&1
+    ! grep -Eq '站点WAF已|操作完成' "$fixture/menu-failure"
+    ! grep -q 'stats 站点WAF已' "$calls"
+    grep -q '失败' "$fixture/menu-failure"
+  done
+)
 
 # Image/config migration failure cases live in test_nginx_config_update.py.
 # Keep this suite focused on native WAF behavior and entry-point delegation.
