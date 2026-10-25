@@ -160,22 +160,39 @@ CheckFirstRun_true() {
 
 
 
+stats_json_escape() {
+	local value="$1" code octal control escaped
+	value=${value//\\/\\\\}
+	value=${value//\"/\\\"}
+	for ((code=1; code<32; code++)); do
+		printf -v octal '%03o' "$code"
+		printf -v control '%b' "\\$octal"
+		printf -v escaped '\\u%04x' "$code"
+		value=${value//"$control"/"$escaped"}
+	done
+	printf '%s' "$value"
+}
+
 send_stats() {
-	if [ "$ENABLE_STATS" == "false" ]; then
-		return
-	fi
-
-	local country=$(curl -s ipinfo.io/country)
-	local os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
-	local cpu_arch=$(uname -m)
-
+	[ "${ENABLE_STATS:-true}" != false ] || return 0
+	local action="${1:-}" now="$SECONDS"
+	if [[ "${KJ_STATS_PID:-}" =~ ^[0-9]+$ ]] && kill -0 "$KJ_STATS_PID" 2>/dev/null; then return 0; fi
+	if [[ "${KJ_STATS_LAST_SEND:-}" =~ ^[0-9]+$ ]] && (( now - KJ_STATS_LAST_SEND < 2 )); then return 0; fi
+	KJ_STATS_LAST_SEND="$now"
 	(
-		curl -s -X POST "https://api.kejilion.pro/api/log" \
-			-H "Content-Type: application/json" \
-			-d "{\"action\":\"$1\",\"timestamp\":\"$(date -u '+%Y-%m-%d %H:%M:%S')\",\"country\":\"$country\",\"os_info\":\"$os_info\",\"cpu_arch\":\"$cpu_arch\",\"version\":\"$sh_v\"}" \
-		&>/dev/null
+		local country os_info cpu_arch payload
+		country=$(curl -fsS --connect-timeout 2 --max-time 3 --max-filesize 64 https://ipinfo.io/country 2>/dev/null) || country=""
+		[[ "$country" =~ ^[A-Z]{2}$ ]] || country=""
+		os_info=$(grep PRETTY_NAME /etc/os-release | cut -d '=' -f2 | tr -d '"')
+		cpu_arch=$(uname -m)
+		printf -v payload '{"action":"%s","timestamp":"%s","country":"%s","os_info":"%s","cpu_arch":"%s","version":"%s"}' \
+			"$(stats_json_escape "$action")" "$(date -u '+%Y-%m-%d %H:%M:%S')" "$country" \
+			"$(stats_json_escape "$os_info")" "$(stats_json_escape "$cpu_arch")" "$(stats_json_escape "$sh_v")"
+		curl -fsS --connect-timeout 2 --max-time 5 -X POST https://api.kejilion.pro/api/log \
+			-H 'Content-Type: application/json' --data-binary "$payload" >/dev/null 2>&1
 	) &
-
+	KJ_STATS_PID=$!
+	return 0
 }
 
 
@@ -3732,13 +3749,13 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' 'eb58fe449d916d83ee5961a0a09702210919aff5'
+	printf '%s\n' '16620161a319443747ac0fc89242cbf510e89716'
 }
 
 shared_waf_manifest() {
 	cat <<'WAF_MANIFEST'
-f76a287b138df5ececebf2bef2524888f922e22d1146bd05358e65fc42e88a85  configure.py
-41926eecd50593ad5e3166dc3e6cd8ec6063de1ebc7c5df52e8f9a3102723585  policy.py
+3c425c2214370e2ef68eab7ab629ebf7c0841c77c0c35716790a9fb329590360  configure.py
+7c1f19aad330622eca3c7d3ae3b735d2875113375f7318327cb1f44fa1bbeec6  policy.py
 954e6f6a590a5bafee495b708b8f0876bc612020ba50704d3c41020a53319d31  nginx_edit.py
 aee6fd651ceb6441acce6dc6b510e504d7127b2bba1ce84ca361655590c615b0  example-policy.json
 e6be6df199bc4ad607b6bcd7273a62a4884e5aa841786db1d8d5a2284f573179  cloudflare-ips.json
