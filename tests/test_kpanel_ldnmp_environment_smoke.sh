@@ -27,7 +27,8 @@ grep -F '[ "${KJ_LDNMP_NONINTERACTIVE:-}" = "1" ] ||' "${script_path}" >/dev/nul
 grep -F 'KPANEL_LDNMP_PROTOCOL 1' "${script_path}" >/dev/null
 grep -F 'KPANEL_LDNMP_EVENT {' "${script_path}" >/dev/null
 grep -F 'KPANEL_LDNMP_RESULT %s' "${script_path}" >/dev/null
-grep -F '/var/lib/kejilion-panel/environment-jobs/*.receipt)' "${script_path}" >/dev/null
+grep -F '/var/lib/kejilion-panel/environment-jobs/*.receipt|' "${script_path}" >/dev/null
+grep -F '/home/docker/kpanel/data/agent/environment-jobs/*.receipt)' "${script_path}" >/dev/null
 grep -F "grep -Eq '^web_[0-9]{14}\\.tar\\.gz$'" "${script_path}" >/dev/null
 grep -F 'docker compose -f "$stage/web/docker-compose.yml" config -q' "${script_path}" >/dev/null
 grep -F 'kpanel_ldnmp_dispatch "$@"' "${script_path}" >/dev/null

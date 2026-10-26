@@ -16080,7 +16080,7 @@ kpanel_ldnmp_result() {
 		"$1" "$2" "$(kpanel_ldnmp_escape "$3")" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')")
 	printf 'KPANEL_LDNMP_RESULT %s\n' "$payload"
 	case "${KJ_LDNMP_RECEIPT:-}" in
-		/var/lib/kejilion-panel/environment-jobs/*.receipt)
+		/var/lib/kejilion-panel/environment-jobs/*.receipt|/home/docker/kpanel/data/agent/environment-jobs/*.receipt)
 			umask 077
 			printf '%s\n' "$payload" > "${KJ_LDNMP_RECEIPT}.tmp.$$" &&
 				mv -f "${KJ_LDNMP_RECEIPT}.tmp.$$" "$KJ_LDNMP_RECEIPT"
