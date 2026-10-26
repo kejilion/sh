@@ -20,6 +20,8 @@ export MOCK_NPM_ARGS_LOG="${temporary_dir}/npm-args.log"
 export MOCK_K_ARGS_LOG="${temporary_dir}/k-args.log"
 export MOCK_DOCKER_ARGS_LOG="${temporary_dir}/docker-args.log"
 export MOCK_SETFACL_ARGS_LOG="${temporary_dir}/setfacl-args.log"
+export MOCK_CURL_ARGS_LOG="${temporary_dir}/curl-args.log"
+export MOCK_SYSTEMCTL_ARGS_LOG="${temporary_dir}/systemctl-args.log"
 export PATH="${temporary_dir}/bin:${PATH}"
 mkdir -p "${temporary_dir}/bin" "$DSH_HOME" "$DEEPSEEK_HARNESS_WEB_CONF_DIR" "$DEEPSEEK_HARNESS_WEB_CERT_DIR"
 
@@ -51,14 +53,21 @@ printf '%s\n' "$@" >"$MOCK_NPM_ARGS_LOG"
 MOCK
 cat >"${temporary_dir}/bin/systemctl" <<'MOCK'
 #!/bin/bash
+printf '%s\n' "$*" >>"$MOCK_SYSTEMCTL_ARGS_LOG"
 if [ "$*" = "daemon-reload" ]; then
 	exit 0
 fi
+[ "${MOCK_SYSTEMCTL_ACTIVE:-false}" = true ] && exit 0
 exit 1
 MOCK
 cat >"${temporary_dir}/bin/curl" <<'MOCK'
 #!/bin/bash
-exit 1
+printf '%s\n' "$@" >"$MOCK_CURL_ARGS_LOG"
+[ "${MOCK_CURL_EXIT:-1}" = 0 ] || exit 1
+printf '%s' "${MOCK_CURL_BODY:-}"
+if [[ " $* " == *' --max-time 2 '* ]]; then
+	printf '\n%s' "${MOCK_CURL_STATUS:-000}"
+fi
 MOCK
 cat >"${temporary_dir}/bin/openssl" <<'MOCK'
 #!/bin/bash
@@ -153,13 +162,39 @@ mapfile -t npm_args <"$MOCK_NPM_ARGS_LOG"
 [ "${npm_args[2]}" = '@deepseek-ai/dsh@latest' ]
 write_api_key 'sk-test-secret-1234'
 grep -qxF 'DEEPSEEK_API_KEY=sk-test-secret-1234' "$DSH_ENV_FILE"
-grep -qxF 'DEEPSEEK_BASE_URL=https://api.deepseek.com' "$DSH_ENV_FILE"
+grep -qxF 'DEEPSEEK_BASE_URL=https://api.deepseek.com/anthropic' "$DSH_ENV_FILE"
 [ "$(stat -c '%a' "$DSH_ENV_FILE")" = "600" ]
 [ "$(mask_api_key 'sk-test-secret-1234')" = 'sk-****1234' ]
 if valid_api_key 'sk-invalid key'; then
 	echo 'FAIL: unsafe API key was accepted' >&2
 	exit 1
 fi
+
+# Existing installs migrate without losing the API key or unrelated fields.
+for legacy_url in https://api.deepseek.com https://api.deepseek.com/ https://api.deepseek.com/v1 https://api.deepseek.com/v1/; do
+	printf 'DEEPSEEK_API_KEY=sk-test-secret-1234\nDEEPSEEK_BASE_URL=%s\nEXTRA_SETTING=keep\n' "$legacy_url" >"$DSH_ENV_FILE"
+	load_managed_environment
+	[ "$MANAGED_ENV_MIGRATED" = true ]
+	[ "$DEEPSEEK_BASE_URL" = 'https://api.deepseek.com/anthropic' ]
+	grep -qxF 'DEEPSEEK_API_KEY=sk-test-secret-1234' "$DSH_ENV_FILE"
+	grep -qxF 'EXTRA_SETTING=keep' "$DSH_ENV_FILE"
+	[ "$(stat -c '%a' "$DSH_ENV_FILE")" = 600 ]
+	load_managed_environment
+	[ "$MANAGED_ENV_MIGRATED" = false ]
+done
+printf 'DEEPSEEK_BASE_URL=https://custom.example.com/v1\n' >"$DSH_ENV_FILE"
+migrate_managed_base_url
+[ "$MANAGED_ENV_MIGRATED" = false ]
+grep -qxF 'DEEPSEEK_BASE_URL=https://custom.example.com/v1' "$DSH_ENV_FILE"
+write_api_key 'sk-test-secret-1234'
+
+# Model discovery keeps the OpenAI-compatible endpoint, independent of Messages.
+(
+	export MOCK_CURL_EXIT=0 MOCK_CURL_BODY='{"data":[{"id":"deepseek-v4-pro"}]}'
+	jq() { cat >/dev/null; printf '%s\n' deepseek-v4-pro; }
+	[ "$(fetch_upstream_models)" = deepseek-v4-pro ]
+	grep -qxF 'https://api.deepseek.com/models' "$MOCK_CURL_ARGS_LOG"
+)
 
 delete_api_key
 if grep -q '^DEEPSEEK_API_KEY=' "$DSH_ENV_FILE"; then
@@ -187,6 +222,52 @@ if web_ready; then
 	echo 'FAIL: unavailable Web UI was reported as ready' >&2
 	exit 1
 fi
+
+(
+	export MOCK_CURL_EXIT=0
+	for status in 200 302; do
+		export MOCK_CURL_STATUS="$status" MOCK_CURL_BODY='<html>Web UI</html>'
+		web_ready
+	done
+	export MOCK_CURL_STATUS=401 MOCK_CURL_BODY=$'dsh web authentication required; reopen the URL printed by dsh web.\n'
+	web_ready
+	export MOCK_CURL_BODY='Other service requires authentication'
+	if web_ready; then
+		echo 'FAIL: an unrelated 401 response was reported as Harness readiness' >&2
+		exit 1
+	fi
+	for status in 404 500; do
+		export MOCK_CURL_STATUS="$status" MOCK_CURL_BODY='dsh web authentication required;'
+		if web_ready; then
+			echo "FAIL: HTTP $status was reported as ready" >&2
+			exit 1
+		fi
+	done
+	export MOCK_CURL_EXIT=1 MOCK_CURL_STATUS=200
+	if web_ready; then
+		echo 'FAIL: a failed readiness request was reported as ready' >&2
+		exit 1
+	fi
+)
+
+# Starting an already running legacy install must reload its corrected environment.
+(
+	systemd_available() { return 0; }
+	export MOCK_SYSTEMCTL_ACTIVE=true MOCK_CURL_EXIT=0 MOCK_CURL_STATUS=401
+	export MOCK_CURL_BODY=$'dsh web authentication required; reopen the URL printed by dsh web.\n'
+	write_api_key 'sk-test-secret-1234'
+	sed -i 's|https://api.deepseek.com/anthropic|https://api.deepseek.com|' "$DSH_ENV_FILE"
+	: >"$MOCK_SYSTEMCTL_ARGS_LOG"
+	start_deepseek_harness
+	grep -qxF 'DEEPSEEK_BASE_URL=https://api.deepseek.com/anthropic' "$DSH_ENV_FILE"
+	grep -qxF 'restart deepseek-harness.service' "$MOCK_SYSTEMCTL_ARGS_LOG"
+	: >"$MOCK_SYSTEMCTL_ARGS_LOG"
+	start_deepseek_harness
+	if grep -q '^restart ' "$MOCK_SYSTEMCTL_ARGS_LOG"; then
+		echo 'FAIL: an unchanged running service was unnecessarily restarted' >&2
+		exit 1
+	fi
+)
 
 configure_systemd_service
 grep -Fq 'ExecStart=' "$DEEPSEEK_HARNESS_SERVICE_FILE"

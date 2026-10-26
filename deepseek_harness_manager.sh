@@ -38,7 +38,8 @@ WEB_CERT_DIR="${DEEPSEEK_HARNESS_WEB_CERT_DIR:-/home/web/certs}"
 K_COMMAND="${DEEPSEEK_HARNESS_K_COMMAND:-k}"
 NPM_PACKAGE="@deepseek-ai/dsh"
 NPM_INSTALL_SCRIPT_ALLOWLIST="@deepseek-ai/dsh-subprocess-local,koffi,node-pty,@google/genai,protobufjs"
-DEEPSEEK_BASE_URL="https://api.deepseek.com"
+DEEPSEEK_BASE_URL="https://api.deepseek.com/anthropic"
+DEEPSEEK_MODELS_URL="https://api.deepseek.com/models"
 DEFAULT_MODEL="deepseek-v4-flash"
 LISTEN_HOST="127.0.0.1"
 LISTEN_PORT="3080"
@@ -114,8 +115,16 @@ harness_running() {
 }
 
 web_ready() {
-	command -v curl >/dev/null 2>&1 \
-		&& curl -fsS --max-time 2 "http://${LISTEN_HOST}:${LISTEN_PORT}/" >/dev/null 2>&1
+	local response status
+	command -v curl >/dev/null 2>&1 || return 1
+	response=$(curl -sS --max-time 2 -w $'\n%{http_code}' \
+		"http://${LISTEN_HOST}:${LISTEN_PORT}/" 2>/dev/null) || return 1
+	status=${response##*$'\n'}
+	case "$status" in
+		2??|3??) return 0 ;;
+		401) [[ "$response" == 'dsh web authentication required;'* ]] ;;
+		*) return 1 ;;
+	esac
 }
 
 wait_for_web_ready() {
@@ -159,6 +168,23 @@ write_api_key() {
 	mv -f "$temporary_file" "$DSH_ENV_FILE"
 }
 
+migrate_managed_base_url() {
+	local temporary_file
+	MANAGED_ENV_MIGRATED=false
+	[ -f "$DSH_ENV_FILE" ] || return 0
+	# Only migrate the official OpenAI root written by older manager versions.
+	grep -Eq '^DEEPSEEK_BASE_URL=https://api[.]deepseek[.]com(/v1)?/?$' "$DSH_ENV_FILE" || return 0
+	temporary_file=$(mktemp "${DSH_ENV_FILE}.tmp.XXXXXX") || return 1
+	if ! sed -E 's|^DEEPSEEK_BASE_URL=https://api[.]deepseek[.]com(/v1)?/?$|DEEPSEEK_BASE_URL=https://api.deepseek.com/anthropic|' \
+		"$DSH_ENV_FILE" >"$temporary_file" \
+		|| ! chmod 600 "$temporary_file" \
+		|| ! mv -f "$temporary_file" "$DSH_ENV_FILE"; then
+		rm -f -- "$temporary_file"
+		return 1
+	fi
+	MANAGED_ENV_MIGRATED=true
+}
+
 delete_api_key() {
 	[ -e "$DSH_ENV_FILE" ] || return 0
 	: >"$DSH_ENV_FILE"
@@ -166,6 +192,7 @@ delete_api_key() {
 }
 
 load_managed_environment() {
+	migrate_managed_base_url || return 1
 	export DSH_HOME DSH_TELEMETRY_DISABLED=1
 	if [ -r "$DSH_ENV_FILE" ]; then
 		set -a
@@ -536,7 +563,7 @@ EOF
 }
 
 initialize_profiles() {
-	load_managed_environment
+	load_managed_environment || return 1
 	dsh --profile headless --dump-default-config >/dev/null || return 1
 	dsh web --dump-default-config >/dev/null || return 1
 }
@@ -568,7 +595,7 @@ install_deepseek_harness() {
 }
 
 start_deepseek_harness() {
-	local domain
+	local domain was_running=false
 	local -a web_args
 	require_root || return 1
 	dsh_installed || {
@@ -576,16 +603,25 @@ start_deepseek_harness() {
 		return 1
 	}
 	[ -f "$MODEL_PATCH_FILE" ] || write_model_patch "$DEFAULT_MODEL" || return 1
+	harness_running && was_running=true
+	migrate_managed_base_url || return 1
 	if systemd_available; then
 		configure_systemd_service || return 1
 		systemctl enable --now deepseek-harness.service || return 1
+		if [ "$was_running" = "true" ] && [ "$MANAGED_ENV_MIGRATED" = "true" ]; then
+			systemctl restart deepseek-harness.service || return 1
+		fi
 	else
 		if harness_running; then
-			echo -e "${YELLOW}DeepSeek Harness 已在运行。${NC}"
-			return 0
+			if [ "$MANAGED_ENV_MIGRATED" = "true" ]; then
+				stop_deepseek_harness || return 1
+			else
+				echo -e "${YELLOW}DeepSeek Harness 已在运行。${NC}"
+				return 0
+			fi
 		fi
 		mkdir -p "$DSH_HOME"
-		load_managed_environment
+		load_managed_environment || return 1
 		web_args=(web --patch "$MODEL_PATCH_FILE" --host "$LISTEN_HOST" --port "$LISTEN_PORT")
 		while IFS= read -r domain; do
 			valid_domain "$domain" || continue
@@ -705,7 +741,7 @@ change_model() {
 	if [ -n "$models_list" ]; then
 		count=$(printf '%s\n' "$models_list" | sed '/^$/d' | wc -l | tr -d ' ')
 		echo "当前默认模型：$(current_model)"
-		echo "可用模型（$count 个，动态获取自 $DEEPSEEK_BASE_URL）："
+		echo "可用模型（$count 个，动态获取自 $DEEPSEEK_MODELS_URL）："
 		idx=0
 		printf '%s\n' "$models_list" | while IFS= read -r candidate; do
 			[ -n "$candidate" ] || continue
@@ -738,7 +774,7 @@ change_model() {
 		if [ -z "$api_key" ]; then
 			echo -e "${RED}尚未配置脚本托管的 DeepSeek API Key，无法动态获取模型列表。${NC}"
 		else
-			echo -e "${RED}无法获取模型列表（$DEEPSEEK_BASE_URL/models），请检查网络。${NC}"
+			echo -e "${RED}无法获取模型列表（$DEEPSEEK_MODELS_URL），请检查网络。${NC}"
 		fi
 		echo "回退为手动输入模式。"
 		echo "当前默认模型：$(current_model)"
@@ -764,13 +800,12 @@ change_model() {
 }
 
 fetch_upstream_models() {
-	local api_key base_url models_list
+	local api_key models_list
 	command -v curl >/dev/null 2>&1 || return 1
 	command -v jq >/dev/null 2>&1 || return 1
 	api_key=$(read_api_key)
 	[ -n "$api_key" ] || return 1
-	base_url="${DEEPSEEK_BASE_URL%/}"
-	models_list=$(curl -s -m 20 -H "Authorization: Bearer ${api_key}" "$base_url/models" \
+	models_list=$(curl -s -m 20 -H "Authorization: Bearer ${api_key}" "$DEEPSEEK_MODELS_URL" \
 		| jq -r '.data[]?.id' 2>/dev/null \
 		| sed '/^$/d' | sort -u)
 	[ -n "$models_list" ] || return 1
@@ -793,7 +828,7 @@ run_headless_task() {
 		echo -e "${RED}任务不能为空。${NC}"
 		return 1
 	}
-	load_managed_environment
+	load_managed_environment || return 1
 	dsh --profile headless --patch "$MODEL_PATCH_FILE" "$task"
 }
 
