@@ -16189,18 +16189,19 @@ ldnmp_environment_install() {
 	local profile="${1:-full}" states
 	kpanel_ldnmp_event preflight 5 "正在检查安装条件"
 	case "$profile" in
-		full) kpanel_ldnmp_event install 15 "正在安装完整 LDNMP"; ldnmp_install_all ;;
-		nginx) kpanel_ldnmp_event install 15 "正在安装 Nginx"; nginx_install_all ;;
+		full) kpanel_ldnmp_event install 15 "正在安装完整 LDNMP"; ldnmp_install_all || return $? ;;
+		nginx) kpanel_ldnmp_event install 15 "正在安装 Nginx"; nginx_install_all || return $? ;;
 		*) echo "不支持的安装形态" >&2; return 2 ;;
 	esac
 	kpanel_ldnmp_event verify 90 "正在验证环境"
 	docker exec nginx nginx -t >/dev/null 2>&1 || return 1
 	docker compose -f /home/web/docker-compose.yml config -q || return 1
 	if [ "$profile" = full ]; then
-		states=$(docker inspect -f '{{.State.Running}}' nginx mysql php redis 2>/dev/null)
+		states=$(docker inspect -f '{{.State.Running}}' nginx mysql php redis 2>/dev/null) || return 1
 		[ "$(printf '%s\n' "$states" | sed '/^$/d' | wc -l)" -eq 4 ] || return 1
-		printf '%s\n' "$states" | grep -qv true && return 1
+		printf '%s\n' "$states" | grep -qxv true && return 1
 	fi
+	return 0
 }
 
 ldnmp_protection_action_apply() {
