@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="CN"
+canshu="default"
 permission_granted="false"
 ENABLE_STATS="true"
 KPANEL_WEB_CERTIFICATE_PROTOCOL_VERSION="1"
@@ -3771,15 +3771,15 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' '583ec92fec54c2c8c2be931282b296ed8ad305ff'
+	printf '%s\n' '538af11069ea68f37d06d7508e14e763af032df5'
 }
 
 shared_waf_manifest() {
 	cat <<'WAF_MANIFEST'
-75cfb2acf52841cdaf7870be4c92443c354f2f02178e226bbd11a1d05bfe05dd  configure.py
+3c31c4a2b8126ecbe34ee1669e59381f5693272e34b78052d0d2bdcb9a339628  configure.py
 f00fa5846217315b9f0905ddab9c7104959e77f0b1653fb4ffbf5ff48121df9a  policy.py
 99071ba780da3c7a843fda8aa348dba87fc9ebd022bb7cbbca2b8fa33f69a0a9  nginx_edit.py
-4e4263621d5e50fc7fef8a70dcec651d860272d0a054ec7b37f4ffe8b562d617  ban.py
+4c2927970ac85daa275798fd1825e255e8c4ca740c654eff1c9bd4e2ce6417ea  ban.py
 aee6fd651ceb6441acce6dc6b510e504d7127b2bba1ce84ca361655590c615b0  example-policy.json
 e6be6df199bc4ad607b6bcd7273a62a4884e5aa841786db1d8d5a2284f573179  cloudflare-ips.json
 6fd82147b99201beebe7b1a983f146e5c23ade7f9454ac883830848b7f753e30  legacy-jails.local
@@ -3897,6 +3897,10 @@ shared_waf_cached() {
 	revision=$(shared_waf_revision)
 	[[ "$revision" =~ ^[0-9a-f]{40}$ ]] || return 1
 	WAF_DIRECTORY="/home/web/config/waf/packages/$revision"
+	if [ ! -d "$WAF_DIRECTORY" ]; then
+		echo "共享 WAF 包尚未导入；运行防护安装/迁移可安全补齐，状态查询不会自动下载。" >&2
+		return 1
+	fi
 	WAF_PYTHON=""
 	for interpreter in python3 python3.13 python3.12 python3.11; do
 		if command -v "$interpreter" >/dev/null 2>&1 && "$interpreter" -I -c 'import sys; raise SystemExit(sys.version_info < (3,11))' >/dev/null 2>&1; then
@@ -3920,7 +3924,7 @@ shared_waf() {
 	# Native CLI requires action-first syntax; reject options before any preparation.
 	case "${1:-}" in
 		status|ban-status) shared_waf_cached || return 1 ;;
-		plan|apply|configure|doctor|rollback|refresh-ips|retire-jails|existing-filters|rotation|trust-cloudflare|ban-install|ban-clear|ban-remove|cf-on|cf-off) shared_waf_prepare || return 1 ;;
+		plan|apply|configure|doctor|rollback|refresh-ips|retire-jails|existing-filters|rotation|trust-cloudflare|ban-preflight|ban-install|ban-clear|ban-remove|cf-on|cf-off) shared_waf_prepare || return 1 ;;
 		*) echo "用法: k web waf <action> [options]；状态查询: k web waf status" >&2; return 2 ;;
 	esac
 	"$WAF_PYTHON" -E -s -B "$WAF_DIRECTORY/configure.py" --root /home/web "$@"
@@ -4073,6 +4077,8 @@ web_ban_cron_ready() {
 }
 
 web_ban_install() {
+	# Validate and classify legacy state before touching Fail2Ban or Nginx.
+	shared_waf ban-preflight || return $?
 	f2b_install_sshd || return $?
 	if ! ip -j address show >/dev/null 2>&1; then
 		if command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
@@ -4085,23 +4091,16 @@ web_ban_install() {
 	check_crontab_installed || return $?
 	web_ban_cron_ready || return $?
 	if [ -f /home/web/config/waf/policy.json ]; then
-		shared_waf apply || return $?
+		shared_waf ban-install
 	else
 		# New installs begin in detection mode; existing WAF modes stay unchanged.
 		nginx_waf detect || return $?
+		shared_waf ban-install
 	fi
-	shared_waf ban-install
 }
 
 web_cf_enable() {
-	if [ -f /etc/fail2ban/jail.d/zz-waf-managed.local ] &&
-		grep -q '^# Managed shared WAF; unified event bans v1$' /etc/fail2ban/jail.d/zz-waf-managed.local &&
-		fail2ban-client status waf-attack >/dev/null 2>&1 && fail2ban-client status waf-rate >/dev/null 2>&1; then
-		shared_waf_prepare || return $?
-		shared_waf apply || return $?
-	else
-		web_ban_install || return $?
-	fi
+	web_ban_install || return $?
 	# Credentials travel over stdin, never through command arguments or logs.
 	printf '%s\n%s\n' "$1" "$2" |
 		"$WAF_PYTHON" -I -c 'import json,sys; print(json.dumps(dict(email=sys.stdin.readline().rstrip("\n"),key=sys.stdin.readline().rstrip("\n"))))' |
@@ -4411,6 +4410,9 @@ web_security() {
 								  echo "网站 Jail $jail 未安装或未加载，请选择 1 安装防御程序后重试。"
 							  fi
 						  done
+						  if printf '%s\n' "$jail_list" | grep -Fxq -- waf-api-invalid && jail_status=$(fail2ban-client status waf-api-invalid 2>/dev/null); then
+							  printf '%s\n' "$jail_status"
+						  fi
 					  else
 						  echo "Fail2Ban 未运行，无法读取网站拦截记录。"
 					  fi
@@ -16196,12 +16198,31 @@ kpanel_ldnmp_site_jail_json() {
 	fi
 }
 
+kpanel_ldnmp_migration_json() {
+	local raw="${1:-}" fallback='{"state":"current","importedRecords":0,"apiJailEnabled":false,"legacyCFDetected":false,"cfReentryRequired":false,"legacyReconcilerStopped":false}'
+	[ -n "$raw" ] || { printf '%s' "$fallback"; return 0; }
+	printf '%s' "$raw" | "$WAF_PYTHON" -I -c '
+import json,sys
+root=json.load(sys.stdin)
+s=root.get("migration")
+if not isinstance(s,dict):
+ print(json.dumps({"state":"unknown","importedRecords":0,"apiJailEnabled":False,"legacyCFDetected":False,"cfReentryRequired":False,"legacyReconcilerStopped":False},separators=(",",":")));raise SystemExit
+state=s.get("state","unknown")
+if state=="legacy-ready": state="legacy-pending"
+if state not in {"current","legacy-pending","legacy-imported","legacy-compatible"}: state="unknown"
+try: imported=int(s.get("importedRecords",0))
+except (TypeError,ValueError): imported=0
+if imported<0 or imported>10000: imported=0
+out={"state":state,"importedRecords":imported,"apiJailEnabled":s.get("apiJailEnabled") is True,"legacyCFDetected":s.get("legacyCFDetected") is True,"cfReentryRequired":s.get("cfReentryRequired") is True,"legacyReconcilerStopped":s.get("legacyReconcilerStopped") is True}
+print(json.dumps(out,separators=(",",":")))' 2>/dev/null || printf '{"state":"unknown","importedRecords":0,"apiJailEnabled":false,"legacyCFDetected":false,"cfReentryRequired":false,"legacyReconcilerStopped":false}'
+}
+
 kpanel_ldnmp_fail2ban_logs_json() {
 	local log_file="${1:-/var/log/fail2ban.log}" available=false separator="" line escaped
 	local -a lines=()
 	if [ -r "$log_file" ]; then
 		available=true
-		mapfile -t lines < <(tail -n 500 "$log_file" 2>/dev/null | grep -F -e '[waf-attack]' -e '[waf-rate]' | tail -n 20)
+		mapfile -t lines < <(tail -n 500 "$log_file" 2>/dev/null | grep -F -e '[waf-attack]' -e '[waf-rate]' -e '[waf-api-invalid]' | tail -n 20)
 	fi
 	printf '{"available":%s,"entries":[' "$available"
 	for line in "${lines[@]}"; do
@@ -16265,15 +16286,32 @@ kpanel_ldnmp_cloudflare_shield_off() {
 kpanel_ldnmp_protection_json() {
 	local waf="$1" waf_mode="$2" fail2ban_installed=false fail2ban=false
 	local cf_raw="" cf_json cf_status_known=false cloudflare=false ddos_count=0 ddos=false ddos_rules_available=false shield_scheduled=false shield_script=false shield_available=false cron_listing=""
-	local first="" second="" logs=""
+	local first="" second="" third="" logs="" migration_json='{"state":"current","importedRecords":0,"apiJailEnabled":false,"legacyCFDetected":false,"cfReentryRequired":false,"legacyReconcilerStopped":false}' legacy_cf=false
 	command -v fail2ban-client >/dev/null 2>&1 && fail2ban_installed=true
 	if [ "$fail2ban_installed" = true ] && fail2ban-client ping >/dev/null 2>&1; then fail2ban=true; fi
 	first=$(kpanel_ldnmp_site_jail_json waf-attack "$fail2ban")
 	second=$(kpanel_ldnmp_site_jail_json waf-rate "$fail2ban")
+	third=$(kpanel_ldnmp_site_jail_json waf-api-invalid "$fail2ban")
 	logs=$(kpanel_ldnmp_fail2ban_logs_json)
-	if [ -f /home/web/config/waf/ban-cf.json ] && shared_waf_cached; then
+	if { [ -f /home/web/config/waf/ban-cf.json ] || [ -f /home/web/config/waf/ban-migration.json ]; } && shared_waf_cached >/dev/null 2>&1; then
 		cf_raw=$(shared_waf ban-status 2>/dev/null) || cf_raw=""
 		[ -n "$cf_raw" ] && cf_status_known=true
+		[ -n "$cf_raw" ] && migration_json=$(kpanel_ldnmp_migration_json "$cf_raw")
+	fi
+	if [ ! -f /home/web/config/waf/ban-migration.json ] && [ ! -f /home/web/config/waf/ban-cf.json ]; then
+		if [ -f /home/web/config/waf/state.json ] || [ -f /etc/fail2ban/jail.d/zz-waf-api-invalid.local ] ||
+		   [ -f /etc/systemd/system/kejilion-waf.service ] || [ -f /etc/fail2ban/action.d/cloudflare-docker.conf ] ||
+		   grep -Fq '# Managed shared WAF; only trusted defence events, isolated by canonical site and client.' /etc/fail2ban/jail.d/zz-waf-managed.local 2>/dev/null; then
+			[ -e /etc/fail2ban/action.d/cloudflare-docker.conf ] && legacy_cf=true
+			migration_json=$(printf '{"state":"legacy-pending","importedRecords":0,"apiJailEnabled":false,"legacyCFDetected":%s,"cfReentryRequired":%s,"legacyReconcilerStopped":false}' "$legacy_cf" "$legacy_cf")
+			if shared_waf_cached >/dev/null 2>&1; then
+				cf_raw=$(shared_waf ban-preflight 2>/dev/null) || cf_raw=""
+				[ -n "$cf_raw" ] && migration_json=$(kpanel_ldnmp_migration_json "$cf_raw")
+			fi
+		fi
+	fi
+	if { [ -f /home/web/config/waf/ban-migration.json ] || [ -f /home/web/config/waf/ban-cf.json ]; } && [ "$cf_status_known" = false ]; then
+		migration_json='{"state":"unknown","importedRecords":0,"apiJailEnabled":false,"legacyCFDetected":false,"cfReentryRequired":false,"legacyReconcilerStopped":false}'
 	fi
 	cf_json=$(kpanel_ldnmp_cloudflare_status_json "$cf_raw")
 	if [ -f /home/web/config/waf/ban-cf.json ] && [ "$cf_status_known" = false ]; then
@@ -16299,9 +16337,9 @@ kpanel_ldnmp_protection_json() {
 			printf '%s' "$cron_listing" | grep -Fq 'CF-Under-Attack.sh' && shield_scheduled=true
 		fi
 	fi
-	printf '{"fail2ban":%s,"fail2banInstalled":%s,"waf":%s,"wafMode":"%s","cloudflare":%s,"cloudflareStatus":%s,"ddos":%s,"ddosRuleCount":%s,"ddosRuleExpected":8,"ddosRulesAvailable":%s,"cloudflareShield":{"available":%s,"scheduled":%s,"scriptPresent":%s},"siteJails":[%s,%s],"fail2banLogs":%s}' \
+	printf '{"fail2ban":%s,"fail2banInstalled":%s,"waf":%s,"wafMode":"%s","cloudflare":%s,"cloudflareStatus":%s,"banMigration":%s,"ddos":%s,"ddosRuleCount":%s,"ddosRuleExpected":8,"ddosRulesAvailable":%s,"cloudflareShield":{"available":%s,"scheduled":%s,"scriptPresent":%s},"siteJails":[%s,%s,%s],"fail2banLogs":%s}' \
 		"$fail2ban" "$fail2ban_installed" "$waf" "$(kpanel_ldnmp_escape "$waf_mode")" "$cloudflare" "$cf_json" \
-		"$ddos" "$ddos_count" "$ddos_rules_available" "$shield_available" "$shield_scheduled" "$shield_script" "$first" "$second" "$logs"
+		"$migration_json" "$ddos" "$ddos_count" "$ddos_rules_available" "$shield_available" "$shield_scheduled" "$shield_script" "$first" "$second" "$third" "$logs"
 }
 
 ldnmp_environment_status() {

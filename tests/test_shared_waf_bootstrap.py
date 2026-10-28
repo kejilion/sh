@@ -71,6 +71,8 @@ class BootstrapTests(unittest.TestCase):
     def test_uncached_status_never_downloads_or_creates_directories(self):
         result=self.run_fixture('shared_waf status')
         self.assertNotEqual(result.returncode,0)
+        self.assertIn('共享 WAF 包尚未导入',result.stderr)
+        self.assertNotIn('Traceback',result.stderr)
         self.assertFalse(self.calls.exists())
         self.assertFalse((self.web/'config').exists())
 
@@ -156,12 +158,19 @@ class NativeStatusTests(unittest.TestCase):
             policy_file=web/'config/waf/policy.json';policy_file.write_text('{}\n',encoding='utf-8')
             source=(Path(__file__).resolve().parents[1]/'kejilion.sh').read_text(encoding='utf-8')
             start=source.index('ldnmp_environment_status() {\n');end=source.index('\n}\n',start)+3
-            body=source[start:end].replace('/home/web',str(web)).replace('find /home -maxdepth','find '+shlex.quote(str(root))+' -maxdepth').replace('/etc/fail2ban/action.d',str(root/'no-actions'))
+            helpers=[]
+            for name in ['kpanel_ldnmp_site_jail_json','kpanel_ldnmp_migration_json','kpanel_ldnmp_fail2ban_logs_json','kpanel_ldnmp_ddos_rules_present','kpanel_ldnmp_cloudflare_status_json','kpanel_ldnmp_protection_json']:
+                helper_start=source.index(name+'() {\n');helper_end=source.index('\n}\n',helper_start)+3
+                helpers.append(source[helper_start:helper_end])
+            body='\n'.join(helpers)+'\n'+source[start:end]
+            body=body.replace('/home/web',str(web)).replace('find /home -maxdepth','find '+shlex.quote(str(root))+' -maxdepth').replace('/etc/fail2ban',str(root/'no-fail2ban')).replace('/var/log/fail2ban.log',str(root/'fail2ban.log')).replace('/root/CF-Under-Attack.sh',str(root/'CF-Under-Attack.sh'))
             script=root/'status.sh'
             script.write_text(body+'''
 docker() { return 1; }
 iptables() { return 1; }
 ss() { :; }
+fail2ban-client() { return 1; }
+crontab() { echo 'no crontab for root'; return 1; }
 ldnmp_site_count() { printf '0'; }
 kpanel_ldnmp_escape() { printf '%s' "$1"; }
 kpanel_ldnmp_component() { printf '{}'; }
