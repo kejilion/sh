@@ -2496,6 +2496,9 @@ import time
 import urllib.parse
 import urllib.request
 
+# Multi-arch manifest verified from the published 1.31.8-alpine tag.
+WAF_CANDIDATE_IMAGE = 'kjlion/nginx:alpine@sha256:065a40f37e508787769513aca655fc541acf687afffd57b25241b1a6bac53ef8'
+
 LEGACY = '99f7169d84901be3f34452f375b3e0079cd86b4c'
 PREVIOUS = '8773850871f991b027f62841fde2795121251620'
 REVISION = 'bdb8cc42fb123b09b02dc5940d2596354efebb87'
@@ -3222,7 +3225,7 @@ def waf_image_plan(root, model, container):
             if 'nginx' not in document.get('services', {}):
                 continue
             explicit = 'image' in document['services']['nginx']
-            document['services']['nginx']['image'] = 'kjlion/nginx:alpine'
+            document['services']['nginx']['image'] = WAF_CANDIDATE_IMAGE
             candidate = path.name, (json.dumps(document, ensure_ascii=False) + '\n').encode()
             if explicit:
                 return candidate
@@ -3253,9 +3256,9 @@ def waf_image_plan(root, model, container):
             newline = '\r\n' if line.endswith('\r\n') else '\n'
             for offset in range(index + 1, end):
                 if re.match(r'^ {%d}image\s*:' % child, lines[offset]):
-                    lines[offset] = ' ' * child + 'image: kjlion/nginx:alpine' + newline
+                    lines[offset] = ' ' * child + 'image: ' + WAF_CANDIDATE_IMAGE + newline
                     return path.name, ''.join(lines).encode()
-            lines.insert(index + 1, ' ' * child + 'image: kjlion/nginx:alpine' + newline)
+            lines.insert(index + 1, ' ' * child + 'image: ' + WAF_CANDIDATE_IMAGE + newline)
             if insertion is None:
                 insertion = path.name, ''.join(lines).encode()
             break
@@ -3305,7 +3308,7 @@ def execute_update(root, directory, component, prefix):
         remember(root, directory)
         install_configuration(root, directory, name, data, inventory(root)[name]['mode'])
         desired = copy.deepcopy(model)
-        desired['services']['nginx']['image'] = 'kjlion/nginx:alpine'
+        desired['services']['nginx']['image'] = WAF_CANDIDATE_IMAGE
         model = json.loads(command('docker', 'compose', '--project-directory', str(root), 'config', '--format', 'json'))
         if model != desired:
             raise ValueError('镜像迁移改变了其他有效 Compose 参数，已中止: ' + ', '.join(changed_paths(desired, model)[:10]))
@@ -16437,8 +16440,44 @@ ldnmp_environment_install() {
 	return 0
 }
 
+cf_shield_install_script() {
+	(
+	set -euo pipefail
+	local email="${1:-}" token="${2:-}" zone="${3:-}"
+	local target="${4:-/root/CF-Under-Attack.sh}" directory revision expected_sha url download stage content actual_sha size
+	local gh_prefix="${gh_proxy:-https://}"
+	revision='f02b7b8d59fd090006304a998ea2b3410ae5f736'
+	expected_sha='781265062ba74bdeccb443177a9580190942c379dbe1e19a78ba1c774400086c'
+	directory=$(dirname -- "$target")
+	[ -d "$directory" ] && [ ! -L "$directory" ] || { echo "Cloudflare 防护目录无效" >&2; exit 1; }
+	download=$(mktemp "$directory/.CF-Under-Attack.download.XXXXXX") || exit 1
+	stage=$(mktemp "$directory/.CF-Under-Attack.stage.XXXXXX") || { rm -f -- "$download"; exit 1; }
+	trap 'rm -f -- "$download" "$stage"' EXIT
+	url="${gh_prefix}raw.githubusercontent.com/kejilion/sh/${revision}/CF-Under-Attack.sh"
+	if ! curl --fail --location --silent --show-error --connect-timeout 10 --max-time 45 --output "$download" "$url"; then
+		echo "Cloudflare 五秒盾脚本下载失败" >&2
+		exit 1
+	fi
+	size=$(wc -c < "$download")
+	[[ "$size" =~ ^[0-9]+$ ]] && [ "$size" -le 65536 ] || { echo "Cloudflare 五秒盾脚本大小异常" >&2; exit 1; }
+	actual_sha=$(sha256sum -- "$download" | awk '{print $1}')
+	[ "$actual_sha" = "$expected_sha" ] || { echo "Cloudflare 五秒盾脚本摘要校验失败" >&2; exit 1; }
+	grep -Fq 'EMAIL="AAAA"' "$download" && grep -Fq 'API_KEY="BBBB"' "$download" && grep -Fq 'ZONE_ID="CCCC"' "$download" || {
+		echo "Cloudflare 五秒盾脚本占位符异常" >&2; exit 1;
+	}
+	content=$(< "$download")
+	content=${content//AAAA/$email}
+	content=${content//BBBB/$token}
+	content=${content//CCCC/$zone}
+	printf '%s\n' "$content" > "$stage"
+	chmod 700 "$stage"
+	bash -n "$stage" || { echo "Cloudflare 五秒盾脚本语法校验失败" >&2; exit 1; }
+	mv -f -- "$stage" "$target"
+	)
+}
+
 ldnmp_protection_action_apply() {
-	local cfuser="" cftoken="" cfzone="" secret_content=""
+	local cfuser="" cftoken="" cfzone=""
 	case "$1" in
 		fail2ban-install) web_ban_install ;;
 		fail2ban-uninstall) web_ban_remove || return $?; remove fail2ban; rm -rf /etc/fail2ban ;;
@@ -16465,13 +16504,7 @@ ldnmp_protection_action_apply() {
 				cd /root || return 1
 				install jq bc
 				check_crontab_installed
-				curl -sS -o CF-Under-Attack.sh "${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh"
-				chmod 700 CF-Under-Attack.sh
-				secret_content=$(< CF-Under-Attack.sh)
-				secret_content=${secret_content//AAAA/$cfuser}
-				secret_content=${secret_content//BBBB/$cftoken}
-				secret_content=${secret_content//CCCC/$cfzone}
-				printf '%s\n' "$secret_content" > CF-Under-Attack.sh
+				cf_shield_install_script "$cfuser" "$cftoken" "$cfzone" || return $?
 				local cron_job="*/5 * * * * /root/CF-Under-Attack.sh"
 				(crontab -l 2>/dev/null | grep -Fv "/root/CF-Under-Attack.sh"; echo "$cron_job") | crontab -
 			fi

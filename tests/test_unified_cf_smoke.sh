@@ -3,7 +3,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
-for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode ddos_rule_add_once ddos_rule_remove_all enable_ddos_defense disable_ddos_defense web_security kpanel_ldnmp_escape kpanel_ldnmp_site_jail_json kpanel_ldnmp_migration_json kpanel_ldnmp_fail2ban_logs_json kpanel_ldnmp_ddos_rules_present kpanel_ldnmp_cloudflare_status_json kpanel_ldnmp_cloudflare_shield_off kpanel_ldnmp_protection_json; do
+for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode ddos_rule_add_once ddos_rule_remove_all enable_ddos_defense disable_ddos_defense web_security kpanel_ldnmp_escape kpanel_ldnmp_site_jail_json kpanel_ldnmp_migration_json kpanel_ldnmp_fail2ban_logs_json kpanel_ldnmp_ddos_rules_present kpanel_ldnmp_cloudflare_status_json kpanel_ldnmp_cloudflare_shield_off cf_shield_install_script kpanel_ldnmp_protection_json; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh"
 done | sed "s|/home/web|$fixture/web|g; s|/etc/fail2ban|$fixture/fail2ban|g; s|/var/log/fail2ban.log|$fixture/fail2ban.log|g; s|/root/CF-Under-Attack.sh|$fixture/root/CF-Under-Attack.sh|g" > "$fixture/functions"
 source "$fixture/functions"
@@ -11,6 +11,32 @@ sed -n '/^web_ban_install() {/,/^}/p' "$root/kejilion.sh" | sed "s|/home/web|$fi
 mkdir -p "$fixture/web/config/waf" "$fixture/fail2ban/jail.d"
 calls="$fixture/calls"; : > "$calls"; waf_remove_failure=0; waf_clear_failure=0
 test_python="${PYTHON:-$(command -v python3)}"
+mkdir -p "$fixture/root"
+CF_SHIELD_SOURCE="$root/CF-Under-Attack.sh"
+cf_url_log="$fixture/cf-url"
+curl() {
+  local output="" url=""
+  while (($#)); do
+    case "$1" in
+      --output) output="$2"; shift 2 ;;
+      *) url="$1"; shift ;;
+    esac
+  done
+  printf '%s\n' "$url" > "$cf_url_log"
+  cp "$CF_SHIELD_SOURCE" "$output"
+}
+cf_shield_install_script user@example.com 'token-123' 'zone-456' "$fixture/root/CF-Under-Attack.sh"
+grep -Fq 'f02b7b8d59fd090006304a998ea2b3410ae5f736/CF-Under-Attack.sh' "$cf_url_log"
+grep -Fq 'EMAIL="user@example.com"' "$fixture/root/CF-Under-Attack.sh"
+grep -Fq 'API_KEY="token-123"' "$fixture/root/CF-Under-Attack.sh"
+grep -Fq 'ZONE_ID="zone-456"' "$fixture/root/CF-Under-Attack.sh"
+[ "$(stat -c '%a' "$fixture/root/CF-Under-Attack.sh")" = 700 ]
+printf '%s\n' 'trusted-old-script' > "$fixture/root/CF-Under-Attack.sh"
+printf '%s\n' 'tampered-source' > "$fixture/tampered"
+CF_SHIELD_SOURCE="$fixture/tampered"
+if cf_shield_install_script user@example.com 'token-123' 'zone-456' "$fixture/root/CF-Under-Attack.sh" 2> "$fixture/cf-download.err"; then exit 1; fi
+[ "$(cat "$fixture/root/CF-Under-Attack.sh")" = 'trusted-old-script' ]
+! find "$fixture/root" -mindepth 1 -maxdepth 1 -name '.CF-Under-Attack.*' | grep -q .
 shared_waf_cached() { WAF_PYTHON="$test_python"; }
 shared_waf_prepare() { shared_waf_cached; }
 cf_mode=cloudflare; cf_healthy=true; cf_pending=false
