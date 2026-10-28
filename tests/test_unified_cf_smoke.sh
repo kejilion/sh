@@ -3,7 +3,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
-for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode kpanel_ldnmp_escape kpanel_ldnmp_site_jail_json kpanel_ldnmp_fail2ban_logs_json kpanel_ldnmp_ddos_rules_present kpanel_ldnmp_cloudflare_status_json kpanel_ldnmp_cloudflare_shield_off kpanel_ldnmp_protection_json; do
+for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode ddos_rule_add_once ddos_rule_remove_all enable_ddos_defense disable_ddos_defense kpanel_ldnmp_escape kpanel_ldnmp_site_jail_json kpanel_ldnmp_fail2ban_logs_json kpanel_ldnmp_ddos_rules_present kpanel_ldnmp_cloudflare_status_json kpanel_ldnmp_cloudflare_shield_off kpanel_ldnmp_protection_json; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh"
 done | sed "s|/home/web|$fixture/web|g; s|/etc/fail2ban|$fixture/fail2ban|g; s|/var/log/fail2ban.log|$fixture/fail2ban.log|g; s|/root/CF-Under-Attack.sh|$fixture/root/CF-Under-Attack.sh|g" > "$fixture/functions"
 source "$fixture/functions"
@@ -88,6 +88,37 @@ iptables() { ddos_call=$((ddos_call+1)); [ "$ddos_call" -le "$ddos_present" ]; }
 [ "$(kpanel_ldnmp_ddos_rules_present)" = 8 ]
 ddos_call=0; ddos_present=3
 [ "$(kpanel_ldnmp_ddos_rules_present)" = 3 ]
+declare -A ddos_state=()
+iptables() {
+  local operation="$1" key count
+  shift
+  key="$*"; count="${ddos_state["$key"]:-0}"
+  case "$operation" in
+    -C) [ "$count" -gt 0 ] ;;
+    -A) ddos_state["$key"]=$((count + 1)) ;;
+    -D) [ "$count" -gt 0 ] || return 1; ddos_state["$key"]=$((count - 1)) ;;
+    *) return 2 ;;
+  esac
+}
+send_stats() { :; }
+ddos_state['DOCKER-USER -p tcp --syn -j DROP']=2
+enable_ddos_defense
+ddos_rules=(
+  'DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT'
+  'DOCKER-USER -p tcp --syn -j DROP'
+  'DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT'
+  'DOCKER-USER -p udp -j DROP'
+  'INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT'
+  'INPUT -p tcp --syn -j DROP'
+  'INPUT -p udp -m limit --limit 3000/s -j ACCEPT'
+  'INPUT -p udp -j DROP'
+)
+for rule in "${ddos_rules[@]}"; do
+  expected=1; [ "$rule" = 'DOCKER-USER -p tcp --syn -j DROP' ] && expected=2
+  [ "${ddos_state["$rule"]:-0}" -eq "$expected" ]
+done
+disable_ddos_defense
+for rule in "${ddos_rules[@]}"; do [ "${ddos_state["$rule"]:-0}" -eq 0 ]; done
 mkdir -p "$fixture/root"; touch "$fixture/root/CF-Under-Attack.sh"
 printf '%s\n' '*/5 * * * * /root/CF-Under-Attack.sh' '0 1 * * * /usr/local/bin/other-job' > "$fixture/crontab"
 crontab() {

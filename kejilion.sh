@@ -1177,31 +1177,53 @@ block_ip() {
 
 
 
+ddos_rule_add_once() {
+	local chain="$1"
+	shift
+	if iptables -C "$chain" "$@" >/dev/null 2>&1; then
+		return 0
+	fi
+	iptables -A "$chain" "$@"
+}
+
+ddos_rule_remove_all() {
+	local chain="$1" status
+	shift
+	while true; do
+		if iptables -C "$chain" "$@" >/dev/null 2>&1; then
+			iptables -D "$chain" "$@" || return $?
+		else
+			status=$?
+			[ "$status" -eq 1 ] && return 0
+			return "$status"
+		fi
+	done
+}
+
 enable_ddos_defense() {
-	# 开启防御 DDoS
-	iptables -A DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT
-	iptables -A DOCKER-USER -p tcp --syn -j DROP
-	iptables -A DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT
-	iptables -A DOCKER-USER -p udp -j DROP
-	iptables -A INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT
-	iptables -A INPUT -p tcp --syn -j DROP
-	iptables -A INPUT -p udp -m limit --limit 3000/s -j ACCEPT
-	iptables -A INPUT -p udp -j DROP
+	# Ensure each fixed DDoS rule exists once, so enabling repairs partial state safely.
+	ddos_rule_add_once DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT || return $?
+	ddos_rule_add_once DOCKER-USER -p tcp --syn -j DROP || return $?
+	ddos_rule_add_once DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT || return $?
+	ddos_rule_add_once DOCKER-USER -p udp -j DROP || return $?
+	ddos_rule_add_once INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT || return $?
+	ddos_rule_add_once INPUT -p tcp --syn -j DROP || return $?
+	ddos_rule_add_once INPUT -p udp -m limit --limit 3000/s -j ACCEPT || return $?
+	ddos_rule_add_once INPUT -p udp -j DROP || return $?
 
 	send_stats "开启DDoS防御"
 }
 
 # 关闭DDoS防御
 disable_ddos_defense() {
-	# 关闭防御 DDoS
-	iptables -D DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT 2>/dev/null
-	iptables -D DOCKER-USER -p tcp --syn -j DROP 2>/dev/null
-	iptables -D DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT 2>/dev/null
-	iptables -D DOCKER-USER -p udp -j DROP 2>/dev/null
-	iptables -D INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT 2>/dev/null
-	iptables -D INPUT -p tcp --syn -j DROP 2>/dev/null
-	iptables -D INPUT -p udp -m limit --limit 3000/s -j ACCEPT 2>/dev/null
-	iptables -D INPUT -p udp -j DROP 2>/dev/null
+	# Remove all copies of the fixed rules, including duplicates from earlier enables.
+	local chain
+	for chain in DOCKER-USER INPUT; do
+		ddos_rule_remove_all "$chain" -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT || return $?
+		ddos_rule_remove_all "$chain" -p tcp --syn -j DROP || return $?
+		ddos_rule_remove_all "$chain" -p udp -m limit --limit 3000/s -j ACCEPT || return $?
+		ddos_rule_remove_all "$chain" -p udp -j DROP || return $?
+	done
 
 	send_stats "关闭DDoS防御"
 }
