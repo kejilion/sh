@@ -3188,7 +3188,9 @@ def waf_image_plan(root, model, container):
     """Edit only the active nginx image declaration, then verify the full model."""
     official = r'(?:(?:docker\.io/)?library/|docker\.io/)?nginx(?::[\w.-]+|@sha256:[0-9a-f]{64})?'
     service = model['services']['nginx']
-    if service.get('build') or not re.fullmatch(official, service.get('image', '')):
+    image = service.get('image', '')
+    owned_waf_image = image in {'kjlion/nginx:alpine', 'docker.io/kjlion/nginx:alpine', WAF_CANDIDATE_IMAGE}
+    if service.get('build') or not (re.fullmatch(official, image) or owned_waf_image):
         raise ValueError('仅自动迁移官方 nginx 镜像；自定义镜像请先核对 ModSecurity 兼容性')
     sources = container['Config'].get('Labels', {}).get('com.docker.compose.project.config_files', '')
     paths = [Path(name) for name in sources.split(',') if name]
@@ -3298,12 +3300,19 @@ def execute_update(root, directory, component, prefix):
             previous[name] = {'image': containers[0]['Image'],
                               'running': any(item['State']['Running'] for item in containers)}
     json_write(directory / 'images.json', {'services': services, 'previous': previous})
-    if component == 'waf':
+    managed_waf_tag = bool(
+        component != 'waf' and nginx_container is not None and
+        model['services']['nginx'].get('image') in {'kjlion/nginx:alpine', 'docker.io/kjlion/nginx:alpine'} and
+        nginx_container.get('Config', {}).get('Image') in {'kjlion/nginx:alpine', 'docker.io/kjlion/nginx:alpine'}
+    )
+    if component == 'waf' or managed_waf_tag:
         if nginx_container is None or not nginx_container['State']['Running']:
-            raise ValueError('WAF 自动迁移需要单个运行中的 nginx 容器')
-        journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
-        journal['component'] = 'waf'
-        json_write(directory / 'journal.json', journal)
+            if component == 'waf':
+                raise ValueError('WAF 自动迁移需要单个运行中的 nginx 容器')
+        if component == 'waf':
+            journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
+            journal['component'] = 'waf'
+            json_write(directory / 'journal.json', journal)
         name, data = waf_image_plan(root, model, nginx_container)
         remember(root, directory)
         install_configuration(root, directory, name, data, inventory(root)[name]['mode'])
@@ -3312,7 +3321,10 @@ def execute_update(root, directory, component, prefix):
         model = json.loads(command('docker', 'compose', '--project-directory', str(root), 'config', '--format', 'json'))
         if model != desired:
             raise ValueError('镜像迁移改变了其他有效 Compose 参数，已中止: ' + ', '.join(changed_paths(desired, model)[:10]))
-        compose = compose_file(directory, 'target.json', model)
+        if component == 'waf':
+            compose = compose_file(directory, 'target.json', model)
+        else:
+            compose = compose_file(directory, 'pinned.json', model)
     if component == 'all':
         snapshot_runtime(directory, compose, previous)
     command(*compose, 'pull', *services)
@@ -3774,7 +3786,7 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' '68274493130f4fe2c17f29b2a3ea41bf94ee0888'
+	printf '%s\n' 'd5e24c9da3f660bd38bf38e915ca7c19dd60b616'
 }
 
 shared_waf_manifest() {
@@ -3782,7 +3794,7 @@ shared_waf_manifest() {
 3c31c4a2b8126ecbe34ee1669e59381f5693272e34b78052d0d2bdcb9a339628  configure.py
 f00fa5846217315b9f0905ddab9c7104959e77f0b1653fb4ffbf5ff48121df9a  policy.py
 99071ba780da3c7a843fda8aa348dba87fc9ebd022bb7cbbca2b8fa33f69a0a9  nginx_edit.py
-debe52035381dad1fd600919d0e753ef280103396f4447bd4925a287d28915b3  ban.py
+2a0d416b81cfc722b483db5eb11cbfbcc1521994ae7ddc3cdb4001dfc212465c  ban.py
 aee6fd651ceb6441acce6dc6b510e504d7127b2bba1ce84ca361655590c615b0  example-policy.json
 e6be6df199bc4ad607b6bcd7273a62a4884e5aa841786db1d8d5a2284f573179  cloudflare-ips.json
 6fd82147b99201beebe7b1a983f146e5c23ade7f9454ac883830848b7f753e30  legacy-jails.local
