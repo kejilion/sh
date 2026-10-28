@@ -5835,6 +5835,15 @@ check_f2b_status() {
 
 f2b_install_sshd() {
 
+	if command -v apt &>/dev/null; then
+		install rsyslog || return 1
+		/bin/systemctl enable --now rsyslog.service || return 1
+		if [ ! -e /var/log/auth.log ]; then
+			touch /var/log/auth.log || return 1
+			chmod 0640 /var/log/auth.log || return 1
+		fi
+	fi
+
 	docker rm -f fail2ban >/dev/null 2>&1
 	install fail2ban || return 1
 
@@ -5850,11 +5859,6 @@ f2b_install_sshd() {
 			chmod 0600 /var/log/secure || return 1
 			command -v restorecon >/dev/null 2>&1 && restorecon /var/log/secure || true
 		fi
-	fi
-
-	if command -v apt &>/dev/null; then
-		install rsyslog || return 1
-		/bin/systemctl enable --now rsyslog.service || return 1
 	fi
 
 	if command -v apk >/dev/null 2>&1; then
