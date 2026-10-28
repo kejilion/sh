@@ -3785,15 +3785,15 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' '099412803db3fa4d0ed3fce6640d7636a09c81c3'
+	printf '%s\n' '2cd1d7cae8cbe0aee2214554789b814653637d6e'
 }
 
 shared_waf_manifest() {
 	cat <<'WAF_MANIFEST'
-3fe8212e10145bfc26505c8ce5239944f569a38ebe765ceb22d7f32c5e5acbe9  configure.py
+73bf31d4d6b27597bde5366f57a9fc18dfccf205b577f770b8e099c6fb828ec7  configure.py
 f00fa5846217315b9f0905ddab9c7104959e77f0b1653fb4ffbf5ff48121df9a  policy.py
 99071ba780da3c7a843fda8aa348dba87fc9ebd022bb7cbbca2b8fa33f69a0a9  nginx_edit.py
-b121cd0ae5966f7f19267f0d2c2b54ef291a038d1a12ddff9e758c201c1426ce  ban.py
+8f335d0bcbdd4953da6fea802dac8e0e7dc0ae6573536f945fd4c071b53ec2c4  ban.py
 aee6fd651ceb6441acce6dc6b510e504d7127b2bba1ce84ca361655590c615b0  example-policy.json
 e6be6df199bc4ad607b6bcd7273a62a4884e5aa841786db1d8d5a2284f573179  cloudflare-ips.json
 6fd82147b99201beebe7b1a983f146e5c23ade7f9454ac883830848b7f753e30  legacy-jails.local
