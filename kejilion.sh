@@ -4403,7 +4403,7 @@ web_security() {
 				  6)
 					  if command -v fail2ban-client >/dev/null 2>&1 && fail2ban-client ping >/dev/null 2>&1 &&
 							  jail_overview=$(fail2ban-client status 2>/dev/null); then
-						  jail_list=$(printf '%s\n' "$jail_overview" | sed -n 's/^[[:space:]]*Jail list:[[:space:]]*//p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+						  jail_list=$(printf '%s\n' "$jail_overview" | sed -n 's/^.*Jail list:[[:space:]]*//p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
 						  for jail in waf-attack waf-rate; do
 							  if printf '%s\n' "$jail_list" | grep -Fxq -- "$jail" && jail_status=$(fail2ban-client status "$jail" 2>/dev/null); then
 								  printf '%s\n' "$jail_status"
@@ -16182,7 +16182,7 @@ kpanel_ldnmp_component() {
 kpanel_ldnmp_site_jail_json() {
 	local jail="$1" running="${2:-false}" status="" jails="" value="" current=0 total=0
 	if [ "$running" = true ] && jails=$(fail2ban-client status 2>/dev/null) &&
-		printf '%s\n' "$jails" | sed -n 's/^[[:space:]]*Jail list:[[:space:]]*//p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -Fxq -- "$jail" &&
+		printf '%s\n' "$jails" | sed -n 's/^.*Jail list:[[:space:]]*//p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -Fxq -- "$jail" &&
 		status=$(fail2ban-client status "$jail" 2>/dev/null); then
 		value=$(printf '%s\n' "$status" | awk -F: '/Currently banned[[:space:]]*:/ {gsub(/[[:space:]]/, "", $2); print $2; exit}')
 		case "$value" in ''|*[!0-9]*) value=0 ;; esac

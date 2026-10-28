@@ -45,6 +45,34 @@ grep -Fq '网站 Jail waf-rate 未安装或未加载' "$fixture/jail-menu.out"
 ! grep -q 'UnknownJailException' "$fixture/jail-menu.err"
 [ "$(cat "$fail2ban_calls")" = "$(printf 'ping\nstatus')" ]
 
+# Fail2Ban prefixes its list line with tree glyphs; installed jails must still be found.
+: > "$fail2ban_calls"
+(
+  fail2ban-client() {
+    printf '%s\n' "$*" >> "$fail2ban_calls"
+    case "$*" in
+      ping) return 0 ;;
+      status) printf 'Status\n|- Number of jail: 3\n`- Jail list: sshd, waf-attack, waf-rate\n' ;;
+      'status waf-attack') printf 'Status for the jail: waf-attack\n|- Currently banned: 2\n`- Total banned: 9\n' ;;
+      'status waf-rate') printf 'Status for the jail: waf-rate\n|- Currently banned: 1\n`- Total banned: 4\n' ;;
+      *) return 1 ;;
+    esac
+  }
+  site_jail_status="$(kpanel_ldnmp_site_jail_json waf-attack true)"
+  [[ "$site_jail_status" == *'"available":true,"currentlyBanned":2,"totalBanned":9'* ]]
+  send_stats() { :; }; clear() { :; }; break_end() { :; }
+  check_f2b_status() { check_f2b_status=' Fail2Ban已安装'; }
+  check_waf_status() { waf_status=' WAF已开启'; }
+  check_cf_mode() { CFmessage=' 源站封禁模式'; }
+  gl_lv= gl_bai= gl_huang=
+  cf_mode=local; cf_healthy=true; cf_pending=false
+  printf '6\n0\n' | web_security > "$fixture/jail-installed-menu.out" 2> "$fixture/jail-installed-menu.err"
+)
+grep -Fq 'Status for the jail: waf-attack' "$fixture/jail-installed-menu.out"
+grep -Fq 'Status for the jail: waf-rate' "$fixture/jail-installed-menu.out"
+! grep -q '未安装或未加载' "$fixture/jail-installed-menu.out"
+! grep -q 'UnknownJailException' "$fixture/jail-installed-menu.err"
+
 # A configured integration must not be reinstalled or reset by the CF switch.
 printf '# Managed shared WAF; unified event bans v1\n' > "$fixture/fail2ban/jail.d/zz-waf-managed.local"
 web_ban_install() { echo unexpected-reinstall >&2; return 99; }
