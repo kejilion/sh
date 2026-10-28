@@ -4489,15 +4489,15 @@ web_security() {
 					  cd ~
 					  install jq bc
 					  check_crontab_installed
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
-					  chmod +x CF-Under-Attack.sh
-					  sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
-					  sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
-					  sed -i "s/CCCC/$cfzonID/g" ~/CF-Under-Attack.sh
+					  if ! cf_shield_install_script "$cfuser" "$cftoken" "$cfzonID"; then
+						  unset cfuser cftoken cfzonID
+						  continue
+					  fi
 
-					  local cron_job="*/5 * * * * ~/CF-Under-Attack.sh"
+					  local cron_job="*/5 * * * * /root/CF-Under-Attack.sh"
 
-					  local existing_cron=$(crontab -l 2>/dev/null | grep -F "$cron_job")
+					  local existing_cron
+					  existing_cron=$(crontab -l 2>/dev/null | grep -F "CF-Under-Attack.sh" || true)
 
 					  if [ -z "$existing_cron" ]; then
 						  (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
@@ -4505,6 +4505,7 @@ web_security() {
 					  else
 						  echo "自动开盾脚本已存在，无需添加"
 					  fi
+					  unset cfuser cftoken cfzonID
 
 					  ;;
 

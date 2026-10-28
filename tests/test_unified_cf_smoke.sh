@@ -37,6 +37,25 @@ CF_SHIELD_SOURCE="$fixture/tampered"
 if cf_shield_install_script user@example.com 'token-123' 'zone-456' "$fixture/root/CF-Under-Attack.sh" 2> "$fixture/cf-download.err"; then exit 1; fi
 [ "$(cat "$fixture/root/CF-Under-Attack.sh")" = 'trusted-old-script' ]
 ! find "$fixture/root" -mindepth 1 -maxdepth 1 -name '.CF-Under-Attack.*' | grep -q .
+legacy_shield_call="$fixture/legacy-shield-call"
+(
+  cf_shield_install_script() { printf '%s\n' "$*" > "$legacy_shield_call"; }
+  send_stats() { :; }; clear() { :; }; break_end() { :; }
+  check_f2b_status() { check_f2b_status=' Fail2Ban已安装'; }
+  check_waf_status() { waf_status=' WAF已开启'; }
+  check_cf_mode() { CFmessage=' 源站封禁模式'; }
+  check_crontab_installed() { :; }; install() { :; }
+  crontab() {
+    if [ "$1" = -l ]; then cat "$fixture/legacy-crontab" 2>/dev/null || :; return 0; fi
+    if [ "$1" = - ]; then cat > "$fixture/legacy-crontab"; return 0; fi
+    return 1
+  }
+  gl_lv= gl_bai= gl_huang=
+  printf '22\nuser@example.com\ntoken-123\nzone-456\n0\n' | web_security > "$fixture/legacy-shield-menu.out"
+)
+grep -Fxq 'user@example.com token-123 zone-456' "$legacy_shield_call"
+grep -Fxq "*/5 * * * * $fixture/root/CF-Under-Attack.sh" "$fixture/legacy-crontab"
+! grep -Fq 'raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh' "$root/kejilion.sh"
 shared_waf_cached() { WAF_PYTHON="$test_python"; }
 shared_waf_prepare() { shared_waf_cached; }
 cf_mode=cloudflare; cf_healthy=true; cf_pending=false
