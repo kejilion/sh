@@ -4108,12 +4108,16 @@ web_cf_enable() {
 }
 
 web_ban_clear() {
-	if [ -f /home/web/config/waf/bans.json ]; then shared_waf ban-clear || return $?; fi
+	if [ -f /home/web/config/waf/bans.json ] || [ -f /home/web/config/waf/ban-cf.json ]; then
+		shared_waf ban-clear || return $?
+	fi
 	fail2ban-client unban --all
 }
 
 web_ban_remove() {
-	[ ! -f /home/web/config/waf/bans.json ] || shared_waf ban-remove
+	if [ -f /home/web/config/waf/bans.json ] || [ -f /home/web/config/waf/ban-cf.json ]; then
+		shared_waf ban-remove || return $?
+	fi
 }
 
 

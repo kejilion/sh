@@ -9,7 +9,7 @@ done | sed "s|/home/web|$fixture/web|g; s|/etc/fail2ban|$fixture/fail2ban|g; s|/
 source "$fixture/functions"
 sed -n '/^web_ban_install() {/,/^}/p' "$root/kejilion.sh" | sed "s|/home/web|$fixture/web|g" > "$fixture/real-web-ban-install"
 mkdir -p "$fixture/web/config/waf" "$fixture/fail2ban/jail.d"
-calls="$fixture/calls"; : > "$calls"
+calls="$fixture/calls"; : > "$calls"; waf_remove_failure=0; waf_clear_failure=0
 test_python="${PYTHON:-$(command -v python3)}"
 shared_waf_cached() { WAF_PYTHON="$test_python"; }
 shared_waf_prepare() { shared_waf_cached; }
@@ -19,6 +19,8 @@ shared_waf() {
   printf '%s\n' "$1" >> "$calls"
   case "$1" in
     cf-on) cat > "$fixture/credentials" ;;
+    ban-clear) return "$waf_clear_failure" ;;
+    ban-remove) return "$waf_remove_failure" ;;
     ban-status) printf '{"mode":"%s","healthy":%s,"pending":%s,"configured":true,"running":true,"activeBans":3,"migration":{"state":"current","importedRecords":0,"apiJailEnabled":false,"legacyCFDetected":false,"cfReentryRequired":false,"legacyReconcilerStopped":false},"email":"hidden@example.com","key":"secret-value"}\n' "$cf_mode" "$cf_healthy" "$cf_pending" ;;
     ban-preflight) printf '{"safe":true,"migration":{"state":"legacy-ready","importedRecords":12,"apiJailDetected":true,"apiJailEnabled":true,"legacyCFDetected":true,"cfReentryRequired":true,"legacyReconcilerDetected":true}}\n' ;;
   esac
@@ -94,7 +96,8 @@ check_cf_mode
 cf_pending=true; check_cf_mode; [ "$CFmessage" = ' CF等待同步' ]
 cf_healthy=false; check_cf_mode; [ "$CFmessage" = ' CF同步待核验' ]
 cf_mode=local; check_cf_mode; [ "$CFmessage" = ' 源站封禁模式' ]
-# Clear/remove only invoke the shared adapter when it owns persistent state.
+# Clear/remove uses the shared adapter whenever local or CF state exists.
+rm -f "$fixture/web/config/waf/ban-cf.json"
 fail2ban-client() { return "${f2b_failure:-0}"; }
 : > "$calls"; web_ban_clear; [ ! -s "$calls" ]
 touch "$fixture/web/config/waf/bans.json"
@@ -103,6 +106,19 @@ web_ban_clear; grep -Fx ban-clear "$calls"
 if web_ban_clear; then exit 1; fi
 grep -Fx ban-clear "$calls"; f2b_failure=0
 web_ban_remove; grep -Fx ban-remove "$calls"
+# CF credentials without the owner-state file must still enter the fail-closed cleanup path.
+rm -f "$fixture/web/config/waf/bans.json"
+printf '{"mode":"cloudflare","auth":{"email":"test@example.invalid","key":"not-a-real-secret"}}\n' > "$fixture/web/config/waf/ban-cf.json"
+: > "$calls"
+waf_clear_failure=1
+if web_ban_clear; then echo "missing owner state must stop CF unban" >&2; exit 1; fi
+grep -Fx ban-clear "$calls"
+waf_clear_failure=0
+: > "$calls"
+waf_remove_failure=1
+if web_ban_remove; then echo "missing owner state must stop CF cleanup" >&2; exit 1; fi
+grep -Fx ban-remove "$calls"
+waf_remove_failure=0
 # Both protocol status and the menu initialize the interpreter before parsing.
 status_body="$(sed -n '/^ldnmp_environment_status() {/,/^}/p' "$root/kejilion.sh")"
 [[ "$status_body" == *'protection_json=$(kpanel_ldnmp_protection_json "$waf" "$waf_mode")'* ]]
