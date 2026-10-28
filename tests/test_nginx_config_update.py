@@ -366,6 +366,18 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(pinned['services']['nginx']['image'], updater.WAF_CANDIDATE_IMAGE)
         self.assertTrue(any('pull' in call and str(self.directory / 'pinned.json') in call for call in self.calls))
 
+    def test_first_managed_image_upgrade_pins_when_running_container_is_official(self):
+        self.prepare_waf()
+        self.model['services']['nginx']['image'] = 'kjlion/nginx:alpine'
+        self.seed('docker-compose.yml', json.dumps(self.model))
+        updater.snapshot(self.root, self.directory)
+        updater.execute_update(self.root, self.directory, 'nginx', 'https://')
+        compose = json.loads((self.root / 'docker-compose.yml').read_text(encoding='utf-8'))
+        self.assertEqual(compose['services']['nginx']['image'], updater.WAF_CANDIDATE_IMAGE)
+        pinned = json.loads((self.directory / 'pinned.json').read_text(encoding='utf-8'))
+        self.assertEqual(pinned['services']['nginx']['image'], updater.WAF_CANDIDATE_IMAGE)
+        self.assertTrue(any('pull' in call and str(self.directory / 'pinned.json') in call for call in self.calls))
+
     def test_success_migrates_common_files_preserves_sites_and_persists_verified_baselines(self):
         original_inode = (self.root / 'nginx.conf').stat().st_ino
         self.update()

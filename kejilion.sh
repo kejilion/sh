@@ -3302,8 +3302,7 @@ def execute_update(root, directory, component, prefix):
     json_write(directory / 'images.json', {'services': services, 'previous': previous})
     managed_waf_tag = bool(
         component != 'waf' and nginx_container is not None and
-        model['services']['nginx'].get('image') in {'kjlion/nginx:alpine', 'docker.io/kjlion/nginx:alpine'} and
-        nginx_container.get('Config', {}).get('Image') in {'kjlion/nginx:alpine', 'docker.io/kjlion/nginx:alpine'}
+        model['services']['nginx'].get('image') in {'kjlion/nginx:alpine', 'docker.io/kjlion/nginx:alpine'}
     )
     if component == 'waf' or managed_waf_tag:
         if nginx_container is None or not nginx_container['State']['Running']:
