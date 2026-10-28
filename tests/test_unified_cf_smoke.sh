@@ -56,6 +56,19 @@ legacy_shield_call="$fixture/legacy-shield-call"
 grep -Fxq 'user@example.com token-123 zone-456' "$legacy_shield_call"
 grep -Fxq "*/5 * * * * $fixture/root/CF-Under-Attack.sh" "$fixture/legacy-crontab"
 ! grep -Fq 'raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh' "$root/kejilion.sh"
+for language in cn en tw jp kr ir ru; do
+  localized_script="$root/$language/kejilion.sh"
+  [ -f "$localized_script" ] || exit 1
+  bash -n "$localized_script"
+  [ "$(grep -Fc 'cf_shield_install_script() {' "$localized_script")" -eq 1 ]
+  grep -Fq "revision='f02b7b8d59fd090006304a998ea2b3410ae5f736'" "$localized_script"
+  grep -Fq "expected_sha='781265062ba74bdeccb443177a9580190942c379dbe1e19a78ba1c774400086c'" "$localized_script"
+  ! grep -Fq 'raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh' "$localized_script"
+  grep -Fq 'cf_shield_install_script "$cfuser" "$cftoken" "$cfzonID"' "$localized_script"
+  case "$language" in
+    en|tw|jp|kr) grep -Fq 'cf_shield_install_script "$cfuser" "$cftoken" "$cfzone" || return $?' "$localized_script" ;;
+  esac
+done
 shared_waf_cached() { WAF_PYTHON="$test_python"; }
 shared_waf_prepare() { shared_waf_cached; }
 cf_mode=cloudflare; cf_healthy=true; cf_pending=false

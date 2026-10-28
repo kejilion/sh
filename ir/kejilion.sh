@@ -6816,6 +6816,42 @@ fix_phpfpm_conf() {
 
 
 
+cf_shield_install_script() {
+	(
+	set -euo pipefail
+	local email="${1:-}" token="${2:-}" zone="${3:-}"
+	local target="${4:-/root/CF-Under-Attack.sh}" directory revision expected_sha url download stage content actual_sha size
+	local gh_prefix="${gh_proxy:-https://}"
+	revision='f02b7b8d59fd090006304a998ea2b3410ae5f736'
+	expected_sha='781265062ba74bdeccb443177a9580190942c379dbe1e19a78ba1c774400086c'
+	directory=$(dirname -- "$target")
+	[ -d "$directory" ] && [ ! -L "$directory" ] || { echo "Cloudflare 防护目录无效" >&2; exit 1; }
+	download=$(mktemp "$directory/.CF-Under-Attack.download.XXXXXX") || exit 1
+	stage=$(mktemp "$directory/.CF-Under-Attack.stage.XXXXXX") || { rm -f -- "$download"; exit 1; }
+	trap 'rm -f -- "$download" "$stage"' EXIT
+	url="${gh_prefix}raw.githubusercontent.com/kejilion/sh/${revision}/CF-Under-Attack.sh"
+	if ! curl --fail --location --silent --show-error --connect-timeout 10 --max-time 45 --output "$download" "$url"; then
+		echo "Cloudflare 五秒盾脚本下载失败" >&2
+		exit 1
+	fi
+	size=$(wc -c < "$download")
+	[[ "$size" =~ ^[0-9]+$ ]] && [ "$size" -le 65536 ] || { echo "Cloudflare 五秒盾脚本大小异常" >&2; exit 1; }
+	actual_sha=$(sha256sum -- "$download" | awk '{print $1}')
+	[ "$actual_sha" = "$expected_sha" ] || { echo "Cloudflare 五秒盾脚本摘要校验失败" >&2; exit 1; }
+	grep -Fq 'EMAIL="AAAA"' "$download" && grep -Fq 'API_KEY="BBBB"' "$download" && grep -Fq 'ZONE_ID="CCCC"' "$download" || {
+		echo "Cloudflare 五秒盾脚本占位符异常" >&2; exit 1;
+	}
+	content=$(< "$download")
+	content=${content//AAAA/$email}
+	content=${content//BBBB/$token}
+	content=${content//CCCC/$zone}
+	printf '%s\n' "$content" > "$stage"
+	chmod 700 "$stage"
+	bash -n "$stage" || { echo "Cloudflare 五秒盾脚本语法校验失败" >&2; exit 1; }
+	mv -f -- "$stage" "$target"
+	)
+}
+
 linux_ldnmp() {
   while true; do
 
@@ -7726,11 +7762,7 @@ linux_ldnmp() {
 					  cd ~
 					  install jq bc
 					  check_crontab_installed
-					  curl -sS -O ${gh_proxy}raw.githubusercontent.com/kejilion/sh/main/CF-Under-Attack.sh
-					  chmod +x CF-Under-Attack.sh
-					  sed -i "s/AAAA/$cfuser/g" ~/CF-Under-Attack.sh
-					  sed -i "s/BBBB/$cftoken/g" ~/CF-Under-Attack.sh
-					  sed -i "s/CCCC/$cfzonID/g" ~/CF-Under-Attack.sh
+					  cf_shield_install_script "$cfuser" "$cftoken" "$cfzonID" || { echo "Cloudflare shield script verification failed; existing file was kept" >&2; continue; }
 
 					  local cron_job="*/5 * * * * ~/CF-Under-Attack.sh"
 
