@@ -4,14 +4,14 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
 bash -n "$root/kejilion.sh"
-for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh shared_waf_remove_rotation nginx_reload nginx_waf nginx_waf_configure web_security shared_waf_mode nginx_wait_ready nginx_upgrade ldnmp_upgrade_all nginx_install_all ldnmp_protection_action ldnmp_uninstall_action; do
+for name in shared_waf_revision shared_waf_manifest shared_waf_verified shared_waf_prepare shared_waf_cached shared_waf shared_waf_refresh shared_waf_remove_rotation nginx_reload nginx_waf nginx_waf_configure web_security shared_waf_mode web_ban_remove nginx_wait_ready nginx_upgrade ldnmp_upgrade_all nginx_install_all ldnmp_protection_action ldnmp_uninstall_action; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh" >> "$fixture/functions"
 done
 sed -e "s|/home/web|$fixture/web|g" -e "s|/root/.waf-cron-cleanup.|$fixture/.waf-cron-cleanup.|g" "$fixture/functions" > "$fixture/isolated"
 source "$fixture/isolated"
 [[ "$(shared_waf_revision)" =~ ^[0-9a-f]{40}$ ]]
-[ "$(shared_waf_manifest | wc -l)" -eq 6 ]
-[ "$(shared_waf_manifest | awk '{print $2}' | sort -u | wc -l)" -eq 6 ]
+[ "$(shared_waf_manifest | wc -l)" -eq 7 ]
+[ "$(shared_waf_manifest | awk '{print $2}' | sort -u | wc -l)" -eq 7 ]
 shared_waf_manifest | awk 'length($1)!=64 || $1~/[^0-9a-f]/ {exit 1}'
 if grep -Eq 'systemctl (enable|start)|shared_waf retire-jails' "$fixture/functions"; then
   echo 'Unexpected automatic backend or legacy jail replacement' >&2; exit 1

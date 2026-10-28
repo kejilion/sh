@@ -22,7 +22,7 @@ class BootstrapTests(unittest.TestCase):
         self.revision='a'*40
         self.package=self.web/'config/waf/packages'/self.revision
         self.calls=self.root/'downloads'
-        names=['configure.py','policy.py','nginx_edit.py','example-policy.json','cloudflare-ips.json','legacy-jails.local']
+        names=['configure.py','policy.py','nginx_edit.py','ban.py','example-policy.json','cloudflare-ips.json','legacy-jails.local']
         self.files={name:(b'print("fixture-executed")\n' if name=='configure.py' else b'# trusted fixture\n') for name in names}
         for name,data in self.files.items():(self.payload/name).write_bytes(data)
         manifest='\n'.join(hashlib.sha256(data).hexdigest()+'  '+name for name,data in self.files.items())
@@ -63,10 +63,10 @@ class BootstrapTests(unittest.TestCase):
         result=self.run_fixture('shared_waf apply')
         self.assertEqual(result.returncode,0,result.stderr)
         self.assertIn('fixture-executed',result.stdout)
-        self.assertEqual(len(self.calls.read_text().splitlines()),6)
+        self.assertEqual(len(self.calls.read_text().splitlines()),7)
         result=self.run_fixture('shared_waf status')
         self.assertEqual(result.returncode,0,result.stderr)
-        self.assertEqual(len(self.calls.read_text().splitlines()),6)
+        self.assertEqual(len(self.calls.read_text().splitlines()),7)
 
     def test_uncached_status_never_downloads_or_creates_directories(self):
         result=self.run_fixture('shared_waf status')
