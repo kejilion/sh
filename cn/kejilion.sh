@@ -3831,6 +3831,7 @@ for parent in [path,*path.parents]:
   raise SystemExit('WAF 配置目录所有权或权限不可信')
 if path.exists():
  count=total=0
+ known={"configure.py","policy.py","nginx_edit.py","ban.py","example-policy.json","cloudflare-ips.json","legacy-jails.local"}
  for entry in path.iterdir():
   count+=1
   if count>16:raise SystemExit('WAF 版本缓存上限16份，请先归档旧版本')
@@ -3839,7 +3840,7 @@ if path.exists():
   children=0
   for child in entry.iterdir():
    children+=1
-   if children>6:raise SystemExit('WAF 缓存含未知文件')
+   if child.name not in known or children>7:raise SystemExit('WAF 缓存含未知文件')
    if child.is_symlink() or not child.is_file():raise SystemExit('WAF 缓存含未知文件类型')
    total+=child.stat().st_size
    if total>64*1024*1024:raise SystemExit('WAF 版本缓存超过64MiB，请先归档')
@@ -4400,9 +4401,20 @@ web_security() {
 					  echo "------------------------"
 					  ;;
 				  6)
-					  fail2ban-client status waf-attack
-					  fail2ban-client status waf-rate
-					  shared_waf ban-status
+					  if command -v fail2ban-client >/dev/null 2>&1 && fail2ban-client ping >/dev/null 2>&1 &&
+							  jail_overview=$(fail2ban-client status 2>/dev/null); then
+						  jail_list=$(printf '%s\n' "$jail_overview" | sed -n 's/^[[:space:]]*Jail list:[[:space:]]*//p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+						  for jail in waf-attack waf-rate; do
+							  if printf '%s\n' "$jail_list" | grep -Fxq -- "$jail" && jail_status=$(fail2ban-client status "$jail" 2>/dev/null); then
+								  printf '%s\n' "$jail_status"
+							  else
+								  echo "网站 Jail $jail 未安装或未加载，请选择 1 安装防御程序后重试。"
+							  fi
+						  done
+					  else
+						  echo "Fail2Ban 未运行，无法读取网站拦截记录。"
+					  fi
+					  shared_waf ban-status || echo "WAF/CF 状态读取失败，请检查缓存和配置。" >&2
 					  ;;
 				  7)
 					  fail2ban-client status
@@ -16168,8 +16180,10 @@ kpanel_ldnmp_component() {
 }
 
 kpanel_ldnmp_site_jail_json() {
-	local jail="$1" running="${2:-false}" status="" value="" current=0 total=0
-	if [ "$running" = true ] && status=$(fail2ban-client status "$jail" 2>/dev/null); then
+	local jail="$1" running="${2:-false}" status="" jails="" value="" current=0 total=0
+	if [ "$running" = true ] && jails=$(fail2ban-client status 2>/dev/null) &&
+		printf '%s\n' "$jails" | sed -n 's/^[[:space:]]*Jail list:[[:space:]]*//p' | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -Fxq -- "$jail" &&
+		status=$(fail2ban-client status "$jail" 2>/dev/null); then
 		value=$(printf '%s\n' "$status" | awk -F: '/Currently banned[[:space:]]*:/ {gsub(/[[:space:]]/, "", $2); print $2; exit}')
 		case "$value" in ''|*[!0-9]*) value=0 ;; esac
 		current="$value"

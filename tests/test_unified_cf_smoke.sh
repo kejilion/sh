@@ -3,7 +3,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
-for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode ddos_rule_add_once ddos_rule_remove_all enable_ddos_defense disable_ddos_defense kpanel_ldnmp_escape kpanel_ldnmp_site_jail_json kpanel_ldnmp_fail2ban_logs_json kpanel_ldnmp_ddos_rules_present kpanel_ldnmp_cloudflare_status_json kpanel_ldnmp_cloudflare_shield_off kpanel_ldnmp_protection_json; do
+for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode ddos_rule_add_once ddos_rule_remove_all enable_ddos_defense disable_ddos_defense web_security kpanel_ldnmp_escape kpanel_ldnmp_site_jail_json kpanel_ldnmp_fail2ban_logs_json kpanel_ldnmp_ddos_rules_present kpanel_ldnmp_cloudflare_status_json kpanel_ldnmp_cloudflare_shield_off kpanel_ldnmp_protection_json; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh"
 done | sed "s|/home/web|$fixture/web|g; s|/etc/fail2ban|$fixture/fail2ban|g; s|/var/log/fail2ban.log|$fixture/fail2ban.log|g; s|/root/CF-Under-Attack.sh|$fixture/root/CF-Under-Attack.sh|g" > "$fixture/functions"
 source "$fixture/functions"
@@ -21,6 +21,30 @@ shared_waf() {
     ban-status) printf '{"mode":"%s","healthy":%s,"pending":%s,"configured":true,"running":true,"activeBans":3,"email":"hidden@example.com","key":"secret-value"}\n' "$cf_mode" "$cf_healthy" "$cf_pending" ;;
   esac
 }
+# Missing site jails should be reported without sending UnknownJailException to fail2ban.log.
+fail2ban_calls="$fixture/fail2ban-calls"; : > "$fail2ban_calls"
+(
+  fail2ban-client() {
+    printf '%s\n' "$*" >> "$fail2ban_calls"
+    case "$*" in
+      ping) return 0 ;;
+      status) printf 'Status\n|- Number of jail: 1\n`- Jail list: sshd\n' ;;
+      *) printf 'ERROR UnknownJailException(%s)\n' "$*" >&2; return 1 ;;
+    esac
+  }
+  send_stats() { :; }; clear() { :; }; break_end() { :; }
+  check_f2b_status() { check_f2b_status=' Fail2Ban已安装'; }
+  check_waf_status() { waf_status=' WAF已开启'; }
+  check_cf_mode() { CFmessage=' 源站封禁模式'; }
+  gl_lv= gl_bai= gl_huang=
+  cf_mode=local; cf_healthy=false; cf_pending=true
+  printf '6\n0\n' | web_security > "$fixture/jail-menu.out" 2> "$fixture/jail-menu.err"
+)
+grep -Fq '网站 Jail waf-attack 未安装或未加载' "$fixture/jail-menu.out"
+grep -Fq '网站 Jail waf-rate 未安装或未加载' "$fixture/jail-menu.out"
+! grep -q 'UnknownJailException' "$fixture/jail-menu.err"
+[ "$(cat "$fail2ban_calls")" = "$(printf 'ping\nstatus')" ]
+
 # A configured integration must not be reinstalled or reset by the CF switch.
 printf '# Managed shared WAF; unified event bans v1\n' > "$fixture/fail2ban/jail.d/zz-waf-managed.local"
 web_ban_install() { echo unexpected-reinstall >&2; return 99; }

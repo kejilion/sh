@@ -101,6 +101,17 @@ class BootstrapTests(unittest.TestCase):
         self.assertNotIn('tampered',result.stdout)
         self.assertFalse(self.calls.exists())
 
+    def test_seven_manifest_files_are_accepted_and_unknown_names_are_rejected(self):
+        self.seed()
+        older=self.package.parent/('b'*40)
+        self.seed(older)
+        result=self.run_fixture('shared_waf_prepare')
+        self.assertEqual(result.returncode,0,result.stderr)
+        (older/'README.txt').write_text('unexpected')
+        result=self.run_fixture('shared_waf_prepare')
+        self.assertNotEqual(result.returncode,0)
+        self.assertIn('WAF 缓存含未知文件',result.stderr)
+
     def test_symlink_and_writable_cache_files_are_rejected(self):
         self.seed();p=self.package/'configure.py';p.unlink();p.symlink_to(self.payload/'configure.py')
         self.assertNotEqual(self.run_fixture('shared_waf status').returncode,0)
