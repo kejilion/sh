@@ -4029,7 +4029,7 @@ check_cf_mode() {
 	local state
 	shared_waf_cached || { CFmessage=" CF状态异常"; return 0; }
 	state=$(shared_waf ban-status 2>/dev/null) || { CFmessage=" CF状态异常"; return 0; }
-	CFmessage=$(printf '%s' "$state" | "$WAF_PYTHON" -I -c 'import json,sys; s=json.load(sys.stdin); print(" CF关闭清理待重试" if s.get("cleanupPending") else (" CF同步待核验" if not s["healthy"] else " CF等待同步" if s["pending"] else " CF模式已开启") if s["mode"]=="cloudflare" else " 源站封禁模式")')
+	CFmessage=$(printf '%s' "$state" | "$WAF_PYTHON" -I -X utf8 -c 'import json,sys; s=json.load(sys.stdin); print(" CF关闭清理待重试" if s.get("cleanupPending") else (" CF同步待核验" if not s["healthy"] else " CF等待同步" if s["pending"] else " CF模式已开启") if s["mode"]=="cloudflare" else " 源站封禁模式")')
 }
 
 web_ban_cron_ready() {
@@ -4359,6 +4359,7 @@ web_security() {
 			  echo "21. 开启CF封禁模式                22. 高负载开启5秒盾"
 			  echo "------------------------"
 			  echo "23. 关闭CF封禁模式（保留源站防护）"
+			  echo "24. 关闭高负载5秒盾"
 			  echo "31. 开启WAF                       32. 关闭WAF"
 			  echo "33. 开启DDOS防御                  34. 关闭DDOS防御"
 			  echo "------------------------"
@@ -4424,6 +4425,10 @@ web_security() {
 					  ;;
 				  23)
 					  shared_waf cf-off || { echo "CF规则清理未完成，凭据已保留供重试" >&2; continue; }
+					  ;;
+				  24)
+					  kpanel_ldnmp_cloudflare_shield_off || { echo "高负载5秒盾关闭失败，请检查定时任务" >&2; continue; }
+					  echo "高负载5秒盾已关闭，CF封禁模式与源站防护保持不变"
 					  ;;
 				  22)
 					  send_stats "高负载开启5秒盾"
@@ -16136,6 +16141,129 @@ kpanel_ldnmp_component() {
 		"$(kpanel_ldnmp_escape "$image")" "$(kpanel_ldnmp_escape "$version")" "$(kpanel_ldnmp_escape "$digest")"
 }
 
+kpanel_ldnmp_site_jail_json() {
+	local jail="$1" running="${2:-false}" status="" value="" current=0 total=0
+	if [ "$running" = true ] && status=$(fail2ban-client status "$jail" 2>/dev/null); then
+		value=$(printf '%s\n' "$status" | awk -F: '/Currently banned[[:space:]]*:/ {gsub(/[[:space:]]/, "", $2); print $2; exit}')
+		case "$value" in ''|*[!0-9]*) value=0 ;; esac
+		current="$value"
+		value=$(printf '%s\n' "$status" | awk -F: '/Total banned[[:space:]]*:/ {gsub(/[[:space:]]/, "", $2); print $2; exit}')
+		case "$value" in ''|*[!0-9]*) value=0 ;; esac
+		total="$value"
+		printf '{"name":"%s","available":true,"currentlyBanned":%s,"totalBanned":%s}' "$jail" "$current" "$total"
+	else
+		printf '{"name":"%s","available":false,"currentlyBanned":0,"totalBanned":0}' "$jail"
+	fi
+}
+
+kpanel_ldnmp_fail2ban_logs_json() {
+	local log_file="${1:-/var/log/fail2ban.log}" available=false separator="" line escaped
+	local -a lines=()
+	if [ -r "$log_file" ]; then
+		available=true
+		mapfile -t lines < <(tail -n 500 "$log_file" 2>/dev/null | grep -F -e '[waf-attack]' -e '[waf-rate]' | tail -n 20)
+	fi
+	printf '{"available":%s,"entries":[' "$available"
+	for line in "${lines[@]}"; do
+		line=$(printf '%s' "$line" | LC_ALL=C tr -d '\001-\010\013\014\016-\037')
+		line="${line:0:1024}"
+		escaped=$(kpanel_ldnmp_escape "$line")
+		printf '%s"%s"' "$separator" "$escaped"
+		separator=,
+	done
+	printf ']}'
+}
+
+kpanel_ldnmp_ddos_rules_present() {
+	local count=0
+	iptables -C DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT >/dev/null 2>&1 && count=$((count + 1))
+	iptables -C DOCKER-USER -p tcp --syn -j DROP >/dev/null 2>&1 && count=$((count + 1))
+	iptables -C DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT >/dev/null 2>&1 && count=$((count + 1))
+	iptables -C DOCKER-USER -p udp -j DROP >/dev/null 2>&1 && count=$((count + 1))
+	iptables -C INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT >/dev/null 2>&1 && count=$((count + 1))
+	iptables -C INPUT -p tcp --syn -j DROP >/dev/null 2>&1 && count=$((count + 1))
+	iptables -C INPUT -p udp -m limit --limit 3000/s -j ACCEPT >/dev/null 2>&1 && count=$((count + 1))
+	iptables -C INPUT -p udp -j DROP >/dev/null 2>&1 && count=$((count + 1))
+	printf '%s' "$count"
+}
+
+kpanel_ldnmp_cloudflare_status_json() {
+	local raw="${1:-}" status='{"mode":"local","configured":false,"running":false,"healthy":false,"pending":false,"cleanupPending":false,"activeBans":0}'
+	[ -n "$raw" ] || { printf '%s' "$status"; return 0; }
+	status=$(printf '%s' "$raw" | "$WAF_PYTHON" -I -c '
+import json,sys
+s=json.load(sys.stdin)
+mode=s.get("mode")
+if mode not in {"cloudflare","local"}: mode="unknown"
+try: active=int(s.get("activeBans",0))
+except (TypeError,ValueError): active=0
+if active < 0 or active > 1000000: active=0
+out={"mode":mode,"configured":s.get("configured") is True,"running":s.get("running") is True,"healthy":s.get("healthy") is True,"pending":s.get("pending") is True,"cleanupPending":s.get("cleanupPending") is True,"activeBans":active}
+print(json.dumps(out,separators=(",",":")))' 2>/dev/null) || status='{"mode":"unknown","configured":false,"running":false,"healthy":false,"pending":false,"cleanupPending":false,"activeBans":0}'
+	printf '%s' "$status"
+}
+
+kpanel_ldnmp_cloudflare_shield_off() {
+	local current="" updated="" listing="" script_path="${1:-/root/CF-Under-Attack.sh}"
+	command -v crontab >/dev/null 2>&1 || return 1
+	if listing=$(crontab -l 2>&1); then
+		current="$listing"
+	else
+		if [[ "$listing" == *"no crontab for "* ]] || [[ "$listing" == *"can't open "* && "$listing" == *"No such file or directory"* ]]; then
+		current=""
+		else
+			return 1
+		fi
+	fi
+	updated=$(printf '%s\n' "$current" | grep -Fv 'CF-Under-Attack.sh') || true
+	if [ "$updated" != "$current" ]; then
+		printf '%s\n' "$updated" | crontab - || return 1
+	fi
+	rm -f -- "$script_path"
+}
+
+kpanel_ldnmp_protection_json() {
+	local waf="$1" waf_mode="$2" fail2ban_installed=false fail2ban=false
+	local cf_raw="" cf_json cf_status_known=false cloudflare=false ddos_count=0 ddos=false ddos_rules_available=false shield_scheduled=false shield_script=false shield_available=false cron_listing=""
+	local first="" second="" logs=""
+	command -v fail2ban-client >/dev/null 2>&1 && fail2ban_installed=true
+	if [ "$fail2ban_installed" = true ] && fail2ban-client ping >/dev/null 2>&1; then fail2ban=true; fi
+	first=$(kpanel_ldnmp_site_jail_json waf-attack "$fail2ban")
+	second=$(kpanel_ldnmp_site_jail_json waf-rate "$fail2ban")
+	logs=$(kpanel_ldnmp_fail2ban_logs_json)
+	if [ -f /home/web/config/waf/ban-cf.json ] && shared_waf_cached; then
+		cf_raw=$(shared_waf ban-status 2>/dev/null) || cf_raw=""
+		[ -n "$cf_raw" ] && cf_status_known=true
+	fi
+	cf_json=$(kpanel_ldnmp_cloudflare_status_json "$cf_raw")
+	if [ -f /home/web/config/waf/ban-cf.json ] && [ "$cf_status_known" = false ]; then
+		cf_json='{"mode":"unknown","configured":false,"running":false,"healthy":false,"pending":false,"cleanupPending":false,"activeBans":0}'
+	fi
+	if [ -n "$cf_raw" ] && printf '%s' "$cf_json" | "$WAF_PYTHON" -I -c 'import json,sys; s=json.load(sys.stdin); sys.exit(not (s["mode"]=="cloudflare" and s["healthy"]))' 2>/dev/null; then
+		cloudflare=true
+	else
+		cloudflare=false
+	fi
+	command -v iptables >/dev/null 2>&1 && ddos_rules_available=true
+	ddos_count=$(kpanel_ldnmp_ddos_rules_present)
+	[ "$ddos_count" -eq 8 ] && ddos=true
+	[ -f /root/CF-Under-Attack.sh ] && shield_script=true
+	if command -v crontab >/dev/null 2>&1; then
+		if cron_listing=$(crontab -l 2>&1); then
+			shield_available=true
+		elif [[ "$cron_listing" == *"no crontab for "* ]] || [[ "$cron_listing" == *"can't open "* && "$cron_listing" == *"No such file or directory"* ]]; then
+			shield_available=true
+			cron_listing=""
+		fi
+		if [ "$shield_available" = true ]; then
+			printf '%s' "$cron_listing" | grep -Fq 'CF-Under-Attack.sh' && shield_scheduled=true
+		fi
+	fi
+	printf '{"fail2ban":%s,"fail2banInstalled":%s,"waf":%s,"wafMode":"%s","cloudflare":%s,"cloudflareStatus":%s,"ddos":%s,"ddosRuleCount":%s,"ddosRuleExpected":8,"ddosRulesAvailable":%s,"cloudflareShield":{"available":%s,"scheduled":%s,"scriptPresent":%s},"siteJails":[%s,%s],"fail2banLogs":%s}' \
+		"$fail2ban" "$fail2ban_installed" "$waf" "$(kpanel_ldnmp_escape "$waf_mode")" "$cloudflare" "$cf_json" \
+		"$ddos" "$ddos_count" "$ddos_rules_available" "$shield_available" "$shield_scheduled" "$shield_script" "$first" "$second" "$logs"
+}
+
 ldnmp_environment_status() {
 	local count=0 running=0 state=absent profile=none health=unknown
 	for name in nginx mysql php redis; do
@@ -16171,18 +16299,14 @@ ldnmp_environment_status() {
 		  docker inspect -f '{{.Id}} {{.Image}} {{.State.Status}}' nginx mysql php php74 redis 2>/dev/null; } |
 			sha256sum | awk '{print $1}'
 	)
-	local cf_state="" fail2ban=false waf=false waf_mode=off cloudflare=false ddos=false mode=custom gzip=false brotli=false zstd=false
-	command -v fail2ban-client >/dev/null 2>&1 && fail2ban=true
+	local waf=false waf_mode=off mode=custom gzip=false brotli=false zstd=false protection_json
 	grep -qE '^[[:space:]]*modsecurity on;' /home/web/nginx.conf 2>/dev/null && waf=true
 	if [ -f /home/web/config/waf/policy.json ]; then
 		waf_mode=$(shared_waf_mode 2>/dev/null) || waf_mode=unknown
 		case "$waf_mode" in on) waf=true ;; *) waf=false ;; esac
 	elif [ "$waf" = true ]; then waf_mode=legacy; fi
-	if [ -f /home/web/config/waf/ban-cf.json ] && shared_waf_cached; then
-		cf_state=$(shared_waf ban-status 2>/dev/null) || cf_state=""
-		printf '%s' "$cf_state" | "$WAF_PYTHON" -I -c 'import json,sys; s=json.load(sys.stdin); sys.exit(not(s["mode"]=="cloudflare" and s["healthy"]))' && cloudflare=true
-	fi
-	iptables -C INPUT -p tcp --syn -j DROP >/dev/null 2>&1 && ddos=true
+	protection_json=$(kpanel_ldnmp_protection_json "$waf" "$waf_mode")
+	# DDoS status is counted from all fixed rules in kpanel_ldnmp_protection_json.
 	docker exec mysql grep -q 4096M /etc/mysql/conf.d/custom_mysql_config.cnf 2>/dev/null && mode=high
 	[ "$mode" = custom ] && docker exec mysql test -f /etc/mysql/conf.d/custom_mysql_config.cnf >/dev/null 2>&1 && mode=standard
 	grep -qE '^[[:space:]]*gzip[[:space:]]+on;' /home/web/nginx.conf 2>/dev/null && gzip=true
@@ -16204,12 +16328,12 @@ ldnmp_environment_status() {
 	kpanel_ldnmp_component nginx true; printf ','; kpanel_ldnmp_component mysql true; printf ','
 	kpanel_ldnmp_component php true; printf ','; kpanel_ldnmp_component php74 false; printf ','
 	kpanel_ldnmp_component redis true
-	printf '],"protection":{"fail2ban":%s,"waf":%s,"wafMode":"%s","cloudflare":%s,"ddos":%s},"optimization":{"mode":"%s","gzip":%s,"brotli":%s,"zstd":%s},"observedAt":"%s"}\n' \
-		"$fail2ban" "$waf" "$waf_mode" "$cloudflare" "$ddos" "$mode" "$gzip" "$brotli" "$zstd" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+	printf '],"protection":%s,"optimization":{"mode":"%s","gzip":%s,"brotli":%s,"zstd":%s},"observedAt":"%s"}\n' \
+		"$protection_json" "$mode" "$gzip" "$brotli" "$zstd" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 }
 
 ldnmp_environment_catalog() {
-	printf '%s\n' '{"protocolVersion":"1","installProfiles":[{"id":"full","label":"完整 LDNMP"},{"id":"nginx","label":"仅 Nginx"}],"protectionActions":["fail2ban-install","fail2ban-uninstall","unban-all","waf-on","waf-off","ddos-on","ddos-off","cloudflare-fail2ban","cloudflare-off","cloudflare-shield"],"optimizationActions":["standard","high","gzip-on","gzip-off","brotli-on","brotli-off","zstd-on","zstd-off"],"updateComponents":[{"id":"nginx","versions":["latest"]},{"id":"mysql","versions":["latest","8.0","8.3","8.4","9.0"]},{"id":"php","versions":["7.4","8.0","8.1","8.2","8.3"]},{"id":"redis","versions":["latest"]},{"id":"all","versions":["latest"]}]}'
+	printf '%s\n' '{"protocolVersion":"1","installProfiles":[{"id":"full","label":"完整 LDNMP"},{"id":"nginx","label":"仅 Nginx"}],"protectionActions":["fail2ban-install","fail2ban-uninstall","unban-all","waf-on","waf-off","ddos-on","ddos-off","cloudflare-fail2ban","cloudflare-off","cloudflare-shield","cloudflare-shield-off"],"optimizationActions":["standard","high","gzip-on","gzip-off","brotli-on","brotli-off","zstd-on","zstd-off"],"updateComponents":[{"id":"nginx","versions":["latest"]},{"id":"mysql","versions":["latest","8.0","8.3","8.4","9.0"]},{"id":"php","versions":["7.4","8.0","8.1","8.2","8.3"]},{"id":"redis","versions":["latest"]},{"id":"all","versions":["latest"]}]}'
 }
 
 ldnmp_environment_install() {
@@ -16238,6 +16362,7 @@ ldnmp_protection_action_apply() {
 		fail2ban-uninstall) web_ban_remove || return $?; remove fail2ban; rm -rf /etc/fail2ban ;;
 		unban-all) web_ban_clear ;;
 		cloudflare-off) shared_waf cf-off ;;
+		cloudflare-shield-off) kpanel_ldnmp_cloudflare_shield_off ;;
 		waf-on) nginx_waf on ;; waf-off) nginx_waf off ;;
 		ddos-on) enable_ddos_defense ;; ddos-off) disable_ddos_defense ;;
 		cloudflare-fail2ban|cloudflare-shield)
@@ -16278,7 +16403,7 @@ ldnmp_protection_action() {
 	# The legacy snapshot below cannot restore that write set and must not wrap it.
 	case "$1" in
 		waf-on) nginx_waf on; return $? ;; waf-off) nginx_waf off; return $? ;;
-		fail2ban-install|fail2ban-uninstall|cloudflare-fail2ban|cloudflare-off|unban-all)
+		fail2ban-install|fail2ban-uninstall|cloudflare-fail2ban|cloudflare-off|cloudflare-shield-off|unban-all)
 			ldnmp_protection_action_apply "$@"; return $? ;;
 	esac
 	local action="$1" snapshot rc=0 fail2ban_existed=false
