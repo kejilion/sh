@@ -304,7 +304,7 @@ class TransactionTests(unittest.TestCase):
         updater.execute_update(self.root, self.directory, 'waf', 'https://')
         self.assertEqual(json.loads((self.directory / 'journal.json').read_text())['phase'], 'switching')
         self.assertEqual((self.root / 'nginx.conf').read_bytes(), self.initial['nginx.conf'])
-        self.assertEqual(json.loads((self.root / 'docker-compose.yml').read_text())['services']['nginx']['image'], 'kjlion/nginx:alpine')
+        self.assertEqual(json.loads((self.root / 'docker-compose.yml').read_text())['services']['nginx']['image'], updater.WAF_CANDIDATE_IMAGE)
         updater.rollback(self.root, self.directory)  # A later policy/configuration failure.
         self.assertEqual((self.root / 'docker-compose.yml').read_bytes(), self.initial['docker-compose.yml'])
         self.assertEqual(self.images, self.old_images)
@@ -332,7 +332,8 @@ class TransactionTests(unittest.TestCase):
         container['Config']['Labels']['com.docker.compose.project.config_files'] += ',' + str(self.root / 'docker-compose.override.yml')
         name, result = updater.waf_image_plan(self.root, self.model, container)
         self.assertEqual(name, 'docker-compose.override.yml')
-        self.assertEqual(result.decode(), original.replace('image: ${NGINX_IMAGE:-nginx:alpine} # old', 'image: kjlion/nginx:alpine'))
+        self.assertEqual(result.decode(), original.replace('image: ${NGINX_IMAGE:-nginx:alpine} # old', 'image: ' + updater.WAF_CANDIDATE_IMAGE))
+        self.assertRegex(updater.WAF_CANDIDATE_IMAGE, r'^kjlion/nginx:alpine@sha256:[0-9a-f]{64}$')
 
     def test_waf_custom_image_or_build_cannot_be_automatically_replaced(self):
         self.prepare_waf()

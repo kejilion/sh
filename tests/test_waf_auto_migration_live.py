@@ -73,7 +73,7 @@ if args and args[0]=='compose':
     files=[pathlib.Path(args[i+1]) for i,x in enumerate(args) if x=='-f']
     if files and any(x in args for x in ('up','run')):
         model=json.loads(files[0].read_text())
-        if len(files)==1 and model['services']['nginx']['image']=='kjlion/nginx:alpine':
+        if len(files)==1 and model['services']['nginx']['image']==os.environ['FIXTURE_WAF_IMAGE']:
             override=pathlib.Path(os.environ['FIXTURE_ROOT'])/'image-fixture.json'
             override.write_text(json.dumps({'services':{'nginx':{'image':os.environ['FIXTURE_WAF']}}}))
             point=next(i for i,x in enumerate(args) if x in ('up','run'))
@@ -115,7 +115,8 @@ nginx_waf "$1"
                 script.write_text(body)
                 environment = dict(os.environ, PATH=str(root / 'bin') + ':' + os.environ['PATH'],
                     FIXTURE_ROOT=str(root), FIXTURE_CONTAINER=container, FIXTURE_DOCKER=docker,
-                    FIXTURE_WAF=waf, FIXTURE_BUNDLE=str(bundle), FIXTURE_PYTHON=sys.executable)
+                    FIXTURE_WAF=waf, FIXTURE_WAF_IMAGE=updater.WAF_CANDIDATE_IMAGE,
+                    FIXTURE_BUNDLE=str(bundle), FIXTURE_PYTHON=sys.executable)
 
                 def run(mode, fault=''):
                     result = subprocess.run(['bash', str(script), mode], env=dict(environment, FIXTURE_FAULT=fault),
@@ -154,7 +155,7 @@ nginx_waf "$1"
                     self.assertEqual(image(), expected_waf)
                     self.assertEqual((root / 'docker-compose.override.yml').read_bytes(), override)
                     effective = json.loads(updater.command(*compose, 'config', '--format', 'json'))
-                    before_model['services']['nginx']['image'] = 'kjlion/nginx:alpine'
+                    before_model['services']['nginx']['image'] = updater.WAF_CANDIDATE_IMAGE
                     self.assertEqual(effective, before_model)
                     actual = json.loads(updater.command(docker, 'inspect', container))[0]
                     self.assertIn('PRESERVE_LITERAL=hello$world', actual['Config']['Env'])
