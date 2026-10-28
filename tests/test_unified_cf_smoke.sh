@@ -3,7 +3,7 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
-for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode ddos_rule_add_once ddos_rule_remove_all enable_ddos_defense disable_ddos_defense web_security kpanel_ldnmp_escape kpanel_ldnmp_site_jail_json kpanel_ldnmp_migration_json kpanel_ldnmp_fail2ban_logs_json kpanel_ldnmp_ddos_rules_present kpanel_ldnmp_cloudflare_status_json kpanel_ldnmp_cloudflare_shield_off cf_shield_install_script kpanel_ldnmp_protection_json; do
+for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode ddos_rule_add_once ddos_rule_remove_all enable_ddos_defense disable_ddos_defense web_security kpanel_ldnmp_escape kpanel_ldnmp_site_jail_json kpanel_ldnmp_migration_json kpanel_ldnmp_fail2ban_logs_json kpanel_ldnmp_ddos_rules_present kpanel_ldnmp_cloudflare_status_json kpanel_ldnmp_cloudflare_shield_off cf_shield_install_script nginx_template_install kpanel_ldnmp_protection_json; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh"
 done | sed "s|/home/web|$fixture/web|g; s|/etc/fail2ban|$fixture/fail2ban|g; s|/var/log/fail2ban.log|$fixture/fail2ban.log|g; s|/root/CF-Under-Attack.sh|$fixture/root/CF-Under-Attack.sh|g" > "$fixture/functions"
 source "$fixture/functions"
@@ -14,6 +14,7 @@ test_python="${PYTHON:-$(command -v python3)}"
 mkdir -p "$fixture/root"
 CF_SHIELD_SOURCE="$root/CF-Under-Attack.sh"
 cf_url_log="$fixture/cf-url"
+nginx_url_log="$fixture/nginx-template-url"
 curl() {
   local output="" url=""
   while (($#)); do
@@ -22,15 +23,34 @@ curl() {
       *) url="$1"; shift ;;
     esac
   done
-  printf '%s\n' "$url" > "$cf_url_log"
-  cp "$CF_SHIELD_SOURCE" "$output"
+  if [[ "$url" = */nginx10.conf ]]; then
+    printf '%s\n' "$url" > "$nginx_url_log"
+    printf '%s\n' 'tampered template' > "$output"
+  else
+    printf '%s\n' "$url" > "$cf_url_log"
+    cp "$CF_SHIELD_SOURCE" "$output"
+  fi
 }
+mkdir -p "$fixture/web"
+printf '%s\n' 'existing nginx config' > "$fixture/web/nginx.conf"
+if nginx_template_install 2> "$fixture/nginx-template.err"; then exit 1; fi
+[ "$(cat "$fixture/web/nginx.conf")" = 'existing nginx config' ]
+grep -Fq '/bdb8cc42fb123b09b02dc5940d2596354efebb87/nginx10.conf' "$nginx_url_log"
+! grep -Fq 'nginx/main/nginx10.conf' "$nginx_url_log"
+! find "$fixture/web" -mindepth 1 -maxdepth 1 -name '.nginx10.conf.*' | grep -q .
 cf_shield_install_script user@example.com 'token-123' 'zone-456' "$fixture/root/CF-Under-Attack.sh"
 grep -Fq 'f02b7b8d59fd090006304a998ea2b3410ae5f736/CF-Under-Attack.sh' "$cf_url_log"
-grep -Fq 'EMAIL="user@example.com"' "$fixture/root/CF-Under-Attack.sh"
-grep -Fq 'API_KEY="token-123"' "$fixture/root/CF-Under-Attack.sh"
-grep -Fq 'ZONE_ID="zone-456"' "$fixture/root/CF-Under-Attack.sh"
+grep -Fxq 'EMAIL=user@example.com' "$fixture/root/CF-Under-Attack.sh"
+grep -Fxq 'API_KEY=token-123' "$fixture/root/CF-Under-Attack.sh"
+grep -Fxq 'ZONE_ID=zone-456' "$fixture/root/CF-Under-Attack.sh"
 [ "$(stat -c '%a' "$fixture/root/CF-Under-Attack.sh")" = 700 ]
+payload="\$(touch $fixture/credential-command-executed)"
+cf_shield_install_script "$payload" "$payload" "$payload" "$fixture/root/CF-malicious.sh"
+sed -n '4,6p' "$fixture/root/CF-malicious.sh" > "$fixture/credential-assignments.sh"
+bash -c 'source "$1"; printf "%s\n%s\n%s\n" "$EMAIL" "$API_KEY" "$ZONE_ID"' bash "$fixture/credential-assignments.sh" > "$fixture/credential-values"
+printf '%s\n' "$payload" "$payload" "$payload" > "$fixture/credential-expected"
+cmp "$fixture/credential-expected" "$fixture/credential-values"
+[ ! -e "$fixture/credential-command-executed" ]
 printf '%s\n' 'trusted-old-script' > "$fixture/root/CF-Under-Attack.sh"
 printf '%s\n' 'tampered-source' > "$fixture/tampered"
 CF_SHIELD_SOURCE="$fixture/tampered"
@@ -67,6 +87,13 @@ for language in cn en tw jp kr ir ru; do
   grep -Fq 'cf_shield_install_script "$cfuser" "$cftoken" "$cfzonID"' "$localized_script"
   case "$language" in
     en|tw|jp|kr) grep -Fq 'cf_shield_install_script "$cfuser" "$cftoken" "$cfzone" || return $?' "$localized_script" ;;
+  esac
+  case "$language" in
+    cn|en|tw|jp|kr)
+      grep -Fq 'nginx_template_install() {' "$localized_script"
+      [ "$(grep -Fc 'nginx_template_install || return $?' "$localized_script")" -ge 2 ]
+      ! sed -n '/^nginx_br() {/,/^}/p; /^nginx_zstd() {/,/^}/p' "$localized_script" | grep -Fq 'nginx/main/nginx10.conf'
+      ;;
   esac
 done
 shared_waf_cached() { WAF_PYTHON="$test_python"; }

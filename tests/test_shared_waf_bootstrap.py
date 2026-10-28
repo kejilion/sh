@@ -114,6 +114,19 @@ class BootstrapTests(unittest.TestCase):
         self.assertNotEqual(result.returncode,0)
         self.assertIn('WAF 缓存含未知文件',result.stderr)
 
+    def test_older_six_file_package_cache_does_not_block_new_pinned_package(self):
+        older=self.package.parent/('b'*40)
+        older.mkdir(parents=True,mode=0o700)
+        for name,data in self.files.items():
+            if name=='ban.py':
+                continue
+            path=older/name;path.write_bytes(data);path.chmod(0o600)
+        result=self.run_fixture('shared_waf apply')
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn('fixture-executed',result.stdout)
+        self.assertEqual(len(self.calls.read_text().splitlines()),7)
+        self.assertTrue(self.package.is_dir())
+
     def test_symlink_and_writable_cache_files_are_rejected(self):
         self.seed();p=self.package/'configure.py';p.unlink();p.symlink_to(self.payload/'configure.py')
         self.assertNotEqual(self.run_fixture('shared_waf status').returncode,0)

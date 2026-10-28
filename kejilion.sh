@@ -1572,7 +1572,7 @@ install_ldnmp_conf() {
 
   # 创建必要的目录和文件
   cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/stream.d web/redis web/log/nginx web/letsencrypt && touch web/docker-compose.yml
-  wget -O /home/web/nginx.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf
+  nginx_template_install || return $?
   wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default10.conf
 
   default_server_ssl
@@ -3785,15 +3785,15 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' '2cd1d7cae8cbe0aee2214554789b814653637d6e'
+	printf '%s\n' '4269829b5be389aa08c22a0c19915a5a451a7e2f'
 }
 
 shared_waf_manifest() {
 	cat <<'WAF_MANIFEST'
-73bf31d4d6b27597bde5366f57a9fc18dfccf205b577f770b8e099c6fb828ec7  configure.py
+832eef6992bd92cbe090ecb13f32b361b5a4e49b023d39417a5a9bc46ed7a4a7  configure.py
 f00fa5846217315b9f0905ddab9c7104959e77f0b1653fb4ffbf5ff48121df9a  policy.py
 99071ba780da3c7a843fda8aa348dba87fc9ebd022bb7cbbca2b8fa33f69a0a9  nginx_edit.py
-8f335d0bcbdd4953da6fea802dac8e0e7dc0ae6573536f945fd4c071b53ec2c4  ban.py
+5537bbf5aeb44865562484ea7ef403d809d68a6dbd5c7972d6dbc5b58775b1f1  ban.py
 aee6fd651ceb6441acce6dc6b510e504d7127b2bba1ce84ca361655590c615b0  example-policy.json
 e6be6df199bc4ad607b6bcd7273a62a4884e5aa841786db1d8d5a2284f573179  cloudflare-ips.json
 6fd82147b99201beebe7b1a983f146e5c23ade7f9454ac883830848b7f753e30  legacy-jails.local
@@ -4240,12 +4240,47 @@ define('WP_SITEURL', '$SITE_URL');
 
 
 
+nginx_template_install() {
+	(
+	set -euo pipefail
+	local revision='bdb8cc42fb123b09b02dc5940d2596354efebb87'
+	local expected_sha='c1d5d9706c9f1965c1af3664979cf54e0c9173b9b1c3924aeea49da228347d22'
+	local target=/home/web/nginx.conf download backup='' url size actual_sha
+	local gh_prefix="${gh_proxy:-https://}"
+	[ -d /home/web ] && [ ! -L /home/web ] || { echo "Nginx 配置目录无效" >&2; exit 1; }
+	if [ -e "$target" ] || [ -L "$target" ]; then
+		[ -f "$target" ] && [ ! -L "$target" ] || { echo "Nginx 配置文件类型无效" >&2; exit 1; }
+	fi
+	download=$(mktemp /home/web/.nginx10.conf.download.XXXXXX) || exit 1
+	trap 'rm -f -- "$download" ${backup:+"$backup"}' EXIT
+	url="${gh_prefix}raw.githubusercontent.com/kejilion/nginx/${revision}/nginx10.conf"
+	curl --fail --location --silent --show-error --connect-timeout 10 --max-time 45 --output "$download" "$url" || {
+		echo "Nginx 配置模板下载失败" >&2; exit 1;
+	}
+	size=$(wc -c < "$download")
+	[[ "$size" =~ ^[0-9]+$ ]] && [ "$size" -le 2097152 ] || { echo "Nginx 配置模板大小异常" >&2; exit 1; }
+	actual_sha=$(sha256sum -- "$download" | awk '{print $1}')
+	[ "$actual_sha" = "$expected_sha" ] || { echo "Nginx 配置模板摘要校验失败" >&2; exit 1; }
+	if [ -e "$target" ]; then
+		backup=$(mktemp /home/web/.nginx10.conf.backup.XXXXXX) || exit 1
+		cp -p -- "$target" "$backup" || exit 1
+		if ! cat -- "$download" > "$target"; then
+			cat -- "$backup" > "$target" || { echo "Nginx 配置恢复失败" >&2; exit 86; }
+			echo "Nginx 配置写入失败，已恢复原文件" >&2; exit 1
+		fi
+	else
+		install -m 0644 -- "$download" "$target" || exit 1
+	fi
+	)
+}
+
+
 nginx_br() {
 
 	local mode=$1
 
 	if ! grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
-		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
+		nginx_template_install || return $?
 	fi
 
 	if [ "$mode" == "on" ]; then
@@ -4301,7 +4336,7 @@ nginx_zstd() {
 	local mode=$1
 
 	if ! grep -q "kjlion/nginx:alpine" /home/web/docker-compose.yml; then
-		wget -O /home/web/nginx.conf "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/nginx10.conf"
+		nginx_template_install || return $?
 	fi
 
 	if [ "$mode" == "on" ]; then
@@ -16456,8 +16491,15 @@ cf_shield_install_script() {
 	(
 	set -euo pipefail
 	local email="${1:-}" token="${2:-}" zone="${3:-}"
-	local target="${4:-/root/CF-Under-Attack.sh}" directory revision expected_sha url download stage content actual_sha size
+	local target="${4:-/root/CF-Under-Attack.sh}" directory revision expected_sha url download stage actual_sha size line
+	local quoted_email quoted_token quoted_zone
 	local gh_prefix="${gh_proxy:-https://}"
+	[ -n "$email" ] && [ -n "$token" ] && [ -n "$zone" ] || { echo "Cloudflare 凭据不能为空" >&2; exit 1; }
+	[[ "$email$token$zone" != *$'\n'* && "$email$token$zone" != *$'\r'* ]] || { echo "Cloudflare 凭据格式无效" >&2; exit 1; }
+	[ "${#email}" -le 320 ] && [ "${#token}" -le 512 ] && [ "${#zone}" -le 128 ] || { echo "Cloudflare 凭据长度超限" >&2; exit 1; }
+	printf -v quoted_email '%q' "$email"
+	printf -v quoted_token '%q' "$token"
+	printf -v quoted_zone '%q' "$zone"
 	revision='f02b7b8d59fd090006304a998ea2b3410ae5f736'
 	expected_sha='781265062ba74bdeccb443177a9580190942c379dbe1e19a78ba1c774400086c'
 	directory=$(dirname -- "$target")
@@ -16474,14 +16516,20 @@ cf_shield_install_script() {
 	[[ "$size" =~ ^[0-9]+$ ]] && [ "$size" -le 65536 ] || { echo "Cloudflare 五秒盾脚本大小异常" >&2; exit 1; }
 	actual_sha=$(sha256sum -- "$download" | awk '{print $1}')
 	[ "$actual_sha" = "$expected_sha" ] || { echo "Cloudflare 五秒盾脚本摘要校验失败" >&2; exit 1; }
-	grep -Fq 'EMAIL="AAAA"' "$download" && grep -Fq 'API_KEY="BBBB"' "$download" && grep -Fq 'ZONE_ID="CCCC"' "$download" || {
+	grep -Fxq 'EMAIL="AAAA"' "$download" && grep -Fxq 'API_KEY="BBBB"' "$download" && grep -Fxq 'ZONE_ID="CCCC"' "$download" || {
 		echo "Cloudflare 五秒盾脚本占位符异常" >&2; exit 1;
 	}
-	content=$(< "$download")
-	content=${content//AAAA/$email}
-	content=${content//BBBB/$token}
-	content=${content//CCCC/$zone}
-	printf '%s\n' "$content" > "$stage"
+	while IFS= read -r line || [[ -n "$line" ]]; do
+		case "$line" in
+			'EMAIL="AAAA"') printf 'EMAIL=%s\n' "$quoted_email" ;;
+			'API_KEY="BBBB"') printf 'API_KEY=%s\n' "$quoted_token" ;;
+			'ZONE_ID="CCCC"') printf 'ZONE_ID=%s\n' "$quoted_zone" ;;
+			*) printf '%s\n' "$line" ;;
+		esac
+	done < "$download" > "$stage"
+	grep -Fxq -- "EMAIL=$quoted_email" "$stage" && grep -Fxq -- "API_KEY=$quoted_token" "$stage" && grep -Fxq -- "ZONE_ID=$quoted_zone" "$stage" || {
+		echo "Cloudflare 五秒盾凭据写入失败" >&2; exit 1;
+	}
 	chmod 700 "$stage"
 	bash -n "$stage" || { echo "Cloudflare 五秒盾脚本语法校验失败" >&2; exit 1; }
 	mv -f -- "$stage" "$target"

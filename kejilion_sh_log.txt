@@ -1586,5 +1586,5 @@ JumpServer开源堡垒机支持自定义HTTP端口，默认8060，禁止使用80
 
 ------------------------
 2026-10-28   v4.5.16
-扩展历史 WAF 迁移：兼容旧 error.log、[DEFAULT] 继承的 action/logpath 和旧版格式；自定义项保持保守处理。
-统一 CF 与封禁链路，补齐 Brotli/Zstd 首启镜像摘要锁定；同步 KPanel 来源，版本号不变。
+扩展历史 WAF 迁移：兼容旧 error.log、[DEFAULT] 继承、单 jail 和大小写差异；保留阈值并补齐缺失 jail。
+统一 CF 与封禁链路；修复 CF 凭据转义，固定 Nginx 模板摘要；同步 KPanel 来源，版本号不变。
