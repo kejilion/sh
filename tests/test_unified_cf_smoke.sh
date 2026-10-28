@@ -3,13 +3,13 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d)"
 trap 'rm -rf -- "$fixture"' EXIT
-for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode; do
+for name in web_cf_enable web_ban_install web_ban_clear web_ban_remove check_cf_mode ddos_rule_add_once ddos_rule_remove_all enable_ddos_defense disable_ddos_defense kpanel_ldnmp_escape kpanel_ldnmp_site_jail_json kpanel_ldnmp_fail2ban_logs_json kpanel_ldnmp_ddos_rules_present kpanel_ldnmp_cloudflare_status_json kpanel_ldnmp_cloudflare_shield_off kpanel_ldnmp_protection_json; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh"
-done | sed "s|/home/web|$fixture/web|g; s|/etc/fail2ban|$fixture/fail2ban|g" > "$fixture/functions"
+done | sed "s|/home/web|$fixture/web|g; s|/etc/fail2ban|$fixture/fail2ban|g; s|/var/log/fail2ban.log|$fixture/fail2ban.log|g; s|/root/CF-Under-Attack.sh|$fixture/root/CF-Under-Attack.sh|g" > "$fixture/functions"
 source "$fixture/functions"
 mkdir -p "$fixture/web/config/waf" "$fixture/fail2ban/jail.d"
 calls="$fixture/calls"; : > "$calls"
-test_python="$(command -v python3)"
+test_python="${PYTHON:-$(command -v python3)}"
 shared_waf_cached() { WAF_PYTHON="$test_python"; }
 shared_waf_prepare() { shared_waf_cached; }
 cf_mode=cloudflare; cf_healthy=true; cf_pending=false
@@ -18,7 +18,7 @@ shared_waf() {
   printf '%s\n' "$1" >> "$calls"
   case "$1" in
     cf-on) cat > "$fixture/credentials" ;;
-    ban-status) printf '{"mode":"%s","healthy":%s,"pending":%s}\n' "$cf_mode" "$cf_healthy" "$cf_pending" ;;
+    ban-status) printf '{"mode":"%s","healthy":%s,"pending":%s,"configured":true,"running":true,"activeBans":3,"email":"hidden@example.com","key":"secret-value"}\n' "$cf_mode" "$cf_healthy" "$cf_pending" ;;
   esac
 }
 # A configured integration must not be reinstalled or reset by the CF switch.
@@ -50,23 +50,97 @@ grep -Fx ban-clear "$calls"; f2b_failure=0
 web_ban_remove; grep -Fx ban-remove "$calls"
 # Both protocol status and the menu initialize the interpreter before parsing.
 status_body="$(sed -n '/^ldnmp_environment_status() {/,/^}/p' "$root/kejilion.sh")"
-[[ "$status_body" == *'&& shared_waf_cached; then'* ]]
+[[ "$status_body" == *'protection_json=$(kpanel_ldnmp_protection_json "$waf" "$waf_mode")'* ]]
 eval "$(printf '%s\n' "$status_body" | sed "s|/home|$fixture|g")"
 docker() { return 1; }; iptables() { return 1; }; ss() { :; }
 ldnmp_site_count() { echo 0; }
 kpanel_ldnmp_component() { printf '{"name":"%s"}' "$1"; }
-kpanel_ldnmp_escape() { printf '%s' "$1"; }
+mkdir -p "$fixture/root"; touch "$fixture/root/CF-Under-Attack.sh"
+crontab() { [ "$1" = -l ] && { printf '%s\n' '*/5 * * * * /root/CF-Under-Attack.sh'; return 0; }; return 1; }
 sh_v=test; cf_mode=cloudflare; cf_healthy=true; cf_pending=false
 unset WAF_PYTHON
 if ldnmp_environment_status > "$fixture/status.json"; then :; else exit 1; fi
 "$test_python" - "$fixture/status.json" <<'PY'
 import json,sys
-assert json.load(open(sys.argv[1]))['protection']['cloudflare'] is True
+protection=json.load(open(sys.argv[1]))['protection']
+assert protection['cloudflare'] is True
+assert protection['fail2ban'] is True
+assert [j['name'] for j in protection['siteJails']]==['waf-attack','waf-rate']
+assert protection['ddosRuleCount']==0 and protection['ddosRuleExpected']==8
+assert protection['cloudflareStatus']['mode']=='cloudflare'
+assert protection['cloudflareStatus']['configured'] and protection['cloudflareStatus']['running']
+assert protection['cloudflareStatus']['activeBans']==3
+assert 'hidden@example.com' not in json.dumps(protection) and 'secret-value' not in json.dumps(protection)
+assert protection['cloudflareShield']=={'available':True,'scheduled':True,'scriptPresent':True}
+assert protection['ddosRulesAvailable'] is True
 PY
+printf '%s\n' '2026-10-28 01:00:00 [waf-attack] Ban 192.0.2.1' '2026-10-28 01:01:00 [waf-rate] Ban "192.0.2.2"' '2026-10-28 01:02:00 [sshd] Ban 192.0.2.3' > "$fixture/fail2ban.log"
+kpanel_ldnmp_fail2ban_logs_json "$fixture/fail2ban.log" > "$fixture/fail2ban-logs.json"
+"$test_python" - "$fixture/fail2ban-logs.json" <<'PY'
+import json,sys
+logs=json.load(open(sys.argv[1]))
+assert logs['available'] is True and len(logs['entries'])==2
+assert all('[sshd]' not in line for line in logs['entries'])
+assert '"192.0.2.2"' in logs['entries'][1]
+PY
+ddos_call=0; ddos_present=8
+iptables() { ddos_call=$((ddos_call+1)); [ "$ddos_call" -le "$ddos_present" ]; }
+[ "$(kpanel_ldnmp_ddos_rules_present)" = 8 ]
+ddos_call=0; ddos_present=3
+[ "$(kpanel_ldnmp_ddos_rules_present)" = 3 ]
+declare -A ddos_state=()
+iptables() {
+  local operation="$1" key count
+  shift
+  key="$*"; count="${ddos_state["$key"]:-0}"
+  case "$operation" in
+    -C) [ "$count" -gt 0 ] ;;
+    -A) ddos_state["$key"]=$((count + 1)) ;;
+    -D) [ "$count" -gt 0 ] || return 1; ddos_state["$key"]=$((count - 1)) ;;
+    *) return 2 ;;
+  esac
+}
+send_stats() { :; }
+ddos_state['DOCKER-USER -p tcp --syn -j DROP']=2
+enable_ddos_defense
+ddos_rules=(
+  'DOCKER-USER -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT'
+  'DOCKER-USER -p tcp --syn -j DROP'
+  'DOCKER-USER -p udp -m limit --limit 3000/s -j ACCEPT'
+  'DOCKER-USER -p udp -j DROP'
+  'INPUT -p tcp --syn -m limit --limit 500/s --limit-burst 100 -j ACCEPT'
+  'INPUT -p tcp --syn -j DROP'
+  'INPUT -p udp -m limit --limit 3000/s -j ACCEPT'
+  'INPUT -p udp -j DROP'
+)
+for rule in "${ddos_rules[@]}"; do
+  expected=1; [ "$rule" = 'DOCKER-USER -p tcp --syn -j DROP' ] && expected=2
+  [ "${ddos_state["$rule"]:-0}" -eq "$expected" ]
+done
+disable_ddos_defense
+for rule in "${ddos_rules[@]}"; do [ "${ddos_state["$rule"]:-0}" -eq 0 ]; done
+mkdir -p "$fixture/root"; touch "$fixture/root/CF-Under-Attack.sh"
+printf '%s\n' '*/5 * * * * /root/CF-Under-Attack.sh' '0 1 * * * /usr/local/bin/other-job' > "$fixture/crontab"
+crontab() {
+  if [ "$1" = -l ]; then cat "$fixture/crontab"; return 0; fi
+  if [ "$1" = - ]; then cat > "$fixture/crontab"; return 0; fi
+  return 1
+}
+kpanel_ldnmp_cloudflare_shield_off "$fixture/root/CF-Under-Attack.sh"
+! grep -Fq 'CF-Under-Attack.sh' "$fixture/crontab"
+grep -Fq '/usr/local/bin/other-job' "$fixture/crontab"
+[ ! -e "$fixture/root/CF-Under-Attack.sh" ]
+touch "$fixture/root/CF-Under-Attack.sh"
+crontab() { printf 'permission denied\n' >&2; return 1; }
+if kpanel_ldnmp_cloudflare_shield_off "$fixture/root/CF-Under-Attack.sh"; then exit 1; fi
+[ -e "$fixture/root/CF-Under-Attack.sh" ]
+crontab() { printf 'no crontab for root\n' >&2; return 1; }
+kpanel_ldnmp_cloudflare_shield_off "$fixture/root/CF-Under-Attack.sh"
+[ ! -e "$fixture/root/CF-Under-Attack.sh" ]
 # Restore/uninstall must clean remote ownership while Nginx is still running.
 "$test_python" - "$root/kejilion.sh" <<'PY'
 import sys
-s=open(sys.argv[1]).read()
+s=open(sys.argv[1],encoding='utf-8').read()
 for name in ['ldnmp_uninstall_action','ldnmp_restore_action']:
     body=s.split(name+'() {\n',1)[1].split('\n}\n',1)[0]
     assert body.index('web_ban_remove')<body.index('docker compose down'),name
