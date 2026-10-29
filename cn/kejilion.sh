@@ -3785,7 +3785,7 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' '4269829b5be389aa08c22a0c19915a5a451a7e2f'
+	printf '%s\n' '42698292499f6e6ba4ebe4f833e164805e6b5641'
 }
 
 shared_waf_manifest() {
