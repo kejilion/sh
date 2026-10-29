@@ -17,6 +17,25 @@ permission_granted="false"
 ENABLE_STATS="true"
 
 
+# Armbian can identify as Debian or Ubuntu; preserve its configured mirrors.
+is_armbian_system() {
+	local armbian_release="${1:-/etc/armbian-release}" os_release="${2:-/etc/os-release}"
+	[ -f "$armbian_release" ] || grep -Eiq '^(ID|NAME|PRETTY_NAME)="?armbian([" ]|$)' "$os_release" 2>/dev/null
+}
+
+preserve_armbian_mirrors() {
+	if is_armbian_system; then
+		echo "Armbian detected; keeping existing system package sources."
+		return 0
+	fi
+	return 1
+}
+
+run_linuxmirrors_manual() {
+	preserve_armbian_mirrors && return 0
+	bash <(curl -sSL https://linuxmirrors.cn/main.sh) "$@"
+}
+
 quanju_canshu() {
 if [ "$canshu" = "CN" ]; then
 	zhushi=0
@@ -10835,15 +10854,15 @@ EOF
 		  case $choice in
 			  1)
 				  send_stats "منبع پیش فرض در سرزمین اصلی چین"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh)
+				  run_linuxmirrors_manual
 				  ;;
 			  2)
 				  send_stats "منبع آموزش در سرزمین اصلی چین"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --edu
+				  run_linuxmirrors_manual --edu
 				  ;;
 			  3)
 				  send_stats "مبداء خارج از کشور"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --abroad
+				  run_linuxmirrors_manual --abroad
 				  ;;
 			  *)
 				  echo "لغو شده"
