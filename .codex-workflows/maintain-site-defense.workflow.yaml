@@ -1,0 +1,17 @@
+---
+name: maintain-site-defense
+description: "从脚本仓库进入共享网站防御维护链"
+version: "1.0"
+tags: [security, waf, fail2ban, cloudflare, kpanel, maintenance]
+params: [scope, delivery, pilot]
+---
+
+# 网站防御维护入口
+
+## Steps
+
+在工作区定位 `kejilion/nginx` 仓库，读取并运行其 `.codex-workflows/maintain-site-defense.workflow.yaml`；共享规则以该仓库 `waf/PRINCIPLES.md` 为准。若工作区没有该仓库，先核对可信的公开主线内容，缺少执行入口时明确报告，不能凭本适配文件宣称已完成防御维护。
+
+将 `${{scope}}`、`${{delivery}}`、`${{pilot}}` 传入主流程；未指定时按用户请求和实际授权判断。核对脚本根目录与 CN 入口、共享包固定提交及逐文件摘要、新安装和已有用户的升级入口；KPanel 的消费契约和发布状态另按其项目规范核实。
+
+本入口不授予发布、生产操作或定时任务权限。脚本仓库按已确认的默认主线在本地合入已验证候选，获得本次发布授权后仅显式推送主线；版本号和更新日志遵循用户要求。
