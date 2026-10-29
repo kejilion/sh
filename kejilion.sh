@@ -6798,7 +6798,19 @@ kpanel_system_tuning_run_item() {
 		timezone-shanghai) set_timedate Asia/Shanghai ;;
 		dns-auto) kpanel_system_tuning_dns_auto ;;
 		ipv4-preferred) prefer_ipv4 ;;
-		basic-tools) install_docker && install wget sudo tar unzip socat btop nano vim ;;
+		basic-tools)
+			local tool missing_tools=()
+			install_docker || true
+			for tool in wget sudo tar unzip socat btop nano vim; do
+				install "$tool" || true
+			done
+			for tool in docker wget sudo tar unzip socat btop nano vim; do
+				command -v "$tool" >/dev/null 2>&1 || missing_tools+=("$tool")
+			done
+			if [ "${#missing_tools[@]}" -gt 0 ]; then
+				echo "提示: 以下基础工具未安装成功: ${missing_tools[*]}。" >&2
+			fi
+			;;
 		kernel-auto) kpanel_system_tuning_kernel_auto ;;
 		*) return 2 ;;
 	esac
@@ -6810,6 +6822,10 @@ kpanel_system_tuning_menu_item() {
 	if ! kpanel_system_tuning_run_item "$item"; then
 		echo -e "[${gl_hong}FAIL${gl_bai}] ${index}/12. ${label}，一条龙调优已停止"
 		return 1
+	fi
+	if [ "$item" = basic-tools ] && ! kpanel_system_tuning_item_ready "$item"; then
+		echo -e "[${gl_huang}WARN${gl_bai}] ${index}/12. ${label}，部分工具未安装，继续调优"
+		return 0
 	fi
 	case "$item" in system-update|system-cleanup|dns-auto) ;; *)
 		if ! kpanel_system_tuning_item_ready "$item"; then
@@ -6828,7 +6844,7 @@ kpanel_system_tuning_apply_item() {
 		kpanel_system_tuning_emit needs-attention "$item"
 		return 1
 	fi
-	case "$item" in system-update|system-cleanup|dns-auto) ;; *)
+	case "$item" in system-update|system-cleanup|dns-auto|basic-tools) ;; *)
 		kpanel_system_tuning_item_ready "$item" || { kpanel_system_tuning_emit needs-attention "$item"; return 1; }
 	;; esac
 	kpanel_system_tuning_emit "$status" "$item"
