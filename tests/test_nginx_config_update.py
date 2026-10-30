@@ -412,6 +412,34 @@ class TransactionTests(unittest.TestCase):
         for name, data in first.items():
             self.assertEqual((self.root / name).read_bytes(), data, name)
 
+    def test_repeated_updates_keep_waf_rate_directives_in_the_managed_fragment(self):
+        main = template(updater.LEGACY, 'nginx10.conf')
+        names = {'limit_req_zone', 'limit_req', 'limit_req_status',
+                 'limit_conn_zone', 'limit_conn', 'limit_conn_status'}
+        main = '\n'.join(line for line in main.split('\n')
+                         if not line.strip() or line.strip().split()[0] not in names)
+        main = main.replace('http {', 'http {\n include /etc/nginx/conf.d/waf/http*.conf;', 1)
+        self.seed('nginx.conf', main)
+        fragment = 'limit_req_status 429;\nlimit_conn_status 429;\n'
+        self.seed('conf.d/waf/http.conf', fragment)
+        stable = None
+        for attempt in range(3):
+            if attempt:
+                self.directory = self.root / 'backups/nginx-update' / ('waf-repeat-' + str(attempt))
+                self.directory.mkdir(mode=0o700)
+            updater.snapshot(self.root, self.directory)
+            self.initial = {name: (self.root / name).read_bytes() for name in updater.inventory(self.root)}
+            self.old_images = copy.deepcopy(self.images)
+            self.switched = False
+            self.update()
+            current = (self.root / 'nginx.conf').read_text(encoding='utf-8')
+            http = next(node for node in updater.parse(current) if node['header'] == ('http',))
+            self.assertFalse(any(node['header'][0] in names for node in http['children']))
+            self.assertEqual((self.root / 'conf.d/waf/http.conf').read_text(), fragment)
+            if stable is not None:
+                self.assertEqual(current, stable)
+            stable = current
+
     def test_failure_before_switch_keeps_live_files_and_images(self):
         for stage in ('pull', 'preflight'):
             with self.subTest(stage=stage):
