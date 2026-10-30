@@ -26,7 +26,11 @@ curl() {
   [ "${*: -2:1}" = -o ]
   printf archive > "${*: -1}"
 }
-sha256sum() { cat >/dev/null; [ "${bad_checksum:-0}" != 1 ]; }
+sha256sum() {
+  local input; input=$(cat)
+  [ "${bad_checksum:-0}" != 1 ] || return 1
+  if [[ "$input" = *site.conf* ]]; then [ "${bad_template_checksum:-0}" != 1 ]; fi
+}
 unzip() {
   [ "${fail_unpack:-0}" != 1 ] || return 1
   local target="${*: -1}" file
@@ -40,6 +44,7 @@ unzip() {
   [ "${incomplete_package:-0}" != 1 ] || rm "$target/vendor/autoload.php"
 }
 wget() {
+  [ "$4" = "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/c830bf34ae6da8e183b4892860fbce30ea6dc651/fastadmin.com.conf" ] || return 9
   [ "${fail_template:-0}" != 1 ] || return 8
   cat > "$3" <<'EOF'
 server {
@@ -50,7 +55,7 @@ EOF
 }
 conf="$fixture/web/conf.d/admin.example.com.conf"
 site="$fixture/web/html/admin.example.com"
-for flag in missing_php fail_download bad_checksum fail_unpack incomplete_package fail_template; do
+for flag in missing_php fail_download bad_checksum fail_unpack incomplete_package fail_template bad_template_checksum; do
   if (export "$flag=1"; ldnmp_fastadmin); then echo "accepted $flag" >&2; exit 1; fi
   [ ! -e "$conf" ] && [ ! -e "$site" ]
   [ -z "$(find "$fixture/web" -maxdepth 1 -name '.fastadmin.*' -print)" ]

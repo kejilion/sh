@@ -16979,7 +16979,8 @@ ldnmp_fastadmin() (
 		"$stage/site/thinkphp/base.php" "$stage/site/thinkphp/library/think/config/driver/Ini.php" || return 1
 	grep -Fq 'parse_ini_string(file_get_contents(' "$stage/site/thinkphp/base.php" &&
 		grep -Fq 'parse_ini_string(file_get_contents(' "$stage/site/thinkphp/library/think/config/driver/Ini.php" || return 1
-	wget -q -O "$stage/site.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/fastadmin.com.conf" || return 1
+	wget -q -O "$stage/site.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/c830bf34ae6da8e183b4892860fbce30ea6dc651/fastadmin.com.conf" || return 1
+	printf '%s  %s\n' "986b57db53211332331c1c0022e7894546c8e8d3a1e4baeef5f2c95f01c23f46" "$stage/site.conf" | sha256sum -c - || return 1
 	grep -Fq 'fastcgi_pass unix:/run/php74/php-fpm.sock;' "$stage/site.conf" &&
 		grep -Fq 'root /var/www/html/yuming.com/public;' "$stage/site.conf" || return 1
 	sed -i "s/yuming.com/$yuming/g" "$stage/site.conf" || return 1
