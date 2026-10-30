@@ -1316,6 +1316,8 @@ nginx_template_install() {
 	[ -d /home/web ] && [ ! -L /home/web ] || { echo "Nginx 配置目录无效" >&2; exit 1; }
 	if [ -e "$target" ] || [ -L "$target" ]; then
 		[ -f "$target" ] && [ ! -L "$target" ] || { echo "Nginx 配置文件类型无效" >&2; exit 1; }
+		# Existing WAF/custom configuration is migrated by the updater, never reset here.
+        [ ! -s "$target" ] || exit 0
 	fi
 	download=$(mktemp /home/web/.nginx10.conf.download.XXXXXX) || exit 1
 	trap 'rm -f -- "$download" ${backup:+"$backup"}' EXIT
@@ -1335,13 +1337,24 @@ nginx_template_install() {
 			echo "Nginx 配置写入失败，已恢复原文件" >&2; exit 1
 		fi
 	else
-		install -m 0644 -- "$download" "$target" || exit 1
+		command install -m 0644 -- "$download" "$target" || exit 1
 	fi
 	)
 }
 
 
 install_ldnmp_conf() {
+  # Re-entry must preserve the installed stack, database credentials and WAF hooks.
+  if [ -e /home/web/docker-compose.yml ] || [ -L /home/web/docker-compose.yml ]; then
+    [ -f /home/web/docker-compose.yml ] && [ ! -L /home/web/docker-compose.yml ] || return 1
+    if [ -s /home/web/docker-compose.yml ]; then
+      [ -f /home/web/nginx.conf ] && [ ! -L /home/web/nginx.conf ] && [ -s /home/web/nginx.conf ] || {
+        echo "Existing stack has no usable nginx.conf; restore its configuration before retrying." >&2
+        return 1
+      }
+      return 0
+    fi
+  fi
 
   # Создать необходимые каталоги и файлы
   cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
@@ -2560,7 +2573,7 @@ check_port
 install_dependency
 install_docker
 install_certbot
-install_ldnmp_conf
+install_ldnmp_conf || return $?
 install_ldnmp
 
 }
@@ -2577,7 +2590,7 @@ check_port
 install_dependency
 install_docker
 install_certbot
-install_ldnmp_conf
+install_ldnmp_conf || return $?
 nginx_upgrade
 clear
 local nginx_version=$(docker exec nginx nginx -v 2>&1)

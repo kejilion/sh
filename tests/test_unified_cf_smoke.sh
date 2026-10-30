@@ -32,8 +32,10 @@ curl() {
   fi
 }
 mkdir -p "$fixture/web"
-printf '%s\n' 'existing nginx config' > "$fixture/web/nginx.conf"
 if nginx_template_install 2> "$fixture/nginx-template.err"; then exit 1; fi
+[ ! -e "$fixture/web/nginx.conf" ]
+printf '%s\n' 'existing nginx config' > "$fixture/web/nginx.conf"
+nginx_template_install
 [ "$(cat "$fixture/web/nginx.conf")" = 'existing nginx config' ]
 grep -Fq '/bdb8cc42fb123b09b02dc5940d2596354efebb87/nginx10.conf' "$nginx_url_log"
 ! grep -Fq 'nginx/main/nginx10.conf' "$nginx_url_log"
