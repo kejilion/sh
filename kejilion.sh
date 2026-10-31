@@ -108,6 +108,34 @@ kpanel_protocol_active() {
 }
 
 
+# LinuxMirrors uses the non-portable [:ascii:] regex class in its progress
+# renderer. Restrict that fast path to printable ASCII on all libc variants.
+linuxmirrors_run_script() {
+	local source="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! LC_ALL=C sed 's/\[\[:ascii:\]\]/[\\ -~]/g' "$source" > "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if bash "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
+linuxmirrors_run_url() {
+	local url="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! curl -fsSL "$url" -o "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if linuxmirrors_run_script "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
 # Armbian can identify as Debian or Ubuntu; preserve its configured mirrors.
 is_armbian_system() {
 	local armbian_release="${1:-/etc/armbian-release}" os_release="${2:-/etc/os-release}"
@@ -124,7 +152,7 @@ preserve_armbian_mirrors() {
 
 run_linuxmirrors_manual() {
 	preserve_armbian_mirrors && return 0
-	bash <(curl -sSL https://linuxmirrors.cn/main.sh) "$@"
+	linuxmirrors_run_url https://linuxmirrors.cn/main.sh "$@"
 }
 
 quanju_canshu() {
@@ -567,7 +595,7 @@ linuxmirrors_install_docker() {
 
 local country=$(curl -s ipinfo.io/country)
 if [ "$country" = "CN" ]; then
-	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	linuxmirrors_run_url https://linuxmirrors.cn/docker.sh \
 	  --source mirrors.huaweicloud.com/docker-ce \
 	  --source-registry docker.1ms.run \
 	  --protocol https \
@@ -576,7 +604,7 @@ if [ "$country" = "CN" ]; then
 	  --close-firewall false \
 	  --ignore-backup-tips
 else
-	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	linuxmirrors_run_url https://linuxmirrors.cn/docker.sh \
 	  --source download.docker.com \
 	  --source-registry registry.hub.docker.com \
 	  --protocol https \
@@ -6610,11 +6638,11 @@ kpanel_system_tuning_switch_mirror() {
 	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_MIRROR_SHA256" "$script" || { rm -f -- "$script"; return 1; }
 	country="$(kpanel_system_tuning_curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
 	if [ "$country" = CN ]; then
-		kpanel_system_tuning_run_command bash "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command linuxmirrors_run_script "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	elif grep -qi oracle /etc/os-release 2>/dev/null; then
-		kpanel_system_tuning_run_command bash "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command linuxmirrors_run_script "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	else
-		kpanel_system_tuning_run_command bash "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command linuxmirrors_run_script "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	fi
 	local result=$?
 	rm -f -- "$script"
@@ -13386,7 +13414,7 @@ linux_docker() {
 		  8)
 			  clear
 			  send_stats "Docker源"
-			  bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
+			  linuxmirrors_run_url https://linuxmirrors.cn/docker.sh
 			  ;;
 
 		  9)
@@ -28079,7 +28107,7 @@ switch_mirror() {
 
 	if [ "$country" = "CN" ]; then
 		echo "使用国内镜像源..."
-		bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+		linuxmirrors_run_url https://linuxmirrors.cn/main.sh \
 		  --source mirrors.huaweicloud.com \
 		  --protocol https \
 		  --use-intranet-source false \
@@ -28092,7 +28120,7 @@ switch_mirror() {
 	else
 		echo "使用海外镜像源..."
 		if [ -f /etc/os-release ] && grep -qi "oracle" /etc/os-release; then
-			bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+			linuxmirrors_run_url https://linuxmirrors.cn/main.sh \
 			  --source mirrors.xtom.com \
 			  --protocol https \
 			  --use-intranet-source false \
@@ -28103,7 +28131,7 @@ switch_mirror() {
 			  --install-epel false \
 			  --pure-mode
 		else
-			bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+			linuxmirrors_run_url https://linuxmirrors.cn/main.sh \
 				--use-official-source true \
 				--protocol https \
 				--use-intranet-source false \

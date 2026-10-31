@@ -17,6 +17,34 @@ permission_granted="false"
 ENABLE_STATS="true"
 
 
+# LinuxMirrors uses the non-portable [:ascii:] regex class in its progress
+# renderer. Restrict that fast path to printable ASCII on all libc variants.
+linuxmirrors_run_script() {
+	local source="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! LC_ALL=C sed 's/\[\[:ascii:\]\]/[\\ -~]/g' "$source" > "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if bash "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
+linuxmirrors_run_url() {
+	local url="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! curl -fsSL "$url" -o "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if linuxmirrors_run_script "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
 # Armbian can identify as Debian or Ubuntu; preserve its configured mirrors.
 is_armbian_system() {
 	local armbian_release="${1:-/etc/armbian-release}" os_release="${2:-/etc/os-release}"
@@ -33,7 +61,7 @@ preserve_armbian_mirrors() {
 
 run_linuxmirrors_manual() {
 	preserve_armbian_mirrors && return 0
-	bash <(curl -sSL https://linuxmirrors.cn/main.sh) "$@"
+	linuxmirrors_run_url https://linuxmirrors.cn/main.sh "$@"
 }
 
 quanju_canshu() {
@@ -6482,7 +6510,7 @@ linux_docker() {
 		  8)
 			  clear
 			  send_stats "Docker Source"
-			  bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
+			  linuxmirrors_run_url https://linuxmirrors.cn/docker.sh
 			  ;;
 
 		  9)
