@@ -3843,7 +3843,7 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' '87848a0f98b80b3e26f68e6d516184e27ece628d'
+	printf '%s\n' 'b3b2f53e194c77c462e8fb0d9c0a4956349cda5d'
 }
 
 shared_waf_manifest() {
@@ -3851,7 +3851,7 @@ shared_waf_manifest() {
 7be23f9abbeb83427b1a138a97e9fd1fdbb0c0ad357d4d02f604699a2a24dffe  configure.py
 023b41aea8cd468ee1750f6e29c0e9e758e1b3b228a0f0608aed3658ea746c9e  policy.py
 93adcf667d3bab494dea93681524c6828dab9d5c36b0c9147229e02e7433360e  nginx_edit.py
-0025f9596e234c9f64b0c799318e44e00f3271f313335d0ddb152e11834185ee  ban.py
+c4c94f206932274da2528675a66298360e682ea82f23aa0305e7265efd89e0c3  ban.py
 aee6fd651ceb6441acce6dc6b510e504d7127b2bba1ce84ca361655590c615b0  example-policy.json
 e6be6df199bc4ad607b6bcd7273a62a4884e5aa841786db1d8d5a2284f573179  cloudflare-ips.json
 6fd82147b99201beebe7b1a983f146e5c23ade7f9454ac883830848b7f753e30  legacy-jails.local
@@ -18132,7 +18132,12 @@ linux_ldnmp() {
 		read -e -p "$(echo -e "${gl_hong}强烈建议：${gl_bai}先备份全部网站数据，再卸载LDNMP环境。确定删除所有网站数据吗？(Y/N): ")" choice
 		case "$choice" in
 		  [Yy])
-			ldnmp_uninstall_action false || return $?
+			if ! ldnmp_uninstall_action false; then
+				echo "LDNMP环境卸载失败，清理未完成，请检查上方错误。" >&2
+				echo "按任意键继续..."
+				read -n 1 -s -r
+				continue
+			fi
 			;;
 		  [Nn])
 

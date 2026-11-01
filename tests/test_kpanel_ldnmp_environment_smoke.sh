@@ -64,3 +64,20 @@ KJ_LDNMP_NONINTERACTIVE=1
 kpanel_protocol_active
 
 printf '%s\n' "kpanel_ldnmp_environment_smoke=pass"
+
+# Exercise the actual menu branch without touching Docker or /home/web.
+uninstall_branch="$(sed -n '/^\t\t\tif ! ldnmp_uninstall_action false; then$/,/^\t\t\tfi$/p' "$script_path")"
+[ -n "$uninstall_branch" ]
+output="$(
+    ldnmp_uninstall_action() { return 42; }
+    read() { :; }
+    for attempt in 1; do
+        eval "$uninstall_branch" 2>&1
+        echo 'unexpected completion'
+    done
+    echo 'menu remains available'
+)"
+[[ "$output" == *'LDNMP环境卸载失败'* ]]
+[[ "$output" == *'menu remains available'* ]]
+[[ "$output" != *'unexpected completion'* ]]
+printf '%s\n' "ldnmp_uninstall_failure_feedback=pass"
