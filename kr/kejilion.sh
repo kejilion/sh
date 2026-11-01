@@ -108,6 +108,53 @@ kpanel_protocol_active() {
 }
 
 
+# LinuxMirrors uses the non-portable [:ascii:] regex class in its progress
+# renderer. Restrict that fast path to printable ASCII on all libc variants.
+linuxmirrors_run_script() {
+	local source="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! LC_ALL=C sed 's/\[\[:ascii:\]\]/[\\ -~]/g' "$source" > "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if bash "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
+linuxmirrors_run_url() {
+	local url="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! curl -fsSL "$url" -o "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if linuxmirrors_run_script "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
+# Armbian can identify as Debian or Ubuntu; preserve its configured mirrors.
+is_armbian_system() {
+	local armbian_release="${1:-/etc/armbian-release}" os_release="${2:-/etc/os-release}"
+	[ -f "$armbian_release" ] || grep -Eiq '^(ID|NAME|PRETTY_NAME)="?armbian([" ]|$)' "$os_release" 2>/dev/null
+}
+
+preserve_armbian_mirrors() {
+	if is_armbian_system; then
+		echo "Armbian detected; keeping existing system package sources."
+		return 0
+	fi
+	return 1
+}
+
+run_linuxmirrors_manual() {
+	preserve_armbian_mirrors && return 0
+	linuxmirrors_run_url https://linuxmirrors.cn/main.sh "$@"
+}
+
 quanju_canshu() {
 if [ "$canshu" = "CN" ]; then
 	zhushi=0
@@ -531,7 +578,7 @@ linuxmirrors_install_docker() {
 
 local country=$(curl -s ipinfo.io/country)
 if [ "$country" = "CN" ]; then
-	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	linuxmirrors_run_url https://linuxmirrors.cn/docker.sh \
 	  --source mirrors.huaweicloud.com/docker-ce \
 	  --source-registry docker.1ms.run \
 	  --protocol https \
@@ -540,7 +587,7 @@ if [ "$country" = "CN" ]; then
 	  --close-firewall false \
 	  --ignore-backup-tips
 else
-	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	linuxmirrors_run_url https://linuxmirrors.cn/docker.sh \
 	  --source download.docker.com \
 	  --source-registry registry.hub.docker.com \
 	  --protocol https \
@@ -1530,6 +1577,17 @@ ldnmp_v() {
 
 
 install_ldnmp_conf() {
+  # Re-entry must preserve the installed stack, database credentials and WAF hooks.
+  if [ -e /home/web/docker-compose.yml ] || [ -L /home/web/docker-compose.yml ]; then
+    [ -f /home/web/docker-compose.yml ] && [ ! -L /home/web/docker-compose.yml ] || return 1
+    if [ -s /home/web/docker-compose.yml ]; then
+      [ -f /home/web/nginx.conf ] && [ ! -L /home/web/nginx.conf ] && [ -s /home/web/nginx.conf ] || {
+        echo "Existing stack has no usable nginx.conf; restore its configuration before retrying." >&2
+        return 1
+      }
+      return 0
+    fi
+  fi
 
   # 创建必要的目录和文件
   cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/stream.d web/redis web/log/nginx web/letsencrypt && touch web/docker-compose.yml
@@ -2773,6 +2831,8 @@ nginx_template_install() {
 	[ -d /home/web ] && [ ! -L /home/web ] || { echo "Nginx 配置目录无效" >&2; exit 1; }
 	if [ -e "$target" ] || [ -L "$target" ]; then
 		[ -f "$target" ] && [ ! -L "$target" ] || { echo "Nginx 配置文件类型无效" >&2; exit 1; }
+		# Existing WAF/custom configuration is migrated by the updater, never reset here.
+        [ ! -s "$target" ] || exit 0
 	fi
 	download=$(mktemp /home/web/.nginx10.conf.download.XXXXXX) || exit 1
 	trap 'rm -f -- "$download" ${backup:+"$backup"}' EXIT
@@ -2792,7 +2852,7 @@ nginx_template_install() {
 			echo "Nginx 配置写入失败，已恢复原文件" >&2; exit 1
 		fi
 	else
-		install -m 0644 -- "$download" "$target" || exit 1
+		command install -m 0644 -- "$download" "$target" || exit 1
 	fi
 	)
 }
@@ -5094,17 +5154,18 @@ kpanel_system_tuning_download_verified() {
 }
 
 kpanel_system_tuning_switch_mirror() {
+	preserve_armbian_mirrors && return 0
 	local script country url
 	script="$(mktemp /tmp/kejilion-system-tuning-mirror.XXXXXX)" || return 1
 	url="${gh_proxy}raw.githubusercontent.com/SuperManito/LinuxMirrors/${KPANEL_SYSTEM_TUNING_MIRROR_COMMIT}/ChangeMirrors.sh"
 	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_MIRROR_SHA256" "$script" || { rm -f -- "$script"; return 1; }
 	country="$(kpanel_system_tuning_curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
 	if [ "$country" = CN ]; then
-		kpanel_system_tuning_run_command bash "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command linuxmirrors_run_script "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	elif grep -qi oracle /etc/os-release 2>/dev/null; then
-		kpanel_system_tuning_run_command bash "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command linuxmirrors_run_script "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	else
-		kpanel_system_tuning_run_command bash "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command linuxmirrors_run_script "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	fi
 	local result=$?
 	rm -f -- "$script"
@@ -5533,7 +5594,7 @@ check_disk_space 3 /home
 install_dependency
 install_docker
 install_certbot
-install_ldnmp_conf
+install_ldnmp_conf || return $?
 install_ldnmp
 
 }
@@ -5548,7 +5609,7 @@ echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
 install_dependency
 install_docker
 install_certbot
-install_ldnmp_conf
+install_ldnmp_conf || return $?
 nginx_upgrade
 clear
 local nginx_version=$(docker exec nginx nginx -v 2>&1)
@@ -11852,7 +11913,7 @@ linux_docker() {
 		  8)
 			  clear
 			  send_stats "Docker源"
-			  bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
+			  linuxmirrors_run_url https://linuxmirrors.cn/docker.sh
 			  ;;
 
 		  9)
@@ -26317,6 +26378,7 @@ linux_work() {
 
 # 智能切换镜像源函数
 switch_mirror() {
+	preserve_armbian_mirrors && return 0
 	# 可选参数，默认为 false
 	local upgrade_software=${1:-false}
 	local clean_cache=${2:-false}
@@ -26329,7 +26391,7 @@ switch_mirror() {
 
 	if [ "$country" = "CN" ]; then
 		echo "使用国内镜像源..."
-		bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+		linuxmirrors_run_url https://linuxmirrors.cn/main.sh \
 		  --source mirrors.huaweicloud.com \
 		  --protocol https \
 		  --use-intranet-source false \
@@ -26342,7 +26404,7 @@ switch_mirror() {
 	else
 		echo "使用海外镜像源..."
 		if [ -f /etc/os-release ] && grep -qi "oracle" /etc/os-release; then
-			bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+			linuxmirrors_run_url https://linuxmirrors.cn/main.sh \
 			  --source mirrors.xtom.com \
 			  --protocol https \
 			  --use-intranet-source false \
@@ -26353,7 +26415,7 @@ switch_mirror() {
 			  --install-epel false \
 			  --pure-mode
 		else
-			bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+			linuxmirrors_run_url https://linuxmirrors.cn/main.sh \
 				--use-official-source true \
 				--protocol https \
 				--use-intranet-source false \
@@ -31736,15 +31798,15 @@ EOF
 		  case $choice in
 			  1)
 				  send_stats "中国大陆默认源"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh)
+				  run_linuxmirrors_manual
 				  ;;
 			  2)
 				  send_stats "中国大陆教育源"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --edu
+				  run_linuxmirrors_manual --edu
 				  ;;
 			  3)
 				  send_stats "海外源"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --abroad
+				  run_linuxmirrors_manual --abroad
 				  ;;
 			  4)
 				  send_stats "智能切换更新源"

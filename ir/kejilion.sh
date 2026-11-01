@@ -17,6 +17,53 @@ permission_granted="false"
 ENABLE_STATS="true"
 
 
+# LinuxMirrors uses the non-portable [:ascii:] regex class in its progress
+# renderer. Restrict that fast path to printable ASCII on all libc variants.
+linuxmirrors_run_script() {
+	local source="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! LC_ALL=C sed 's/\[\[:ascii:\]\]/[\\ -~]/g' "$source" > "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if bash "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
+linuxmirrors_run_url() {
+	local url="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! curl -fsSL "$url" -o "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if linuxmirrors_run_script "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
+# Armbian can identify as Debian or Ubuntu; preserve its configured mirrors.
+is_armbian_system() {
+	local armbian_release="${1:-/etc/armbian-release}" os_release="${2:-/etc/os-release}"
+	[ -f "$armbian_release" ] || grep -Eiq '^(ID|NAME|PRETTY_NAME)="?armbian([" ]|$)' "$os_release" 2>/dev/null
+}
+
+preserve_armbian_mirrors() {
+	if is_armbian_system; then
+		echo "Armbian detected; keeping existing system package sources."
+		return 0
+	fi
+	return 1
+}
+
+run_linuxmirrors_manual() {
+	preserve_armbian_mirrors && return 0
+	linuxmirrors_run_url https://linuxmirrors.cn/main.sh "$@"
+}
+
 quanju_canshu() {
 if [ "$canshu" = "CN" ]; then
 	zhushi=0
@@ -1297,6 +1344,8 @@ nginx_template_install() {
 	[ -d /home/web ] && [ ! -L /home/web ] || { echo "Nginx 配置目录无效" >&2; exit 1; }
 	if [ -e "$target" ] || [ -L "$target" ]; then
 		[ -f "$target" ] && [ ! -L "$target" ] || { echo "Nginx 配置文件类型无效" >&2; exit 1; }
+		# Existing WAF/custom configuration is migrated by the updater, never reset here.
+        [ ! -s "$target" ] || exit 0
 	fi
 	download=$(mktemp /home/web/.nginx10.conf.download.XXXXXX) || exit 1
 	trap 'rm -f -- "$download" ${backup:+"$backup"}' EXIT
@@ -1316,13 +1365,24 @@ nginx_template_install() {
 			echo "Nginx 配置写入失败，已恢复原文件" >&2; exit 1
 		fi
 	else
-		install -m 0644 -- "$download" "$target" || exit 1
+		command install -m 0644 -- "$download" "$target" || exit 1
 	fi
 	)
 }
 
 
 install_ldnmp_conf() {
+  # Re-entry must preserve the installed stack, database credentials and WAF hooks.
+  if [ -e /home/web/docker-compose.yml ] || [ -L /home/web/docker-compose.yml ]; then
+    [ -f /home/web/docker-compose.yml ] && [ ! -L /home/web/docker-compose.yml ] || return 1
+    if [ -s /home/web/docker-compose.yml ]; then
+      [ -f /home/web/nginx.conf ] && [ ! -L /home/web/nginx.conf ] && [ -s /home/web/nginx.conf ] || {
+        echo "Existing stack has no usable nginx.conf; restore its configuration before retrying." >&2
+        return 1
+      }
+      return 0
+    fi
+  fi
 
   # دایرکتوری ها و پرونده های لازم را ایجاد کنید
   cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/redis web/log/nginx && touch web/docker-compose.yml
@@ -2514,7 +2574,7 @@ check_port
 install_dependency
 install_docker
 install_certbot
-install_ldnmp_conf
+install_ldnmp_conf || return $?
 install_ldnmp
 
 }
@@ -2531,7 +2591,7 @@ check_port
 install_dependency
 install_docker
 install_certbot
-install_ldnmp_conf
+install_ldnmp_conf || return $?
 nginx_upgrade
 clear
 local nginx_version=$(docker exec nginx nginx -v 2>&1)
@@ -6422,7 +6482,7 @@ linux_docker() {
 		  8)
 			  clear
 			  send_stats "منبع"
-			  bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
+			  linuxmirrors_run_url https://linuxmirrors.cn/docker.sh
 			  ;;
 
 		  9)
@@ -10835,15 +10895,15 @@ EOF
 		  case $choice in
 			  1)
 				  send_stats "منبع پیش فرض در سرزمین اصلی چین"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh)
+				  run_linuxmirrors_manual
 				  ;;
 			  2)
 				  send_stats "منبع آموزش در سرزمین اصلی چین"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --edu
+				  run_linuxmirrors_manual --edu
 				  ;;
 			  3)
 				  send_stats "مبداء خارج از کشور"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --abroad
+				  run_linuxmirrors_manual --abroad
 				  ;;
 			  *)
 				  echo "لغو شده"

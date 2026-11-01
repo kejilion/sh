@@ -49,6 +49,8 @@ KPANEL_SYSTEM_TUNING_SYSTEMD_DIR="$temporary/no-systemd"
 apt() { :; }
 sshd() { :; }
 ss() { :; }
+rc-service() { :; }
+rc-update() { :; }
 install() { printf '%s\n' "$1" > "$temporary/ssh-package"; : > "$KPANEL_SYSTEM_TUNING_SSHD_CONFIG"; }
 kpanel_system_tuning_ensure_ssh_server
 grep -Fqx 'openssh-server' "$temporary/ssh-package"
@@ -60,7 +62,7 @@ if kpanel_system_tuning_ensure_ssh_server 2>/dev/null; then
 	exit 1
 fi
 unset KPANEL_SYSTEM_TUNING_SSHD_CONFIG KPANEL_SYSTEM_TUNING_SSHD_RUN_DIR KPANEL_SYSTEM_TUNING_SYSTEMD_DIR
-unset -f apt sshd ss install
+unset -f apt sshd ss rc-service rc-update install
 
 : > "$temporary/system-update-actions"
 (
@@ -70,6 +72,33 @@ unset -f apt sshd ss install
 	kpanel_system_tuning_run_item system-update
 )
 [ "$(paste -sd, "$temporary/system-update-actions")" = "mirror,update" ]
+
+# Missing tools do not stop interactive tuning, but remain pending for retries.
+(
+	gl_hong=''; gl_bai=''; gl_lv=''; gl_huang=''
+	command() {
+		if [ "$1" = -v ]; then
+			case "$2" in docker|btop|socat) return 1 ;; *) return 0 ;; esac
+		else
+			builtin command "$@"
+		fi
+	}
+	install_docker() { printf '%s\n' docker >> "$temporary/basic-tools-installs"; return 1; }
+	install() { printf '%s\n' "$*" >> "$temporary/basic-tools-installs"; [ "$1" != socat ]; }
+	kpanel_system_tuning_menu_item basic-tools 11 "基础工具" > "$temporary/basic-tools.out" 2>&1
+	grep -Fq 'docker socat btop' "$temporary/basic-tools.out"
+	grep -Fq '[WARN] 11/12.' "$temporary/basic-tools.out"
+	for tool in docker wget sudo tar unzip socat btop nano vim; do
+		grep -Fxq "$tool" "$temporary/basic-tools-installs"
+	done
+	if kpanel_system_tuning_item_ready basic-tools; then
+		echo "missing tools were accepted as ready" >&2
+		exit 1
+	fi
+	kpanel_system_tuning_apply_item basic-tools > "$temporary/basic-tools-status.out" 2>/dev/null
+	grep -Fq 'KPANEL_SYSTEM_TUNING_STATUS=applied' "$temporary/basic-tools-status.out"
+	grep -Fq 'KPANEL_SYSTEM_TUNING_ITEM=basic-tools:pending' "$temporary/basic-tools-status.out"
+)
 
 : > "$temporary/ready-items"
 kpanel_system_tuning_item_ready() { grep -Fxq "$1" "$temporary/ready-items"; }

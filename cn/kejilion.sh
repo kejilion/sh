@@ -12,7 +12,7 @@ gl_zi='\033[35m'
 gl_kjlan='\033[96m'
 
 
-canshu="default"
+canshu="CN"
 permission_granted="false"
 ENABLE_STATS="true"
 KPANEL_WEB_CERTIFICATE_PROTOCOL_VERSION="1"
@@ -107,6 +107,53 @@ kpanel_protocol_active() {
 	[ "${KJ_TEST_NONINTERACTIVE:-}" = "1" ]
 }
 
+
+# LinuxMirrors uses the non-portable [:ascii:] regex class in its progress
+# renderer. Restrict that fast path to printable ASCII on all libc variants.
+linuxmirrors_run_script() {
+	local source="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! LC_ALL=C sed 's/\[\[:ascii:\]\]/[\\ -~]/g' "$source" > "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if bash "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
+linuxmirrors_run_url() {
+	local url="$1" script result
+	shift
+	script="$(mktemp)" || return 1
+	if ! curl -fsSL "$url" -o "$script"; then
+		rm -f -- "$script"
+		return 1
+	fi
+	if linuxmirrors_run_script "$script" "$@"; then result=0; else result=$?; fi
+	rm -f -- "$script"
+	return "$result"
+}
+
+# Armbian can identify as Debian or Ubuntu; preserve its configured mirrors.
+is_armbian_system() {
+	local armbian_release="${1:-/etc/armbian-release}" os_release="${2:-/etc/os-release}"
+	[ -f "$armbian_release" ] || grep -Eiq '^(ID|NAME|PRETTY_NAME)="?armbian([" ]|$)' "$os_release" 2>/dev/null
+}
+
+preserve_armbian_mirrors() {
+	if is_armbian_system; then
+		echo "Armbian detected; keeping existing system package sources."
+		return 0
+	fi
+	return 1
+}
+
+run_linuxmirrors_manual() {
+	preserve_armbian_mirrors && return 0
+	linuxmirrors_run_url https://linuxmirrors.cn/main.sh "$@"
+}
 
 quanju_canshu() {
 if [ "$canshu" = "CN" ]; then
@@ -548,7 +595,7 @@ linuxmirrors_install_docker() {
 
 local country=$(curl -s ipinfo.io/country)
 if [ "$country" = "CN" ]; then
-	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	linuxmirrors_run_url https://linuxmirrors.cn/docker.sh \
 	  --source mirrors.huaweicloud.com/docker-ce \
 	  --source-registry docker.1ms.run \
 	  --protocol https \
@@ -557,7 +604,7 @@ if [ "$country" = "CN" ]; then
 	  --close-firewall false \
 	  --ignore-backup-tips
 else
-	bash <(curl -sSL https://linuxmirrors.cn/docker.sh) \
+	linuxmirrors_run_url https://linuxmirrors.cn/docker.sh \
 	  --source download.docker.com \
 	  --source-registry registry.hub.docker.com \
 	  --protocol https \
@@ -1569,6 +1616,17 @@ ldnmp_v() {
 
 
 install_ldnmp_conf() {
+  # Re-entry must preserve the installed stack, database credentials and WAF hooks.
+  if [ -e /home/web/docker-compose.yml ] || [ -L /home/web/docker-compose.yml ]; then
+    [ -f /home/web/docker-compose.yml ] && [ ! -L /home/web/docker-compose.yml ] || return 1
+    if [ -s /home/web/docker-compose.yml ]; then
+      [ -f /home/web/nginx.conf ] && [ ! -L /home/web/nginx.conf ] && [ -s /home/web/nginx.conf ] || {
+        echo "Existing stack has no usable nginx.conf; restore its configuration before retrying." >&2
+        return 1
+      }
+      return 0
+    fi
+  fi
 
   # 创建必要的目录和文件
   cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/stream.d web/redis web/log/nginx web/letsencrypt && touch web/docker-compose.yml
@@ -3785,14 +3843,14 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' 'd8c178df8c851419087194178314473ec6a6a478'
+	printf '%s\n' '67f76ea02d2c88f6e9b6af17009ae4baaac49ee3'
 }
 
 shared_waf_manifest() {
 	cat <<'WAF_MANIFEST'
-832eef6992bd92cbe090ecb13f32b361b5a4e49b023d39417a5a9bc46ed7a4a7  configure.py
-f00fa5846217315b9f0905ddab9c7104959e77f0b1653fb4ffbf5ff48121df9a  policy.py
-99071ba780da3c7a843fda8aa348dba87fc9ebd022bb7cbbca2b8fa33f69a0a9  nginx_edit.py
+7be23f9abbeb83427b1a138a97e9fd1fdbb0c0ad357d4d02f604699a2a24dffe  configure.py
+e92133a697ac75e14d941fcb33b4459dce45803a0d47b4093c5483fa02ec7222  policy.py
+93adcf667d3bab494dea93681524c6828dab9d5c36b0c9147229e02e7433360e  nginx_edit.py
 0025f9596e234c9f64b0c799318e44e00f3271f313335d0ddb152e11834185ee  ban.py
 aee6fd651ceb6441acce6dc6b510e504d7127b2bba1ce84ca361655590c615b0  example-policy.json
 e6be6df199bc4ad607b6bcd7273a62a4884e5aa841786db1d8d5a2284f573179  cloudflare-ips.json
@@ -4250,6 +4308,8 @@ nginx_template_install() {
 	[ -d /home/web ] && [ ! -L /home/web ] || { echo "Nginx 配置目录无效" >&2; exit 1; }
 	if [ -e "$target" ] || [ -L "$target" ]; then
 		[ -f "$target" ] && [ ! -L "$target" ] || { echo "Nginx 配置文件类型无效" >&2; exit 1; }
+		# Existing WAF/custom configuration is migrated by the updater, never reset here.
+        [ ! -s "$target" ] || exit 0
 	fi
 	download=$(mktemp /home/web/.nginx10.conf.download.XXXXXX) || exit 1
 	trap 'rm -f -- "$download" ${backup:+"$backup"}' EXIT
@@ -4269,7 +4329,7 @@ nginx_template_install() {
 			echo "Nginx 配置写入失败，已恢复原文件" >&2; exit 1
 		fi
 	else
-		install -m 0644 -- "$download" "$target" || exit 1
+		command install -m 0644 -- "$download" "$target" || exit 1
 	fi
 	)
 }
@@ -6571,17 +6631,18 @@ kpanel_system_tuning_download_verified() {
 }
 
 kpanel_system_tuning_switch_mirror() {
+	preserve_armbian_mirrors && return 0
 	local script country url
 	script="$(mktemp /tmp/kejilion-system-tuning-mirror.XXXXXX)" || return 1
 	url="${gh_proxy}raw.githubusercontent.com/SuperManito/LinuxMirrors/${KPANEL_SYSTEM_TUNING_MIRROR_COMMIT}/ChangeMirrors.sh"
 	kpanel_system_tuning_download_verified "$url" "$KPANEL_SYSTEM_TUNING_MIRROR_SHA256" "$script" || { rm -f -- "$script"; return 1; }
 	country="$(kpanel_system_tuning_curl --fail --silent --show-error --max-time 10 https://ipinfo.io/country 2>/dev/null | tr -d '\r\n' || true)"
 	if [ "$country" = CN ]; then
-		kpanel_system_tuning_run_command bash "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command linuxmirrors_run_script "$script" --source mirrors.huaweicloud.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	elif grep -qi oracle /etc/os-release 2>/dev/null; then
-		kpanel_system_tuning_run_command bash "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command linuxmirrors_run_script "$script" --source mirrors.xtom.com --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	else
-		kpanel_system_tuning_run_command bash "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
+		kpanel_system_tuning_run_command linuxmirrors_run_script "$script" --use-official-source true --protocol https --use-intranet-source false --backup true --upgrade-software false --clean-cache false --ignore-backup-tips --install-epel false --pure-mode
 	fi
 	local result=$?
 	rm -f -- "$script"
@@ -6798,7 +6859,19 @@ kpanel_system_tuning_run_item() {
 		timezone-shanghai) set_timedate Asia/Shanghai ;;
 		dns-auto) kpanel_system_tuning_dns_auto ;;
 		ipv4-preferred) prefer_ipv4 ;;
-		basic-tools) install_docker && install wget sudo tar unzip socat btop nano vim ;;
+		basic-tools)
+			local tool missing_tools=()
+			install_docker || true
+			for tool in wget sudo tar unzip socat btop nano vim; do
+				install "$tool" || true
+			done
+			for tool in docker wget sudo tar unzip socat btop nano vim; do
+				command -v "$tool" >/dev/null 2>&1 || missing_tools+=("$tool")
+			done
+			if [ "${#missing_tools[@]}" -gt 0 ]; then
+				echo "提示: 以下基础工具未安装成功: ${missing_tools[*]}。" >&2
+			fi
+			;;
 		kernel-auto) kpanel_system_tuning_kernel_auto ;;
 		*) return 2 ;;
 	esac
@@ -6810,6 +6883,10 @@ kpanel_system_tuning_menu_item() {
 	if ! kpanel_system_tuning_run_item "$item"; then
 		echo -e "[${gl_hong}FAIL${gl_bai}] ${index}/12. ${label}，一条龙调优已停止"
 		return 1
+	fi
+	if [ "$item" = basic-tools ] && ! kpanel_system_tuning_item_ready "$item"; then
+		echo -e "[${gl_huang}WARN${gl_bai}] ${index}/12. ${label}，部分工具未安装，继续调优"
+		return 0
 	fi
 	case "$item" in system-update|system-cleanup|dns-auto) ;; *)
 		if ! kpanel_system_tuning_item_ready "$item"; then
@@ -6828,7 +6905,7 @@ kpanel_system_tuning_apply_item() {
 		kpanel_system_tuning_emit needs-attention "$item"
 		return 1
 	fi
-	case "$item" in system-update|system-cleanup|dns-auto) ;; *)
+	case "$item" in system-update|system-cleanup|dns-auto|basic-tools) ;; *)
 		kpanel_system_tuning_item_ready "$item" || { kpanel_system_tuning_emit needs-attention "$item"; return 1; }
 	;; esac
 	kpanel_system_tuning_emit "$status" "$item"
@@ -7010,7 +7087,7 @@ check_disk_space 3 /home
 install_dependency
 install_docker
 install_certbot
-install_ldnmp_conf
+install_ldnmp_conf || return $?
 install_ldnmp
 
 }
@@ -7025,7 +7102,7 @@ echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
 install_dependency
 install_docker
 install_certbot
-install_ldnmp_conf
+install_ldnmp_conf || return $?
 nginx_upgrade || return $?
 # First-install housekeeping stays here; routine updates preserve existing jobs
 # and website ownership instead of reapplying installation defaults.
@@ -13337,7 +13414,7 @@ linux_docker() {
 		  8)
 			  clear
 			  send_stats "Docker源"
-			  bash <(curl -sSL https://linuxmirrors.cn/docker.sh)
+			  linuxmirrors_run_url https://linuxmirrors.cn/docker.sh
 			  ;;
 
 		  9)
@@ -16048,7 +16125,7 @@ kpanel_run_http_site() (
 	case "$command_name" in
 		wp) selector=2 ;; discuz) selector=3 ;; kodbox) selector=4 ;;
 		maccms) selector=5 ;; dujiaoka) selector=6 ;; flarum) selector=7 ;;
-		typecho) selector=8 ;; linkstack) selector=9 ;; php-site) selector=20 ;;
+		typecho) selector=8 ;; linkstack) selector=9 ;; fastadmin) selector=10 ;; php-site) selector=20 ;;
 		redirect-site) selector=22 ;; fd) selector=23 ;; domain-proxy) selector=24 ;;
 		bitwarden-site) selector=25 ;; halo-site) selector=26 ;; ai-prompt) selector=27 ;;
 		loadbalance-site) selector=28 ;; static-site) selector=30 ;; *) return 64 ;;
@@ -16183,7 +16260,7 @@ kpanel_run_web_recipe_cli() {
 
 kpanel_web_recipe_requires_document_root() {
 	case "${1:-}" in
-		2|3|4|5|6|7|8|9|20|25|26|27|30) return 0 ;;
+		2|3|4|5|6|7|8|9|10|20|25|26|27|30) return 0 ;;
 		*) return 1 ;;
 	esac
 }
@@ -16944,6 +17021,81 @@ kpanel_ldnmp_dispatch() {
 }
 
 
+ldnmp_fastadmin() (
+	local webname="FastAdmin 后台开发框架" stage="" published=0
+	local version="1.6.8.20261019"
+	local package_sha256="457bbe56d5a37d69a2e1371bea09bef8ce88e2dd11516da930ea442d70ae906f"
+	add_yuming || return 1
+	[[ "$yuming" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] || return 64
+	local site_root="/home/web/html/$yuming" conf="/home/web/conf.d/$yuming.conf"
+	if [ -e "$site_root" ] || [ -L "$site_root" ] || [ -e "$conf" ] || [ -L "$conf" ]; then
+		echo "域名已存在，拒绝覆盖现有产物" >&2
+		return 1
+	fi
+	ldnmp_install_status || return 1
+	echo "KPANEL_PROGRESS 15 正在检查 FastAdmin 的 PHP74 环境"
+	docker exec php74 php -r '
+		if (PHP_MAJOR_VERSION !== 7 || PHP_MINOR_VERSION !== 4) { exit(1); }
+		foreach (["json", "curl", "pdo_mysql", "bcmath", "mbstring", "gd", "zip", "dom", "fileinfo"] as $ext) {
+			if (!extension_loaded($ext)) { fwrite(STDERR, "Missing extension: " . $ext . PHP_EOL); exit(1); }
+		}
+	' || { echo "PHP74 容器未就绪或缺少必要扩展" >&2; return 1; }
+	stage=$(mktemp -d /home/web/.fastadmin.XXXXXX) || return 1
+	trap 'rm -rf -- "$stage"' EXIT
+	echo "KPANEL_PROGRESS 30 正在下载并校验 FastAdmin 官方完整包"
+	curl -fL --retry 2 --connect-timeout 15 --max-time 300 \
+		-A 'Mozilla/5.0' -e 'https://www.fastadmin.net/download.html' \
+		"https://www.fastadmin.net/download/full.html?version=$version" -o "$stage/package.zip" || return 1
+	printf '%s  %s\n' "$package_sha256" "$stage/package.zip" | sha256sum -c - || return 1
+	unzip -q "$stage/package.zip" -d "$stage/site" || return 1
+	local required
+	for required in public/index.php public/install.php thinkphp/base.php vendor/autoload.php application/database.php; do
+		[ -f "$stage/site/$required" ] || { echo "FastAdmin 完整包缺少 $required" >&2; return 1; }
+	done
+	[ -d "$stage/site/public/assets/libs" ] || return 1
+	# The shared PHP74 policy disables parse_ini_file. Keep that policy and use
+	# equivalent INI string parsing in this pinned application's two loaders.
+	sed -i 's/parse_ini_file(\(.*\), true)/parse_ini_string(file_get_contents(\1), true)/' \
+		"$stage/site/thinkphp/base.php" "$stage/site/thinkphp/library/think/config/driver/Ini.php" || return 1
+	grep -Fq 'parse_ini_string(file_get_contents(' "$stage/site/thinkphp/base.php" &&
+		grep -Fq 'parse_ini_string(file_get_contents(' "$stage/site/thinkphp/library/think/config/driver/Ini.php" || return 1
+	wget -q -O "$stage/site.conf" "${gh_proxy}raw.githubusercontent.com/kejilion/nginx/c830bf34ae6da8e183b4892860fbce30ea6dc651/fastadmin.com.conf" || return 1
+	printf '%s  %s\n' "986b57db53211332331c1c0022e7894546c8e8d3a1e4baeef5f2c95f01c23f46" "$stage/site.conf" | sha256sum -c - || return 1
+	grep -Fq 'fastcgi_pass unix:/run/php74/php-fpm.sock;' "$stage/site.conf" &&
+		grep -Fq 'root /var/www/html/yuming.com/public;' "$stage/site.conf" || return 1
+	sed -i "s/yuming.com/$yuming/g" "$stage/site.conf" || return 1
+	install_ssltls || return 1
+	certs_status || return 1
+	add_db || return 1
+	echo "KPANEL_PROGRESS 65 正在配置 FastAdmin PHP74 站点"
+	# Move the verified package only after all downloads have succeeded.
+	mv -T -- "$stage/site" "$site_root" || return 1
+	normalize_ldnmp_site_permissions "$yuming" || return 1
+	docker exec php74 chown -R www-data:www-data "/var/www/html/$yuming" || return 1
+	mv -- "$stage/site.conf" "$conf" || return 1
+	published=1
+	trap 'if [ "$published" = 1 ]; then
+		rm -f -- "$conf"
+		docker exec nginx nginx -t >/dev/null 2>&1 && docker exec nginx nginx -s reload >/dev/null 2>&1 || true
+		echo "FastAdmin 站点启用失败；已撤回配置，源码和数据库保留供检查。" >&2
+	fi
+	rm -rf -- "$stage"' EXIT
+	nginx_http_on || return 1
+	docker exec nginx nginx -t && docker exec nginx nginx -s reload || return 1
+	published=0
+	echo "KPANEL_PROGRESS 90 FastAdmin 站点已就绪，请打开安装页面完成初始化"
+	local scheme=https suffix=""
+	if kpanel_web_http_mode; then scheme=http; suffix=":$KJ_WEB_HTTP_PORT"; fi
+	echo "安装地址: $scheme://$yuming$suffix/install.php"
+	echo "数据库地址: mysql"
+	echo "数据库端口: 3306"
+	echo "数据库名: $dbname"
+	echo "用户名: $dbuse"
+	echo "密码: $dbusepasswd"
+	echo "表前缀: fa_"
+	echo "请在安装页面设置管理员账号；安装成功后保存随机生成的后台入口。"
+)
+
 linux_ldnmp() {
   while true; do
 
@@ -16958,6 +17110,7 @@ linux_ldnmp() {
 	echo -e "${gl_huang}5.   ${gl_bai}安装苹果CMS影视站                 ${gl_huang}6.   ${gl_bai}安装独角数发卡网"
 	echo -e "${gl_huang}7.   ${gl_bai}安装flarum论坛网站                ${gl_huang}8.   ${gl_bai}安装typecho轻量博客网站"
 	echo -e "${gl_huang}9.   ${gl_bai}安装LinkStack共享链接平台         ${gl_huang}20.  ${gl_bai}自定义动态站点"
+	echo -e "${gl_huang}10.  ${gl_bai}安装FastAdmin后台框架（PHP7.4）"
 	echo -e "${gl_huang}------------------------"
 	echo -e "${gl_huang}21.  ${gl_bai}仅安装nginx ${gl_huang}★${gl_bai}                     ${gl_huang}22.  ${gl_bai}站点重定向"
 	echo -e "${gl_huang}23.  ${gl_bai}站点反向代理-IP+端口 ${gl_huang}★${gl_bai}            ${gl_huang}24.  ${gl_bai}站点反向代理-域名"
@@ -16977,7 +17130,7 @@ linux_ldnmp() {
 	if [ "${KJ_WEB_NONINTERACTIVE:-0}" = "1" ]; then
 		sub_choice="${KJ_WEB_RECIPE:-}"
 		case "$sub_choice" in
-			2|3|4|5|6|7|8|9|20|22|23|24|25|26|27|28|30) ;;
+			2|3|4|5|6|7|8|9|10|20|22|23|24|25|26|27|28|30) ;;
 			*)
 				echo "KPANEL_PROGRESS 100 不支持的 KJ_WEB_RECIPE"
 				return 1
@@ -17018,6 +17171,9 @@ linux_ldnmp() {
 		;;
 	  2)
 	  ldnmp_wp "${KJ_WEB_DOMAIN:-}"
+		;;
+	  10)
+	  ldnmp_fastadmin || return $?
 		;;
 
 	  3)
@@ -28017,6 +28173,7 @@ linux_work() {
 
 # 智能切换镜像源函数
 switch_mirror() {
+	preserve_armbian_mirrors && return 0
 	# 可选参数，默认为 false
 	local upgrade_software=${1:-false}
 	local clean_cache=${2:-false}
@@ -28029,7 +28186,7 @@ switch_mirror() {
 
 	if [ "$country" = "CN" ]; then
 		echo "使用国内镜像源..."
-		bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+		linuxmirrors_run_url https://linuxmirrors.cn/main.sh \
 		  --source mirrors.huaweicloud.com \
 		  --protocol https \
 		  --use-intranet-source false \
@@ -28042,7 +28199,7 @@ switch_mirror() {
 	else
 		echo "使用海外镜像源..."
 		if [ -f /etc/os-release ] && grep -qi "oracle" /etc/os-release; then
-			bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+			linuxmirrors_run_url https://linuxmirrors.cn/main.sh \
 			  --source mirrors.xtom.com \
 			  --protocol https \
 			  --use-intranet-source false \
@@ -28053,7 +28210,7 @@ switch_mirror() {
 			  --install-epel false \
 			  --pure-mode
 		else
-			bash <(curl -sSL https://linuxmirrors.cn/main.sh) \
+			linuxmirrors_run_url https://linuxmirrors.cn/main.sh \
 				--use-official-source true \
 				--protocol https \
 				--use-intranet-source false \
@@ -33436,15 +33593,15 @@ EOF
 		  case $choice in
 			  1)
 				  send_stats "中国大陆默认源"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh)
+				  run_linuxmirrors_manual
 				  ;;
 			  2)
 				  send_stats "中国大陆教育源"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --edu
+				  run_linuxmirrors_manual --edu
 				  ;;
 			  3)
 				  send_stats "海外源"
-				  bash <(curl -sSL https://linuxmirrors.cn/main.sh) --abroad
+				  run_linuxmirrors_manual --abroad
 				  ;;
 			  4)
 				  send_stats "智能切换更新源"
@@ -34769,6 +34926,10 @@ else
 		maccms)
 			shift
 			kpanel_run_web_recipe_cli 5 "$@"
+			;;
+		fastadmin)
+			shift
+			kpanel_run_web_recipe_cli 10 "$@"
 			;;
 		dujiaoka)
 			shift
