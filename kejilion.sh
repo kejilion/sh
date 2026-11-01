@@ -20,6 +20,7 @@ KPANEL_WEB_CERTIFICATE_REPLACE_PROTOCOL_VERSION="1"
 KPANEL_WEB_CERTIFICATE_FORCE_RENEW_PROTOCOL_VERSION="1"
 KPANEL_APP_CONCURRENCY_PROTOCOL_VERSION="1"
 KPANEL_LOCAL_APPS_PROTOCOL_VERSION="1"
+KPANEL_WEB_PROXY_ACCESS_PROTOCOL_VERSION="1"
 unset KJ_APP_LOCKS_HELD
 
 # Locks live outside PrivateTmp and app data. Only the paired KPanel worker
@@ -3678,6 +3679,17 @@ nginx_update_transaction() {
   )
 }
 
+nginx_install_update_dependencies() {
+	install python3 || return $?
+	if ! command -v flock >/dev/null 2>&1; then
+		install util-linux || return $?
+	fi
+	python3 -I -c 'import sys; raise SystemExit(sys.version_info < (3,8))' || {
+		echo "Nginx 安装需要 Python 3.8+，依赖准备失败" >&2; return 1;
+	}
+	command -v flock >/dev/null 2>&1 || return 1
+}
+
 nginx_upgrade() {
   nginx_update_transaction nginx
 }
@@ -7084,9 +7096,10 @@ root_use
 clear
 echo -e "${gl_huang}LDNMP环境未安装，开始安装LDNMP环境...${gl_bai}"
 check_disk_space 3 /home
-install_dependency
-install_docker
-install_certbot
+install_dependency || return $?
+install_docker || return $?
+install_certbot || return $?
+nginx_install_update_dependencies || return $?
 install_ldnmp_conf || return $?
 install_ldnmp
 
@@ -7099,9 +7112,10 @@ send_stats "安装nginx环境"
 root_use
 clear
 echo -e "${gl_huang}nginx未安装，开始安装nginx环境...${gl_bai}"
-install_dependency
-install_docker
-install_certbot
+install_dependency || return $?
+install_docker || return $?
+install_certbot || return $?
+nginx_install_update_dependencies || return $?
 install_ldnmp_conf || return $?
 nginx_upgrade || return $?
 # First-install housekeeping stays here; routine updates preserve existing jobs
@@ -7255,7 +7269,7 @@ ldnmp_Proxy() {
 		add_yuming
 	fi
 
-	check_ip_and_get_access_port "$yuming"
+	check_ip_and_get_access_port "$yuming" || return $?
 
 	if [ -z "$reverseproxy" ]; then
 		read -e -p "请输入你的反代IP (回车默认本机IP 127.0.0.1): " reverseproxy
@@ -7266,12 +7280,12 @@ ldnmp_Proxy() {
 		read -e -p "请输入你的反代端口: " port
 	fi
 	kpanel_web_progress 25 "正在准备 kejilion.sh Nginx 环境"
-	nginx_install_status
+	nginx_install_status || return $?
 
 
 	kpanel_web_progress 40 "正在签发并配置反向代理证书"
-	install_ssltls
-	certs_status
+	install_ssltls || return $?
+	certs_status || return $?
 
 	kpanel_app_write_proxy
 }
@@ -7281,14 +7295,14 @@ kpanel_app_write_proxy() {
 		kpanel_app_with_lock system kpanel_app_write_proxy "$@"; return $?
 	fi
 	kpanel_web_progress 60 "正在获取 kejilion.sh 反向代理配置"
-	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf || return $?
+	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf || return $?
 
 	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
-	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf
+	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf || return $?
 
 
-	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf || return $?
 
 	reverseproxy_port="$reverseproxy:$port"
 	upstream_servers=""
@@ -7296,18 +7310,35 @@ kpanel_app_write_proxy() {
 		upstream_servers="$upstream_servers    server $server;\n"
 	done
 
-	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
-	sed -i '/remote_addr/d' /home/web/conf.d/$yuming.conf
+	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf || return $?
+	sed -i '/remote_addr/d' /home/web/conf.d/$yuming.conf || return $?
 
-	update_nginx_listen_port "$yuming" "$access_port"
+	update_nginx_listen_port "$yuming" "$access_port" || return $?
 
 	kpanel_web_progress 85 "正在校验并重载反向代理配置"
-	nginx_http_on
-	docker exec nginx nginx -s reload
+	nginx_http_on || return $?
+	docker exec nginx nginx -t || return $?
+	docker exec nginx nginx -s reload || return $?
 	nginx_web_on
 }
 
 
+
+# Panel domain checks precede its explicit direct-access change.
+# Interactive CLI callers keep the historical block after successful creation.
+kpanel_proxy_cli() {
+	ldnmp_Proxy "$@" || return $?
+	if [ "${KJ_WEB_PROXY_KEEP_DIRECT:-0}" = 1 ]; then return 0; fi
+	find_container_by_host_port "$port"
+	if [ -z "$docker_name" ]; then
+		close_port "$port" || return $?
+		echo "已阻止IP+端口访问该服务"
+	else
+		ip_address
+		close_port "$port" || return $?
+		block_container_port "$docker_name" "$ipv4_address" || return $?
+	fi
+}
 
 ldnmp_Proxy_backend() {
 	clear
@@ -34986,16 +35017,7 @@ else
 			;;
 		fd|rp|反代)
 			shift
-			ldnmp_Proxy "$@"
-	  		find_container_by_host_port "$port"
-	  		if [ -z "$docker_name" ]; then
-	  		  close_port "$port"
-			  echo "已阻止IP+端口访问该服务"
-	  		else
-			  ip_address
-			  close_port "$port"
-			block_container_port "$docker_name" "$ipv4_address" || return 1
-	  		fi
+			kpanel_proxy_cli "$@" || exit $?
 			;;
 
 		loadbalance|负载均衡)

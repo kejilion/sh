@@ -60,7 +60,7 @@ for relative in kejilion.sh cn/kejilion.sh en/kejilion.sh tw/kejilion.sh jp/keji
     ! find "$web" -name '.nginx10.conf.*' | grep -q .
 
     # A failed initializer must return before starting containers, without relying on errexit.
-    for name in send_stats root_use clear check_disk_space check_port install_dependency install_docker install_certbot; do
+    for name in send_stats root_use clear check_disk_space check_port install_dependency install_docker install_certbot nginx_install_update_dependencies; do
       eval "$name() { :; }"
     done
     install_ldnmp_conf() { return 42; }
