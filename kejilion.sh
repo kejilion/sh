@@ -7284,8 +7284,13 @@ ldnmp_Proxy() {
 
 
 	kpanel_web_progress 40 "正在签发并配置反向代理证书"
-	install_ssltls || return $?
+	local certificate_result=0
+	install_ssltls || certificate_result=$?
+	if [ "$certificate_result" -ne 0 ] && [ "${KJ_WEB_PROXY_KEEP_DIRECT:-0}" = 1 ]; then
+		return "$certificate_result"
+	fi
 	certs_status || return $?
+	if ! kpanel_web_http_mode && ! kpanel_web_certificate_available; then return 1; fi
 
 	kpanel_app_write_proxy
 }

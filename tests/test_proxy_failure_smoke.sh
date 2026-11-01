@@ -15,6 +15,8 @@ for relative in kejilion.sh cn/kejilion.sh; do
     check_ip_and_get_access_port() { access_port=443; }
     install_ssltls() { calls+=" certificate"; }
     certs_status() { :; }
+    kpanel_web_http_mode() { return 1; }
+    kpanel_web_certificate_available() { return 0; }
     find_container_by_host_port() { docker_name=kejilion-panel; }
     ip_address() { ipv4_address=203.0.113.1; }
     close_port() { calls+=" close"; }
@@ -29,8 +31,17 @@ for relative in kejilion.sh cn/kejilion.sh; do
     nginx_install_status() { :; }
     install_ssltls() { return 43; }
     rc=0
-    kpanel_proxy_cli panel.example.com 127.0.0.1 8080 || rc=$?
+    KJ_WEB_PROXY_KEEP_DIRECT=1 kpanel_proxy_cli panel.example.com 127.0.0.1 8080 || rc=$?
     [ "$rc" = 43 ] && [ -z "$calls" ]
+    # Interactive CLI retries through certs_status and proceeds only with a valid pair.
+    kpanel_proxy_cli panel.example.com 127.0.0.1 8080
+    [ "$calls" = ' write close block' ]
+    calls=''
+    kpanel_web_certificate_available() { return 1; }
+    rc=0
+    kpanel_proxy_cli panel.example.com 127.0.0.1 8080 || rc=$?
+    [ "$rc" != 0 ] && [ -z "$calls" ]
+    kpanel_web_certificate_available() { return 0; }
     install_ssltls() { :; }
     kpanel_app_write_proxy() { return 44; }
     rc=0
