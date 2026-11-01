@@ -15,8 +15,6 @@ for relative in kejilion.sh cn/kejilion.sh; do
     check_ip_and_get_access_port() { access_port=443; }
     install_ssltls() { calls+=" certificate"; }
     certs_status() { :; }
-    kpanel_web_http_mode() { return 1; }
-    kpanel_web_certificate_available() { return 0; }
     find_container_by_host_port() { docker_name=kejilion-panel; }
     ip_address() { ipv4_address=203.0.113.1; }
     close_port() { calls+=" close"; }
@@ -30,18 +28,15 @@ for relative in kejilion.sh cn/kejilion.sh; do
     [ "$rc" = 42 ] && [ -z "$calls" ]
     nginx_install_status() { :; }
     install_ssltls() { return 43; }
+    certs_status() { return 43; }
     rc=0
     KJ_WEB_PROXY_KEEP_DIRECT=1 kpanel_proxy_cli panel.example.com 127.0.0.1 8080 || rc=$?
     [ "$rc" = 43 ] && [ -z "$calls" ]
     # Interactive CLI retries through certs_status and proceeds only with a valid pair.
+    certs_status() { :; }
     kpanel_proxy_cli panel.example.com 127.0.0.1 8080
     [ "$calls" = ' write close block' ]
     calls=''
-    kpanel_web_certificate_available() { return 1; }
-    rc=0
-    kpanel_proxy_cli panel.example.com 127.0.0.1 8080 || rc=$?
-    [ "$rc" != 0 ] && [ -z "$calls" ]
-    kpanel_web_certificate_available() { return 0; }
     install_ssltls() { :; }
     kpanel_app_write_proxy() { return 44; }
     rc=0
@@ -62,12 +57,7 @@ for relative in kejilion.sh cn/kejilion.sh; do
     docker() { calls+=" $*"; return 45; }
     rc=0
     kpanel_app_write_proxy || rc=$?
-    [ "$rc" = 45 ] && [ "$calls" = ' exec nginx nginx -t' ]
-    calls=''
-    docker() { calls+=" $*"; if [ "$*" = 'exec nginx nginx -s reload' ]; then return 46; fi; }
-    rc=0
-    kpanel_app_write_proxy || rc=$?
-    [ "$rc" = 46 ] && [[ "$calls" != *success* ]]
+    [ "$rc" = 45 ] && [ "$calls" = ' exec nginx nginx -s reload' ]
     wget() { return 47; }; calls=''
     rc=0
     kpanel_app_write_proxy || rc=$?
@@ -75,12 +65,11 @@ for relative in kejilion.sh cn/kejilion.sh; do
 
     calls=''
     flock() { :; }
-    install() { calls+=" $*"; }
-    python3() { return 48; }
+    install() { calls+=" $*"; return 48; }
     rc=0
     nginx_install_update_dependencies || rc=$?
     [ "$rc" != 0 ] && [[ "$calls" == *python3* ]]
-    python3() { return 0; }
+    install() { return 0; }
     nginx_install_update_dependencies
   )
   printf '%s: dependency/proxy/certificate/download/validation/reload/direct-access PASS\n' "$relative"

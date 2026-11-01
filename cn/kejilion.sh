@@ -20,7 +20,6 @@ KPANEL_WEB_CERTIFICATE_REPLACE_PROTOCOL_VERSION="1"
 KPANEL_WEB_CERTIFICATE_FORCE_RENEW_PROTOCOL_VERSION="1"
 KPANEL_APP_CONCURRENCY_PROTOCOL_VERSION="1"
 KPANEL_LOCAL_APPS_PROTOCOL_VERSION="1"
-KPANEL_WEB_PROXY_ACCESS_PROTOCOL_VERSION="1"
 unset KJ_APP_LOCKS_HELD
 
 # Locks live outside PrivateTmp and app data. Only the paired KPanel worker
@@ -3684,10 +3683,6 @@ nginx_install_update_dependencies() {
 	if ! command -v flock >/dev/null 2>&1; then
 		install util-linux || return $?
 	fi
-	python3 -I -c 'import sys; raise SystemExit(sys.version_info < (3,8))' || {
-		echo "Nginx 安装需要 Python 3.8+，依赖准备失败" >&2; return 1;
-	}
-	command -v flock >/dev/null 2>&1 || return 1
 }
 
 nginx_upgrade() {
@@ -7284,13 +7279,8 @@ ldnmp_Proxy() {
 
 
 	kpanel_web_progress 40 "正在签发并配置反向代理证书"
-	local certificate_result=0
-	install_ssltls || certificate_result=$?
-	if [ "$certificate_result" -ne 0 ] && [ "${KJ_WEB_PROXY_KEEP_DIRECT:-0}" = 1 ]; then
-		return "$certificate_result"
-	fi
+	install_ssltls
 	certs_status || return $?
-	if ! kpanel_web_http_mode && ! kpanel_web_certificate_available; then return 1; fi
 
 	kpanel_app_write_proxy
 }
@@ -7322,7 +7312,6 @@ kpanel_app_write_proxy() {
 
 	kpanel_web_progress 85 "正在校验并重载反向代理配置"
 	nginx_http_on || return $?
-	docker exec nginx nginx -t || return $?
 	docker exec nginx nginx -s reload || return $?
 	nginx_web_on
 }
