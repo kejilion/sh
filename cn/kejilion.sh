@@ -3850,13 +3850,13 @@ kpanel_app_delete_sites() {
 
 
 shared_waf_revision() {
-	printf '%s\n' '1ad9ad8e57c83317d4fe1f418054195f653e79cb'
+	printf '%s\n' '980feb1e06496674914ca137da655fdbff2b3fcd'
 }
 
 shared_waf_manifest() {
 	cat <<'WAF_MANIFEST'
 7be23f9abbeb83427b1a138a97e9fd1fdbb0c0ad357d4d02f604699a2a24dffe  configure.py
-023b41aea8cd468ee1750f6e29c0e9e758e1b3b228a0f0608aed3658ea746c9e  policy.py
+04e1015fd71c58df94bd18c2f305c659982ab549cd2aead26fb85a129d4ffa5c  policy.py
 93adcf667d3bab494dea93681524c6828dab9d5c36b0c9147229e02e7433360e  nginx_edit.py
 e0aab32f1386a2180288f748c4f0643f9c252c5ddb2dedbf06befc4e36fd6a60  ban.py
 aee6fd651ceb6441acce6dc6b510e504d7127b2bba1ce84ca361655590c615b0  example-policy.json
