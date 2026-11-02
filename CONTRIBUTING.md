@@ -12,7 +12,13 @@
 
 - 同步检查失败时不得合并或发布；不能通过跳过测试、复制旧版脚本或仅修改其中一份来规避。
 
-## KPanel 轻量节点运行时
+## WAF 稳定引导器
+
+`scripts/waf_runtime.py` 是两份脚本内嵌更新器的唯一编辑来源；修改后运行 `python3 scripts/embed_waf_runtime.py`，提交前运行 `--check`、`tests/test_shared_waf_bootstrap.py`、根/CN同步检查及受影响的隔离集成。脚本内的固定七文件摘要只作为一次性旧安装迁移基线，不是稳定通道的最新版指针；后续共享包发布不修改它。
+
+共享包发布工具、API 1兼容契约、签名清单和回滚要求位于 nginx 仓库的 `waf/README.md`。不得绕过签名校验，也不得把脚本发布当作共享包自动升级。引导器公钥轮换需要新的脚本版本；私钥不入库、不上传试点主机。
+
+## KPanel 轻量节点运行时契约
 
 - 安装器与生成的更新器共用 `KPANEL_NODE_LIFECYCLE` 模板；不可另写一份锁逻辑。
 - 修改更新器、共用锁或 update service/timer 模板时，递增

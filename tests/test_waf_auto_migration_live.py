@@ -101,6 +101,14 @@ else: p.write_text(sys.stdin.read() if sys.argv[1]=='-' else pathlib.Path(sys.ar
                 body += '''
 shared_waf_prepare() { WAF_PYTHON="$FIXTURE_PYTHON"; WAF_DIRECTORY="$FIXTURE_BUNDLE"; shared_waf_verified "$WAF_DIRECTORY"; }
 shared_waf_cached() { shared_waf_prepare; }
+# Package acquisition is tested by the signed bootstrap suite; this fixture
+# freezes its verified bundle while exercising the real migration transaction.
+shared_waf_runtime() {
+  [ "$1" = run ] || return 2
+  shift
+  shared_waf_prepare || return 1
+  "$WAF_PYTHON" -E -s -B "$WAF_DIRECTORY/configure.py" --root "$FIXTURE_ROOT" "$@"
+}
 shared_waf_refresh() { :; }
 send_stats() { :; }
 eval "$(declare -f shared_waf | sed '1s/shared_waf/shared_waf_real/')"
