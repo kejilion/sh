@@ -540,7 +540,8 @@ stop_containers_or_kill_process() {
 		docker stop $containers
 	else
 		install lsof
-		for pid in $(lsof -t -i:$port); do
+		# 只清理本机 TCP 监听，避免误杀连接远端 80/443 的 KPanel 节点等客户端。
+		for pid in $(lsof -t -a -iTCP:"$port" -sTCP:LISTEN); do
 			kill -9 $pid
 		done
 	fi
