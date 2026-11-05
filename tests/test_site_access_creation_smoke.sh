@@ -8,21 +8,25 @@ cat > "$fixture/docker" <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
   'exec nginx id -g nginx') id -g ;;
+  'exec nginx nginx -s reload') [ "${KJ_TEST_FAIL_RELOAD:-0}" != 1 ] ;;
   'exec -u nginx nginx sh -c '*|'exec nginx nginx -t'|'exec nginx nginx -s reload') exit 0 ;;
   *) exit 1 ;;
 esac
 EOF
 chmod +x "$fixture/docker"
+export PATH="$fixture:$PATH"
 sed -n '/^# BEGIN GENERATED SITE ACCESS ADAPTER$/,/^# END GENERATED SITE ACCESS ADAPTER$/p' "$root/kejilion.sh" |
   sed -e "s|os.open('/home/web',|os.open('$fixture/web',|" -e "s|/usr/bin/docker|$fixture/docker|g" > "$fixture/adapter.sh"
 sed -n '/^kpanel_web_apply_created_access() {/,/^}/p' "$root/kejilion.sh" |
   sed -e "s|/var/lib/kejilion-panel/wordpress-jobs/|$fixture/jobs/|g" -e "s|/home/web/conf.d/|$fixture/web/conf.d/|g" > "$fixture/hook.sh"
 sed -n '/^kpanel_web_prepare_config() {/,/^}/p' "$root/kejilion.sh" |
   sed -e "s|/var/lib/kejilion-panel/wordpress-jobs/|$fixture/jobs/|g" -e "s|/home/web/conf.d/|$fixture/web/conf.d/|g" > "$fixture/prepare.sh"
+sed -n '/^kpanel_web_confirm_created_access() {/,/^}/p' "$root/kejilion.sh" > "$fixture/confirm.sh"
 sed -n '/^nginx_http_on() {/,/^}/p' "$root/kejilion.sh" > "$fixture/http.sh"
 source "$fixture/adapter.sh"
 source "$fixture/hook.sh"
 source "$fixture/prepare.sh"
+source "$fixture/confirm.sh"
 source "$fixture/http.sh"
 kpanel_web_http_mode() { return 1; }
 export KJ_WEB_NONINTERACTIVE=1
@@ -42,6 +46,11 @@ printf 'server { server_name example.com; location / { proxy_pass http://app; } 
 nginx_http_on
 grep -Fq 'auth_basic "Restricted";' "$fixture/web/conf.d/example.com.conf"
 grep -Fq 'proxy_pass http://app;' "$fixture/web/conf.d/example.com.conf"
+export KJ_TEST_FAIL_RELOAD=1
+if kpanel_web_confirm_created_access 2> "$fixture/reload-failure.log"; then exit 1; fi
+grep -Fq '访问密码的 Nginx 配置未能加载' "$fixture/reload-failure.log"
+unset KJ_TEST_FAIL_RELOAD
+kpanel_web_confirm_created_access
 if grep -RFq 'synthetic-secret' "$fixture/web/conf.d"; then exit 1; fi
 
 id=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb

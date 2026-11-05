@@ -534,7 +534,8 @@ def hash_password(password: str) -> str:
     if not isinstance(password, str):
         raise ConfigError('invalid password')
     raw = password.encode('utf-8')
-    if not raw or len(raw) > 1024 or any(char in raw for char in (b'\x00', b'\r', b'\n')):
+    # openssl passwd -apr1 silently truncates stdin passwords after 256 bytes.
+    if not raw or len(raw) > 256 or any(char in raw for char in (b'\x00', b'\r', b'\n')):
         raise ConfigError('invalid password')
     try:
         result = subprocess.run(['/usr/bin/openssl', 'passwd', '-apr1', '-stdin'],
@@ -725,9 +726,18 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
     if not isinstance(indices, list) or not indices or len(indices) > 64 or len(set(indices)) != len(indices):
         raise ConfigError('invalid server list')
     for index in indices:
+        server = select_context(root, index, 'server')
         target = select_context(root, index, scope, location, modifier)
         if any(d.words[0] in ('auth_basic', 'auth_basic_user_file') for d in target.directives):
             raise ConfigError('a password rule already exists in this context')
+        # Nginx executes unconditional return before Basic Auth; satisfy any
+        # can also make a password optional. Never report these as protection.
+        contexts = [server] if target is server else [server, target]
+        if target is server:
+            contexts += [child for child in server.children if child.words == ['location', '/']]
+        for context in contexts:
+            if any(d.words[0] == 'return' or d.words == ['satisfy', 'any'] for d in context.directives):
+                raise ConfigError('site configuration bypasses password authentication')
     content = update_account(b'', username, hasher(password), must_create=True)
     gid = worker_group()
     if not isinstance(gid, int) or isinstance(gid, bool) or gid < 0 or gid > 2**32 - 2:
@@ -1056,6 +1066,14 @@ KPANEL_EMBEDDED_SITE_ACCESS_CLI_PY
   python3 -I -c 'import runpy,sys; sys.dont_write_bytecode=True; sys.path.insert(0,sys.argv[1]); runpy.run_path(sys.argv[1]+"/site_access_cli.py",run_name="__main__")' "$adapter_dir"
 )
 # END GENERATED SITE ACCESS ADAPTER
+
+kpanel_web_confirm_created_access() {
+	[ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 0
+	if ! docker exec nginx nginx -t >/dev/null 2>&1 || ! docker exec nginx nginx -s reload >/dev/null 2>&1; then
+		echo "访问密码的 Nginx 配置未能加载，请检查站点状态。" >&2
+		return 1
+	fi
+}
 
 kpanel_web_prepare_config() {
 	local input="${KJ_WEB_ACCESS_PASSWORD_FILE:-}" name id expected webroot directory owner mode
@@ -8641,6 +8659,7 @@ ldnmp_wp() {
   normalize_ldnmp_site_permissions "$yuming" || return 1
   chmod 0640 "/home/web/html/$yuming/wordpress/wp-config.php" || return 1
   restart_ldnmp
+  kpanel_web_confirm_created_access || return 1
   nginx_web_on
 
 }
@@ -8775,6 +8794,7 @@ ldnmp_Proxy_backend() {
 
 	nginx_http_on || return 1
 	docker exec nginx nginx -s reload
+	kpanel_web_confirm_created_access || return 1
 	nginx_web_on
 }
 
@@ -19615,6 +19635,7 @@ linux_ldnmp() {
 			echo "KPANEL_PROGRESS 100 Nginx 配置校验失败"
 			return 1
 		fi
+		kpanel_web_confirm_created_access || return 1
 		echo "KPANEL_PROGRESS 100 kejilion.sh 原生建站产物已完成"
 		return 0
 	fi

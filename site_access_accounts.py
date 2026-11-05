@@ -11,7 +11,8 @@ def hash_password(password: str) -> str:
     if not isinstance(password, str):
         raise ConfigError('invalid password')
     raw = password.encode('utf-8')
-    if not raw or len(raw) > 1024 or any(char in raw for char in (b'\x00', b'\r', b'\n')):
+    # openssl passwd -apr1 silently truncates stdin passwords after 256 bytes.
+    if not raw or len(raw) > 256 or any(char in raw for char in (b'\x00', b'\r', b'\n')):
         raise ConfigError('invalid password')
     try:
         result = subprocess.run(['/usr/bin/openssl', 'passwd', '-apr1', '-stdin'],

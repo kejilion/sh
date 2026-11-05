@@ -52,6 +52,13 @@ class SiteAccessAccountTests(unittest.TestCase):
             with self.subTest(value=value), self.assertRaises(accounts.ConfigError):
                 accounts.hash_password(value)
 
+    def test_rejects_passwords_openssl_would_truncate(self):
+        self.assertTrue(accounts.hash_password('a' * 256).startswith('$apr1$'))
+        with self.assertRaises(accounts.ConfigError):
+            accounts.hash_password('a' * 257)
+        with self.assertRaises(accounts.ConfigError):
+            accounts.hash_password('密' * 86)
+
 
 if __name__ == '__main__':
     unittest.main()

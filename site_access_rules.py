@@ -71,9 +71,18 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
     if not isinstance(indices, list) or not indices or len(indices) > 64 or len(set(indices)) != len(indices):
         raise ConfigError('invalid server list')
     for index in indices:
+        server = select_context(root, index, 'server')
         target = select_context(root, index, scope, location, modifier)
         if any(d.words[0] in ('auth_basic', 'auth_basic_user_file') for d in target.directives):
             raise ConfigError('a password rule already exists in this context')
+        # Nginx executes unconditional return before Basic Auth; satisfy any
+        # can also make a password optional. Never report these as protection.
+        contexts = [server] if target is server else [server, target]
+        if target is server:
+            contexts += [child for child in server.children if child.words == ['location', '/']]
+        for context in contexts:
+            if any(d.words[0] == 'return' or d.words == ['satisfy', 'any'] for d in context.directives):
+                raise ConfigError('site configuration bypasses password authentication')
     content = update_account(b'', username, hasher(password), must_create=True)
     gid = worker_group()
     if not isinstance(gid, int) or isinstance(gid, bool) or gid < 0 or gid > 2**32 - 2:

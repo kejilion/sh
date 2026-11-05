@@ -103,6 +103,16 @@ class NginxAccessProbe(unittest.TestCase):
         self.assertIn('302 Moved Temporarily', headers)
         self.assertNotIn('401 Unauthorized', headers)
 
+    def test_maximum_password_is_not_silently_truncated(self):
+        original = 'test:$apr1$12345678$IFpXpDRudqLvk0aO7K4jN.\n'
+        self.addCleanup(self.write, '/etc/nginx/probe.htpasswd', original)
+        password = 'a' * 256
+        self.write('/etc/nginx/probe.htpasswd', 'test:' + site_access_accounts.hash_password(password) + '\n')
+        headers, _ = self.request('/protected', 'test:' + password)
+        self.assertIn('200 OK', headers)
+        headers, _ = self.request('/protected', 'test:' + password + 'x')
+        self.assertIn('401 Unauthorized', headers)
+
     def test_patch_and_remove_rule_without_changing_proxy(self):
         config = r'''worker_processes 1;
 events { worker_connections 64; }

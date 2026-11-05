@@ -71,6 +71,22 @@ class SiteAccessRuleTests(unittest.TestCase):
         self.assertEqual(auth0, auth1)
         self.assertEqual(len(list(self.root.glob('.site-auth-*.passwd'))), 1)
 
+    def test_rejects_rules_bypassed_by_return_or_satisfy_any(self):
+        sources = (
+            b'server { return 301 https://example.org; }',
+            b'server { location / { return 301 https://example.org; } }',
+            b'server { satisfy any; location /admin/ { proxy_pass http://app; } }',
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                self.conf.write_bytes(source)
+                with self.assertRaises(rules.ConfigError):
+                    rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'server', '', '',
+                                   'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                                   worker_group=os.getegid, verify_read=lambda path: None)
+                self.assertEqual(self.conf.read_bytes(), source)
+                self.assertFalse(list(self.root.glob('.site-auth-*.passwd')))
+
     def test_quarantine_preserves_failed_config_and_reloads(self):
         saved = rules.quarantine_created_config(self.dirfd, self.conf.name, txn.digest(self.original),
                                                 validate=lambda: self.events.append('test'),
