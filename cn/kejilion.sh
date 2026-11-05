@@ -8916,7 +8916,10 @@ ldnmp_web_on() {
 
 nginx_web_on() {
 	kpanel_web_confirm_created_access || return 1
-	shared_waf_refresh || return 1
+	if ! shared_waf_refresh; then
+		kpanel_web_confirm_created_access || true
+		return 1
+	fi
 	kpanel_web_confirm_created_access || return 1
 	if kpanel_web_http_mode; then
 		echo "http://$yuming:$KJ_WEB_HTTP_PORT"
