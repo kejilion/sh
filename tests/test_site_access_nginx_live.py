@@ -142,6 +142,63 @@ class NginxAccessProbe(unittest.TestCase):
         finally:
             os.close(fd)
 
+    def test_included_allow_rule_is_detected_before_password_rule_is_added(self):
+        (Path(self.temp.name) / 'included-policy.inc').write_text('satisfy any; allow all;')
+        config = ('server { listen 127.0.0.1:18080; include /etc/nginx/conf.d/included-policy.inc; '
+                  'location /protected { proxy_pass http://127.0.0.1:18081; } }')
+        target = site_access_nginx.select_context(site_access_nginx.parse(config), 0, 'location', '/protected')
+        unsafe = site_access_nginx.replace_auth(config, target, 'Private', '/etc/nginx/probe.htpasswd')
+        main = ('worker_processes 1; events { worker_connections 64; } http { ' + unsafe +
+                ' server { listen 127.0.0.1:18081; root /usr/share/nginx/html; } }')
+        self.write('/etc/nginx/nginx.conf', main)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-t'], check=True, timeout=10)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-s', 'reload'], check=True, timeout=10)
+        for _ in range(20):
+            headers, body = self.request('/protected')
+            if '200 OK' in headers:
+                break
+            time.sleep(.05)
+        self.assertIn('200 OK', headers)
+        self.assertEqual(body, 'protected')
+        site = Path(self.temp.name) / 'included-site.conf'
+        site.write_text(config)
+        fd = os.open(self.temp.name, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            with self.assertRaises(site_access_rules.ConfigError):
+                site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
+                                           'location', '/protected', '', 'alice', 'password',
+                                           validate=lambda: None, reload_config=lambda: None)
+        finally:
+            os.close(fd)
+
+    def test_redirect_include_cannot_be_assumed_to_only_redirect(self):
+        (Path(self.temp.name) / 'redirect-extra.inc').write_text('if ($arg_open) { return 200 exposed; }')
+        config = ('server { listen 127.0.0.1:18080; include /etc/nginx/conf.d/redirect-extra.inc; '
+                  'return 301 https://example.com$request_uri; } '
+                  'server { listen 127.0.0.1:18082; location / { proxy_pass http://127.0.0.1:18081; } }')
+        main = ('worker_processes 1; events { worker_connections 64; } http { ' + config +
+                ' server { listen 127.0.0.1:18081; root /usr/share/nginx/html; } }')
+        self.write('/etc/nginx/nginx.conf', main)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-t'], check=True, timeout=10)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-s', 'reload'], check=True, timeout=10)
+        for _ in range(20):
+            headers, body = self.request('/?open=1')
+            if '200 OK' in headers:
+                break
+            time.sleep(.05)
+        self.assertIn('200 OK', headers)
+        self.assertEqual(body, 'exposed')
+        site = Path(self.temp.name) / 'redirect-site.conf'
+        site.write_text(config)
+        fd = os.open(self.temp.name, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            with self.assertRaises(site_access_rules.ConfigError):
+                site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0, 1],
+                                           'server', '', '', 'alice', 'password',
+                                           validate=lambda: None, reload_config=lambda: None)
+        finally:
+            os.close(fd)
+
     def test_patch_and_remove_rule_without_changing_proxy(self):
         config = r'''worker_processes 1;
 events { worker_connections 64; }

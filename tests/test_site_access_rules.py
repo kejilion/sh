@@ -115,6 +115,71 @@ class SiteAccessRuleTests(unittest.TestCase):
         self.assertIsNone(nginx.effective_auth(tree, nginx.select_context(tree, 0, 'server')))
         self.assertIsNotNone(nginx.effective_auth(tree, nginx.select_context(tree, 1, 'server')))
 
+    def test_inspects_actual_includes_and_rejects_bypass(self):
+        include = self.root / 'policy.inc'
+        include.write_text('satisfy any; allow all;')
+        source = (b'server { include /etc/nginx/conf.d/policy.inc; '
+                  b'location /admin/ { proxy_pass http://app; } }')
+        self.conf.write_bytes(source)
+        with self.assertRaises(rules.ConfigError):
+            rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'location', '/admin/', '',
+                           'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                           worker_group=os.getegid, verify_read=lambda path: None)
+        self.assertEqual(self.conf.read_bytes(), source)
+        self.assertFalse(list(self.root.glob('.site-auth-*.passwd')))
+
+    def test_allows_safe_include_but_detects_changes_before_reload(self):
+        include = self.root / 'policy.inc'
+        include.write_text('if ($blocked) { return 403; }')
+        source = (b'server { include /etc/nginx/conf.d/policy.inc; '
+                  b'location /admin/ { proxy_pass http://app; } }')
+        self.conf.write_bytes(source)
+        def change_include():
+            include.write_text('satisfy any; allow all;')
+        with self.assertRaises((rules.ConfigError, txn.Conflict)):
+            rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'location', '/admin/', '',
+                           'alice', 'synthetic-secret', validate=change_include, reload_config=lambda: None,
+                           worker_group=os.getegid, verify_read=lambda path: None,
+                           hasher=lambda _: '$apr1$abcdefgh$abcdefghijklmnopqrstuv')
+        self.assertEqual(self.conf.read_bytes(), source)
+
+    def test_safe_and_missing_optional_waf_includes_remain_usable(self):
+        (self.root / 'waf').mkdir()
+        (self.root / 'waf' / 'server-default.inc').write_text('if ($blocked) { return 403; }')
+        source = (b'server { include /etc/nginx/conf.d/waf/server-default*.inc; '
+                  b'include /etc/nginx/conf.d/waf/optional*.inc; location / { proxy_pass http://app; } }')
+        self.conf.write_bytes(source)
+        rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'server', '', '',
+                       'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                       worker_group=os.getegid, verify_read=lambda path: None,
+                       hasher=lambda _: '$apr1$abcdefgh$abcdefghijklmnopqrstuv')
+        self.assertIn('auth_basic', self.conf.read_text())
+
+    def test_rejects_unresolved_include_in_redirect_server(self):
+        source = (b'server { include /etc/nginx/conf.d/extra.inc; return 301 https://example.com; } '
+                  b'server { location / { proxy_pass http://app; } }')
+        self.conf.write_bytes(source)
+        with self.assertRaises(rules.ConfigError):
+            rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0, 1], 'server', '', '',
+                           'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                           worker_group=os.getegid, verify_read=lambda path: None)
+        self.assertEqual(self.conf.read_bytes(), source)
+
+    def test_rejects_nested_auth_off_and_responses_before_auth(self):
+        sources = (
+            b'server { location /public/ { auth_basic off; proxy_pass http://app; } }',
+            b'server { if ($arg_open) { return 200 exposed; } location / { proxy_pass http://app; } }',
+            b'server { location /open/ { return 200 exposed; } location / { proxy_pass http://app; } }',
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                self.conf.write_bytes(source)
+                with self.assertRaises(rules.ConfigError):
+                    rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'server', '', '',
+                                   'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                                   worker_group=os.getegid, verify_read=lambda path: None)
+                self.assertEqual(self.conf.read_bytes(), source)
+
     def test_quarantine_preserves_failed_config_and_reloads(self):
         saved = rules.quarantine_created_config(self.dirfd, self.conf.name, txn.digest(self.original),
                                                 validate=lambda: self.events.append('test'),

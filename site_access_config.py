@@ -9,7 +9,7 @@ from site_access_transaction import replace_existing
 
 def edit_config_many(directory: str, name: str, expected_sha256: str, server_indices: list[int],
                      scope: str, location: str, modifier: str, realm: str, user_file: str,
-                     *, validate, reload_config) -> str:
+                     *, validate, reload_config, assert_context=None) -> str:
     if not server_indices or len(server_indices) > 64 or len(set(server_indices)) != len(server_indices):
         raise ConfigError('invalid server list')
 
@@ -28,7 +28,8 @@ def edit_config_many(directory: str, name: str, expected_sha256: str, server_ind
         parse(source)
         return source.encode('utf-8')
 
-    return replace_existing(directory, name, expected_sha256, transform, validate, reload_config)
+    return replace_existing(directory, name, expected_sha256, transform, validate, reload_config,
+                            before_exchange=assert_context)
 
 
 def edit_config(directory: str, name: str, expected_sha256: str, server_index: int,
