@@ -248,7 +248,8 @@ def effective_auth(root: Block, target: Block) -> tuple[str, str] | None:
     return realm, user_file
 
 
-def replace_auth(text: str, block: Block, realm: str | None, user_file: str | None) -> str:
+def replace_auth(text: str, block: Block, realm: str | None, user_file: str | None,
+                 *, enforce_satisfy_all: bool = False) -> str:
     """Replace only direct Basic Auth directives; keep every other byte intact."""
     if (realm is None) != (user_file is None):
         raise ConfigError("realm and password file must be supplied together")
@@ -260,8 +261,19 @@ def replace_auth(text: str, block: Block, realm: str | None, user_file: str | No
                               not user_file or any(c in user_file for c in '\r\n\x00"\\$;{}')):
         raise ConfigError("unsafe authentication value")
     edits = [(d.start, d.end, "") for d in auth]
+    marker = ' # kpanel-access-password-satisfy'
+    satisfy = [d for d in block.directives if d.words[0] == 'satisfy']
+    if realm is None:
+        for directive in satisfy:
+            if directive.words == ['satisfy', 'all'] and text[directive.end:].startswith(marker):
+                edits.append((directive.start, directive.end + len(marker), ''))
     if realm is not None:
         insertion = f'\n    auth_basic "{realm}";\n    auth_basic_user_file "{user_file}";'
+        if enforce_satisfy_all:
+            if len(satisfy) > 1 or satisfy and satisfy[0].words != ['satisfy', 'all']:
+                raise ConfigError('existing satisfy policy cannot be changed safely')
+            if not satisfy:
+                insertion += '\n    satisfy all;' + marker + '\n'
         edits.append((block.open_end, block.open_end, insertion))
     for start, end, replacement in sorted(edits, reverse=True):
         text = text[:start] + replacement + text[end:]
@@ -605,7 +617,7 @@ def edit_config_many(directory: str, name: str, expected_sha256: str, server_ind
             if any(d.words[0] in ('auth_basic', 'auth_basic_user_file') for d in target.directives):
                 raise ConfigError('a password rule already exists in this context')
         for target in sorted(targets, key=lambda block: block.start, reverse=True):
-            source = replace_auth(source, target, realm, user_file)
+            source = replace_auth(source, target, realm, user_file, enforce_satisfy_all=True)
         parse(source)
         return source.encode('utf-8')
 
@@ -706,7 +718,7 @@ def _no_config_references(dirfd, filename):
         return False
     total = 0
     for name in names:
-        if not (name.endswith('.conf') or name.endswith('.pending')):
+        if not (name.endswith('.conf') or name.endswith('.pending') or name.startswith('.site-access-')):
             continue
         try:
             fd, _, data = _read(dirfd, name, 2 << 20)
@@ -854,6 +866,8 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
         target = select_context(root, index, scope, location, modifier)
         if any(d.words[0] in ('auth_basic', 'auth_basic_user_file') for d in target.directives):
             raise ConfigError('a password rule already exists in this context')
+        if scope == 'location' and any(d.words[0] == 'rewrite' for d in target.directives):
+            raise ConfigError('location rewrite can bypass password authentication')
         # Nginx executes unconditional return before Basic Auth; satisfy any
         # can also make a password optional. Never report these as protection.
         contexts = context_chain(root, target)
@@ -879,6 +893,8 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
             if child.words and child.words[0] in ('if', 'location'):
                 for directive in child.directives:
                     words = directive.words
+                    if scope == 'location' and words[0] == 'rewrite':
+                        raise ConfigError('location rewrite can bypass password authentication')
                     if words[0] == 'return' and (len(words) < 2 or not re.fullmatch(r'[345][0-9]{2}', words[1])):
                         raise ConfigError('a nested response bypasses password authentication')
             pending.extend(child.children)
@@ -923,7 +939,16 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
             validate()
             verify_includes()
 
+        reload_attempts = 0
         def checked_reload():
+            nonlocal reload_attempts
+            reload_attempts += 1
+            if reload_attempts > 1:
+                # Rollback must load the restored configuration even if an
+                # administrator changed an include after the first reload.
+                validate()
+                reload_config()
+                return
             verify_includes()
             reload_config()
             verify_includes()

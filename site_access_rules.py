@@ -44,7 +44,7 @@ def _no_config_references(dirfd, filename):
         return False
     total = 0
     for name in names:
-        if not (name.endswith('.conf') or name.endswith('.pending')):
+        if not (name.endswith('.conf') or name.endswith('.pending') or name.startswith('.site-access-')):
             continue
         try:
             fd, _, data = _read(dirfd, name, 2 << 20)
@@ -192,6 +192,8 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
         target = select_context(root, index, scope, location, modifier)
         if any(d.words[0] in ('auth_basic', 'auth_basic_user_file') for d in target.directives):
             raise ConfigError('a password rule already exists in this context')
+        if scope == 'location' and any(d.words[0] == 'rewrite' for d in target.directives):
+            raise ConfigError('location rewrite can bypass password authentication')
         # Nginx executes unconditional return before Basic Auth; satisfy any
         # can also make a password optional. Never report these as protection.
         contexts = context_chain(root, target)
@@ -217,6 +219,8 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
             if child.words and child.words[0] in ('if', 'location'):
                 for directive in child.directives:
                     words = directive.words
+                    if scope == 'location' and words[0] == 'rewrite':
+                        raise ConfigError('location rewrite can bypass password authentication')
                     if words[0] == 'return' and (len(words) < 2 or not re.fullmatch(r'[345][0-9]{2}', words[1])):
                         raise ConfigError('a nested response bypasses password authentication')
             pending.extend(child.children)
@@ -261,7 +265,16 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
             validate()
             verify_includes()
 
+        reload_attempts = 0
         def checked_reload():
+            nonlocal reload_attempts
+            reload_attempts += 1
+            if reload_attempts > 1:
+                # Rollback must load the restored configuration even if an
+                # administrator changed an include after the first reload.
+                validate()
+                reload_config()
+                return
             verify_includes()
             reload_config()
             verify_includes()

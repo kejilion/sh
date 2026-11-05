@@ -213,7 +213,8 @@ def effective_auth(root: Block, target: Block) -> tuple[str, str] | None:
     return realm, user_file
 
 
-def replace_auth(text: str, block: Block, realm: str | None, user_file: str | None) -> str:
+def replace_auth(text: str, block: Block, realm: str | None, user_file: str | None,
+                 *, enforce_satisfy_all: bool = False) -> str:
     """Replace only direct Basic Auth directives; keep every other byte intact."""
     if (realm is None) != (user_file is None):
         raise ConfigError("realm and password file must be supplied together")
@@ -225,8 +226,19 @@ def replace_auth(text: str, block: Block, realm: str | None, user_file: str | No
                               not user_file or any(c in user_file for c in '\r\n\x00"\\$;{}')):
         raise ConfigError("unsafe authentication value")
     edits = [(d.start, d.end, "") for d in auth]
+    marker = ' # kpanel-access-password-satisfy'
+    satisfy = [d for d in block.directives if d.words[0] == 'satisfy']
+    if realm is None:
+        for directive in satisfy:
+            if directive.words == ['satisfy', 'all'] and text[directive.end:].startswith(marker):
+                edits.append((directive.start, directive.end + len(marker), ''))
     if realm is not None:
         insertion = f'\n    auth_basic "{realm}";\n    auth_basic_user_file "{user_file}";'
+        if enforce_satisfy_all:
+            if len(satisfy) > 1 or satisfy and satisfy[0].words != ['satisfy', 'all']:
+                raise ConfigError('existing satisfy policy cannot be changed safely')
+            if not satisfy:
+                insertion += '\n    satisfy all;' + marker + '\n'
         edits.append((block.open_end, block.open_end, insertion))
     for start, end, replacement in sorted(edits, reverse=True):
         text = text[:start] + replacement + text[end:]

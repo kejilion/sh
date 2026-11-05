@@ -7,6 +7,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import site_access_nginx as nginx
 import site_access_rules as rules
+import site_access_config as config
 import site_access_transaction as txn
 
 
@@ -179,6 +180,72 @@ class SiteAccessRuleTests(unittest.TestCase):
                                    'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
                                    worker_group=os.getegid, verify_read=lambda path: None)
                 self.assertEqual(self.conf.read_bytes(), source)
+
+    def test_rejects_location_rewrites_that_can_escape_scope(self):
+        for directive in ('rewrite ^ /public last;', 'if ($arg_open) { rewrite ^ /public last; }'):
+            source = ('server { location /private/ { ' + directive +
+                      ' proxy_pass http://app; } location /public { proxy_pass http://app; } }').encode()
+            self.conf.write_bytes(source)
+            with self.subTest(directive=directive), self.assertRaises(rules.ConfigError):
+                rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'location', '/private/', '',
+                               'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                               worker_group=os.getegid, verify_read=lambda path: None)
+            self.assertEqual(self.conf.read_bytes(), source)
+
+    def test_reload_rollback_uses_current_includes(self):
+        include = self.root / 'policy.inc'
+        include.write_text('# safe\n')
+        source = (b'server { include /etc/nginx/conf.d/policy.inc; '
+                  b'location /admin/ { proxy_pass http://app; } }')
+        self.conf.write_bytes(source)
+        calls = []
+        def reload():
+            calls.append('reload')
+            if len(calls) == 1:
+                include.write_text('satisfy any; allow all;')
+        with self.assertRaises(rules.ConfigError):
+            rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'location', '/admin/', '',
+                           'alice', 'synthetic-secret', validate=lambda: None, reload_config=reload,
+                           worker_group=os.getegid, verify_read=lambda path: None,
+                           hasher=lambda _: '$apr1$abcdefgh$abcdefghijklmnopqrstuv')
+        self.assertEqual(calls, ['reload', 'reload'])
+        self.assertEqual(self.conf.read_bytes(), source)
+
+    def test_failed_rollback_retains_password_for_saved_candidate(self):
+        include = self.root / 'policy.inc'
+        include.write_text('# safe\n')
+        source = (b'server { include /etc/nginx/conf.d/policy.inc; '
+                  b'location /admin/ { proxy_pass http://app; } }')
+        self.conf.write_bytes(source)
+        calls = []
+        def reload():
+            calls.append('reload')
+            if len(calls) == 1:
+                include.write_text('satisfy any; allow all;')
+            else:
+                raise RuntimeError('rollback reload failed')
+        with self.assertRaises(txn.TransactionError):
+            rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'location', '/admin/', '',
+                           'alice', 'synthetic-secret', validate=lambda: None, reload_config=reload,
+                           worker_group=os.getegid, verify_read=lambda path: None,
+                           hasher=lambda _: '$apr1$abcdefgh$abcdefghijklmnopqrstuv')
+        self.assertEqual(calls, ['reload', 'reload'])
+        self.assertEqual(self.conf.read_bytes(), source)
+        self.assertEqual(len(list(self.root.glob('.site-auth-*.passwd'))), 1)
+        self.assertTrue(list(self.root.glob('.site-access-*')))
+
+    def test_existing_satisfy_all_is_preserved(self):
+        source = b'server { satisfy all; location / { proxy_pass http://app; } }'
+        self.conf.write_bytes(source)
+        rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'server', '', '',
+                       'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                       worker_group=os.getegid, verify_read=lambda path: None,
+                       hasher=lambda _: '$apr1$abcdefgh$abcdefghijklmnopqrstuv')
+        self.assertEqual(self.conf.read_text().count('satisfy all;'), 1)
+        self.assertNotIn('kpanel-access-password-satisfy', self.conf.read_text())
+        config.edit_config(self.dirfd, self.conf.name, txn.digest(self.conf.read_bytes()), 0,
+                           'server', '', '', 'delete', validate=lambda: None, reload_config=lambda: None)
+        self.assertEqual(self.conf.read_text().count('satisfy all;'), 1)
 
     def test_quarantine_preserves_failed_config_and_reloads(self):
         saved = rules.quarantine_created_config(self.dirfd, self.conf.name, txn.digest(self.original),

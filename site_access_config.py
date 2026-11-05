@@ -24,7 +24,7 @@ def edit_config_many(directory: str, name: str, expected_sha256: str, server_ind
             if any(d.words[0] in ('auth_basic', 'auth_basic_user_file') for d in target.directives):
                 raise ConfigError('a password rule already exists in this context')
         for target in sorted(targets, key=lambda block: block.start, reverse=True):
-            source = replace_auth(source, target, realm, user_file)
+            source = replace_auth(source, target, realm, user_file, enforce_satisfy_all=True)
         parse(source)
         return source.encode('utf-8')
 

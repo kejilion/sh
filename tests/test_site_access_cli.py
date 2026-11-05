@@ -91,6 +91,8 @@ class SiteAccessCLITests(unittest.TestCase):
                    'fileVersion': txn.digest(created[0].read_bytes())}
         cli.apply_rule(self.rootfd, request, validate=lambda: None, reload_config=lambda: None)
         self.assertNotIn('auth_basic', self.config.read_text())
+        self.assertNotIn('kpanel-access-password-satisfy', self.config.read_text())
+        self.assertNotIn('satisfy all', self.config.read_text())
         self.assertIn('proxy_pass http://app;', self.config.read_text())
         self.assertTrue(created[0].exists(), 'a password file can be shared by other rules')
 
