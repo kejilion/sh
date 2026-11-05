@@ -833,7 +833,7 @@ def inspect_includes(confdir, contexts, *, http_only=False):
                 if len(words) != 2:
                     raise ConfigError('invalid include')
                 include(words[1], depth)
-            elif words[0] == 'error_page' and '401' in words[1:]:
+            elif words[0] == 'error_page':
                 raise ConfigError('authentication error page may bypass password protection')
             elif http_only:
                 continue
@@ -875,7 +875,7 @@ def inspect_global_policy(confdir, source):
     http = [block for block in root.children if block.words == ['http']]
     if len(http) != 1:
         raise ConfigError('Nginx global HTTP policy cannot be verified')
-    if any(d.words[0] == 'error_page' and '401' in d.words[1:] for d in http[0].directives):
+    if any(d.words[0] == 'error_page' for d in http[0].directives):
         raise ConfigError('global authentication error page may bypass password protection')
     return digest(source), inspect_includes(confdir, http, http_only=True)
 
@@ -942,7 +942,7 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
         for context in contexts:
             if any(d.words[0] == 'return' or d.words == ['satisfy', 'any'] for d in context.directives):
                 raise ConfigError('site configuration bypasses password authentication')
-            if any(d.words[0] == 'error_page' and '401' in d.words[1:] for d in context.directives):
+            if any(d.words[0] == 'error_page' for d in context.directives):
                 raise ConfigError('authentication error page may bypass password protection')
         # Every nested location inherits its parents' settings unless it
         # overrides them. An inherited "satisfy any" makes auth optional.
@@ -956,7 +956,7 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
                 raise ConfigError('a nested context can bypass password authentication')
             if any(d.words == ['auth_basic', 'off'] for d in child.directives):
                 raise ConfigError('a nested context disables password authentication')
-            if any(d.words[0] == 'error_page' and '401' in d.words[1:] for d in child.directives):
+            if any(d.words[0] == 'error_page' for d in child.directives):
                 raise ConfigError('authentication error page may bypass password protection')
             if child.words and child.words[0] in ('if', 'location'):
                 for directive in child.directives:

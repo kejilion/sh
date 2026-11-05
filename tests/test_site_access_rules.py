@@ -253,6 +253,7 @@ class SiteAccessRuleTests(unittest.TestCase):
         self.conf.write_bytes(source)
         (self.root / 'global.inc').write_text('error_page 401 = @fallback;')
         configurations = (b'events {} http { error_page 401 = @fallback; }',
+                          b'events {} http { error_page 403 = @fallback; }',
                           b'events {} http { include /etc/nginx/conf.d/global.inc; }')
         for global_source in configurations:
             with self.subTest(global_source=global_source), self.assertRaises(rules.ConfigError):
