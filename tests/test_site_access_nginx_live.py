@@ -322,6 +322,46 @@ class NginxAccessProbe(unittest.TestCase):
         finally:
             os.close(fd)
 
+    def test_failed_creation_policy_check_quarantines_site_from_running_nginx(self):
+        config = ('server { listen 127.0.0.1:18080; server_name example.com; '
+                  'location / { proxy_pass http://127.0.0.1:18081; } }')
+        site = Path(self.temp.name) / 'created-quarantine.conf'
+        site.write_text(config)
+        fd = os.open(self.temp.name, os.O_RDONLY | os.O_DIRECTORY)
+        self.addCleanup(os.close, fd)
+        def command(*args):
+            subprocess.run(['docker', 'exec', self.name, 'nginx', *args], check=True,
+                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+        def group():
+            return int(subprocess.check_output(['docker', 'exec', self.name, 'id', '-g', 'nginx'], timeout=10))
+        def readable(path):
+            subprocess.run(['docker', 'exec', '-u', 'nginx', self.name, 'sh', '-c', ': < "$1"', 'sh', path],
+                           check=True, timeout=10)
+        good = b'events {} http {}'
+        version = site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
+                                             'server', '', '', 'alice', 'synthetic-secret', validate=lambda: None,
+                                             reload_config=lambda: None, worker_group=group, verify_read=readable,
+                                             global_policy=lambda: good)
+        bad = ('worker_processes 1; events { worker_connections 64; } http { error_page 401 = /public; '
+               'include /probe/created-*.conf; server { listen 127.0.0.1:18081; '
+               'location / { return 200 exposed; } } }')
+        self.write('/etc/nginx/nginx.conf', bad)
+        with self.assertRaises(site_access_rules.ConfigError):
+            site_access_rules.add_rule(fd, site.name, version, [0], 'server', '', '', 'alice', 'synthetic-secret',
+                                       validate=lambda: command('-t'), reload_config=lambda: command('-s', 'reload'),
+                                       verify_read=readable, global_policy=lambda: bad.encode(), verify_only=True)
+        retained = site_access_rules.quarantine_created_config(fd, site.name, version,
+                         validate=lambda: command('-t'), reload_config=lambda: command('-s', 'reload'))
+        self.assertFalse(site.exists())
+        self.assertTrue((Path(self.temp.name) / retained).exists())
+        for _ in range(20):
+            headers, _ = self.request('/')
+            if '200 OK' not in headers and '401 Unauthorized' not in headers:
+                break
+            time.sleep(.05)
+        self.assertNotIn('200 OK', headers)
+        self.assertNotIn('401 Unauthorized', headers)
+
     def test_patch_and_remove_rule_without_changing_proxy(self):
         config = r'''worker_processes 1;
 events { worker_connections 64; }

@@ -16,7 +16,7 @@ EOF
 chmod +x "$fixture/docker-bin"
 sed -n '/^# BEGIN GENERATED SITE ACCESS ADAPTER$/,/^# END GENERATED SITE ACCESS ADAPTER$/p' "$root/kejilion.sh" |
   sed -e "s|os.open('/home/web',|os.open('$fixture/web',|" -e "s|/usr/bin/docker|$fixture/docker-bin|g" > "$fixture/adapter.sh"
-for name in kpanel_web_prepare_config kpanel_web_apply_created_access kpanel_web_confirm_created_access nginx_http_on update_nginx_listen_port kpanel_app_write_proxy; do
+for name in kpanel_web_prepare_config kpanel_web_apply_created_access kpanel_web_quarantine_created_access kpanel_web_confirm_created_access kpanel_web_reload_site nginx_http_on update_nginx_listen_port kpanel_app_write_proxy; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh" |
     sed -e "s|/var/lib/kejilion-panel/wordpress-jobs/|$fixture/jobs/|g" -e "s|/home/web/|$fixture/web/|g" >> "$fixture/functions.sh"
 done

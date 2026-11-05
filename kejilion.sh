@@ -1348,6 +1348,14 @@ KPANEL_EMBEDDED_SITE_ACCESS_CLI_PY
 )
 # END GENERATED SITE ACCESS ADAPTER
 
+kpanel_web_quarantine_created_access() {
+	local domain="$1" version="${KJ_WEB_ACCESS_PUBLISHED_HASH:-}"
+	[[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] &&
+		[[ "$version" =~ ^[a-f0-9]{64}$ ]] || return 1
+	printf '{"operation":"quarantine","configName":"%s.conf","configVersion":"%s"}' "$domain" "$version" |
+		kpanel_web_access_password >/dev/null
+}
+
 kpanel_web_confirm_created_access() {
 	local input="${KJ_WEB_ACCESS_PASSWORD_FILE:-}" domain="${yuming:-${KJ_WEB_DOMAIN:-}}" name version receipt
 	[ -n "$input" ] || return 0
@@ -1356,15 +1364,27 @@ kpanel_web_confirm_created_access() {
 		*) return 1 ;;
 	esac
 	name="${input##*/}"
-	[[ "$name" =~ ^[a-f0-9]{32}\.access-password\.json$ ]] &&
-		[[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] &&
-		[ -f "$input" ] && [ ! -L "$input" ] && [ "$(stat -c '%u:%a' "$input")" = '0:600' ] || return 1
+	[[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] || return 1
+	if ! [[ "$name" =~ ^[a-f0-9]{32}\.access-password\.json$ ]] ||
+		[ ! -f "$input" ] || [ -L "$input" ] || [ "$(stat -c '%u:%a' "$input")" != '0:600' ]; then
+		kpanel_web_quarantine_created_access "$domain" || echo "无法确认站点入口已撤回，请检查 Nginx。" >&2
+		return 1
+	fi
 	version="$(sha256sum -- "/home/web/conf.d/${domain}.conf")" || return 1
 	version="${version%% *}"
 	if ! receipt="$(KJ_WEB_ACCESS_VERIFY=1 KJ_WEB_ACCESS_CONFIG_VERSION="$version" KJ_WEB_ACCESS_DOMAIN="${domain,,}" kpanel_web_access_password < "$input")" ||
 		[ "$receipt" != "{\"ok\":true,\"fileVersion\":\"$version\"}" ]; then
+		kpanel_web_quarantine_created_access "$domain" || echo "无法确认站点入口已撤回，请检查 Nginx。" >&2
 		echo "访问密码的 Nginx 配置未能加载，请检查站点状态。" >&2
 		return 1
+	fi
+}
+
+kpanel_web_reload_site() {
+	if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ]; then
+		kpanel_web_confirm_created_access
+	else
+		docker exec nginx nginx -s reload
 	fi
 }
 
@@ -3916,7 +3936,13 @@ normalize_ldnmp_site_permissions() {
 
 
 restart_ldnmp() {
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+		  kpanel_web_confirm_created_access || return 1
+	  fi
 	  shared_waf_refresh || return 1
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+		  kpanel_web_confirm_created_access || return 1
+	  fi
 	  docker exec nginx chown -R nginx:nginx /var/www/html > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/fastcgi > /dev/null 2>&1
@@ -3924,7 +3950,10 @@ restart_ldnmp() {
 	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi > /dev/null 2>&1
 	  docker exec php chown -R www-data:www-data /var/www/html > /dev/null 2>&1
 	  docker exec php74 chown -R www-data:www-data /var/www/html > /dev/null 2>&1
-	  cd /home/web && docker compose restart
+	  cd /home/web && docker compose restart || return 1
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+		  kpanel_web_confirm_created_access || return 1
+	  fi
 
 
 }
@@ -5909,6 +5938,7 @@ nginx_http_on() {
 	if kpanel_web_http_mode; then
 		kpanel_web_http_config || exit 1
 		kpanel_web_apply_created_access || return 1
+		kpanel_web_confirm_created_access || return 1
 		return 0
 	fi
 
@@ -5918,6 +5948,7 @@ if [[ ($yuming =~ $ipv4_pattern || $yuming =~ $ipv6_pattern) ]]; then
 	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/${yuming}.conf}"
 fi
 	kpanel_web_apply_created_access || return 1
+	kpanel_web_confirm_created_access || return 1
 
 }
 
@@ -8874,7 +8905,9 @@ ldnmp_web_on() {
 }
 
 nginx_web_on() {
+	kpanel_web_confirm_created_access || return 1
 	shared_waf_refresh || return 1
+	kpanel_web_confirm_created_access || return 1
 	if kpanel_web_http_mode; then
 		echo "http://$yuming:$KJ_WEB_HTTP_PORT"
 		return 0
@@ -8951,7 +8984,7 @@ ldnmp_wp() {
   kpanel_web_progress 90 "正在重启 LDNMP 并核验 WordPress 站点"
   normalize_ldnmp_site_permissions "$yuming" || return 1
   chmod 0640 "/home/web/html/$yuming/wordpress/wp-config.php" || return 1
-  restart_ldnmp
+  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
   kpanel_web_confirm_created_access || return 1
   nginx_web_on
 
@@ -9022,8 +9055,7 @@ kpanel_app_write_proxy() {
 
 	kpanel_web_progress 85 "正在校验并重载反向代理配置"
 	nginx_http_on || return $?
-	docker exec nginx nginx -s reload || return $?
-	kpanel_web_confirm_created_access || return 1
+	kpanel_web_reload_site || return $?
 	nginx_web_on
 }
 
@@ -9087,8 +9119,7 @@ ldnmp_Proxy_backend() {
 	update_nginx_listen_port "$yuming" "$access_port"
 
 	nginx_http_on || return 1
-	docker exec nginx nginx -s reload
-	kpanel_web_confirm_created_access || return 1
+	kpanel_web_reload_site || return 1
 	nginx_web_on
 }
 
@@ -17913,7 +17944,7 @@ kpanel_run_http_site() (
 			[ "$KJ_WEB_REDIRECT_TARGET" != "${domain,,}" ] || return 64
 	fi
 	linux_ldnmp || return $?
-	docker exec nginx nginx -t && docker exec nginx nginx -s reload || return 1
+	docker exec nginx nginx -t && kpanel_web_reload_site || return 1
 	kpanel_web_http_wait_listener "$http_port" || return 1
 	kpanel_web_http_port_available "$http_port" || return 1
 	open_port "$http_port" || return 1
@@ -18829,8 +18860,7 @@ ldnmp_fastadmin() (
 	fi
 	rm -rf -- "$stage"' EXIT
 	nginx_http_on || return 1
-	docker exec nginx nginx -t && docker exec nginx nginx -s reload || return 1
-	kpanel_web_confirm_created_access || return 1
+	docker exec nginx nginx -t && kpanel_web_reload_site || return 1
 	published=0
 	echo "KPANEL_PROGRESS 90 FastAdmin 站点已就绪，请打开安装页面完成初始化"
 	local scheme=https suffix=""
@@ -18959,7 +18989,7 @@ linux_ldnmp() {
 	  rm latest.zip
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  ldnmp_web_on
@@ -19002,7 +19032,7 @@ linux_ldnmp() {
 	  rm latest.zip
 	  mv /home/web/html/$yuming/kodbox* /home/web/html/$yuming/kodbox
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 	  ldnmp_web_on
 	  echo "数据库地址: mysql"
@@ -19047,7 +19077,7 @@ linux_ldnmp() {
 	  mv /home/web/html/$yuming/admin.php /home/web/html/$yuming/vip.php && wget -O /home/web/html/$yuming/application/extra/maccms.php ${gh_proxy}raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  ldnmp_web_on
@@ -19093,7 +19123,7 @@ linux_ldnmp() {
 	  wget ${gh_proxy}github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  ldnmp_web_on
@@ -19169,7 +19199,7 @@ linux_ldnmp() {
 
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  ldnmp_web_on
@@ -19214,7 +19244,7 @@ linux_ldnmp() {
 	  rm latest.zip
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  clear
@@ -19259,7 +19289,7 @@ linux_ldnmp() {
 	  rm latest.zip
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  clear
@@ -19392,7 +19422,7 @@ linux_ldnmp() {
 	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 	  ldnmp_web_on
 	  prefix="web$(shuf -i 10-99 -n 1)_"
 	  echo "数据库地址: mysql"
@@ -19484,7 +19514,7 @@ linux_ldnmp() {
 
 	  nginx_http_on || return 1
 
-	  docker exec nginx nginx -s reload
+	  kpanel_web_reload_site || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 	  nginx_web_on
 
@@ -19552,7 +19582,7 @@ linux_ldnmp() {
 	  rm -f $(ls -t *.zip | head -n 1)
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  docker exec nginx nginx -s reload
+	  kpanel_web_reload_site || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 	  nginx_web_on
 
@@ -19616,7 +19646,7 @@ linux_ldnmp() {
 	  sed -i "s#/home/web/#/var/www/#g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  docker exec nginx nginx -s reload
+	  kpanel_web_reload_site || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 	  nginx_web_on
 

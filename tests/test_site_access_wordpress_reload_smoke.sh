@@ -4,7 +4,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d /tmp/kpanel-site-wordpress-reload.XXXXXXXX)"
 trap 'rm -rf -- "$fixture"' EXIT
 mkdir -p "$fixture/web/conf.d" "$fixture/web/html" "$fixture/jobs"
-for name in kpanel_web_confirm_created_access ldnmp_wp; do
+for name in kpanel_web_quarantine_created_access kpanel_web_confirm_created_access ldnmp_wp; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh" |
     sed -e "s|/home/web/|$fixture/web/|g" -e "s|/var/lib/kejilion-panel/wordpress-jobs/|$fixture/jobs/|g" >> "$fixture/functions.sh"
 done
@@ -23,7 +23,7 @@ kpanel_web_http_mode() { return 1; }
 prepare_ldnmp_site_root() { mkdir -p "$fixture/web/html/$1"; }
 normalize_ldnmp_site_permissions() { :; }
 patch_wp_url() { :; }
-restart_ldnmp() { return 1; }
+restart_ldnmp() { return 0; }
 nginx_web_on() { touch "$fixture/reported-success"; }
 docker() { [ "$*" = 'exec nginx nginx -t' ]; }
 kpanel_web_access_password() { docker exec nginx nginx -t && docker exec nginx nginx -s reload; }
