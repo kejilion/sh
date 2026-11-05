@@ -87,6 +87,34 @@ class SiteAccessRuleTests(unittest.TestCase):
                 self.assertEqual(self.conf.read_bytes(), source)
                 self.assertFalse(list(self.root.glob('.site-auth-*.passwd')))
 
+    def test_rejects_inherited_satisfy_any_for_nested_location(self):
+        sources = (
+            b'http { satisfy any; server { location /admin/ { proxy_pass http://app; } } }',
+            b'server { location /private/ { satisfy any; allow all; '
+            b'location /private/admin/ { proxy_pass http://app; } } }',
+        )
+        for source in sources:
+            path = '/private/admin/' if b'/private/' in source else '/admin/'
+            with self.subTest(source=source):
+                self.conf.write_bytes(source)
+                with self.assertRaises(rules.ConfigError):
+                    rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'location', path, '',
+                                   'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                                   worker_group=os.getegid, verify_read=lambda path: None)
+                self.assertEqual(self.conf.read_bytes(), source)
+
+    def test_keeps_http_https_redirect_and_protects_content_server(self):
+        source = (b'server { listen 80; return 301 https://example.com$request_uri; } '
+                  b'server { listen 443 ssl; location / { proxy_pass http://app; } }')
+        self.conf.write_bytes(source)
+        rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0, 1], 'server', '', '',
+                       'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                       worker_group=os.getegid, verify_read=lambda path: None,
+                       hasher=lambda _: '$apr1$abcdefgh$abcdefghijklmnopqrstuv')
+        tree = nginx.parse(self.conf.read_text())
+        self.assertIsNone(nginx.effective_auth(tree, nginx.select_context(tree, 0, 'server')))
+        self.assertIsNotNone(nginx.effective_auth(tree, nginx.select_context(tree, 1, 'server')))
+
     def test_quarantine_preserves_failed_config_and_reloads(self):
         saved = rules.quarantine_created_config(self.dirfd, self.conf.name, txn.digest(self.original),
                                                 validate=lambda: self.events.append('test'),

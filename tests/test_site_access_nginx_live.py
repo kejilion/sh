@@ -113,6 +113,35 @@ class NginxAccessProbe(unittest.TestCase):
         headers, _ = self.request('/protected', 'test:' + password + 'x')
         self.assertIn('401 Unauthorized', headers)
 
+    def test_inherited_satisfy_any_is_rejected_before_rule_write(self):
+        config = ('server { listen 127.0.0.1:18080; location /private/ { satisfy any; allow all; '
+                  'location /private/admin/ { proxy_pass http://127.0.0.1:18081/; } } }')
+        target = site_access_nginx.select_context(site_access_nginx.parse(config), 0, 'location', '/private/admin/')
+        unsafe = site_access_nginx.replace_auth(config, target, 'Private', '/etc/nginx/probe.htpasswd')
+        main = ('worker_processes 1; events { worker_connections 64; } http { ' + unsafe +
+                ' server { listen 127.0.0.1:18081; root /usr/share/nginx/html; } }')
+        self.write('/etc/nginx/nginx.conf', main)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-t'], check=True, timeout=10)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-s', 'reload'], check=True, timeout=10)
+        for _ in range(20):
+            headers, body = self.request('/private/admin/')
+            if '200 OK' in headers:
+                break
+            time.sleep(.05)
+        self.assertIn('200 OK', headers)
+        self.assertEqual(body, 'probe')
+        site = Path(self.temp.name) / 'nested-site.conf'
+        site.write_text(config)
+        fd = os.open(self.temp.name, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            with self.assertRaises(site_access_rules.ConfigError):
+                site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
+                                           'location', '/private/admin/', '', 'alice', 'password',
+                                           validate=lambda: None, reload_config=lambda: None)
+            self.assertEqual(site.read_text(), config)
+        finally:
+            os.close(fd)
+
     def test_patch_and_remove_rule_without_changing_proxy(self):
         config = r'''worker_processes 1;
 events { worker_connections 64; }

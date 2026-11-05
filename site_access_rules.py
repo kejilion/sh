@@ -8,7 +8,7 @@ import subprocess
 
 from site_access_accounts import hash_password
 from site_access_config import edit_config_many
-from site_access_nginx import ConfigError, parse, select_context, update_account
+from site_access_nginx import ConfigError, context_chain, parse, select_context, update_account
 from site_access_transaction import Conflict, TransactionError, _matches, _read, _same_inode, digest, rename_noreplace
 
 
@@ -55,6 +55,16 @@ def _no_config_references(dirfd, filename):
     return True
 
 
+def is_https_redirect_only(server):
+    """Identify only unconditional server-level redirects to HTTPS."""
+    returns = [d.words for d in server.directives if d.words[0] == 'return']
+    return (len(returns) == 1 and len(returns[0]) == 3
+            and returns[0][1] in ('301', '302', '307', '308')
+            and returns[0][2].lower().startswith('https://')
+            and not any(d.words[0] == 'rewrite' for d in server.directives)
+            and not any(child.words and child.words[0] == 'if' for child in server.children))
+
+
 def add_rule(confdir: int, config_name: str, config_version: str, server_index: int,
              scope: str, location: str, modifier: str, username: str, password: str,
              *, validate, reload_config, worker_group=nginx_worker_group,
@@ -70,6 +80,9 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
     indices = [server_index] if isinstance(server_index, int) and not isinstance(server_index, bool) else server_index
     if not isinstance(indices, list) or not indices or len(indices) > 64 or len(set(indices)) != len(indices):
         raise ConfigError('invalid server list')
+    indices = [index for index in indices if not is_https_redirect_only(select_context(root, index, 'server'))]
+    if not indices:
+        raise ConfigError('site has no content server to protect')
     for index in indices:
         server = select_context(root, index, 'server')
         target = select_context(root, index, scope, location, modifier)
@@ -77,12 +90,21 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
             raise ConfigError('a password rule already exists in this context')
         # Nginx executes unconditional return before Basic Auth; satisfy any
         # can also make a password optional. Never report these as protection.
-        contexts = [server] if target is server else [server, target]
+        contexts = context_chain(root, target)
         if target is server:
             contexts += [child for child in server.children if child.words == ['location', '/']]
         for context in contexts:
             if any(d.words[0] == 'return' or d.words == ['satisfy', 'any'] for d in context.directives):
                 raise ConfigError('site configuration bypasses password authentication')
+        # Every nested location inherits its parents' settings unless it
+        # overrides them. An inherited "satisfy any" makes auth optional.
+        pending = list(target.children)
+        while pending:
+            child = pending.pop()
+            if child.words and child.words[0] == 'location':
+                if any(d.words == ['satisfy', 'any'] for d in child.directives):
+                    raise ConfigError('a nested location can bypass password authentication')
+                pending.extend(child.children)
     content = update_account(b'', username, hasher(password), must_create=True)
     gid = worker_group()
     if not isinstance(gid, int) or isinstance(gid, bool) or gid < 0 or gid > 2**32 - 2:

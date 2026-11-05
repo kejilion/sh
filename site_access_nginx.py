@@ -158,8 +158,8 @@ def select_context(root: Block, server_index: int, scope: str,
     return matches[0]
 
 
-def effective_auth(root: Block, target: Block) -> tuple[str, str] | None:
-    """Resolve literal auth settings inherited by one selected context."""
+def context_chain(root: Block, target: Block) -> list[Block]:
+    """Return the concrete inheritance chain without guessing includes."""
     ancestors = []
 
     def find(block):
@@ -174,6 +174,12 @@ def effective_auth(root: Block, target: Block) -> tuple[str, str] | None:
 
     if not find(root):
         raise ConfigError("selected context is not in configuration")
+    return ancestors
+
+
+def effective_auth(root: Block, target: Block) -> tuple[str, str] | None:
+    """Resolve literal auth settings inherited by one selected context."""
+    ancestors = context_chain(root, target)
     realm = user_file = None
     # Resolve from the target outward. Once both values are explicit in a
     # nearer context, unrelated parent includes cannot change that rule.
