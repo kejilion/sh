@@ -140,7 +140,8 @@ def apply_rule(rootfd, request, *, validate=None, reload_config=None,
 
 
 def apply_creation(rootfd, request, *, expected_version, expected_domain, staged_name='',
-                   worker_group=nginx_worker_group, verify_read=check_worker_read, global_policy=nginx_global_config):
+                   worker_group=nginx_worker_group, verify_read=check_worker_read, global_policy=nginx_global_config,
+                   verify_only=False, validate=None, reload_config=None):
     fields = {'operation', 'configName', 'scope', 'path', 'username', 'password'}
     if not isinstance(request, dict) or request.keys() != fields or request.get('operation') != 'create-stage':
         raise ConfigError('invalid creation request')
@@ -150,9 +151,9 @@ def apply_creation(rootfd, request, *, expected_version, expected_domain, staged
     domain = name[:-5].lower()
     if domain != expected_domain or not re.fullmatch(r'[0-9a-f]{64}', expected_version):
         raise ConfigError('creation identity is invalid')
-    if not re.fullmatch(r'\.site-create-[a-f0-9]{32}\.pending', staged_name):
+    if not verify_only and not re.fullmatch(r'\.site-create-[a-f0-9]{32}\.pending', staged_name):
         raise ConfigError('creation staging identity is invalid')
-    source_name = staged_name
+    source_name = name if verify_only else staged_name
     directory = directory_beneath(rootfd, ['conf.d'])
     try:
         fd, _, data = _read(directory, source_name, 2 << 20)
@@ -178,9 +179,13 @@ def apply_creation(rootfd, request, *, expected_version, expected_domain, staged
         if not indices:
             raise ConfigError('site server context unavailable')
         version = add_rule(directory, source_name, digest(data), indices, request['scope'], request['path'], '',
-                           request['username'], request['password'], validate=lambda: None,
-                           reload_config=lambda: None, worker_group=worker_group, verify_read=verify_read,
-                           global_policy=global_policy)
+                           request['username'], request['password'],
+                           validate=(validate or (lambda: nginx_command('-t'))) if verify_only else (lambda: None),
+                           reload_config=(reload_config or (lambda: nginx_command('-s', 'reload'))) if verify_only else (lambda: None),
+                           worker_group=worker_group, verify_read=verify_read,
+                           global_policy=global_policy, verify_only=verify_only)
+        if verify_only:
+            return version
         fd, info, staged = _read(directory, staged_name, 2 << 20)
         os.close(fd)
         if digest(staged) != version:
@@ -223,7 +228,8 @@ def main():
             version = apply_creation(rootfd, request,
                                      expected_version=os.environ.get('KJ_WEB_ACCESS_CONFIG_VERSION', ''),
                                      expected_domain=os.environ.get('KJ_WEB_ACCESS_DOMAIN', ''),
-                                     staged_name=os.environ.get('KJ_WEB_ACCESS_STAGED_NAME', ''))
+                                     staged_name=os.environ.get('KJ_WEB_ACCESS_STAGED_NAME', ''),
+                                     verify_only=os.environ.get('KJ_WEB_ACCESS_VERIFY', '') == '1')
         elif isinstance(request, dict) and request.get('operation') == 'quarantine':
             version = apply_quarantine(rootfd, request)
         elif isinstance(request, dict) and request.get('operation') in ('rule-add', 'rule-delete'):

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import fnmatch
+import hmac
 import json
 import re
 import secrets
@@ -208,7 +209,7 @@ def inspect_global_policy(confdir, source):
 def add_rule(confdir: int, config_name: str, config_version: str, server_index: int,
              scope: str, location: str, modifier: str, username: str, password: str,
              *, validate, reload_config, worker_group=nginx_worker_group,
-             verify_read=check_worker_read, hasher=hash_password, global_policy=None):
+             verify_read=check_worker_read, hasher=hash_password, global_policy=None, verify_only=False):
     fd, _, source = _read(confdir, config_name, 2 << 20)
     os.close(fd)
     if digest(source) != config_version:
@@ -224,11 +225,38 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
     if not indices:
         raise ConfigError('site has no content server to protect')
     include_contexts = []
+    password_versions = []
     for index in indices:
         server = select_context(root, index, 'server')
         target = select_context(root, index, scope, location, modifier)
-        if any(d.words[0] in ('auth_basic', 'auth_basic_user_file') for d in target.directives):
+        auth = [d.words for d in target.directives if d.words[0] in ('auth_basic', 'auth_basic_user_file')]
+        if not verify_only and auth:
             raise ConfigError('a password rule already exists in this context')
+        if verify_only:
+            realms = [d[1] for d in auth if len(d) == 2 and d[0] == 'auth_basic']
+            files = [d[1] for d in auth if len(d) == 2 and d[0] == 'auth_basic_user_file']
+            if len(auth) != 2 or len(realms) != 1 or realms[0] != 'Restricted' or len(files) != 1 or not re.fullmatch(r'/etc/nginx/conf.d/\.site-auth-[0-9a-f]{32}\.passwd', files[0]):
+                raise Conflict('created password rule changed')
+            if not any(d.words == ['satisfy', 'all'] for d in target.directives):
+                raise Conflict('created password policy changed')
+            filename = files[0].rsplit('/', 1)[-1]
+            fd, _, data = _read(confdir, filename, 1 << 20)
+            os.close(fd)
+            entries = [line.split(':', 1)[1] for line in data.decode('utf-8').splitlines()
+                       if line.startswith(username + ':') and ':' in line]
+            if len(entries) != 1 or not re.fullmatch(r'\$apr1\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}', entries[0]):
+                raise Conflict('created account changed')
+            salt = entries[0].split('$')[2]
+            try:
+                result = subprocess.run(['/usr/bin/openssl', 'passwd', '-apr1', '-salt', salt, '-stdin'],
+                                        input=password.encode('utf-8') + b'\n', stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, timeout=10, check=True)
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise ConfigError('password verification unavailable') from exc
+            if not hmac.compare_digest(result.stdout.strip(), entries[0].encode()):
+                raise Conflict('created account changed')
+            verify_read(files[0])
+            password_versions.append((filename, digest(data)))
         if scope == 'location' and any(d.words[0] == 'rewrite' for d in target.directives):
             raise ConfigError('location rewrite can bypass password authentication')
         # Nginx executes unconditional return before Basic Auth; satisfy any
@@ -273,6 +301,23 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
             raise Conflict('included access policy changed')
         if global_policy and inspect_global_policy(confdir, global_policy()) != global_snapshot:
             raise Conflict('Nginx global policy changed')
+        if verify_only:
+            fd, _, current = _read(confdir, config_name, 2 << 20)
+            os.close(fd)
+            if digest(current) != config_version:
+                raise Conflict('created site configuration changed')
+            for filename, expected in password_versions:
+                fd, _, current = _read(confdir, filename, 1 << 20)
+                os.close(fd)
+                if digest(current) != expected:
+                    raise Conflict('created account changed')
+    if verify_only:
+        verify_includes()
+        validate()
+        verify_includes()
+        reload_config()
+        verify_includes()
+        return config_version
     content = update_account(b'', username, hasher(password), must_create=True)
     gid = worker_group()
     if not isinstance(gid, int) or isinstance(gid, bool) or gid < 0 or gid > 2**32 - 2:

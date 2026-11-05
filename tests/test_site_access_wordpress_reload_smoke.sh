@@ -3,10 +3,10 @@ set -eu
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d /tmp/kpanel-site-wordpress-reload.XXXXXXXX)"
 trap 'rm -rf -- "$fixture"' EXIT
-mkdir -p "$fixture/web/conf.d" "$fixture/web/html"
+mkdir -p "$fixture/web/conf.d" "$fixture/web/html" "$fixture/jobs"
 for name in kpanel_web_confirm_created_access ldnmp_wp; do
   sed -n "/^$name() {/,/^}/p" "$root/kejilion.sh" |
-    sed -e "s|/home/web/|$fixture/web/|g" >> "$fixture/functions.sh"
+    sed -e "s|/home/web/|$fixture/web/|g" -e "s|/var/lib/kejilion-panel/wordpress-jobs/|$fixture/jobs/|g" >> "$fixture/functions.sh"
 done
 source "$fixture/functions.sh"
 clear() { :; }
@@ -26,9 +26,12 @@ patch_wp_url() { :; }
 restart_ldnmp() { return 1; }
 nginx_web_on() { touch "$fixture/reported-success"; }
 docker() { [ "$*" = 'exec nginx nginx -t' ]; }
+kpanel_web_access_password() { docker exec nginx nginx -t && docker exec nginx nginx -s reload; }
 wget() { [ "$1" = '-O' ] && : > "$2"; }
 unzip() { mkdir -p wordpress; : > wordpress/wp-config-sample.php; }
-export KJ_WEB_ACCESS_PASSWORD_FILE="$fixture/synthetic-input"
+export KJ_WEB_ACCESS_PASSWORD_FILE="$fixture/jobs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.access-password.json"
+: > "$KJ_WEB_ACCESS_PASSWORD_FILE"
+chmod 600 "$KJ_WEB_ACCESS_PASSWORD_FILE"
 gh_proxy=''
 if ldnmp_wp example.com > "$fixture/output" 2>&1; then exit 1; fi
 [ ! -e "$fixture/reported-success" ]

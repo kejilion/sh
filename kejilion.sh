@@ -677,6 +677,7 @@ from __future__ import annotations
 
 import os
 import fnmatch
+import hmac
 import json
 import re
 import secrets
@@ -882,7 +883,7 @@ def inspect_global_policy(confdir, source):
 def add_rule(confdir: int, config_name: str, config_version: str, server_index: int,
              scope: str, location: str, modifier: str, username: str, password: str,
              *, validate, reload_config, worker_group=nginx_worker_group,
-             verify_read=check_worker_read, hasher=hash_password, global_policy=None):
+             verify_read=check_worker_read, hasher=hash_password, global_policy=None, verify_only=False):
     fd, _, source = _read(confdir, config_name, 2 << 20)
     os.close(fd)
     if digest(source) != config_version:
@@ -898,11 +899,38 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
     if not indices:
         raise ConfigError('site has no content server to protect')
     include_contexts = []
+    password_versions = []
     for index in indices:
         server = select_context(root, index, 'server')
         target = select_context(root, index, scope, location, modifier)
-        if any(d.words[0] in ('auth_basic', 'auth_basic_user_file') for d in target.directives):
+        auth = [d.words for d in target.directives if d.words[0] in ('auth_basic', 'auth_basic_user_file')]
+        if not verify_only and auth:
             raise ConfigError('a password rule already exists in this context')
+        if verify_only:
+            realms = [d[1] for d in auth if len(d) == 2 and d[0] == 'auth_basic']
+            files = [d[1] for d in auth if len(d) == 2 and d[0] == 'auth_basic_user_file']
+            if len(auth) != 2 or len(realms) != 1 or realms[0] != 'Restricted' or len(files) != 1 or not re.fullmatch(r'/etc/nginx/conf.d/\.site-auth-[0-9a-f]{32}\.passwd', files[0]):
+                raise Conflict('created password rule changed')
+            if not any(d.words == ['satisfy', 'all'] for d in target.directives):
+                raise Conflict('created password policy changed')
+            filename = files[0].rsplit('/', 1)[-1]
+            fd, _, data = _read(confdir, filename, 1 << 20)
+            os.close(fd)
+            entries = [line.split(':', 1)[1] for line in data.decode('utf-8').splitlines()
+                       if line.startswith(username + ':') and ':' in line]
+            if len(entries) != 1 or not re.fullmatch(r'\$apr1\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}', entries[0]):
+                raise Conflict('created account changed')
+            salt = entries[0].split('$')[2]
+            try:
+                result = subprocess.run(['/usr/bin/openssl', 'passwd', '-apr1', '-salt', salt, '-stdin'],
+                                        input=password.encode('utf-8') + b'\n', stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, timeout=10, check=True)
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise ConfigError('password verification unavailable') from exc
+            if not hmac.compare_digest(result.stdout.strip(), entries[0].encode()):
+                raise Conflict('created account changed')
+            verify_read(files[0])
+            password_versions.append((filename, digest(data)))
         if scope == 'location' and any(d.words[0] == 'rewrite' for d in target.directives):
             raise ConfigError('location rewrite can bypass password authentication')
         # Nginx executes unconditional return before Basic Auth; satisfy any
@@ -947,6 +975,23 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
             raise Conflict('included access policy changed')
         if global_policy and inspect_global_policy(confdir, global_policy()) != global_snapshot:
             raise Conflict('Nginx global policy changed')
+        if verify_only:
+            fd, _, current = _read(confdir, config_name, 2 << 20)
+            os.close(fd)
+            if digest(current) != config_version:
+                raise Conflict('created site configuration changed')
+            for filename, expected in password_versions:
+                fd, _, current = _read(confdir, filename, 1 << 20)
+                os.close(fd)
+                if digest(current) != expected:
+                    raise Conflict('created account changed')
+    if verify_only:
+        verify_includes()
+        validate()
+        verify_includes()
+        reload_config()
+        verify_includes()
+        return config_version
     content = update_account(b'', username, hasher(password), must_create=True)
     gid = worker_group()
     if not isinstance(gid, int) or isinstance(gid, bool) or gid < 0 or gid > 2**32 - 2:
@@ -1182,7 +1227,8 @@ def apply_rule(rootfd, request, *, validate=None, reload_config=None,
 
 
 def apply_creation(rootfd, request, *, expected_version, expected_domain, staged_name='',
-                   worker_group=nginx_worker_group, verify_read=check_worker_read, global_policy=nginx_global_config):
+                   worker_group=nginx_worker_group, verify_read=check_worker_read, global_policy=nginx_global_config,
+                   verify_only=False, validate=None, reload_config=None):
     fields = {'operation', 'configName', 'scope', 'path', 'username', 'password'}
     if not isinstance(request, dict) or request.keys() != fields or request.get('operation') != 'create-stage':
         raise ConfigError('invalid creation request')
@@ -1192,9 +1238,9 @@ def apply_creation(rootfd, request, *, expected_version, expected_domain, staged
     domain = name[:-5].lower()
     if domain != expected_domain or not re.fullmatch(r'[0-9a-f]{64}', expected_version):
         raise ConfigError('creation identity is invalid')
-    if not re.fullmatch(r'\.site-create-[a-f0-9]{32}\.pending', staged_name):
+    if not verify_only and not re.fullmatch(r'\.site-create-[a-f0-9]{32}\.pending', staged_name):
         raise ConfigError('creation staging identity is invalid')
-    source_name = staged_name
+    source_name = name if verify_only else staged_name
     directory = directory_beneath(rootfd, ['conf.d'])
     try:
         fd, _, data = _read(directory, source_name, 2 << 20)
@@ -1220,9 +1266,13 @@ def apply_creation(rootfd, request, *, expected_version, expected_domain, staged
         if not indices:
             raise ConfigError('site server context unavailable')
         version = add_rule(directory, source_name, digest(data), indices, request['scope'], request['path'], '',
-                           request['username'], request['password'], validate=lambda: None,
-                           reload_config=lambda: None, worker_group=worker_group, verify_read=verify_read,
-                           global_policy=global_policy)
+                           request['username'], request['password'],
+                           validate=(validate or (lambda: nginx_command('-t'))) if verify_only else (lambda: None),
+                           reload_config=(reload_config or (lambda: nginx_command('-s', 'reload'))) if verify_only else (lambda: None),
+                           worker_group=worker_group, verify_read=verify_read,
+                           global_policy=global_policy, verify_only=verify_only)
+        if verify_only:
+            return version
         fd, info, staged = _read(directory, staged_name, 2 << 20)
         os.close(fd)
         if digest(staged) != version:
@@ -1265,7 +1315,8 @@ def main():
             version = apply_creation(rootfd, request,
                                      expected_version=os.environ.get('KJ_WEB_ACCESS_CONFIG_VERSION', ''),
                                      expected_domain=os.environ.get('KJ_WEB_ACCESS_DOMAIN', ''),
-                                     staged_name=os.environ.get('KJ_WEB_ACCESS_STAGED_NAME', ''))
+                                     staged_name=os.environ.get('KJ_WEB_ACCESS_STAGED_NAME', ''),
+                                     verify_only=os.environ.get('KJ_WEB_ACCESS_VERIFY', '') == '1')
         elif isinstance(request, dict) and request.get('operation') == 'quarantine':
             version = apply_quarantine(rootfd, request)
         elif isinstance(request, dict) and request.get('operation') in ('rule-add', 'rule-delete'):
@@ -1298,8 +1349,20 @@ KPANEL_EMBEDDED_SITE_ACCESS_CLI_PY
 # END GENERATED SITE ACCESS ADAPTER
 
 kpanel_web_confirm_created_access() {
-	[ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 0
-	if ! docker exec nginx nginx -t >/dev/null 2>&1 || ! docker exec nginx nginx -s reload >/dev/null 2>&1; then
+	local input="${KJ_WEB_ACCESS_PASSWORD_FILE:-}" domain="${yuming:-${KJ_WEB_DOMAIN:-}}" name version receipt
+	[ -n "$input" ] || return 0
+	case "$input" in
+		/var/lib/kejilion-panel/wordpress-jobs/*.access-password.json|/home/docker/kpanel/data/agent/wordpress-jobs/*.access-password.json) ;;
+		*) return 1 ;;
+	esac
+	name="${input##*/}"
+	[[ "$name" =~ ^[a-f0-9]{32}\.access-password\.json$ ]] &&
+		[[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] &&
+		[ -f "$input" ] && [ ! -L "$input" ] && [ "$(stat -c '%u:%a' "$input")" = '0:600' ] || return 1
+	version="$(sha256sum -- "/home/web/conf.d/${domain}.conf")" || return 1
+	version="${version%% *}"
+	if ! receipt="$(KJ_WEB_ACCESS_VERIFY=1 KJ_WEB_ACCESS_CONFIG_VERSION="$version" KJ_WEB_ACCESS_DOMAIN="${domain,,}" kpanel_web_access_password < "$input")" ||
+		[ "$receipt" != "{\"ok\":true,\"fileVersion\":\"$version\"}" ]; then
 		echo "访问密码的 Nginx 配置未能加载，请检查站点状态。" >&2
 		return 1
 	fi
@@ -8960,6 +9023,7 @@ kpanel_app_write_proxy() {
 	kpanel_web_progress 85 "正在校验并重载反向代理配置"
 	nginx_http_on || return $?
 	docker exec nginx nginx -s reload || return $?
+	kpanel_web_confirm_created_access || return 1
 	nginx_web_on
 }
 
@@ -18766,6 +18830,7 @@ ldnmp_fastadmin() (
 	rm -rf -- "$stage"' EXIT
 	nginx_http_on || return 1
 	docker exec nginx nginx -t && docker exec nginx nginx -s reload || return 1
+	kpanel_web_confirm_created_access || return 1
 	published=0
 	echo "KPANEL_PROGRESS 90 FastAdmin 站点已就绪，请打开安装页面完成初始化"
 	local scheme=https suffix=""

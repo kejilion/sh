@@ -9,7 +9,7 @@ cat > "$fixture/docker" <<'EOF'
 case "$*" in
   'exec nginx id -g nginx') id -g ;;
   'exec nginx head -c 1048577 /etc/nginx/nginx.conf') printf 'events {} http {}\n' ;;
-  'exec nginx nginx -s reload') [ "${KJ_TEST_FAIL_RELOAD:-0}" != 1 ] ;;
+  'exec nginx nginx -s reload') [ ! -f "$(dirname "$0")/fail-reload" ] ;;
   'exec -u nginx nginx sh -c '*|'exec nginx nginx -t'|'exec nginx nginx -s reload') exit 0 ;;
   *) exit 1 ;;
 esac
@@ -22,7 +22,8 @@ sed -n '/^kpanel_web_apply_created_access() {/,/^}/p' "$root/kejilion.sh" |
   sed -e "s|/var/lib/kejilion-panel/wordpress-jobs/|$fixture/jobs/|g" -e "s|/home/web/conf.d/|$fixture/web/conf.d/|g" > "$fixture/hook.sh"
 sed -n '/^kpanel_web_prepare_config() {/,/^}/p' "$root/kejilion.sh" |
   sed -e "s|/var/lib/kejilion-panel/wordpress-jobs/|$fixture/jobs/|g" -e "s|/home/web/conf.d/|$fixture/web/conf.d/|g" > "$fixture/prepare.sh"
-sed -n '/^kpanel_web_confirm_created_access() {/,/^}/p' "$root/kejilion.sh" > "$fixture/confirm.sh"
+sed -n '/^kpanel_web_confirm_created_access() {/,/^}/p' "$root/kejilion.sh" |
+  sed -e "s|/var/lib/kejilion-panel/wordpress-jobs/|$fixture/jobs/|g" -e "s|/home/web/conf.d/|$fixture/web/conf.d/|g" > "$fixture/confirm.sh"
 sed -n '/^nginx_http_on() {/,/^}/p' "$root/kejilion.sh" > "$fixture/http.sh"
 source "$fixture/adapter.sh"
 source "$fixture/hook.sh"
@@ -47,10 +48,10 @@ printf 'server { server_name example.com; location / { proxy_pass http://app; } 
 nginx_http_on
 grep -Fq 'auth_basic "Restricted";' "$fixture/web/conf.d/example.com.conf"
 grep -Fq 'proxy_pass http://app;' "$fixture/web/conf.d/example.com.conf"
-export KJ_TEST_FAIL_RELOAD=1
+touch "$fixture/fail-reload"
 if kpanel_web_confirm_created_access 2> "$fixture/reload-failure.log"; then exit 1; fi
 grep -Fq '访问密码的 Nginx 配置未能加载' "$fixture/reload-failure.log"
-unset KJ_TEST_FAIL_RELOAD
+rm "$fixture/fail-reload"
 kpanel_web_confirm_created_access
 if grep -RFq 'synthetic-secret' "$fixture/web/conf.d"; then exit 1; fi
 

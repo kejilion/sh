@@ -164,6 +164,48 @@ class SiteAccessCLITests(unittest.TestCase):
         self.assertIn('changed by another administrator', self.config.read_text())
         self.assertFalse(staged.exists())
 
+    def test_creation_rechecks_global_policy_at_final_reload(self):
+        staged_name = '.site-create-' + 'f' * 32 + '.pending'
+        staged = self.root / 'conf.d' / staged_name
+        self.config.unlink()
+        staged.write_text('server { server_name example.com; listen 80; }')
+        request = {'operation': 'create-stage', 'configName': self.config.name, 'scope': 'server',
+                   'path': '', 'username': 'alice', 'password': 'synthetic-secret'}
+        good = lambda: b'events {} http {}'
+        cli.apply_creation(self.rootfd, request, expected_version=txn.digest(staged.read_bytes()),
+                           staged_name=staged_name, expected_domain='example.com',
+                           worker_group=os.getegid, verify_read=lambda path: None, global_policy=good)
+        version = txn.digest(self.config.read_bytes())
+        calls = []
+        bad = lambda: b'events {} http { error_page 401 = /public; }'
+        with self.assertRaises(cli.ConfigError):
+            cli.apply_creation(self.rootfd, request, expected_version=version, expected_domain='example.com',
+                               verify_only=True, verify_read=lambda path: None, global_policy=bad,
+                               validate=lambda: calls.append('test'), reload_config=lambda: calls.append('reload'))
+        self.assertEqual(calls, [])
+        cli.apply_creation(self.rootfd, request, expected_version=version, expected_domain='example.com',
+                           verify_only=True, verify_read=lambda path: None, global_policy=good,
+                           validate=lambda: calls.append('test'), reload_config=lambda: calls.append('reload'))
+        self.assertEqual(calls, ['test', 'reload'])
+
+    def test_creation_detects_global_policy_change_during_final_reload(self):
+        staged_name = '.site-create-' + '9' * 32 + '.pending'
+        staged = self.root / 'conf.d' / staged_name
+        self.config.unlink()
+        staged.write_text('server { server_name example.com; listen 80; }')
+        request = {'operation': 'create-stage', 'configName': self.config.name, 'scope': 'server',
+                   'path': '', 'username': 'alice', 'password': 'synthetic-secret'}
+        policy = [b'events {} http {}']
+        cli.apply_creation(self.rootfd, request, expected_version=txn.digest(staged.read_bytes()),
+                           staged_name=staged_name, expected_domain='example.com', worker_group=os.getegid,
+                           verify_read=lambda path: None, global_policy=lambda: policy[0])
+        def change_policy():
+            policy[0] = b'events {} http { error_page 401 = /public; }'
+        with self.assertRaises(cli.ConfigError):
+            cli.apply_creation(self.rootfd, request, expected_version=txn.digest(self.config.read_bytes()),
+                               expected_domain='example.com', verify_only=True, verify_read=lambda path: None,
+                               global_policy=lambda: policy[0], validate=lambda: None, reload_config=change_policy)
+
 
 if __name__ == '__main__':
     unittest.main()
