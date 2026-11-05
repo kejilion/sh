@@ -3939,7 +3939,12 @@ restart_ldnmp() {
 	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
 		  kpanel_web_confirm_created_access || return 1
 	  fi
-	  shared_waf_refresh || return 1
+	  if ! shared_waf_refresh; then
+		  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+			  kpanel_web_confirm_created_access || true
+		  fi
+		  return 1
+	  fi
 	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
 		  kpanel_web_confirm_created_access || return 1
 	  fi
@@ -3950,7 +3955,12 @@ restart_ldnmp() {
 	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi > /dev/null 2>&1
 	  docker exec php chown -R www-data:www-data /var/www/html > /dev/null 2>&1
 	  docker exec php74 chown -R www-data:www-data /var/www/html > /dev/null 2>&1
-	  cd /home/web && docker compose restart || return 1
+	  if ! (cd /home/web && docker compose restart); then
+		  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+			  kpanel_web_confirm_created_access || true
+		  fi
+		  return 1
+	  fi
 	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
 		  kpanel_web_confirm_created_access || return 1
 	  fi
@@ -19522,6 +19532,10 @@ linux_ldnmp() {
 
 
 	  25)
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ]; then
+		  echo "该模板会开放应用直连端口，暂不支持创建时设置访问密码。" >&2
+		  return 1
+	  fi
 	  clear
 	  webname="Bitwarden"
 	  send_stats "安装$webname"
@@ -19542,6 +19556,10 @@ linux_ldnmp() {
 		;;
 
 	  26)
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ]; then
+		  echo "该模板会开放应用直连端口，暂不支持创建时设置访问密码。" >&2
+		  return 1
+	  fi
 	  clear
 	  webname="halo"
 	  send_stats "安装$webname"
