@@ -80,7 +80,7 @@ class SiteAccessCLITests(unittest.TestCase):
                    'scope': 'location', 'path': '/admin/', 'modifier': '',
                    'username': 'bob', 'password': 'synthetic-secret'}
         cli.apply_rule(self.rootfd, request, validate=lambda: None, reload_config=lambda: None,
-                       worker_group=os.getegid, verify_read=lambda path: None)
+                       worker_group=os.getegid, verify_read=lambda path: None, global_policy=lambda: b'events {} http {}')
         self.assertIn('proxy_pass http://app;', self.config.read_text())
         created = list((self.root / 'conf.d').glob('.site-auth-*.passwd'))
         self.assertEqual(len(created), 1)
@@ -104,7 +104,8 @@ class SiteAccessCLITests(unittest.TestCase):
         request = {'operation': 'create-stage', 'configName': self.config.name, 'scope': 'server',
                    'path': '', 'username': 'alice', 'password': 'synthetic-secret'}
         cli.apply_creation(self.rootfd, request, expected_version=txn.digest(staged.read_bytes()), staged_name=staged_name,
-                           expected_domain='example.com', worker_group=os.getegid, verify_read=lambda path: None)
+                           expected_domain='example.com', worker_group=os.getegid, verify_read=lambda path: None,
+                           global_policy=lambda: b'events {} http {}')
         self.assertFalse(staged.exists())
         source = self.config.read_text()
         tree = cli.parse(source)
@@ -122,7 +123,8 @@ class SiteAccessCLITests(unittest.TestCase):
                    'path': '', 'username': 'alice', 'password': 'synthetic-secret'}
         with self.assertRaises(FileExistsError):
             cli.apply_creation(self.rootfd, request, expected_version=txn.digest(staged.read_bytes()), staged_name=staged_name,
-                               expected_domain='example.com', worker_group=os.getegid, verify_read=lambda path: None)
+                               expected_domain='example.com', worker_group=os.getegid, verify_read=lambda path: None,
+                               global_policy=lambda: b'events {} http {}')
         self.assertEqual(self.config.read_bytes(), original)
         self.assertTrue(staged.exists())
 
@@ -135,7 +137,8 @@ class SiteAccessCLITests(unittest.TestCase):
                    'path': '/missing/', 'username': 'alice', 'password': 'synthetic-secret'}
         with self.assertRaises(cli.ConfigError):
             cli.apply_creation(self.rootfd, request, expected_version=txn.digest(staged.read_bytes()), staged_name=staged_name,
-                               expected_domain='example.com', worker_group=os.getegid, verify_read=lambda path: None)
+                               expected_domain='example.com', worker_group=os.getegid, verify_read=lambda path: None,
+                               global_policy=lambda: b'events {} http {}')
         self.assertFalse(self.config.exists())
         self.assertTrue(staged.exists())
 
@@ -156,7 +159,8 @@ class SiteAccessCLITests(unittest.TestCase):
             with self.assertRaises(txn.Conflict):
                 cli.apply_creation(self.rootfd, request, expected_version=txn.digest(staged.read_bytes()),
                                    staged_name=staged_name, expected_domain='example.com',
-                                   worker_group=os.getegid, verify_read=lambda path: None)
+                                   worker_group=os.getegid, verify_read=lambda path: None,
+                                   global_policy=lambda: b'events {} http {}')
         self.assertIn('changed by another administrator', self.config.read_text())
         self.assertFalse(staged.exists())
 

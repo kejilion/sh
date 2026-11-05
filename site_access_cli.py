@@ -13,7 +13,7 @@ import sys
 from site_access_accounts import edit_account
 from site_access_config import edit_config, nginx_command
 from site_access_nginx import ConfigError, effective_auth, parse, select_context
-from site_access_rules import add_rule, nginx_worker_group, check_worker_read, quarantine_created_config
+from site_access_rules import add_rule, nginx_worker_group, check_worker_read, quarantine_created_config, nginx_global_config
 from site_access_transaction import Conflict, TransactionError, _matches, _read, digest, rename_noreplace
 
 
@@ -97,7 +97,7 @@ def apply_account(rootfd, request):
 
 
 def apply_rule(rootfd, request, *, validate=None, reload_config=None,
-               worker_group=nginx_worker_group, verify_read=check_worker_read):
+               worker_group=nginx_worker_group, verify_read=check_worker_read, global_policy=nginx_global_config):
     common = {'operation', 'configName', 'configVersion', 'scope', 'path', 'modifier'}
     action = request.get('operation') if isinstance(request, dict) else None
     needed = {'username', 'password', 'serverIndices'} if action == 'rule-add' else {'fileVersion', 'serverIndex'} if action == 'rule-delete' else set()
@@ -114,7 +114,8 @@ def apply_rule(rootfd, request, *, validate=None, reload_config=None,
             return add_rule(config_dir, name, request['configVersion'], request['serverIndices'],
                             request['scope'], request['path'], request['modifier'],
                             request['username'], request['password'], validate=validate,
-                            reload_config=reload_config, worker_group=worker_group, verify_read=verify_read)
+                            reload_config=reload_config, worker_group=worker_group, verify_read=verify_read,
+                            global_policy=global_policy)
         data = read_checked(config_dir, name, request['configVersion'], 2 << 20)
         try:
             tree = parse(data.decode('utf-8'))
@@ -139,7 +140,7 @@ def apply_rule(rootfd, request, *, validate=None, reload_config=None,
 
 
 def apply_creation(rootfd, request, *, expected_version, expected_domain, staged_name='',
-                   worker_group=nginx_worker_group, verify_read=check_worker_read):
+                   worker_group=nginx_worker_group, verify_read=check_worker_read, global_policy=nginx_global_config):
     fields = {'operation', 'configName', 'scope', 'path', 'username', 'password'}
     if not isinstance(request, dict) or request.keys() != fields or request.get('operation') != 'create-stage':
         raise ConfigError('invalid creation request')
@@ -178,7 +179,8 @@ def apply_creation(rootfd, request, *, expected_version, expected_domain, staged
             raise ConfigError('site server context unavailable')
         version = add_rule(directory, source_name, digest(data), indices, request['scope'], request['path'], '',
                            request['username'], request['password'], validate=lambda: None,
-                           reload_config=lambda: None, worker_group=worker_group, verify_read=verify_read)
+                           reload_config=lambda: None, worker_group=worker_group, verify_read=verify_read,
+                           global_policy=global_policy)
         fd, info, staged = _read(directory, staged_name, 2 << 20)
         os.close(fd)
         if digest(staged) != version:

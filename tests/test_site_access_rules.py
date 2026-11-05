@@ -169,6 +169,7 @@ class SiteAccessRuleTests(unittest.TestCase):
     def test_rejects_nested_auth_off_and_responses_before_auth(self):
         sources = (
             b'server { location /public/ { auth_basic off; proxy_pass http://app; } }',
+            b'server { location /private/ { limit_except GET { auth_basic off; } proxy_pass http://app; } }',
             b'server { if ($arg_open) { return 200 exposed; } location / { proxy_pass http://app; } }',
             b'server { location /open/ { return 200 exposed; } location / { proxy_pass http://app; } }',
         )
@@ -246,6 +247,30 @@ class SiteAccessRuleTests(unittest.TestCase):
         config.edit_config(self.dirfd, self.conf.name, txn.digest(self.conf.read_bytes()), 0,
                            'server', '', '', 'delete', validate=lambda: None, reload_config=lambda: None)
         self.assertEqual(self.conf.read_text().count('satisfy all;'), 1)
+
+    def test_rejects_global_authentication_error_page_direct_or_included(self):
+        source = b'server { location /admin/ { proxy_pass http://app; } }'
+        self.conf.write_bytes(source)
+        (self.root / 'global.inc').write_text('error_page 401 = @fallback;')
+        configurations = (b'events {} http { error_page 401 = @fallback; }',
+                          b'events {} http { include /etc/nginx/conf.d/global.inc; }')
+        for global_source in configurations:
+            with self.subTest(global_source=global_source), self.assertRaises(rules.ConfigError):
+                rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'location', '/admin/', '',
+                               'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                               worker_group=os.getegid, verify_read=lambda path: None,
+                               global_policy=lambda: global_source)
+            self.assertEqual(self.conf.read_bytes(), source)
+
+    def test_global_site_include_allows_this_transaction_to_change_its_server(self):
+        source = b'server { location /admin/ { proxy_pass http://app; } }'
+        self.conf.write_bytes(source)
+        rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), [0], 'location', '/admin/', '',
+                       'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                       worker_group=os.getegid, verify_read=lambda path: None,
+                       hasher=lambda _: '$apr1$abcdefgh$abcdefghijklmnopqrstuv',
+                       global_policy=lambda: b'events {} http { include /etc/nginx/conf.d/*.conf; }')
+        self.assertIn('auth_basic', self.conf.read_text())
 
     def test_quarantine_preserves_failed_config_and_reloads(self):
         saved = rules.quarantine_created_config(self.dirfd, self.conf.name, txn.digest(self.original),

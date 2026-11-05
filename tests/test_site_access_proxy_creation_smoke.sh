@@ -8,6 +8,7 @@ cat > "$fixture/docker-bin" <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
   'exec nginx id -g nginx') id -g ;;
+  'exec nginx head -c 1048577 /etc/nginx/nginx.conf') printf 'events {} http {}\n' ;;
   'exec -u nginx nginx sh -c '*|'exec nginx nginx -t'|'exec nginx nginx -s reload') exit 0 ;;
   *) exit 1 ;;
 esac

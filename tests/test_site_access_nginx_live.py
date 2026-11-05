@@ -137,7 +137,8 @@ class NginxAccessProbe(unittest.TestCase):
             with self.assertRaises(site_access_rules.ConfigError):
                 site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
                                            'location', '/private/admin/', '', 'alice', 'password',
-                                           validate=lambda: None, reload_config=lambda: None)
+                                           validate=lambda: None, reload_config=lambda: None,
+                                           worker_group=os.getegid, verify_read=lambda path: None)
             self.assertEqual(site.read_text(), config)
         finally:
             os.close(fd)
@@ -167,7 +168,8 @@ class NginxAccessProbe(unittest.TestCase):
             with self.assertRaises(site_access_rules.ConfigError):
                 site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
                                            'location', '/protected', '', 'alice', 'password',
-                                           validate=lambda: None, reload_config=lambda: None)
+                                           validate=lambda: None, reload_config=lambda: None,
+                                           worker_group=os.getegid, verify_read=lambda path: None)
         finally:
             os.close(fd)
 
@@ -195,7 +197,8 @@ class NginxAccessProbe(unittest.TestCase):
             with self.assertRaises(site_access_rules.ConfigError):
                 site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0, 1],
                                            'server', '', '', 'alice', 'password',
-                                           validate=lambda: None, reload_config=lambda: None)
+                                           validate=lambda: None, reload_config=lambda: None,
+                                           worker_group=os.getegid, verify_read=lambda path: None)
         finally:
             os.close(fd)
 
@@ -221,7 +224,101 @@ class NginxAccessProbe(unittest.TestCase):
             with self.assertRaises(site_access_rules.ConfigError):
                 site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
                                            'location', '/private/', '', 'alice', 'password',
-                                           validate=lambda: None, reload_config=lambda: None)
+                                           validate=lambda: None, reload_config=lambda: None,
+                                           worker_group=os.getegid, verify_read=lambda path: None)
+        finally:
+            os.close(fd)
+
+    def test_limit_except_cannot_disable_password_for_post(self):
+        config = ('server { listen 127.0.0.1:18080; location /private/ { '
+                  'limit_except GET { auth_basic off; } proxy_pass http://127.0.0.1:18081; } }')
+        target = site_access_nginx.select_context(site_access_nginx.parse(config), 0, 'location', '/private/')
+        unsafe = site_access_nginx.replace_auth(config, target, 'Private', '/etc/nginx/probe.htpasswd')
+        main = ('worker_processes 1; events { worker_connections 64; } http { ' + unsafe +
+                ' server { listen 127.0.0.1:18081; location / { return 200 exposed; } } }')
+        self.write('/etc/nginx/nginx.conf', main)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-t'], check=True, timeout=10)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-s', 'reload'], check=True, timeout=10)
+        for _ in range(20):
+            result = subprocess.run(['docker', 'exec', self.name, 'wget', '-S', '-O', '-', '-q', '--post-data=x',
+                                     'http://127.0.0.1:18080/private/'], capture_output=True, timeout=10)
+            if b'200 OK' in result.stderr:
+                break
+            time.sleep(.05)
+        self.assertIn(b'200 OK', result.stderr)
+        self.assertEqual(result.stdout, b'exposed')
+        site = Path(self.temp.name) / 'limit-site.conf'
+        site.write_text(config)
+        fd = os.open(self.temp.name, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            with self.assertRaises(site_access_rules.ConfigError):
+                site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
+                                           'location', '/private/', '', 'alice', 'password',
+                                           validate=lambda: None, reload_config=lambda: None,
+                                           worker_group=os.getegid, verify_read=lambda path: None)
+        finally:
+            os.close(fd)
+
+    def test_error_page_cannot_redirect_unauthorized_request_to_backend(self):
+        config = ('server { listen 127.0.0.1:18080; error_page 401 = @fallback; '
+                  'location /private/ { proxy_pass http://127.0.0.1:18081; } '
+                  'location @fallback { proxy_pass http://127.0.0.1:18081; } }')
+        target = site_access_nginx.select_context(site_access_nginx.parse(config), 0, 'location', '/private/')
+        unsafe = site_access_nginx.replace_auth(config, target, 'Private', '/etc/nginx/probe.htpasswd')
+        main = ('worker_processes 1; events { worker_connections 64; } http { ' + unsafe +
+                ' server { listen 127.0.0.1:18081; location / { return 200 exposed; } } }')
+        self.write('/etc/nginx/nginx.conf', main)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-t'], check=True, timeout=10)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-s', 'reload'], check=True, timeout=10)
+        for _ in range(20):
+            headers, body = self.request('/private/')
+            if '200 OK' in headers:
+                break
+            time.sleep(.05)
+        self.assertIn('200 OK', headers)
+        self.assertEqual(body, 'exposed')
+        site = Path(self.temp.name) / 'error-site.conf'
+        site.write_text(config)
+        fd = os.open(self.temp.name, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            with self.assertRaises(site_access_rules.ConfigError):
+                site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
+                                           'location', '/private/', '', 'alice', 'password',
+                                           validate=lambda: None, reload_config=lambda: None,
+                                           worker_group=os.getegid, verify_read=lambda path: None)
+        finally:
+            os.close(fd)
+
+    def test_global_error_page_is_detected_before_protecting_included_site(self):
+        config = ('server { listen 127.0.0.1:18080; '
+                  'location /private/ { proxy_pass http://127.0.0.1:18081; } '
+                  'location /fallback { proxy_pass http://127.0.0.1:18081; } }')
+        target = site_access_nginx.select_context(site_access_nginx.parse(config), 0, 'location', '/private/')
+        unsafe = site_access_nginx.replace_auth(config, target, 'Private', '/etc/nginx/probe.htpasswd')
+        site = Path(self.temp.name) / 'global-site.conf'
+        site.write_text(unsafe)
+        main = ('worker_processes 1; events { worker_connections 64; } http { error_page 401 = /fallback; '
+                'include /etc/nginx/conf.d/global-site.conf; '
+                'server { listen 127.0.0.1:18081; location / { return 200 exposed; } } }')
+        self.write('/etc/nginx/nginx.conf', main)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-t'], check=True, timeout=10)
+        subprocess.run(['docker', 'exec', self.name, 'nginx', '-s', 'reload'], check=True, timeout=10)
+        for _ in range(20):
+            headers, body = self.request('/private/')
+            if '200 OK' in headers:
+                break
+            time.sleep(.05)
+        self.assertIn('200 OK', headers)
+        self.assertEqual(body, 'exposed')
+        site.write_text(config)
+        fd = os.open(self.temp.name, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            with self.assertRaises(site_access_rules.ConfigError):
+                site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
+                                           'location', '/private/', '', 'alice', 'password',
+                                           validate=lambda: None, reload_config=lambda: None,
+                                           worker_group=os.getegid, verify_read=lambda path: None,
+                                           global_policy=lambda: main.encode())
         finally:
             os.close(fd)
 

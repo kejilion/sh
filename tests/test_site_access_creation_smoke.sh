@@ -8,6 +8,7 @@ cat > "$fixture/docker" <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
   'exec nginx id -g nginx') id -g ;;
+  'exec nginx head -c 1048577 /etc/nginx/nginx.conf') printf 'events {} http {}\n' ;;
   'exec nginx nginx -s reload') [ "${KJ_TEST_FAIL_RELOAD:-0}" != 1 ] ;;
   'exec -u nginx nginx sh -c '*|'exec nginx nginx -t'|'exec nginx nginx -s reload') exit 0 ;;
   *) exit 1 ;;

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import fnmatch
+import json
 import re
 import secrets
 import stat
@@ -67,7 +68,7 @@ def is_https_redirect_only(server):
             and not any(child.words and child.words[0] == 'if' for child in server.children))
 
 
-def inspect_includes(confdir, contexts):
+def inspect_includes(confdir, contexts, *, http_only=False):
     """Inspect bounded, actual includes; unknown configuration fails closed."""
     snapshots, visited = [], set()
     total = 0
@@ -76,10 +77,12 @@ def inspect_includes(confdir, contexts):
         nonlocal total
         if depth > 8 or not isinstance(pattern, str) or any(c in pattern for c in ('\0', '$', '\\')):
             raise ConfigError('included access policy cannot be verified')
-        if pattern in ('fastcgi_params', '/etc/nginx/fastcgi_params'):
+        builtins = {'fastcgi_params': '/etc/nginx/fastcgi_params', '/etc/nginx/fastcgi_params': '/etc/nginx/fastcgi_params',
+                    'mime.types': '/etc/nginx/mime.types', '/etc/nginx/mime.types': '/etc/nginx/mime.types'}
+        if pattern in builtins:
             try:
                 result = subprocess.run(['/usr/bin/docker', 'exec', 'nginx', 'head', '-c', '1048577',
-                                         '/etc/nginx/fastcgi_params'], stdout=subprocess.PIPE,
+                                         builtins[pattern]], stdout=subprocess.PIPE,
                                         stderr=subprocess.DEVNULL, timeout=10, check=True)
             except (OSError, subprocess.SubprocessError) as exc:
                 raise ConfigError('included access policy cannot be verified') from exc
@@ -113,7 +116,7 @@ def inspect_includes(confdir, contexts):
                 if info.st_uid != 0 or info.st_mode & 0o022:
                     raise ConfigError('included access policy directory is not protected')
                 names = sorted(name for name in os.listdir(directory) if fnmatch.fnmatchcase(name, parts[-1]))
-                if len(names) > 64 or not names and not any(c in parts[-1] for c in '*?['):
+                if len(names) > (4096 if http_only else 64) or not names and not any(c in parts[-1] for c in '*?['):
                     raise ConfigError('included access policy cannot be verified')
                 if not names:
                     snapshots.append((pattern, 'empty'))
@@ -130,14 +133,19 @@ def inspect_includes(confdir, contexts):
             if len(data) > 1 << 20:
                 raise ConfigError('included access policy too large')
             total += len(data)
-            if total > 2 << 20 or len(snapshots) >= 128 or name in visited:
+            if total > (8 << 20 if http_only else 2 << 20) or len(snapshots) >= (4096 if http_only else 128) or name in visited:
                 raise ConfigError('included access policy is recursive or too large')
             visited.add(name)
-            snapshots.append((name, digest(data)))
             try:
                 tree = parse(data.decode('utf-8'))
             except (UnicodeDecodeError, ConfigError) as exc:
                 raise ConfigError('included access policy cannot be parsed') from exc
+            # Site server blocks may change as part of this transaction. At
+            # HTTP scope only the file's direct policy/include statements
+            # contribute to inheritance, so snapshot those separately.
+            snapshot_data = (json.dumps([d.words for d in tree.directives if d.words[0] in ('include', 'error_page')],
+                                        ensure_ascii=False).encode() if http_only else data)
+            snapshots.append((name, digest(snapshot_data)))
             try:
                 inspect(tree, depth + 1)
             finally:
@@ -150,11 +158,15 @@ def inspect_includes(confdir, contexts):
                 if len(words) != 2:
                     raise ConfigError('invalid include')
                 include(words[1], depth)
+            elif words[0] == 'error_page' and '401' in words[1:]:
+                raise ConfigError('authentication error page may bypass password protection')
+            elif http_only:
+                continue
             elif words[0] in ('auth_basic', 'auth_basic_user_file', 'rewrite') or words == ['satisfy', 'any']:
                 raise ConfigError('included configuration may bypass password authentication')
             elif words[0] == 'return' and (len(words) < 2 or not re.fullmatch(r'[45][0-9]{2}', words[1])):
                 raise ConfigError('included configuration may bypass password authentication')
-        for child in block.children:
+        for child in (() if http_only else block.children):
             if child.words and child.words[0] == 'location':
                 raise ConfigError('included location cannot be verified')
             inspect(child, depth)
@@ -168,10 +180,35 @@ def inspect_includes(confdir, contexts):
     return sorted(snapshots)
 
 
+def nginx_global_config():
+    try:
+        result = subprocess.run(['/usr/bin/docker', 'exec', 'nginx', 'head', '-c', '1048577',
+                                 '/etc/nginx/nginx.conf'], stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL, timeout=10, check=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ConfigError('Nginx global policy cannot be verified') from exc
+    if len(result.stdout) > 1 << 20:
+        raise ConfigError('Nginx global policy too large')
+    return result.stdout
+
+
+def inspect_global_policy(confdir, source):
+    try:
+        root = parse(source.decode('utf-8'))
+    except (UnicodeDecodeError, ConfigError) as exc:
+        raise ConfigError('Nginx global policy cannot be parsed') from exc
+    http = [block for block in root.children if block.words == ['http']]
+    if len(http) != 1:
+        raise ConfigError('Nginx global HTTP policy cannot be verified')
+    if any(d.words[0] == 'error_page' and '401' in d.words[1:] for d in http[0].directives):
+        raise ConfigError('global authentication error page may bypass password protection')
+    return digest(source), inspect_includes(confdir, http, http_only=True)
+
+
 def add_rule(confdir: int, config_name: str, config_version: str, server_index: int,
              scope: str, location: str, modifier: str, username: str, password: str,
              *, validate, reload_config, worker_group=nginx_worker_group,
-             verify_read=check_worker_read, hasher=hash_password):
+             verify_read=check_worker_read, hasher=hash_password, global_policy=None):
     fd, _, source = _read(confdir, config_name, 2 << 20)
     os.close(fd)
     if digest(source) != config_version:
@@ -203,6 +240,8 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
         for context in contexts:
             if any(d.words[0] == 'return' or d.words == ['satisfy', 'any'] for d in context.directives):
                 raise ConfigError('site configuration bypasses password authentication')
+            if any(d.words[0] == 'error_page' and '401' in d.words[1:] for d in context.directives):
+                raise ConfigError('authentication error page may bypass password protection')
         # Every nested location inherits its parents' settings unless it
         # overrides them. An inherited "satisfy any" makes auth optional.
         pending = list(target.children)
@@ -211,11 +250,12 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
         while pending:
             child = pending.pop()
             include_contexts.append(child)
-            if child.words and child.words[0] == 'location':
-                if any(d.words == ['satisfy', 'any'] for d in child.directives):
-                    raise ConfigError('a nested location can bypass password authentication')
-                if any(d.words == ['auth_basic', 'off'] for d in child.directives):
-                    raise ConfigError('a nested location disables password authentication')
+            if any(d.words == ['satisfy', 'any'] for d in child.directives):
+                raise ConfigError('a nested context can bypass password authentication')
+            if any(d.words == ['auth_basic', 'off'] for d in child.directives):
+                raise ConfigError('a nested context disables password authentication')
+            if any(d.words[0] == 'error_page' and '401' in d.words[1:] for d in child.directives):
+                raise ConfigError('authentication error page may bypass password protection')
             if child.words and child.words[0] in ('if', 'location'):
                 for directive in child.directives:
                     words = directive.words
@@ -226,10 +266,13 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
             pending.extend(child.children)
     include_contexts = list({id(context): context for context in include_contexts}.values())
     includes = inspect_includes(confdir, include_contexts)
+    global_snapshot = inspect_global_policy(confdir, global_policy()) if global_policy else None
 
     def verify_includes():
         if inspect_includes(confdir, include_contexts) != includes:
             raise Conflict('included access policy changed')
+        if global_policy and inspect_global_policy(confdir, global_policy()) != global_snapshot:
+            raise Conflict('Nginx global policy changed')
     content = update_account(b'', username, hasher(password), must_create=True)
     gid = worker_group()
     if not isinstance(gid, int) or isinstance(gid, bool) or gid < 0 or gid > 2**32 - 2:
