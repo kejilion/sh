@@ -12,26 +12,134 @@ import subprocess
 
 from site_access_accounts import hash_password
 from site_access_config import edit_config_many
-from site_access_nginx import ConfigError, context_chain, parse, select_context, update_account
+from site_access_nginx import ConfigError, context_chain, parse, select_context, tokenize, update_account
 from site_access_transaction import Conflict, TransactionError, _matches, _read, _same_inode, digest, rename_noreplace
 
 
-def nginx_worker_group():
+def _nginx_output(container, mode, limit):
+    marker = 'kpanel-nginx-' + secrets.token_hex(16)
+    command = {'config': 'nginx -T 2>/dev/null', 'version': 'nginx -V 2>&1'}[mode]
+    script = '(' + command + ' && printf "\\n# %s\\n" "$1") | head -c ' + str(limit + 1)
+    output = subprocess.run(['/usr/bin/docker', 'exec', container, 'sh', '-c', script, 'sh', marker],
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                            env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
+                            timeout=10, check=True).stdout
+    suffix = ('\n# ' + marker + '\n').encode('ascii')
+    if len(output) > limit or not output.endswith(suffix):
+        raise ConfigError('Nginx worker configuration unavailable or too large')
+    return output[:-len(suffix)]
+
+
+def _nginx_main_directives(text):
+    # nginx -T is already syntax-checked. Walk its bounded token stream without
+    # building an entire configuration tree to locate main-scope directives.
+    depth, words, users = 0, [], []
+    for token in tokenize(text):
+        if not token.delimiter:
+            if len(words) < 4:
+                words.append(token.value)
+        elif token.value == ';':
+            if depth == 0 and words and words[0] in ('user', 'master_process'):
+                users.append(words)
+            words = []
+        elif token.value == '{':
+            depth += 1
+            words = []
+        elif token.value == '}':
+            if depth == 0 or words:
+                raise ConfigError('Nginx worker configuration cannot be parsed')
+            depth -= 1
+    if depth or words:
+        raise ConfigError('Nginx worker configuration cannot be parsed')
+    return users
+
+
+def _nginx_master_identity(container, single_config=False):
+    # The user directive is ignored by an unprivileged master. Inspect the
+    # running master rather than assuming the container's default exec user.
+    script = r'''count=0; found=0; processes=0; master=''; single=''; single_ok=0
+for file in /proc/[0-9]*/cmdline; do
+  count=$((count + 1)); [ "$count" -le 4096 ] || exit 1
+  [ -r "$file" ] || continue
+  dir=${file%/cmdline}
+  [ "$(cat "$dir/comm" 2>/dev/null)" = nginx ] || continue
+  command=$(head -c 128 "$file" 2>/dev/null | tr '\000' ' ')
+  ids=$(awk '/^Uid:/ { u=$3 } /^Gid:/ { g=$3 } END { if (u == "" || g == "") exit 1; print u ":" g }' "$dir/status") || exit 1
+  processes=$((processes + 1)); single=$ids
+  case "$command" in
+    'nginx: master process '*)
+      found=$((found + 1)); master=$ids ;;
+    'nginx: single process'*) single_ok=1 ;;
+    'nginx '*|*/nginx\ *)
+      case "$command" in
+        *' -t '*|*' -T '*|*' -s '*) ;;
+        *'master_process off;'*) single_ok=1 ;;
+        *) [ "$1" = 1 ] && single_ok=1 ;;
+      esac ;;
+  esac
+done
+if [ "$found" -eq 1 ]; then printf 'master:%s\n' "$master"
+elif [ "$found" -eq 0 ] && [ "$processes" -eq 1 ] && [ "$single_ok" -eq 1 ]; then printf 'single:%s\n' "$single"
+else exit 1; fi'''
+    result = subprocess.run(['/usr/bin/docker', 'exec', container, 'sh', '-c', script, 'sh', '1' if single_config else '0'],
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                            env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
+                            timeout=10, check=True)
+    match = re.fullmatch(rb'(master|single):([0-9]{1,10}):([0-9]{1,10})\n?', result.stdout)
+    if not match:
+        raise ConfigError('Nginx master identity unavailable')
+    return int(match.group(2)), int(match.group(3)), match.group(1) == b'single'
+
+
+def nginx_worker_identity(container='nginx'):
+    """Resolve the configured worker identity from Nginx's effective config."""
     try:
-        result = subprocess.run(['/usr/bin/docker', 'exec', 'nginx', 'id', '-g', 'nginx'],
+        dump = _nginx_output(container, 'config', 8 << 20)
+        main_directives = _nginx_main_directives(dump.decode('utf-8'))
+        single_config = ['master_process', 'off'] in main_directives
+        master_uid, master_gid, single_process = _nginx_master_identity(container, single_config)
+        directives = [words for words in main_directives if words[0] == 'user']
+        if len(directives) > 1 or directives and len(directives[0]) not in (2, 3):
+            raise ConfigError('Nginx worker identity unavailable')
+        if single_process or master_uid != 0:
+            user, group = str(master_uid), str(master_gid)
+        elif directives:
+            words = directives[0]
+            user, group = words[1], words[2] if len(words) == 3 else words[1]
+        else:
+            build = _nginx_output(container, 'version', 65536)
+            users = re.findall(rb'(?:^|\s)--user=([^\s]+)', build)
+            groups = re.findall(rb'(?:^|\s)--group=([^\s]+)', build)
+            if len(users) > 1 or len(groups) > 1:
+                raise ConfigError('Nginx default worker identity unavailable')
+            user = users[0].decode('ascii') if users else 'nobody'
+            # A configured build group is needed here: the default for nobody
+            # is selected at build time and need not equal its primary group.
+            if not groups and user == 'nobody':
+                raise ConfigError('Nginx default worker group unavailable')
+            group = groups[0].decode('ascii') if groups else user
+        if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}', user) or group is not None and not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}', group):
+            raise ConfigError('Nginx worker identity unavailable')
+        identity = user + ':' + group
+        result = subprocess.run(['/usr/bin/docker', 'exec', '-u', identity, container, 'id', '-g'],
                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                 env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
                                 timeout=10, check=True)
         if not re.fullmatch(rb'[0-9]{1,10}\n?', result.stdout):
             raise ConfigError('Nginx worker group unavailable')
-        return int(result.stdout)
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise ConfigError('Nginx worker group unavailable') from exc
+        return identity, int(result.stdout)
+    except (OSError, UnicodeError, subprocess.SubprocessError) as exc:
+        raise ConfigError('Nginx worker identity unavailable') from exc
 
 
-def check_worker_read(nginx_path):
+def nginx_worker_group():
+    return nginx_worker_identity()[1]
+
+
+def check_worker_read(nginx_path, container='nginx'):
     try:
-        subprocess.run(['/usr/bin/docker', 'exec', '-u', 'nginx', 'nginx',
+        identity, _ = nginx_worker_identity(container)
+        subprocess.run(['/usr/bin/docker', 'exec', '-u', identity, container,
                         'sh', '-c', ': < "$1"', 'sh', nginx_path],
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                        env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
@@ -165,7 +273,7 @@ def inspect_includes(confdir, contexts, *, http_only=False):
                 continue
             elif words[0] in ('auth_basic', 'auth_basic_user_file', 'rewrite') or words == ['satisfy', 'any']:
                 raise ConfigError('included configuration may bypass password authentication')
-            elif words[0] == 'return' and (len(words) < 2 or not re.fullmatch(r'[45][0-9]{2}', words[1])):
+            elif words[0] == 'return' and (len(words) != 2 or not re.fullmatch(r'[45][0-9]{2}', words[1])):
                 raise ConfigError('included configuration may bypass password authentication')
         for child in (() if http_only else block.children):
             if child.words and child.words[0] == 'location':
@@ -289,7 +397,7 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
                     words = directive.words
                     if scope == 'location' and words[0] == 'rewrite':
                         raise ConfigError('location rewrite can bypass password authentication')
-                    if words[0] == 'return' and (len(words) < 2 or not re.fullmatch(r'[345][0-9]{2}', words[1])):
+                    if words[0] == 'return' and (len(words) != 2 or not re.fullmatch(r'[45][0-9]{2}', words[1])):
                         raise ConfigError('a nested response bypasses password authentication')
             pending.extend(child.children)
     include_contexts = list({id(context): context for context in include_contexts}.values())
@@ -311,6 +419,7 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
                 os.close(fd)
                 if digest(current) != expected:
                     raise Conflict('created account changed')
+                verify_read('/etc/nginx/conf.d/' + filename)
     if verify_only:
         verify_includes()
         validate()
@@ -350,6 +459,7 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
         verify_read(nginx_path)
         def checked_validate():
             verify_includes()
+            verify_read(nginx_path)
             validate()
             verify_includes()
 
@@ -364,8 +474,10 @@ def add_rule(confdir: int, config_name: str, config_version: str, server_index: 
                 reload_config()
                 return
             verify_includes()
+            verify_read(nginx_path)
             reload_config()
             verify_includes()
+            verify_read(nginx_path)
 
         return edit_config_many(confdir, config_name, config_version, indices, scope, location,
                                 modifier, 'Restricted', nginx_path, validate=checked_validate,

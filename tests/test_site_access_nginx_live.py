@@ -103,6 +103,91 @@ class NginxAccessProbe(unittest.TestCase):
         self.assertIn('302 Moved Temporarily', headers)
         self.assertNotIn('401 Unauthorized', headers)
 
+    def test_custom_worker_identity_can_read_new_password_file(self):
+        site = Path(self.temp.name) / 'custom-worker-site.conf'
+        config = ('server { listen 127.0.0.1:18080; location /protected { '
+                  'root /usr/share/nginx/html; } }')
+        site.write_text(config)
+        main = ('user nobody nogroup; worker_processes 1; events { worker_connections 64; } '
+                'http { include /etc/nginx/conf.d/custom-worker-site.conf; }')
+        self.write('/etc/nginx/nginx.conf', main)
+        identity, group = site_access_rules.nginx_worker_identity(self.name)
+        self.assertEqual(identity, 'nobody:nogroup')
+        self.assertNotEqual(group, 101)
+        fd = os.open(self.temp.name, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            site_access_rules.add_rule(fd, site.name, site_access_transaction.digest(config.encode()), [0],
+                                       'location', '/protected', '', 'test', 'testpass',
+                                       validate=lambda: subprocess.run(['docker', 'exec', self.name, 'nginx', '-t'], check=True, timeout=10),
+                                       reload_config=lambda: subprocess.run(['docker', 'exec', self.name, 'nginx', '-s', 'reload'], check=True, timeout=10),
+                                       worker_group=lambda: site_access_rules.nginx_worker_identity(self.name)[1],
+                                       verify_read=lambda path: site_access_rules.check_worker_read(path, self.name))
+            for _ in range(30):
+                headers, _ = self.request('/protected')
+                if '401 Unauthorized' in headers:
+                    break
+                time.sleep(.05)
+            self.assertIn('401 Unauthorized', headers)
+            headers, body = self.request('/protected', 'test:testpass')
+            self.assertIn('200 OK', headers)
+            self.assertEqual(body, 'protected')
+        finally:
+            os.close(fd)
+
+    def test_unprivileged_master_uses_running_identity(self):
+        name = 'kpanel-auth-nonroot-' + uuid.uuid4().hex[:12]
+        config = Path(self.temp.name) / 'nonroot-nginx.conf'
+        config.write_text('user nobody nogroup; worker_processes 1; error_log /dev/stderr notice; '
+                          'pid /tmp/nginx.pid; events { worker_connections 64; } http { '
+                          'access_log off; server { listen 127.0.0.1:18082; auth_basic "Private"; '
+                          'auth_basic_user_file /etc/nginx/nonroot-users; '
+                          'location / { root /usr/share/nginx/html; } } }')
+        password = Path(self.temp.name) / 'nonroot-users'
+        password.write_text('test:$apr1$12345678$IFpXpDRudqLvk0aO7K4jN.\n')
+        os.chown(password, 0, 101)
+        os.chmod(password, 0o640)
+        subprocess.run(['docker', 'run', '-d', '--network', 'none', '--name', name, '--user', '101:101',
+                        '--tmpfs', '/tmp:rw,uid=101,gid=101', '--tmpfs', '/var/cache/nginx:rw,uid=101,gid=101',
+                        '--mount', f'type=bind,src={config},dst=/etc/nginx/nginx.conf,readonly',
+                        '--mount', f'type=bind,src={password},dst=/etc/nginx/nonroot-users,readonly',
+                        '--entrypoint', 'nginx', 'nginx:alpine', '-g', 'daemon off;'],
+                       check=True, stdout=subprocess.DEVNULL, timeout=30)
+        self.addCleanup(lambda: subprocess.run(['docker', 'rm', '-f', name],
+                                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30))
+        for _ in range(30):
+            try:
+                identity = site_access_rules.nginx_worker_identity(name)
+                break
+            except (site_access_rules.ConfigError, subprocess.SubprocessError):
+                time.sleep(.1)
+        else:
+            self.fail('unprivileged Nginx master did not become ready')
+        self.assertEqual(identity, ('101:101', 101))
+        site_access_rules.check_worker_read('/etc/nginx/nonroot-users', name)
+        auth = base64.b64encode(b'test:testpass').decode()
+        result = subprocess.run(['docker', 'exec', name, 'wget', '-S', '-q', '-O', '-',
+                                 '--header', 'Authorization: Basic ' + auth,
+                                 'http://127.0.0.1:18082/'], capture_output=True, timeout=10)
+        self.assertIn(b'200 OK', result.stderr)
+
+    def test_single_process_uses_running_identity(self):
+        name = 'kpanel-auth-single-' + uuid.uuid4().hex[:12]
+        subprocess.run(['docker', 'run', '-d', '--network', 'none', '--name', name,
+                        'nginx:alpine', 'nginx', '-g', 'daemon off; master_process off;'],
+                       check=True, stdout=subprocess.DEVNULL, timeout=30)
+        self.addCleanup(lambda: subprocess.run(['docker', 'rm', '-f', name],
+                                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=30))
+        for _ in range(30):
+            try:
+                identity = site_access_rules.nginx_worker_identity(name)
+                break
+            except (site_access_rules.ConfigError, subprocess.SubprocessError):
+                time.sleep(.1)
+        else:
+            self.fail('single-process Nginx did not become ready')
+        self.assertEqual(identity, ('0:0', 0))
+        site_access_rules.check_worker_read('/etc/nginx/nginx.conf', name)
+
     def test_maximum_password_is_not_silently_truncated(self):
         original = 'test:$apr1$12345678$IFpXpDRudqLvk0aO7K4jN.\n'
         self.addCleanup(self.write, '/etc/nginx/probe.htpasswd', original)

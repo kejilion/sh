@@ -1,14 +1,73 @@
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import site_access_nginx as nginx
 import site_access_rules as rules
 import site_access_config as config
 import site_access_transaction as txn
+
+
+class NginxWorkerIdentityTests(unittest.TestCase):
+    def test_configured_user_without_group_uses_same_named_group(self):
+        with mock.patch.object(rules, '_nginx_master_identity', return_value=(0, 0, False)), \
+             mock.patch.object(rules, '_nginx_output', return_value=b'user service; events {} http {}'), \
+             mock.patch.object(rules.subprocess, 'run', return_value=mock.Mock(stdout=b'123\n')) as run:
+            self.assertEqual(rules.nginx_worker_identity('fixture'), ('service:service', 123))
+        self.assertEqual(run.call_args.args[0][2:6], ['-u', 'service:service', 'fixture', 'id'])
+
+    def test_build_defaults_are_used_only_when_known(self):
+        def output(container, mode, limit):
+            return b'events {} http {}' if mode == 'config' else b'configure arguments: --user=web --group=staff\n'
+        with mock.patch.object(rules, '_nginx_master_identity', return_value=(0, 0, False)), \
+             mock.patch.object(rules, '_nginx_output', side_effect=output), \
+             mock.patch.object(rules.subprocess, 'run', return_value=mock.Mock(stdout=b'456\n')):
+            self.assertEqual(rules.nginx_worker_identity('fixture'), ('web:staff', 456))
+        def default_group(container, mode, limit):
+            return b'events {} http {}' if mode == 'config' else b'configure arguments: --user=web\n'
+        with mock.patch.object(rules, '_nginx_master_identity', return_value=(0, 0, False)), \
+             mock.patch.object(rules, '_nginx_output', side_effect=default_group), \
+             mock.patch.object(rules.subprocess, 'run', return_value=mock.Mock(stdout=b'456\n')):
+            self.assertEqual(rules.nginx_worker_identity('fixture'), ('web:web', 456))
+        with mock.patch.object(rules, '_nginx_master_identity', return_value=(0, 0, False)), \
+             mock.patch.object(rules, '_nginx_output', return_value=b'events {} http {}'):
+            with self.assertRaises(rules.ConfigError):
+                rules.nginx_worker_identity('fixture')
+
+    def test_unprivileged_master_uses_actual_ids(self):
+        with mock.patch.object(rules, '_nginx_master_identity', return_value=(101, 103, False)), \
+             mock.patch.object(rules, '_nginx_output', return_value=b'user other group; events {} http {}'), \
+             mock.patch.object(rules.subprocess, 'run', return_value=mock.Mock(stdout=b'103\n')):
+            self.assertEqual(rules.nginx_worker_identity('fixture'), ('101:103', 103))
+
+    def test_single_process_uses_actual_ids_even_when_root(self):
+        with mock.patch.object(rules, '_nginx_master_identity', return_value=(0, 0, True)), \
+             mock.patch.object(rules, '_nginx_output', return_value=b'user other group; events {} http {}'), \
+             mock.patch.object(rules.subprocess, 'run', return_value=mock.Mock(stdout=b'0\n')):
+            self.assertEqual(rules.nginx_worker_identity('fixture'), ('0:0', 0))
+
+    def test_orphan_worker_is_not_treated_as_single_process(self):
+        with mock.patch.object(rules.subprocess, 'run', return_value=mock.Mock(stdout=b'single:0:0\n')) as run:
+            rules._nginx_master_identity('fixture', True)
+        script = run.call_args.args[0][5]
+        with tempfile.TemporaryDirectory(prefix='site-access-proc-') as directory:
+            process = Path(directory) / '1'
+            process.mkdir()
+            (process / 'comm').write_text('nginx\n')
+            (process / 'cmdline').write_bytes(b'nginx: worker process\0')
+            (process / 'status').write_text('Uid:\t101\t101\t101\t101\nGid:\t101\t101\t101\t101\n')
+            for configured in ('0', '1'):
+                result = subprocess.run(['sh', '-c', script.replace('/proc/', directory + '/'), 'sh', configured],
+                                        capture_output=True, timeout=5)
+                self.assertNotEqual(result.returncode, 0)
+
+    def test_main_user_scan_ignores_nested_directives(self):
+        self.assertEqual(rules._nginx_main_directives('user nginx; http { map x y { user nobody; } }'), [['user', 'nginx']])
 
 
 @unittest.skipUnless(sys.platform == 'linux', 'requires Linux atomic exchange')
@@ -43,7 +102,39 @@ class SiteAccessRuleTests(unittest.TestCase):
         self.assertIn('alice:$apr1$', password_file.read_text())
         self.assertNotIn('synthetic-secret', password_file.read_text())
         self.assertIn('proxy_pass http://app;', config)
-        self.assertEqual(self.events, ['read', 'test', 'reload'])
+        self.assertEqual(self.events, ['read', 'read', 'test', 'read', 'reload', 'read'])
+
+    def test_rejects_nested_returns_that_can_disclose_response_content(self):
+        for statement in ('return 302 /public;', 'return 403 "SYNTHETIC_PROTECTED_BODY";',
+                          'return 404 /private-content;'):
+            with self.subTest(statement=statement):
+                source = ('server { location /private { ' + statement + ' } }').encode()
+                self.conf.write_bytes(source)
+                with self.assertRaises(rules.ConfigError):
+                    rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), 0, 'server', '', '',
+                                   'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                                   worker_group=os.getegid, verify_read=lambda path: None)
+                self.assertEqual(self.conf.read_bytes(), source)
+                self.assertFalse(list(self.root.glob('.site-auth-*.passwd')))
+
+    def test_allows_status_only_nested_deny(self):
+        source = b'server { location /private { return 403; } }'
+        self.conf.write_bytes(source)
+        rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), 0, 'server', '', '',
+                       'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                       worker_group=os.getegid, verify_read=lambda path: None,
+                       hasher=lambda _: '$apr1$abcdefgh$abcdefghijklmnopqrstuv')
+        self.assertIn('auth_basic', self.conf.read_text())
+
+    def test_rejects_included_return_with_custom_body(self):
+        (self.root / 'return-policy.inc').write_text('return 403 "SYNTHETIC_PROTECTED_BODY";')
+        source = b'server { include /etc/nginx/conf.d/return-policy.inc; }'
+        self.conf.write_bytes(source)
+        with self.assertRaises(rules.ConfigError):
+            rules.add_rule(self.dirfd, self.conf.name, txn.digest(source), 0, 'server', '', '',
+                           'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                           worker_group=os.getegid, verify_read=lambda path: None)
+        self.assertEqual(self.conf.read_bytes(), source)
 
     def test_failed_validation_restores_config_and_removes_unused_file(self):
         def fail():
@@ -52,6 +143,37 @@ class SiteAccessRuleTests(unittest.TestCase):
             self.create(validate=fail)
         self.assertEqual(self.conf.read_bytes(), self.original)
         self.assertFalse(list(self.root.glob('.site-auth-*.passwd')))
+
+    def test_worker_access_change_after_reload_rolls_back(self):
+        reads = []
+        events = []
+        def verify_read(path):
+            reads.append(path)
+            if len(reads) == 4:
+                raise rules.ConfigError('worker identity changed')
+        with self.assertRaises(rules.ConfigError):
+            rules.add_rule(self.dirfd, self.conf.name, txn.digest(self.original), 0, 'location', '/admin/', '',
+                           'alice', 'synthetic-secret', validate=lambda: events.append('test'),
+                           reload_config=lambda: events.append('reload'), worker_group=os.getegid,
+                           verify_read=verify_read, hasher=lambda _: '$apr1$abcdefgh$abcdefghijklmnopqrstuv')
+        self.assertEqual(self.conf.read_bytes(), self.original)
+        self.assertEqual(events, ['test', 'reload', 'test', 'reload'])
+        self.assertFalse(list(self.root.glob('.site-auth-*.passwd')))
+
+    def test_created_rule_verification_rechecks_worker_after_reload(self):
+        rules.add_rule(self.dirfd, self.conf.name, txn.digest(self.original), 0, 'location', '/admin/', '',
+                       'alice', 'synthetic-secret', validate=lambda: None, reload_config=lambda: None,
+                       worker_group=os.getegid, verify_read=lambda path: None)
+        created = self.conf.read_bytes()
+        changed = []
+        def verify_read(path):
+            if changed:
+                raise rules.ConfigError('worker identity changed')
+        with self.assertRaises(rules.ConfigError):
+            rules.add_rule(self.dirfd, self.conf.name, txn.digest(created), 0, 'location', '/admin/', '',
+                           'alice', 'synthetic-secret', validate=lambda: None,
+                           reload_config=lambda: changed.append(True), verify_read=verify_read, verify_only=True)
+        self.assertEqual(self.conf.read_bytes(), created)
 
     def test_rejects_existing_rule_or_changed_config(self):
         self.conf.write_bytes(self.original + b'# changed\n')

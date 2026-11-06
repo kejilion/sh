@@ -7,9 +7,15 @@ mkdir -p "$fixture/web/conf.d" "$fixture/jobs"
 cat > "$fixture/docker-bin" <<'EOF'
 #!/usr/bin/env bash
 case "$*" in
-  'exec nginx id -g nginx') id -g ;;
+  'exec -u nginx:nginx nginx id -g') id -g ;;
+  'exec nginx sh -c '*)
+    case "$5" in
+      *'nginx -T'*) printf 'user nginx; events {} http {}\n\n# %s\n' "$7" ;;
+      *'/proc/'*) printf 'master:0:0\n' ;;
+      *) exit 1 ;;
+    esac ;;
   'exec nginx head -c 1048577 /etc/nginx/nginx.conf') printf 'events {} http {}\n' ;;
-  'exec -u nginx nginx sh -c '*|'exec nginx nginx -t'|'exec nginx nginx -s reload') exit 0 ;;
+  'exec -u nginx:nginx nginx sh -c '*|'exec nginx nginx -t'|'exec nginx nginx -s reload') exit 0 ;;
   *) exit 1 ;;
 esac
 EOF
