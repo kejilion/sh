@@ -18,9 +18,1542 @@ ENABLE_STATS="true"
 KPANEL_WEB_CERTIFICATE_PROTOCOL_VERSION="1"
 KPANEL_WEB_CERTIFICATE_REPLACE_PROTOCOL_VERSION="1"
 KPANEL_WEB_CERTIFICATE_FORCE_RENEW_PROTOCOL_VERSION="1"
+KPANEL_WEB_ACCESS_PASSWORD_PROTOCOL_VERSION="1"
 KPANEL_APP_CONCURRENCY_PROTOCOL_VERSION="1"
 KPANEL_LOCAL_APPS_PROTOCOL_VERSION="1"
 unset KJ_APP_LOCKS_HELD
+
+# BEGIN GENERATED SITE ACCESS ADAPTER
+kpanel_web_access_password() (
+  [ "${KJ_WEB_NONINTERACTIVE:-}" = "1" ] || return 64
+  [ "$(id -u)" = "0" ] || return 1
+  [ "$#" = "0" ] || return 64
+  local adapter_dir
+  adapter_dir=$(mktemp -d /run/kejilion-site-access.XXXXXXXX) || return 1
+  trap 'rm -rf -- "$adapter_dir"' EXIT
+  umask 077
+  cat > "$adapter_dir/site_access_nginx.py" <<'KPANEL_EMBEDDED_SITE_ACCESS_NGINX_PY'
+r"""Lossless Nginx context parsing for website access-password operations.
+
+This module is deliberately independent of the panel and of any persisted
+ownership markers: the Nginx configuration remains the source of truth.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+import re
+
+
+class ConfigError(ValueError):
+    pass
+
+
+@dataclass(frozen=True)
+class Token:
+    value: str
+    start: int
+    end: int
+    delimiter: bool = False
+
+
+@dataclass
+class Directive:
+    words: list[str]
+    start: int
+    end: int
+
+
+@dataclass
+class Block:
+    words: list[str]
+    start: int
+    open_end: int
+    end: int = -1
+    directives: list[Directive] = field(default_factory=list)
+    children: list["Block"] = field(default_factory=list)
+
+
+def tokenize(text: str):
+    """Yield decoded Nginx tokens together with their original source spans."""
+    n, i = len(text), 0
+    while i < n:
+        if text[i].isspace():
+            i += 1
+            continue
+        if text[i] == "#":
+            while i < n and text[i] != "\n":
+                i += 1
+            continue
+        if text[i] in "{};":
+            yield Token(text[i], i, i + 1, True)
+            i += 1
+            continue
+        start, quote, value = i, None, []
+        while i < n:
+            c = text[i]
+            if c == "\\":
+                if i + 1 >= n:
+                    raise ConfigError("incomplete escape")
+                # Retain non-special escapes such as the backslash in \.php$.
+                next_char = text[i + 1]
+                if next_char in "\\\"' \t\r\n;{}#":
+                    value.append(next_char)
+                else:
+                    value.extend((c, next_char))
+                i += 2
+                continue
+            if quote:
+                if c == quote:
+                    quote = None
+                else:
+                    value.append(c)
+                i += 1
+                continue
+            if c in "\"'":
+                quote = c
+                i += 1
+                continue
+            if c == "{" and value and value[-1] == "$":
+                end = text.find("}", i + 1)
+                if end < 0:
+                    raise ConfigError("incomplete variable")
+                value.append(text[i:end + 1])
+                i = end + 1
+                continue
+            if c.isspace() or c in "{};#":
+                break
+            value.append(c)
+            i += 1
+        if quote:
+            raise ConfigError("unterminated quote")
+        if i == start:
+            raise ConfigError("invalid token")
+        yield Token("".join(value), start, i)
+
+
+def parse(text: str) -> Block:
+    root = Block([], 0, 0, len(text))
+    stack, words = [root], []
+    for token in tokenize(text):
+        if not token.delimiter:
+            words.append(token)
+        elif token.value == ";":
+            if not words:
+                raise ConfigError("empty directive")
+            stack[-1].directives.append(Directive([w.value for w in words], words[0].start, token.end))
+            words = []
+        elif token.value == "{":
+            if not words:
+                raise ConfigError("block has no name")
+            block = Block([w.value for w in words], words[0].start, token.end)
+            stack[-1].children.append(block)
+            stack.append(block)
+            words = []
+        else:
+            if words or len(stack) == 1:
+                raise ConfigError("unexpected closing brace")
+            stack.pop().end = token.end
+    if words or len(stack) != 1:
+        raise ConfigError("incomplete configuration")
+    return root
+
+
+def select_context(root: Block, server_index: int, scope: str,
+                   location: str = "", modifier: str = "") -> Block:
+    """Select a concrete server/location without assuming who created it."""
+    servers = []
+    for child in root.children:
+        if child.words == ["server"]:
+            servers.append(child)
+        elif child.words == ["http"]:
+            servers.extend(item for item in child.children if item.words == ["server"])
+    if not isinstance(server_index, int) or isinstance(server_index, bool) or not 0 <= server_index < len(servers):
+        raise ConfigError("server not found")
+    server = servers[server_index]
+    if scope == "server":
+        if location or modifier:
+            raise ConfigError("unexpected server location")
+        return server
+    if scope != "location" or not location:
+        raise ConfigError("invalid scope")
+    wanted = ["location", modifier, location] if modifier else ["location", location]
+    matches = []
+
+    def visit(parent):
+        for child in parent.children:
+            if child.words == wanted:
+                matches.append(child)
+            if child.words and child.words[0] == "location":
+                visit(child)
+
+    visit(server)
+    if len(matches) != 1:
+        raise ConfigError("location is missing or ambiguous")
+    return matches[0]
+
+
+def context_chain(root: Block, target: Block) -> list[Block]:
+    """Return the concrete inheritance chain without guessing includes."""
+    ancestors = []
+
+    def find(block):
+        ancestors.append(block)
+        if block is target:
+            return True
+        for child in block.children:
+            if find(child):
+                return True
+        ancestors.pop()
+        return False
+
+    if not find(root):
+        raise ConfigError("selected context is not in configuration")
+    return ancestors
+
+
+def effective_auth(root: Block, target: Block) -> tuple[str, str] | None:
+    """Resolve literal auth settings inherited by one selected context."""
+    ancestors = context_chain(root, target)
+    realm = user_file = None
+    # Resolve from the target outward. Once both values are explicit in a
+    # nearer context, unrelated parent includes cannot change that rule.
+    for block in reversed(ancestors):
+        found = {}
+        has_include = False
+        for directive in block.directives:
+            name = directive.words[0]
+            if name == "include":
+                has_include = True
+                continue
+            if name not in ("auth_basic", "auth_basic_user_file"):
+                continue
+            if name in found or len(directive.words) != 2:
+                raise ConfigError("ambiguous authentication directive")
+            found[name] = directive.words[1]
+        if realm is None:
+            realm = found.get("auth_basic")
+        if user_file is None:
+            user_file = found.get("auth_basic_user_file")
+        if realm == "off":
+            return None
+        if has_include and (realm is None or user_file is None):
+            raise ConfigError("included configuration must be resolved before account changes")
+        if realm is not None and user_file is not None:
+            break
+    if realm in (None, "off"):
+        return None
+    if not realm or not user_file or "$" in realm or "$" in user_file:
+        raise ConfigError("authentication settings cannot be resolved")
+    return realm, user_file
+
+
+def replace_auth(text: str, block: Block, realm: str | None, user_file: str | None,
+                 *, enforce_satisfy_all: bool = False) -> str:
+    """Replace only direct Basic Auth directives; keep every other byte intact."""
+    if (realm is None) != (user_file is None):
+        raise ConfigError("realm and password file must be supplied together")
+    auth = [d for d in block.directives if d.words[0] in {"auth_basic", "auth_basic_user_file"}]
+    names = [d.words[0] for d in auth]
+    if len(names) != len(set(names)):
+        raise ConfigError("duplicate authentication directive")
+    if realm is not None and (not realm or any(c in realm for c in '\r\n\x00"\\$') or
+                              not user_file or any(c in user_file for c in '\r\n\x00"\\$;{}')):
+        raise ConfigError("unsafe authentication value")
+    edits = [(d.start, d.end, "") for d in auth]
+    marker = ' # kpanel-access-password-satisfy'
+    satisfy = [d for d in block.directives if d.words[0] == 'satisfy']
+    if realm is None:
+        for directive in satisfy:
+            if directive.words == ['satisfy', 'all'] and text[directive.end:].startswith(marker):
+                edits.append((directive.start, directive.end + len(marker), ''))
+    if realm is not None:
+        insertion = f'\n    auth_basic "{realm}";\n    auth_basic_user_file "{user_file}";'
+        if enforce_satisfy_all:
+            if len(satisfy) > 1 or satisfy and satisfy[0].words != ['satisfy', 'all']:
+                raise ConfigError('existing satisfy policy cannot be changed safely')
+            if not satisfy:
+                insertion += '\n    satisfy all;' + marker + '\n'
+        edits.append((block.open_end, block.open_end, insertion))
+    for start, end, replacement in sorted(edits, reverse=True):
+        text = text[:start] + replacement + text[end:]
+    return text
+
+
+def update_account(content: bytes, username: str, replacement_hash: str | None, *,
+                   previous_username: str | None = None, must_create: bool = False) -> bytes:
+    """Edit one htpasswd account while retaining unrelated users and comments.
+
+    ``replacement_hash=None`` removes the account; callers must decide whether
+    removing the last account should also remove the corresponding rule.
+    Passwords and hashes are never returned in status messages.
+    """
+    def validate_name(value):
+        if not isinstance(value, str) or not value or len(value.encode("utf-8")) > 256:
+            raise ConfigError("invalid account name")
+        if value.startswith("#") or any(ord(c) < 32 or ord(c) == 127 or c == ":" for c in value):
+            raise ConfigError("invalid account name")
+
+    validate_name(username)
+    if previous_username is not None:
+        validate_name(previous_username)
+    if len(content) > 1024 * 1024 or b"\0" in content:
+        raise ConfigError("invalid password file")
+    if replacement_hash is not None and not re.fullmatch(r"\$apr1\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}", replacement_hash):
+        raise ConfigError("invalid password hash")
+    try:
+        lines = content.decode("utf-8").splitlines(keepends=True)
+    except UnicodeDecodeError as exc:
+        raise ConfigError("invalid password file encoding") from exc
+    names = {}
+    for index, raw in enumerate(lines):
+        line = raw.rstrip("\r\n")
+        if not line or line.startswith("#"):
+            continue
+        name, separator, digest = line.partition(":")
+        if not separator or not name or not digest or name in names:
+            raise ConfigError("invalid or ambiguous password file")
+        names[name] = index
+    old_name = previous_username if previous_username is not None else username
+    if must_create and (previous_username is not None or replacement_hash is None or username in names):
+        raise ConfigError("account already exists or request is invalid")
+    if previous_username is not None and previous_username not in names:
+        raise ConfigError("account no longer exists")
+    if old_name != username and username in names:
+        raise ConfigError("account already exists")
+    index = names.get(old_name)
+    if replacement_hash is None:
+        if index is None:
+            raise ConfigError("account no longer exists")
+        del lines[index]
+    else:
+        new_line = f"{username}:{replacement_hash}\n"
+        if index is None:
+            if lines and not lines[-1].endswith(("\n", "\r")):
+                lines[-1] += "\n"
+            lines.append(new_line)
+        else:
+            lines[index] = new_line
+    result = "".join(lines).encode("utf-8")
+    if len(result) > 1024 * 1024:
+        raise ConfigError("password file too large")
+    return result
+KPANEL_EMBEDDED_SITE_ACCESS_NGINX_PY
+  cat > "$adapter_dir/site_access_transaction.py" <<'KPANEL_EMBEDDED_SITE_ACCESS_TRANSACTION_PY'
+"""Linux file transaction primitive for the shared site access adapter.
+
+The caller supplies a previously validated directory and basename. An atomic
+exchange leaves the prior inode available until validation and reload succeed.
+"""
+from __future__ import annotations
+
+import ctypes
+import fcntl
+import hashlib
+import os
+import secrets
+import stat
+
+
+class TransactionError(RuntimeError):
+    pass
+
+
+class Conflict(TransactionError):
+    pass
+
+
+def digest(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _read(dirfd, name, limit):
+    fd = os.open(name, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=dirfd)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_size > limit:
+            raise TransactionError("target is not an accepted regular file")
+        chunks, total = [], 0
+        while True:
+            block = os.read(fd, min(65536, limit + 1 - total))
+            if not block:
+                break
+            chunks.append(block)
+            total += len(block)
+            if total > limit:
+                raise TransactionError("target exceeds size limit")
+        return fd, info, b"".join(chunks)
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def _same_inode(dirfd, name, info):
+    try:
+        current = os.stat(name, dir_fd=dirfd, follow_symlinks=False)
+    except FileNotFoundError:
+        return False
+    return stat.S_ISREG(current.st_mode) and (current.st_dev, current.st_ino) == (info.st_dev, info.st_ino)
+
+
+def _matches(dirfd, name, info, expected_hash, limit):
+    try:
+        fd, current, contents = _read(dirfd, name, limit)
+    except (OSError, TransactionError):
+        return False
+    try:
+        return ((current.st_dev, current.st_ino) == (info.st_dev, info.st_ino)
+                and digest(contents) == expected_hash)
+    finally:
+        os.close(fd)
+
+
+def _exchange(dirfd, left, right):
+    libc = ctypes.CDLL(None, use_errno=True)
+    rename = libc.renameat2
+    rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    rename.restype = ctypes.c_int
+    if rename(dirfd, os.fsencode(left), dirfd, os.fsencode(right), 2) != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error))
+
+
+def rename_noreplace(dirfd, left, right):
+    libc = ctypes.CDLL(None, use_errno=True)
+    rename = libc.renameat2
+    rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+    rename.restype = ctypes.c_int
+    if rename(dirfd, os.fsencode(left), dirfd, os.fsencode(right), 1) != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error))
+
+
+def replace_existing(directory: str | int, name: str, expected_sha256: str, transform,
+                     validate, reload_config, *, limit: int = 2 << 20, before_exchange=None):
+    """Replace one existing file, validate and reload, or safely restore it.
+
+    ``transform`` is called with prior bytes and returns the candidate bytes.
+    Both callbacks must raise on failure. Concurrent external writes are
+    detected using the displaced inode and its content, never overwritten.
+    """
+    if not name or name in (".", "..") or "/" in name or "\x00" in name:
+        raise TransactionError("invalid target name")
+    if len(expected_sha256) != 64 or any(c not in "0123456789abcdef" for c in expected_sha256):
+        raise TransactionError("invalid resource version")
+    dirfd = (os.dup(directory) if isinstance(directory, int) else
+             os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC))
+    if not stat.S_ISDIR(os.fstat(dirfd).st_mode):
+        os.close(dirfd)
+        raise TransactionError("target directory is unavailable")
+    lockfd, originalfd, tempfd = None, None, None
+    temporary, temp_info, swapped, retain = None, None, False, False
+    displaced_info, displaced_hash, reload_attempted = None, None, False
+    try:
+        lockfd = os.open('.kpanel-site-access.lock', os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=dirfd)
+        lockinfo = os.fstat(lockfd)
+        if not stat.S_ISREG(lockinfo.st_mode) or lockinfo.st_uid != os.geteuid() or lockinfo.st_mode & 0o022:
+            raise TransactionError("unsafe transaction lock")
+        fcntl.flock(lockfd, fcntl.LOCK_EX)
+        originalfd, original_info, original = _read(dirfd, name, limit)
+        if digest(original) != expected_sha256:
+            raise Conflict("target changed")
+        candidate = transform(original)
+        if not isinstance(candidate, bytes) or len(candidate) > limit:
+            raise TransactionError("invalid candidate")
+        if candidate == original:
+            return digest(original)
+        temporary = '.site-access-' + secrets.token_hex(16)
+        tempfd = os.open(temporary, os.O_RDWR | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600, dir_fd=dirfd)
+        # Preserve the staged inode identity even if metadata setup fails.
+        temp_info = os.fstat(tempfd)
+        os.fchown(tempfd, original_info.st_uid, original_info.st_gid)
+        os.fchmod(tempfd, stat.S_IMODE(original_info.st_mode))
+        for attribute in os.listxattr(originalfd):
+            os.setxattr(tempfd, attribute, os.getxattr(originalfd, attribute))
+        view = memoryview(candidate)
+        while view:
+            count = os.write(tempfd, view)
+            if count <= 0:
+                raise TransactionError("candidate write failed")
+            view = view[count:]
+        os.fsync(tempfd)
+        temp_info = os.fstat(tempfd)
+        if before_exchange is not None:
+            before_exchange()
+        _exchange(dirfd, temporary, name)
+        swapped = True
+        os.fsync(dirfd)
+        try:
+            backupfd, backup_info, backup = _read(dirfd, temporary, limit)
+        except (OSError, TransactionError):
+            retain = True
+            raise TransactionError("unable to verify displaced file; backup retained as " + temporary)
+        os.close(backupfd)
+        displaced_info, displaced_hash = backup_info, digest(backup)
+        if ((backup_info.st_dev, backup_info.st_ino) != (original_info.st_dev, original_info.st_ino)
+                or digest(backup) != expected_sha256):
+            raise Conflict("target changed during publication")
+        if not _matches(dirfd, name, temp_info, digest(candidate), limit):
+            retain = True
+            raise Conflict("candidate changed during publication; backup retained as " + temporary)
+        validate()
+        if not _matches(dirfd, name, temp_info, digest(candidate), limit):
+            retain = True
+            raise Conflict("candidate changed during validation; backup retained as " + temporary)
+        reload_attempted = True
+        reload_config()
+        if not _matches(dirfd, name, temp_info, digest(candidate), limit):
+            retain = True
+            raise Conflict("candidate changed during reload; backup retained as " + temporary)
+        if not _matches(dirfd, temporary, original_info, expected_sha256, limit):
+            retain = True
+            raise Conflict("backup changed during reload; retained as " + temporary)
+        os.unlink(temporary, dir_fd=dirfd)
+        temporary = None
+        os.fsync(dirfd)
+        return digest(candidate)
+    except BaseException as failure:
+        if swapped and not retain:
+            # If an external process wins a race, retain both artifacts rather
+            # than replacing a newer file or deleting a foreign inode.
+            if (displaced_info is not None and _matches(dirfd, name, temp_info, digest(candidate), limit)
+                    and _matches(dirfd, temporary, displaced_info, displaced_hash, limit)):
+                try:
+                    _exchange(dirfd, temporary, name)
+                    os.fsync(dirfd)
+                    if reload_attempted:
+                        reload_config()
+                except BaseException as rollback_error:
+                    retain = True
+                    raise TransactionError("restore or reload failed; candidate retained as " + temporary) from rollback_error
+            else:
+                retain = True
+                raise TransactionError("concurrent change; backup retained as " + temporary) from failure
+        raise
+    finally:
+        if temporary and not retain and temp_info is not None and _same_inode(dirfd, temporary, temp_info):
+            os.unlink(temporary, dir_fd=dirfd)
+        for fd in (tempfd, originalfd, lockfd):
+            if fd is not None:
+                os.close(fd)
+        os.close(dirfd)
+KPANEL_EMBEDDED_SITE_ACCESS_TRANSACTION_PY
+  cat > "$adapter_dir/site_access_accounts.py" <<'KPANEL_EMBEDDED_SITE_ACCESS_ACCOUNTS_PY'
+"""Account updates for Nginx password files using the shared transaction."""
+from __future__ import annotations
+
+import subprocess
+
+from site_access_nginx import ConfigError, update_account
+from site_access_transaction import replace_existing
+
+
+def hash_password(password: str) -> str:
+    if not isinstance(password, str):
+        raise ConfigError('invalid password')
+    raw = password.encode('utf-8')
+    # openssl passwd -apr1 silently truncates stdin passwords after 256 bytes.
+    if not raw or len(raw) > 256 or any(char in raw for char in (b'\x00', b'\r', b'\n')):
+        raise ConfigError('invalid password')
+    try:
+        result = subprocess.run(['/usr/bin/openssl', 'passwd', '-apr1', '-stdin'],
+                                input=raw + b'\n', stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
+                                timeout=10, check=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ConfigError('password hashing unavailable') from exc
+    try:
+        return result.stdout.decode('ascii').strip()
+    except UnicodeDecodeError as exc:
+        raise ConfigError('password hashing failed') from exc
+
+
+def edit_account(directory: str, name: str, expected_sha256: str, action: str,
+                 username: str, *, password: str = '', previous_username: str | None = None,
+                 hasher=hash_password, assert_context=None) -> str:
+    if action not in ('add', 'update', 'delete'):
+        raise ConfigError('invalid account action')
+    if action == 'add' and previous_username is not None:
+        raise ConfigError('unexpected previous account')
+    if action == 'update' and previous_username is None:
+        raise ConfigError('previous account is required')
+    if action == 'delete' and (previous_username is not None or password):
+        raise ConfigError('unexpected deletion arguments')
+    new_hash = None if action == 'delete' else hasher(password)
+    def transform(content):
+        return update_account(content, username, new_hash,
+                              previous_username=previous_username,
+                              must_create=action == 'add')
+    # Nginx reads the password file for each request. No configuration reload
+    # is necessary, and no credential is passed through a command line.
+    return replace_existing(directory, name, expected_sha256, transform,
+                            lambda: None, lambda: None, limit=1 << 20,
+                            before_exchange=assert_context)
+KPANEL_EMBEDDED_SITE_ACCESS_ACCOUNTS_PY
+  cat > "$adapter_dir/site_access_config.py" <<'KPANEL_EMBEDDED_SITE_ACCESS_CONFIG_PY'
+"""Apply Basic Auth directives without rewriting the surrounding Nginx site."""
+from __future__ import annotations
+
+import subprocess
+
+from site_access_nginx import ConfigError, parse, replace_auth, select_context
+from site_access_transaction import replace_existing
+
+
+def edit_config_many(directory: str, name: str, expected_sha256: str, server_indices: list[int],
+                     scope: str, location: str, modifier: str, realm: str, user_file: str,
+                     *, validate, reload_config, assert_context=None) -> str:
+    if not server_indices or len(server_indices) > 64 or len(set(server_indices)) != len(server_indices):
+        raise ConfigError('invalid server list')
+
+    def transform(content):
+        try:
+            source = content.decode('utf-8')
+        except UnicodeDecodeError as exc:
+            raise ConfigError('site configuration is not UTF-8') from exc
+        tree = parse(source)
+        targets = [select_context(tree, index, scope, location, modifier) for index in server_indices]
+        for target in targets:
+            if any(d.words[0] in ('auth_basic', 'auth_basic_user_file') for d in target.directives):
+                raise ConfigError('a password rule already exists in this context')
+        for target in sorted(targets, key=lambda block: block.start, reverse=True):
+            source = replace_auth(source, target, realm, user_file, enforce_satisfy_all=True)
+        parse(source)
+        return source.encode('utf-8')
+
+    return replace_existing(directory, name, expected_sha256, transform, validate, reload_config,
+                            before_exchange=assert_context)
+
+
+def edit_config(directory: str, name: str, expected_sha256: str, server_index: int,
+                scope: str, location: str, modifier: str, action: str,
+                *, realm: str = '', user_file: str = '', validate, reload_config, assert_context=None) -> str:
+    if action not in ('set', 'delete'):
+        raise ConfigError('invalid configuration action')
+    if action == 'delete' and (realm or user_file):
+        raise ConfigError('unexpected deletion arguments')
+
+    def transform(content):
+        try:
+            source = content.decode('utf-8')
+        except UnicodeDecodeError as exc:
+            raise ConfigError('site configuration is not UTF-8') from exc
+        block = select_context(parse(source), server_index, scope, location, modifier)
+        direct_auth = [item for item in block.directives
+                       if item.words[0] in ('auth_basic', 'auth_basic_user_file')]
+        if action == 'delete' and not direct_auth:
+            raise ConfigError('no direct authentication rule exists in this context')
+        result = replace_auth(source, block, realm if action == 'set' else None,
+                              user_file if action == 'set' else None)
+        parse(result)
+        return result.encode('utf-8')
+
+    return replace_existing(directory, name, expected_sha256, transform, validate, reload_config,
+                            before_exchange=assert_context)
+
+
+def nginx_command(*arguments):
+    """Only fixed commands on the script's existing nginx container."""
+    try:
+        subprocess.run(['/usr/bin/docker', 'exec', 'nginx', 'nginx', *arguments],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
+                       timeout=30, check=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ConfigError('Nginx validation or reload failed') from exc
+
+
+def apply_config(directory: str, name: str, expected_sha256: str, server_index: int,
+                 scope: str, location: str, modifier: str, action: str,
+                 *, realm: str = '', user_file: str = '') -> str:
+    return edit_config(directory, name, expected_sha256, server_index, scope, location, modifier,
+                       action, realm=realm, user_file=user_file,
+                       validate=lambda: nginx_command('-t'),
+                       reload_config=lambda: nginx_command('-s', 'reload'))
+KPANEL_EMBEDDED_SITE_ACCESS_CONFIG_PY
+  cat > "$adapter_dir/site_access_rules.py" <<'KPANEL_EMBEDDED_SITE_ACCESS_RULES_PY'
+"""Add and remove authentication rules on concrete Nginx contexts."""
+from __future__ import annotations
+
+import os
+import fnmatch
+import hmac
+import json
+import re
+import secrets
+import stat
+import subprocess
+
+from site_access_accounts import hash_password
+from site_access_config import edit_config_many
+from site_access_nginx import ConfigError, context_chain, parse, select_context, tokenize, update_account
+from site_access_transaction import Conflict, TransactionError, _matches, _read, _same_inode, digest, rename_noreplace
+
+
+def _nginx_output(container, mode, limit):
+    marker = 'kpanel-nginx-' + secrets.token_hex(16)
+    command = {'config': 'nginx -T 2>/dev/null', 'version': 'nginx -V 2>&1'}[mode]
+    script = '(' + command + ' && printf "\\n# %s\\n" "$1") | head -c ' + str(limit + 1)
+    output = subprocess.run(['/usr/bin/docker', 'exec', container, 'sh', '-c', script, 'sh', marker],
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                            env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
+                            timeout=10, check=True).stdout
+    suffix = ('\n# ' + marker + '\n').encode('ascii')
+    if len(output) > limit or not output.endswith(suffix):
+        raise ConfigError('Nginx worker configuration unavailable or too large')
+    return output[:-len(suffix)]
+
+
+def _nginx_main_directives(text):
+    # nginx -T is already syntax-checked. Walk its bounded token stream without
+    # building an entire configuration tree to locate main-scope directives.
+    depth, words, users = 0, [], []
+    for token in tokenize(text):
+        if not token.delimiter:
+            if len(words) < 4:
+                words.append(token.value)
+        elif token.value == ';':
+            if depth == 0 and words and words[0] in ('user', 'master_process'):
+                users.append(words)
+            words = []
+        elif token.value == '{':
+            depth += 1
+            words = []
+        elif token.value == '}':
+            if depth == 0 or words:
+                raise ConfigError('Nginx worker configuration cannot be parsed')
+            depth -= 1
+    if depth or words:
+        raise ConfigError('Nginx worker configuration cannot be parsed')
+    return users
+
+
+def _nginx_master_identity(container, single_config=False):
+    # The user directive is ignored by an unprivileged master. Inspect the
+    # running master rather than assuming the container's default exec user.
+    script = r'''count=0; found=0; processes=0; master=''; single=''; single_ok=0
+for file in /proc/[0-9]*/cmdline; do
+  count=$((count + 1)); [ "$count" -le 4096 ] || exit 1
+  [ -r "$file" ] || continue
+  dir=${file%/cmdline}
+  [ "$(cat "$dir/comm" 2>/dev/null)" = nginx ] || continue
+  command=$(head -c 128 "$file" 2>/dev/null | tr '\000' ' ')
+  ids=$(awk '/^Uid:/ { u=$3 } /^Gid:/ { g=$3 } END { if (u == "" || g == "") exit 1; print u ":" g }' "$dir/status") || exit 1
+  processes=$((processes + 1)); single=$ids
+  case "$command" in
+    'nginx: master process '*)
+      found=$((found + 1)); master=$ids ;;
+    'nginx: single process'*) single_ok=1 ;;
+    'nginx '*|*/nginx\ *)
+      case "$command" in
+        *' -t '*|*' -T '*|*' -s '*) ;;
+        *'master_process off;'*) single_ok=1 ;;
+        *) [ "$1" = 1 ] && single_ok=1 ;;
+      esac ;;
+  esac
+done
+if [ "$found" -eq 1 ]; then printf 'master:%s\n' "$master"
+elif [ "$found" -eq 0 ] && [ "$processes" -eq 1 ] && [ "$single_ok" -eq 1 ]; then printf 'single:%s\n' "$single"
+else exit 1; fi'''
+    result = subprocess.run(['/usr/bin/docker', 'exec', container, 'sh', '-c', script, 'sh', '1' if single_config else '0'],
+                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                            env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
+                            timeout=10, check=True)
+    match = re.fullmatch(rb'(master|single):([0-9]{1,10}):([0-9]{1,10})\n?', result.stdout)
+    if not match:
+        raise ConfigError('Nginx master identity unavailable')
+    return int(match.group(2)), int(match.group(3)), match.group(1) == b'single'
+
+
+def nginx_worker_identity(container='nginx'):
+    """Resolve the configured worker identity from Nginx's effective config."""
+    try:
+        dump = _nginx_output(container, 'config', 8 << 20)
+        main_directives = _nginx_main_directives(dump.decode('utf-8'))
+        single_config = ['master_process', 'off'] in main_directives
+        master_uid, master_gid, single_process = _nginx_master_identity(container, single_config)
+        directives = [words for words in main_directives if words[0] == 'user']
+        if len(directives) > 1 or directives and len(directives[0]) not in (2, 3):
+            raise ConfigError('Nginx worker identity unavailable')
+        if single_process or master_uid != 0:
+            user, group = str(master_uid), str(master_gid)
+        elif directives:
+            words = directives[0]
+            user, group = words[1], words[2] if len(words) == 3 else words[1]
+        else:
+            build = _nginx_output(container, 'version', 65536)
+            users = re.findall(rb'(?:^|\s)--user=([^\s]+)', build)
+            groups = re.findall(rb'(?:^|\s)--group=([^\s]+)', build)
+            if len(users) > 1 or len(groups) > 1:
+                raise ConfigError('Nginx default worker identity unavailable')
+            user = users[0].decode('ascii') if users else 'nobody'
+            # A configured build group is needed here: the default for nobody
+            # is selected at build time and need not equal its primary group.
+            if not groups and user == 'nobody':
+                raise ConfigError('Nginx default worker group unavailable')
+            group = groups[0].decode('ascii') if groups else user
+        if not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}', user) or group is not None and not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}', group):
+            raise ConfigError('Nginx worker identity unavailable')
+        identity = user + ':' + group
+        result = subprocess.run(['/usr/bin/docker', 'exec', '-u', identity, container, 'id', '-g'],
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
+                                timeout=10, check=True)
+        if not re.fullmatch(rb'[0-9]{1,10}\n?', result.stdout):
+            raise ConfigError('Nginx worker group unavailable')
+        return identity, int(result.stdout)
+    except (OSError, UnicodeError, subprocess.SubprocessError) as exc:
+        raise ConfigError('Nginx worker identity unavailable') from exc
+
+
+def nginx_worker_group():
+    return nginx_worker_identity()[1]
+
+
+def check_worker_read(nginx_path, container='nginx'):
+    try:
+        identity, _ = nginx_worker_identity(container)
+        subprocess.run(['/usr/bin/docker', 'exec', '-u', identity, container,
+                        'sh', '-c', ': < "$1"', 'sh', nginx_path],
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                       env={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'},
+                       timeout=10, check=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ConfigError('Nginx worker cannot read password file') from exc
+
+
+def _no_config_references(dirfd, filename):
+    names = os.listdir(dirfd)
+    if len(names) > 4096:
+        return False
+    total = 0
+    for name in names:
+        if not (name.endswith('.conf') or name.endswith('.pending') or name.startswith('.site-access-')):
+            continue
+        try:
+            fd, _, data = _read(dirfd, name, 2 << 20)
+            os.close(fd)
+        except (OSError, RuntimeError):
+            return False
+        total += len(data)
+        if total > 8 << 20 or filename.encode() in data:
+            return False
+    return True
+
+
+def is_https_redirect_only(server):
+    """Identify only unconditional server-level redirects to HTTPS."""
+    returns = [d.words for d in server.directives if d.words[0] == 'return']
+    return (len(returns) == 1 and len(returns[0]) == 3
+            and returns[0][1] in ('301', '302', '307', '308')
+            and returns[0][2].lower().startswith('https://')
+            and not any(d.words[0] in ('rewrite', 'include') for d in server.directives)
+            and not any(child.words and child.words[0] == 'if' for child in server.children))
+
+
+def inspect_includes(confdir, contexts, *, http_only=False):
+    """Inspect bounded, actual includes; unknown configuration fails closed."""
+    snapshots, visited = [], set()
+    total = 0
+
+    def include(pattern, depth):
+        nonlocal total
+        if depth > 8 or not isinstance(pattern, str) or any(c in pattern for c in ('\0', '$', '\\')):
+            raise ConfigError('included access policy cannot be verified')
+        builtins = {'fastcgi_params': '/etc/nginx/fastcgi_params', '/etc/nginx/fastcgi_params': '/etc/nginx/fastcgi_params',
+                    'mime.types': '/etc/nginx/mime.types', '/etc/nginx/mime.types': '/etc/nginx/mime.types'}
+        if pattern in builtins:
+            try:
+                result = subprocess.run(['/usr/bin/docker', 'exec', 'nginx', 'head', '-c', '1048577',
+                                         builtins[pattern]], stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, timeout=10, check=True)
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise ConfigError('included access policy cannot be verified') from exc
+            entries = [(pattern, result.stdout)]
+        else:
+            prefix = '/etc/nginx/conf.d/'
+            if pattern.startswith('conf.d/'):
+                pattern = prefix + pattern[len('conf.d/'):]
+            if not pattern.startswith(prefix):
+                raise ConfigError('included access policy cannot be verified')
+            parts = pattern[len(prefix):].split('/')
+            if any(not p or p in ('.', '..') for p in parts) or any(any(c in p for c in '*?[') for p in parts[:-1]):
+                raise ConfigError('invalid included configuration path')
+            directory = os.dup(confdir)
+            try:
+                for component in parts[:-1]:
+                    info = os.fstat(directory)
+                    if info.st_uid != 0 or info.st_mode & 0o022:
+                        raise ConfigError('included access policy directory is not protected')
+                    try:
+                        following = os.open(component, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                                            dir_fd=directory)
+                    except FileNotFoundError:
+                        if any(c in parts[-1] for c in '*?['):
+                            snapshots.append((pattern, 'empty'))
+                            return
+                        raise ConfigError('included access policy cannot be verified')
+                    os.close(directory)
+                    directory = following
+                info = os.fstat(directory)
+                if info.st_uid != 0 or info.st_mode & 0o022:
+                    raise ConfigError('included access policy directory is not protected')
+                names = sorted(name for name in os.listdir(directory) if fnmatch.fnmatchcase(name, parts[-1]))
+                if len(names) > (4096 if http_only else 64) or not names and not any(c in parts[-1] for c in '*?['):
+                    raise ConfigError('included access policy cannot be verified')
+                if not names:
+                    snapshots.append((pattern, 'empty'))
+                entries = []
+                for name in names:
+                    fd, info, data = _read(directory, name, 1 << 20)
+                    os.close(fd)
+                    if info.st_uid != 0 or info.st_mode & 0o022 or not stat.S_ISREG(info.st_mode):
+                        raise ConfigError('included access policy file is not protected')
+                    entries.append((pattern + ':' + name, data))
+            finally:
+                os.close(directory)
+        for name, data in entries:
+            if len(data) > 1 << 20:
+                raise ConfigError('included access policy too large')
+            total += len(data)
+            if total > (8 << 20 if http_only else 2 << 20) or len(snapshots) >= (4096 if http_only else 128) or name in visited:
+                raise ConfigError('included access policy is recursive or too large')
+            visited.add(name)
+            try:
+                tree = parse(data.decode('utf-8'))
+            except (UnicodeDecodeError, ConfigError) as exc:
+                raise ConfigError('included access policy cannot be parsed') from exc
+            # Site server blocks may change as part of this transaction. At
+            # HTTP scope only the file's direct policy/include statements
+            # contribute to inheritance, so snapshot those separately.
+            snapshot_data = (json.dumps([d.words for d in tree.directives if d.words[0] in ('include', 'error_page')],
+                                        ensure_ascii=False).encode() if http_only else data)
+            snapshots.append((name, digest(snapshot_data)))
+            try:
+                inspect(tree, depth + 1)
+            finally:
+                visited.remove(name)
+
+    def inspect(block, depth):
+        for directive in block.directives:
+            words = directive.words
+            if words[0] == 'include':
+                if len(words) != 2:
+                    raise ConfigError('invalid include')
+                include(words[1], depth)
+            elif words[0] == 'error_page':
+                raise ConfigError('authentication error page may bypass password protection')
+            elif http_only:
+                continue
+            elif words[0] in ('auth_basic', 'auth_basic_user_file', 'rewrite') or words == ['satisfy', 'any']:
+                raise ConfigError('included configuration may bypass password authentication')
+            elif words[0] == 'return' and (len(words) != 2 or not re.fullmatch(r'[45][0-9]{2}', words[1])):
+                raise ConfigError('included configuration may bypass password authentication')
+        for child in (() if http_only else block.children):
+            if child.words and child.words[0] == 'location':
+                raise ConfigError('included location cannot be verified')
+            inspect(child, depth)
+
+    for context in contexts:
+        for directive in context.directives:
+            if directive.words[0] == 'include':
+                if len(directive.words) != 2:
+                    raise ConfigError('invalid include')
+                include(directive.words[1], 0)
+    return sorted(snapshots)
+
+
+def nginx_global_config():
+    try:
+        result = subprocess.run(['/usr/bin/docker', 'exec', 'nginx', 'head', '-c', '1048577',
+                                 '/etc/nginx/nginx.conf'], stdout=subprocess.PIPE,
+                                stderr=subprocess.DEVNULL, timeout=10, check=True)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ConfigError('Nginx global policy cannot be verified') from exc
+    if len(result.stdout) > 1 << 20:
+        raise ConfigError('Nginx global policy too large')
+    return result.stdout
+
+
+def inspect_global_policy(confdir, source):
+    try:
+        root = parse(source.decode('utf-8'))
+    except (UnicodeDecodeError, ConfigError) as exc:
+        raise ConfigError('Nginx global policy cannot be parsed') from exc
+    http = [block for block in root.children if block.words == ['http']]
+    if len(http) != 1:
+        raise ConfigError('Nginx global HTTP policy cannot be verified')
+    if any(d.words[0] == 'error_page' for d in http[0].directives):
+        raise ConfigError('global authentication error page may bypass password protection')
+    return digest(source), inspect_includes(confdir, http, http_only=True)
+
+
+def add_rule(confdir: int, config_name: str, config_version: str, server_index: int,
+             scope: str, location: str, modifier: str, username: str, password: str,
+             *, validate, reload_config, worker_group=nginx_worker_group,
+             verify_read=check_worker_read, hasher=hash_password, global_policy=None, verify_only=False):
+    fd, _, source = _read(confdir, config_name, 2 << 20)
+    os.close(fd)
+    if digest(source) != config_version:
+        raise Conflict('site configuration changed')
+    try:
+        root = parse(source.decode('utf-8'))
+    except UnicodeDecodeError as exc:
+        raise ConfigError('site configuration is not UTF-8') from exc
+    indices = [server_index] if isinstance(server_index, int) and not isinstance(server_index, bool) else server_index
+    if not isinstance(indices, list) or not indices or len(indices) > 64 or len(set(indices)) != len(indices):
+        raise ConfigError('invalid server list')
+    indices = [index for index in indices if not is_https_redirect_only(select_context(root, index, 'server'))]
+    if not indices:
+        raise ConfigError('site has no content server to protect')
+    include_contexts = []
+    password_versions = []
+    for index in indices:
+        server = select_context(root, index, 'server')
+        target = select_context(root, index, scope, location, modifier)
+        auth = [d.words for d in target.directives if d.words[0] in ('auth_basic', 'auth_basic_user_file')]
+        if not verify_only and auth:
+            raise ConfigError('a password rule already exists in this context')
+        if verify_only:
+            realms = [d[1] for d in auth if len(d) == 2 and d[0] == 'auth_basic']
+            files = [d[1] for d in auth if len(d) == 2 and d[0] == 'auth_basic_user_file']
+            if len(auth) != 2 or len(realms) != 1 or realms[0] != 'Restricted' or len(files) != 1 or not re.fullmatch(r'/etc/nginx/conf.d/\.site-auth-[0-9a-f]{32}\.passwd', files[0]):
+                raise Conflict('created password rule changed')
+            if not any(d.words == ['satisfy', 'all'] for d in target.directives):
+                raise Conflict('created password policy changed')
+            filename = files[0].rsplit('/', 1)[-1]
+            fd, _, data = _read(confdir, filename, 1 << 20)
+            os.close(fd)
+            entries = [line.split(':', 1)[1] for line in data.decode('utf-8').splitlines()
+                       if line.startswith(username + ':') and ':' in line]
+            if len(entries) != 1 or not re.fullmatch(r'\$apr1\$[./A-Za-z0-9]{1,8}\$[./A-Za-z0-9]{22}', entries[0]):
+                raise Conflict('created account changed')
+            salt = entries[0].split('$')[2]
+            try:
+                result = subprocess.run(['/usr/bin/openssl', 'passwd', '-apr1', '-salt', salt, '-stdin'],
+                                        input=password.encode('utf-8') + b'\n', stdout=subprocess.PIPE,
+                                        stderr=subprocess.DEVNULL, timeout=10, check=True)
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise ConfigError('password verification unavailable') from exc
+            if not hmac.compare_digest(result.stdout.strip(), entries[0].encode()):
+                raise Conflict('created account changed')
+            verify_read(files[0])
+            password_versions.append((filename, digest(data)))
+        if scope == 'location' and any(d.words[0] == 'rewrite' for d in target.directives):
+            raise ConfigError('location rewrite can bypass password authentication')
+        # Nginx executes unconditional return before Basic Auth; satisfy any
+        # can also make a password optional. Never report these as protection.
+        contexts = context_chain(root, target)
+        include_contexts.extend(contexts)
+        if target is server:
+            contexts += [child for child in server.children if child.words == ['location', '/']]
+        for context in contexts:
+            if any(d.words[0] == 'return' or d.words == ['satisfy', 'any'] for d in context.directives):
+                raise ConfigError('site configuration bypasses password authentication')
+            if any(d.words[0] == 'error_page' for d in context.directives):
+                raise ConfigError('authentication error page may bypass password protection')
+        # Every nested location inherits its parents' settings unless it
+        # overrides them. An inherited "satisfy any" makes auth optional.
+        pending = list(target.children)
+        for ancestor in contexts[:-1]:
+            pending.extend(child for child in ancestor.children if child.words and child.words[0] == 'if')
+        while pending:
+            child = pending.pop()
+            include_contexts.append(child)
+            if any(d.words == ['satisfy', 'any'] for d in child.directives):
+                raise ConfigError('a nested context can bypass password authentication')
+            if any(d.words == ['auth_basic', 'off'] for d in child.directives):
+                raise ConfigError('a nested context disables password authentication')
+            if any(d.words[0] == 'error_page' for d in child.directives):
+                raise ConfigError('authentication error page may bypass password protection')
+            if child.words and child.words[0] in ('if', 'location'):
+                for directive in child.directives:
+                    words = directive.words
+                    if scope == 'location' and words[0] == 'rewrite':
+                        raise ConfigError('location rewrite can bypass password authentication')
+                    if words[0] == 'return' and (len(words) != 2 or not re.fullmatch(r'[45][0-9]{2}', words[1])):
+                        raise ConfigError('a nested response bypasses password authentication')
+            pending.extend(child.children)
+    include_contexts = list({id(context): context for context in include_contexts}.values())
+    includes = inspect_includes(confdir, include_contexts)
+    global_snapshot = inspect_global_policy(confdir, global_policy()) if global_policy else None
+
+    def verify_includes():
+        if inspect_includes(confdir, include_contexts) != includes:
+            raise Conflict('included access policy changed')
+        if global_policy and inspect_global_policy(confdir, global_policy()) != global_snapshot:
+            raise Conflict('Nginx global policy changed')
+        if verify_only:
+            fd, _, current = _read(confdir, config_name, 2 << 20)
+            os.close(fd)
+            if digest(current) != config_version:
+                raise Conflict('created site configuration changed')
+            for filename, expected in password_versions:
+                fd, _, current = _read(confdir, filename, 1 << 20)
+                os.close(fd)
+                if digest(current) != expected:
+                    raise Conflict('created account changed')
+                verify_read('/etc/nginx/conf.d/' + filename)
+    if verify_only:
+        verify_includes()
+        validate()
+        verify_includes()
+        reload_config()
+        verify_includes()
+        return config_version
+    content = update_account(b'', username, hasher(password), must_create=True)
+    gid = worker_group()
+    if not isinstance(gid, int) or isinstance(gid, bool) or gid < 0 or gid > 2**32 - 2:
+        raise ConfigError('Nginx worker group unavailable')
+    filename = '.site-auth-' + secrets.token_hex(16) + '.passwd'
+    filefd = os.open(filename, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC,
+                     0o600, dir_fd=confdir)
+    info = os.fstat(filefd)
+    try:
+        os.fchown(filefd, -1, gid)
+        os.fchmod(filefd, 0o640)
+        pending = memoryview(content)
+        while pending:
+            count = os.write(filefd, pending)
+            if count <= 0:
+                raise ConfigError('password file write failed')
+            pending = pending[count:]
+        os.fsync(filefd)
+    except BaseException:
+        os.close(filefd)
+        if _same_inode(confdir, filename, info) and _no_config_references(confdir, filename):
+            os.unlink(filename, dir_fd=confdir)
+            os.fsync(confdir)
+        raise
+    else:
+        os.close(filefd)
+    nginx_path = '/etc/nginx/conf.d/' + filename
+    try:
+        os.fsync(confdir)
+        verify_read(nginx_path)
+        def checked_validate():
+            verify_includes()
+            verify_read(nginx_path)
+            validate()
+            verify_includes()
+
+        reload_attempts = 0
+        def checked_reload():
+            nonlocal reload_attempts
+            reload_attempts += 1
+            if reload_attempts > 1:
+                # Rollback must load the restored configuration even if an
+                # administrator changed an include after the first reload.
+                validate()
+                reload_config()
+                return
+            verify_includes()
+            verify_read(nginx_path)
+            reload_config()
+            verify_includes()
+            verify_read(nginx_path)
+
+        return edit_config_many(confdir, config_name, config_version, indices, scope, location,
+                                modifier, 'Restricted', nginx_path, validate=checked_validate,
+                                reload_config=checked_reload, assert_context=verify_includes)
+    except BaseException:
+        # Remove only our exact file if no Nginx site config references it.
+        # Otherwise retain it for recovery rather than delete shared data.
+        if _matches(confdir, filename, info, digest(content), 1 << 20) and _no_config_references(confdir, filename):
+            os.unlink(filename, dir_fd=confdir)
+            os.fsync(confdir)
+        raise
+
+
+def quarantine_created_config(confdir, name, expected_version, *, validate, reload_config):
+    """Retain a failed newly generated config outside the loaded *.conf set."""
+    fd, info, source = _read(confdir, name, 2 << 20)
+    os.close(fd)
+    if digest(source) != expected_version:
+        raise Conflict('site configuration changed before quarantine')
+    retained = '.site-access-failed-' + secrets.token_hex(16) + '.saved'
+    rename_noreplace(confdir, name, retained)
+    os.fsync(confdir)
+    if not _matches(confdir, retained, info, expected_version, 2 << 20):
+        # Another writer won the race. Restore the file without replacing a
+        # newer path; if restoration cannot be proven, retain the artifact.
+        try:
+            rename_noreplace(confdir, retained, name)
+            os.fsync(confdir)
+        except OSError as exc:
+            raise TransactionError('site changed; configuration retained for recovery') from exc
+        raise Conflict('site configuration changed before quarantine')
+    try:
+        os.stat(name, dir_fd=confdir, follow_symlinks=False)
+    except FileNotFoundError:
+        pass
+    else:
+        raise TransactionError('site entry reappeared while quarantining')
+    try:
+        validate()
+        reload_config()
+    except BaseException as exc:
+        raise TransactionError('site config retained but Nginx reload could not be confirmed') from exc
+    return retained
+KPANEL_EMBEDDED_SITE_ACCESS_RULES_PY
+  cat > "$adapter_dir/site_access_cli.py" <<'KPANEL_EMBEDDED_SITE_ACCESS_CLI_PY'
+"""Fixed, structured adapter for website access-password operations.
+
+Only JSON on stdin carries credentials. No password is accepted in argv or the
+environment. The caller passes resource fingerprints from the latest read.
+"""
+from __future__ import annotations
+
+import json
+import os
+import re
+import sys
+
+from site_access_accounts import edit_account
+from site_access_config import edit_config, nginx_command
+from site_access_nginx import ConfigError, effective_auth, parse, select_context
+from site_access_rules import add_rule, nginx_worker_group, check_worker_read, quarantine_created_config, nginx_global_config
+from site_access_transaction import Conflict, TransactionError, _matches, _read, digest, rename_noreplace
+
+
+MAX_REQUEST = 16384
+MOUNTS = {'/etc/nginx/conf.d/': 'conf.d', '/etc/nginx/certs/': 'certs', '/var/www/html/': 'html'}
+
+
+def directory_beneath(rootfd, parts):
+    current = os.dup(rootfd)
+    try:
+        for part in parts:
+            if not part or part in ('.', '..') or '\x00' in part or '/' in part or '\\' in part:
+                raise ConfigError('invalid path')
+            following = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+                                dir_fd=current)
+            os.close(current)
+            current = following
+        return current
+    except BaseException:
+        os.close(current)
+        raise
+
+
+def file_target(rootfd, nginx_path):
+    if not isinstance(nginx_path, str) or any(c in nginx_path for c in ('\0', '$', '\\')):
+        raise ConfigError('invalid password file path')
+    if not nginx_path.startswith('/'):
+        if not nginx_path or any(part in ('', '.', '..') for part in nginx_path.split('/')):
+            raise ConfigError('invalid password file path')
+        nginx_path = '/etc/nginx/' + nginx_path
+    for prefix, mount in MOUNTS.items():
+        if nginx_path.startswith(prefix):
+            parts = nginx_path[len(prefix):].split('/')
+            if not parts[-1] or parts[-1] in ('.', '..'):
+                raise ConfigError('invalid password file path')
+            return directory_beneath(rootfd, [mount] + parts[:-1]), parts[-1]
+    raise ConfigError('password file mount unavailable')
+
+
+def read_checked(dirfd, name, expected, limit):
+    fd, _, data = _read(dirfd, name, limit)
+    os.close(fd)
+    if digest(data) != expected:
+        raise Conflict('site or password file changed')
+    return data
+
+
+def apply_account(rootfd, request):
+    required = {'operation', 'configName', 'configVersion', 'fileVersion', 'serverIndex',
+                'scope', 'path', 'modifier', 'username'}
+    optional = {'password', 'previousUsername'}
+    if not isinstance(request, dict) or not required <= request.keys() or request.keys() - required - optional:
+        raise ConfigError('invalid request fields')
+    config_name = request['configName']
+    if not isinstance(config_name, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,253}\.conf', config_name):
+        raise ConfigError('invalid configuration name')
+    if request['operation'] not in ('add', 'update', 'delete'):
+        raise ConfigError('invalid account action')
+    config_dir = directory_beneath(rootfd, ['conf.d'])
+    try:
+        config = read_checked(config_dir, config_name, request['configVersion'], 2 << 20)
+        try:
+            ast = parse(config.decode('utf-8'))
+        except UnicodeDecodeError as exc:
+            raise ConfigError('site configuration is not UTF-8') from exc
+        block = select_context(ast, request['serverIndex'], request['scope'], request['path'], request['modifier'])
+        auth = effective_auth(ast, block)
+        if auth is None:
+            raise Conflict('authentication rule no longer exists')
+        password_dir, password_name = file_target(rootfd, auth[1])
+        try:
+            def verify_context():
+                read_checked(config_dir, config_name, request['configVersion'], 2 << 20)
+            return edit_account(password_dir, password_name, request['fileVersion'], request['operation'],
+                                request['username'], password=request.get('password', ''),
+                                previous_username=request.get('previousUsername'), assert_context=verify_context)
+        finally:
+            os.close(password_dir)
+    finally:
+        os.close(config_dir)
+
+
+def apply_rule(rootfd, request, *, validate=None, reload_config=None,
+               worker_group=nginx_worker_group, verify_read=check_worker_read, global_policy=nginx_global_config):
+    common = {'operation', 'configName', 'configVersion', 'scope', 'path', 'modifier'}
+    action = request.get('operation') if isinstance(request, dict) else None
+    needed = {'username', 'password', 'serverIndices'} if action == 'rule-add' else {'fileVersion', 'serverIndex'} if action == 'rule-delete' else set()
+    if action not in ('rule-add', 'rule-delete') or request.keys() != common | needed:
+        raise ConfigError('invalid rule request')
+    name = request['configName']
+    if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,253}\.conf', name):
+        raise ConfigError('invalid configuration name')
+    validate = validate or (lambda: nginx_command('-t'))
+    reload_config = reload_config or (lambda: nginx_command('-s', 'reload'))
+    config_dir = directory_beneath(rootfd, ['conf.d'])
+    try:
+        if action == 'rule-add':
+            return add_rule(config_dir, name, request['configVersion'], request['serverIndices'],
+                            request['scope'], request['path'], request['modifier'],
+                            request['username'], request['password'], validate=validate,
+                            reload_config=reload_config, worker_group=worker_group, verify_read=verify_read,
+                            global_policy=global_policy)
+        data = read_checked(config_dir, name, request['configVersion'], 2 << 20)
+        try:
+            tree = parse(data.decode('utf-8'))
+        except UnicodeDecodeError as exc:
+            raise ConfigError('site configuration is not UTF-8') from exc
+        block = select_context(tree, request['serverIndex'], request['scope'], request['path'], request['modifier'])
+        auth = effective_auth(tree, block)
+        if auth is None:
+            raise Conflict('authentication rule no longer exists')
+        password_dir, password_name = file_target(rootfd, auth[1])
+        try:
+            def verify_file():
+                read_checked(password_dir, password_name, request['fileVersion'], 1 << 20)
+            verify_file()
+            return edit_config(config_dir, name, request['configVersion'], request['serverIndex'],
+                               request['scope'], request['path'], request['modifier'], 'delete',
+                               validate=validate, reload_config=reload_config, assert_context=verify_file)
+        finally:
+            os.close(password_dir)
+    finally:
+        os.close(config_dir)
+
+
+def apply_creation(rootfd, request, *, expected_version, expected_domain, staged_name='',
+                   worker_group=nginx_worker_group, verify_read=check_worker_read, global_policy=nginx_global_config,
+                   verify_only=False, validate=None, reload_config=None):
+    fields = {'operation', 'configName', 'scope', 'path', 'username', 'password'}
+    if not isinstance(request, dict) or request.keys() != fields or request.get('operation') != 'create-stage':
+        raise ConfigError('invalid creation request')
+    name = request['configName']
+    if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,253}\.conf', name):
+        raise ConfigError('invalid configuration name')
+    domain = name[:-5].lower()
+    if domain != expected_domain or not re.fullmatch(r'[0-9a-f]{64}', expected_version):
+        raise ConfigError('creation identity is invalid')
+    if not verify_only and not re.fullmatch(r'\.site-create-[a-f0-9]{32}\.pending', staged_name):
+        raise ConfigError('creation staging identity is invalid')
+    source_name = name if verify_only else staged_name
+    directory = directory_beneath(rootfd, ['conf.d'])
+    try:
+        fd, _, data = _read(directory, source_name, 2 << 20)
+        os.close(fd)
+        if digest(data) != expected_version:
+            raise Conflict('site configuration changed during creation')
+        try:
+            root = parse(data.decode('utf-8'))
+        except UnicodeDecodeError as exc:
+            raise ConfigError('site configuration is not UTF-8') from exc
+        servers = []
+        for block in root.children:
+            if block.words == ['server']:
+                servers.append(block)
+            elif block.words == ['http']:
+                servers.extend(child for child in block.children if child.words == ['server'])
+        indices = []
+        for index, server in enumerate(servers):
+            names = [word.lower().rstrip('.') for directive in server.directives
+                     if directive.words[0] == 'server_name' for word in directive.words[1:]]
+            if domain in names:
+                indices.append(index)
+        if not indices:
+            raise ConfigError('site server context unavailable')
+        version = add_rule(directory, source_name, digest(data), indices, request['scope'], request['path'], '',
+                           request['username'], request['password'],
+                           validate=(validate or (lambda: nginx_command('-t'))) if verify_only else (lambda: None),
+                           reload_config=(reload_config or (lambda: nginx_command('-s', 'reload'))) if verify_only else (lambda: None),
+                           worker_group=worker_group, verify_read=verify_read,
+                           global_policy=global_policy, verify_only=verify_only)
+        if verify_only:
+            return version
+        fd, info, staged = _read(directory, staged_name, 2 << 20)
+        os.close(fd)
+        if digest(staged) != version:
+            raise Conflict('staged configuration changed')
+        rename_noreplace(directory, staged_name, name)
+        os.fsync(directory)
+        if not _matches(directory, name, info, version, 2 << 20):
+            # The published path now belongs to an external writer. Moving it
+            # back would displace their changes, so leave it for inspection.
+            raise Conflict('published configuration changed; inspect site')
+        return version
+    finally:
+        os.close(directory)
+
+
+def apply_quarantine(rootfd, request, *, validate=None, reload_config=None):
+    if not isinstance(request, dict) or request.keys() != {'operation', 'configName', 'configVersion'} or request.get('operation') != 'quarantine':
+        raise ConfigError('invalid quarantine request')
+    name, version = request['configName'], request['configVersion']
+    if not isinstance(name, str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,253}\.conf', name) or not isinstance(version, str) or not re.fullmatch(r'[0-9a-f]{64}', version):
+        raise ConfigError('invalid quarantine identity')
+    directory = directory_beneath(rootfd, ['conf.d'])
+    try:
+        quarantine_created_config(directory, name, version,
+                                  validate=validate or (lambda: nginx_command('-t')),
+                                  reload_config=reload_config or (lambda: nginx_command('-s', 'reload')))
+    finally:
+        os.close(directory)
+    return version
+
+
+def main():
+    data = sys.stdin.buffer.read(MAX_REQUEST + 1)
+    if len(data) > MAX_REQUEST:
+        raise ConfigError('request too large')
+    request = json.loads(data)
+    rootfd = os.open('/home/web', os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        if isinstance(request, dict) and request.get('operation') == 'create-stage':
+            version = apply_creation(rootfd, request,
+                                     expected_version=os.environ.get('KJ_WEB_ACCESS_CONFIG_VERSION', ''),
+                                     expected_domain=os.environ.get('KJ_WEB_ACCESS_DOMAIN', ''),
+                                     staged_name=os.environ.get('KJ_WEB_ACCESS_STAGED_NAME', ''),
+                                     verify_only=os.environ.get('KJ_WEB_ACCESS_VERIFY', '') == '1')
+        elif isinstance(request, dict) and request.get('operation') == 'quarantine':
+            version = apply_quarantine(rootfd, request)
+        elif isinstance(request, dict) and request.get('operation') in ('rule-add', 'rule-delete'):
+            version = apply_rule(rootfd, request)
+        else:
+            version = apply_account(rootfd, request)
+    finally:
+        os.close(rootfd)
+    print(json.dumps({'ok': True, 'fileVersion': version}, separators=(',', ':')))
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except (ConfigError, Conflict, TransactionError, OSError, ValueError, TypeError) as error:
+        # Never echo input, credentials, Nginx paths, or exception text.
+        if isinstance(error, Conflict):
+            code = 'resource_conflict'
+        elif isinstance(error, TransactionError):
+            code = 'needs_attention'
+        elif isinstance(error, (ConfigError, ValueError, TypeError)):
+            code = 'invalid_request'
+        else:
+            code = 'unavailable'
+        print(json.dumps({'ok': False, 'error': code}, separators=(',', ':')))
+        sys.exit(1)
+KPANEL_EMBEDDED_SITE_ACCESS_CLI_PY
+  python3 -I -c 'import runpy,sys; sys.dont_write_bytecode=True; sys.path.insert(0,sys.argv[1]); runpy.run_path(sys.argv[1]+"/site_access_cli.py",run_name="__main__")' "$adapter_dir"
+)
+# END GENERATED SITE ACCESS ADAPTER
+
+kpanel_web_quarantine_created_access() {
+	local domain="$1" version="${KJ_WEB_ACCESS_PUBLISHED_HASH:-}"
+	[[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] &&
+		[[ "$version" =~ ^[a-f0-9]{64}$ ]] || return 1
+	printf '{"operation":"quarantine","configName":"%s.conf","configVersion":"%s"}' "$domain" "$version" |
+		kpanel_web_access_password >/dev/null
+}
+
+kpanel_web_confirm_created_access() {
+	local input="${KJ_WEB_ACCESS_PASSWORD_FILE:-}" domain="${yuming:-${KJ_WEB_DOMAIN:-}}" name version receipt
+	[ -n "$input" ] || return 0
+	case "$input" in
+		/var/lib/kejilion-panel/wordpress-jobs/*.access-password.json|/home/docker/kpanel/data/agent/wordpress-jobs/*.access-password.json) ;;
+		*) return 1 ;;
+	esac
+	name="${input##*/}"
+	[[ "$domain" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] || return 1
+	if ! [[ "$name" =~ ^[a-f0-9]{32}\.access-password\.json$ ]] ||
+		[ ! -f "$input" ] || [ -L "$input" ] || [ "$(stat -c '%u:%a' "$input")" != '0:600' ]; then
+		kpanel_web_quarantine_created_access "$domain" || echo "无法确认站点入口已撤回，请检查 Nginx。" >&2
+		return 1
+	fi
+	version="$(sha256sum -- "/home/web/conf.d/${domain}.conf")" || return 1
+	version="${version%% *}"
+	if ! receipt="$(KJ_WEB_ACCESS_VERIFY=1 KJ_WEB_ACCESS_CONFIG_VERSION="$version" KJ_WEB_ACCESS_DOMAIN="${domain,,}" kpanel_web_access_password < "$input")" ||
+		[ "$receipt" != "{\"ok\":true,\"fileVersion\":\"$version\"}" ]; then
+		kpanel_web_quarantine_created_access "$domain" || echo "无法确认站点入口已撤回，请检查 Nginx。" >&2
+		echo "访问密码的 Nginx 配置未能加载，请检查站点状态。" >&2
+		return 1
+	fi
+}
+
+kpanel_web_reload_site() {
+	if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ]; then
+		kpanel_web_confirm_created_access
+	else
+		docker exec nginx nginx -s reload
+	fi
+}
+
+kpanel_web_prepare_config() {
+	local input="${KJ_WEB_ACCESS_PASSWORD_FILE:-}" name id expected webroot directory owner mode
+	[ -n "$input" ] || return 0
+	case "$input" in
+		/var/lib/kejilion-panel/wordpress-jobs/*.access-password.json|/home/docker/kpanel/data/agent/wordpress-jobs/*.access-password.json) ;;
+		*) return 1 ;;
+	esac
+	name="${input##*/}"
+	[[ "$name" =~ ^([a-f0-9]{32})\.access-password\.json$ ]] || return 1
+	id="${BASH_REMATCH[1]}"
+	expected="/home/web/conf.d/.site-create-${id}.pending"
+	# Template downloads and substitutions use pathnames. Ensure that an
+	# unprivileged user cannot swap those paths while a protected site is built.
+	webroot="${expected%/conf.d/*}"
+	for directory in "${webroot%/*}" "$webroot" "$webroot/conf.d"; do
+		[ -d "$directory" ] && [ ! -L "$directory" ] || return 1
+		read -r owner mode < <(stat -c '%u %a' -- "$directory") || return 1
+		[[ "$owner" = 0 && "$mode" =~ ^[0-7]{3,4}$ ]] || return 1
+		(( (8#$mode & 0022) == 0 )) || return 1
+	done
+	if [ -n "${KJ_WEB_STAGED_CONFIG:-}" ]; then
+		[ "$KJ_WEB_STAGED_CONFIG" = "$expected" ] && [ -f "$expected" ] && [ ! -L "$expected" ] || return 1
+		return 0
+	fi
+	(umask 077; set -C; : > "$expected") || return 1
+	KJ_WEB_STAGED_CONFIG="$expected"
+}
+
+kpanel_web_apply_created_access() {
+	local input="${KJ_WEB_ACCESS_PASSWORD_FILE:-}" name conf version receipt published_version input_ok=0
+	[ -n "$input" ] || return 0
+	[ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" != 1 ] || return 0
+	[[ "${yuming:-}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]{0,251}[A-Za-z0-9])?$ ]] || return 1
+	conf="${KJ_WEB_STAGED_CONFIG:-}"
+	[ -n "$conf" ] || { echo "访问密码暂存配置缺失，请检查站点状态。" >&2; return 1; }
+	[ -f "$conf" ] && [ ! -L "$conf" ] || return 1
+	version="$(sha256sum -- "$conf")" || return 1
+	version="${version%% *}"
+	case "$input" in
+		/var/lib/kejilion-panel/wordpress-jobs/*.access-password.json|/home/docker/kpanel/data/agent/wordpress-jobs/*.access-password.json) input_ok=1 ;;
+	esac
+	name="${input##*/}"
+	if [ "$input_ok" != 1 ] || ! [[ "$name" =~ ^[a-f0-9]{32}\.access-password\.json$ ]] ||
+		[ ! -f "$input" ] || [ -L "$input" ] || [ "$(stat -c '%u:%a' "$input")" != "0:600" ] ||
+		! receipt="$(KJ_WEB_ACCESS_CONFIG_VERSION="$version" KJ_WEB_ACCESS_DOMAIN="${yuming,,}" KJ_WEB_ACCESS_STAGED_NAME="${conf##*/}" kpanel_web_access_password < "$input")"; then
+		echo "访问密码配置失败，请检查站点和暂存配置。" >&2
+		return 1
+	fi
+	published_version="$(printf '%s\n' "$receipt" | sed -n 's/^{"ok":true,"fileVersion":"\([a-f0-9]\{64\}\)"}$/\1/p')"
+	[[ "$published_version" =~ ^[a-f0-9]{64}$ ]] || { echo "访问密码配置回执无效，请检查站点状态。" >&2; return 1; }
+	KJ_WEB_ACCESS_PUBLISHED_HASH="$published_version"
+	KJ_WEB_ACCESS_PASSWORD_APPLIED=1
+	KJ_WEB_STAGED_CONFIG=""
+}
 
 # Locks live outside PrivateTmp and app data. Only the paired KPanel worker
 # enables this protocol; old workers keep their existing exclusive admission.
@@ -2475,7 +4008,7 @@ check_ip_and_get_access_port() {
 update_nginx_listen_port() {
 	local yuming="$1"
 	local access_port="$2"
-	local conf="/home/web/conf.d/${yuming}.conf"
+	local conf="${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/${yuming}.conf}"
 
 	# 如果 access_port 为空，则跳过
 	[ -z "$access_port" ] && return 0
@@ -2538,7 +4071,18 @@ normalize_ldnmp_site_permissions() {
 
 
 restart_ldnmp() {
-	  shared_waf_refresh || return 1
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+		  kpanel_web_confirm_created_access || return 1
+	  fi
+	  if ! shared_waf_refresh; then
+		  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+			  kpanel_web_confirm_created_access || true
+		  fi
+		  return 1
+	  fi
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+		  kpanel_web_confirm_created_access || return 1
+	  fi
 	  docker exec nginx chown -R nginx:nginx /var/www/html > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/proxy > /dev/null 2>&1
 	  docker exec nginx mkdir -p /var/cache/nginx/fastcgi > /dev/null 2>&1
@@ -2546,7 +4090,15 @@ restart_ldnmp() {
 	  docker exec nginx chown -R nginx:nginx /var/cache/nginx/fastcgi > /dev/null 2>&1
 	  docker exec php chown -R www-data:www-data /var/www/html > /dev/null 2>&1
 	  docker exec php74 chown -R www-data:www-data /var/www/html > /dev/null 2>&1
-	  cd /home/web && docker compose restart
+	  if ! (cd /home/web && docker compose restart); then
+		  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+			  kpanel_web_confirm_created_access || true
+		  fi
+		  return 1
+	  fi
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] && [ "${KJ_WEB_ACCESS_PASSWORD_APPLIED:-0}" = 1 ]; then
+		  kpanel_web_confirm_created_access || return 1
+	  fi
 
 
 }
@@ -4530,14 +6082,18 @@ web_ban_remove() {
 nginx_http_on() {
 	if kpanel_web_http_mode; then
 		kpanel_web_http_config || exit 1
+		kpanel_web_apply_created_access || return 1
+		kpanel_web_confirm_created_access || return 1
 		return 0
 	fi
 
 local ipv4_pattern='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
 local ipv6_pattern='^(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|(2[0-4][0-9]|[01]?[0-9][0-9]?))))$'
 if [[ ($yuming =~ $ipv4_pattern || $yuming =~ $ipv6_pattern) ]]; then
-	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' /home/web/conf.d/${yuming}.conf
+	sed -i '/if (\$scheme = http) {/,/}/s/^/#/' "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/${yuming}.conf}"
 fi
+	kpanel_web_apply_created_access || return 1
+	kpanel_web_confirm_created_access || return 1
 
 }
 
@@ -7494,7 +9050,12 @@ ldnmp_web_on() {
 }
 
 nginx_web_on() {
-	shared_waf_refresh || return 1
+	kpanel_web_confirm_created_access || return 1
+	if ! shared_waf_refresh; then
+		kpanel_web_confirm_created_access || true
+		return 1
+	fi
+	kpanel_web_confirm_created_access || return 1
 	if kpanel_web_http_mode; then
 		echo "http://$yuming:$KJ_WEB_HTTP_PORT"
 		return 0
@@ -7542,9 +9103,10 @@ ldnmp_wp() {
 
   kpanel_web_progress 60 "正在获取 kejilion.sh WordPress Nginx 配置"
   wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
-  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-  nginx_http_on
+  kpanel_web_prepare_config || return 1
+  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/wordpress.com.conf
+  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
+  nginx_http_on || return 1
 
 
   kpanel_web_progress 75 "正在获取并配置 kejilion.sh WordPress 源码"
@@ -7570,7 +9132,8 @@ ldnmp_wp() {
   kpanel_web_progress 90 "正在重启 LDNMP 并核验 WordPress 站点"
   normalize_ldnmp_site_permissions "$yuming" || return 1
   chmod 0640 "/home/web/html/$yuming/wordpress/wp-config.php" || return 1
-  restart_ldnmp
+  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
+  kpanel_web_confirm_created_access || return 1
   nginx_web_on
 
 }
@@ -7618,13 +9181,14 @@ kpanel_app_write_proxy() {
 	fi
 	kpanel_web_progress 60 "正在获取 kejilion.sh 反向代理配置"
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf || return $?
-	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf || return $?
+	kpanel_web_prepare_config || return 1
+	wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf || return $?
 
 	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
-	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf || return $?
+	sed -i "s/backend_yuming_com/backend_$backend/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" || return $?
 
 
-	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf || return $?
+	sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" || return $?
 
 	reverseproxy_port="$reverseproxy:$port"
 	upstream_servers=""
@@ -7632,14 +9196,14 @@ kpanel_app_write_proxy() {
 		upstream_servers="$upstream_servers    server $server;\n"
 	done
 
-	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf || return $?
-	sed -i '/remote_addr/d' /home/web/conf.d/$yuming.conf || return $?
+	sed -i "s/# 动态添加/$upstream_servers/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" || return $?
+	sed -i '/remote_addr/d' "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" || return $?
 
 	update_nginx_listen_port "$yuming" "$access_port" || return $?
 
 	kpanel_web_progress 85 "正在校验并重载反向代理配置"
 	nginx_http_on || return $?
-	docker exec nginx nginx -s reload || return $?
+	kpanel_web_reload_site || return $?
 	nginx_web_on
 }
 
@@ -7683,26 +9247,27 @@ ldnmp_Proxy_backend() {
 	certs_status
 
 	wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
+	kpanel_web_prepare_config || return 1
+	wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-backend.conf
 
 	backend=$(tr -dc 'A-Za-z' < /dev/urandom | head -c 8)
-	sed -i "s/backend_yuming_com/backend_$backend/g" /home/web/conf.d/"$yuming".conf
+	sed -i "s/backend_yuming_com/backend_$backend/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 
-	sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 	upstream_servers=""
 	for server in $reverseproxy_port; do
 		upstream_servers="$upstream_servers    server $server;\n"
 	done
 
-	sed -i "s/# 动态添加/$upstream_servers/g" /home/web/conf.d/$yuming.conf
+	sed -i "s/# 动态添加/$upstream_servers/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 
 	update_nginx_listen_port "$yuming" "$access_port"
 
-	nginx_http_on
-	docker exec nginx nginx -s reload
+	nginx_http_on || return 1
+	kpanel_web_reload_site || return 1
 	nginx_web_on
 }
 
@@ -16503,7 +18068,12 @@ kpanel_run_http_site() (
 	local http_complete=0 http_nginx_was_running
 	http_nginx_was_running=$(docker inspect --format '{{.State.Running}}' nginx 2>/dev/null) || http_nginx_was_running=false
 	trap 'if [ "$http_complete" != 1 ]; then
-		if [ -f "/home/web/conf.d/$domain.conf" ] && [ ! -L "/home/web/conf.d/$domain.conf" ]; then
+		if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ]; then
+			if [[ "${KJ_WEB_ACCESS_PUBLISHED_HASH:-}" =~ ^[a-f0-9]{64}$ ]]; then
+				printf '\''{"operation":"quarantine","configName":"%s.conf","configVersion":"%s"}'\'' "$domain" "$KJ_WEB_ACCESS_PUBLISHED_HASH" | kpanel_web_access_password >/dev/null ||
+					echo "无法确认受保护的站点入口已撤回，请检查网站状态。" >&2
+			fi
+		elif [ -f "/home/web/conf.d/$domain.conf" ] && [ ! -L "/home/web/conf.d/$domain.conf" ]; then
 			rm -f -- "/home/web/conf.d/$domain.conf"
 		fi
 		if [ "$http_nginx_was_running" = true ] &&
@@ -16522,7 +18092,7 @@ kpanel_run_http_site() (
 			[ "$KJ_WEB_REDIRECT_TARGET" != "${domain,,}" ] || return 64
 	fi
 	linux_ldnmp || return $?
-	docker exec nginx nginx -t && docker exec nginx nginx -s reload || return 1
+	docker exec nginx nginx -t && kpanel_web_reload_site || return 1
 	kpanel_web_http_wait_listener "$http_port" || return 1
 	kpanel_web_http_port_available "$http_port" || return 1
 	open_port "$http_port" || return 1
@@ -16532,7 +18102,7 @@ kpanel_run_http_site() (
 # Transform the same official template used by the legacy path. Stage the
 # change and preserve the original on conversion failure; never rewrite imports.
 kpanel_web_http_config() (
-	local conf="/home/web/conf.d/${yuming}.conf" candidate mode
+	local conf="${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/${yuming}.conf}" candidate mode
 	[ -f "$conf" ] && [ ! -L "$conf" ] || return 1
 	mode=$(docker inspect --format '{{.HostConfig.NetworkMode}}' nginx) || return 1
 	if [ "$mode" != host ]; then
@@ -17424,16 +18994,21 @@ ldnmp_fastadmin() (
 	mv -T -- "$stage/site" "$site_root" || return 1
 	normalize_ldnmp_site_permissions "$yuming" || return 1
 	docker exec php74 chown -R www-data:www-data "/var/www/html/$yuming" || return 1
-	mv -- "$stage/site.conf" "$conf" || return 1
+	kpanel_web_prepare_config || return 1
+	mv -- "$stage/site.conf" "${KJ_WEB_STAGED_CONFIG:-$conf}" || return 1
 	published=1
 	trap 'if [ "$published" = 1 ]; then
-		rm -f -- "$conf"
-		docker exec nginx nginx -t >/dev/null 2>&1 && docker exec nginx nginx -s reload >/dev/null 2>&1 || true
-		echo "FastAdmin 站点启用失败；已撤回配置，源码和数据库保留供检查。" >&2
+		if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ]; then
+			echo "FastAdmin 站点启用失败；已保留配置、源码和数据库，请检查站点状态。" >&2
+		else
+			rm -f -- "$conf"
+			docker exec nginx nginx -t >/dev/null 2>&1 && docker exec nginx nginx -s reload >/dev/null 2>&1 || true
+			echo "FastAdmin 站点启用失败；已撤回配置，源码和数据库保留供检查。" >&2
+		fi
 	fi
 	rm -rf -- "$stage"' EXIT
 	nginx_http_on || return 1
-	docker exec nginx nginx -t && docker exec nginx nginx -s reload || return 1
+	docker exec nginx nginx -t && kpanel_web_reload_site || return 1
 	published=0
 	echo "KPANEL_PROGRESS 90 FastAdmin 站点已就绪，请打开安装页面完成初始化"
 	local scheme=https suffix=""
@@ -17545,10 +19120,11 @@ linux_ldnmp() {
 
 
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/discuz.com.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  cd /home/web/html
 	  prepare_ldnmp_site_root "$yuming" || return 1
@@ -17561,7 +19137,7 @@ linux_ldnmp() {
 	  rm latest.zip
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  ldnmp_web_on
@@ -17589,10 +19165,11 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/kdy.com.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  cd /home/web/html
 	  prepare_ldnmp_site_root "$yuming" || return 1
@@ -17603,7 +19180,7 @@ linux_ldnmp() {
 	  rm latest.zip
 	  mv /home/web/html/$yuming/kodbox* /home/web/html/$yuming/kodbox
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 	  ldnmp_web_on
 	  echo "数据库地址: mysql"
@@ -17631,10 +19208,11 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/maccms.com.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  cd /home/web/html
 	  prepare_ldnmp_site_root "$yuming" || return 1
@@ -17647,7 +19225,7 @@ linux_ldnmp() {
 	  mv /home/web/html/$yuming/admin.php /home/web/html/$yuming/vip.php && wget -O /home/web/html/$yuming/application/extra/maccms.php ${gh_proxy}raw.githubusercontent.com/kejilion/Website_source_code/main/maccms.php
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  ldnmp_web_on
@@ -17681,10 +19259,11 @@ linux_ldnmp() {
 
 
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/dujiaoka.com.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  cd /home/web/html
 	  prepare_ldnmp_site_root "$yuming" || return 1
@@ -17692,7 +19271,7 @@ linux_ldnmp() {
 	  wget ${gh_proxy}github.com/assimon/dujiaoka/releases/download/2.0.6/2.0.6-antibody.tar.gz && tar -zxvf 2.0.6-antibody.tar.gz && rm 2.0.6-antibody.tar.gz
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  ldnmp_web_on
@@ -17735,11 +19314,12 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/flarum.com.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
 
@@ -17767,7 +19347,7 @@ linux_ldnmp() {
 
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  ldnmp_web_on
@@ -17798,10 +19378,11 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/typecho.com.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  cd /home/web/html
 	  prepare_ldnmp_site_root "$yuming" || return 1
@@ -17811,7 +19392,7 @@ linux_ldnmp() {
 	  rm latest.zip
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  clear
@@ -17841,11 +19422,12 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/refs/heads/main/index_php.conf
-	  sed -i "s|/var/www/html/yuming.com/|/var/www/html/yuming.com/linkstack|g" /home/web/conf.d/$yuming.conf
-	  sed -i "s|yuming.com|$yuming|g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/refs/heads/main/index_php.conf
+	  sed -i "s|/var/www/html/yuming.com/|/var/www/html/yuming.com/linkstack|g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
+	  sed -i "s|yuming.com|$yuming|g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  cd /home/web/html
 	  prepare_ldnmp_site_root "$yuming" || return 1
@@ -17855,7 +19437,7 @@ linux_ldnmp() {
 	  rm latest.zip
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 
 	  clear
@@ -17881,10 +19463,11 @@ linux_ldnmp() {
 	  add_db
 
 	  wget -O /home/web/conf.d/map.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/map.conf
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/index_php.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  cd /home/web/html
 	  prepare_ldnmp_site_root "$yuming" || return 1
@@ -17911,8 +19494,8 @@ linux_ldnmp() {
 
 	  read -e -p "请输入index.php的路径，类似（/home/web/html/$yuming/wordpress/）： " index_lujing
 
-	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
-	  sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
+	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
+	  sed -i "s#/home/web/#/var/www/#g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 	  clear
 	  echo -e "[${gl_huang}3/6${gl_bai}] 请选择PHP版本"
@@ -17920,11 +19503,11 @@ linux_ldnmp() {
 	  read -e -p "1. php最新版 | 2. php7.4 : " pho_v
 	  case "$pho_v" in
 		1)
-		  sed -i "s#php:9000#php:9000#g" /home/web/conf.d/$yuming.conf
+		  sed -i "s#php:9000#php:9000#g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 		  local PHP_Version="php"
 		  ;;
 		2)
-		  sed -i "s#php:9000#php74:9000#g" /home/web/conf.d/$yuming.conf
+		  sed -i "s#php:9000#php74:9000#g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 		  local PHP_Version="php74"
 		  ;;
 		*)
@@ -17951,7 +19534,7 @@ linux_ldnmp() {
 	  echo "按任意键继续，可以详细设置站点配置，如伪静态等内容"
 	  read -n 1 -s -r -p ""
 	  install nano
-	  nano /home/web/conf.d/$yuming.conf
+	  nano "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 
 	  clear
@@ -17987,7 +19570,7 @@ linux_ldnmp() {
 	  docker exec php rm -f /usr/local/etc/php/conf.d/optimized_php.ini
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  restart_ldnmp
+	  restart_ldnmp || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 	  ldnmp_web_on
 	  prefix="web$(shuf -i 10-99 -n 1)_"
 	  echo "数据库地址: mysql"
@@ -18028,11 +19611,12 @@ linux_ldnmp() {
 	  if ! kpanel_web_http_mode; then kpanel_web_certificate_available || return 1; fi
 
 
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf || return 1
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf || return 1
-	  sed -i "s/baidu.com/$reverseproxy/g" /home/web/conf.d/$yuming.conf || return 1
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/rewrite.conf || return 1
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" || return 1
+	  sed -i "s/baidu.com/$reverseproxy/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" || return 1
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  docker exec nginx nginx -t || return 1
 	  docker exec nginx nginx -s reload || return 1
@@ -18070,14 +19654,15 @@ linux_ldnmp() {
 	  certs_status
 
 
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
-	  sed -i "s|fandaicom|$fandai_yuming|g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/reverse-proxy-domain.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
+	  sed -i "s|fandaicom|$fandai_yuming|g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
-	  docker exec nginx nginx -s reload
+	  kpanel_web_reload_site || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 	  nginx_web_on
 
@@ -18085,6 +19670,10 @@ linux_ldnmp() {
 
 
 	  25)
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ]; then
+		  echo "该模板会开放应用直连端口，暂不支持创建时设置访问密码。" >&2
+		  return 1
+	  fi
 	  clear
 	  webname="Bitwarden"
 	  send_stats "安装$webname"
@@ -18105,6 +19694,10 @@ linux_ldnmp() {
 		;;
 
 	  26)
+	  if [ -n "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ]; then
+		  echo "该模板会开放应用直连端口，暂不支持创建时设置访问密码。" >&2
+		  return 1
+	  fi
 	  clear
 	  webname="halo"
 	  send_stats "安装$webname"
@@ -18130,10 +19723,11 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  cd /home/web/html
 	  prepare_ldnmp_site_root "$yuming" || return 1
@@ -18144,7 +19738,7 @@ linux_ldnmp() {
 	  rm -f $(ls -t *.zip | head -n 1)
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  docker exec nginx nginx -s reload
+	  kpanel_web_reload_site || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 	  nginx_web_on
 
@@ -18172,10 +19766,11 @@ linux_ldnmp() {
 	  install_ssltls
 	  certs_status
 
-	  wget -O /home/web/conf.d/$yuming.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
-	  sed -i "s/yuming.com/$yuming/g" /home/web/conf.d/$yuming.conf
+	  kpanel_web_prepare_config || return 1
+	  wget -O "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}" ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/html.conf
+	  sed -i "s/yuming.com/$yuming/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
-	  nginx_http_on
+	  nginx_http_on || return 1
 
 	  cd /home/web/html
 	  prepare_ldnmp_site_root "$yuming" || return 1
@@ -18203,11 +19798,11 @@ linux_ldnmp() {
 
 	  read -e -p "请输入index.html的路径，类似（/home/web/html/$yuming/index/）： " index_lujing
 
-	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" /home/web/conf.d/$yuming.conf
-	  sed -i "s#/home/web/#/var/www/#g" /home/web/conf.d/$yuming.conf
+	  sed -i "s#root /var/www/html/$yuming/#root $index_lujing#g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
+	  sed -i "s#/home/web/#/var/www/#g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 	  normalize_ldnmp_site_permissions "$yuming" || return 1
-	  docker exec nginx nginx -s reload
+	  kpanel_web_reload_site || { [ -z "${KJ_WEB_ACCESS_PASSWORD_FILE:-}" ] || return 1; }
 
 	  nginx_web_on
 
@@ -18521,6 +20116,7 @@ linux_ldnmp() {
 			echo "KPANEL_PROGRESS 100 Nginx 配置校验失败"
 			return 1
 		fi
+		kpanel_web_confirm_created_access || return 1
 		echo "KPANEL_PROGRESS 100 kejilion.sh 原生建站产物已完成"
 		return 0
 	fi
@@ -35502,6 +37098,10 @@ else
 			elif [ "$1" = "certificate-replace" ]; then
 				shift
 				kpanel_web_replace_certificate "$@"
+				exit $?
+			elif [ "$1" = "access-password" ]; then
+				shift
+				kpanel_web_access_password "$@"
 				exit $?
 			elif [ "$1" = "waf" ]; then
 				shift
