@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.18"
+sh_v="4.5.19"
 
 
 gl_hui='\e[37m'
@@ -4428,7 +4428,8 @@ def download(revision, name, prefix):
                 raise ValueError('拒绝非 HTTPS 重定向')
             return super().redirect_request(req, fp, code, msg, headers, target)
 
-    with urllib.request.build_opener(SecureRedirect()).open(url, timeout=15) as response:
+    request = urllib.request.Request(url, headers={'User-Agent': 'kejilion-sh/nginx-config'})
+    with urllib.request.build_opener(SecureRedirect()).open(request, timeout=15) as response:
         data = response.read(2 * 1024 * 1024 + 1)
     if len(data) > 2 * 1024 * 1024 or digest(data) != SOURCES[revision][name]:
         raise ValueError('配置模板摘要校验失败: ' + name)
@@ -5612,7 +5613,8 @@ def fetch(url, limit):
     previous = signal.signal(signal.SIGALRM, expired)
     signal.alarm(45)
     try:
-        with urllib.request.build_opener(HTTPSOnly()).open(url, timeout=10) as response:
+        request = urllib.request.Request(url, headers={'User-Agent': 'kejilion-sh/waf-package'})
+        with urllib.request.build_opener(HTTPSOnly()).open(request, timeout=10) as response:
             data = response.read(limit+1)
         if len(data) > limit: raise ValueError('Download exceeds budget')
         return data
@@ -19627,7 +19629,7 @@ linux_ldnmp() {
 		;;
 
 	  23)
-	  ldnmp_Proxy "${KJ_WEB_DOMAIN:-}" "${KJ_WEB_PROXY_HOST:-}" "${KJ_WEB_PROXY_PORT:-}"
+	  ldnmp_Proxy "${KJ_WEB_DOMAIN:-}" "${KJ_WEB_PROXY_HOST:-}" "${KJ_WEB_PROXY_PORT:-}" || return $?
 	  find_container_by_host_port "$port"
 	  if [ -z "$docker_name" ]; then
 		close_port "$port"
