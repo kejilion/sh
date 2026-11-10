@@ -1361,6 +1361,29 @@ manage_country_rules() {
 
 
 
+iptables_panel_ping_action() {
+	local action="$1"
+	local expected receipt status
+	expected="$(kpanel_system_resource_firewall_version)" || {
+		echo "无法读取当前防火墙状态" >&2
+		return 1
+	}
+	if ! receipt="$(KJ_SYSTEM_RESOURCE_NONINTERACTIVE=1 kpanel_system_resource_dispatch firewall "$action" "$expected" 2>&1)"; then
+		echo "防火墙 Ping 设置失败" >&2
+		printf '%s\n' "$receipt" | sed '/^KPANEL_SYSTEM_RESOURCE_/d' >&2
+		return 1
+	fi
+	status="$(printf '%s\n' "$receipt" | sed -n 's/^KPANEL_SYSTEM_RESOURCE_STATUS=//p' | tail -n 1)"
+	case "$status" in
+		applied|unchanged) return 0 ;;
+		*)
+			echo "防火墙 Ping 设置未完成" >&2
+			printf '%s\n' "$receipt" | sed '/^KPANEL_SYSTEM_RESOURCE_/d' >&2
+			return 1
+			;;
+	esac
+}
+
 iptables_panel() {
   root_use
   install iptables
@@ -1482,17 +1505,17 @@ iptables_panel() {
 				  ;;
 			  11)
 				  # 允许 PING
-				  iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
-				  iptables -A OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT
-				  iptables-save > /etc/iptables/rules.v4
-				  send_stats "允许PING"
+				  if iptables_panel_ping_action enable-ping; then
+					  echo "已允许 Ping，规则已保存"
+					  send_stats "允许PING"
+				  fi
 				  ;;
 			  12)
-				  # 禁用 PING
-				  iptables -D INPUT -p icmp --icmp-type echo-request -j ACCEPT 2>/dev/null
-				  iptables -D OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT 2>/dev/null
-				  iptables-save > /etc/iptables/rules.v4
-				  send_stats "禁用PING"
+				  # 通过与 KPanel 网页共用的持久化事务禁止 PING。
+				  if iptables_panel_ping_action disable-ping; then
+					  echo "已禁止 Ping，规则已保存"
+					  send_stats "禁用PING"
+				  fi
 				  ;;
 			  13)
 				  enable_ddos_defense
@@ -30209,7 +30232,7 @@ kpanel_system_resource_firewall_snapshot() {
 kpanel_system_resource_firewall_persist() {
 	local snapshot_dir="$1"
 	local rules_path parent desired_rules verify_rules
-	local cron_current cron_desired cron_verify restore_line count current_line
+	local cron_current cron_desired cron_verify restore_line restore_line_legacy count legacy_count current_line
 	local comparison
 
 	KPANEL_SYSTEM_RESOURCE_FIREWALL_PERSIST_CHANGED=false
@@ -30258,15 +30281,18 @@ kpanel_system_resource_firewall_persist() {
 	kpanel_system_resource_firewall_capture "$verify_rules" || return 1
 	kpanel_system_resource_firewall_canonical_equal "$verify_rules" "$rules_path" || return 1
 
-	restore_line='@reboot iptables-restore < /etc/iptables/rules.v4'
+	# root crontab 的默认 PATH 可能不含 /usr/sbin，明确设置启动恢复命令的 PATH。
+	restore_line='@reboot PATH=/usr/sbin:/usr/bin:/sbin:/bin iptables-restore -w 5 < /etc/iptables/rules.v4'
+	restore_line_legacy='@reboot iptables-restore < /etc/iptables/rules.v4'
 	cron_current="$snapshot_dir/crontab.persist.current"
 	kpanel_system_resource_cron_capture "$cron_current" || return 1
 	count="$(grep -Fxc -- "$restore_line" "$cron_current" 2>/dev/null || true)"
-	if [ "$count" -ne 1 ]; then
+	legacy_count="$(grep -Fxc -- "$restore_line_legacy" "$cron_current" 2>/dev/null || true)"
+	if [ "$count" -ne 1 ] || [ "$legacy_count" -ne 0 ]; then
 		cron_desired="$snapshot_dir/crontab.persist.desired"
 		: > "$cron_desired" || return 1
 		while IFS= read -r current_line || [ -n "$current_line" ]; do
-			[ "$current_line" = "$restore_line" ] && continue
+			{ [ "$current_line" = "$restore_line" ] || [ "$current_line" = "$restore_line_legacy" ]; } && continue
 			printf '%s\n' "$current_line" >> "$cron_desired" || return 1
 		done < "$cron_current"
 		if [ -s "$cron_desired" ] && [ "$(tail -c 1 "$cron_desired" | wc -l)" -eq 0 ]; then

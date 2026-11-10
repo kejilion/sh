@@ -21,6 +21,8 @@ fail() {
 
 grep -F '[ "${KJ_SYSTEM_RESOURCE_NONINTERACTIVE:-}" = "1" ] ||' "${script_path}" >/dev/null
 grep -F 'kpanel_system_resource_dispatch "$@"' "${script_path}" >/dev/null
+grep -F 'iptables_panel_ping_action enable-ping' "${script_path}" >/dev/null || fail "SSH firewall menu does not use the shared Ping transaction"
+grep -F 'iptables_panel_ping_action disable-ping' "${script_path}" >/dev/null || fail "SSH firewall menu does not use the shared Ping transaction"
 grep -F 'kpanel_system_resource_file_within_bounds "$path" 262144 1024' "${script_path}" >/dev/null
 grep -F 'kpanel_system_resource_file_within_bounds "$target" 262144 512' "${script_path}" >/dev/null
 grep -F '[ "$bytes" -le 524288 ]' "${script_path}" >/dev/null
@@ -686,7 +688,8 @@ run_dispatch applied firewall open-port "${firewall_v0}" 443
 grep -Fqx -- '-A INPUT -p tcp --dport 443 -j ACCEPT' "${test_iptables}" || fail "firewall TCP rule is missing"
 grep -Fqx -- '-A INPUT -p udp --dport 443 -j ACCEPT' "${test_iptables}" || fail "firewall UDP rule is missing"
 cmp -s -- "${test_iptables}" "${test_rules}" || fail "firewall rules were not persisted exactly"
-[ "$(grep -Fxc '@reboot iptables-restore < /etc/iptables/rules.v4' "${test_crontab}")" -eq 1 ] || fail "firewall restore cron entry is not unique"
+[ "$(grep -Fxc '@reboot PATH=/usr/sbin:/usr/bin:/sbin:/bin iptables-restore -w 5 < /etc/iptables/rules.v4' "${test_crontab}")" -eq 1 ] || fail "firewall restore cron entry is not unique or lacks a reliable PATH"
+[ "$(grep -Fxc '@reboot iptables-restore < /etc/iptables/rules.v4' "${test_crontab}")" -eq 0 ] || fail "legacy firewall restore cron entry was retained"
 firewall_v1="$(kpanel_system_resource_firewall_version)"
 run_dispatch unchanged firewall open-port "${firewall_v1}" 443
 [ "${RUN_RC}" -eq 0 ] || fail "firewall idempotence failed"
@@ -730,5 +733,7 @@ firewall_v5="$(kpanel_system_resource_firewall_version)"
 run_dispatch applied firewall disable-ping "${firewall_v5}"
 [ "${RUN_RC}" -eq 0 ] || fail "firewall disable-ping failed"
 grep -Fqx -- '-A INPUT -p icmp --icmp-type echo-request -j DROP' "${test_iptables}" || fail "ping DROP rule is missing"
+grep -Fqx -- '-A INPUT -p icmp --icmp-type echo-request -j DROP' "${test_rules}" || fail "ping DROP rule is missing from persisted firewall rules"
+[ "$(grep -Fxc '@reboot PATH=/usr/sbin:/usr/bin:/sbin:/bin iptables-restore -w 5 < /etc/iptables/rules.v4' "${test_crontab}")" -eq 1 ] || fail "persistent Ping change has no usable reboot restore command"
 
 printf '%s\n' "kpanel_system_resource_noninteractive_smoke=pass"
