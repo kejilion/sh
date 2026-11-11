@@ -15,6 +15,7 @@ for relative in kejilion.sh cn/kejilion.sh; do
     source "$fixture/functions"
     kpanel_web_http_mode() { [ "${http_mode:-0}" = 1 ]; }
     webname="IP HTTPS smoke test"
+    kpanel_web_confirm_created_access() { :; }
     shared_waf_refresh() { :; }; clear() { :; }; cd() { :; }
     docker() { printf '%s\n' "$*" >> "$fixture/docker.log"; }
     template() {
