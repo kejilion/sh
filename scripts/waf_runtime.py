@@ -134,7 +134,8 @@ def fetch(url, limit):
     previous = signal.signal(signal.SIGALRM, expired)
     signal.alarm(45)
     try:
-        with urllib.request.build_opener(HTTPSOnly()).open(url, timeout=10) as response:
+        request = urllib.request.Request(url, headers={'User-Agent': 'kejilion-sh/waf-package'})
+        with urllib.request.build_opener(HTTPSOnly()).open(request, timeout=10) as response:
             data = response.read(limit+1)
         if len(data) > limit: raise ValueError('Download exceeds budget')
         return data
