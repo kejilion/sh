@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.17"
+sh_v="4.5.20"
 
 
 gl_hui='\e[37m'
@@ -2894,6 +2894,29 @@ manage_country_rules() {
 
 
 
+iptables_panel_ping_action() {
+	local action="$1"
+	local expected receipt status
+	expected="$(kpanel_system_resource_firewall_version)" || {
+		echo "无法读取当前防火墙状态" >&2
+		return 1
+	}
+	if ! receipt="$(KJ_SYSTEM_RESOURCE_NONINTERACTIVE=1 kpanel_system_resource_dispatch firewall "$action" "$expected" 2>&1)"; then
+		echo "防火墙 Ping 设置失败" >&2
+		printf '%s\n' "$receipt" | sed '/^KPANEL_SYSTEM_RESOURCE_/d' >&2
+		return 1
+	fi
+	status="$(printf '%s\n' "$receipt" | sed -n 's/^KPANEL_SYSTEM_RESOURCE_STATUS=//p' | tail -n 1)"
+	case "$status" in
+		applied|unchanged) return 0 ;;
+		*)
+			echo "防火墙 Ping 设置未完成" >&2
+			printf '%s\n' "$receipt" | sed '/^KPANEL_SYSTEM_RESOURCE_/d' >&2
+			return 1
+			;;
+	esac
+}
+
 iptables_panel() {
   root_use
   install iptables
@@ -3015,17 +3038,17 @@ iptables_panel() {
 				  ;;
 			  11)
 				  # 允许 PING
-				  iptables -A INPUT -p icmp --icmp-type echo-request -j ACCEPT
-				  iptables -A OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT
-				  iptables-save > /etc/iptables/rules.v4
-				  send_stats "允许PING"
+				  if iptables_panel_ping_action enable-ping; then
+					  echo "已允许 Ping，规则已保存"
+					  send_stats "允许PING"
+				  fi
 				  ;;
 			  12)
-				  # 禁用 PING
-				  iptables -D INPUT -p icmp --icmp-type echo-request -j ACCEPT 2>/dev/null
-				  iptables -D OUTPUT -p icmp --icmp-type echo-reply -j ACCEPT 2>/dev/null
-				  iptables-save > /etc/iptables/rules.v4
-				  send_stats "禁用PING"
+				  # 通过与 KPanel 网页共用的持久化事务禁止 PING。
+				  if iptables_panel_ping_action disable-ping; then
+					  echo "已禁止 Ping，规则已保存"
+					  send_stats "禁用PING"
+				  fi
 				  ;;
 			  13)
 				  enable_ddos_defense
@@ -3743,10 +3766,10 @@ install_ssltls() {
 		  if [[ ($yuming =~ $ipv4_pattern || $yuming =~ $ipv6_pattern) ]]; then
 			  mkdir -p "/etc/letsencrypt/live/$yuming/" || return 1
 			  if command -v dnf &>/dev/null || command -v yum &>/dev/null; then
-				  openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout "/etc/letsencrypt/live/$yuming/privkey.pem" -out "/etc/letsencrypt/live/$yuming/fullchain.pem" -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
+				  openssl req -x509 -nodes -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -keyout "/etc/letsencrypt/live/$yuming/privkey.pem" -out "/etc/letsencrypt/live/$yuming/fullchain.pem" -days 5475 -subj "/CN=$yuming" -addext "subjectAltName=IP:$yuming"
 			  else
 				  openssl genpkey -algorithm Ed25519 -out "/etc/letsencrypt/live/$yuming/privkey.pem"
-				openssl req -x509 -key "/etc/letsencrypt/live/$yuming/privkey.pem" -out "/etc/letsencrypt/live/$yuming/fullchain.pem" -days 5475 -subj "/C=US/ST=State/L=City/O=Organization/OU=Organizational Unit/CN=Common Name"
+				openssl req -x509 -key "/etc/letsencrypt/live/$yuming/privkey.pem" -out "/etc/letsencrypt/live/$yuming/fullchain.pem" -days 5475 -subj "/CN=$yuming" -addext "subjectAltName=IP:$yuming"
 			  fi
 		  else
 			  docker run --rm -p 80:80 -v /etc/letsencrypt/:/etc/letsencrypt certbot/certbot certonly --standalone -d "$yuming" --email your@email.com --agree-tos --no-eff-email --force-renewal --key-type ecdsa
@@ -3968,6 +3991,7 @@ add_yuming() {
 
 
 check_ip_and_get_access_port() {
+	access_port=""
 	if kpanel_web_http_mode; then access_port=""; return 0; fi
 	local yuming="$1"
 
@@ -3975,8 +3999,14 @@ check_ip_and_get_access_port() {
 	local ipv6_pattern='^(([0-9A-Fa-f]{1,4}:){1,7}:|([0-9A-Fa-f]{1,4}:){7,7}[0-9A-Fa-f]{1,4}|::1)$'
 
 	if [[ "$yuming" =~ $ipv4_pattern || "$yuming" =~ $ipv6_pattern ]]; then
-		read -e -p "请输入访问/监听端口，回车默认使用 80: " access_port
-		access_port=${access_port:-80}
+		echo "IP 访问默认启用 HTTPS，未提供证书时自动生成自签名证书。"
+		read -e -p "请输入 HTTPS 访问/监听端口，回车默认使用 443: " access_port || return 1
+		access_port=${access_port:-443}
+		if [[ ! "$access_port" =~ ^[1-9][0-9]{0,4}$ ]] || [ "$access_port" -gt 65535 ]; then
+			echo "无效端口，请输入 1-65535 之间的整数。" >&2
+			access_port=""
+			return 1
+		fi
 	fi
 }
 
@@ -3989,14 +4019,20 @@ update_nginx_listen_port() {
 
 	# 如果 access_port 为空，则跳过
 	[ -z "$access_port" ] && return 0
+	if [[ ! "$access_port" =~ ^[1-9][0-9]{0,4}$ ]] || [ "$access_port" -gt 65535 ]; then
+		echo "无效的 HTTPS 监听端口。" >&2
+		return 1
+	fi
 
 	# 删除所有 listen 行
-	sed -i '/^[[:space:]]*listen[[:space:]]\+/d' "$conf"
+	sed -i '/^[[:space:]]*listen[[:space:]]\+/d' "$conf" || return 1
+	# 此监听使用 TCP TLS，不再声明模板中固定 443 端口的 HTTP/3 服务。
+	sed -i '/^[[:space:]]*add_header[[:space:]]\+Alt-Svc[[:space:]]/d' "$conf" || return 1
 
 	# 在 server { 后插入新的 listen
 	sed -i "/server {/a\\
-	listen ${access_port};\\
-	listen [::]:${access_port};
+	listen ${access_port} ssl;\\
+	listen [::]:${access_port} ssl;
 " "$conf"
 }
 
@@ -4405,7 +4441,8 @@ def download(revision, name, prefix):
                 raise ValueError('拒绝非 HTTPS 重定向')
             return super().redirect_request(req, fp, code, msg, headers, target)
 
-    with urllib.request.build_opener(SecureRedirect()).open(url, timeout=15) as response:
+    request = urllib.request.Request(url, headers={'User-Agent': 'kejilion-sh/nginx-config'})
+    with urllib.request.build_opener(SecureRedirect()).open(request, timeout=15) as response:
         data = response.read(2 * 1024 * 1024 + 1)
     if len(data) > 2 * 1024 * 1024 or digest(data) != SOURCES[revision][name]:
         raise ValueError('配置模板摘要校验失败: ' + name)
@@ -5589,7 +5626,8 @@ def fetch(url, limit):
     previous = signal.signal(signal.SIGALRM, expired)
     signal.alarm(45)
     try:
-        with urllib.request.build_opener(HTTPSOnly()).open(url, timeout=10) as response:
+        request = urllib.request.Request(url, headers={'User-Agent': 'kejilion-sh/waf-package'})
+        with urllib.request.build_opener(HTTPSOnly()).open(request, timeout=10) as response:
             data = response.read(limit+1)
         if len(data) > limit: raise ValueError('Download exceeds budget')
         return data
@@ -9045,8 +9083,13 @@ nginx_web_on() {
 	echo "您的 $webname 搭建好了！"
 
 	if [[ "$yuming" =~ $ipv4_pattern || "$yuming" =~ $ipv6_pattern ]]; then
-		mv /home/web/conf.d/"$yuming".conf /home/web/conf.d/"${yuming}_${access_port}".conf
-		echo "http://$yuming:$access_port"
+		mv /home/web/conf.d/"$yuming".conf /home/web/conf.d/"${yuming}_${access_port}".conf || return 1
+		if [[ "$yuming" == *:* ]]; then
+			echo "https://[$yuming]:$access_port"
+		else
+			echo "https://$yuming:$access_port"
+		fi
+		echo "如使用自签名证书，浏览器会提示证书不受信任，需手动确认或导入信任。"
 	elif grep -q '^[[:space:]]*#.*if (\$scheme = http)' "/home/web/conf.d/"$yuming".conf"; then
 		echo "http://$yuming"
 	else
@@ -9212,7 +9255,7 @@ ldnmp_Proxy_backend() {
 		add_yuming
 	fi
 
-	check_ip_and_get_access_port "$yuming"
+	check_ip_and_get_access_port "$yuming" || return $?
 
 	if [ -z "$reverseproxy_port" ]; then
 		read -e -p "请输入你的多个反代IP+端口用空格隔开（例如 127.0.0.1:3000 127.0.0.1:3002）： " reverseproxy_port
@@ -9241,7 +9284,7 @@ ldnmp_Proxy_backend() {
 	sed -i "s/# 动态添加/$upstream_servers/g" "${KJ_WEB_STAGED_CONFIG:-/home/web/conf.d/$yuming.conf}"
 
 
-	update_nginx_listen_port "$yuming" "$access_port"
+	update_nginx_listen_port "$yuming" "$access_port" || return $?
 
 	nginx_http_on || return 1
 	kpanel_web_reload_site || return 1
@@ -19604,7 +19647,7 @@ linux_ldnmp() {
 		;;
 
 	  23)
-	  ldnmp_Proxy "${KJ_WEB_DOMAIN:-}" "${KJ_WEB_PROXY_HOST:-}" "${KJ_WEB_PROXY_PORT:-}"
+	  ldnmp_Proxy "${KJ_WEB_DOMAIN:-}" "${KJ_WEB_PROXY_HOST:-}" "${KJ_WEB_PROXY_PORT:-}" || return $?
 	  find_container_by_host_port "$port"
 	  if [ -z "$docker_name" ]; then
 		close_port "$port"
@@ -31805,7 +31848,7 @@ kpanel_system_resource_firewall_snapshot() {
 kpanel_system_resource_firewall_persist() {
 	local snapshot_dir="$1"
 	local rules_path parent desired_rules verify_rules
-	local cron_current cron_desired cron_verify restore_line count current_line
+	local cron_current cron_desired cron_verify restore_line restore_line_legacy count legacy_count current_line
 	local comparison
 
 	KPANEL_SYSTEM_RESOURCE_FIREWALL_PERSIST_CHANGED=false
@@ -31854,15 +31897,18 @@ kpanel_system_resource_firewall_persist() {
 	kpanel_system_resource_firewall_capture "$verify_rules" || return 1
 	kpanel_system_resource_firewall_canonical_equal "$verify_rules" "$rules_path" || return 1
 
-	restore_line='@reboot iptables-restore < /etc/iptables/rules.v4'
+	# root crontab 的默认 PATH 可能不含 /usr/sbin，明确设置启动恢复命令的 PATH。
+	restore_line='@reboot PATH=/usr/sbin:/usr/bin:/sbin:/bin iptables-restore -w 5 < /etc/iptables/rules.v4'
+	restore_line_legacy='@reboot iptables-restore < /etc/iptables/rules.v4'
 	cron_current="$snapshot_dir/crontab.persist.current"
 	kpanel_system_resource_cron_capture "$cron_current" || return 1
 	count="$(grep -Fxc -- "$restore_line" "$cron_current" 2>/dev/null || true)"
-	if [ "$count" -ne 1 ]; then
+	legacy_count="$(grep -Fxc -- "$restore_line_legacy" "$cron_current" 2>/dev/null || true)"
+	if [ "$count" -ne 1 ] || [ "$legacy_count" -ne 0 ]; then
 		cron_desired="$snapshot_dir/crontab.persist.desired"
 		: > "$cron_desired" || return 1
 		while IFS= read -r current_line || [ -n "$current_line" ]; do
-			[ "$current_line" = "$restore_line" ] && continue
+			{ [ "$current_line" = "$restore_line" ] || [ "$current_line" = "$restore_line_legacy" ]; } && continue
 			printf '%s\n' "$current_line" >> "$cron_desired" || return 1
 		done < "$cron_current"
 		if [ -s "$cron_desired" ] && [ "$(tail -c 1 "$cron_desired" | wc -l)" -eq 0 ]; then
