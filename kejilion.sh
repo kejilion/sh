@@ -7310,6 +7310,13 @@ kpanel_app_apply_access_mode() {
 kpanel_app_restore_access_mode() {
 	local access_mode="$1"
 
+	# Native updaters such as Dokploy verify and preserve their existing entry.
+	# Reapplying port rules would recreate that container and invalidate its identity.
+	if [ "${docker_app_update_mode:-}" = "preserve_entry" ]; then
+		kpanel_app_write_access_mode "$access_mode"
+		return $?
+	fi
+
 	if [ "$access_mode" = "domain_only" ]; then
 		kpanel_app_apply_access_mode domain_only false
 	else
