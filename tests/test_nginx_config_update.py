@@ -299,6 +299,27 @@ class TransactionTests(unittest.TestCase):
         updater.snapshot(self.root, self.directory)
         self.initial = {name: (self.root / name).read_bytes() for name in updater.inventory(self.root)}
 
+    def test_waf_image_switch_allows_cron_to_refresh_status_files(self):
+        statuses = ('config/waf/logrotate.status', 'config/waf/ban-health.json')
+        for name in statuses:
+            self.seed(name, 'old status')
+        self.prepare_waf()
+
+        def refresh_status(*args):
+            if args[:2] == ('docker', 'compose') and 'pull' in args:
+                for name in statuses:
+                    self.seed(name, 'new status')
+            return self.command(*args)
+
+        with patch.object(updater, 'command', side_effect=refresh_status):
+            self.update('waf')
+
+        self.assertTrue(self.switched)
+        for name in statuses:
+            self.assertEqual((self.root / name).read_bytes(), b'new status')
+            self.assertFalse((self.directory / 'before' / name).exists())
+            self.assertFalse((self.directory / 'candidate' / name).exists())
+
     def test_waf_image_switch_preserves_custom_config_and_does_not_commit_before_policy(self):
         self.prepare_waf()
         updater.execute_update(self.root, self.directory, 'waf', 'https://')

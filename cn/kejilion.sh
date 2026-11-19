@@ -4251,6 +4251,8 @@ def inventory(root):
             # inputs, not generated configuration. Do not duplicate them in every backup.
             if Path(current) == root / 'config/waf':
                 directories[:] = [item for item in directories if item != 'packages']
+                # Scheduled WAF maintenance rewrites these status files independently.
+                files = [item for item in files if item not in {'logrotate.status', 'ban-health.json'}]
             for item in directories:
                 trusted(Path(current) / item, directory=True)
             paths.extend(Path(current) / item for item in files)
