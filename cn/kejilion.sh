@@ -1,5 +1,5 @@
 #!/bin/bash
-sh_v="4.5.20"
+sh_v="4.5.21"
 
 
 gl_hui='\e[37m'
@@ -4143,8 +4143,11 @@ import time
 import urllib.parse
 import urllib.request
 
-# Multi-arch manifest verified from the published 1.31.8-alpine tag.
-WAF_CANDIDATE_IMAGE = 'kjlion/nginx:alpine@sha256:065a40f37e508787769513aca655fc541acf687afffd57b25241b1a6bac53ef8'
+WAF_CANDIDATE_IMAGE = 'kjlion/nginx:alpine'
+WAF_IMAGE_TAGS = {WAF_CANDIDATE_IMAGE, 'docker.io/' + WAF_CANDIDATE_IMAGE}
+# Recognize only the digest written by earlier versions of this updater.
+WAF_LEGACY_IMAGE = 'kjlion/nginx:alpine@sha256:065a40f37e508787769513aca655fc541acf687afffd57b25241b1a6bac53ef8'
+WAF_LEGACY_PINS = {WAF_LEGACY_IMAGE, 'docker.io/' + WAF_LEGACY_IMAGE}
 
 LEGACY = '99f7169d84901be3f34452f375b3e0079cd86b4c'
 PREVIOUS = '8773850871f991b027f62841fde2795121251620'
@@ -4839,15 +4842,16 @@ def waf_image_plan(root, model, container):
     official = r'(?:(?:docker\.io/)?library/|docker\.io/)?nginx(?::[\w.-]+|@sha256:[0-9a-f]{64})?'
     service = model['services']['nginx']
     image = service.get('image', '')
-    owned_waf_image = image in {'kjlion/nginx:alpine', 'docker.io/kjlion/nginx:alpine', WAF_CANDIDATE_IMAGE}
+    owned_waf_image = image in WAF_IMAGE_TAGS or image in WAF_LEGACY_PINS
     if service.get('build') or not (re.fullmatch(official, image) or owned_waf_image):
         raise ValueError('仅自动迁移官方 nginx 镜像；自定义镜像请先核对 ModSecurity 兼容性')
-    sources = container['Config'].get('Labels', {}).get('com.docker.compose.project.config_files', '')
+    labels = (container or {}).get('Config', {}).get('Labels', {})
+    sources = labels.get('com.docker.compose.project.config_files', '')
     paths = [Path(name) for name in sources.split(',') if name]
     owned = inventory(root)
     if not paths or any(path.parent != root or path.name not in owned for path in paths):
-        # A previous transactional rollback used an immutable canonical snapshot.
-        # Resolve today's native Compose inputs so a failed attempt can be retried.
+        # A missing container or a previous transaction may leave no native labels.
+        # Resolve the active Compose inputs before changing the image.
         environment = command('docker', 'compose', '--project-directory', str(root), 'config', '--environment')
         values = dict(line.split('=', 1) for line in environment.splitlines() if '=' in line)
         if values.get('COMPOSE_FILE'):
@@ -4950,15 +4954,10 @@ def execute_update(root, directory, component, prefix):
             previous[name] = {'image': containers[0]['Image'],
                               'running': any(item['State']['Running'] for item in containers)}
     json_write(directory / 'images.json', {'services': services, 'previous': previous})
-    managed_waf_tag = bool(
-        component != 'waf' and nginx_container is not None and
-        model['services']['nginx'].get('image') in {'kjlion/nginx:alpine', 'docker.io/kjlion/nginx:alpine'}
-    )
-    if component == 'waf' or managed_waf_tag:
-        if nginx_container is None or not nginx_container['State']['Running']:
-            if component == 'waf':
-                raise ValueError('WAF 自动迁移需要单个运行中的 nginx 容器')
+    if component == 'waf' or model['services']['nginx'].get('image') in WAF_LEGACY_PINS:
         if component == 'waf':
+            if nginx_container is None or not nginx_container['State']['Running']:
+                raise ValueError('WAF 自动迁移需要单个运行中的 nginx 容器')
             journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
             journal['component'] = 'waf'
             json_write(directory / 'journal.json', journal)
@@ -4970,13 +4969,16 @@ def execute_update(root, directory, component, prefix):
         model = json.loads(command('docker', 'compose', '--project-directory', str(root), 'config', '--format', 'json'))
         if model != desired:
             raise ValueError('镜像迁移改变了其他有效 Compose 参数，已中止: ' + ', '.join(changed_paths(desired, model)[:10]))
-        if component == 'waf':
-            compose = compose_file(directory, 'target.json', model)
-        else:
-            compose = compose_file(directory, 'pinned.json', model)
+        compose = compose_file(directory, 'target.json', model)
     if component == 'all':
         snapshot_runtime(directory, compose, previous)
-    command(*compose, 'pull', *services)
+    pull_services = services
+    nginx_service = model['services']['nginx']
+    if nginx_service.get('image') in WAF_IMAGE_TAGS and not nginx_service.get('build'):
+        command(*compose, 'pull', '--policy', 'always', 'nginx')
+        pull_services = [name for name in services if name != 'nginx']
+    if pull_services:
+        command(*compose, 'pull', *pull_services)
     stage = directory / 'candidate'
     stage.mkdir(mode=0o700)
     inventory_before = inventory(root)
