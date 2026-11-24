@@ -6270,55 +6270,35 @@ fi
 }
 
 
-patch_wp_memory_limit() {
-  local MEMORY_LIMIT="${1:-256M}"      # 第一个参数，默认256M
-  local MAX_MEMORY_LIMIT="${2:-256M}"  # 第二个参数，默认256M
-  local TARGET_DIR="/home/web/html"    # 路径写死
-
-  find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
-	# 删除旧定义
-	sed -i "/define(['\"]WP_MEMORY_LIMIT['\"].*/d" "$FILE"
-	sed -i "/define(['\"]WP_MAX_MEMORY_LIMIT['\"].*/d" "$FILE"
-
-	# 插入新定义，放在含 "Happy publishing" 的行前
-	awk -v insert="define('WP_MEMORY_LIMIT', '$MEMORY_LIMIT');\ndefine('WP_MAX_MEMORY_LIMIT', '$MAX_MEMORY_LIMIT');" \
-	'
-	  /Happy publishing/ {
-		print insert
-	  }
-	  { print }
-	' "$FILE" > "$FILE.tmp" && mv -f "$FILE.tmp" "$FILE"
-
-	echo "[+] Replaced WP_MEMORY_LIMIT in $FILE"
-  done
-}
-
-
-
-
-patch_wp_debug() {
-  local DEBUG="${1:-false}"           # 第一个参数，默认false
-  local DEBUG_DISPLAY="${2:-false}"   # 第二个参数，默认false
-  local DEBUG_LOG="${3:-false}"       # 第三个参数，默认false
-  local TARGET_DIR="/home/web/html"   # 路径写死
-
-  find "$TARGET_DIR" -type f -name "wp-config.php" | while read -r FILE; do
-	# 删除旧定义
-	sed -i "/define(['\"]WP_DEBUG['\"].*/d" "$FILE"
-	sed -i "/define(['\"]WP_DEBUG_DISPLAY['\"].*/d" "$FILE"
-	sed -i "/define(['\"]WP_DEBUG_LOG['\"].*/d" "$FILE"
-
-	# 插入新定义，放在含 "Happy publishing" 的行前
-	awk -v insert="define('WP_DEBUG_DISPLAY', $DEBUG_DISPLAY);\ndefine('WP_DEBUG_LOG', $DEBUG_LOG);" \
-	'
-	  /Happy publishing/ {
-		print insert
-	  }
-	  { print }
-	' "$FILE" > "$FILE.tmp" && mv -f "$FILE.tmp" "$FILE"
-
-	echo "[+] Replaced WP_DEBUG settings in $FILE"
-  done
+patch_wp_optimization() {
+	local memory_limit="${1:-256M}" file work candidate
+	[ -d "$ldnmp_web_root_base" ] || return 0
+	while IFS= read -r -d '' file; do
+		grep -Fq 'Happy publishing' "$file" || continue
+		work=$(mktemp -d -- "${file%/*}/.kejilion-wp.XXXXXX") || return 1
+		candidate="$work/config"
+		# Keep credentials private and preserve access for PHP workers.
+		if ! cp -p -- "$file" "$candidate" ||
+			! awk -v limit="$memory_limit" '
+				/^[[:space:]]*define[[:space:]]*\([[:space:]]*[\047"](WP_(MAX_)?MEMORY_LIMIT|WP_DEBUG(_DISPLAY|_LOG)?)[\047"]/ { next }
+				/Happy publishing/ && !inserted {
+					printf "define(\047WP_MEMORY_LIMIT\047, \047%s\047);\n", limit
+					printf "define(\047WP_MAX_MEMORY_LIMIT\047, \047%s\047);\n", limit
+					print "define(\047WP_DEBUG\047, false);"
+					print "define(\047WP_DEBUG_DISPLAY\047, false);"
+					print "define(\047WP_DEBUG_LOG\047, false);"
+					inserted = 1
+				}
+				{ print }
+			' "$file" > "$candidate" ||
+			! mv -fT -- "$candidate" "$file"; then
+			rm -f -- "$candidate"
+			rmdir -- "$work"
+			echo "无法更新 WordPress 配置: $file" >&2
+			return 1
+		fi
+		rmdir -- "$work"
+	done < <(find "$ldnmp_web_root_base" -type f -name wp-config.php -print0)
 }
 
 
@@ -6801,11 +6781,10 @@ ldnmp_optimization_mode() {
 	rm -f /home/www.conf
 
 	if [ "$mode" = high ]; then
-		patch_wp_memory_limit 512M 512M
+		patch_wp_optimization 512M || return 1
 	else
-		patch_wp_memory_limit
+		patch_wp_optimization || return 1
 	fi
-	patch_wp_debug
 	fix_phpfpm_conf php
 	docker inspect php74 >/dev/null 2>&1 && fix_phpfpm_conf php74
 

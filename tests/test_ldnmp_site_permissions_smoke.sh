@@ -31,7 +31,7 @@ for script_path in "${scripts[@]}"; do
 	prepare_count="$(grep -Fc 'prepare_ldnmp_site_root "$yuming" || return 1' "${script_path}")"
 	normalize_count="$(grep -Fc 'normalize_ldnmp_site_permissions "$yuming" || return 1' "${script_path}")"
 	[ "${prepare_count}" -eq 11 ]
-	[ "${normalize_count}" -eq 11 ]
+	[ "${normalize_count}" -eq 12 ]
 
 	if grep -F 'mkdir $yuming' "${script_path}" >/dev/null; then
 		printf '%s\n' "unsafe umask-dependent site directory creation remains in ${script_path}" >&2
@@ -47,6 +47,7 @@ for script_path in "${scripts[@]}"; do
 		eval "$(extract_function ldnmp_site_domain_is_safe "${script_path}")"
 		eval "$(extract_function prepare_ldnmp_site_root "${script_path}")"
 		eval "$(extract_function normalize_ldnmp_site_permissions "${script_path}")"
+		eval "$(extract_function patch_wp_optimization "${script_path}")"
 
 		ldnmp_web_root_base="${test_root}/html"
 		install() {
@@ -79,6 +80,26 @@ for script_path in "${scripts[@]}"; do
 		[ "$(stat -c '%a' "${ldnmp_web_root_base}/wp.example.test/wordpress/wp-includes/style.css")" = "644" ]
 		[ "$(stat -c '%a' "${ldnmp_web_root_base}/wp.example.test/wordpress/task.sh")" = "755" ]
 
+		wp_config="${ldnmp_web_root_base}/wp.example.test/wordpress/wp-config.php"
+		cat > "$wp_config" <<'PHP'
+<?php
+define('DB_NAME', 'example');
+define('WP_DEBUG', true);
+define('WP_DEBUG_LOG', true);
+/* That's all, stop editing! Happy publishing. */
+PHP
+		command chmod 0640 "$wp_config"
+		if [ "$(id -u)" = 0 ]; then chown 0:82 "$wp_config"; fi
+		original_metadata=$(stat -c '%a %u:%g' "$wp_config")
+		patch_wp_optimization 512M
+		grep -Fxq "define('WP_MAX_MEMORY_LIMIT', '512M');" "$wp_config"
+		patch_wp_optimization
+		[ "$(stat -c '%a %u:%g' "$wp_config")" = "$original_metadata" ]
+		[ "$(grep -cF "'WP_DEBUG_LOG'" "$wp_config")" -eq 1 ]
+		grep -Fxq "define('WP_DEBUG_LOG', false);" "$wp_config"
+		grep -Fxq "define('WP_MAX_MEMORY_LIMIT', '256M');" "$wp_config"
+		grep -Fxq "define('DB_NAME', 'example');" "$wp_config"
+
 		if prepare_ldnmp_site_root "../escape"; then
 			printf '%s\n' "path traversal domain was accepted by ${script_path}" >&2
 			exit 1
@@ -88,7 +109,7 @@ for script_path in "${scripts[@]}"; do
 	rm -rf -- "${test_root}"
 done
 
-for function_name in ldnmp_site_domain_is_safe prepare_ldnmp_site_root normalize_ldnmp_site_permissions; do
+for function_name in ldnmp_site_domain_is_safe prepare_ldnmp_site_root normalize_ldnmp_site_permissions patch_wp_optimization; do
 	cmp \
 		<(extract_function "${function_name}" "${scripts[0]}") \
 		<(extract_function "${function_name}" "${scripts[1]}")
