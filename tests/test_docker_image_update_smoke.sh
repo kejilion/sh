@@ -11,13 +11,19 @@ awk '
 	capture { print }
 	capture && /^}/ { exit }
 ' "$script_path" | sed 's/\r$//' >"$tmp_dir/function.sh"
+awk '
+	/^nginx_config_update\(\) \{/ { capture=1 }
+	capture { print }
+	capture && /^NGINX_CONFIG_UPDATE\r?$/ { heredoc_done=1 }
+	heredoc_done && /^}\r?$/ { exit }
+' "$script_path" | sed 's/\r$//' >>"$tmp_dir/function.sh"
 
 mkdir -p "$tmp_dir/bin"
 cat >"$tmp_dir/bin/docker" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 if [[ "$1" == "inspect" ]]; then
-	printf '%s\n' '2026-07-27T00:00:00Z,docker.io/kjlion/kejilion-panel:latest,sha256:local-image'
+	printf '2026-07-27T00:00:00Z,%s,sha256:local-image\n' "${CONTAINER_IMAGE:-docker.io/kjlion/kejilion-panel:latest}"
 	exit 0
 fi
 if [[ "$1" == "image" && "$2" == "inspect" ]]; then
@@ -66,5 +72,12 @@ fi
 export REMOTE_DIGEST="$LOCAL_DIGEST"
 check_docker_image_update kpanel
 test -z "$update_status"
+
+: >"$CURL_LOG"
+export REMOTE_DIGEST="sha256:$(printf 'b%.0s' {1..64})"
+export CONTAINER_IMAGE="kjlion/nginx@${LOCAL_DIGEST}"
+check_docker_image_update nginx
+test "$update_status" = "发现新版本!"
+grep -Fx 'https://hub.docker.com/v2/repositories/kjlion/nginx/tags/alpine' "$CURL_LOG" >/dev/null
 
 printf '%s\n' "docker_image_update_smoke=pass"

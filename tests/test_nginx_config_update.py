@@ -353,30 +353,40 @@ class TransactionTests(unittest.TestCase):
         self.seed('docker-compose.override.yml', original)
         container = copy.deepcopy(self.images['nginx'])
         container['Config']['Labels']['com.docker.compose.project.config_files'] += ',' + str(self.root / 'docker-compose.override.yml')
-        name, result = updater.waf_image_plan(self.root, self.model, container)
+        name, result = updater.nginx_image_plan(self.root, container, updater.WAF_CANDIDATE_IMAGE)
         self.assertEqual(name, 'docker-compose.override.yml')
         self.assertEqual(result.decode(), original.replace('image: ${NGINX_IMAGE:-nginx:alpine} # old', 'image: ' + updater.WAF_CANDIDATE_IMAGE))
         self.assertEqual(updater.WAF_CANDIDATE_IMAGE, 'kjlion/nginx:alpine')
 
     def test_waf_custom_image_or_build_cannot_be_automatically_replaced(self):
         self.prepare_waf()
-        for changes in ({'image': 'custom/nginx:latest'}, {'build': './custom'},
-                        {'image': 'kjlion/nginx:alpine@sha256:' + 'f' * 64}):
-            model = copy.deepcopy(self.model)
-            model['services']['nginx'].update(changes)
-            with self.assertRaisesRegex(ValueError, '自定义镜像'):
-                updater.waf_image_plan(self.root, model, self.images['nginx'])
+        original = copy.deepcopy(self.model)
+        for changes in ({'image': 'custom/nginx:latest'}, {'build': './custom'}):
+            with self.subTest(changes=changes):
+                self.model = copy.deepcopy(original)
+                self.model['services']['nginx'].update(changes)
+                self.seed('docker-compose.yml', json.dumps(self.model))
+                updater.snapshot(self.root, self.directory)
+                with self.assertRaisesRegex(ValueError, '自定义镜像'):
+                    self.update('waf')
+                self.assertEqual(json.loads((self.root / 'docker-compose.yml').read_bytes()), self.model)
 
-    def test_waf_image_plan_accepts_owned_tags_and_legacy_pins(self):
-        self.prepare_waf()
-        for image in ('kjlion/nginx:alpine', 'docker.io/kjlion/nginx:alpine',
-                      updater.WAF_LEGACY_IMAGE, 'docker.io/' + updater.WAF_LEGACY_IMAGE):
+    def test_rolling_image_preserves_nginx_repository_and_variant(self):
+        digest = '@sha256:' + '7' * 64
+        for image, expected in (
+                ('nginx', 'nginx:latest'),
+                ('nginx:stable-alpine', 'nginx:stable-alpine'),
+                ('nginx' + digest, 'nginx:latest'),
+                ('docker.io/library/nginx:1.31.8-bookworm-otel', 'nginx:otel'),
+                ('index.docker.io/library/nginx:1.31.8-alpine3.23-slim' + digest, 'nginx:alpine-slim'),
+                ('nginx:stable-alpine3.23-perl' + digest, 'nginx:stable-alpine-perl'),
+                ('kjlion/nginx' + digest, 'kjlion/nginx:alpine'),
+                ('docker.io/kjlion/nginx:1.31.8-alpine' + digest, 'kjlion/nginx:alpine'),
+                ('registry-1.docker.io/kjlion/nginx:1.31.8-alpine', 'kjlion/nginx:alpine'),
+                ('mirror.example/kjlion/nginx:1.31.8-alpine', None),
+                ('custom/nginx' + digest, None)):
             with self.subTest(image=image):
-                model = copy.deepcopy(self.model)
-                model['services']['nginx']['image'] = image
-                name, data = updater.waf_image_plan(self.root, model, self.images['nginx'])
-                self.assertEqual(name, 'docker-compose.yml')
-                self.assertEqual(json.loads(data)['services']['nginx']['image'], updater.WAF_CANDIDATE_IMAGE)
+                self.assertEqual(updater.nginx_rolling_image(image), expected)
 
     def test_managed_waf_tag_is_refreshed_during_regular_upgrade(self):
         self.prepare_waf()
@@ -400,9 +410,9 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(compose, self.model)
         self.assertTrue(any(call[-4:] == ('pull', '--policy', 'always', 'nginx') for call in self.calls))
 
-    def test_regular_upgrade_replaces_previous_waf_digest_from_transaction_snapshot(self):
+    def test_regular_upgrade_replaces_any_owned_waf_digest_from_transaction_snapshot(self):
         self.prepare_waf()
-        previous_image = 'kjlion/nginx:alpine@sha256:065a40f37e508787769513aca655fc541acf687afffd57b25241b1a6bac53ef8'
+        previous_image = 'kjlion/nginx@sha256:' + '7' * 64
         self.model['services']['nginx']['image'] = previous_image
         self.seed('docker-compose.yml', json.dumps(self.model))
         self.images['nginx']['Config'] = {'Image': previous_image, 'Labels': {
@@ -416,6 +426,72 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(json.loads((self.root / 'docker-compose.yml').read_bytes()), expected)
         self.assertTrue(any(call[-4:] == ('pull', '--policy', 'always', 'nginx') and
                             str(self.directory / 'target.json') in call for call in self.calls))
+
+    def test_regular_upgrade_replaces_official_version_without_switching_to_waf(self):
+        self.prepare_waf()
+        self.model['services']['nginx']['image'] = 'nginx:1.31.8-alpine'
+        self.seed('docker-compose.yml', json.dumps(self.model))
+        updater.snapshot(self.root, self.directory)
+
+        self.update()
+
+        model = json.loads((self.root / 'docker-compose.yml').read_bytes())
+        self.assertEqual(model['services']['nginx']['image'], 'nginx:alpine')
+        self.assertEqual(model['services']['php'], self.model['services']['php'])
+        self.assertTrue(any(call[-4:] == ('pull', '--policy', 'always', 'nginx') for call in self.calls))
+
+    def test_rolling_updates_repeat_with_full_recovery_history(self):
+        self.prepare_waf()
+        self.model['services']['nginx']['image'] = 'kjlion/nginx:alpine'
+        self.seed('docker-compose.yml', json.dumps(self.model))
+        backups = self.directory.parent
+        points = [backups / f'202611{day:02d}T000000Z.point' for day in range(1, 17)]
+        referenced, archived = points[:2]
+        for point in points:
+            point.mkdir(mode=0o700)
+            (point / 'journal.json').write_text('{"phase":"committed"}')
+        marker = archived / 'before.conf'
+        marker.write_text('recoverable configuration')
+
+        def command(*args):
+            if args[:3] == ('docker', 'ps', '-a'):
+                return str(referenced / 'current.json')
+            return self.command(*args)
+
+        with patch.object(updater, 'command', side_effect=command):
+            updater.snapshot(self.root, self.directory)
+            self.update()
+            second = backups / 'repeat'
+            second.mkdir(mode=0o700)
+            updater.snapshot(self.root, second)
+            self.directory = second
+            self.initial = {name: (self.root / name).read_bytes() for name in updater.inventory(self.root)}
+            self.old_images = copy.deepcopy(self.images)
+            self.switched = False
+            self.update()
+
+        archive = backups.parent / 'nginx-update-archive' / archived.name
+        self.assertEqual((archive / marker.name).read_text(), 'recoverable configuration')
+        self.assertTrue(referenced.is_dir())
+        self.assertTrue(points[-1].is_dir())
+        self.assertEqual(len(list(backups.iterdir())), 16)
+        self.assertEqual(json.loads((second / 'journal.json').read_bytes())['phase'], 'committed')
+        self.assertEqual(sum(call[-4:] == ('pull', '--policy', 'always', 'nginx') for call in self.calls), 2)
+
+    def test_nginx_only_snapshot_can_continue_after_previous_database_writes(self):
+        previous = self.directory.parent / 'previous'
+        previous.mkdir(mode=0o700)
+        journal = previous / 'journal.json'
+        exposed = b'{"phase":"write-exposed"}'
+        journal.write_bytes(exposed)
+
+        updater.snapshot(self.root, self.directory, 'nginx')
+        self.assertEqual(journal.read_bytes(), exposed)
+        with self.assertRaisesRegex(ValueError, '未完成的更新恢复点'):
+            updater.snapshot(self.root, self.directory, 'all')
+        journal.write_bytes(b'{"phase":"switching"}')
+        with self.assertRaisesRegex(ValueError, '未完成的更新恢复点'):
+            updater.snapshot(self.root, self.directory, 'nginx')
 
     def test_success_migrates_common_files_preserves_sites_and_persists_verified_baselines(self):
         original_inode = (self.root / 'nginx.conf').stat().st_ino

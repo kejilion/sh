@@ -2050,7 +2050,11 @@ enable() {
 
 
 break_end() {
-	  echo -e "${gl_lv}操作完成${gl_bai}"
+	  if [ "${1:-0}" -eq 0 ]; then
+		  echo -e "${gl_lv}操作完成${gl_bai}"
+	  else
+		  echo -e "${gl_hong}操作失败，请检查上方错误${gl_bai}"
+	  fi
 	  echo "按任意键继续..."
 	  read -n 1 -s -r -p ""
 	  echo ""
@@ -4144,10 +4148,6 @@ import urllib.parse
 import urllib.request
 
 WAF_CANDIDATE_IMAGE = 'kjlion/nginx:alpine'
-WAF_IMAGE_TAGS = {WAF_CANDIDATE_IMAGE, 'docker.io/' + WAF_CANDIDATE_IMAGE}
-# Recognize only the digest written by earlier versions of this updater.
-WAF_LEGACY_IMAGE = 'kjlion/nginx:alpine@sha256:065a40f37e508787769513aca655fc541acf687afffd57b25241b1a6bac53ef8'
-WAF_LEGACY_PINS = {WAF_LEGACY_IMAGE, 'docker.io/' + WAF_LEGACY_IMAGE}
 
 LEGACY = '99f7169d84901be3f34452f375b3e0079cd86b4c'
 PREVIOUS = '8773850871f991b027f62841fde2795121251620'
@@ -4173,7 +4173,8 @@ SOURCES = {
     },
 }
 STATE = 'config/nginx-update.json'
-MAX_FILES, MAX_BYTES, MAX_BACKUPS = 512, 64 * 1024 * 1024, 16
+MAX_FILES, MAX_BYTES = 512, 64 * 1024 * 1024
+KEEP_RECOVERY_POINTS = 16
 RUNTIME_PATHS = {
     'php': ('/usr/local/etc/php-fpm.d/www.conf', '/usr/local/etc/php-fpm.d/zz-docker.conf',
             '/usr/local/etc/php/conf.d/optimized_php.ini'),
@@ -4504,31 +4505,55 @@ def migrate(root, stage, prefix):
     return {'schemaVersion': 1, 'files': records, 'templates': cached}, messages
 
 
-def snapshot(root, directory):
+def archive_completed(root, completed):
+    excess = len(completed) + 1 - KEEP_RECOVERY_POINTS
+    if excess <= 0:
+        return
+    archive = root / 'backups/nginx-update-archive'
+    try:
+        labels = command('docker', 'ps', '-a', '--filter', 'label=com.docker.compose.project.working_dir=' + str(root),
+                         '--format', '{{.Label "com.docker.compose.project.config_files"}}')
+        referenced = {parent for line in labels.splitlines() for name in line.split(',') if name
+                      for parent in (root / name).resolve().parents}
+        archive.mkdir(mode=0o700, exist_ok=True)
+        trusted(archive, directory=True)
+        for entry in sorted(completed)[:-1]:
+            if entry in referenced:
+                continue
+            target = archive / entry.name
+            if target.exists() or target.is_symlink():
+                continue
+            entry.rename(target)
+            excess -= 1
+            if excess == 0:
+                break
+    except (OSError, ValueError, RuntimeError, subprocess.TimeoutExpired):
+        print('旧恢复点自动归档未完成，已保留未归档的恢复点', file=sys.stderr)
+
+
+def snapshot(root, directory, component='nginx'):
     backups = root / 'backups/nginx-update'
     backups.mkdir(parents=True, exist_ok=True, mode=0o700)
     trusted(backups, directory=True)
-    entries = list(backups.iterdir())
-    if len(entries) > MAX_BACKUPS:
-        raise ValueError('Nginx 恢复点已达16份，请先归档旧恢复点')
-    size = 0
-    for entry in entries:
+    completed = []
+    for entry in backups.iterdir():
         trusted(entry, directory=True)
-        if entry != directory and (entry / 'journal.json').exists():
-            previous = json.loads((entry / 'journal.json').read_text(encoding='utf-8'))
-            if previous.get('phase') not in {'committed', 'rolled-back'}:
-                raise ValueError('存在未完成的更新恢复点，请先检查恢复: ' + str(entry))
-        for current, directories, files in os.walk(entry, followlinks=False):
-            if Path(current) == entry:
-                directories[:] = [item for item in directories if item != 'data']
-            for item in directories:
-                trusted(Path(current) / item, directory=True)
-            for item in files:
-                size += trusted(Path(current) / item).st_size
+        journal = entry / 'journal.json'
+        if entry == directory or not (journal.exists() or journal.is_symlink()):
+            continue
+        trusted(journal)
+        phase = json.loads(journal.read_text(encoding='utf-8')).get('phase')
+        if phase in {'committed', 'rolled-back'}:
+            completed.append(entry)
+        elif phase != 'write-exposed' or component != 'nginx':
+            raise ValueError('存在未完成的更新恢复点，请先检查恢复: ' + str(entry))
+        # A previous full-stack run exposed database writes. An nginx-only
+        # update takes a new snapshot and never restores or mutates that run.
     before = inventory(root)
     needed = sum((root / name).stat().st_size for name in before)
-    if size + needed * 3 + 3 * 1024 * 1024 > MAX_BYTES or shutil.disk_usage(root).free < needed * 3 + 3 * 1024 * 1024:
-        raise ValueError('Nginx 配置备份空间不足或超过64MiB预算，请先归档旧恢复点')
+    if shutil.disk_usage(root).free < needed * 3 + 3 * 1024 * 1024:
+        raise ValueError('磁盘可用空间不足，未创建 Nginx 更新恢复点')
+    archive_completed(root, completed)
     for name in before:
         target = directory / 'before' / name
         target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -4835,14 +4860,24 @@ def restore_data(directory, compose, services):
         command('tar', '--acls', '--xattrs', '--numeric-owner', '--compare', '-f', str(archive), '-C', str(source))
 
 
-def waf_image_plan(root, model, container):
-    """Edit only the active nginx image declaration, then verify the full model."""
-    official = r'(?:(?:docker\.io/)?library/|docker\.io/)?nginx(?::[\w.-]+|@sha256:[0-9a-f]{64})?'
-    service = model['services']['nginx']
-    image = service.get('image', '')
-    owned_waf_image = image in WAF_IMAGE_TAGS or image in WAF_LEGACY_PINS
-    if service.get('build') or not (re.fullmatch(official, image) or owned_waf_image):
-        raise ValueError('仅自动迁移官方 nginx 镜像；自定义镜像请先核对 ModSecurity 兼容性')
+def nginx_rolling_image(image):
+    ref = re.fullmatch(
+        r'(?:(?:docker\.io|index\.docker\.io|registry-1\.docker\.io)/)?'
+        r'((?:library/|kjlion/)?nginx)(?::([\w][\w.-]{0,127}))?(?:@sha256:[0-9a-f]{64})?',
+        image, re.ASCII)
+    if ref is None:
+        return None
+    if ref[1] == 'kjlion/nginx':
+        return WAF_CANDIDATE_IMAGE
+    # Keep the upstream image family and optional Perl, slim or OpenTelemetry variant.
+    tag = re.sub(r'^\d+(?:\.\d+)*(?:-|$)', '', ref[2] or '')
+    tag = re.sub(r'\balpine\d+(?:\.\d+)+', 'alpine', tag)
+    tag = re.sub(r'\b(?:bullseye|bookworm|trixie)(?:-|$)', '', tag).rstrip('-')
+    return 'nginx:' + (tag or 'latest')
+
+
+def nginx_image_plan(root, container, image):
+    """Edit only the active nginx image declaration."""
     labels = (container or {}).get('Config', {}).get('Labels', {})
     sources = labels.get('com.docker.compose.project.config_files', '')
     paths = [Path(name) for name in sources.split(',') if name]
@@ -4879,7 +4914,7 @@ def waf_image_plan(root, model, container):
             if 'nginx' not in document.get('services', {}):
                 continue
             explicit = 'image' in document['services']['nginx']
-            document['services']['nginx']['image'] = WAF_CANDIDATE_IMAGE
+            document['services']['nginx']['image'] = image
             candidate = path.name, (json.dumps(document, ensure_ascii=False) + '\n').encode()
             if explicit:
                 return candidate
@@ -4910,9 +4945,9 @@ def waf_image_plan(root, model, container):
             newline = '\r\n' if line.endswith('\r\n') else '\n'
             for offset in range(index + 1, end):
                 if re.match(r'^ {%d}image\s*:' % child, lines[offset]):
-                    lines[offset] = ' ' * child + 'image: ' + WAF_CANDIDATE_IMAGE + newline
+                    lines[offset] = ' ' * child + 'image: ' + image + newline
                     return path.name, ''.join(lines).encode()
-            lines.insert(index + 1, ' ' * child + 'image: ' + WAF_CANDIDATE_IMAGE + newline)
+            lines.insert(index + 1, ' ' * child + 'image: ' + image + newline)
             if insertion is None:
                 insertion = path.name, ''.join(lines).encode()
             break
@@ -4952,18 +4987,24 @@ def execute_update(root, directory, component, prefix):
             previous[name] = {'image': containers[0]['Image'],
                               'running': any(item['State']['Running'] for item in containers)}
     json_write(directory / 'images.json', {'services': services, 'previous': previous})
-    if component == 'waf' or model['services']['nginx'].get('image') in WAF_LEGACY_PINS:
-        if component == 'waf':
-            if nginx_container is None or not nginx_container['State']['Running']:
-                raise ValueError('WAF 自动迁移需要单个运行中的 nginx 容器')
-            journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
-            journal['component'] = 'waf'
-            json_write(directory / 'journal.json', journal)
-        name, data = waf_image_plan(root, model, nginx_container)
+    nginx_service = model['services']['nginx']
+    current_image = nginx_service.get('image', '')
+    rolling_image = nginx_rolling_image(current_image) if not nginx_service.get('build') else None
+    if component == 'waf':
+        if nginx_container is None or not nginx_container['State']['Running']:
+            raise ValueError('WAF 自动迁移需要单个运行中的 nginx 容器')
+        if rolling_image is None:
+            raise ValueError('仅自动迁移官方 nginx 或 kjlion/nginx 镜像；自定义镜像请先核对 ModSecurity 兼容性')
+        rolling_image = WAF_CANDIDATE_IMAGE
+        journal = json.loads((directory / 'journal.json').read_text(encoding='utf-8'))
+        journal['component'] = 'waf'
+        json_write(directory / 'journal.json', journal)
+    if rolling_image and current_image != rolling_image:
+        name, data = nginx_image_plan(root, nginx_container, rolling_image)
         remember(root, directory)
         install_configuration(root, directory, name, data, inventory(root)[name]['mode'])
         desired = copy.deepcopy(model)
-        desired['services']['nginx']['image'] = WAF_CANDIDATE_IMAGE
+        desired['services']['nginx']['image'] = rolling_image
         model = json.loads(command('docker', 'compose', '--project-directory', str(root), 'config', '--format', 'json'))
         if model != desired:
             raise ValueError('镜像迁移改变了其他有效 Compose 参数，已中止: ' + ', '.join(changed_paths(desired, model)[:10]))
@@ -4971,8 +5012,7 @@ def execute_update(root, directory, component, prefix):
     if component == 'all':
         snapshot_runtime(directory, compose, previous)
     pull_services = services
-    nginx_service = model['services']['nginx']
-    if nginx_service.get('image') in WAF_IMAGE_TAGS and not nginx_service.get('build'):
+    if rolling_image:
         command(*compose, 'pull', '--policy', 'always', 'nginx')
         pull_services = [name for name in services if name != 'nginx']
     if pull_services:
@@ -5155,6 +5195,9 @@ def rollback(root, directory):
 
 
 def main():
+    if len(sys.argv) == 3 and sys.argv[1] == 'rolling-image':
+        print(nginx_rolling_image(sys.argv[2]) or sys.argv[2])
+        return
     action, root, directory, component, prefix = sys.argv[1:]
     root, directory = Path(root), Path(directory)
     os.umask(0o077)
@@ -5165,7 +5208,7 @@ def main():
     if component not in {'nginx', 'all', 'waf'}:
         raise ValueError('不支持的更新组件')
     if action == 'prepare':
-        snapshot(root, directory)
+        snapshot(root, directory, component)
     elif action == 'update':
         execute_update(root, directory, component, prefix)
     elif action == 'remember':
@@ -6804,6 +6847,10 @@ check_docker_image_update() {
 	full_image_name=$(echo "$container_info" | cut -d',' -f2)
 	container_image_id=$(echo "$container_info" | cut -d',' -f3)
 	container_created_ts=$(date -d "$container_created" +%s 2>/dev/null)
+	local rolling_image
+	if [[ "$container_name" == nginx ]] && rolling_image=$(nginx_config_update rolling-image "$full_image_name" 2>/dev/null); then
+		full_image_name=$rolling_image
+	fi
 
 	# 2. 智能路由判断
 	if [[ "$full_image_name" == ghcr.io* ]]; then
@@ -20002,9 +20049,10 @@ linux_ldnmp() {
 		  echo "0. 返回上一级选单"
 		  echo "------------------------"
 		  read -e -p "请输入你的选择: " sub_choice
+		  local update_rc=0
 		  case $sub_choice in
 			  1)
-			  nginx_upgrade
+			  nginx_upgrade || update_rc=$?
 
 				  ;;
 
@@ -20079,7 +20127,7 @@ linux_ldnmp() {
 				read -e -p "$(echo -e "${gl_huang}提示: ${gl_bai}长时间不更新环境的用户，请慎重更新LDNMP环境，会有数据库更新失败的风险。确定更新LDNMP环境吗？(Y/N): ")" choice
 				case "$choice" in
 				  [Yy])
-					ldnmp_upgrade_all
+					ldnmp_upgrade_all || update_rc=$?
 					;;
 				  *)
 					;;
@@ -20089,7 +20137,7 @@ linux_ldnmp() {
 				  break
 				  ;;
 		  esac
-		  break_end
+		  break_end "$update_rc"
 	  done
 
 
