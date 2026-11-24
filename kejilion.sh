@@ -2052,6 +2052,8 @@ enable() {
 break_end() {
 	  if [ "${1:-0}" -eq 0 ]; then
 		  echo -e "${gl_lv}操作完成${gl_bai}"
+	  elif [ "$1" -eq 130 ]; then
+		  echo "已取消操作"
 	  else
 		  echo -e "${gl_hong}操作失败，请检查上方错误${gl_bai}"
 	  fi
@@ -3177,6 +3179,7 @@ ldnmp_v() {
 
 
 install_ldnmp_conf() {
+  [ ! -L /home/web ] || return 1
   # Re-entry must preserve the installed stack, database credentials and WAF hooks.
   if [ -e /home/web/docker-compose.yml ] || [ -L /home/web/docker-compose.yml ]; then
     [ -f /home/web/docker-compose.yml ] && [ ! -L /home/web/docker-compose.yml ] || return 1
@@ -3190,14 +3193,14 @@ install_ldnmp_conf() {
   fi
 
   # 创建必要的目录和文件
-  cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/stream.d web/redis web/log/nginx web/letsencrypt && touch web/docker-compose.yml
+  cd /home && mkdir -p web/html web/mysql web/certs web/conf.d web/stream.d web/redis web/log/nginx web/letsencrypt && touch web/docker-compose.yml || return 1
   nginx_template_install || return $?
-  wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default10.conf
+  wget -O /home/web/conf.d/default.conf ${gh_proxy}raw.githubusercontent.com/kejilion/nginx/main/default10.conf || return 1
 
-  default_server_ssl
+  default_server_ssl || return 1
 
   # 下载 docker-compose.yml 文件并进行替换
-  wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml
+  wget -O /home/web/docker-compose.yml ${gh_proxy}raw.githubusercontent.com/kejilion/docker/main/LNMP-docker-compose-10.yml || return 1
   dbrootpasswd=$(openssl rand -base64 16) ; dbuse=$(openssl rand -hex 4) ; dbusepasswd=$(openssl rand -base64 8)
 
   # 在 docker-compose.yml 文件中进行替换
@@ -4175,6 +4178,7 @@ SOURCES = {
 STATE = 'config/nginx-update.json'
 MAX_FILES, MAX_BYTES = 512, 64 * 1024 * 1024
 KEEP_RECOVERY_POINTS = 16
+FINISHED_PHASES = {'committed', 'rolled-back'}
 RUNTIME_PATHS = {
     'php': ('/usr/local/etc/php-fpm.d/www.conf', '/usr/local/etc/php-fpm.d/zz-docker.conf',
             '/usr/local/etc/php/conf.d/optimized_php.ini'),
@@ -4533,19 +4537,37 @@ def archive_completed(root, completed):
         print('旧恢复点自动归档未完成，已保留未归档的恢复点', file=sys.stderr)
 
 
-def snapshot(root, directory, component='nginx'):
-    backups = root / 'backups/nginx-update'
-    backups.mkdir(parents=True, exist_ok=True, mode=0o700)
+def recovery_points(backups):
     trusted(backups, directory=True)
-    completed = []
     for entry in backups.iterdir():
         trusted(entry, directory=True)
         journal = entry / 'journal.json'
-        if entry == directory or not (journal.exists() or journal.is_symlink()):
+        if not (journal.exists() or journal.is_symlink()):
             continue
         trusted(journal)
-        phase = json.loads(journal.read_text(encoding='utf-8')).get('phase')
-        if phase in {'committed', 'rolled-back'}:
+        yield entry, json.loads(journal.read_text(encoding='utf-8'))
+
+
+def pending_full_recovery(backups):
+    pending = [(entry, journal.get('phase')) for entry, journal in recovery_points(backups)
+               if journal.get('phase') not in FINISHED_PHASES]
+    if not pending:
+        return None
+    if len(pending) != 1 or pending[0][1] != 'write-exposed':
+        raise ValueError('上次更新尚未完成，无法确认当前状态。请保留恢复点并检查: ' +
+                         ', '.join(str(entry) for entry, _ in pending))
+    return pending[0][0]
+
+
+def snapshot(root, directory, component='nginx'):
+    backups = root / 'backups/nginx-update'
+    backups.mkdir(parents=True, exist_ok=True, mode=0o700)
+    completed = []
+    for entry, journal in recovery_points(backups):
+        if entry == directory:
+            continue
+        phase = journal.get('phase')
+        if phase in FINISHED_PHASES:
             completed.append(entry)
         elif phase != 'write-exposed' or component != 'nginx':
             raise ValueError('存在未完成的更新恢复点，请先检查恢复: ' + str(entry))
@@ -4827,6 +4849,44 @@ def file_digest(path):
         for block in iter(lambda: stream.read(1024 * 1024), b''):
             result.update(block)
     return result.hexdigest()
+
+
+def review_live_recovery(root, directory, accept=False):
+    if pending_full_recovery(directory.parent) != directory:
+        raise ValueError('待确认的完整更新记录已改变，请重新打开更新菜单')
+    journal_path = directory / 'journal.json'
+    journal = json.loads(journal_path.read_text(encoding='utf-8'))
+    for name in ('images.json', 'data.json'):
+        trusted(directory / name)
+    images = json.loads((directory / 'images.json').read_text(encoding='utf-8'))
+    services = images['services']
+    state = json.loads((directory / 'data.json').read_text(encoding='utf-8'))
+    records = state['records']
+    if state['complete'] is not True or not records:
+        raise ValueError('上次完整更新的数据库冷备不完整，已保留现场')
+
+    compose = ('docker', 'compose', '--project-directory', str(root))
+    if 'nginx' not in services or not set(services) <= set(command(*compose, 'config', '--services').split()):
+        raise ValueError('当前 Compose 服务与上次完整更新不一致，已保留现场')
+    expected = [{key: item[key] for key in ('service', 'source', 'target', 'type', 'name')} for item in records]
+    trusted(directory / 'data', directory=True)
+    for index, item in enumerate(records):
+        if item['archive'] != str(index) + '.tar':
+            raise ValueError('数据库冷备文件名无效')
+        archive = directory / 'data' / item['archive']
+        trusted(archive)
+        if accept and file_digest(archive) != item['sha256']:
+            raise ValueError('数据库冷备摘要不一致，已保留现场: ' + item['service'])
+
+    if data_sources(compose, services, verify_active=True) != expected:
+        raise ValueError('数据库实际挂载与上次完整更新不一致，已保留现场')
+    ensure_exclusive_data(compose, services, expected)
+    wait_ready(compose, services)
+    if accept:
+        journal['phase'] = 'committed'
+        journal['resolution'] = {'decision': 'accepted-live', 'previousPhase': 'write-exposed',
+                                 'acceptedAt': int(time.time())}
+        json_write(journal_path, journal)
 
 
 def restore_data(directory, compose, services):
@@ -5205,12 +5265,39 @@ def main():
     os.umask(0o077)
     for parent in [root, *root.parents, directory, *directory.parents]:
         trusted(parent, directory=True)
+    if action == 'pending-full' and directory == root / 'backups/nginx-update':
+        pending = pending_full_recovery(directory)
+        if pending:
+            print(pending)
+        return
+    if action == 'verify-restored' and directory == root:
+        services = prefix.split()
+        wait_ready(('docker', 'compose', '--project-directory', str(root)), services, check_nginx='nginx' in services)
+        return
+    if action == 'check-restore-mounts' and directory == root:
+        model = json.loads(command('docker', 'compose', '--project-directory', str(root), 'config', '--format', 'json'))
+        for service, target in (('mysql', '/var/lib/mysql'), ('redis', '/data')):
+            if service not in prefix.split():
+                continue
+            mounts = model['services'][service].get('volumes', [])
+            sources = [Path(mount['source']) for mount in mounts
+                       if mount.get('target') == target and mount.get('type') == 'bind']
+            if len(sources) != 1:
+                raise ValueError('备份未包含此服务的持久化数据目录: ' + service)
+            source = sources[0]
+            if Path('/home/web') in source.parents:
+                source = root / source.relative_to('/home/web')
+            if root not in source.resolve().parents or not source.is_dir():
+                raise ValueError('备份缺少此服务的数据目录: ' + service)
+        return
     if directory.parent != root / 'backups/nginx-update':
         raise ValueError('更新恢复点不在约定目录')
     if component not in {'nginx', 'all', 'waf'}:
         raise ValueError('不支持的更新组件')
     if action == 'prepare':
         snapshot(root, directory, component)
+    elif action in {'review-live', 'accept-live'} and component == 'all':
+        review_live_recovery(root, directory, accept=action == 'accept-live')
     elif action == 'update':
         execute_update(root, directory, component, prefix)
     elif action == 'remember':
@@ -5263,10 +5350,33 @@ nginx_update_transaction() {
     flock -n "$lock_fd" || { echo "已有网站或 LDNMP 环境任务正在执行" >&2; return 75; }
   fi
   [ ! -L /home/web/backups ] && [ ! -L /home/web/backups/nginx-update ] || return 1
+  mkdir -p /home/web/backups/nginx-update || return 1
+  if [ "$component" = all ]; then
+    local pending confirmation
+    pending=$(nginx_config_update pending-full /home/web /home/web/backups/nginx-update all "${gh_proxy:-https://}") || return 1
+    if [ -n "$pending" ]; then
+      if [ ! -t 0 ] || kpanel_protocol_active; then
+        echo "上次完整更新中断。请在 k 的「更新完整环境」菜单确认保留当前数据后，再重试完整更新。" >&2
+        return 1
+      fi
+      echo "上次完整更新中断，数据库之后可能已接收新写入。正在检查当前环境与冷备。"
+      nginx_config_update review-live /home/web "$pending" all "${gh_proxy:-https://}" || return 1
+      echo "当前环境检查通过。继续将校验并保留旧冷备，使用当前数据重新备份后更新。"
+      if ! read -r -t 120 -p "保留当前数据并继续完整更新？(y/N): " confirmation ||
+          [[ "$confirmation" != [Yy] ]]; then
+        return 130
+      fi
+      nginx_config_update accept-live /home/web "$pending" all "${gh_proxy:-https://}" || return 1
+      echo "旧事务已结案，当前数据和旧冷备均已保留。"
+    fi
+    if [ "${2:-false}" = true ]; then
+      kpanel_ldnmp_event update_backup 5 "正在创建更新前冷备"
+      ldnmp_backup_action || return 1
+    fi
+  fi
   # WAF has its own complete transaction. Its successful refresh remains applied
   # if a later image/config update fails; never claim unrelated SSH edits as ours.
   if [ "$component" != waf ]; then shared_waf_refresh || return $?; fi
-  mkdir -p /home/web/backups/nginx-update || return 1
   directory=$(mktemp -d /home/web/backups/nginx-update/$(date -u +%Y%m%dT%H%M%SZ).XXXXXX) || return 1
   trap 'rc=$?; trap - EXIT; if [ "$prepared" = true ]; then
     phase=$(nginx_config_update phase /home/web "$directory" "$component" "${gh_proxy:-https://}") || {
@@ -5327,7 +5437,7 @@ nginx_upgrade() {
 }
 
 ldnmp_upgrade_all() {
-  nginx_update_transaction all
+  nginx_update_transaction all "$@"
 }
 
 
@@ -9058,6 +9168,13 @@ install_ldnmp
 
 
 nginx_install_all() {
+local existing_config=false
+if docker inspect nginx >/dev/null 2>&1; then
+  echo "Nginx 容器已存在，正在检查运行状态。"
+  nginx_wait_ready || { echo "现有 Nginx 未就绪，请检查容器和配置后重试。" >&2; return 1; }
+  return 0
+fi
+[ ! -s /home/web/docker-compose.yml ] || existing_config=true
 cd ~
 send_stats "安装nginx环境"
 root_use
@@ -9073,7 +9190,9 @@ nginx_upgrade || return $?
 # and website ownership instead of reapplying installation defaults.
 (crontab -l 2>/dev/null | grep -Fvx '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf';
  printf '%s\n' '0 2 * * * docker exec nginx apk add logrotate && docker exec nginx logrotate -f /etc/logrotate.conf') | crontab - || return 1
-docker exec nginx chown -R nginx:nginx /var/www/html || return 1
+if [ "$existing_config" = false ]; then
+  docker exec nginx chown -R nginx:nginx /var/www/html || return 1
+fi
 docker exec nginx mkdir -p /var/cache/nginx/proxy /var/cache/nginx/fastcgi || return 1
 docker exec nginx chown -R nginx:nginx /var/cache/nginx/proxy /var/cache/nginx/fastcgi || return 1
 clear
@@ -18273,11 +18392,13 @@ kpanel_ldnmp_escape() {
 }
 
 kpanel_ldnmp_event() {
+	if [ "${KJ_LDNMP_MENU:-0}" = 1 ]; then printf '%s\n' "$3"; return; fi
 	printf 'KPANEL_LDNMP_EVENT {"stage":"%s","progress":%s,"message":"%s"}\n' \
 		"$(kpanel_ldnmp_escape "$1")" "$2" "$(kpanel_ldnmp_escape "$3")"
 }
 
 kpanel_ldnmp_result() {
+	if [ "${KJ_LDNMP_MENU:-0}" = 1 ]; then return; fi
 	local payload
 	payload=$(printf '{"status":"%s","action":"%s","message":"%s","finishedAt":"%s"}' \
 		"$1" "$2" "$(kpanel_ldnmp_escape "$3")" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')")
@@ -18756,6 +18877,10 @@ ldnmp_optimization_action() {
 
 ldnmp_update_action() {
 	local component="$1" version="${2:-latest}" backup_before="${3:-false}" rc
+	if [ "$component" = all ]; then
+		ldnmp_upgrade_all "$backup_before"
+		return $?
+	fi
 	if [ "$backup_before" = true ]; then
 		kpanel_ldnmp_event update_backup 5 "正在创建更新前冷备"
 		ldnmp_backup_action || return 1
@@ -18790,9 +18915,6 @@ ldnmp_update_action() {
 			mv -f docker-compose.yml.kpanel-update docker-compose.yml
 			docker compose up -d --force-recreate php >/dev/null 2>&1 || return 86
 			return "$rc" ;;
-		all)
-			ldnmp_upgrade_all
-			;;
 		*) echo "不支持的更新组件" >&2; return 2 ;;
 	esac
 }
@@ -18801,7 +18923,7 @@ ldnmp_backup_action() {
 	(
 	set -o pipefail
 	[ -d /home/web ] || return 1
-	local stamp archive tmp metadata checksum verified source_bytes free_bytes running_services stopped=false status
+	local stamp archive tmp metadata checksum verified source_bytes free_bytes running_services backup_services stopped=false status
 	stamp=$(date '+%Y%m%d%H%M%S') || return 1
 	archive="/home/web_${stamp}.tar.gz"
 	[ ! -e "$archive" ] && [ ! -L "$archive" ] && [ ! -e "${archive}.kpanel.json" ] && [ ! -L "${archive}.kpanel.json" ] || return 1
@@ -18815,7 +18937,13 @@ ldnmp_backup_action() {
 	trap 'status=$?; trap - EXIT; rm -f -- "$tmp" "$metadata"; if [ "$stopped" = true ] && [ -n "$running_services" ]; then docker compose start $running_services || status=86; fi; exit "$status"' EXIT
 	kpanel_ldnmp_event backup_stop 15 "正在短暂停止 LDNMP"
 	cd /home/web || return 1
-	running_services=$(docker compose ps --services --filter status=running 2>/dev/null | tr '\n' ' ') || return 1
+	running_services=$(docker compose ps --services --filter status=running | paste -sd ' ' -) || return 1
+	backup_services=$running_services
+	if [ -z "$backup_services" ]; then
+		backup_services=$(docker compose ps --all --services | paste -sd ' ' -) || return 1
+	fi
+	[[ "$backup_services" =~ ^[a-zA-Z0-9_.[:space:]-]*$ ]] || return 1
+	nginx_config_update check-restore-mounts /home/web /home/web all "$backup_services" || return 1
 	set -f
 	stopped=true
 	docker compose stop || return 1
@@ -18823,8 +18951,8 @@ ldnmp_backup_action() {
 	tar -C /home -czf "$tmp" web && gzip -t "$tmp" && chmod 600 "$tmp" || return 1
 	checksum=$(sha256sum "$tmp" | awk '{print $1}') || return 1
 	[[ "$checksum" =~ ^[a-f0-9]{64}$ ]] || return 1
-	printf '{"format":"kejilion-ldnmp-v1","file":"%s","sha256":"%s","createdAt":"%s","scriptVersion":"%s"}\n' \
-		"$(basename "$archive")" "$checksum" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$sh_v" > "$metadata" || return 1
+	printf '{"format":"kejilion-ldnmp-v1","file":"%s","sha256":"%s","createdAt":"%s","scriptVersion":"%s","runningServices":"%s"}\n' \
+		"$(basename "$archive")" "$checksum" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$sh_v" "$backup_services" > "$metadata" || return 1
 	chmod 600 "$metadata" && mv -f -- "$tmp" "$archive" && mv -f -- "$metadata" "${archive}.kpanel.json" || return 1
 	[ -s "$archive" ] && [ ! -L "$archive" ] && [ -s "${archive}.kpanel.json" ] && [ ! -L "${archive}.kpanel.json" ] || return 1
 	verified=$(sha256sum "$archive" | awk '{print $1}') || return 1
@@ -18845,59 +18973,165 @@ ldnmp_backup_delete_action() {
 	rm -f -- "$archive" "${archive}.kpanel.json"
 }
 
+ldnmp_extract_backup() {
+	python3 -I - "$1" "$2" <<'LDNMP_BACKUP'
+import hashlib
+import json
+import os
+import posixpath
+import re
+import shutil
+import sys
+import tarfile
+from pathlib import Path, PurePosixPath
+
+
+def extract(path, stage):
+    metadata = path.with_name(path.name + '.kpanel.json')
+    services = ''
+    with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW), 'rb') as data:
+        if metadata.exists() or metadata.is_symlink():
+            if metadata.is_symlink():
+                raise ValueError('备份校验文件不能是符号链接')
+            manifest = json.loads(metadata.read_text(encoding='utf-8'))
+            checksum = hashlib.sha256()
+            for block in iter(lambda: data.read(1024 * 1024), b''):
+                checksum.update(block)
+            if manifest['file'] != path.name or checksum.hexdigest() != manifest['sha256']:
+                raise ValueError('备份校验失败，请重新传输备份和校验文件')
+            data.seek(0)
+            services = manifest.get('runningServices', '')
+            if any(not re.fullmatch(r'[A-Za-z0-9_][A-Za-z0-9_.-]*', name) for name in services.split()):
+                raise ValueError('备份中的服务列表无效')
+        with tarfile.open(fileobj=data, mode='r:gz') as backup:
+            members = {}
+            total = 0
+            budget = shutil.disk_usage(stage).free * 8 // 10
+            for member in backup:
+                name = PurePosixPath(member.name)
+                if not name.parts or name.parts[0] != 'web' or '..' in name.parts or name in members:
+                    raise ValueError('备份包含无效或重复路径')
+                if member.issym():
+                    if str(name) in {'web/mysql/mysql.sock', 'web/mysql/mysqlx.sock'} and re.fullmatch(
+                            r'/(?:var/)?run/mysqld/(?:mysql|mysqld|mysqlx)\.sock', member.linkname):
+                        continue  # The database recreates its runtime socket.
+                    if member.linkname.startswith('/home/web/'):
+                        member.linkname = posixpath.relpath(member.linkname[len('/home/'):], str(name.parent))
+                    target = PurePosixPath(posixpath.normpath(str(name.parent / member.linkname)))
+                    if not target.parts or target.parts[0] != 'web':
+                        raise ValueError('备份的符号链接指向站点数据目录之外')
+                elif not (member.isdir() or member.isreg() or member.islnk()):
+                    raise ValueError('备份包含不支持的特殊文件')
+                member.mode &= 0o777
+                members[name] = member
+                total += member.size
+                if len(members) > 200000 or total > budget:
+                    raise ValueError('备份文件数量或解压空间超出上限')
+            for name, member in members.items():
+                if any(parent in members and not members[parent].isdir() for parent in name.parents):
+                    raise ValueError('备份路径经过链接或文件')
+                if member.islnk():
+                    target = members.get(PurePosixPath(member.linkname))
+                    if target is None or not target.isreg():
+                        raise ValueError('备份硬链接没有对应的普通文件')
+            for name in ('docker-compose.yml', 'nginx.conf'):
+                entry = members.get(PurePosixPath('web') / name)
+                if entry is None or not entry.isreg():
+                    raise ValueError('备份缺少站点配置文件: ' + name)
+            # Keep archived ownership across Python versions after validating all member paths and links.
+            options = {'filter': tarfile.fully_trusted_filter} if hasattr(tarfile, 'fully_trusted_filter') else {}
+            backup.extractall(stage, members=members.values(), numeric_owner=True, **options)
+    print(services)
+
+
+try:
+    extract(Path(sys.argv[1]), Path(sys.argv[2]))
+except (OSError, ValueError, KeyError, TypeError, AttributeError, EOFError, tarfile.TarError) as error:
+    sys.exit('无法还原备份: ' + str(error))
+LDNMP_BACKUP
+}
+
 ldnmp_restore_action() {
-	local name archive stage rollback expected actual entry_count unpacked_bytes free_bytes old_running_services
-	name=$(basename "${1:-}"); printf '%s' "$name" | grep -Eq '^web_[0-9]{14}\.tar\.gz$' || return 2
-	archive="/home/$name"; [ -f "$archive" ] || return 1
-	gzip -t "$archive" || return 1
-	if [ -f "${archive}.kpanel.json" ]; then
-		expected=$(sed -n 's/.*"sha256":"\([a-f0-9]\{64\}\)".*/\1/p' "${archive}.kpanel.json")
-		actual=$(sha256sum "$archive" | awk '{print $1}')
-		[ -n "$expected" ] && [ "$expected" = "$actual" ] || return 1
+	(
+	local name="${1:-}" profile="${2:-}" archive stage rollback="" imported available selected old_services keep_stage=false
+	local -a services previous
+	name=${name#/home/}
+	printf '%s' "$name" | grep -Eq '^web_[0-9]{14}\.tar\.gz$' || { echo "备份文件名无效" >&2; return 2; }
+	[ -z "$profile" ] || [ "$profile" = nginx ] || { echo "不支持的还原形态" >&2; return 2; }
+	archive="/home/$name"
+	[ -f "$archive" ] && [ ! -L "$archive" ] || { echo "找不到可用备份: $archive" >&2; return 1; }
+	[ ! -L /home/web ] && { [ ! -e /home/web ] || [ -d /home/web ]; } || return 1
+	if [ -d /home/web ] && { mountpoint -q /home/web || [ "$(stat -c %d /home/web)" != "$(stat -c %d /home)" ]; }; then
+		echo "站点目录是独立挂载点，无法安全切换，请先调整挂载后重试。" >&2
+		return 1
 	fi
-	kpanel_ldnmp_event restore_scan 15 "正在扫描备份归档"
-	entry_count=$(tar -tzf "$archive" | wc -l)
-	[ "$entry_count" -le 200000 ] || return 1
-	unpacked_bytes=$(tar -tvzf "$archive" | awk '{total += $3} END {printf "%.0f", total}')
-	free_bytes=$(df -PB1 /home | awk 'NR==2 {print $4}')
-	[ "${unpacked_bytes:-0}" -le $((free_bytes * 8 / 10)) ] || return 1
-	tar -tzf "$archive" | grep -Ev '^web(/|$)' | grep -q . && return 1
-	tar -tzf "$archive" | grep -Eq '(^/|(^|/)\.\.(/|$))' && return 1
-	tar -tvzf "$archive" | awk '$1 ~ /^[lhbcp]/ { exit 0 } END { exit 1 }' && return 1
+	umask 077
 	stage=$(mktemp -d /home/.kpanel-ldnmp-restore.XXXXXX) || return 1
-	rollback="/home/.kpanel-ldnmp-rollback.$(date '+%Y%m%d%H%M%S')"
-	kpanel_ldnmp_event restore_extract 35 "正在解压到安全暂存目录"
-	tar -xzf "$archive" -C "$stage" || { rm -rf "$stage"; return 1; }
-	docker compose -f "$stage/web/docker-compose.yml" config -q || { rm -rf "$stage"; return 1; }
-	kpanel_ldnmp_event restore_switch 60 "正在原子切换 /home/web"
-	web_ban_remove || { rm -rf "$stage"; return 1; }
+	trap 'if [ "$keep_stage" = false ]; then rm -rf -- "$stage"; fi' EXIT
+	kpanel_ldnmp_event restore_scan 15 "正在校验备份并解压到暂存目录"
+	selected=$(ldnmp_extract_backup "$archive" "$stage") || return 1
+	if [ "$profile" = nginx ]; then selected=nginx; fi
+	if [ -e "$stage/web/backups/nginx-update" ]; then
+		imported=$(mktemp -d "$stage/web/backups/nginx-update-import.XXXXXX") || return 1
+		mv -- "$stage/web/backups/nginx-update" "$imported/" || return 1
+	fi
+	docker compose -f "$stage/web/docker-compose.yml" config -q || return 1
+	available=$(docker compose --project-directory "$stage/web" config --services) || return 1
+	if [ -n "$selected" ]; then
+		read -r -a services <<< "$selected"
+	else
+		mapfile -t services <<< "$available"
+	fi
+	for name in "${services[@]}"; do
+		grep -Fxq -- "$name" <<< "$available" || { echo "备份缺少服务: $name" >&2; return 1; }
+	done
+	printf '%s\n' "${services[@]}" | grep -Fxq nginx || { echo "备份缺少 Nginx 服务" >&2; return 1; }
+	nginx_config_update check-restore-mounts "$stage/web" "$stage/web" all "${services[*]}" || return 1
+
+	kpanel_ldnmp_event restore_switch 60 "正在切换站点数据，保留当前环境以便恢复"
+	keep_stage=true
 	if [ -d /home/web ]; then
 		cd /home/web || return 1
-		old_running_services=$(docker compose ps --services --filter status=running 2>/dev/null | tr '\n' ' ')
-		docker compose down
-		mv /home/web "$rollback"
+		old_services=$(docker compose ps --services --filter status=running) || return 1
+		previous=()
+		if [ -n "$old_services" ]; then mapfile -t previous <<< "$old_services"; fi
+		rollback=$(mktemp -d /home/.kpanel-ldnmp-rollback.XXXXXX) || return 1
+		echo "原环境恢复位置: $rollback/web"
+		if ! docker compose down || ! mv -- /home/web "$rollback/web"; then
+			if [ "${#previous[@]}" -gt 0 ]; then docker compose up -d --no-deps -- "${previous[@]}" || return 86; fi
+			rmdir -- "$rollback"
+			keep_stage=false
+			return 1
+		fi
 	fi
-	if ! mv "$stage/web" /home/web; then
-		[ -d "$rollback" ] && mv "$rollback" /home/web
-		if [ -d /home/web ] && [ -n "$old_running_services" ]; then
-			cd /home/web && docker compose up -d $old_running_services >/dev/null 2>&1
+	if ! mv -- "$stage/web" /home/web; then
+		if [ -n "$rollback" ]; then
+			mv -- "$rollback/web" /home/web || return 86
+			cd /home/web || return 86
+			if [ "${#previous[@]}" -gt 0 ]; then docker compose up -d --no-deps -- "${previous[@]}" || return 86; fi
 		fi
 		return 1
 	fi
-	rm -rf "$stage"; cd /home/web || return 1
-	if docker compose up -d && docker exec nginx nginx -t >/dev/null 2>&1; then
-		web_ban_remove || { echo "备份已恢复，但封禁状态清理未完成，需人工检查" >&2; return 86; }
-		rm -rf "$rollback"
-		echo "站点已恢复；如需累计封禁，请重新安装防护并开启CF模式。"
+
+	cd /home/web || return 86
+	if docker compose up -d --no-deps -- "${services[@]}" &&
+		nginx_config_update verify-restored /home/web /home/web all "${services[*]}"; then
+		keep_stage=false
+		echo "所选站点服务已通过还原检查。"
+		if [ -n "$rollback" ]; then echo "还原前的站点数据保留在 $rollback/web"; fi
 		return 0
 	fi
-	docker compose down >/dev/null 2>&1; rm -rf /home/web
-	[ -d "$rollback" ] && mv "$rollback" /home/web
-	cd /home/web || return 1
-	if [ -n "$old_running_services" ]; then
-		docker compose up -d $old_running_services >/dev/null 2>&1 || return 86
+	echo "还原后的服务未通过检查，正在恢复原环境；候选数据保留在 $stage" >&2
+	docker compose down || return 86
+	cd /home || return 86
+	mv -- /home/web "$stage/failed-web" || return 86
+	if [ -n "$rollback" ]; then
+		mv -- "$rollback/web" /home/web || return 86
+		cd /home/web || return 86
+		if [ "${#previous[@]}" -gt 0 ]; then docker compose up -d --no-deps -- "${previous[@]}" || return 86; fi
 	fi
 	return 1
+	)
 }
 
 ldnmp_uninstall_action() {
@@ -18943,6 +19177,54 @@ kpanel_ldnmp_run() {
 	return "$rc"
 }
 
+ldnmp_backup_menu() {
+	local KJ_LDNMP_MENU=1 output rc=0 name archive choice remote remote_hash expected
+	echo "正在备份站点和数据库，服务会短暂停止。"
+	output=$(kpanel_ldnmp_run backup ldnmp_backup_action) || rc=$?
+	if [ "$rc" -ne 0 ]; then printf '%s\n' "$output"; return "$rc"; fi
+	name=$(sed -n 's/^KPANEL_LDNMP_BACKUP //p' <<< "$output")
+	[[ "$name" =~ ^web_[0-9]{14}\.tar\.gz$ ]] || return 1
+	archive="/home/$name"
+	echo "备份已创建: $archive"
+	read -r -p "传送这份备份到远程服务器以迁移站点？(y/N): " choice || return 0
+	[[ "$choice" == [Yy] ]] || return 0
+	kj_ssh_read_host_port "请输入远端服务器地址: " "目标服务器 SSH 端口 [默认22]: " 22
+	remote=$KJ_SSH_HOST
+	[[ "$remote" != *:* ]] || remote="[$remote]"
+	scp -p -P "$KJ_SSH_PORT" -- "$archive" "$archive.kpanel.json" "root@$remote:/home/" || return 1
+	expected=$(sha256sum -- "$archive") || return 1
+	remote_hash=$(ssh -p "$KJ_SSH_PORT" "root@$KJ_SSH_HOST" "sha256sum -- '/home/$name'") || return 1
+	[ "${expected%% *}" = "${remote_hash%% *}" ] || { echo "目标服务器的备份校验失败" >&2; return 1; }
+	echo "传输和校验完成。请在目标服务器的「还原全站数据」选择 $name。"
+}
+
+ldnmp_restore_menu() {
+	local KJ_LDNMP_MENU=1 name choice profile=""
+	local -a backups
+	mapfile -t backups < <(find /home -maxdepth 1 -type f -regextype posix-extended \
+		-regex '.*/web_[0-9]{14}\.tar\.gz' -printf '%f\n' | sort -r)
+	[ "${#backups[@]}" -gt 0 ] || { echo "没有找到可还原的站点备份。" >&2; return 1; }
+	printf '%s\n' "${backups[@]}"
+	read -r -p "输入备份文件名，回车选最新，输入 0 取消: " name || return 130
+	[ "$name" != 0 ] || return 130
+	name=${name:-${backups[0]}}
+	name=${name#/home/}
+	printf '%s\n' "${backups[@]}" | grep -Fxq -- "$name" || { echo "找不到所选站点备份。" >&2; return 1; }
+	if ! grep -Eq '"runningServices"[[:space:]]*:[[:space:]]*"[^"]+"' "/home/$name.kpanel.json" 2>/dev/null; then
+		echo "这份备份没有记录原环境运行的服务。"
+		read -r -p "仅启动 Nginx？(y/N，默认按备份的 Compose 启动): " choice || return 130
+		if [[ "$choice" == [Yy] ]]; then profile=nginx; fi
+	fi
+	echo "将使用 $name 还原站点数据。已有环境会暂停并保留恢复副本。"
+	read -r -p "确认使用可信备份并继续？(y/N): " choice || return 130
+	[[ "$choice" == [Yy] ]] || return 130
+	if [ ! -d /home/web ]; then
+		install_dependency && install_docker && install_certbot || return 1
+	fi
+	nginx_install_update_dependencies || return $?
+	kpanel_ldnmp_run restore ldnmp_restore_action "$name" "$profile"
+}
+
 ldnmp_environment_menu() {
 	while true; do
 		clear
@@ -18960,26 +19242,23 @@ ldnmp_environment_menu() {
 		echo "0. 返回"
 		echo "------------------------"
 		read -e -p "请输入你的选择: " choice
+		local action_rc=0 KJ_LDNMP_MENU=1
 		case "$choice" in
 			1)
 				ldnmp_tato
 				docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}' 2>/dev/null
 				;;
-			2) ldnmp_environment_install full ;;
-			3) ldnmp_environment_install nginx ;;
+			2) kpanel_ldnmp_run install ldnmp_environment_install full || action_rc=$? ;;
+			3) kpanel_ldnmp_run install ldnmp_environment_install nginx || action_rc=$? ;;
 			4) web_security ;;
 			5) web_optimization ;;
 			6)
 				read -e -p "更新组件 (nginx/mysql/php/redis/all): " component
 				read -e -p "目标版本（默认 latest）: " version
-				ldnmp_update_action "$component" "${version:-latest}" false
+				kpanel_ldnmp_run update ldnmp_update_action "$component" "${version:-latest}" false || action_rc=$?
 				;;
-			7) ldnmp_backup_action ;;
-			8)
-				find /home -maxdepth 1 -type f -name 'web_*.tar.gz' -printf '%f\n' 2>/dev/null | sort -r
-				read -e -p "输入要还原的备份文件名: " backup_name
-				ldnmp_restore_action "$backup_name"
-				;;
+			7) ldnmp_backup_menu || action_rc=$? ;;
+			8) ldnmp_restore_menu || action_rc=$? ;;
 			9)
 				read -e -p "输入 DELETE 确认卸载 LDNMP 环境: " confirmation
 				[ "$confirmation" = DELETE ] && ldnmp_uninstall_action true
@@ -18987,7 +19266,7 @@ ldnmp_environment_menu() {
 			0) return 0 ;;
 			*) echo "无效的输入" ;;
 		esac
-		break_end
+		break_end "$action_rc"
 	done
 }
 
@@ -19662,8 +19941,10 @@ linux_ldnmp() {
 
 
 	  21)
-	  ldnmp_install_status_one
-	  nginx_install_all
+	  local nginx_install_rc=0 KJ_LDNMP_MENU=1
+	  kpanel_ldnmp_run install ldnmp_environment_install nginx || nginx_install_rc=$?
+	  break_end "$nginx_install_rc"
+	  continue
 		;;
 
 	  22)
@@ -19898,42 +20179,12 @@ linux_ldnmp() {
 
 
 	32)
-	  clear
-	  send_stats "LDNMP环境备份"
-
-	  local backup_filename="web_$(date +"%Y%m%d%H%M%S").tar.gz"
-	  echo -e "${gl_kjlan}正在备份 $backup_filename ...${gl_bai}"
-	  cd /home/ && tar czvf "$backup_filename" web
-
-	  while true; do
-		clear
-		echo "备份文件已创建: /home/$backup_filename"
-		read -e -p "要传送备份数据到远程服务器吗？(Y/N): " choice
-		case "$choice" in
-		  [Yy])
-			kj_ssh_read_host_port "请输入远端服务器IP:  " "目标服务器SSH端口 [默认22]: " "22"
-			local remote_ip="$KJ_SSH_HOST"
-			local TARGET_PORT="$KJ_SSH_PORT"
-			local latest_tar=$(ls -t /home/*.tar.gz | head -1)
-			if [ -n "$latest_tar" ]; then
-			  ssh-keygen -f "/root/.ssh/known_hosts" -R "$remote_ip"
-			  sleep 2  # 添加等待时间
-			  scp -P "$TARGET_PORT" -o StrictHostKeyChecking=no "$latest_tar" "root@$remote_ip:/home/"
-			  echo "文件已传送至远程服务器home目录。"
-			else
-			  echo "未找到要传送的文件。"
-			fi
-			break
-			;;
-		  [Nn])
-			break
-			;;
-		  *)
-			echo "无效的选择，请输入 Y 或 N。"
-			;;
-		esac
-	  done
+	  local backup_rc=0
+	  ldnmp_backup_menu || backup_rc=$?
+	  break_end "$backup_rc"
+	  continue
 	  ;;
+
 
 	33)
 	  clear
@@ -19977,42 +20228,12 @@ linux_ldnmp() {
 	  ;;
 	34)
 	  root_use
-	  send_stats "LDNMP环境还原"
-	  echo "可用的站点备份"
-	  echo "-------------------------"
-	  ls -lt /home/*.gz | awk '{print $NF}'
-	  echo ""
-	  read -e -p  "回车键还原最新的备份，输入备份文件名还原指定的备份，输入0退出：" filename
-
-	  if [ "$filename" == "0" ]; then
-		  break_end
-		  linux_ldnmp
-	  fi
-
-	  # 如果用户没有输入文件名，使用最新的压缩包
-	  if [ -z "$filename" ]; then
-		  local filename=$(ls -t /home/*.tar.gz | head -1)
-	  fi
-
-	  if [ -n "$filename" ]; then
-		  web_ban_remove || { echo "CF封禁清理未完成，停止还原" >&2; break; }
-		  cd /home/web/ > /dev/null 2>&1
-		  docker compose down > /dev/null 2>&1
-		  rm -rf /home/web > /dev/null 2>&1
-
-		  echo -e "${gl_kjlan}正在解压 $filename ...${gl_bai}"
-		  cd /home/ && tar -xzf "$filename"
-
-		  install_dependency
-		  install_docker
-		  install_certbot
-		  install_ldnmp
-		  web_ban_remove || echo "备份封禁状态需人工检查，请勿删除CF凭据。" >&2
-	  else
-		  echo "没有找到压缩包。"
-	  fi
-
+	  local restore_rc=0
+	  ldnmp_restore_menu || restore_rc=$?
+	  break_end "$restore_rc"
+	  continue
 	  ;;
+
 
 	35)
 		web_security

@@ -31,10 +31,18 @@ class WebBackupTemplateTests(unittest.TestCase):
         self.bin = self.root / 'bin'
         self.bin.mkdir()
         self.stub('date', 'printf 20261025070001\n')
-        self.stub('sshpass', 'printf "%s\\n" "$@" > "$TRANSFER_ARGS"; exit "${TRANSFER_EXIT:-0}"\n')
+        self.stub('sshpass', '''if [ "$3" = ssh ]; then
+    for remote_command do :; done
+    sha256sum -- "${remote_command##*/}"
+else
+    printf "%s\\n" "$@" > "$TRANSFER_ARGS"
+    exit "${TRANSFER_EXIT:-0}"
+fi
+''')
         source = (Path(__file__).resolve().parents[1] / 'beifen.sh').read_text()
         self.script = self.root / 'backup.sh'
-        self.script.write_text(source.replace('backup_root=/home', f'backup_root={self.root}'))
+        self.script.write_text(source.replace('backup_root=/home', f'backup_root={self.root}')
+                               .replace('/var/log/offsite-web-backup.log', str(self.root / 'backup.log')))
         self.archive = self.root / 'web_20261025070001.tar.gz'
 
     def stub(self, name, body):

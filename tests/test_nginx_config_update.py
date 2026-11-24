@@ -1,11 +1,15 @@
 """Offline behavioral tests of the updater embedded in the distributable script."""
 import copy
+import hashlib
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
+import tarfile
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -493,6 +497,41 @@ class TransactionTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, '未完成的更新恢复点'):
             updater.snapshot(self.root, self.directory, 'nginx')
 
+    def test_full_recovery_checks_live_data_and_preserves_cold_backup(self):
+        self.update('all')
+        path = self.directory / 'journal.json'
+        journal = json.loads(path.read_bytes())
+        journal['phase'] = 'write-exposed'
+        updater.json_write(path, journal)
+        initial = path.read_bytes()
+        cold = self.directory / 'data/0.tar'
+        original = cold.read_bytes()
+
+        def command(*args):
+            if args[-2:] == ('config', '--services'):
+                return '\n'.join(self.model['services'])
+            return self.command(*args)
+
+        self.calls.clear()
+        with patch.object(updater, 'command', side_effect=command):
+            updater.review_live_recovery(self.root, self.directory)
+            self.assertEqual(path.read_bytes(), initial)
+            cold.write_bytes(b'invalid archive')
+            with self.assertRaisesRegex(ValueError, '摘要不一致'):
+                updater.review_live_recovery(self.root, self.directory, accept=True)
+            self.assertEqual(path.read_bytes(), initial)
+            cold.write_bytes(original)
+            updater.review_live_recovery(self.root, self.directory, accept=True)
+            closed = json.loads(path.read_bytes())
+            self.assertEqual(closed['phase'], 'committed')
+            self.assertEqual(closed['resolution']['decision'], 'accepted-live')
+            self.assertEqual(closed['resolution']['previousPhase'], 'write-exposed')
+            second = self.directory.parent / 'subsequent'
+            second.mkdir(mode=0o700)
+            updater.snapshot(self.root, second, 'all')
+        self.assertEqual(cold.read_bytes(), original)
+        self.assertFalse(any({'stop', 'down', 'up'} & set(call) for call in self.calls))
+
     def test_success_migrates_common_files_preserves_sites_and_persists_verified_baselines(self):
         original_inode = (self.root / 'nginx.conf').stat().st_ino
         self.update()
@@ -834,6 +873,132 @@ class TransactionTests(unittest.TestCase):
                 updater.prepare_data(self.directory, ['docker', 'compose'], list(self.model['services']))
 
 
+class SiteBackupTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix='site-restore-')
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.archive = self.root / 'web_20261124000000.tar.gz'
+
+    def create_backup(self, extra=None, metadata=True):
+        files = {'web/nginx.conf': b'events {} http {}',
+                 'web/docker-compose.yml': b'services: {nginx: {image: "nginx:alpine"}}',
+                 'web/html/new.html': b'new site'}
+        with tarfile.open(self.archive, 'w:gz') as backup:
+            for name, payload in files.items():
+                entry = tarfile.TarInfo(name)
+                entry.size = len(payload)
+                backup.addfile(entry, io.BytesIO(payload))
+            if extra is not None:
+                backup.addfile(extra)
+        if metadata:
+            manifest = {'file': self.archive.name, 'sha256': hashlib.sha256(self.archive.read_bytes()).hexdigest(),
+                        'runningServices': 'nginx'}
+            self.archive.with_name(self.archive.name + '.kpanel.json').write_text(json.dumps(manifest))
+
+    def extract(self, stage):
+        body = SCRIPT.split("<<'LDNMP_BACKUP'\n", 1)[1].split('\nLDNMP_BACKUP\n', 1)[0]
+        return subprocess.run([sys.executable, '-I', '-', str(self.archive), str(stage)],
+                              input=body, capture_output=True, text=True)
+
+    def test_current_and_legacy_backup_extract_expected_files(self):
+        link = tarfile.TarInfo('web/html/index.html')
+        link.type = tarfile.SYMTYPE
+        link.linkname = 'new.html'
+        for with_metadata in (False, True):
+            with self.subTest(with_metadata=with_metadata):
+                self.create_backup(extra=link, metadata=with_metadata)
+                stage = self.root / str(with_metadata)
+                stage.mkdir()
+                result = self.extract(stage)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout.strip(), 'nginx' if with_metadata else '')
+                self.assertEqual((stage / 'web/html/index.html').read_bytes(), b'new site')
+
+    def test_rejects_unreadable_backup_without_extracting(self):
+        self.create_backup()
+        with self.archive.open('ab') as data:
+            data.write(b'changed during transfer')
+        stage = self.root / 'stage'
+        stage.mkdir()
+        result = self.extract(stage)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('备份校验失败', result.stderr)
+        self.assertEqual(list(stage.iterdir()), [])
+
+    @unittest.skipIf(os.name == 'nt', 'requires Linux Bash and tar paths')
+    def test_backup_records_nginx_only_without_starting_a_stopped_stack(self):
+        root = self.root / 'web'
+        root.mkdir()
+        (root / 'nginx.conf').write_text('events {}')
+        (root / 'docker-compose.yml').write_text('services: {nginx: {image: "nginx:alpine"}}')
+        backup = SCRIPT.split('ldnmp_backup_action() {\n', 1)[1].split('\n}\n', 1)[0]
+        shell = '''
+kpanel_ldnmp_event() { :; }
+nginx_config_update() { [ "$1" = check-restore-mounts ] && [ "$5" = nginx ]; }
+docker() {
+  case "$*" in
+    'compose ps --all --services') printf 'nginx\\n' ;;
+    'compose ps --services --filter status=running'|'compose stop') : ;;
+    *) return 99 ;;
+  esac
+}
+sh_v=4.5.21
+ldnmp_backup_action() {
+''' + backup.replace('/home', str(self.root)) + '''
+}
+ldnmp_backup_action
+'''
+        result = subprocess.run(['bash', '-c', shell], capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        manifest, = self.root.glob('web_*.tar.gz.kpanel.json')
+        self.assertEqual(json.loads(manifest.read_bytes())['runningServices'], 'nginx')
+
+    @unittest.skipIf(os.name == 'nt', 'requires Linux Bash and tar paths')
+    def test_restore_nginx_only_and_failed_candidate_restore(self):
+        self.create_backup()
+        root = self.root / 'web'
+        root.mkdir()
+        (root / 'old.html').write_text('original site')
+        for failed in (True, False):
+            with self.subTest(failed=failed):
+                extractor = SCRIPT.split('ldnmp_extract_backup() {\n', 1)[1].split('\n}\n', 1)[0]
+                restore = SCRIPT.split('ldnmp_restore_action() {\n', 1)[1].split('\n}\n', 1)[0]
+                shell = '''
+docker() {
+  case "$*" in
+    *'config --services') printf 'nginx\\nmysql\\nredis\\n' ;;
+    *'ps --services'*) printf 'nginx\\nmysql\\n' ;;
+    'compose up'*) printf '%s\\n' "$*" >> "$ACTIONS" ;;
+  esac
+}
+kpanel_ldnmp_event() { :; }
+nginx_config_update() {
+  [ "$1" != verify-restored ] || [ "$5" = 'nginx mysql' ] || [ "$FAIL" = 0 ]
+}
+ldnmp_extract_backup() {
+''' + extractor + '''
+}
+ldnmp_restore_action() {
+''' + restore.replace('/home', str(self.root)) + '''
+}
+ldnmp_restore_action "$BACKUP"
+'''
+                actions = self.root / 'actions'
+                actions.write_text('')
+                result = subprocess.run(['bash', '-c', shell], capture_output=True, text=True,
+                                        env=dict(os.environ, ACTIONS=str(actions), BACKUP=self.archive.name,
+                                                 FAIL='1' if failed else '0'), timeout=30)
+                self.assertEqual(result.returncode, int(failed), result.stderr)
+                self.assertEqual(actions.read_text().splitlines()[0], 'compose up -d --no-deps -- nginx')
+                if failed:
+                    self.assertEqual((root / 'old.html').read_text(), 'original site')
+                    self.assertTrue(list(self.root.glob('.kpanel-ldnmp-restore.*/failed-web/html/new.html')))
+                else:
+                    self.assertEqual((root / 'html/new.html').read_text(), 'new site')
+                    self.assertTrue(list(self.root.glob('.kpanel-ldnmp-rollback.*/web/old.html')))
+
+
 class EntryPointTests(unittest.TestCase):
     @unittest.skipUnless(os.name != 'nt', 'requires Linux Bash and /proc')
     def test_waf_commit_handoff_and_interrupted_policy_do_not_rollback_image(self):
@@ -875,6 +1040,48 @@ nginx_config_update() {
         self.assertNotIn('down --rmi all', menu)
         self.assertIn('nginx_update_transaction nginx', SCRIPT)
         self.assertIn('nginx_update_transaction all', SCRIPT)
+
+    @unittest.skipIf(os.name == 'nt', 'requires Linux Bash')
+    def test_full_update_requires_recovery_confirmation_before_any_backup_or_update(self):
+        start = SCRIPT.index('nginx_update_transaction() {\n')
+        body = SCRIPT[start:SCRIPT.index('\n}\n', start) + 3]
+        with tempfile.TemporaryDirectory(prefix='ldnmp-confirmation-') as temporary:
+            root = Path(temporary)
+            log = root / 'actions'
+            isolated = body.replace('/home/web', str(root)).replace('/run/lock', str(root))
+            isolated = isolated.replace('[ ! -t 0 ]', '[ "$TEST_TTY" != 1 ]')
+            shell = '''
+flock() { :; }
+python3() { :; }
+kpanel_protocol_active() { [ "$PROTOCOL" = 1 ]; }
+kpanel_ldnmp_event() { :; }
+fix_phpfpm_conf() { :; }
+ldnmp_backup_action() { echo backup >> "$ACTIONS"; }
+shared_waf_refresh() { echo waf >> "$ACTIONS"; }
+send_stats() { :; }
+nginx_config_update() {
+  echo "$1" >> "$ACTIONS"
+  case "$1" in
+    pending-full) echo "$4/old";;
+    phase) echo committed;;
+  esac
+}
+''' + isolated + '\nnginx_update_transaction all true\n'
+            cases = [
+                ('0', '0', 'y\n', 1, ['pending-full']),
+                ('1', '1', 'y\n', 1, ['pending-full']),
+                ('1', '0', 'n\n', 130, ['pending-full', 'review-live']),
+                ('1', '0', 'y\n', 0, ['pending-full', 'review-live', 'accept-live', 'backup', 'waf',
+                                      'prepare', 'update', 'phase']),
+            ]
+            for tty, protocol, response, code, expected in cases:
+                with self.subTest(tty=tty, protocol=protocol, code=code):
+                    log.write_text('')
+                    result = subprocess.run(['bash', '-c', shell], input=response, capture_output=True, text=True,
+                                            env=dict(os.environ, ACTIONS=str(log), TEST_TTY=tty, PROTOCOL=protocol),
+                                            timeout=15)
+                    self.assertEqual(result.returncode, code, result.stderr)
+                    self.assertEqual(log.read_text().splitlines(), expected)
 
     @unittest.skipUnless(os.name != 'nt' or os.environ.get('KJ_TEST_BASH'), 'requires Git Bash or Linux Bash')
     def test_shell_exit_trap_preserves_failures_and_reports_failed_recovery(self):
